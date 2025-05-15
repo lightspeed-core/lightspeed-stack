@@ -1,5 +1,0 @@
-name: foo bar baz
-llama_stack:
-  use_as_library_client: false
-  url: http://localhost:8321
-  api_key: xyzzy

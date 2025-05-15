@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Request
 
 from version import __version__
-from models.config import Configuration
+from models.config import ClientConfig
 from configuration import configuration
 
 logger = logging.getLogger(__name__)
@@ -22,5 +22,5 @@ get_config_responses: dict[int | str, dict[str, Any]] = {
 
 
 @router.get("/config", responses=get_config_responses)
-def config_endpoint_handler(request: Request) -> Configuration:
+def config_endpoint_handler(request: Request) -> ClientConfig:
     return configuration.configuration

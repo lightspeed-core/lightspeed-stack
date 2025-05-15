@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:986a839c16b9450f33fcf60474d8e03e6a7f8fd9b29fc68013e3f4b89a7a653f"
+content_hash = "sha256:8ac5d96b8a2f349f627784b305556d1a9db6db19beacd4ee331fd686c137bd5c"
 
 [[metadata.targets]]
 requires_python = ">=3.11.1,<=3.12.10"
@@ -483,7 +483,7 @@ files = [
 
 [[package]]
 name = "llama-stack-client"
-version = "0.2.5"
+version = "0.2.6"
 requires_python = ">=3.7"
 summary = "The official Python library for the llama-stack-client API"
 groups = ["default"]
@@ -504,8 +504,8 @@ dependencies = [
     "typing-extensions<5,>=4.7",
 ]
 files = [
-    {file = "llama_stack_client-0.2.5-py3-none-any.whl", hash = "sha256:504abe51bdd1da658e00f720997e7845d10ca1eb74de52af90f82bfbce8e2e67"},
-    {file = "llama_stack_client-0.2.5.tar.gz", hash = "sha256:509c6336027a13b8b89780a85bd1cd45b3659de3929357fd9d8113ea0d6a3f05"},
+    {file = "llama_stack_client-0.2.6-py3-none-any.whl", hash = "sha256:9f39dea2dba6767b654d5119f99dfc2b89f838470a547bc5d8def5a230decfcd"},
+    {file = "llama_stack_client-0.2.6.tar.gz", hash = "sha256:a03a2b0bd43bdb0083378f481614bb65592d7f669a821d0b618b1dfc7d1c8325"},
 ]
 
 [[package]]

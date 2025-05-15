@@ -2,7 +2,6 @@
 
 import logging
 from runners.uvicorn import start_uvicorn
-from models.config import Configuration
 from configuration import configuration
 
 from rich.logging import RichHandler
@@ -18,10 +17,10 @@ logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     logger.info("Lightspeed stack startup")
-    configuration.load_configuration("lightspeed-stack.yaml")
+    configuration.load_configuration("lightspeed-config.yaml")
     logger.info("Configuration: %s", configuration.configuration)
     logger.info(
-        "Llama stack configuration: %s", configuration.llama_stack_configuration
+        "Llama stack configuration: %s", configuration.configuration.llama_stack
     )
     start_uvicorn()
     logger.info("Lightspeed stack finished")

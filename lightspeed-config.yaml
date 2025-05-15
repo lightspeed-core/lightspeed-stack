@@ -1,0 +1,5 @@
+name: lightspeed-config-example
+llama_stack:
+  base_url: http://localhost:8321
+  api_key: ${LLAMA_STACK_API_KEY}
+query_validation_method: keyword

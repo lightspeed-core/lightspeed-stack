@@ -1,0 +1,15 @@
+version: '2'
+image_name: llamastack-experiment
+container_image: null
+apis:
+  - inference
+
+providers:
+  inference:
+    - provider_id: openai
+      provider_type: remote::openai
+      config:
+        api_key: ${OPENAI_API_KEY}
+
+server:
+  port: 8321
