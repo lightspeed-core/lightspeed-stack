@@ -11,7 +11,6 @@ class LLamaStackConfiguration(BaseModel):
     api_key: Optional[str] = None
     use_as_library_client: Optional[bool] = None
     library_client_config_path: Optional[str] = None
-    chat_completion_mode: bool = False
 
     @model_validator(mode="after")
     def check_llama_stack_model(self) -> Self:

@@ -6,6 +6,7 @@ from typing import Any
 from llama_stack.distribution.library_client import LlamaStackAsLibraryClient
 from llama_stack_client.lib.agents.agent import Agent
 from llama_stack_client import LlamaStackClient
+from llama_stack_client.types import UserMessage
 
 from fastapi import APIRouter, Request
 
@@ -41,43 +42,34 @@ def info_endpoint_handler(request: Request, query: str) -> QueryResponse:
 
     logger.info("Model: %s", model_id)
 
-    response = retrieve_response(
-        client, model_id, llama_stack_config.chat_completion_mode, query
-    )
+    response = retrieve_response(client, model_id, query)
 
     return QueryResponse(query=query, response=response)
 
 
-def retrieve_response(
-    client: LlamaStackClient, model_id: str, chat_completion_mode: bool, query: str
-) -> str:
-    if chat_completion_mode:
-        logger.info("Chat completion mode enabled")
-        response = client.inference.chat_completion(
-            model_id=model_id,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": query},
-            ],
-        )
-        return str(response.completion_message.content)
+def retrieve_response(client: LlamaStackClient, model_id: str, prompt: str) -> str:
+
+    available_shields = [shield.identifier for shield in client.shields.list()]
+    if not available_shields:
+        print(colored("No available shields. Disabling safety.", "yellow"))
     else:
-        logger.info("Chat completion mode disabled")
-        agent = Agent(
-            client,
-            model=model_id,
-            instructions="You are a helpful assistant",
-            tools=[],
-        )
+        print(f"Available shields found: {available_shields}")
 
-        prompt = "How do you do great work?"
+    agent = Agent(
+        client,
+        model=model_id,
+        instructions="You are a helpful assistant",
+        input_shields=available_shields if available_shields else [],
+        tools=[],
+    )
+    session_id = agent.create_session("chat_session")
+    response = agent.create_turn(
+        messages=[UserMessage(role="user", content=prompt)],
+        session_id=session_id,
+        stream=False,
+    )
 
-        response = agent.create_turn(
-            messages=[{"role": "user", "content": prompt}],
-            session_id=agent.create_session("rag_session"),
-            stream=False,
-        )
-        return str(response.output_message.content)
+    return str(response.output_message.content)
 
 
 def get_llama_stack_client(

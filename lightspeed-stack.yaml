@@ -1,6 +1,10 @@
 name: foo bar baz
 llama_stack:
+  # Uses a remote llama-stack service
+  # The instance would have already been started with a llama-stack-run.yaml file
   use_as_library_client: false
+  # Alternative for "as library use"
+  # use_as_library_client: true
+  # library_client_config_path: <path-to-llama-stack-run.yaml-file>
   url: http://localhost:8321
   api_key: xyzzy
-  chat_completion_mode: true
