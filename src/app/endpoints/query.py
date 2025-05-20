@@ -8,7 +8,9 @@ from llama_stack_client.lib.agents.agent import Agent
 from llama_stack_client import LlamaStackClient
 from llama_stack_client.types import UserMessage
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
+
+from pydantic import BaseModel
 
 from configuration import configuration
 from models.config import LLamaStackConfiguration
@@ -25,9 +27,11 @@ query_response: dict[int | str, dict[str, Any]] = {
     },
 }
 
+class LLMRequest(BaseModel):
+    query: str
 
 @router.post("/query", responses=query_response)
-def info_endpoint_handler(request: Request, query: str) -> QueryResponse:
+def info_endpoint_handler(request: LLMRequest, query: str) -> QueryResponse:
     llama_stack_config = configuration.llama_stack_configuration
     logger.info("LLama stack config: %s", llama_stack_config)
 
