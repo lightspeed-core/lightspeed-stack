@@ -1,11 +1,15 @@
 """Handler for REST API call to provide answer to query."""
+
 import json
 import logging
 import re
 from typing import Any, Optional, Iterator, AsyncGenerator, Mapping
 
 from llama_stack_client.lib.agents.agent import Agent
-from llama_stack_client.lib.agents.event_logger import TurnStreamPrintableEvent, TurnStreamEventPrinter
+from llama_stack_client.lib.agents.event_logger import (
+    TurnStreamPrintableEvent,
+    TurnStreamEventPrinter,
+)
 from llama_stack_client import LlamaStackClient
 from llama_stack_client.types import UserMessage
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
@@ -51,7 +55,8 @@ def info_endpoint_handler(request: LLMRequest) -> StreamingResponse:
             request,
             response,
         )
-    );
+    )
+
 
 def retrieve_response(client: LlamaStackClient, model_id: str, prompt: str) -> str:
 
@@ -61,7 +66,9 @@ def retrieve_response(client: LlamaStackClient, model_id: str, prompt: str) -> s
     else:
         logger.info(f"Available shields found: {available_shields}")
 
-    available_vector_dbs = [vector_db.identifier for vector_db in client.vector_dbs.list()]
+    available_vector_dbs = [
+        vector_db.identifier for vector_db in client.vector_dbs.list()
+    ]
     if not available_vector_dbs:
         raise RuntimeError("No available vector DBs.")
     vector_db_id = available_vector_dbs[0]
@@ -129,21 +136,23 @@ def build_yield_item(item: str, idx: int) -> str:
 
 def stream_end_event(ref_docs_metadata: Mapping[str, dict]):
     ref_docs = []
-    for k,v in ref_docs_metadata.items():
-        ref_docs.append({
-            "doc_url": v["docs_url"],
-            "doc_title": v["title"], # todo
-        })
+    for k, v in ref_docs_metadata.items():
+        ref_docs.append(
+            {
+                "doc_url": v["docs_url"],
+                "doc_title": v["title"],  # todo
+            }
+        )
     return format_stream_data(
         {
             "event": "end",
             "data": {
                 "referenced_documents": ref_docs,
-                "truncated": False, # TODO
-                "input_tokens": 0, # TODO
-                "output_tokens": 0, # TODO
+                "truncated": False,  # TODO
+                "input_tokens": 0,  # TODO
+                "output_tokens": 0,  # TODO
             },
-            "available_quotas": 0, # TODO
+            "available_quotas": 0,  # TODO
         }
     )
 
@@ -152,6 +161,7 @@ def format_stream_data(d: dict) -> str:
     """Format outbound data in the Event Stream Format."""
     data = json.dumps(d)
     return f"data: {data}\n\n"
+
 
 class TurnStreamPrintableEventEx(TurnStreamPrintableEvent):
     def __str__(self) -> str:
@@ -169,10 +179,15 @@ class RAGTurnStreamEventPrinter(TurnStreamEventPrinter):
         self.metadata_map = {}
 
     def _yield_printable_events(
-        self, chunk: Any, previous_event_type: Optional[str] = None, previous_step_type: Optional[str] = None
+        self,
+        chunk: Any,
+        previous_event_type: Optional[str] = None,
+        previous_step_type: Optional[str] = None,
     ) -> Iterator[TurnStreamPrintableEventEx]:
         if hasattr(chunk, "error"):
-            yield TurnStreamPrintableEventEx(role=None, content=chunk.error["message"], color="red")
+            yield TurnStreamPrintableEventEx(
+                role=None, content=chunk.error["message"], color="red"
+            )
             return
 
         event = chunk.event
@@ -180,7 +195,9 @@ class RAGTurnStreamEventPrinter(TurnStreamEventPrinter):
 
         if event_type in {"turn_start", "turn_complete", "turn_awaiting_input"}:
             # Currently not logging any turn related info
-            yield TurnStreamPrintableEventEx(role=None, content="", end="", color="grey")
+            yield TurnStreamPrintableEventEx(
+                role=None, content="", end="", color="grey"
+            )
             return
 
         step_type = event.payload.step_type
@@ -188,7 +205,9 @@ class RAGTurnStreamEventPrinter(TurnStreamEventPrinter):
         if step_type == "shield_call" and event_type == "step_complete":
             violation = event.payload.step_details.violation
             if not violation:
-                yield TurnStreamPrintableEventEx(role=step_type, content="No Violation", color="magenta")
+                yield TurnStreamPrintableEventEx(
+                    role=step_type, content="No Violation", color="magenta"
+                )
             else:
                 yield TurnStreamPrintableEventEx(
                     role=step_type,
@@ -199,7 +218,9 @@ class RAGTurnStreamEventPrinter(TurnStreamEventPrinter):
         # handle inference
         if step_type == "inference":
             if event_type == "step_start":
-                yield TurnStreamPrintableEventEx(role=step_type, content="", end="", color="yellow")
+                yield TurnStreamPrintableEventEx(
+                    role=step_type, content="", end="", color="yellow"
+                )
             elif event_type == "step_progress":
                 if event.payload.delta.type == "tool_call":
                     if isinstance(event.payload.delta.tool_call, str):
@@ -245,15 +266,17 @@ class RAGTurnStreamEventPrinter(TurnStreamEventPrinter):
                     # Referenced documents support
                     if r.tool_name == "knowledge_search" and r.content:
                         summary = ""
-                        for i,text_content_item in enumerate(r.content):
+                        for i, text_content_item in enumerate(r.content):
                             if isinstance(text_content_item, TextContentItem):
                                 if i == 0:
                                     summary = text_content_item.text
-                                    summary = summary[:summary.find("\n")]
-                                matches = self.metadata_pattern.findall(text_content_item.text)
+                                    summary = summary[: summary.find("\n")]
+                                matches = self.metadata_pattern.findall(
+                                    text_content_item.text
+                                )
                                 if matches:
                                     for match in matches:
-                                        meta = json.loads(match.replace('\'', '"'))
+                                        meta = json.loads(match.replace("'", '"'))
                                         self.metadata_map[meta["document_id"]] = meta
                         yield TurnStreamPrintableEventEx(
                             role=step_type,
@@ -270,7 +293,10 @@ class RAGTurnStreamEventPrinter(TurnStreamEventPrinter):
 
 class RAGEventLogger:
     printer: RAGTurnStreamEventPrinter
-    def log(self, event_generator: Iterator[Any]) -> Iterator[TurnStreamPrintableEventEx]:
+
+    def log(
+        self, event_generator: Iterator[Any]
+    ) -> Iterator[TurnStreamPrintableEventEx]:
         self.printer = RAGTurnStreamEventPrinter()
         for chunk in event_generator:
             yield from self.printer.yield_printable_events(chunk)
