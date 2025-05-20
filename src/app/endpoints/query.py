@@ -27,8 +27,10 @@ query_response: dict[int | str, dict[str, Any]] = {
     },
 }
 
+
 class LLMRequest(BaseModel):
     query: str
+
 
 @router.post("/query", responses=query_response)
 def info_endpoint_handler(request: LLMRequest, query: str) -> QueryResponse:
