@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:ddc6729ca7e479d4260806c2d960487f750aa598b025763a771c9563ac84e7ff"
+content_hash = "sha256:910b28fc47a38a82cf708002e2acd98de248bbe659eb0ca2e78b6d210eeba7c6"
 
 [[metadata.targets]]
 requires_python = ">=3.11.1,<=3.12.10"
@@ -87,6 +87,20 @@ dependencies = [
 files = [
     {file = "aiosignal-1.3.2-py2.py3-none-any.whl", hash = "sha256:45cde58e409a301715980c2b01d0c28bdde3770d8290b5eb2173759d9acb31a5"},
     {file = "aiosignal-1.3.2.tar.gz", hash = "sha256:a8c255c66fafb1e499c9351d0bf32ff2d8a0321595ebac3b93713656d2436f54"},
+]
+
+[[package]]
+name = "aiosqlite"
+version = "0.21.0"
+requires_python = ">=3.9"
+summary = "asyncio bridge to the standard sqlite3 module"
+groups = ["dev"]
+dependencies = [
+    "typing-extensions>=4.0",
+]
+files = [
+    {file = "aiosqlite-0.21.0-py3-none-any.whl", hash = "sha256:2549cf4057f95f53dcba16f2b64e8e2791d7e1adedb13197dd8ed77bb226d7d0"},
+    {file = "aiosqlite-0.21.0.tar.gz", hash = "sha256:131bb8056daa3bc875608c631c678cda73922a2d4ba8aec373b19f18c17e7aa3"},
 ]
 
 [[package]]

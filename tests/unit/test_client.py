@@ -1,8 +1,6 @@
 """Unit tests for functions defined in src/client.py."""
 
-import os
 import pytest
-from unittest.mock import patch
 
 from client import get_llama_stack_client
 from models.config import LLamaStackConfiguration
