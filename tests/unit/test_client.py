@@ -9,7 +9,6 @@ from models.config import LLamaStackConfiguration
 
 
 # [tisnik] Need to resolve dependencies on CI to be able to run this tests
-@patch.dict(os.environ, {"INFERENCE_MODEL": "llama3.2:3b-instruct-fp16"})
 def test_get_llama_stack_library_client() -> None:
     cfg = LLamaStackConfiguration(
         url=None,
@@ -22,7 +21,6 @@ def test_get_llama_stack_library_client() -> None:
     assert client is not None
 
 
-@patch.dict(os.environ, {"INFERENCE_MODEL": "llama3.2:3b-instruct-fp16"})
 def test_get_llama_stack_remote_client() -> None:
     cfg = LLamaStackConfiguration(
         url="http://localhost:8321",
@@ -34,7 +32,6 @@ def test_get_llama_stack_remote_client() -> None:
     assert client is not None
 
 
-@patch.dict(os.environ, {"INFERENCE_MODEL": "llama3.2:3b-instruct-fp16"})
 def test_get_llama_stack_wrong_configuration() -> None:
     cfg = LLamaStackConfiguration(
         url=None,
