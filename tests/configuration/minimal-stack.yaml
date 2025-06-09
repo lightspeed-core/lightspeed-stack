@@ -1,0 +1,6 @@
+version: '2'
+image_name: llamastack-minimal-stack
+container_image: null
+
+apis: []
+providers: {}
