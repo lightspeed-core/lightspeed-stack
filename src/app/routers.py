@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from app.endpoints import info, models, root, query, health, config, feedback
+from app.endpoints import info, models, root, query, health, config, feedback, streaming_query
 
 
 def include_routers(app: FastAPI) -> None:
@@ -18,3 +18,4 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(health.router, prefix="/v1")
     app.include_router(config.router, prefix="/v1")
     app.include_router(feedback.router, prefix="/v1")
+    app.include_router(streaming_query.router, prefix="/v1")
