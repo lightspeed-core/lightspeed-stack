@@ -33,7 +33,7 @@ def test_include_routers() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 7
+    assert len(app.routers) == 8
     assert root.router in app.routers
     assert info.router in app.routers
     assert models.router in app.routers

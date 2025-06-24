@@ -1,4 +1,4 @@
-"""Handler for REST API call to provide answer to query."""
+"""Handler for REST API call to provide answer to streaming query."""
 
 from datetime import datetime, UTC
 import json
@@ -17,7 +17,6 @@ from fastapi.responses import StreamingResponse
 
 from client import get_llama_stack_client
 from configuration import configuration
-from models.responses import QueryResponse
 from models.requests import QueryRequest, Attachment
 import constants
 from utils.auth import auth_dependency
