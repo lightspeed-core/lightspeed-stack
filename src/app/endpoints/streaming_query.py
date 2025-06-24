@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import Any
+from typing import Any, Iterator
 
 from llama_stack_client.lib.agents.agent import Agent  # type: ignore
 from llama_stack_client import LlamaStackClient  # type: ignore
@@ -83,7 +83,7 @@ async def streaming_query_endpoint_handler(
     conversation_id = retrieve_conversation_id(query_request)
     response = retrieve_response(client, model_id, query_request)
 
-    def response_generator(turn_response):
+    def response_generator(turn_response: Any) -> Iterator[str]:
         """Generate SSE formatted streaming response."""
         token_id = 0
         complete_response = ""
@@ -124,7 +124,7 @@ async def streaming_query_endpoint_handler(
 
 def retrieve_response(
     client: LlamaStackClient, model_id: str, query_request: QueryRequest
-):
+) -> Any:
     """Retrieve response from LLMs and agents."""
     available_shields = [shield.identifier for shield in client.shields.list()]
     if not available_shields:
