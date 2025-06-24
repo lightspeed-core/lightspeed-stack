@@ -2,7 +2,16 @@
 
 from fastapi import FastAPI
 
-from app.endpoints import info, models, root, query, health, config, feedback, streaming_query
+from app.endpoints import (
+    info,
+    models,
+    root,
+    query,
+    health,
+    config,
+    feedback,
+    streaming_query,
+)
 
 
 def include_routers(app: FastAPI) -> None:
