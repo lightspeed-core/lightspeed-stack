@@ -5,6 +5,7 @@ import logging
 from typing import Any, Iterator
 
 from llama_stack_client.lib.agents.agent import Agent  # type: ignore
+from llama_stack_client.lib.agents.event_logger import EventLogger  # type: ignore
 from llama_stack_client import LlamaStackClient  # type: ignore
 from llama_stack_client.types import UserMessage  # type: ignore
 
@@ -91,16 +92,12 @@ async def streaming_query_endpoint_handler(
         # Send start event
         yield stream_start_event(conversation_id)
 
-        for res in turn_response:
-            if hasattr(res.event, "payload"):
-                if res.event.payload.event_type == "step_progress":
-                    if hasattr(res.event.payload.delta, "text"):
-                        text = res.event.payload.delta.text
-                        yield format_stream_data(
-                            {"event": "token", "data": {"id": token_id, "token": text}}
-                        )
-                        token_id += 1
-                        complete_response += text
+        for item in EventLogger().log(turn_response):
+            yield format_stream_data(
+                {"event": "token", "data": {"id": token_id, "token": str(item)}}
+            )
+            token_id += 1
+            complete_response += str(item)
 
         yield stream_end_event()
 

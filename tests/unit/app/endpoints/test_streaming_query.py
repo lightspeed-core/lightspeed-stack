@@ -17,15 +17,14 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
     ]
 
     # Mock the streaming response from LLama Stack
-    mock_streaming_response = [
-        mocker.Mock(
-            event=mocker.Mock(
-                payload=mocker.Mock(
-                    event_type="step_progress", delta=mocker.Mock(text="LLM answer")
-                )
-            )
-        ),
-    ]
+    mock_streaming_response = mocker.Mock()
+
+    # Mock EventLogger to return expected tokens
+    mock_event_logger = mocker.Mock()
+    mock_event_logger.log.return_value = ["LLM", " ", "answer"]
+    mocker.patch(
+        "app.endpoints.streaming_query.EventLogger", return_value=mock_event_logger
+    )
 
     mocker.patch(
         "app.endpoints.streaming_query.configuration",
@@ -78,7 +77,8 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
     assert '"event": "start"' in full_content
     assert '"event": "token"' in full_content
     assert '"event": "end"' in full_content
-    assert "LLM answer" in full_content
+    assert "LLM" in full_content
+    assert "answer" in full_content
 
     # Assert the store_transcript function is called if transcripts are enabled
     if store_transcript:
@@ -88,7 +88,7 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
             query_is_valid=True,
             query=query,
             query_request=query_request,
-            response="LLM answer",
+            response="LLM answer",  # This will be "LLM" + " " + "answer" = "LLM answer"
             attachments=[],
             rag_chunks=[],
             truncated=False,
