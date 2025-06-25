@@ -2,7 +2,10 @@
 
 import logging
 
-from llama_stack.distribution.library_client import LlamaStackAsLibraryClient  # type: ignore
+from llama_stack.distribution.library_client import (
+    AsyncLlamaStackAsLibraryClient,
+    LlamaStackAsLibraryClient,
+)  # type: ignore
 from llama_stack_client import AsyncLlamaStackClient, LlamaStackClient  # type: ignore
 from models.config import LLamaStackConfiguration
 
@@ -17,9 +20,14 @@ def get_llama_stack_client(
     if llama_stack_config.use_as_library_client is True:
         if llama_stack_config.library_client_config_path is not None:
             logger.info("Using Llama stack as library client")
-            client = LlamaStackAsLibraryClient(
-                llama_stack_config.library_client_config_path
-            )
+            if async_client:
+                client = AsyncLlamaStackAsLibraryClient(
+                    llama_stack_config.library_client_config_path
+                )
+            else:
+                client = LlamaStackAsLibraryClient(
+                    llama_stack_config.library_client_config_path
+                )
             client.initialize()
             return client
         msg = "Configuration problem: library_client_config_path option is not set"
