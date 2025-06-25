@@ -119,7 +119,7 @@ def test_select_model_id(mocker):
         query="What is OpenStack?", model="model1", provider="provider1"
     )
 
-    model_id = select_model_id(mock_client, query_request)
+    model_id = select_model_id(mock_client.models.list(), query_request)
 
     assert model_id == "model1"
 
@@ -141,7 +141,7 @@ def test_select_model_id_no_model(mocker):
 
     query_request = QueryRequest(query="What is OpenStack?")
 
-    model_id = select_model_id(mock_client, query_request)
+    model_id = select_model_id(mock_client.models.list(), query_request)
 
     # Assert return the first available LLM model
     assert model_id == "first_model"
@@ -159,7 +159,7 @@ def test_select_model_id_invalid_model(mocker):
     )
 
     with pytest.raises(Exception) as exc_info:
-        select_model_id(mock_client, query_request)
+        select_model_id(mock_client.models.list(), query_request)
 
     assert (
         "Model invalid_model from provider provider1 not found in available models"
@@ -176,7 +176,7 @@ def test_no_available_models(mocker):
     query_request = QueryRequest(query="What is OpenStack?", model=None, provider=None)
 
     with pytest.raises(Exception) as exc_info:
-        select_model_id(mock_client, query_request)
+        select_model_id(mock_client.models.list(), query_request)
 
     assert "No LLM model found in available models" in str(exc_info.value)
 

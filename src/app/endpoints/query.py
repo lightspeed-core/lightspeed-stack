@@ -66,7 +66,7 @@ def query_endpoint_handler(
     llama_stack_config = configuration.llama_stack_configuration
     logger.info("LLama stack config: %s", llama_stack_config)
     client = get_llama_stack_client(llama_stack_config)
-    model_id = select_model_id(client, query_request)
+    model_id = select_model_id(client.models.list(), query_request)
     conversation_id = retrieve_conversation_id(query_request)
     response = retrieve_response(client, model_id, query_request)
 
@@ -88,9 +88,8 @@ def query_endpoint_handler(
     return QueryResponse(conversation_id=conversation_id, response=response)
 
 
-def select_model_id(client: LlamaStackClient, query_request: QueryRequest) -> str:
+def select_model_id(models: ModelListResponse, query_request: QueryRequest) -> str:
     """Select the model ID based on the request or available models."""
-    models: ModelListResponse = client.models.list()
     model_id = query_request.model
     provider_id = query_request.provider
 

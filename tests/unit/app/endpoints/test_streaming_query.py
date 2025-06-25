@@ -10,14 +10,15 @@ from llama_stack_client.types import UserMessage  # type: ignore
 
 async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False):
     """Test the streaming query endpoint handler."""
-    mock_client = mocker.Mock()
+    mock_client = mocker.AsyncMock()
     mock_client.models.list.return_value = [
         mocker.Mock(identifier="model1", model_type="llm", provider_id="provider1"),
         mocker.Mock(identifier="model2", model_type="llm", provider_id="provider2"),
     ]
 
     # Mock the streaming response from LLama Stack
-    mock_streaming_response = [
+    mock_streaming_response = mocker.AsyncMock()
+    mock_streaming_response.__aiter__.return_value = [
         mocker.Mock(
             event=mocker.Mock(
                 payload=mocker.Mock(
@@ -109,19 +110,19 @@ async def test_streaming_query_endpoint_handler_store_transcript(mocker):
     await _test_streaming_query_endpoint_handler(mocker, store_transcript=True)
 
 
-def test_retrieve_response_no_available_shields(mocker):
+async def test_retrieve_response_no_available_shields(mocker):
     """Test the retrieve_response function."""
-    mock_agent = mocker.Mock()
+    mock_agent = mocker.AsyncMock()
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
-    mock_client = mocker.Mock()
+    mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = []
 
-    mocker.patch("app.endpoints.streaming_query.Agent", return_value=mock_agent)
+    mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
 
     query_request = QueryRequest(query="What is OpenStack?")
     model_id = "fake_model_id"
 
-    response = retrieve_response(mock_client, model_id, query_request)
+    response = await retrieve_response(mock_client, model_id, query_request)
 
     # For streaming, the response should be the streaming object
     assert response is not None
@@ -133,7 +134,7 @@ def test_retrieve_response_no_available_shields(mocker):
     )
 
 
-def test_retrieve_response_one_available_shield(mocker):
+async def test_retrieve_response_one_available_shield(mocker):
     """Test the retrieve_response function."""
 
     class MockShield:
@@ -143,17 +144,17 @@ def test_retrieve_response_one_available_shield(mocker):
         def identifier(self):
             return self.identifier
 
-    mock_agent = mocker.Mock()
+    mock_agent = mocker.AsyncMock()
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
-    mock_client = mocker.Mock()
+    mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = [MockShield("shield1")]
 
-    mocker.patch("app.endpoints.streaming_query.Agent", return_value=mock_agent)
+    mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
 
     query_request = QueryRequest(query="What is OpenStack?")
     model_id = "fake_model_id"
 
-    response = retrieve_response(mock_client, model_id, query_request)
+    response = await retrieve_response(mock_client, model_id, query_request)
 
     assert response is not None
     mock_agent.create_turn.assert_called_once_with(
@@ -164,7 +165,7 @@ def test_retrieve_response_one_available_shield(mocker):
     )
 
 
-def test_retrieve_response_two_available_shields(mocker):
+async def test_retrieve_response_two_available_shields(mocker):
     """Test the retrieve_response function."""
 
     class MockShield:
@@ -174,20 +175,20 @@ def test_retrieve_response_two_available_shields(mocker):
         def identifier(self):
             return self.identifier
 
-    mock_agent = mocker.Mock()
+    mock_agent = mocker.AsyncMock()
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
-    mock_client = mocker.Mock()
+    mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = [
         MockShield("shield1"),
         MockShield("shield2"),
     ]
 
-    mocker.patch("app.endpoints.streaming_query.Agent", return_value=mock_agent)
+    mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
 
     query_request = QueryRequest(query="What is OpenStack?")
     model_id = "fake_model_id"
 
-    response = retrieve_response(mock_client, model_id, query_request)
+    response = await retrieve_response(mock_client, model_id, query_request)
 
     assert response is not None
     mock_agent.create_turn.assert_called_once_with(
@@ -198,11 +199,11 @@ def test_retrieve_response_two_available_shields(mocker):
     )
 
 
-def test_retrieve_response_with_one_attachment(mocker):
+async def test_retrieve_response_with_one_attachment(mocker):
     """Test the retrieve_response function."""
-    mock_agent = mocker.Mock()
+    mock_agent = mocker.AsyncMock()
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
-    mock_client = mocker.Mock()
+    mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = []
 
     attachments = [
@@ -212,12 +213,12 @@ def test_retrieve_response_with_one_attachment(mocker):
             content="this is attachment",
         ),
     ]
-    mocker.patch("app.endpoints.streaming_query.Agent", return_value=mock_agent)
+    mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
 
     query_request = QueryRequest(query="What is OpenStack?", attachments=attachments)
     model_id = "fake_model_id"
 
-    response = retrieve_response(mock_client, model_id, query_request)
+    response = await retrieve_response(mock_client, model_id, query_request)
 
     assert response is not None
     mock_agent.create_turn.assert_called_once_with(
@@ -233,11 +234,11 @@ def test_retrieve_response_with_one_attachment(mocker):
     )
 
 
-def test_retrieve_response_with_two_attachments(mocker):
+async def test_retrieve_response_with_two_attachments(mocker):
     """Test the retrieve_response function."""
-    mock_agent = mocker.Mock()
+    mock_agent = mocker.AsyncMock()
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
-    mock_client = mocker.Mock()
+    mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = []
 
     attachments = [
@@ -252,12 +253,12 @@ def test_retrieve_response_with_two_attachments(mocker):
             content="kind: Pod\n metadata:\n name:    private-reg",
         ),
     ]
-    mocker.patch("app.endpoints.streaming_query.Agent", return_value=mock_agent)
+    mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
 
     query_request = QueryRequest(query="What is OpenStack?", attachments=attachments)
     model_id = "fake_model_id"
 
-    response = retrieve_response(mock_client, model_id, query_request)
+    response = await retrieve_response(mock_client, model_id, query_request)
 
     assert response is not None
     mock_agent.create_turn.assert_called_once_with(
