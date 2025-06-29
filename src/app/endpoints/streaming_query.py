@@ -2,11 +2,10 @@
 
 import json
 import logging
-from typing import Any, Iterator
+from typing import Any, AsyncIterator
 
-from llama_stack_client.lib.agents.agent import Agent  # type: ignore
-from llama_stack_client.lib.agents.event_logger import EventLogger  # type: ignore
-from llama_stack_client import LlamaStackClient  # type: ignore
+from llama_stack_client.lib.agents.agent import AsyncAgent  # type: ignore
+from llama_stack_client import AsyncLlamaStackClient  # type: ignore
 from llama_stack_client.types import UserMessage  # type: ignore
 
 from fastapi import APIRouter, Request, Depends
@@ -79,12 +78,12 @@ async def streaming_query_endpoint_handler(
     """Handle request to the /query endpoint."""
     llama_stack_config = configuration.llama_stack_configuration
     logger.info("LLama stack config: %s", llama_stack_config)
-    client = get_llama_stack_client(llama_stack_config)
-    model_id = select_model_id(client, query_request)
+    client = get_llama_stack_client(llama_stack_config, async_client=True)
+    model_id = select_model_id(await client.models.list(), query_request)
     conversation_id = retrieve_conversation_id(query_request)
-    response = retrieve_response(client, model_id, query_request)
+    response = await retrieve_response(client, model_id, query_request)
 
-    def response_generator(turn_response: Any) -> Iterator[str]:
+    async def response_generator(turn_response: Any) -> AsyncIterator[str]:
         """Generate SSE formatted streaming response."""
         token_id = 0
         complete_response = ""
@@ -92,12 +91,16 @@ async def streaming_query_endpoint_handler(
         # Send start event
         yield stream_start_event(conversation_id)
 
-        for item in EventLogger().log(turn_response):
-            yield format_stream_data(
-                {"event": "token", "data": {"id": token_id, "token": str(item)}}
-            )
-            token_id += 1
-            complete_response += str(item)
+        async for res in turn_response:
+            if hasattr(res.event, "payload"):
+                if res.event.payload.event_type == "step_progress":
+                    if hasattr(res.event.payload.delta, "text"):
+                        text = res.event.payload.delta.text
+                        yield format_stream_data(
+                            {"event": "token", "data": {"id": token_id, "token": text}}
+                        )
+                        token_id += 1
+                        complete_response += text
 
         yield stream_end_event()
 
@@ -119,11 +122,11 @@ async def streaming_query_endpoint_handler(
     return StreamingResponse(response_generator(response))
 
 
-def retrieve_response(
-    client: LlamaStackClient, model_id: str, query_request: QueryRequest
+async def retrieve_response(
+    client: AsyncLlamaStackClient, model_id: str, query_request: QueryRequest
 ) -> Any:
     """Retrieve response from LLMs and agents."""
-    available_shields = [shield.identifier for shield in client.shields.list()]
+    available_shields = [shield.identifier for shield in await client.shields.list()]
     if not available_shields:
         logger.info("No available shields. Disabling safety")
     else:
@@ -142,16 +145,16 @@ def retrieve_response(
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
 
-    agent = Agent(
+    agent = AsyncAgent(
         client,
         model=model_id,
         instructions=system_prompt,
         input_shields=available_shields if available_shields else [],
         tools=[],
     )
-    session_id = agent.create_session("chat_session")
+    session_id = await agent.create_session("chat_session")
     logger.debug("Session ID: %s", session_id)
-    response = agent.create_turn(
+    response = await agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
         session_id=session_id,
         documents=query_request.get_documents(),

@@ -3,15 +3,15 @@
 import logging
 
 from llama_stack.distribution.library_client import LlamaStackAsLibraryClient  # type: ignore
-from llama_stack_client import LlamaStackClient  # type: ignore
+from llama_stack_client import AsyncLlamaStackClient, LlamaStackClient  # type: ignore
 from models.config import LLamaStackConfiguration
 
 logger = logging.getLogger(__name__)
 
 
 def get_llama_stack_client(
-    llama_stack_config: LLamaStackConfiguration,
-) -> LlamaStackClient:
+    llama_stack_config: LLamaStackConfiguration, async_client: bool = False
+) -> AsyncLlamaStackClient | LlamaStackClient:
     """Retrieve Llama stack client according to configuration."""
     if llama_stack_config.use_as_library_client is True:
         if llama_stack_config.library_client_config_path is not None:
@@ -26,6 +26,12 @@ def get_llama_stack_client(
         # tisnik: use custom exception there - with cause etc.
         raise Exception(msg)  # pylint: disable=broad-exception-raised
     logger.info("Using Llama stack running as a service")
-    return LlamaStackClient(
-        base_url=llama_stack_config.url, api_key=llama_stack_config.api_key
+    return (
+        AsyncLlamaStackClient(
+            base_url=llama_stack_config.url, api_key=llama_stack_config.api_key
+        )
+        if async_client
+        else LlamaStackClient(
+            base_url=llama_stack_config.url, api_key=llama_stack_config.api_key
+        )
     )
