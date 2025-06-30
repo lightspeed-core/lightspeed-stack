@@ -28,7 +28,7 @@ from app.endpoints.query import (
 )
 
 logger = logging.getLogger("app.endpoints.handlers")
-router = APIRouter(tags=["query"])
+router = APIRouter(tags=["streaming_query"])
 
 
 def format_stream_data(d: dict) -> str:
