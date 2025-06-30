@@ -70,6 +70,23 @@ def stream_end_event() -> str:
 
 
 def stream_build_event(chunk: Any, chunk_id: int) -> str | None:
+    """Build a streaming event from a chunk response.
+    
+    This function processes chunks from the LLama Stack streaming response and formats
+    them into Server-Sent Events (SSE) format for the client. It handles two main
+    event types:
+    
+    1. step_progress: Contains text deltas from the model inference process
+    2. step_complete: Contains information about completed tool execution steps
+    
+    Args:
+        chunk: The streaming chunk from LLama Stack containing event data
+        chunk_id: The current chunk ID counter (gets incremented for each token)
+        
+    Returns:
+        str | None: A formatted SSE data string with event information, or None if
+                   the chunk doesn't contain processable event data
+    """
     if hasattr(chunk.event, "payload"):
         if chunk.event.payload.event_type == "step_progress":
             if hasattr(chunk.event.payload.delta, "text"):
