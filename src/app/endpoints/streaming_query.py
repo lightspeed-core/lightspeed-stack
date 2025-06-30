@@ -59,7 +59,7 @@ def stream_end_event() -> str:
         {
             "event": "end",
             "data": {
-                "referenced_documents": None,  # TODO(jboos): implement referenced documents
+                "referenced_documents": [],  # TODO(jboos): implement referenced documents
                 "truncated": None,  # TODO(jboos): implement truncated
                 "input_tokens": 0,  # TODO(jboos): implement input tokens
                 "output_tokens": 0,  # TODO(jboos): implement output tokens
@@ -69,13 +69,47 @@ def stream_end_event() -> str:
     )
 
 
+def stream_build_event(chunk: Any, chunk_id: int) -> str | None:
+    if hasattr(chunk.event, "payload"):
+        if chunk.event.payload.event_type == "step_progress":
+            if hasattr(chunk.event.payload.delta, "text"):
+                text = chunk.event.payload.delta.text
+                return format_stream_data(
+                    {
+                        "event": "token",
+                        "data": {
+                            "id": (chunk_id := chunk_id + 1),
+                            "role": chunk.event.payload.step_type,
+                            "token": text,
+                        },
+                    }
+                )
+        if chunk.event.payload.event_type == "step_complete":
+            if chunk.event.payload.step_details.step_type == "tool_execution":
+                if chunk.event.payload.step_details.tool_calls:
+                    tool_name = str(
+                        chunk.event.payload.step_details.tool_calls[0].tool_name
+                    )
+                    return format_stream_data(
+                        {
+                            "event": "token",
+                            "data": {
+                                "id": (chunk_id := chunk_id + 1),
+                                "role": chunk.event.payload.step_type,
+                                "token": tool_name,
+                            },
+                        }
+                    )
+    return None
+
+
 @router.post("/streaming_query")
 async def streaming_query_endpoint_handler(
     _request: Request,
     query_request: QueryRequest,
     auth: Any = Depends(auth_dependency),
 ) -> StreamingResponse:
-    """Handle request to the /query endpoint."""
+    """Handle request to the /streaming_query endpoint."""
     llama_stack_config = configuration.llama_stack_configuration
     logger.info("LLama stack config: %s", llama_stack_config)
     client = get_llama_stack_client(llama_stack_config, async_client=True)
@@ -85,22 +119,18 @@ async def streaming_query_endpoint_handler(
 
     async def response_generator(turn_response: Any) -> AsyncIterator[str]:
         """Generate SSE formatted streaming response."""
-        token_id = 0
+        chunk_id = -1
         complete_response = ""
 
         # Send start event
         yield stream_start_event(conversation_id)
 
-        async for res in turn_response:
-            if hasattr(res.event, "payload"):
-                if res.event.payload.event_type == "step_progress":
-                    if hasattr(res.event.payload.delta, "text"):
-                        text = res.event.payload.delta.text
-                        yield format_stream_data(
-                            {"event": "token", "data": {"id": token_id, "token": text}}
-                        )
-                        token_id += 1
-                        complete_response += text
+        async for chunk in turn_response:
+            if event := stream_build_event(chunk, chunk_id):
+                complete_response += json.loads(event.replace("data: ", ""))["data"][
+                    "token"
+                ]
+                yield event
 
         yield stream_end_event()
 
@@ -113,7 +143,7 @@ async def streaming_query_endpoint_handler(
                 query_is_valid=True,  # TODO(lucasagomes): implement as part of query validation
                 query=query_request.query,
                 query_request=query_request,
-                response=complete_response,
+                response=str(complete_response),
                 rag_chunks=[],  # TODO(lucasagomes): implement rag_chunks
                 truncated=False,  # TODO(lucasagomes): implement truncation as part of quota work
                 attachments=query_request.attachments or [],
@@ -146,7 +176,7 @@ async def retrieve_response(
         validate_attachments_metadata(query_request.attachments)
 
     agent = AsyncAgent(
-        client,
+        client,  # type: ignore[arg-type]
         model=model_id,
         instructions=system_prompt,
         input_shields=available_shields if available_shields else [],

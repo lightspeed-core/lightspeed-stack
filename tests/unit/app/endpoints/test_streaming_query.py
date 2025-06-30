@@ -3,6 +3,7 @@ import pytest
 from app.endpoints.streaming_query import (
     streaming_query_endpoint_handler,
     retrieve_response,
+    stream_build_event,
 )
 from models.requests import QueryRequest, Attachment
 from llama_stack_client.types import UserMessage  # type: ignore
@@ -22,7 +23,9 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
         mocker.Mock(
             event=mocker.Mock(
                 payload=mocker.Mock(
-                    event_type="step_progress", delta=mocker.Mock(text="LLM answer")
+                    event_type="step_progress",
+                    delta=mocker.Mock(text="LLM answer"),
+                    step_type="inference",
                 )
             )
         ),
@@ -276,3 +279,63 @@ async def test_retrieve_response_with_two_attachments(mocker):
             },
         ],
     )
+
+
+def test_stream_build_event_step_progress(mocker):
+    """Test stream_build_event function with step_progress event type."""
+    # Create a properly nested mock chunk structure
+    mock_chunk = mocker.Mock()
+    mock_chunk.event = mocker.Mock()
+    mock_chunk.event.payload = mocker.Mock()
+    mock_chunk.event.payload.event_type = "step_progress"
+    mock_chunk.event.payload.step_type = "inference"
+    mock_chunk.event.payload.delta = mocker.Mock()
+    mock_chunk.event.payload.delta.text = "This is a test response"
+
+    chunk_id = 0
+    result = stream_build_event(mock_chunk, chunk_id)
+
+    assert result is not None
+    assert "data: " in result
+    assert '"event": "token"' in result
+    assert '"token": "This is a test response"' in result
+    assert '"role": "inference"' in result
+    assert '"id": 1' in result
+
+
+def test_stream_build_event_step_complete(mocker):
+    """Test stream_build_event function with step_complete event type."""
+    # Create a properly nested mock chunk structure
+    mock_chunk = mocker.Mock()
+    mock_chunk.event = mocker.Mock()
+    mock_chunk.event.payload = mocker.Mock()
+    mock_chunk.event.payload.event_type = "step_complete"
+    mock_chunk.event.payload.step_type = "tool_execution"
+    mock_chunk.event.payload.step_details = mocker.Mock()
+    mock_chunk.event.payload.step_details.step_type = "tool_execution"
+    mock_chunk.event.payload.step_details.tool_calls = [
+        mocker.Mock(tool_name="search_tool")
+    ]
+
+    chunk_id = 0
+    result = stream_build_event(mock_chunk, chunk_id)
+
+    assert result is not None
+    assert "data: " in result
+    assert '"event": "token"' in result
+    assert '"token": "search_tool"' in result
+    assert '"role": "tool_execution"' in result
+    assert '"id": 1' in result
+
+
+def test_stream_build_event_returns_none(mocker):
+    """Test stream_build_event function returns None when chunk doesn't have expected structure."""
+    # Create a mock chunk without the expected payload structure
+    mock_chunk = mocker.Mock()
+    mock_chunk.event = mocker.Mock()
+    # Deliberately not setting payload attribute
+
+    chunk_id = 0
+    result = stream_build_event(mock_chunk, chunk_id)
+
+    assert result is None
