@@ -5,11 +5,15 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 from llama_stack_client.lib.agents.agent import Agent
 
 from llama_stack_client import LlamaStackClient  # type: ignore
 from llama_stack_client.types import UserMessage  # type: ignore
+from llama_stack_client.types.agents.turn_create_params import (
+    ToolgroupAgentToolGroupWithArgs,
+    Toolgroup,
+)
 from llama_stack_client.types.model_list_response import ModelListResponse
 
 from fastapi import APIRouter, HTTPException, status, Depends
@@ -182,11 +186,13 @@ def retrieve_response(
     )
     session_id = agent.create_session("chat_session")
     logger.debug("Session ID: %s", session_id)
+    vector_db_ids = [vector_db.identifier for vector_db in client.vector_dbs.list()]
     response = agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
         session_id=session_id,
         documents=query_request.get_documents(),
         stream=False,
+        toolgroups=get_rag_toolgroups(vector_db_ids),
     )
     return str(response.output_message.content)  # type: ignore[union-attr]
 
@@ -282,3 +288,21 @@ def store_transcript(  # pylint: disable=too-many-arguments,too-many-positional-
         json.dump(data_to_store, transcript_file)
 
     logger.info("Transcript successfully stored at: %s", transcript_file_path)
+
+
+def get_rag_toolgroups(
+    vector_db_ids: List[str],
+) -> List[Toolgroup] | None:
+    """Return a list of RAG Tool groups if the given vector DB list is not empty."""
+    return (
+        [
+            ToolgroupAgentToolGroupWithArgs(
+                name="builtin::rag/knowledge_search",
+                args={
+                    "vector_db_ids": vector_db_ids,
+                },
+            )
+        ]
+        if vector_db_ids
+        else None
+    )

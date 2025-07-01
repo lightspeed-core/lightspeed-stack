@@ -1,5 +1,6 @@
 import pytest
 
+from app.endpoints.query import get_rag_toolgroups
 from app.endpoints.streaming_query import (
     streaming_query_endpoint_handler,
     retrieve_response,
@@ -114,12 +115,15 @@ async def test_streaming_query_endpoint_handler_store_transcript(mocker):
     await _test_streaming_query_endpoint_handler(mocker, store_transcript=True)
 
 
-async def test_retrieve_response_no_available_shields(mocker):
+async def test_retrieve_response_vector_db_available(mocker):
     """Test the retrieve_response function."""
     mock_agent = mocker.AsyncMock()
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = []
+    mock_vector_db = mocker.Mock()
+    mock_vector_db.identifier = "VectorDB-1"
+    mock_client.vector_dbs.list.return_value = [mock_vector_db]
 
     mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
 
@@ -135,6 +139,33 @@ async def test_retrieve_response_no_available_shields(mocker):
         session_id=mocker.ANY,
         documents=[],
         stream=True,  # Should be True for streaming endpoint
+        toolgroups=get_rag_toolgroups(["VectorDB-1"]),
+    )
+
+
+async def test_retrieve_response_no_available_shields(mocker):
+    """Test the retrieve_response function."""
+    mock_agent = mocker.AsyncMock()
+    mock_agent.create_turn.return_value.output_message.content = "LLM answer"
+    mock_client = mocker.AsyncMock()
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+
+    response = await retrieve_response(mock_client, model_id, query_request)
+
+    # For streaming, the response should be the streaming object
+    assert response is not None
+    mock_agent.create_turn.assert_called_once_with(
+        messages=[UserMessage(content="What is OpenStack?", role="user", context=None)],
+        session_id=mocker.ANY,
+        documents=[],
+        stream=True,  # Should be True for streaming endpoint
+        toolgroups=None,
     )
 
 
@@ -166,6 +197,7 @@ async def test_retrieve_response_one_available_shield(mocker):
         session_id=mocker.ANY,
         documents=[],
         stream=True,  # Should be True for streaming endpoint
+        toolgroups=None,
     )
 
 
@@ -186,6 +218,7 @@ async def test_retrieve_response_two_available_shields(mocker):
         MockShield("shield1"),
         MockShield("shield2"),
     ]
+    mock_client.vector_dbs.list.return_value = []
 
     mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
 
@@ -200,6 +233,7 @@ async def test_retrieve_response_two_available_shields(mocker):
         session_id=mocker.ANY,
         documents=[],
         stream=True,  # Should be True for streaming endpoint
+        toolgroups=None,
     )
 
 
@@ -209,6 +243,7 @@ async def test_retrieve_response_with_one_attachment(mocker):
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
 
     attachments = [
         Attachment(
@@ -235,6 +270,7 @@ async def test_retrieve_response_with_one_attachment(mocker):
                 "mime_type": "text/plain",
             },
         ],
+        toolgroups=None,
     )
 
 
@@ -244,6 +280,7 @@ async def test_retrieve_response_with_two_attachments(mocker):
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
 
     attachments = [
         Attachment(
@@ -279,6 +316,7 @@ async def test_retrieve_response_with_two_attachments(mocker):
                 "mime_type": "application/yaml",
             },
         ],
+        toolgroups=None,
     )
 
 

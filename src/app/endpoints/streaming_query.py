@@ -20,6 +20,7 @@ from utils.common import retrieve_user_id
 
 
 from app.endpoints.query import (
+    get_rag_toolgroups,
     is_transcripts_enabled,
     retrieve_conversation_id,
     store_transcript,
@@ -202,11 +203,15 @@ async def retrieve_response(
     )
     session_id = await agent.create_session("chat_session")
     logger.debug("Session ID: %s", session_id)
+    vector_db_ids = [
+        vector_db.identifier for vector_db in await client.vector_dbs.list()
+    ]
     response = await agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
         session_id=session_id,
         documents=query_request.get_documents(),
         stream=True,
+        toolgroups=get_rag_toolgroups(vector_db_ids),
     )
 
     return response

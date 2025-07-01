@@ -12,6 +12,7 @@ from app.endpoints.query import (
     is_transcripts_enabled,
     construct_transcripts_path,
     store_transcript,
+    get_rag_toolgroups,
 )
 from models.requests import QueryRequest, Attachment
 from models.config import ModelContextProtocolServer
@@ -277,12 +278,15 @@ def test_validate_attachments_metadata_invalid_content_type():
     )
 
 
-def test_retrieve_response_no_available_shields(mocker):
+def test_retrieve_response_vector_db_available(mocker):
     """Test the retrieve_response function."""
     mock_agent = mocker.Mock()
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = []
+    mock_vector_db = mocker.Mock()
+    mock_vector_db.identifier = "VectorDB-1"
+    mock_client.vector_dbs.list.return_value = [mock_vector_db]
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -302,6 +306,37 @@ def test_retrieve_response_no_available_shields(mocker):
         session_id=mocker.ANY,
         documents=[],
         stream=False,
+        toolgroups=get_rag_toolgroups(["VectorDB-1"]),
+    )
+
+
+def test_retrieve_response_no_available_shields(mocker):
+    """Test the retrieve_response function."""
+    mock_agent = mocker.Mock()
+    mock_agent.create_turn.return_value.output_message.content = "LLM answer"
+    mock_client = mocker.Mock()
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch("app.endpoints.query.Agent", return_value=mock_agent)
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response = retrieve_response(mock_client, model_id, query_request, access_token)
+
+    assert response == "LLM answer"
+    mock_agent.create_turn.assert_called_once_with(
+        messages=[UserMessage(content="What is OpenStack?", role="user", context=None)],
+        session_id=mocker.ANY,
+        documents=[],
+        stream=False,
+        toolgroups=None,
     )
 
 
@@ -319,6 +354,7 @@ def test_retrieve_response_one_available_shield(mocker):
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = [MockShield("shield1")]
+    mock_client.vector_dbs.list.return_value = []
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -338,6 +374,7 @@ def test_retrieve_response_one_available_shield(mocker):
         session_id=mocker.ANY,
         documents=[],
         stream=False,
+        toolgroups=None,
     )
 
 
@@ -358,6 +395,7 @@ def test_retrieve_response_two_available_shields(mocker):
         MockShield("shield1"),
         MockShield("shield2"),
     ]
+    mock_client.vector_dbs.list.return_value = []
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -377,6 +415,7 @@ def test_retrieve_response_two_available_shields(mocker):
         session_id=mocker.ANY,
         documents=[],
         stream=False,
+        toolgroups=None,
     )
 
 
@@ -386,6 +425,7 @@ def test_retrieve_response_with_one_attachment(mocker):
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -418,6 +458,7 @@ def test_retrieve_response_with_one_attachment(mocker):
                 "mime_type": "text/plain",
             },
         ],
+        toolgroups=None,
     )
 
 
@@ -427,6 +468,7 @@ def test_retrieve_response_with_two_attachments(mocker):
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -468,6 +510,7 @@ def test_retrieve_response_with_two_attachments(mocker):
                 "mime_type": "application/yaml",
             },
         ],
+        toolgroups=None,
     )
 
 
@@ -477,6 +520,7 @@ def test_retrieve_response_with_mcp_servers(mocker):
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
 
     # Mock configuration with MCP servers
     mcp_servers = [
@@ -536,6 +580,7 @@ def test_retrieve_response_with_mcp_servers_empty_token(mocker):
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
 
     # Mock configuration with MCP servers
     mcp_servers = [
@@ -646,3 +691,16 @@ def test_store_transcript(mocker):
         },
         mocker.ANY,
     )
+
+
+def test_get_rag_toolgroups(mocker):
+    """Test get_rag_toolgroups function."""
+    vector_db_ids = []
+    result = get_rag_toolgroups(vector_db_ids)
+    assert result is None
+
+    vector_db_ids = ["Vector-DB-1", "Vector-DB-2"]
+    result = get_rag_toolgroups(vector_db_ids)
+    assert len(result) == 1
+    assert result[0]["name"] == "builtin::rag/knowledge_search"
+    assert result[0]["args"]["vector_db_ids"] == vector_db_ids
