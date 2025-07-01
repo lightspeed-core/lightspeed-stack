@@ -11,7 +11,7 @@ from llama_stack_client.types import UserMessage  # type: ignore
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import StreamingResponse
 
-from client import get_llama_stack_client
+from client import get_async_llama_stack_client
 from configuration import configuration
 from models.requests import QueryRequest
 import constants
@@ -95,7 +95,7 @@ def stream_build_event(chunk: Any, chunk_id: int) -> str | None:
                     {
                         "event": "token",
                         "data": {
-                            "id": (chunk_id := chunk_id + 1),
+                            "id": chunk_id,
                             "role": chunk.event.payload.step_type,
                             "token": text,
                         },
@@ -111,7 +111,7 @@ def stream_build_event(chunk: Any, chunk_id: int) -> str | None:
                         {
                             "event": "token",
                             "data": {
-                                "id": (chunk_id := chunk_id + 1),
+                                "id": chunk_id,
                                 "role": chunk.event.payload.step_type,
                                 "token": tool_name,
                             },
@@ -129,14 +129,14 @@ async def streaming_query_endpoint_handler(
     """Handle request to the /streaming_query endpoint."""
     llama_stack_config = configuration.llama_stack_configuration
     logger.info("LLama stack config: %s", llama_stack_config)
-    client = get_llama_stack_client(llama_stack_config, async_client=True)
+    client = await get_async_llama_stack_client(llama_stack_config)
     model_id = select_model_id(await client.models.list(), query_request)
     conversation_id = retrieve_conversation_id(query_request)
     response = await retrieve_response(client, model_id, query_request)
 
     async def response_generator(turn_response: Any) -> AsyncIterator[str]:
         """Generate SSE formatted streaming response."""
-        chunk_id = -1
+        chunk_id = 0
         complete_response = ""
 
         # Send start event
@@ -147,6 +147,7 @@ async def streaming_query_endpoint_handler(
                 complete_response += json.loads(event.replace("data: ", ""))["data"][
                     "token"
                 ]
+                chunk_id += 1
                 yield event
 
         yield stream_end_event()
@@ -160,7 +161,7 @@ async def streaming_query_endpoint_handler(
                 query_is_valid=True,  # TODO(lucasagomes): implement as part of query validation
                 query=query_request.query,
                 query_request=query_request,
-                response=str(complete_response),
+                response=complete_response,
                 rag_chunks=[],  # TODO(lucasagomes): implement rag_chunks
                 truncated=False,  # TODO(lucasagomes): implement truncation as part of quota work
                 attachments=query_request.attachments or [],

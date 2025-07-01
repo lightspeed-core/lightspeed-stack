@@ -37,7 +37,8 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
     )
     query = "What is OpenStack?"
     mocker.patch(
-        "app.endpoints.streaming_query.get_llama_stack_client", return_value=mock_client
+        "app.endpoints.streaming_query.get_async_llama_stack_client",
+        return_value=mock_client,
     )
     mocker.patch(
         "app.endpoints.streaming_query.retrieve_response",
@@ -300,7 +301,7 @@ def test_stream_build_event_step_progress(mocker):
     assert '"event": "token"' in result
     assert '"token": "This is a test response"' in result
     assert '"role": "inference"' in result
-    assert '"id": 1' in result
+    assert '"id": 0' in result
 
 
 def test_stream_build_event_step_complete(mocker):
@@ -325,7 +326,7 @@ def test_stream_build_event_step_complete(mocker):
     assert '"event": "token"' in result
     assert '"token": "search_tool"' in result
     assert '"role": "tool_execution"' in result
-    assert '"id": 1' in result
+    assert '"id": 0' in result
 
 
 def test_stream_build_event_returns_none(mocker):
