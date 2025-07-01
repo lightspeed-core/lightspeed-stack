@@ -28,7 +28,7 @@ RUN uv sync --locked --no-install-project --no-dev
 # Final image without uv package manager
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 ARG APP_ROOT=/app-root
-RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs python3.11 python3.11-pip
+RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs python3.12 python3.12-pip
 WORKDIR /app-root
 
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
