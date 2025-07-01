@@ -23,13 +23,13 @@ from configuration import configuration
 from models.responses import QueryResponse
 from models.requests import QueryRequest, Attachment
 import constants
-from utils.auth import auth_dependency
+from auth import get_auth_dependency
 from utils.common import retrieve_user_id
 from utils.suid import get_suid
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
-
+auth_dependency = get_auth_dependency()
 
 query_response: dict[int | str, dict[str, Any]] = {
     200: {

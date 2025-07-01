@@ -20,3 +20,5 @@ user_data_collection:
   feedback_storage: "/tmp/data/feedback"
   transcripts_disabled: false
   transcripts_storage: "/tmp/data/transcripts"
+authentication:
+  module: "noop"
