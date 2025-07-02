@@ -8,7 +8,7 @@ on:
 env:
   IMAGE_NAME: lightspeed-stack
   IMAGE_NAMESPACE: lightspeed-core
-  REGISTRY: quay.io
+  IMAGE_REGISTRY: quay.io
   GIT_TAG: ${{ github.ref_name }}
   LATEST_TAG: latest
   CONTAINER_FILE: Containerfile
@@ -28,9 +28,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build image with Buildah
+        id: build_image
         uses: redhat-actions/buildah-build@v2
         with:
-          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_NAME }}
+          image: ${{ env.IMAGE_NAME }}
           tags: |
             ${{ env.GIT_TAG }}
             ${{ env.LATEST_TAG }}
