@@ -5,7 +5,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 from llama_stack_client.lib.agents.agent import Agent
 
 from llama_stack_client import LlamaStackClient  # type: ignore
@@ -291,8 +291,8 @@ def store_transcript(  # pylint: disable=too-many-arguments,too-many-positional-
 
 
 def get_rag_toolgroups(
-    vector_db_ids: List[str],
-) -> List[Toolgroup] | None:
+    vector_db_ids: list[str],
+) -> list[Toolgroup] | None:
     """Return a list of RAG Tool groups if the given vector DB list is not empty."""
     return (
         [
