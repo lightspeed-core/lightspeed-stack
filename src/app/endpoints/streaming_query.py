@@ -4,6 +4,8 @@ import json
 import logging
 from typing import Any, AsyncIterator
 
+from expiringdict import ExpiringDict
+
 from llama_stack_client.lib.agents.agent import AsyncAgent  # type: ignore
 from llama_stack_client import AsyncLlamaStackClient  # type: ignore
 from llama_stack_client.types import UserMessage  # type: ignore
@@ -17,12 +19,12 @@ from models.requests import QueryRequest
 import constants
 from utils.auth import auth_dependency
 from utils.common import retrieve_user_id
+from utils.suid import get_suid
 
 
 from app.endpoints.query import (
     get_rag_toolgroups,
     is_transcripts_enabled,
-    retrieve_conversation_id,
     store_transcript,
     select_model_id,
     validate_attachments_metadata,
@@ -30,6 +32,37 @@ from app.endpoints.query import (
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query"])
+
+# Global agent registry to persist agents across requests
+_agent_cache: dict[str, AsyncAgent] = ExpiringDict(max_len=1000, max_age_seconds=3600)
+
+
+async def get_agent(
+    client: AsyncLlamaStackClient,
+    model_id: str,
+    system_prompt: str,
+    available_shields: list[str],
+    conversation_id: str | None,
+) -> tuple[AsyncAgent, str]:
+    """Get existing agent or create a new one with session persistence."""
+    if conversation_id is not None:
+        agent = _agent_cache.get(conversation_id)
+        if agent:
+            logger.debug("Reusing existing agent with key: %s", conversation_id)
+            return agent, conversation_id
+
+    logger.debug("Creating new agent")
+    agent = AsyncAgent(
+        client,  # type: ignore[arg-type]
+        model=model_id,
+        instructions=system_prompt,
+        input_shields=available_shields if available_shields else [],
+        tools=[],  # mcp config ?
+        enable_session_persistence=True,
+    )
+    conversation_id = await agent.create_session(get_suid())
+    _agent_cache[conversation_id] = agent
+    return agent, conversation_id
 
 
 def format_stream_data(d: dict) -> str:
@@ -132,8 +165,7 @@ async def streaming_query_endpoint_handler(
     logger.info("LLama stack config: %s", llama_stack_config)
     client = await get_async_llama_stack_client(llama_stack_config)
     model_id = select_model_id(await client.models.list(), query_request)
-    conversation_id = retrieve_conversation_id(query_request)
-    response = await retrieve_response(client, model_id, query_request)
+    response, conversation_id = await retrieve_response(client, model_id, query_request)
 
     async def response_generator(turn_response: Any) -> AsyncIterator[str]:
         """Generate SSE formatted streaming response."""
@@ -173,7 +205,7 @@ async def streaming_query_endpoint_handler(
 
 async def retrieve_response(
     client: AsyncLlamaStackClient, model_id: str, query_request: QueryRequest
-) -> Any:
+) -> tuple[Any, str]:
     """Retrieve response from LLMs and agents."""
     available_shields = [shield.identifier for shield in await client.shields.list()]
     if not available_shields:
@@ -194,24 +226,24 @@ async def retrieve_response(
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
 
-    agent = AsyncAgent(
-        client,  # type: ignore[arg-type]
-        model=model_id,
-        instructions=system_prompt,
-        input_shields=available_shields if available_shields else [],
-        tools=[],
+    agent, conversation_id = await get_agent(
+        client,
+        model_id,
+        system_prompt,
+        available_shields,
+        query_request.conversation_id,
     )
-    session_id = await agent.create_session("chat_session")
-    logger.debug("Session ID: %s", session_id)
+
+    logger.debug("Session ID: %s", conversation_id)
     vector_db_ids = [
         vector_db.identifier for vector_db in await client.vector_dbs.list()
     ]
     response = await agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
-        session_id=session_id,
+        session_id=conversation_id,
         documents=query_request.get_documents(),
         stream=True,
         toolgroups=get_rag_toolgroups(vector_db_ids),
     )
 
-    return response
+    return response, conversation_id

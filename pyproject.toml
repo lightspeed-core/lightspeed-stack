@@ -11,6 +11,7 @@ dependencies = [
     "uvicorn>=0.34.3",
     "llama-stack>=0.2.13",
     "rich>=14.0.0",
+    "expiringdict>=1.2.2",
 ]
 
 [tool.pdm]
