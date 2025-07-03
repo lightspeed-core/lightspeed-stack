@@ -1,0 +1,50 @@
+name: Build image, main branch push quay.io
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  IMAGE_NAME: lightspeed-stack
+  IMAGE_NAMESPACE: lightspeed-core
+  IMAGE_REGISTRY: quay.io
+  LATEST_TAG: dev-latest
+  CONTAINER_FILE: Containerfile
+
+jobs:
+  build-and-push-dev:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for image pushing to a registry
+      packages: write
+    steps:
+      - name: Create dev image tag
+        run: echo "DEV_TAG=dev-$(date +%Y%m%d)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - run: echo "dev image tag: $DEV_TAG"
+      - name: Install buildah
+        run: |
+          sudo apt update
+          sudo apt install -y buildah
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Build image with Buildah
+        id: build_image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: |
+            ${{ env.DEV_TAG }}
+            ${{ env.LATEST_TAG }}
+          containerfiles: |
+            ${{ env.CONTAINER_FILE }}
+          oci: true
+
+      - name: Push image to Quay.io
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build_image.outputs.image }}
+          tags: ${{ steps.build_image.outputs.tags }}
+          registry: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAMESPACE }}
+          username: ${{ secrets.QUAY_REGISTRY_USERNAME }}
+          password: ${{ secrets.QUAY_REGISTRY_PASSWORD }}
