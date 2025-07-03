@@ -23,3 +23,7 @@ ATTACHMENT_CONTENT_TYPES = frozenset(
 # Default system prompt used only when no other system prompt is specified in
 # configuration file nor in the query request
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant"
+
+# Response streaming media types
+MEDIA_TYPE_TEXT = "text/plain"
+MEDIA_TYPE_JSON = "application/json"

@@ -1,9 +1,11 @@
 """Model for service requests."""
 
-from typing import Optional, Self
 
+from typing import Optional, Self
 from pydantic import BaseModel, model_validator, field_validator, Field
 from llama_stack_client.types.agents.turn_create_params import Document
+
+import constants
 
 from utils import suid
 
@@ -55,8 +57,6 @@ class Attachment(BaseModel):
     }
 
 
-# TODO(lucasagomes): add media_type when needed, current implementation
-# does not support streaming response, so this is not used
 class QueryRequest(BaseModel):
     """Model representing a request for the LLM (Language Model).
 
@@ -67,6 +67,7 @@ class QueryRequest(BaseModel):
         model: The optional model.
         system_prompt: The optional system prompt.
         attachments: The optional attachments.
+        media_type: The optional parameter for streaming response.
 
     Example:
         ```python
@@ -80,6 +81,7 @@ class QueryRequest(BaseModel):
     model: Optional[str] = None
     system_prompt: Optional[str] = None
     attachments: Optional[list[Attachment]] = None
+    media_type: Optional[str] = constants.MEDIA_TYPE_JSON
 
     # provides examples for /docs endpoint
     model_config = {

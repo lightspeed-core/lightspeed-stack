@@ -134,6 +134,7 @@ async def streaming_query_endpoint_handler(
     model_id = select_model_id(await client.models.list(), query_request)
     conversation_id = retrieve_conversation_id(query_request)
     response = await retrieve_response(client, model_id, query_request)
+    media_type = query_request.media_type
 
     async def response_generator(turn_response: Any) -> AsyncIterator[str]:
         """Generate SSE formatted streaming response."""
@@ -141,7 +142,8 @@ async def streaming_query_endpoint_handler(
         complete_response = ""
 
         # Send start event
-        yield stream_start_event(conversation_id)
+        if media_type == constants.MEDIA_TYPE_JSON:
+            yield stream_start_event(conversation_id)
 
         async for chunk in turn_response:
             if event := stream_build_event(chunk, chunk_id):
@@ -168,7 +170,7 @@ async def streaming_query_endpoint_handler(
                 attachments=query_request.attachments or [],
             )
 
-    return StreamingResponse(response_generator(response))
+    return StreamingResponse(response_generator(response), media_type=media_type)
 
 
 async def retrieve_response(
