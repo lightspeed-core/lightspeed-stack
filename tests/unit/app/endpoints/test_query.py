@@ -295,7 +295,6 @@ def test_retrieve_response_vector_db_available(mocker):
         documents=[],
         stream=False,
         toolgroups=get_rag_toolgroups(["VectorDB-1"]),
-        extra_headers={"X-LlamaStack-Provider-Data": '{"mcp_headers": {}}'},
     )
 
 
@@ -331,7 +330,6 @@ def test_retrieve_response_no_available_shields(mocker):
         documents=[],
         stream=False,
         toolgroups=None,
-        extra_headers={"X-LlamaStack-Provider-Data": '{"mcp_headers": {}}'},
     )
 
 
@@ -372,7 +370,6 @@ def test_retrieve_response_one_available_shield(mocker):
         documents=[],
         stream=False,
         toolgroups=None,
-        extra_headers={"X-LlamaStack-Provider-Data": '{"mcp_headers": {}}'},
     )
 
 
@@ -416,7 +413,6 @@ def test_retrieve_response_two_available_shields(mocker):
         documents=[],
         stream=False,
         toolgroups=None,
-        extra_headers={"X-LlamaStack-Provider-Data": '{"mcp_headers": {}}'},
     )
 
 
@@ -465,7 +461,6 @@ def test_retrieve_response_with_one_attachment(mocker):
             },
         ],
         toolgroups=None,
-        extra_headers={"X-LlamaStack-Provider-Data": '{"mcp_headers": {}}'},
     )
 
 
@@ -523,7 +518,6 @@ def test_retrieve_response_with_two_attachments(mocker):
             },
         ],
         toolgroups=None,
-        extra_headers={"X-LlamaStack-Provider-Data": '{"mcp_headers": {}}'},
     )
 
 
@@ -573,23 +567,28 @@ def test_retrieve_response_with_mcp_servers(mocker):
         None,  # conversation_id
     )
 
-    # Check that the agent's create_turn was called with MCP headers
-    mock_agent.create_turn.assert_called_once()
-    call_args = mock_agent.create_turn.call_args
+    # Check that the agent's extra_headers property was set correctly
+    expected_extra_headers = {
+        "X-LlamaStack-Provider-Data": json.dumps(
+            {
+                "mcp_headers": {
+                    "http://localhost:3000": {"Authorization": "Bearer test_token_123"},
+                    "https://git.example.com/mcp": {
+                        "Authorization": "Bearer test_token_123"
+                    },
+                }
+            }
+        )
+    }
+    assert mock_agent.extra_headers == expected_extra_headers
 
-    extra_headers_data = json.loads(
-        call_args[1]["extra_headers"]["X-LlamaStack-Provider-Data"]
-    )
-    mcp_headers = extra_headers_data["mcp_headers"]
-
-    assert "http://localhost:3000" in mcp_headers
-    assert (
-        mcp_headers["http://localhost:3000"]["Authorization"] == "Bearer test_token_123"
-    )
-    assert "https://git.example.com/mcp" in mcp_headers
-    assert (
-        mcp_headers["https://git.example.com/mcp"]["Authorization"]
-        == "Bearer test_token_123"
+    # Check that create_turn was called with the correct parameters
+    mock_agent.create_turn.assert_called_once_with(
+        messages=[UserMessage(role="user", content="What is OpenStack?")],
+        session_id="fake_session_id",
+        documents=[],
+        stream=False,
+        toolgroups=None,
     )
 
 
@@ -632,15 +631,20 @@ def test_retrieve_response_with_mcp_servers_empty_token(mocker):
         None,  # conversation_id
     )
 
-    # Check that the agent's create_turn was called with empty MCP headers
-    mock_agent.create_turn.assert_called_once()
-    call_args = mock_agent.create_turn.call_args
+    # Check that the agent's extra_headers property was set correctly (empty mcp_headers)
+    expected_extra_headers = {
+        "X-LlamaStack-Provider-Data": json.dumps({"mcp_headers": {}})
+    }
+    assert mock_agent.extra_headers == expected_extra_headers
 
-    extra_headers_data = json.loads(
-        call_args[1]["extra_headers"]["X-LlamaStack-Provider-Data"]
+    # Check that create_turn was called with the correct parameters
+    mock_agent.create_turn.assert_called_once_with(
+        messages=[UserMessage(role="user", content="What is OpenStack?")],
+        session_id="fake_session_id",
+        documents=[],
+        stream=False,
+        toolgroups=None,
     )
-    mcp_headers = extra_headers_data["mcp_headers"]
-    assert len(mcp_headers) == 0
 
 
 def test_construct_transcripts_path(setup_configuration, mocker):

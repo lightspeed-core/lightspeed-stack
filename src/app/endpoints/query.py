@@ -194,6 +194,14 @@ def retrieve_response(
                 "Authorization": f"Bearer {token}",
             }
 
+    agent.extra_headers = {
+        "X-LlamaStack-Provider-Data": json.dumps(
+            {
+                "mcp_headers": mcp_headers,
+            }
+        ),
+    }
+
     vector_db_ids = [vector_db.identifier for vector_db in client.vector_dbs.list()]
     response = agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
@@ -201,13 +209,6 @@ def retrieve_response(
         documents=query_request.get_documents(),
         stream=False,
         toolgroups=get_rag_toolgroups(vector_db_ids),
-        extra_headers={
-            "X-LlamaStack-Provider-Data": json.dumps(
-                {
-                    "mcp_headers": mcp_headers,
-                }
-            ),
-        },
     )
 
     return str(response.output_message.content), conversation_id  # type: ignore[union-attr]

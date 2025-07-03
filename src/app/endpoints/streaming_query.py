@@ -57,7 +57,7 @@ async def get_agent(
         model=model_id,
         instructions=system_prompt,
         input_shields=available_shields if available_shields else [],
-        tools=[],  # mcp config ?
+        tools=[mcp.name for mcp in configuration.mcp_servers],
         enable_session_persistence=True,
     )
     conversation_id = await agent.create_session(get_suid())
@@ -165,7 +165,9 @@ async def streaming_query_endpoint_handler(
     logger.info("LLama stack config: %s", llama_stack_config)
     client = await get_async_llama_stack_client(llama_stack_config)
     model_id = select_model_id(await client.models.list(), query_request)
-    response, conversation_id = await retrieve_response(client, model_id, query_request)
+    response, conversation_id = await retrieve_response(
+        client, model_id, query_request, auth
+    )
 
     async def response_generator(turn_response: Any) -> AsyncIterator[str]:
         """Generate SSE formatted streaming response."""
@@ -204,7 +206,10 @@ async def streaming_query_endpoint_handler(
 
 
 async def retrieve_response(
-    client: AsyncLlamaStackClient, model_id: str, query_request: QueryRequest
+    client: AsyncLlamaStackClient,
+    model_id: str,
+    query_request: QueryRequest,
+    token: str,
 ) -> tuple[Any, str]:
     """Retrieve response from LLMs and agents."""
     available_shields = [shield.identifier for shield in await client.shields.list()]
@@ -233,6 +238,21 @@ async def retrieve_response(
         available_shields,
         query_request.conversation_id,
     )
+
+    mcp_headers = {}
+    if token:
+        for mcp_server in configuration.mcp_servers:
+            mcp_headers[mcp_server.url] = {
+                "Authorization": f"Bearer {token}",
+            }
+
+    agent.extra_headers = {
+        "X-LlamaStack-Provider-Data": json.dumps(
+            {
+                "mcp_headers": mcp_headers,
+            }
+        ),
+    }
 
     logger.debug("Session ID: %s", conversation_id)
     vector_db_ids = [
