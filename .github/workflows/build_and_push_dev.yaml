@@ -19,15 +19,16 @@ jobs:
       # Required for image pushing to a registry
       packages: write
     steps:
-      - name: Create dev image tag
-        run: echo "DEV_TAG=dev-$(date +%Y%m%d)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-      - run: echo "dev image tag: $DEV_TAG"
       - name: Install buildah
         run: |
           sudo apt update
           sudo apt install -y buildah
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Create dev image tag
+        run: |
+          echo "DEV_TAG=dev-$(date +%Y%m%d)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "dev image tag: ${{ env.DEV_TAG }}"
       - name: Build image with Buildah
         id: build_image
         uses: redhat-actions/buildah-build@v2
