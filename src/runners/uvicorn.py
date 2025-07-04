@@ -1,5 +1,6 @@
 """Uvicorn runner."""
 
+# pylint: disable=cyclic-import
 import logging
 
 import uvicorn
