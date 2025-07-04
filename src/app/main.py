@@ -7,6 +7,7 @@ import version
 from log import get_logger
 from configuration import configuration
 from utils.common import register_mcp_servers_async
+from services.data_collector import data_collector_service
 
 logger = get_logger(__name__)
 
@@ -35,4 +36,12 @@ async def startup_event() -> None:
     logger.info("Registering MCP servers")
     await register_mcp_servers_async(logger, configuration.configuration)
     get_logger("app.endpoints.handlers")
+    await data_collector_service.start()
     logger.info("App startup complete")
+
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    """Perform cleanup on service shutdown."""
+    logger.info("Shutting down services")
+    await data_collector_service.stop()
+    logger.info("App shutdown complete")
