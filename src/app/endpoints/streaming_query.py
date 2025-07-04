@@ -2,10 +2,12 @@
 
 import json
 import logging
+import re
 from typing import Any, AsyncIterator
 
 from llama_stack_client.lib.agents.agent import AsyncAgent  # type: ignore
 from llama_stack_client import AsyncLlamaStackClient  # type: ignore
+from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 from llama_stack_client.types import UserMessage  # type: ignore
 
 from fastapi import APIRouter, Request, Depends
@@ -31,6 +33,8 @@ from app.endpoints.query import (
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query"])
 
+METADATA_PATTERN = re.compile(r"\nMetadata: (\{.+})\n")
+
 
 def format_stream_data(d: dict) -> str:
     """Format outbound data in the Event Stream Format."""
@@ -54,13 +58,19 @@ def stream_start_event(conversation_id: str) -> str:
     )
 
 
-def stream_end_event() -> str:
+def stream_end_event(metadata_map: dict) -> str:
     """Yield the end of the data stream."""
     return format_stream_data(
         {
             "event": "end",
             "data": {
-                "referenced_documents": [],  # TODO(jboos): implement referenced documents
+                "referenced_documents": [
+                    {
+                        "doc_url": v["docs_url"],
+                        "doc_title": v["title"],
+                    }
+                    for _, v in metadata_map.items()
+                ],
                 "truncated": None,  # TODO(jboos): implement truncated
                 "input_tokens": 0,  # TODO(jboos): implement input tokens
                 "output_tokens": 0,  # TODO(jboos): implement output tokens
@@ -70,7 +80,7 @@ def stream_end_event() -> str:
     )
 
 
-def stream_build_event(chunk: Any, chunk_id: int) -> str | None:
+def stream_build_event(chunk: Any, chunk_id: int, metadata_map: dict) -> str | None:
     """Build a streaming event from a chunk response.
 
     This function processes chunks from the LLama Stack streaming response and formats
@@ -88,6 +98,7 @@ def stream_build_event(chunk: Any, chunk_id: int) -> str | None:
         str | None: A formatted SSE data string with event information, or None if
                    the chunk doesn't contain processable event data
     """
+    # pylint: disable=R1702
     if hasattr(chunk.event, "payload"):
         if chunk.event.payload.event_type == "step_progress":
             if hasattr(chunk.event.payload.delta, "text"):
@@ -102,22 +113,33 @@ def stream_build_event(chunk: Any, chunk_id: int) -> str | None:
                         },
                     }
                 )
-        if chunk.event.payload.event_type == "step_complete":
-            if chunk.event.payload.step_details.step_type == "tool_execution":
-                if chunk.event.payload.step_details.tool_calls:
-                    tool_name = str(
-                        chunk.event.payload.step_details.tool_calls[0].tool_name
-                    )
-                    return format_stream_data(
-                        {
-                            "event": "token",
-                            "data": {
-                                "id": chunk_id,
-                                "role": chunk.event.payload.step_type,
-                                "token": tool_name,
-                            },
-                        }
-                    )
+        if (
+            chunk.event.payload.event_type == "step_complete"
+            and chunk.event.payload.step_details.step_type == "tool_execution"
+        ):
+            for r in chunk.event.payload.step_details.tool_responses:
+                if r.tool_name == "knowledge_search" and r.content:
+                    for text_content_item in r.content:
+                        if isinstance(text_content_item, TextContentItem):
+                            for match in METADATA_PATTERN.findall(
+                                text_content_item.text
+                            ):
+                                meta = json.loads(match.replace("'", '"'))
+                                metadata_map[meta["document_id"]] = meta
+            if chunk.event.payload.step_details.tool_calls:
+                tool_name = str(
+                    chunk.event.payload.step_details.tool_calls[0].tool_name
+                )
+                return format_stream_data(
+                    {
+                        "event": "token",
+                        "data": {
+                            "id": chunk_id,
+                            "role": chunk.event.payload.step_type,
+                            "token": tool_name,
+                        },
+                    }
+                )
     return None
 
 
@@ -134,6 +156,7 @@ async def streaming_query_endpoint_handler(
     model_id = select_model_id(await client.models.list(), query_request)
     conversation_id = retrieve_conversation_id(query_request)
     response = await retrieve_response(client, model_id, query_request)
+    metadata_map: dict[str, dict[str, Any]] = {}
 
     async def response_generator(turn_response: Any) -> AsyncIterator[str]:
         """Generate SSE formatted streaming response."""
@@ -144,14 +167,14 @@ async def streaming_query_endpoint_handler(
         yield stream_start_event(conversation_id)
 
         async for chunk in turn_response:
-            if event := stream_build_event(chunk, chunk_id):
+            if event := stream_build_event(chunk, chunk_id, metadata_map):
                 complete_response += json.loads(event.replace("data: ", ""))["data"][
                     "token"
                 ]
                 chunk_id += 1
                 yield event
 
-        yield stream_end_event()
+        yield stream_end_event(metadata_map)
 
         if not is_transcripts_enabled():
             logger.debug("Transcript collection is disabled in the configuration")
