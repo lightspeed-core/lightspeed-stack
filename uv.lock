@@ -327,6 +327,15 @@ wheels = [
 ]
 
 [[package]]
+name = "expiringdict"
+version = "1.2.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fc/62/c2af4ebce24c379b949de69d49e3ba97c7e9c9775dc74d18307afa8618b7/expiringdict-1.2.2.tar.gz", hash = "sha256:300fb92a7e98f15b05cf9a856c1415b3bc4f2e132be07daa326da6414c23ee09", size = 8137, upload-time = "2022-06-21T09:12:30.415Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cb/84/a04c59324445f4bcc98dc05b39a1cd07c242dde643c1a3c21e4f7beaf2f2/expiringdict-1.2.2-py3-none-any.whl", hash = "sha256:09a5d20bc361163e6432a874edd3179676e935eb81b925eccef48d409a8a45e8", size = 8456, upload-time = "2022-06-21T09:12:28.652Z" },
+]
+
+[[package]]
 name = "fastapi"
 version = "0.115.14"
 source = { registry = "https://pypi.org/simple" }
@@ -627,6 +636,7 @@ wheels = [
 name = "lightspeed-stack"
 source = { editable = "." }
 dependencies = [
+    { name = "expiringdict" },
     { name = "fastapi" },
     { name = "llama-stack" },
     { name = "rich" },
@@ -652,6 +662,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "expiringdict", specifier = ">=1.2.2" },
     { name = "fastapi", specifier = ">=0.115.6" },
     { name = "llama-stack", specifier = ">=0.2.13" },
     { name = "rich", specifier = ">=14.0.0" },

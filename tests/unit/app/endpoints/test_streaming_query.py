@@ -1,4 +1,5 @@
 import pytest
+import json
 
 from app.endpoints.query import get_rag_toolgroups
 from app.endpoints.streaming_query import (
@@ -7,6 +8,7 @@ from app.endpoints.streaming_query import (
     stream_build_event,
 )
 from models.requests import QueryRequest, Attachment
+from models.config import ModelContextProtocolServer
 from llama_stack_client.types import UserMessage  # type: ignore
 
 
@@ -43,7 +45,7 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
     )
     mocker.patch(
         "app.endpoints.streaming_query.retrieve_response",
-        return_value=mock_streaming_response,
+        return_value=(mock_streaming_response, "test_conversation_id"),
     )
     mocker.patch(
         "app.endpoints.streaming_query.select_model_id", return_value="fake_model_id"
@@ -90,7 +92,7 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
     if store_transcript:
         mock_transcript.assert_called_once_with(
             user_id="user_id_placeholder",
-            conversation_id=mocker.ANY,
+            conversation_id="test_conversation_id",
             query_is_valid=True,
             query=query,
             query_request=query_request,
@@ -125,18 +127,29 @@ async def test_retrieve_response_vector_db_available(mocker):
     mock_vector_db.identifier = "VectorDB-1"
     mock_client.vector_dbs.list.return_value = [mock_vector_db]
 
-    mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.streaming_query.get_agent",
+        return_value=(mock_agent, "test_conversation_id"),
+    )
 
     query_request = QueryRequest(query="What is OpenStack?")
     model_id = "fake_model_id"
+    token = "test_token"
 
-    response = await retrieve_response(mock_client, model_id, query_request)
+    response, conversation_id = await retrieve_response(
+        mock_client, model_id, query_request, token
+    )
 
-    # For streaming, the response should be the streaming object
+    # For streaming, the response should be the streaming object and conversation_id should be returned
     assert response is not None
+    assert conversation_id == "test_conversation_id"
     mock_agent.create_turn.assert_called_once_with(
-        messages=[UserMessage(content="What is OpenStack?", role="user", context=None)],
-        session_id=mocker.ANY,
+        messages=[UserMessage(role="user", content="What is OpenStack?")],
+        session_id="test_conversation_id",
         documents=[],
         stream=True,  # Should be True for streaming endpoint
         toolgroups=get_rag_toolgroups(["VectorDB-1"]),
@@ -151,18 +164,29 @@ async def test_retrieve_response_no_available_shields(mocker):
     mock_client.shields.list.return_value = []
     mock_client.vector_dbs.list.return_value = []
 
-    mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.streaming_query.get_agent",
+        return_value=(mock_agent, "test_conversation_id"),
+    )
 
     query_request = QueryRequest(query="What is OpenStack?")
     model_id = "fake_model_id"
+    token = "test_token"
 
-    response = await retrieve_response(mock_client, model_id, query_request)
+    response, conversation_id = await retrieve_response(
+        mock_client, model_id, query_request, token
+    )
 
-    # For streaming, the response should be the streaming object
+    # For streaming, the response should be the streaming object and conversation_id should be returned
     assert response is not None
+    assert conversation_id == "test_conversation_id"
     mock_agent.create_turn.assert_called_once_with(
-        messages=[UserMessage(content="What is OpenStack?", role="user", context=None)],
-        session_id=mocker.ANY,
+        messages=[UserMessage(role="user", content="What is OpenStack?")],
+        session_id="test_conversation_id",
         documents=[],
         stream=True,  # Should be True for streaming endpoint
         toolgroups=None,
@@ -183,18 +207,30 @@ async def test_retrieve_response_one_available_shield(mocker):
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.AsyncMock()
     mock_client.shields.list.return_value = [MockShield("shield1")]
+    mock_client.vector_dbs.list.return_value = []
 
-    mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.streaming_query.get_agent",
+        return_value=(mock_agent, "test_conversation_id"),
+    )
 
     query_request = QueryRequest(query="What is OpenStack?")
     model_id = "fake_model_id"
+    token = "test_token"
 
-    response = await retrieve_response(mock_client, model_id, query_request)
+    response, conversation_id = await retrieve_response(
+        mock_client, model_id, query_request, token
+    )
 
     assert response is not None
+    assert conversation_id == "test_conversation_id"
     mock_agent.create_turn.assert_called_once_with(
-        messages=[UserMessage(content="What is OpenStack?", role="user", context=None)],
-        session_id=mocker.ANY,
+        messages=[UserMessage(role="user", content="What is OpenStack?")],
+        session_id="test_conversation_id",
         documents=[],
         stream=True,  # Should be True for streaming endpoint
         toolgroups=None,
@@ -220,17 +256,28 @@ async def test_retrieve_response_two_available_shields(mocker):
     ]
     mock_client.vector_dbs.list.return_value = []
 
-    mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.streaming_query.get_agent",
+        return_value=(mock_agent, "test_conversation_id"),
+    )
 
     query_request = QueryRequest(query="What is OpenStack?")
     model_id = "fake_model_id"
+    token = "test_token"
 
-    response = await retrieve_response(mock_client, model_id, query_request)
+    response, conversation_id = await retrieve_response(
+        mock_client, model_id, query_request, token
+    )
 
     assert response is not None
+    assert conversation_id == "test_conversation_id"
     mock_agent.create_turn.assert_called_once_with(
-        messages=[UserMessage(content="What is OpenStack?", role="user", context=None)],
-        session_id=mocker.ANY,
+        messages=[UserMessage(role="user", content="What is OpenStack?")],
+        session_id="test_conversation_id",
         documents=[],
         stream=True,  # Should be True for streaming endpoint
         toolgroups=None,
@@ -245,6 +292,11 @@ async def test_retrieve_response_with_one_attachment(mocker):
     mock_client.shields.list.return_value = []
     mock_client.vector_dbs.list.return_value = []
 
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
+
     attachments = [
         Attachment(
             attachment_type="log",
@@ -252,17 +304,24 @@ async def test_retrieve_response_with_one_attachment(mocker):
             content="this is attachment",
         ),
     ]
-    mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
+    mocker.patch(
+        "app.endpoints.streaming_query.get_agent",
+        return_value=(mock_agent, "test_conversation_id"),
+    )
 
     query_request = QueryRequest(query="What is OpenStack?", attachments=attachments)
     model_id = "fake_model_id"
+    token = "test_token"
 
-    response = await retrieve_response(mock_client, model_id, query_request)
+    response, conversation_id = await retrieve_response(
+        mock_client, model_id, query_request, token
+    )
 
     assert response is not None
+    assert conversation_id == "test_conversation_id"
     mock_agent.create_turn.assert_called_once_with(
-        messages=[UserMessage(content="What is OpenStack?", role="user", context=None)],
-        session_id=mocker.ANY,
+        messages=[UserMessage(role="user", content="What is OpenStack?")],
+        session_id="test_conversation_id",
         stream=True,  # Should be True for streaming endpoint
         documents=[
             {
@@ -282,6 +341,11 @@ async def test_retrieve_response_with_two_attachments(mocker):
     mock_client.shields.list.return_value = []
     mock_client.vector_dbs.list.return_value = []
 
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
+
     attachments = [
         Attachment(
             attachment_type="log",
@@ -294,17 +358,24 @@ async def test_retrieve_response_with_two_attachments(mocker):
             content="kind: Pod\n metadata:\n name:    private-reg",
         ),
     ]
-    mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
+    mocker.patch(
+        "app.endpoints.streaming_query.get_agent",
+        return_value=(mock_agent, "test_conversation_id"),
+    )
 
     query_request = QueryRequest(query="What is OpenStack?", attachments=attachments)
     model_id = "fake_model_id"
+    token = "test_token"
 
-    response = await retrieve_response(mock_client, model_id, query_request)
+    response, conversation_id = await retrieve_response(
+        mock_client, model_id, query_request, token
+    )
 
     assert response is not None
+    assert conversation_id == "test_conversation_id"
     mock_agent.create_turn.assert_called_once_with(
-        messages=[UserMessage(content="What is OpenStack?", role="user", context=None)],
-        session_id=mocker.ANY,
+        messages=[UserMessage(role="user", content="What is OpenStack?")],
+        session_id="test_conversation_id",
         stream=True,  # Should be True for streaming endpoint
         documents=[
             {
@@ -378,3 +449,131 @@ def test_stream_build_event_returns_none(mocker):
     result = stream_build_event(mock_chunk, chunk_id)
 
     assert result is None
+
+
+async def test_retrieve_response_with_mcp_servers(mocker):
+    """Test the retrieve_response function with MCP servers configured."""
+    mock_agent = mocker.AsyncMock()
+    mock_agent.create_turn.return_value.output_message.content = "LLM answer"
+    mock_client = mocker.AsyncMock()
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock configuration with MCP servers
+    mcp_servers = [
+        ModelContextProtocolServer(
+            name="filesystem-server", url="http://localhost:3000"
+        ),
+        ModelContextProtocolServer(
+            name="git-server",
+            provider_id="custom-git",
+            url="https://git.example.com/mcp",
+        ),
+    ]
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = mcp_servers
+    mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
+    mock_get_agent = mocker.patch(
+        "app.endpoints.streaming_query.get_agent",
+        return_value=(mock_agent, "test_conversation_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token_123"
+
+    response, conversation_id = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    assert response is not None
+    assert conversation_id == "test_conversation_id"
+
+    # Verify get_agent was called with the correct parameters
+    mock_get_agent.assert_called_once_with(
+        mock_client,
+        model_id,
+        mocker.ANY,  # system_prompt
+        [],  # available_shields
+        None,  # conversation_id
+    )
+
+    # Check that the agent's extra_headers property was set correctly
+    expected_extra_headers = {
+        "X-LlamaStack-Provider-Data": json.dumps(
+            {
+                "mcp_headers": {
+                    "http://localhost:3000": {"Authorization": "Bearer test_token_123"},
+                    "https://git.example.com/mcp": {
+                        "Authorization": "Bearer test_token_123"
+                    },
+                }
+            }
+        )
+    }
+    assert mock_agent.extra_headers == expected_extra_headers
+
+    # Check that create_turn was called with the correct parameters
+    mock_agent.create_turn.assert_called_once_with(
+        messages=[UserMessage(role="user", content="What is OpenStack?")],
+        session_id="test_conversation_id",
+        documents=[],
+        stream=True,
+        toolgroups=None,
+    )
+
+
+async def test_retrieve_response_with_mcp_servers_empty_token(mocker):
+    """Test the retrieve_response function with MCP servers and empty access token."""
+    mock_agent = mocker.AsyncMock()
+    mock_agent.create_turn.return_value.output_message.content = "LLM answer"
+    mock_client = mocker.AsyncMock()
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock configuration with MCP servers
+    mcp_servers = [
+        ModelContextProtocolServer(name="test-server", url="http://localhost:8080"),
+    ]
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = mcp_servers
+    mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
+    mock_get_agent = mocker.patch(
+        "app.endpoints.streaming_query.get_agent",
+        return_value=(mock_agent, "test_conversation_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = ""  # Empty token
+
+    response, conversation_id = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    assert response is not None
+    assert conversation_id == "test_conversation_id"
+
+    # Verify get_agent was called with the correct parameters
+    mock_get_agent.assert_called_once_with(
+        mock_client,
+        model_id,
+        mocker.ANY,  # system_prompt
+        [],  # available_shields
+        None,  # conversation_id
+    )
+
+    # Check that the agent's extra_headers property was set correctly (empty mcp_headers)
+    expected_extra_headers = {
+        "X-LlamaStack-Provider-Data": json.dumps({"mcp_headers": {}})
+    }
+    assert mock_agent.extra_headers == expected_extra_headers
+
+    # Check that create_turn was called with the correct parameters
+    mock_agent.create_turn.assert_called_once_with(
+        messages=[UserMessage(role="user", content="What is OpenStack?")],
+        session_id="test_conversation_id",
+        documents=[],
+        stream=True,
+        toolgroups=None,
+    )

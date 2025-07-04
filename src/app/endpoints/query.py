@@ -6,8 +6,8 @@ import logging
 import os
 from pathlib import Path
 from typing import Any
+from expiringdict import ExpiringDict
 from llama_stack_client.lib.agents.agent import Agent
-
 from llama_stack_client import LlamaStackClient  # type: ignore
 from llama_stack_client.types import UserMessage  # type: ignore
 from llama_stack_client.types.agents.turn_create_params import (
@@ -30,6 +30,8 @@ from utils.suid import get_suid
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
 
+# Global agent registry to persist agents across requests
+_agent_cache: dict[str, Agent] = ExpiringDict(max_len=1000, max_age_seconds=3600)
 
 query_response: dict[int | str, dict[str, Any]] = {
     200: {
@@ -48,16 +50,33 @@ def is_transcripts_enabled() -> bool:
     return not configuration.user_data_collection_configuration.transcripts_disabled
 
 
-def retrieve_conversation_id(query_request: QueryRequest) -> str:
-    """Retrieve conversation ID based on existing ID or on newly generated one."""
-    conversation_id = query_request.conversation_id
+def get_agent(
+    client: LlamaStackClient,
+    model_id: str,
+    system_prompt: str,
+    available_shields: list[str],
+    conversation_id: str | None,
+) -> tuple[Agent, str]:
+    """Get existing agent or create a new one with session persistence."""
+    if conversation_id is not None:
+        agent = _agent_cache.get(conversation_id)
+        if agent:
+            logger.debug("Reusing existing agent with key: %s", conversation_id)
+            return agent, conversation_id
 
-    # Generate a new conversation ID if not provided
-    if not conversation_id:
-        conversation_id = get_suid()
-        logger.info("Generated new conversation ID: %s", conversation_id)
-
-    return conversation_id
+    logger.debug("Creating new agent")
+    # TODO(lucasagomes): move to ReActAgent
+    agent = Agent(
+        client,
+        model=model_id,
+        instructions=system_prompt,
+        input_shields=available_shields if available_shields else [],
+        tools=[mcp.name for mcp in configuration.mcp_servers],
+        enable_session_persistence=True,
+    )
+    conversation_id = agent.create_session(get_suid())
+    _agent_cache[conversation_id] = agent
+    return agent, conversation_id
 
 
 @router.post("/query", responses=query_response)
@@ -70,8 +89,7 @@ def query_endpoint_handler(
     logger.info("LLama stack config: %s", llama_stack_config)
     client = get_llama_stack_client(llama_stack_config)
     model_id = select_model_id(client.models.list(), query_request)
-    conversation_id = retrieve_conversation_id(query_request)
-    response = retrieve_response(client, model_id, query_request, auth)
+    response, conversation_id = retrieve_response(client, model_id, query_request, auth)
 
     if not is_transcripts_enabled():
         logger.debug("Transcript collection is disabled in the configuration")
@@ -140,7 +158,7 @@ def retrieve_response(
     model_id: str,
     query_request: QueryRequest,
     token: str,
-) -> str:
+) -> tuple[str, str]:
     """Retrieve response from LLMs and agents."""
     available_shields = [shield.identifier for shield in client.shields.list()]
     if not available_shields:
@@ -161,40 +179,39 @@ def retrieve_response(
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
 
-    # Build mcp_headers config dynamically for all MCP servers
-    # this will allow the agent to pass the user token to the MCP servers
+    agent, conversation_id = get_agent(
+        client,
+        model_id,
+        system_prompt,
+        available_shields,
+        query_request.conversation_id,
+    )
+
     mcp_headers = {}
     if token:
         for mcp_server in configuration.mcp_servers:
             mcp_headers[mcp_server.url] = {
                 "Authorization": f"Bearer {token}",
             }
-    # TODO(lucasagomes): move to ReActAgent
-    agent = Agent(
-        client,
-        model=model_id,
-        instructions=system_prompt,
-        input_shields=available_shields if available_shields else [],
-        tools=[mcp.name for mcp in configuration.mcp_servers],
-        extra_headers={
-            "X-LlamaStack-Provider-Data": json.dumps(
-                {
-                    "mcp_headers": mcp_headers,
-                }
-            ),
-        },
-    )
-    session_id = agent.create_session("chat_session")
-    logger.debug("Session ID: %s", session_id)
+
+    agent.extra_headers = {
+        "X-LlamaStack-Provider-Data": json.dumps(
+            {
+                "mcp_headers": mcp_headers,
+            }
+        ),
+    }
+
     vector_db_ids = [vector_db.identifier for vector_db in client.vector_dbs.list()]
     response = agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
-        session_id=session_id,
+        session_id=conversation_id,
         documents=query_request.get_documents(),
         stream=False,
         toolgroups=get_rag_toolgroups(vector_db_ids),
     )
-    return str(response.output_message.content)  # type: ignore[union-attr]
+
+    return str(response.output_message.content), conversation_id  # type: ignore[union-attr]
 
 
 def validate_attachments_metadata(attachments: list[Attachment]) -> None:
