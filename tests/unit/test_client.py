@@ -2,7 +2,7 @@
 
 import pytest
 
-from client import get_llama_stack_client, get_async_llama_stack_client
+from client import LlamaStackClientHolder, AsyncLlamaStackClientHolder
 from models.config import LLamaStackConfiguration
 
 
@@ -14,8 +14,8 @@ def test_get_llama_stack_library_client() -> None:
         use_as_library_client=True,
         library_client_config_path="./tests/configuration/minimal-stack.yaml",
     )
-
-    client = get_llama_stack_client(cfg)
+    client = LlamaStackClientHolder()
+    client.load(cfg)
     assert client is not None
 
 
@@ -26,7 +26,8 @@ def test_get_llama_stack_remote_client() -> None:
         use_as_library_client=False,
         library_client_config_path="./tests/configuration/minimal-stack.yaml",
     )
-    client = get_llama_stack_client(cfg)
+    client = LlamaStackClientHolder()
+    client.load(cfg)
     assert client is not None
 
 
@@ -42,7 +43,8 @@ def test_get_llama_stack_wrong_configuration() -> None:
         Exception,
         match="Configuration problem: library_client_config_path option is not set",
     ):
-        get_llama_stack_client(cfg)
+        client = LlamaStackClientHolder()
+        client.load(cfg)
 
 
 async def test_get_async_llama_stack_library_client() -> None:
@@ -52,8 +54,8 @@ async def test_get_async_llama_stack_library_client() -> None:
         use_as_library_client=True,
         library_client_config_path="./tests/configuration/minimal-stack.yaml",
     )
-
-    client = await get_async_llama_stack_client(cfg)
+    client = AsyncLlamaStackClientHolder()
+    await client.load(cfg)
     assert client is not None
 
 
@@ -64,7 +66,8 @@ async def test_get_async_llama_stack_remote_client() -> None:
         use_as_library_client=False,
         library_client_config_path="./tests/configuration/minimal-stack.yaml",
     )
-    client = await get_async_llama_stack_client(cfg)
+    client = AsyncLlamaStackClientHolder()
+    await client.load(cfg)
     assert client is not None
 
 
@@ -80,4 +83,5 @@ async def test_get_async_llama_stack_wrong_configuration() -> None:
         Exception,
         match="Configuration problem: library_client_config_path option is not set",
     ):
-        await get_async_llama_stack_client(cfg)
+        client = AsyncLlamaStackClientHolder()
+        await client.load(cfg)

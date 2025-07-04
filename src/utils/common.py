@@ -1,16 +1,15 @@
 """Common utilities for the project."""
 
-from typing import Any, List, cast
+from typing import Any, List
 from logging import Logger
 
 from llama_stack_client import LlamaStackClient
 
 from llama_stack.distribution.library_client import (
-    LlamaStackAsLibraryClient,
     AsyncLlamaStackAsLibraryClient,
 )
 
-from client import get_llama_stack_client
+from client import lsc_holder, async_lsc_holder
 from models.config import Configuration, ModelContextProtocolServer
 
 
@@ -38,11 +37,7 @@ async def register_mcp_servers_async(
         return
 
     if configuration.llama_stack.use_as_library_client:
-        # Library client - use async interface
-        # config.py validation ensures library_client_config_path is not None
-        # when use_as_library_client is True
-        config_path = cast(str, configuration.llama_stack.library_client_config_path)
-        client = LlamaStackAsLibraryClient(config_path)
+        client = async_lsc_holder.get_llama_stack_client()
         await client.async_client.initialize()
 
         await _register_mcp_toolgroups_async(
@@ -50,7 +45,7 @@ async def register_mcp_servers_async(
         )
     else:
         # Service client - use sync interface
-        client = get_llama_stack_client(configuration.llama_stack)
+        client = lsc_holder.get_llama_stack_client()
 
         _register_mcp_toolgroups_sync(client, configuration.mcp_servers, logger)
 

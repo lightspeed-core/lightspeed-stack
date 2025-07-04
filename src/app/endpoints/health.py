@@ -11,8 +11,7 @@ from typing import Any
 from llama_stack.providers.datatypes import HealthStatus
 
 from fastapi import APIRouter, status, Response
-from client import get_llama_stack_client
-from configuration import configuration
+from client import lsc_holder
 from models.responses import (
     LivenessResponse,
     ReadinessResponse,
@@ -30,9 +29,7 @@ def get_providers_health_statuses() -> list[ProviderHealthStatus]:
         List of provider health statuses.
     """
     try:
-        llama_stack_config = configuration.llama_stack_configuration
-
-        client = get_llama_stack_client(llama_stack_config)
+        client = lsc_holder.get_llama_stack_client()
 
         providers = client.providers.list()
         logger.debug("Found %d providers", len(providers))

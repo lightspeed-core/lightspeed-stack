@@ -31,7 +31,7 @@ async def test_register_mcp_servers_empty_list(mocker):
     mock_logger = Mock(spec=Logger)
 
     # Mock the LlamaStack client (shouldn't be called since no MCP servers)
-    mock_get_client = mocker.patch("utils.common.get_llama_stack_client")
+    mock_get_client = mocker.patch("utils.common.lsc_holder.get_llama_stack_client")
 
     # Create configuration with empty MCP servers
     config = Configuration(
@@ -62,11 +62,13 @@ async def test_register_mcp_servers_single_server_not_registered(mocker):
 
     # Mock the LlamaStack client
     mock_client = Mock()
+    mock_lsh_holder = Mock()
+    mock_lsh_holder.get_llama_stack_client.return_value = mock_client
     mock_tool = Mock()
     mock_tool.toolgroup_id = "existing-server"
     mock_client.tools.list.return_value = [mock_tool]
     mock_client.toolgroups.register.return_value = None
-    mocker.patch("utils.common.get_llama_stack_client", return_value=mock_client)
+    mocker.patch("utils.common.lsc_holder", mock_lsh_holder)
 
     # Create configuration with one MCP server
     mcp_server = ModelContextProtocolServer(
@@ -105,10 +107,12 @@ async def test_register_mcp_servers_single_server_already_registered(mocker):
 
     # Mock the LlamaStack client
     mock_client = Mock()
+    mock_lsh_holder = Mock()
+    mock_lsh_holder.get_llama_stack_client.return_value = mock_client
     mock_tool = Mock()
     mock_tool.toolgroup_id = "existing-server"
     mock_client.tools.list.return_value = [mock_tool]
-    mocker.patch("utils.common.get_llama_stack_client", return_value=mock_client)
+    mocker.patch("utils.common.lsc_holder", mock_lsh_holder)
 
     # Create configuration with MCP server that matches existing toolgroup
     mcp_server = ModelContextProtocolServer(
@@ -141,13 +145,15 @@ async def test_register_mcp_servers_multiple_servers_mixed_registration(mocker):
 
     # Mock the LlamaStack client
     mock_client = Mock()
+    mock_lsh_holder = Mock()
+    mock_lsh_holder.get_llama_stack_client.return_value = mock_client
     mock_tool1 = Mock()
     mock_tool1.toolgroup_id = "existing-server"
     mock_tool2 = Mock()
     mock_tool2.toolgroup_id = "another-existing"
     mock_client.tools.list.return_value = [mock_tool1, mock_tool2]
     mock_client.toolgroups.register.return_value = None
-    mocker.patch("utils.common.get_llama_stack_client", return_value=mock_client)
+    mocker.patch("utils.common.lsc_holder", mock_lsh_holder)
 
     # Create configuration with multiple MCP servers
     mcp_servers = [
@@ -201,9 +207,11 @@ async def test_register_mcp_servers_with_custom_provider(mocker):
 
     # Mock the LlamaStack client
     mock_client = Mock()
+    mock_lsh_holder = Mock()
+    mock_lsh_holder.get_llama_stack_client.return_value = mock_client
     mock_client.tools.list.return_value = []
     mock_client.toolgroups.register.return_value = None
-    mocker.patch("utils.common.get_llama_stack_client", return_value=mock_client)
+    mocker.patch("utils.common.lsc_holder", mock_lsh_holder)
 
     # Create configuration with MCP server using custom provider
     mcp_server = ModelContextProtocolServer(
@@ -243,6 +251,8 @@ async def test_register_mcp_servers_async_with_library_client(mocker):
     mock_async_client = AsyncMock()
     mock_async_client.initialize = AsyncMock()
     mock_library_client.async_client = mock_async_client
+    mock_lsh_holder = Mock()
+    mock_lsh_holder.get_llama_stack_client.return_value = mock_library_client
 
     # Mock tools.list to return empty list
     mock_tool = Mock()
@@ -250,9 +260,7 @@ async def test_register_mcp_servers_async_with_library_client(mocker):
     mock_async_client.tools.list = AsyncMock(return_value=[mock_tool])
     mock_async_client.toolgroups.register = AsyncMock()
 
-    mocker.patch(
-        "utils.common.LlamaStackAsLibraryClient", return_value=mock_library_client
-    )
+    mocker.patch("utils.common.async_lsc_holder", mock_lsh_holder)
 
     # Create configuration with library client enabled
     mcp_server = ModelContextProtocolServer(

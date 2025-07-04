@@ -18,7 +18,7 @@ from llama_stack_client.types.model_list_response import ModelListResponse
 
 from fastapi import APIRouter, HTTPException, status, Depends
 
-from client import get_llama_stack_client
+from client import lsc_holder
 from configuration import configuration
 from models.responses import QueryResponse
 from models.requests import QueryRequest, Attachment
@@ -66,9 +66,7 @@ def query_endpoint_handler(
     auth: Any = Depends(auth_dependency),
 ) -> QueryResponse:
     """Handle request to the /query endpoint."""
-    llama_stack_config = configuration.llama_stack_configuration
-    logger.info("LLama stack config: %s", llama_stack_config)
-    client = get_llama_stack_client(llama_stack_config)
+    client = lsc_holder.get_llama_stack_client()
     model_id = select_model_id(client.models.list(), query_request)
     conversation_id = retrieve_conversation_id(query_request)
     response = retrieve_response(client, model_id, query_request, auth)

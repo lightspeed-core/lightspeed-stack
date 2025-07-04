@@ -94,18 +94,16 @@ def test_retrieve_conversation_id_existing():
 def _test_query_endpoint_handler(mocker, store_transcript=False):
     """Test the query endpoint handler."""
     mock_client = mocker.Mock()
+    mock_lsc_holder = mocker.Mock()
+    mock_lsc_holder.get_llama_stack_client.return_value = mock_client
     mock_client.models.list.return_value = [
         mocker.Mock(identifier="model1", model_type="llm", provider_id="provider1"),
         mocker.Mock(identifier="model2", model_type="llm", provider_id="provider2"),
     ]
 
-    mocker.patch(
-        "app.endpoints.query.configuration",
-        return_value=mocker.Mock(),
-    )
     llm_response = "LLM answer"
     query = "What is OpenStack?"
-    mocker.patch("app.endpoints.query.get_llama_stack_client", return_value=mock_client)
+    mocker.patch("app.endpoints.query.lsc_holder", return_value=mock_lsc_holder)
     mocker.patch("app.endpoints.query.retrieve_response", return_value=llm_response)
     mocker.patch("app.endpoints.query.select_model_id", return_value="fake_model_id")
     mocker.patch(
