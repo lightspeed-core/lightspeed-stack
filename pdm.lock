@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:67f9ce8ea2c78923054a7c7c2d313f64a9582853d8ba13e78a7090aefbb8770e"
+content_hash = "sha256:86549b3ed46860c23bfc6ba6939ddd9139c1cab36e1952b25a3b88fdc1c66b2e"
 
 [[metadata.targets]]
 requires_python = ">=3.12,<3.14"
@@ -439,6 +439,19 @@ dependencies = [
 files = [
     {file = "ecdsa-0.19.1-py2.py3-none-any.whl", hash = "sha256:30638e27cf77b7e15c4c4cc1973720149e1033827cfd00661ca5c8cc0cdb24c3"},
     {file = "ecdsa-0.19.1.tar.gz", hash = "sha256:478cba7b62555866fcb3bb3fe985e06decbdb68ef55713c4e5ab98c57d508e61"},
+]
+
+[[package]]
+name = "expiringdict"
+version = "1.2.2"
+summary = "Dictionary with auto-expiring values for caching purposes"
+groups = ["default"]
+dependencies = [
+    "typing; python_version < \"3.5\"",
+]
+files = [
+    {file = "expiringdict-1.2.2-py3-none-any.whl", hash = "sha256:09a5d20bc361163e6432a874edd3179676e935eb81b925eccef48d409a8a45e8"},
+    {file = "expiringdict-1.2.2.tar.gz", hash = "sha256:300fb92a7e98f15b05cf9a856c1415b3bc4f2e132be07daa326da6414c23ee09"},
 ]
 
 [[package]]
