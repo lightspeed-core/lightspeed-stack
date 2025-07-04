@@ -11,8 +11,7 @@ from llama_stack_client.types import UserMessage  # type: ignore
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import StreamingResponse
 
-from client import get_async_llama_stack_client
-from configuration import configuration
+from client import async_lsc_holder
 from models.requests import QueryRequest
 import constants
 from utils.auth import auth_dependency
@@ -128,9 +127,7 @@ async def streaming_query_endpoint_handler(
     auth: Any = Depends(auth_dependency),
 ) -> StreamingResponse:
     """Handle request to the /streaming_query endpoint."""
-    llama_stack_config = configuration.llama_stack_configuration
-    logger.info("LLama stack config: %s", llama_stack_config)
-    client = await get_async_llama_stack_client(llama_stack_config)
+    client = async_lsc_holder.get_llama_stack_client()
     model_id = select_model_id(await client.models.list(), query_request)
     conversation_id = retrieve_conversation_id(query_request)
     response = await retrieve_response(client, model_id, query_request)

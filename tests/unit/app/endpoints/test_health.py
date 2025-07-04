@@ -98,14 +98,11 @@ class TestGetProvidersHealthStatuses:
     def test_get_providers_health_statuses(self, mocker):
         """Test get_providers_health_statuses with healthy providers."""
         # Mock the imports
-        mock_get_llama_stack_client = mocker.patch(
-            "app.endpoints.health.get_llama_stack_client"
-        )
-        mock_configuration = mocker.patch("app.endpoints.health.configuration")
+        mock_lsc_holder = mocker.patch("app.endpoints.health.lsc_holder")
 
         # Mock the client and its methods
         mock_client = mocker.Mock()
-        mock_get_llama_stack_client.return_value = mock_client
+        mock_lsc_holder.get_llama_stack_client.return_value = mock_client
 
         # Mock providers.list() to return providers with health
         mock_provider_1 = mocker.Mock()
@@ -136,9 +133,6 @@ class TestGetProvidersHealthStatuses:
         ]
 
         # Mock configuration
-        mock_llama_stack_config = mocker.Mock()
-        mock_configuration.llama_stack_configuration = mock_llama_stack_config
-
         result = get_providers_health_statuses()
 
         assert len(result) == 3
@@ -155,17 +149,12 @@ class TestGetProvidersHealthStatuses:
     def test_get_providers_health_statuses_connection_error(self, mocker):
         """Test get_providers_health_statuses when connection fails."""
         # Mock the imports
-        mock_get_llama_stack_client = mocker.patch(
-            "app.endpoints.health.get_llama_stack_client"
-        )
-        mock_configuration = mocker.patch("app.endpoints.health.configuration")
-
-        # Mock configuration
-        mock_llama_stack_config = mocker.Mock()
-        mock_configuration.llama_stack_configuration = mock_llama_stack_config
+        mock_lsc_holder = mocker.patch("app.endpoints.health.lsc_holder")
 
         # Mock get_llama_stack_client to raise an exception
-        mock_get_llama_stack_client.side_effect = Exception("Connection error")
+        mock_lsc_holder.get_llama_stack_client.side_effect = Exception(
+            "Connection error"
+        )
 
         result = get_providers_health_statuses()
 

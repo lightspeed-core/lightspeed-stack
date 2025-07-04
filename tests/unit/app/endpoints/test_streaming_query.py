@@ -13,6 +13,8 @@ from llama_stack_client.types import UserMessage  # type: ignore
 async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False):
     """Test the streaming query endpoint handler."""
     mock_client = mocker.AsyncMock()
+    mock_lsc_holder = mocker.Mock()
+    mock_lsc_holder.get_llama_stack_client.return_value = mock_client
     mock_client.models.list.return_value = [
         mocker.Mock(identifier="model1", model_type="llm", provider_id="provider1"),
         mocker.Mock(identifier="model2", model_type="llm", provider_id="provider2"),
@@ -32,14 +34,10 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
         ),
     ]
 
-    mocker.patch(
-        "app.endpoints.streaming_query.configuration",
-        return_value=mocker.Mock(),
-    )
     query = "What is OpenStack?"
     mocker.patch(
-        "app.endpoints.streaming_query.get_async_llama_stack_client",
-        return_value=mock_client,
+        "app.endpoints.streaming_query.async_lsc_holder",
+        mock_lsc_holder,
     )
     mocker.patch(
         "app.endpoints.streaming_query.retrieve_response",

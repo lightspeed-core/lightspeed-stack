@@ -5,13 +5,13 @@ main() function.
 """
 
 from argparse import ArgumentParser
+import asyncio
 import logging
-
 from rich.logging import RichHandler
 
 from runners.uvicorn import start_uvicorn
 from configuration import configuration
-
+from client import lsc_holder, async_lsc_holder
 
 FORMAT = "%(message)s"
 logging.basicConfig(
@@ -61,6 +61,10 @@ def main() -> None:
     logger.info(
         "Llama stack configuration: %s", configuration.llama_stack_configuration
     )
+    logger.info("Creating LlamaStackClient")
+    lsc_holder.load(configuration.configuration.llama_stack)
+    logger.info("Creating AsyncLlamaStackClient")
+    asyncio.run(async_lsc_holder.load(configuration.configuration.llama_stack))
 
     if args.dump_configuration:
         configuration.configuration.dump()
