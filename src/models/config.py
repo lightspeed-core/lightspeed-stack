@@ -2,9 +2,10 @@
 
 from typing import Optional
 
-from pydantic import BaseModel, model_validator, FilePath
-
+from pydantic import BaseModel, model_validator, FilePath, AnyHttpUrl
 from typing_extensions import Self
+
+import constants
 
 
 class TLSConfiguration(BaseModel):
@@ -102,6 +103,26 @@ class UserDataCollection(BaseModel):
         return self
 
 
+class AuthenticationConfiguration(BaseModel):
+    """Authentication configuration."""
+
+    module: str = constants.DEFAULT_AUTHENTICATION_MODULE
+    skip_tls_verification: bool = False
+    k8s_cluster_api: Optional[AnyHttpUrl] = None
+    k8s_ca_cert_path: Optional[FilePath] = None
+
+    @model_validator(mode="after")
+    def check_authentication_model(self) -> Self:
+        """Validate YAML containing authentication configuration section."""
+        if self.module not in constants.SUPPORTED_AUTHENTICATION_MODULES:
+            supported_modules = ", ".join(constants.SUPPORTED_AUTHENTICATION_MODULES)
+            raise ValueError(
+                f"Unsupported authentication module '{self.module}'. "
+                f"Supported modules: {supported_modules}"
+            )
+        return self
+
+
 class Configuration(BaseModel):
     """Global service configuration."""
 
@@ -110,6 +131,9 @@ class Configuration(BaseModel):
     llama_stack: LLamaStackConfiguration
     user_data_collection: UserDataCollection
     mcp_servers: list[ModelContextProtocolServer] = []
+    authentication: Optional[AuthenticationConfiguration] = (
+        AuthenticationConfiguration()
+    )
 
     def dump(self, filename: str = "configuration.json") -> None:
         """Dump actual configuration into JSON file."""

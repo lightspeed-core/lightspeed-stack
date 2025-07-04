@@ -8,15 +8,16 @@ from datetime import datetime, UTC
 
 from fastapi import APIRouter, Request, HTTPException, Depends, status
 
+from auth import get_auth_dependency
 from configuration import configuration
 from models.responses import FeedbackResponse, StatusResponse
 from models.requests import FeedbackRequest
 from utils.suid import get_suid
-from utils.auth import auth_dependency
 from utils.common import retrieve_user_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
+auth_dependency = get_auth_dependency()
 
 # Response for the feedback endpoint
 feedback_response: dict[int | str, dict[str, Any]] = {

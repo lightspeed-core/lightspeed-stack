@@ -15,7 +15,7 @@ from client import get_async_llama_stack_client
 from configuration import configuration
 from models.requests import QueryRequest
 import constants
-from utils.auth import auth_dependency
+from auth import get_auth_dependency
 from utils.common import retrieve_user_id
 
 
@@ -30,6 +30,7 @@ from app.endpoints.query import (
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query"])
+auth_dependency = get_auth_dependency()
 
 
 def format_stream_data(d: dict) -> str:

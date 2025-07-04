@@ -10,6 +10,7 @@ from models.config import (
     UserDataCollection,
     ServiceConfiguration,
     ModelContextProtocolServer,
+    AuthenticationConfiguration,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,6 +81,14 @@ class AppConfig:
             self._configuration is not None
         ), "logic error: configuration is not loaded"
         return self._configuration.mcp_servers
+
+    @property
+    def authentication_configuration(self) -> Optional[AuthenticationConfiguration]:
+        """Return authentication configuration."""
+        assert (
+            self._configuration is not None
+        ), "logic error: configuration is not loaded"
+        return self._configuration.authentication
 
 
 configuration: AppConfig = AppConfig()

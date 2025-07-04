@@ -5,6 +5,7 @@ import pytest
 
 from pathlib import Path
 
+from constants import AUTH_MOD_NOOP, AUTH_MOD_K8S
 from models.config import (
     Configuration,
     LLamaStackConfiguration,
@@ -332,6 +333,7 @@ def test_dump_configuration(tmp_path) -> None:
         assert "llama_stack" in content
         assert "user_data_collection" in content
         assert "mcp_servers" in content
+        assert "authentication" in content
 
         # check the whole deserialized JSON file content
         assert content == {
@@ -362,6 +364,12 @@ def test_dump_configuration(tmp_path) -> None:
                 "transcripts_storage": None,
             },
             "mcp_servers": [],
+            "authentication": {
+                "module": "noop",
+                "skip_tls_verification": False,
+                "k8s_ca_cert_path": None,
+                "k8s_cluster_api": None,
+            },
         }
 
 
@@ -428,6 +436,12 @@ def test_dump_configuration_with_one_mcp_server(tmp_path) -> None:
                     "url": "http://localhost:8080",
                 },
             ],
+            "authentication": {
+                "module": "noop",
+                "skip_tls_verification": False,
+                "k8s_ca_cert_path": None,
+                "k8s_cluster_api": None,
+            },
         }
 
 
@@ -512,4 +526,58 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path) -> None:
                     "url": "http://localhost:8083",
                 },
             ],
+            "authentication": {
+                "module": "noop",
+                "skip_tls_verification": False,
+                "k8s_ca_cert_path": None,
+                "k8s_cluster_api": None,
+            },
         }
+
+
+def test_authentication_configuration() -> None:
+    """Test the AuthenticationConfiguration constructor."""
+    from models.config import AuthenticationConfiguration
+
+    auth_config = AuthenticationConfiguration(
+        module=AUTH_MOD_NOOP,
+        skip_tls_verification=False,
+        k8s_ca_cert_path=None,
+        k8s_cluster_api=None,
+    )
+    assert auth_config is not None
+    assert auth_config.module == AUTH_MOD_NOOP
+    assert auth_config.skip_tls_verification is False
+    assert auth_config.k8s_ca_cert_path is None
+    assert auth_config.k8s_cluster_api is None
+
+
+def test_authentication_configuration_supported() -> None:
+    """Test the AuthenticationConfiguration constructor."""
+    from models.config import AuthenticationConfiguration
+
+    auth_config = AuthenticationConfiguration(
+        module=AUTH_MOD_K8S,
+        skip_tls_verification=False,
+        k8s_ca_cert_path=None,
+        k8s_cluster_api=None,
+    )
+    assert auth_config is not None
+    assert auth_config.module == AUTH_MOD_K8S
+    assert auth_config.skip_tls_verification is False
+    assert auth_config.k8s_ca_cert_path is None
+    assert auth_config.k8s_cluster_api is None
+
+
+def test_authentication_configuration_module_unsupported() -> None:
+    """Test the AuthenticationConfiguration constructor with module as None."""
+    from models.config import AuthenticationConfiguration
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="Unsupported authentication module"):
+        AuthenticationConfiguration(
+            module="non-existing-module",
+            skip_tls_verification=False,
+            k8s_ca_cert_path=None,
+            k8s_cluster_api=None,
+        )

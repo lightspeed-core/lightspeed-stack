@@ -19,7 +19,7 @@ from models.config import ModelContextProtocolServer
 from llama_stack_client.types import UserMessage  # type: ignore
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def setup_configuration():
     """Set up configuration for tests."""
     config_dict = {
