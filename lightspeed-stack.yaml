@@ -20,3 +20,10 @@ user_data_collection:
   feedback_storage: "/tmp/data/feedback"
   transcripts_disabled: false
   transcripts_storage: "/tmp/data/transcripts"
+  data_collector:
+    enabled: false
+    ingress_server_url: null
+    ingress_server_auth_token: null
+    collection_interval: 7200  # 2 hours in seconds
+    cleanup_after_send: true
+    connection_timeout_seconds: 30
