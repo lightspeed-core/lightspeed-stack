@@ -1,8 +1,8 @@
 """Model with service configuration."""
 
-from typing import Optional
+from typing import Optional, List
 
-from pydantic import BaseModel, model_validator, FilePath
+from pydantic import BaseModel, model_validator, FilePath, Field
 
 from typing_extensions import Self
 
@@ -102,6 +102,13 @@ class UserDataCollection(BaseModel):
         return self
 
 
+class RedactionPattern(BaseModel):
+    """Model for redaction pattern configuration."""
+
+    pattern: str = Field(..., description="Regex pattern to match")
+    replacement: str = Field(..., description="Replacement text")
+
+
 class Configuration(BaseModel):
     """Global service configuration."""
 
@@ -115,3 +122,7 @@ class Configuration(BaseModel):
         """Dump actual configuration into JSON file."""
         with open(filename, "w", encoding="utf-8") as fout:
             fout.write(self.model_dump_json(indent=4))
+
+    redaction_patterns: Optional[List[RedactionPattern]] = Field(
+        default=None, description="List of redaction patterns for sensitive data"
+    )

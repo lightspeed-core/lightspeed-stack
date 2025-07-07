@@ -362,6 +362,7 @@ def test_dump_configuration(tmp_path) -> None:
                 "transcripts_storage": None,
             },
             "mcp_servers": [],
+            "redaction_patterns": None,
         }
 
 
@@ -428,6 +429,7 @@ def test_dump_configuration_with_one_mcp_server(tmp_path) -> None:
                     "url": "http://localhost:8080",
                 },
             ],
+            "redaction_patterns": None,
         }
 
 
@@ -512,4 +514,5 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path) -> None:
                     "url": "http://localhost:8083",
                 },
             ],
+            "redaction_patterns": None,
         }

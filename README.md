@@ -139,17 +139,12 @@ help                              Show this help screen
 
 ## Running Linux container image
 
-Stable release images are tagged with versions like `0.1.0`. Tag `latest` always points to latest stable release.
-
-Development images are build from main branch every time a new pull request is merged. Image tags for dev images use
-the template `dev-YYYYMMMDDD-SHORT_SHA` e.g. `dev-20250704-eaa27fb`.
-
-Tag `dev-latest` always points to the latest dev image built from latest git.
+Container image is built every time a new pull request is merged to main branch. Currently there are tags `latest` and `main` pointing to the latest image.
 
 To pull and run the image with own configuration:
 
-1. `podman pull quay.io/lightspeed-core/lightspeed-stack:IMAGE_TAG`
-1. `podman run -it -p 8080:8080 -v my-lightspeed-stack-config.yaml:/app-root/lightspeed-stack.yaml:Z quay.io/lightspeed-core/lightspeed-stack:IMAGE_TAG`
+1. `podman pull quay.io/lightspeed-core/lightspeed-stack:latest`
+1. `podman run -it -p 8080:8080 -v my-lightspeed-stack-config.yaml:/app-root/lightspeed-stack.yaml:Z quay.io/lightspeed-core/lightspeed-stack:latest`
 1. Open `localhost:8080` in your browser
 
 If a connection in your browser does not work please check that in the config file `host` option looks like: `host: 0.0.0.0`.

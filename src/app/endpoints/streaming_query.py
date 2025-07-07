@@ -4,14 +4,11 @@ import json
 import logging
 from typing import Any, AsyncIterator
 
-from cachetools import TTLCache  # type: ignore
-
-from llama_stack_client import APIConnectionError
 from llama_stack_client.lib.agents.agent import AsyncAgent  # type: ignore
 from llama_stack_client import AsyncLlamaStackClient  # type: ignore
 from llama_stack_client.types import UserMessage  # type: ignore
 
-from fastapi import APIRouter, HTTPException, Request, Depends, status
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import StreamingResponse
 
 from client import get_async_llama_stack_client
@@ -19,14 +16,13 @@ from configuration import configuration
 from models.requests import QueryRequest
 import constants
 from utils.auth import auth_dependency
-from utils.endpoints import check_configuration_loaded
 from utils.common import retrieve_user_id
-from utils.suid import get_suid
 
 
 from app.endpoints.query import (
     get_rag_toolgroups,
     is_transcripts_enabled,
+    retrieve_conversation_id,
     store_transcript,
     select_model_id,
     validate_attachments_metadata,
@@ -34,37 +30,6 @@ from app.endpoints.query import (
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query"])
-
-# Global agent registry to persist agents across requests
-_agent_cache: TTLCache[str, AsyncAgent] = TTLCache(maxsize=1000, ttl=3600)
-
-
-async def get_agent(
-    client: AsyncLlamaStackClient,
-    model_id: str,
-    system_prompt: str,
-    available_shields: list[str],
-    conversation_id: str | None,
-) -> tuple[AsyncAgent, str]:
-    """Get existing agent or create a new one with session persistence."""
-    if conversation_id is not None:
-        agent = _agent_cache.get(conversation_id)
-        if agent:
-            logger.debug("Reusing existing agent with key: %s", conversation_id)
-            return agent, conversation_id
-
-    logger.debug("Creating new agent")
-    agent = AsyncAgent(
-        client,  # type: ignore[arg-type]
-        model=model_id,
-        instructions=system_prompt,
-        input_shields=available_shields if available_shields else [],
-        tools=[mcp.name for mcp in configuration.mcp_servers],
-        enable_session_persistence=True,
-    )
-    conversation_id = await agent.create_session(get_suid())
-    _agent_cache[conversation_id] = agent
-    return agent, conversation_id
 
 
 def format_stream_data(d: dict) -> str:
@@ -163,72 +128,52 @@ async def streaming_query_endpoint_handler(
     auth: Any = Depends(auth_dependency),
 ) -> StreamingResponse:
     """Handle request to the /streaming_query endpoint."""
-    check_configuration_loaded(configuration)
-
     llama_stack_config = configuration.llama_stack_configuration
     logger.info("LLama stack config: %s", llama_stack_config)
+    client = await get_async_llama_stack_client(llama_stack_config)
+    model_id = select_model_id(await client.models.list(), query_request)
+    conversation_id = retrieve_conversation_id(query_request)
+    response = await retrieve_response(client, model_id, query_request)
 
-    try:
-        # try to get Llama Stack client
-        client = await get_async_llama_stack_client(llama_stack_config)
-        model_id = select_model_id(await client.models.list(), query_request)
-        response, conversation_id = await retrieve_response(
-            client, model_id, query_request, auth
-        )
+    async def response_generator(turn_response: Any) -> AsyncIterator[str]:
+        """Generate SSE formatted streaming response."""
+        chunk_id = 0
+        complete_response = ""
 
-        async def response_generator(turn_response: Any) -> AsyncIterator[str]:
-            """Generate SSE formatted streaming response."""
-            chunk_id = 0
-            complete_response = ""
+        # Send start event
+        yield stream_start_event(conversation_id)
 
-            # Send start event
-            yield stream_start_event(conversation_id)
+        async for chunk in turn_response:
+            if event := stream_build_event(chunk, chunk_id):
+                complete_response += json.loads(event.replace("data: ", ""))["data"][
+                    "token"
+                ]
+                chunk_id += 1
+                yield event
 
-            async for chunk in turn_response:
-                if event := stream_build_event(chunk, chunk_id):
-                    complete_response += json.loads(event.replace("data: ", ""))[
-                        "data"
-                    ]["token"]
-                    chunk_id += 1
-                    yield event
+        yield stream_end_event()
 
-            yield stream_end_event()
+        if not is_transcripts_enabled():
+            logger.debug("Transcript collection is disabled in the configuration")
+        else:
+            store_transcript(
+                user_id=retrieve_user_id(auth),
+                conversation_id=conversation_id,
+                query_is_valid=True,  # TODO(lucasagomes): implement as part of query validation
+                query=query_request.query,
+                query_request=query_request,
+                response=complete_response,
+                rag_chunks=[],  # TODO(lucasagomes): implement rag_chunks
+                truncated=False,  # TODO(lucasagomes): implement truncation as part of quota work
+                attachments=query_request.attachments or [],
+            )
 
-            if not is_transcripts_enabled():
-                logger.debug("Transcript collection is disabled in the configuration")
-            else:
-                store_transcript(
-                    user_id=retrieve_user_id(auth),
-                    conversation_id=conversation_id,
-                    query_is_valid=True,  # TODO(lucasagomes): implement as part of query validation
-                    query=query_request.query,
-                    query_request=query_request,
-                    response=complete_response,
-                    rag_chunks=[],  # TODO(lucasagomes): implement rag_chunks
-                    truncated=False,  # TODO(lucasagomes): implement truncation as part
-                    # of quota work
-                    attachments=query_request.attachments or [],
-                )
-
-        return StreamingResponse(response_generator(response))
-    # connection to Llama Stack server
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "response": "Unable to connect to Llama Stack",
-                "cause": str(e),
-            },
-        ) from e
+    return StreamingResponse(response_generator(response))
 
 
 async def retrieve_response(
-    client: AsyncLlamaStackClient,
-    model_id: str,
-    query_request: QueryRequest,
-    token: str,
-) -> tuple[Any, str]:
+    client: AsyncLlamaStackClient, model_id: str, query_request: QueryRequest
+) -> Any:
     """Retrieve response from LLMs and agents."""
     available_shields = [shield.identifier for shield in await client.shields.list()]
     if not available_shields:
@@ -249,39 +194,24 @@ async def retrieve_response(
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
 
-    agent, conversation_id = await get_agent(
-        client,
-        model_id,
-        system_prompt,
-        available_shields,
-        query_request.conversation_id,
+    agent = AsyncAgent(
+        client,  # type: ignore[arg-type]
+        model=model_id,
+        instructions=system_prompt,
+        input_shields=available_shields if available_shields else [],
+        tools=[],
     )
-
-    mcp_headers = {}
-    if token:
-        for mcp_server in configuration.mcp_servers:
-            mcp_headers[mcp_server.url] = {
-                "Authorization": f"Bearer {token}",
-            }
-
-    agent.extra_headers = {
-        "X-LlamaStack-Provider-Data": json.dumps(
-            {
-                "mcp_headers": mcp_headers,
-            }
-        ),
-    }
-
-    logger.debug("Session ID: %s", conversation_id)
+    session_id = await agent.create_session("chat_session")
+    logger.debug("Session ID: %s", session_id)
     vector_db_ids = [
         vector_db.identifier for vector_db in await client.vector_dbs.list()
     ]
     response = await agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
-        session_id=conversation_id,
+        session_id=session_id,
         documents=query_request.get_documents(),
         stream=True,
         toolgroups=get_rag_toolgroups(vector_db_ids),
     )
 
-    return response, conversation_id
+    return response

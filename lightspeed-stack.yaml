@@ -20,3 +20,17 @@ user_data_collection:
   feedback_storage: "/tmp/data/feedback"
   transcripts_disabled: false
   transcripts_storage: "/tmp/data/transcripts"
+
+redaction_patterns:
+  - pattern: "\\bfoo\\b"
+    replacement: "deployment"
+  - pattern: "\\bbar\\b"
+    replacement: "openshift"
+  - pattern: "\\bpassword\\b"
+    replacement: "[REDACTED]"
+  - pattern: "\\bsecret\\b"
+    replacement: "[REDACTED]"
+  - pattern: "\\bapi[_-]?key\\b"
+    replacement: "[REDACTED]"
+  - pattern: "\\btoken\\b"
+    replacement: "[REDACTED]"

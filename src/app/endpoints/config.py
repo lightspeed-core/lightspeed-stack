@@ -1,4 +1,4 @@
-"""Handler for REST API call to retrieve service configuration."""
+"""Handler for REST API call to configuration."""
 
 import logging
 from typing import Any
@@ -7,7 +7,6 @@ from fastapi import APIRouter, Request
 
 from models.config import Configuration
 from configuration import configuration
-from utils.endpoints import check_configuration_loaded
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["config"])
@@ -47,18 +46,13 @@ get_config_responses: dict[int | str, dict[str, Any]] = {
             {"name": "server3", "provider_id": "provider3", "url": "http://url.com:3"},
         ],
     },
-    503: {
-        "detail": {
-            "response": "Configuration is no loaded",
-        }
-    },
+    503: {"description": "Configuration can not be loaded"},
 }
 
 
 @router.get("/config", responses=get_config_responses)
 def config_endpoint_handler(_request: Request) -> Configuration:
     """Handle requests to the /config endpoint."""
-    # ensure that configuration is loaded
-    check_configuration_loaded(configuration)
-
+    if configuration is None or configuration.configuration is None:
+        raise ValueError("logic error: configuration is not loaded")
     return configuration.configuration
