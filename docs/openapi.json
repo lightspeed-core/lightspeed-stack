@@ -843,6 +843,28 @@
                     "response": {
                         "type": "string",
                         "title": "Response"
+                    },
+                    "input_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Input Tokens"
+                    },
+                    "output_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Output Tokens"
                     }
                 },
                 "type": "object",
@@ -850,7 +872,7 @@
                     "response"
                 ],
                 "title": "QueryResponse",
-                "description": "Model representing LLM response to a query.\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The response.",
+                "description": "Model representing LLM response to a query.\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The response.\n    input_tokens: Number of tokens sent to LLM.\n    output_tokens: Number of tokens received from LLM.",
                 "examples": [
                     {
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",

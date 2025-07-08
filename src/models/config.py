@@ -110,6 +110,7 @@ class Configuration(BaseModel):
     llama_stack: LLamaStackConfiguration
     user_data_collection: UserDataCollection
     mcp_servers: list[ModelContextProtocolServer] = []
+    default_estimation_tokenizer: str = "cl100k_base"
 
     def dump(self, filename: str = "configuration.json") -> None:
         """Dump actual configuration into JSON file."""

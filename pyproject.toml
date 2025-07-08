@@ -12,6 +12,7 @@ dependencies = [
     "llama-stack>=0.2.13",
     "rich>=14.0.0",
     "cachetools>=6.1.0",
+    "tiktoken>=0.6.0",
 ]
 
 [tool.pdm]

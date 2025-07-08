@@ -316,6 +316,7 @@ def test_dump_configuration(tmp_path) -> None:
             feedback_disabled=True, feedback_storage=None
         ),
         mcp_servers=[],
+        default_estimation_tokenizer="cl100k_base",
     )
     assert cfg is not None
     dump_file = tmp_path / "test.json"
@@ -362,6 +363,7 @@ def test_dump_configuration(tmp_path) -> None:
                 "transcripts_storage": None,
             },
             "mcp_servers": [],
+            "default_estimation_tokenizer": "cl100k_base",
         }
 
 
@@ -428,6 +430,7 @@ def test_dump_configuration_with_one_mcp_server(tmp_path) -> None:
                     "url": "http://localhost:8080",
                 },
             ],
+            "default_estimation_tokenizer": "cl100k_base",
         }
 
 
@@ -512,4 +515,5 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path) -> None:
                     "url": "http://localhost:8083",
                 },
             ],
+            "default_estimation_tokenizer": "cl100k_base",
         }

@@ -49,6 +49,7 @@ def test_init_from_dict() -> None:
             "feedback_disabled": True,
         },
         "mcp_servers": [],
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -110,6 +111,7 @@ def test_init_from_dict_with_mcp_servers() -> None:
                 "url": "https://api.example.com",
             },
         ],
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -216,6 +218,7 @@ def test_mcp_servers_property_empty() -> None:
             "feedback_disabled": True,
         },
         "mcp_servers": [],
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -251,6 +254,7 @@ def test_mcp_servers_property_with_servers() -> None:
                 "url": "http://localhost:8080",
             },
         ],
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)

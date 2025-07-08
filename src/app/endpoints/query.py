@@ -30,6 +30,7 @@ from utils.auth import auth_dependency
 from utils.common import retrieve_user_id
 from utils.endpoints import check_configuration_loaded
 from utils.suid import get_suid
+from utils.token_counter import get_token_counter
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
@@ -104,7 +105,7 @@ def query_endpoint_handler(
         # try to get Llama Stack client
         client = get_llama_stack_client(llama_stack_config)
         model_id = select_model_id(client.models.list(), query_request)
-        response, conversation_id = retrieve_response(
+        response, conversation_id, token_usage = retrieve_response(
             client, model_id, query_request, auth
         )
 
@@ -123,7 +124,12 @@ def query_endpoint_handler(
                 attachments=query_request.attachments or [],
             )
 
-        return QueryResponse(conversation_id=conversation_id, response=response)
+        return QueryResponse(
+            conversation_id=conversation_id,
+            response=response,
+            input_tokens=token_usage["input_tokens"],
+            output_tokens=token_usage["output_tokens"],
+        )
     # connection to Llama Stack server
     except APIConnectionError as e:
         logger.error("Unable to connect to Llama Stack: %s", e)
@@ -185,7 +191,7 @@ def retrieve_response(
     model_id: str,
     query_request: QueryRequest,
     token: str,
-) -> tuple[str, str]:
+) -> tuple[str, str, dict[str, int]]:
     """Retrieve response from LLMs and agents."""
     available_shields = [shield.identifier for shield in client.shields.list()]
     if not available_shields:
@@ -238,7 +244,22 @@ def retrieve_response(
         toolgroups=get_rag_toolgroups(vector_db_ids),
     )
 
-    return str(response.output_message.content), conversation_id  # type: ignore[union-attr]
+    response_content = str(response.output_message.content)  # type: ignore[union-attr]
+
+    # Currently (2025-07-08) the usage is not returned by the API, so we need to estimate it
+    # try:
+    #     token_usage = {
+    #         "input_tokens": response.usage.get("prompt_tokens", 0),
+    #         "output_tokens": response.usage.get("completion_tokens", 0),
+    #     }
+    # except AttributeError:
+    # Estimate token usage
+    token_counter = get_token_counter(model_id)
+    token_usage = token_counter.count_turn_tokens(
+        system_prompt, query_request.query, response_content
+    )
+
+    return response_content, conversation_id, token_usage
 
 
 def validate_attachments_metadata(attachments: list[Attachment]) -> None:

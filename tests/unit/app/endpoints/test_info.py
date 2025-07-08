@@ -22,6 +22,7 @@ def test_info_endpoint(mocker):
         "user_data_collection": {
             "feedback_disabled": True,
         },
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)

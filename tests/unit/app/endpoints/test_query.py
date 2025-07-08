@@ -41,6 +41,7 @@ def setup_configuration():
             "transcripts_disabled": True,
         },
         "mcp_servers": [],
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -104,7 +105,11 @@ def _test_query_endpoint_handler(mocker, store_transcript=False):
     mocker.patch("app.endpoints.query.get_llama_stack_client", return_value=mock_client)
     mocker.patch(
         "app.endpoints.query.retrieve_response",
-        return_value=(llm_response, conversation_id),
+        return_value=(
+            llm_response,
+            conversation_id,
+            {"input_tokens": 10, "output_tokens": 20},
+        ),
     )
     mocker.patch("app.endpoints.query.select_model_id", return_value="fake_model_id")
     mocker.patch(
@@ -281,6 +286,7 @@ def test_validate_attachments_metadata_invalid_content_type():
 def test_retrieve_response_vector_db_available(mocker):
     """Test the retrieve_response function."""
     mock_agent = mocker.Mock()
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = []
@@ -300,12 +306,14 @@ def test_retrieve_response_vector_db_available(mocker):
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = retrieve_response(
+    response, conversation_id, token_usage = retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     assert response == "LLM answer"
     assert conversation_id == "fake_session_id"
+    assert token_usage["input_tokens"] > 0
+    assert token_usage["output_tokens"] > 0
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(content="What is OpenStack?", role="user")],
         session_id="fake_session_id",
@@ -318,6 +326,7 @@ def test_retrieve_response_vector_db_available(mocker):
 def test_retrieve_response_no_available_shields(mocker):
     """Test the retrieve_response function."""
     mock_agent = mocker.Mock()
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = []
@@ -335,12 +344,14 @@ def test_retrieve_response_no_available_shields(mocker):
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = retrieve_response(
+    response, conversation_id, token_usage = retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     assert response == "LLM answer"
     assert conversation_id == "fake_session_id"
+    assert token_usage["input_tokens"] > 0
+    assert token_usage["output_tokens"] > 0
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(content="What is OpenStack?", role="user")],
         session_id="fake_session_id",
@@ -358,6 +369,7 @@ def test_retrieve_response_one_available_shield(mocker):
             self.identifier = identifier
 
     mock_agent = mocker.Mock()
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = [MockShield("shield1")]
@@ -375,12 +387,14 @@ def test_retrieve_response_one_available_shield(mocker):
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = retrieve_response(
+    response, conversation_id, token_usage = retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     assert response == "LLM answer"
     assert conversation_id == "fake_session_id"
+    assert token_usage["input_tokens"] > 0
+    assert token_usage["output_tokens"] > 0
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(content="What is OpenStack?", role="user")],
         session_id="fake_session_id",
@@ -398,6 +412,7 @@ def test_retrieve_response_two_available_shields(mocker):
             self.identifier = identifier
 
     mock_agent = mocker.Mock()
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = [
@@ -418,12 +433,14 @@ def test_retrieve_response_two_available_shields(mocker):
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = retrieve_response(
+    response, conversation_id, token_usage = retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     assert response == "LLM answer"
     assert conversation_id == "fake_session_id"
+    assert token_usage["input_tokens"] > 0
+    assert token_usage["output_tokens"] > 0
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(content="What is OpenStack?", role="user")],
         session_id="fake_session_id",
@@ -436,6 +453,7 @@ def test_retrieve_response_two_available_shields(mocker):
 def test_retrieve_response_with_one_attachment(mocker):
     """Test the retrieve_response function."""
     mock_agent = mocker.Mock()
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = []
@@ -461,12 +479,14 @@ def test_retrieve_response_with_one_attachment(mocker):
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = retrieve_response(
+    response, conversation_id, token_usage = retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     assert response == "LLM answer"
     assert conversation_id == "fake_session_id"
+    assert token_usage["input_tokens"] > 0
+    assert token_usage["output_tokens"] > 0
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(content="What is OpenStack?", role="user")],
         session_id="fake_session_id",
@@ -484,6 +504,7 @@ def test_retrieve_response_with_one_attachment(mocker):
 def test_retrieve_response_with_two_attachments(mocker):
     """Test the retrieve_response function."""
     mock_agent = mocker.Mock()
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = []
@@ -514,12 +535,14 @@ def test_retrieve_response_with_two_attachments(mocker):
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = retrieve_response(
+    response, conversation_id, token_usage = retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     assert response == "LLM answer"
     assert conversation_id == "fake_session_id"
+    assert token_usage["input_tokens"] > 0
+    assert token_usage["output_tokens"] > 0
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(content="What is OpenStack?", role="user")],
         session_id="fake_session_id",
@@ -541,6 +564,7 @@ def test_retrieve_response_with_two_attachments(mocker):
 def test_retrieve_response_with_mcp_servers(mocker):
     """Test the retrieve_response function with MCP servers configured."""
     mock_agent = mocker.Mock()
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = []
@@ -568,12 +592,14 @@ def test_retrieve_response_with_mcp_servers(mocker):
     model_id = "fake_model_id"
     access_token = "test_token_123"
 
-    response, conversation_id = retrieve_response(
+    response, conversation_id, token_usage = retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     assert response == "LLM answer"
     assert conversation_id == "fake_session_id"
+    assert token_usage["input_tokens"] > 0
+    assert token_usage["output_tokens"] > 0
 
     # Verify get_agent was called with the correct parameters
     mock_get_agent.assert_called_once_with(
@@ -612,6 +638,7 @@ def test_retrieve_response_with_mcp_servers(mocker):
 def test_retrieve_response_with_mcp_servers_empty_token(mocker):
     """Test the retrieve_response function with MCP servers and empty access token."""
     mock_agent = mocker.Mock()
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client = mocker.Mock()
     mock_client.shields.list.return_value = []
@@ -632,12 +659,14 @@ def test_retrieve_response_with_mcp_servers_empty_token(mocker):
     model_id = "fake_model_id"
     access_token = ""  # Empty token
 
-    response, conversation_id = retrieve_response(
+    response, conversation_id, token_usage = retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     assert response == "LLM answer"
     assert conversation_id == "fake_session_id"
+    assert token_usage["input_tokens"] > 0
+    assert token_usage["output_tokens"] > 0
 
     # Verify get_agent was called with the correct parameters
     mock_get_agent.assert_called_once_with(

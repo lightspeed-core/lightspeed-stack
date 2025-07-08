@@ -45,6 +45,7 @@ def test_models_endpoint_handler_improper_llama_stack_configuration(mocker):
             "transcripts_disabled": True,
         },
         "mcp_servers": [],
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -82,6 +83,7 @@ def test_models_endpoint_handler_configuration_loaded(mocker):
         "user_data_collection": {
             "feedback_disabled": True,
         },
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -114,6 +116,7 @@ def test_models_endpoint_handler_unable_to_retrieve_models_list(mocker):
         "user_data_collection": {
             "feedback_disabled": True,
         },
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
