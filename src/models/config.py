@@ -154,6 +154,7 @@ class Configuration(BaseModel):
         AuthenticationConfiguration()
     )
     customization: Optional[Customization] = None
+    default_estimation_tokenizer: str = "cl100k_base"
 
     def dump(self, filename: str = "configuration.json") -> None:
         """Dump actual configuration into JSON file."""

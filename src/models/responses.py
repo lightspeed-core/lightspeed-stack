@@ -16,8 +16,6 @@ class ModelsResponse(BaseModel):
 # - referenced_documents: The optional URLs and titles for the documents used
 #   to generate the response.
 # - truncated: Set to True if conversation history was truncated to be within context window.
-# - input_tokens: Number of tokens sent to LLM
-# - output_tokens: Number of tokens received from LLM
 # - available_quotas: Quota available as measured by all configured quota limiters
 # - tool_calls: List of tool requests.
 # - tool_results: List of tool results.
@@ -28,10 +26,14 @@ class QueryResponse(BaseModel):
     Attributes:
         conversation_id: The optional conversation ID (UUID).
         response: The response.
+        input_tokens: Number of tokens sent to LLM.
+        output_tokens: Number of tokens received from LLM.
     """
 
     conversation_id: Optional[str] = None
     response: str
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
 
     # provides examples for /docs endpoint
     model_config = {

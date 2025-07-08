@@ -321,6 +321,7 @@ def test_dump_configuration(tmp_path) -> None:
         ),
         mcp_servers=[],
         customization=None,
+        default_estimation_tokenizer="cl100k_base",
     )
     assert cfg is not None
     dump_file = tmp_path / "test.json"
@@ -375,6 +376,7 @@ def test_dump_configuration(tmp_path) -> None:
                 "k8s_cluster_api": None,
             },
             "customization": None,
+            "default_estimation_tokenizer": "cl100k_base",
         }
 
 
@@ -449,6 +451,7 @@ def test_dump_configuration_with_one_mcp_server(tmp_path) -> None:
                 "k8s_cluster_api": None,
             },
             "customization": None,
+            "default_estimation_tokenizer": "cl100k_base",
         }
 
 
@@ -541,6 +544,7 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path) -> None:
                 "k8s_cluster_api": None,
             },
             "customization": None,
+            "default_estimation_tokenizer": "cl100k_base",
         }
 
 
