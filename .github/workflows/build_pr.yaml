@@ -40,7 +40,7 @@ jobs:
           buildah images | grep '${{ env.IMAGE_NAME }}'
           echo '${{ steps.build_image.outputs.image }}'
           echo '${{ steps.build_image.outputs.tags }}'
-      name: Check manifest
+      - name: Check manifest
         run: |
           set -x
           buildah manifest inspect ${{ steps.build_image.outputs.image }}:${{ env.LATEST_TAG }}
