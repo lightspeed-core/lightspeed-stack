@@ -1,0 +1,46 @@
+name: Check image building
+
+on:
+  - pull_request
+
+env:
+  IMAGE_NAME: lightspeed-stack
+  IMAGE_NAMESPACE: lightspeed-core
+  LATEST_TAG: dev-latest
+  CONTAINER_FILE: Containerfile
+
+jobs:
+  build-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for image pushing to a registry
+      packages: write
+    steps:
+      - name: Install qemu and buildah
+        run: |
+          sudo apt update
+          # qemu is required for arm64 builds
+          sudo apt install -y buildah qemu-user-static
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Build image with Buildah
+        id: build_image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: |
+            ${{ env.LATEST_TAG }}
+          containerfiles: |
+            ${{ env.CONTAINER_FILE }}
+          archs: amd64, arm64
+          oci: true
+      - name: Check images
+        run: |
+          buildah images | grep '${{ env.IMAGE_NAME }}'
+          echo '${{ steps.build_image.outputs.image }}'
+          echo '${{ steps.build_image.outputs.tags }}'
+      name: Check manifest
+        run: |
+          set -x
+          buildah manifest inspect ${{ steps.build_image.outputs.image }}:${{ env.LATEST_TAG }}
