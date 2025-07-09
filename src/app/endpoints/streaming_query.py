@@ -25,7 +25,7 @@ from utils.common import retrieve_user_id
 from utils.mcp_headers import mcp_headers_dependency
 from utils.suid import get_suid
 from utils.token_counter import get_token_counter
-
+from utils.types import GraniteToolParser
 
 from app.endpoints.query import (
     get_rag_toolgroups,
@@ -63,6 +63,7 @@ async def get_agent(
         model=model_id,
         instructions=system_prompt,
         input_shields=available_shields if available_shields else [],
+        tool_parser=GraniteToolParser.get_parser(model_id),
         enable_session_persistence=True,
     )
     conversation_id = await agent.create_session(get_suid())

@@ -435,6 +435,48 @@
                     }
                 ]
             },
+            "AuthenticationConfiguration": {
+                "properties": {
+                    "module": {
+                        "type": "string",
+                        "title": "Module",
+                        "default": "noop"
+                    },
+                    "skip_tls_verification": {
+                        "type": "boolean",
+                        "title": "Skip Tls Verification",
+                        "default": false
+                    },
+                    "k8s_cluster_api": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "minLength": 1,
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "K8S Cluster Api"
+                    },
+                    "k8s_ca_cert_path": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "file-path"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "K8S Ca Cert Path"
+                    }
+                },
+                "type": "object",
+                "title": "AuthenticationConfiguration",
+                "description": "Authentication configuration."
+            },
             "Configuration": {
                 "properties": {
                     "name": {
@@ -457,6 +499,30 @@
                         "type": "array",
                         "title": "Mcp Servers",
                         "default": []
+                    },
+                    "authentication": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AuthenticationConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": {
+                            "module": "noop",
+                            "skip_tls_verification": false
+                        }
+                    },
+                    "customization": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Customization"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "type": "object",
@@ -468,6 +534,36 @@
                 ],
                 "title": "Configuration",
                 "description": "Global service configuration."
+            },
+            "Customization": {
+                "properties": {
+                    "system_prompt_path": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "file-path"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "System Prompt Path"
+                    },
+                    "system_prompt": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "System Prompt"
+                    }
+                },
+                "type": "object",
+                "title": "Customization",
+                "description": "Service customization."
             },
             "FeedbackRequest": {
                 "properties": {
