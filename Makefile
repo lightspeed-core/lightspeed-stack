@@ -1,19 +1,37 @@
 ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 PATH_TO_PLANTUML := ~/bin
 
+# Variable to filter tests whose names or parent class names match a
+# given (case-insensitive) expression. Logical operators like or, and,
+# and not are allowed.
+# For example, to run tests that matches the word "endpoint", do:
+# $ make test-unit TEST_FILTER=endpoint
+# To run tests that matches the work "endpoint" and "utils" do:
+# $ make test-unit TEST_FILTER="endpoint or utils"
+TEST_FILTER :=
 
 run: ## Run the service locally
 	uv run src/lightspeed_stack.py
 
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."
+ifneq ($(strip $(TEST_FILTER)),)
+	@echo "Filtering unit tests with names matching: \"$(TEST_FILTER)\""
+	uv run pytest -k "$(TEST_FILTER)" tests/unit
+else
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.unit" uv run pytest tests/unit --cov=src --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_unit.json" --junit-xml="${ARTIFACT_DIR}/junit_unit.xml" --cov-fail-under=60
+endif
 
 test-integration: ## Run integration tests tests
 	@echo "Running integration tests..."
+ifneq ($(strip $(TEST_FILTER)),)
+	@echo "Filtering integration tests with names matching: \"$(TEST_FILTER)\""
+	uv run pytest -k "$(TEST_FILTER)" tests/integration
+else
 	@echo "Reports will be written to ${ARTIFACT_DIR}"
 	COVERAGE_FILE="${ARTIFACT_DIR}/.coverage.integration" uv run pytest tests/integration --cov=src --cov-report term-missing --cov-report "json:${ARTIFACT_DIR}/coverage_integration.json" --junit-xml="${ARTIFACT_DIR}/junit_integration.xml" --cov-fail-under=10
+endif
 
 test-e2e: ## Run BDD tests for the service
 	PYTHONDONTWRITEBYTECODE=1 uv run behave --tags=-skip -D dump_errors=true @tests/e2e/test_list.txt \
