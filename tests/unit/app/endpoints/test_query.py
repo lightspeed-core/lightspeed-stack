@@ -539,7 +539,7 @@ def test_retrieve_response_with_two_attachments(prepare_agent_mocks, mocker):
             },
             {
                 "content": "kind: Pod\n" " metadata:\n" " name:    private-reg",
-                "mime_type": "application/yaml",
+                "mime_type": "text/plain",  # YAML converted to text/plain for LlamaStack compatibility
             },
         ],
         toolgroups=None,
