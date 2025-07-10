@@ -23,6 +23,7 @@ def test_info_endpoint(mocker):
             "feedback_disabled": True,
         },
         "customization": None,
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)

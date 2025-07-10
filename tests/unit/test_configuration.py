@@ -50,6 +50,7 @@ def test_init_from_dict() -> None:
         },
         "mcp_servers": [],
         "customization": None,
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -112,6 +113,7 @@ def test_init_from_dict_with_mcp_servers() -> None:
             },
         ],
         "customization": None,
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -219,6 +221,7 @@ def test_mcp_servers_property_empty() -> None:
         },
         "mcp_servers": [],
         "customization": None,
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -255,6 +258,7 @@ def test_mcp_servers_property_with_servers() -> None:
             },
         ],
         "customization": None,
+        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
