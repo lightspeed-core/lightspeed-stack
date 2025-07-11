@@ -51,7 +51,7 @@ ENV PATH="/app-root/.venv/bin:$PATH"
 
 # Run the application
 EXPOSE 8080
-CMD ["python3.12", "src/lightspeed_stack.py"]
+ENTRYPOINT ["python3.12", "src/lightspeed_stack.py"]
 
 LABEL vendor="Red Hat, Inc."
 
