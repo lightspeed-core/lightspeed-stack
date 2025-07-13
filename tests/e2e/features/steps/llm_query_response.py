@@ -1,7 +1,7 @@
 """LLM query and response steps."""
 
 import requests
-from behave import then, when
+from behave import then, when  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
 DEFAULT_LLM_TIMEOUT = 60
@@ -36,10 +36,16 @@ def check_llm_response_not_truncated(context: Context) -> None:
 
 @then("The response should contain following fragments")
 def check_fragments_in_response(context: Context) -> None:
-    """Check if the LLM response contain list of fragments."""
+    """
+    Validate that all specified fragments are present in the LLM response.
+    
+    Checks that the HTTP response exists and contains a "response" field. For each fragment listed in the scenario's table under "Fragments in LLM response", asserts that it appears as a substring in the LLM's response. Raises an assertion error if any fragment is missing or if the fragments table is not provided.
+    """
     assert context.response is not None
     response_json = context.response.json()
     response = response_json["response"]
+
+    assert context.table is not None, "Fragments are not specified in table"
 
     for fragment in context.table:
         expected = fragment["Fragments in LLM response"]
