@@ -6,30 +6,55 @@ from models.config import ModelContextProtocolServer
 
 
 def test_default_configuration() -> None:
+    """
+    Verify that accessing any configuration-related property on an uninitialized AppConfig instance raises an exception indicating the configuration is not loaded.
+    """
     cfg = AppConfig()
     assert cfg is not None
 
     # configuration is not loaded
     with pytest.raises(Exception, match="logic error: configuration is not loaded"):
         # try to read property
-        cfg.configuration
+        cfg.configuration  # pylint: disable=pointless-statement
 
     with pytest.raises(Exception, match="logic error: configuration is not loaded"):
         # try to read property
-        cfg.llama_stack_configuration
+        cfg.service_configuration  # pylint: disable=pointless-statement
 
     with pytest.raises(Exception, match="logic error: configuration is not loaded"):
         # try to read property
-        cfg.user_data_collection_configuration
+        cfg.llama_stack_configuration  # pylint: disable=pointless-statement
+
+    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+        # try to read property
+        cfg.user_data_collection_configuration  # pylint: disable=pointless-statement
+
+    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+        # try to read property
+        cfg.mcp_servers  # pylint: disable=pointless-statement
+
+    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+        # try to read property
+        cfg.authentication_configuration  # pylint: disable=pointless-statement
+
+    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+        # try to read property
+        cfg.customization  # pylint: disable=pointless-statement
 
 
 def test_configuration_is_singleton() -> None:
+    """
+    Verify that multiple instances of AppConfig refer to the same singleton configuration object.
+    """
     cfg1 = AppConfig()
     cfg2 = AppConfig()
     assert cfg1 == cfg2
 
 
 def test_init_from_dict() -> None:
+    """
+    Verify that initializing AppConfig from a dictionary correctly sets all configuration subsections and their attributes.
+    """
     config_dict = {
         "name": "foo",
         "service": {
@@ -126,8 +151,13 @@ def test_init_from_dict_with_mcp_servers() -> None:
 
 
 def test_load_proper_configuration(tmpdir) -> None:
+    """
+    Test that a valid YAML configuration file can be loaded and all configuration subsections are accessible.
+    
+    Creates a sample configuration file, loads it using `AppConfig`, and asserts that the main configuration and its subsections are properly initialized.
+    """
     cfg_filename = tmpdir / "config.yaml"
-    with open(cfg_filename, "w") as fout:
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
         fout.write(
             """
 name: foo bar baz
@@ -157,9 +187,11 @@ mcp_servers: []
 
 
 def test_load_configuration_with_mcp_servers(tmpdir) -> None:
-    """Test loading configuration from YAML file with MCP servers."""
+    """
+    Test that loading a YAML configuration file with multiple MCP servers correctly initializes the `mcp_servers` property, including handling of default and custom `provider_id` values.
+    """
     cfg_filename = tmpdir / "config.yaml"
-    with open(cfg_filename, "w") as fout:
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
         fout.write(
             """
 name: test service
@@ -268,58 +300,95 @@ def test_mcp_servers_property_with_servers() -> None:
 
 
 def test_configuration_not_loaded():
-    """Test that accessing configuration before loading raises an error."""
+    """
+    Test that accessing the `configuration` property on an uninitialized `AppConfig` instance raises an AssertionError with the expected message.
+    """
     cfg = AppConfig()
     with pytest.raises(
         AssertionError, match="logic error: configuration is not loaded"
     ):
-        cfg.configuration
+        cfg.configuration  # pylint: disable=pointless-statement
 
 
 def test_service_configuration_not_loaded():
-    """Test that accessing service_configuration before loading raises an error."""
+    """
+    Test that accessing the service_configuration property on an uninitialized AppConfig instance raises an AssertionError with the expected message.
+    """
     cfg = AppConfig()
     with pytest.raises(
         AssertionError, match="logic error: configuration is not loaded"
     ):
-        cfg.service_configuration
+        cfg.service_configuration  # pylint: disable=pointless-statement
 
 
 def test_llama_stack_configuration_not_loaded():
-    """Test that accessing llama_stack_configuration before loading raises an error."""
+    """
+    Test that accessing the llama_stack_configuration property on an uninitialized AppConfig instance raises an AssertionError with the expected message.
+    """
     cfg = AppConfig()
     with pytest.raises(
         AssertionError, match="logic error: configuration is not loaded"
     ):
-        cfg.llama_stack_configuration
+        cfg.llama_stack_configuration  # pylint: disable=pointless-statement
 
 
 def test_user_data_collection_configuration_not_loaded():
-    """Test that accessing user_data_collection_configuration before loading raises an error."""
+    """
+    Test that accessing the user data collection configuration property before loading raises an AssertionError with the expected message.
+    """
     cfg = AppConfig()
     with pytest.raises(
         AssertionError, match="logic error: configuration is not loaded"
     ):
-        cfg.user_data_collection_configuration
+        cfg.user_data_collection_configuration  # pylint: disable=pointless-statement
 
 
 def test_mcp_servers_not_loaded():
-    """Test that accessing mcp_servers before loading raises an error."""
+    """
+    Test that accessing the `mcp_servers` property on an uninitialized `AppConfig` instance raises an AssertionError with the expected message.
+    """
     cfg = AppConfig()
     with pytest.raises(
         AssertionError, match="logic error: configuration is not loaded"
     ):
-        cfg.mcp_servers
+        cfg.mcp_servers  # pylint: disable=pointless-statement
+
+
+def test_authentication_configuration_not_loaded():
+    """
+    Test that accessing the authentication_configuration property on an uninitialized AppConfig instance raises an AssertionError with the expected message.
+    """
+    cfg = AppConfig()
+    with pytest.raises(
+        AssertionError, match="logic error: configuration is not loaded"
+    ):
+        cfg.authentication_configuration  # pylint: disable=pointless-statement
+
+
+def test_customization_not_loaded():
+    """
+    Test that accessing the `customization` property on an uninitialized `AppConfig` instance raises an AssertionError with the expected message.
+    """
+    cfg = AppConfig()
+    with pytest.raises(
+        AssertionError, match="logic error: configuration is not loaded"
+    ):
+        cfg.customization  # pylint: disable=pointless-statement
 
 
 def test_load_configuration_with_customization_system_prompt_path(tmpdir) -> None:
-    """Test loading configuration from YAML file with customization."""
+    """
+    Test that loading a YAML configuration file with a customization section specifying a system prompt file path correctly loads the system prompt content from the referenced file.
+    
+    Parameters:
+        tmpdir: Temporary directory fixture provided by pytest for file operations.
+    """
     system_prompt_filename = tmpdir / "system_prompt.txt"
-    with open(system_prompt_filename, "w") as fout:
+    with open(system_prompt_filename, "w", encoding="utf-8") as fout:
         fout.write("this is system prompt")
 
     cfg_filename = tmpdir / "config.yaml"
-    with open(cfg_filename, "w") as fout:
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
         fout.write(
             f"""
 name: test service
@@ -357,9 +426,11 @@ customization:
 
 
 def test_load_configuration_with_customization_system_prompt(tmpdir) -> None:
-    """Test loading configuration from YAML file with system_prompt in the customization."""
+    """
+    Test that loading a YAML configuration file with an inline `system_prompt` in the customization section correctly sets the `system_prompt` property of the loaded configuration.
+    """
     cfg_filename = tmpdir / "config.yaml"
-    with open(cfg_filename, "w") as fout:
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
         fout.write(
             """
 name: test service
