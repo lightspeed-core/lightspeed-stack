@@ -30,7 +30,7 @@ class TestQueryRequest:
         assert qr.provider is None
         assert qr.model is None
         assert qr.system_prompt is None
-        assert qr.attachments is None
+        assert qr.attachments == []
 
     def test_with_attachments(self) -> None:
         """Test the QueryRequest with attachments."""
@@ -75,7 +75,7 @@ class TestQueryRequest:
         assert qr.provider == "OpenAI"
         assert qr.model == "gpt-3.5-turbo"
         assert qr.system_prompt == "You are a helpful assistant"
-        assert qr.attachments is None
+        assert qr.attachments == []
 
     def test_get_documents(self) -> None:
         """Test the get_documents method."""
@@ -100,7 +100,29 @@ class TestQueryRequest:
         assert documents[0]["content"] == "this is attachment"
         assert documents[0]["mime_type"] == "text/plain"
         assert documents[1]["content"] == "kind: Pod\n metadata:\n name:    private-reg"
-        assert documents[1]["mime_type"] == "application/yaml"
+        assert (
+            documents[1]["mime_type"] == "text/plain"
+        )  # YAML converted to text/plain for LlamaStack compatibility
+
+    def test_get_documents_yaml_mime_type_conversion(self) -> None:
+        """Test that YAML MIME type is converted to text/plain for LlamaStack compatibility."""
+        attachments = [
+            Attachment(
+                attachment_type="configuration",
+                content_type="application/yaml",
+                content="apiVersion: v1\nkind: Pod",
+            ),
+        ]
+        qr = QueryRequest(
+            query="Test query",
+            attachments=attachments,
+        )
+        documents = qr.get_documents()
+        assert len(documents) == 1
+        assert documents[0]["content"] == "apiVersion: v1\nkind: Pod"
+        assert (
+            documents[0]["mime_type"] == "text/plain"
+        )  # Should be converted from application/yaml
 
     def test_validate_provider_and_model(self) -> None:
         """Test the validate_provider_and_model method."""

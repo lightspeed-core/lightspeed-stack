@@ -79,7 +79,7 @@ class QueryRequest(BaseModel):
     provider: Optional[str] = None
     model: Optional[str] = None
     system_prompt: Optional[str] = None
-    attachments: Optional[list[Attachment]] = None
+    attachments: list[Attachment] = Field(default_factory=list)
 
     # provides examples for /docs endpoint
     model_config = {
@@ -116,12 +116,16 @@ class QueryRequest(BaseModel):
 
     def get_documents(self) -> list[Document]:
         """Return the list of documents from the attachments."""
-        if not self.attachments:
-            return []
-        return [
-            Document(content=att.content, mime_type=att.content_type)
-            for att in self.attachments  # pylint: disable=not-an-iterable
-        ]
+        documents = []
+        for att in self.attachments:
+            mime_type = att.content_type
+            # Convert YAML MIME type to text/plain as LlamaStack agent doesn't
+            # support application/yaml
+            if att.content_type == "application/yaml":
+                mime_type = "text/plain"
+
+            documents.append(Document(content=att.content, mime_type=mime_type))
+        return documents
 
     @model_validator(mode="after")
     def validate_provider_and_model(self) -> Self:
