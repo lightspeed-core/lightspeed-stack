@@ -53,8 +53,10 @@ async def get_agent(
     if conversation_id is not None:
         agent = _agent_cache.get(conversation_id)
         if agent:
-            logger.debug("Reusing existing agent with key: %s", conversation_id)
+            logger.debug("Reusing existing agent with conversation_id: %s", conversation_id)
             return agent, conversation_id
+        else:
+            logger.debug("No existing agent found for conversation_id: %s", conversation_id)
 
     logger.debug("Creating new agent")
     agent = AsyncAgent(
@@ -66,6 +68,7 @@ async def get_agent(
         enable_session_persistence=True,
     )
     conversation_id = await agent.create_session(get_suid())
+    logger.debug("Created new agent and conversation_id: %s", conversation_id)
     _agent_cache[conversation_id] = agent
     return agent, conversation_id
 
