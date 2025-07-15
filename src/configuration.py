@@ -84,11 +84,16 @@ class AppConfig:
         return self._configuration.mcp_servers
 
     @property
-    def authentication_configuration(self) -> Optional[AuthenticationConfiguration]:
+    def authentication_configuration(self) -> AuthenticationConfiguration:
         """Return authentication configuration."""
         assert (
             self._configuration is not None
         ), "logic error: configuration is not loaded"
+
+        assert (
+            self._configuration.authentication is not None
+        ), "logic error: authentication configuration is not loaded"
+
         return self._configuration.authentication
 
     @property

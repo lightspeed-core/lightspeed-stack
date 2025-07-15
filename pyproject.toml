@@ -13,6 +13,8 @@ dependencies = [
     "llama-stack>=0.2.13",
     "rich>=14.0.0",
     "cachetools>=6.1.0",
+    "aiohttp>=3.12.14",
+    "authlib>=1.6.0",
 ]
 
 [tool.pyright]
@@ -51,6 +53,7 @@ dev = [
     "ruff>=0.11.13",
     "aiosqlite",
     "behave>=1.2.6",
+    "types-cachetools>=6.1.0.20250717",
 ]
 build = [
     "build>=1.2.2.post1",

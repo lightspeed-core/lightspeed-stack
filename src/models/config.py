@@ -131,6 +131,32 @@ class UserDataCollection(BaseModel):
         return self
 
 
+class JwtConfiguration(BaseModel):
+    """JWT configuration."""
+
+    user_id_claim: str = constants.DEFAULT_JWT_UID_CLAIM
+    username_claim: str = constants.DEFAULT_JWT_USER_NAME_CLAIM
+
+    @model_validator(mode="after")
+    def check_jwt_configuration(self) -> Self:
+        """Validate JWT configuration."""
+        return self
+
+
+class JwkConfiguration(BaseModel):
+    """JWK configuration."""
+
+    url: Optional[AnyHttpUrl] = None
+    jwt_configuration: JwtConfiguration = JwtConfiguration()
+
+    @model_validator(mode="after")
+    def check_jwk_configuration(self) -> Self:
+        """Validate JWK configuration."""
+        if self.url is None:
+            raise ValueError("JWK URL must be specified")
+        return self
+
+
 class AuthenticationConfiguration(BaseModel):
     """Authentication configuration."""
 
@@ -138,6 +164,7 @@ class AuthenticationConfiguration(BaseModel):
     skip_tls_verification: bool = False
     k8s_cluster_api: Optional[AnyHttpUrl] = None
     k8s_ca_cert_path: Optional[FilePath] = None
+    jwk_config: Optional[JwkConfiguration] = None
 
     @model_validator(mode="after")
     def check_authentication_model(self) -> Self:
@@ -148,7 +175,24 @@ class AuthenticationConfiguration(BaseModel):
                 f"Unsupported authentication module '{self.module}'. "
                 f"Supported modules: {supported_modules}"
             )
+
+        if self.module == constants.AUTH_MOD_JWK_TOKEN:
+            if self.jwk_config is None:
+                raise ValueError(
+                    "JWK configuration must be specified when using JWK token authentication"
+                )
+
         return self
+
+    @property
+    def jwk_configuration(self) -> JwkConfiguration:
+        """Return JWK configuration if the module is JWK token."""
+        if self.module != constants.AUTH_MOD_JWK_TOKEN:
+            raise ValueError(
+                "JWK configuration is only available for JWK token authentication module"
+            )
+        assert self.jwk_config is not None, "JWK configuration should not be None"
+        return self.jwk_config
 
 
 class Customization(BaseModel):
