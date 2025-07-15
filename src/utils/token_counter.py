@@ -2,12 +2,15 @@
 
 This module provides utilities for counting tokens in text and conversation messages
 using the tiktoken library. It supports automatic model-specific encoding detection
-with fallback to a default tokenizer.
+with fallback to a default tokenizer, and includes conversation-level token tracking
+for Agent conversations.
 """
 
 from functools import lru_cache
 import logging
 from typing import Sequence
+
+from cachetools import TTLCache  # type: ignore
 
 from llama_stack_client.types import (
     UserMessage,
@@ -17,9 +20,13 @@ from llama_stack_client.types import (
 )
 import tiktoken
 
-from configuration import configuration
+from configuration import configuration, AppConfig
+from constants import DEFAULT_ESTIMATION_TOKENIZER
 
 logger = logging.getLogger(__name__)
+
+# Class-level cache to track cumulative input tokens for each conversation
+_conversation_cache: TTLCache[str, int] = TTLCache(maxsize=1000, ttl=3600)
 
 
 class TokenCounter:
@@ -28,7 +35,7 @@ class TokenCounter:
     This class provides methods to count tokens in plain text and structured
     conversation messages. It automatically handles model-specific tokenization
     using tiktoken, with fallback to a default tokenizer if the model is not
-    recognized.
+    recognized. It also tracks cumulative input tokens for Agent conversations.
 
     Attributes:
         _encoder: The tiktoken encoding object used for tokenization
@@ -53,7 +60,7 @@ class TokenCounter:
             self._encoder = tiktoken.encoding_for_model(model_id)
             logger.debug("Initialized tiktoken encoding for model: %s", model_id)
         except KeyError as e:
-            fallback_encoding = configuration.configuration.default_estimation_tokenizer
+            fallback_encoding = get_default_estimation_tokenizer(configuration)
             logger.warning(
                 "Failed to get encoding for model %s: %s, using %s",
                 model_id,
@@ -112,6 +119,54 @@ class TokenCounter:
             "output_tokens": output_tokens,
         }
 
+    def count_conversation_turn_tokens(
+        self, conversation_id: str, system_prompt: str, query: str, response: str = ""
+    ) -> dict[str, int]:
+        """Count tokens for a conversation turn with cumulative tracking.
+
+        This method estimates token usage for a conversation turn and tracks
+        cumulative input tokens across the conversation. It accounts for the
+        fact that Agent conversations include the entire message history in
+        each turn.
+
+        Args:
+            conversation_id: The conversation ID to track tokens for.
+            system_prompt: The system prompt message content.
+            query: The user's query message content.
+            response: The assistant's response message content (optional).
+
+        Returns:
+            A dictionary containing:
+                - 'input_tokens': Cumulative input tokens for the conversation
+                - 'output_tokens': Total tokens in the response message
+        """
+        # Get the current turn's token usage
+        turn_token_usage = self.count_turn_tokens(system_prompt, query, response)
+
+        # Get cumulative input tokens for this conversation
+        cumulative_input_tokens = _conversation_cache.get(conversation_id, 0)
+
+        # Add this turn's input tokens to the cumulative total
+        new_cumulative_input_tokens = (
+            cumulative_input_tokens + turn_token_usage["input_tokens"]
+        )
+        _conversation_cache[conversation_id] = new_cumulative_input_tokens
+
+        # TODO(csibbitt) - Add counting for MCP and RAG content
+
+        logger.debug(
+            "Token usage for conversation %s: turn input=%d, cumulative input=%d, output=%d",
+            conversation_id,
+            turn_token_usage["input_tokens"],
+            new_cumulative_input_tokens,
+            turn_token_usage["output_tokens"],
+        )
+
+        return {
+            "input_tokens": new_cumulative_input_tokens,
+            "output_tokens": turn_token_usage["output_tokens"],
+        }
+
     def count_message_tokens(
         self,
         messages: Sequence[
@@ -134,7 +189,7 @@ class TokenCounter:
 
         for message in messages:
             total_tokens += self.count_tokens(str(message.content))
-            # Add role overhead
+            # Add role overhead (varies by model, 4 is typical for OpenAI models)
             role_formatting_overhead = 4
             total_tokens += role_formatting_overhead
 
@@ -156,8 +211,8 @@ class TokenCounter:
         Returns:
             The estimated token overhead for conversation formatting.
         """
-        base_overhead = 3  # Start of conversation
-        separator_overhead = max(0, (message_count - 1) * 1)  # Between messages
+        base_overhead = 3  # Start of conversation tokens (based on OpenAI chat format)
+        separator_overhead = max(0, (message_count - 1) * 1)  # Message separator tokens
         return base_overhead + separator_overhead
 
 
@@ -175,3 +230,15 @@ def get_token_counter(model_id: str) -> TokenCounter:
         A TokenCounter instance configured for the specified model.
     """
     return TokenCounter(model_id)
+
+
+def get_default_estimation_tokenizer(config: AppConfig) -> str:
+    """Get the default estimation tokenizer."""
+    if (
+        config.customization is not None
+        and config.customization.default_estimation_tokenizer is not None
+    ):
+        return config.customization.default_estimation_tokenizer
+
+    # default system prompt has the lowest precedence
+    return DEFAULT_ESTIMATION_TOKENIZER

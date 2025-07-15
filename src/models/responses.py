@@ -32,8 +32,8 @@ class QueryResponse(BaseModel):
 
     conversation_id: Optional[str] = None
     response: str
-    input_tokens: Optional[int] = None
-    output_tokens: Optional[int] = None
+    input_tokens: int = 0
+    output_tokens: int = 0
 
     # provides examples for /docs endpoint
     model_config = {

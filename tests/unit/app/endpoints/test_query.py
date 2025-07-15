@@ -44,7 +44,6 @@ def setup_configuration():
         },
         "mcp_servers": [],
         "customization": None,
-        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)

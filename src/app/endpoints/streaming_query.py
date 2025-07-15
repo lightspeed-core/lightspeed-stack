@@ -9,9 +9,11 @@ from cachetools import TTLCache  # type: ignore
 
 from llama_stack_client import APIConnectionError
 from llama_stack_client.lib.agents.agent import AsyncAgent  # type: ignore
+from llama_stack_client.types.agents.turn_create_params import Toolgroup
 from llama_stack_client import AsyncLlamaStackClient  # type: ignore
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 from llama_stack_client.types import UserMessage  # type: ignore
+
 
 from fastapi import APIRouter, HTTPException, Request, Depends, status
 from fastapi.responses import StreamingResponse
@@ -237,9 +239,8 @@ async def streaming_query_endpoint_handler(
             # except AttributeError:
             # Estimate output tokens from complete response
             try:
-                output_tokens = get_token_counter(model_id).count_tokens(
-                    complete_response
-                )
+                token_counter = get_token_counter(model_id)
+                output_tokens = token_counter.count_tokens(complete_response)
                 logger.debug("Estimated output tokens: %s", output_tokens)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.warning("Failed to estimate output tokens: %s", e)
@@ -278,6 +279,16 @@ async def streaming_query_endpoint_handler(
                 "cause": str(e),
             },
         ) from e
+
+
+async def _build_toolgroups(client: AsyncLlamaStackClient) -> list[Toolgroup] | None:
+    """Build toolgroups from vector DBs and MCP servers."""
+    vector_db_ids = [
+        vector_db.identifier for vector_db in await client.vector_dbs.list()
+    ]
+    return (get_rag_toolgroups(vector_db_ids) or []) + [
+        mcp_server.name for mcp_server in configuration.mcp_servers
+    ]
 
 
 async def retrieve_response(
@@ -329,18 +340,13 @@ async def retrieve_response(
     }
 
     logger.debug("Session ID: %s", conversation_id)
-    vector_db_ids = [
-        vector_db.identifier for vector_db in await client.vector_dbs.list()
-    ]
-    toolgroups = (get_rag_toolgroups(vector_db_ids) or []) + [
-        mcp_server.name for mcp_server in configuration.mcp_servers
-    ]
+
     response = await agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
         session_id=conversation_id,
         documents=query_request.get_documents(),
         stream=True,
-        toolgroups=toolgroups or None,
+        toolgroups=await _build_toolgroups(client) or None,
     )
 
     # Currently (2025-07-08) the usage is not returned by the API, so we need to estimate it
@@ -352,8 +358,9 @@ async def retrieve_response(
     # except AttributeError:
     #     # Estimate input tokens (Output will be calculated during streaming)
     try:
-        token_usage = get_token_counter(model_id).count_turn_tokens(
-            system_prompt, query_request.query
+        token_counter = get_token_counter(model_id)
+        token_usage = token_counter.count_conversation_turn_tokens(
+            conversation_id, system_prompt, query_request.query
         )
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.warning("Failed to estimate token usage: %s", e)

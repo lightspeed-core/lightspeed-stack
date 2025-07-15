@@ -130,6 +130,7 @@ class Customization(BaseModel):
 
     system_prompt_path: Optional[FilePath] = None
     system_prompt: Optional[str] = None
+    default_estimation_tokenizer: str = constants.DEFAULT_ESTIMATION_TOKENIZER
 
     @model_validator(mode="after")
     def check_authentication_model(self) -> Self:
@@ -154,7 +155,6 @@ class Configuration(BaseModel):
         AuthenticationConfiguration()
     )
     customization: Optional[Customization] = None
-    default_estimation_tokenizer: str = "cl100k_base"
 
     def dump(self, filename: str = "configuration.json") -> None:
         """Dump actual configuration into JSON file."""

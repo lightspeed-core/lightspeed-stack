@@ -559,6 +559,11 @@
                             }
                         ],
                         "title": "System Prompt"
+                    },
+                    "default_estimation_tokenizer": {
+                        "type": "string",
+                        "title": "Default Estimation Tokenizer",
+                        "description": "The default tokenizer to use for estimating token usage when the model is not supported by tiktoken."
                     }
                 },
                 "type": "object",

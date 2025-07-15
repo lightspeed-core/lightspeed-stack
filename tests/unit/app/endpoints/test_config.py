@@ -44,7 +44,6 @@ def test_config_endpoint_handler_configuration_loaded(mocker):
             "module": "noop",
         },
         "customization": None,
-        "default_estimation_tokenizer": "cl100k_base",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)

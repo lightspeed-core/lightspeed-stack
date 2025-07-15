@@ -42,3 +42,5 @@ SUPPORTED_AUTHENTICATION_MODULES = frozenset(
     }
 )
 DEFAULT_AUTHENTICATION_MODULE = AUTH_MOD_NOOP
+# Default tokenizer for estimating token usage
+DEFAULT_ESTIMATION_TOKENIZER = "cl100k_base"

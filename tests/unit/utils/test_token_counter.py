@@ -23,7 +23,6 @@ config_dict = {
     "user_data_collection": {
         "feedback_disabled": True,
     },
-    "default_estimation_tokenizer": "cl100k_base",
 }
 
 
@@ -65,3 +64,27 @@ class TestTokenCounter:
         counter = TokenCounter("llama3.2:1b")
         result = counter.count_message_tokens([])
         assert result == 0
+
+    def test_count_conversation_turn_tokens(self):
+        """Test cumulative token tracking across conversation turns."""
+        counter = TokenCounter("llama3.2:1b")
+
+        # First conversation should accumulate tokens
+        result1 = counter.count_conversation_turn_tokens(
+            "conv1", "System", "Hello", "Hi"
+        )
+        assert result1["input_tokens"] == 14
+        result2 = counter.count_conversation_turn_tokens(
+            "conv1", "System", "How are you?", "Good"
+        )
+        assert result2["input_tokens"] == 31
+        result3 = counter.count_conversation_turn_tokens(
+            "conv1", "System", "Fantastic", "Yup"
+        )
+        assert result3["input_tokens"] == 45
+
+        # Second conversation should be independent of the first
+        result4 = counter.count_conversation_turn_tokens(
+            "conv2", "System", "Hello", "Hi"
+        )
+        assert result4["input_tokens"] == 14

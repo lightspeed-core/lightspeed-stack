@@ -22,4 +22,3 @@ user_data_collection:
   transcripts_storage: "/tmp/data/transcripts"
 authentication:
   module: "noop"
-default_estimation_tokenizer: "cl100k_base"

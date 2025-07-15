@@ -46,7 +46,6 @@ get_config_responses: dict[int | str, dict[str, Any]] = {
             {"name": "server2", "provider_id": "provider2", "url": "http://url.com:2"},
             {"name": "server3", "provider_id": "provider3", "url": "http://url.com:3"},
         ],
-        "default_estimation_tokenizer": "cl100k_base",
     },
     503: {
         "detail": {
