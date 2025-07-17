@@ -42,6 +42,8 @@ SUPPORTED_AUTHENTICATION_MODULES = frozenset(
     }
 )
 DEFAULT_AUTHENTICATION_MODULE = AUTH_MOD_NOOP
+# Default tokenizer for estimating token usage
+DEFAULT_ESTIMATION_TOKENIZER = "cl100k_base"
 
 # Data collector constants
 DATA_COLLECTOR_COLLECTION_INTERVAL = 7200  # 2 hours in seconds

@@ -157,6 +157,7 @@ class Customization(BaseModel):
     disable_query_system_prompt: bool = False
     system_prompt_path: Optional[FilePath] = None
     system_prompt: Optional[str] = None
+    default_estimation_tokenizer: str = constants.DEFAULT_ESTIMATION_TOKENIZER
 
     @model_validator(mode="after")
     def check_customization_model(self) -> Self:

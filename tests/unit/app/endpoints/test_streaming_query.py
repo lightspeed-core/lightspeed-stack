@@ -151,6 +151,9 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
 
     # Mock the streaming response from LLama Stack
     mock_streaming_response = mocker.AsyncMock()
+    # Currently usage is not returned by the API
+    # we simulate by using del to prevent pytest from returning a Mock
+    del mock_streaming_response.usage
     mock_streaming_response.__aiter__.return_value = [
         mocker.Mock(
             event=mocker.Mock(
@@ -191,7 +194,11 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
     query = "What is OpenStack?"
     mocker.patch(
         "app.endpoints.streaming_query.retrieve_response",
-        return_value=(mock_streaming_response, "test_conversation_id"),
+        return_value=(
+            mock_streaming_response,
+            "test_conversation_id",
+            {"input_tokens": 10, "output_tokens": 20},
+        ),
     )
     mocker.patch(
         "app.endpoints.streaming_query.select_model_id", return_value="fake_model_id"
@@ -271,8 +278,15 @@ async def test_streaming_query_endpoint_handler_store_transcript(mocker):
 async def test_retrieve_response_vector_db_available(prepare_agent_mocks, mocker):
     """Test the retrieve_response function."""
     mock_client, mock_agent = prepare_agent_mocks
+
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
+    mock_client.models.list.return_value = [
+        mocker.Mock(
+            identifier="fake_model_id", model_type="llm", provider_id="test_provider"
+        ),
+    ]
     mock_vector_db = mocker.Mock()
     mock_vector_db.identifier = "VectorDB-1"
     mock_client.vector_dbs.list.return_value = [mock_vector_db]
@@ -290,7 +304,7 @@ async def test_retrieve_response_vector_db_available(prepare_agent_mocks, mocker
     model_id = "fake_model_id"
     token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, token_usage = await retrieve_response(
         mock_client, model_id, query_request, token
     )
 
@@ -298,6 +312,7 @@ async def test_retrieve_response_vector_db_available(prepare_agent_mocks, mocker
     # conversation_id should be returned
     assert response is not None
     assert conversation_id == "test_conversation_id"
+    assert token_usage["input_tokens"] > 0
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(role="user", content="What is OpenStack?")],
         session_id="test_conversation_id",
@@ -310,8 +325,15 @@ async def test_retrieve_response_vector_db_available(prepare_agent_mocks, mocker
 async def test_retrieve_response_no_available_shields(prepare_agent_mocks, mocker):
     """Test the retrieve_response function."""
     mock_client, mock_agent = prepare_agent_mocks
+
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
+    mock_client.models.list.return_value = [
+        mocker.Mock(
+            identifier="fake_model_id", model_type="llm", provider_id="test_provider"
+        ),
+    ]
     mock_client.vector_dbs.list.return_value = []
 
     # Mock configuration with empty MCP servers
@@ -327,7 +349,7 @@ async def test_retrieve_response_no_available_shields(prepare_agent_mocks, mocke
     model_id = "fake_model_id"
     token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, token_usage = await retrieve_response(
         mock_client, model_id, query_request, token
     )
 
@@ -335,6 +357,7 @@ async def test_retrieve_response_no_available_shields(prepare_agent_mocks, mocke
     # conversation_id should be returned
     assert response is not None
     assert conversation_id == "test_conversation_id"
+    assert token_usage["input_tokens"] > 0
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(role="user", content="What is OpenStack?")],
         session_id="test_conversation_id",
@@ -360,8 +383,15 @@ async def test_retrieve_response_one_available_shield(prepare_agent_mocks, mocke
             return "MockShield"
 
     mock_client, mock_agent = prepare_agent_mocks
+
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = [MockShield("shield1")]
+    mock_client.models.list.return_value = [
+        mocker.Mock(
+            identifier="fake_model_id", model_type="llm", provider_id="test_provider"
+        ),
+    ]
     mock_client.vector_dbs.list.return_value = []
 
     # Mock configuration with empty MCP servers
@@ -377,12 +407,13 @@ async def test_retrieve_response_one_available_shield(prepare_agent_mocks, mocke
     model_id = "fake_model_id"
     token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, token_usage = await retrieve_response(
         mock_client, model_id, query_request, token
     )
 
     assert response is not None
     assert conversation_id == "test_conversation_id"
+    assert token_usage["input_tokens"] > 0
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(role="user", content="What is OpenStack?")],
         session_id="test_conversation_id",
@@ -408,10 +439,17 @@ async def test_retrieve_response_two_available_shields(prepare_agent_mocks, mock
             return "MockShield"
 
     mock_client, mock_agent = prepare_agent_mocks
+
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = [
         MockShield("shield1"),
         MockShield("shield2"),
+    ]
+    mock_client.models.list.return_value = [
+        mocker.Mock(
+            identifier="fake_model_id", model_type="llm", provider_id="test_provider"
+        ),
     ]
     mock_client.vector_dbs.list.return_value = []
 
@@ -428,12 +466,13 @@ async def test_retrieve_response_two_available_shields(prepare_agent_mocks, mock
     model_id = "fake_model_id"
     token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, token_usage = await retrieve_response(
         mock_client, model_id, query_request, token
     )
 
     assert response is not None
     assert conversation_id == "test_conversation_id"
+    assert token_usage["input_tokens"] > 0
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(role="user", content="What is OpenStack?")],
         session_id="test_conversation_id",
@@ -446,8 +485,15 @@ async def test_retrieve_response_two_available_shields(prepare_agent_mocks, mock
 async def test_retrieve_response_with_one_attachment(prepare_agent_mocks, mocker):
     """Test the retrieve_response function."""
     mock_client, mock_agent = prepare_agent_mocks
+
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
+    mock_client.models.list.return_value = [
+        mocker.Mock(
+            identifier="fake_model_id", model_type="llm", provider_id="test_provider"
+        ),
+    ]
     mock_client.vector_dbs.list.return_value = []
 
     # Mock configuration with empty MCP servers
@@ -471,12 +517,13 @@ async def test_retrieve_response_with_one_attachment(prepare_agent_mocks, mocker
     model_id = "fake_model_id"
     token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, token_usage = await retrieve_response(
         mock_client, model_id, query_request, token
     )
 
     assert response is not None
     assert conversation_id == "test_conversation_id"
+    assert token_usage["input_tokens"] > 0
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(role="user", content="What is OpenStack?")],
         session_id="test_conversation_id",
@@ -494,8 +541,15 @@ async def test_retrieve_response_with_one_attachment(prepare_agent_mocks, mocker
 async def test_retrieve_response_with_two_attachments(prepare_agent_mocks, mocker):
     """Test the retrieve_response function."""
     mock_client, mock_agent = prepare_agent_mocks
+
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
+    mock_client.models.list.return_value = [
+        mocker.Mock(
+            identifier="fake_model_id", model_type="llm", provider_id="test_provider"
+        ),
+    ]
     mock_client.vector_dbs.list.return_value = []
 
     # Mock configuration with empty MCP servers
@@ -524,12 +578,13 @@ async def test_retrieve_response_with_two_attachments(prepare_agent_mocks, mocke
     model_id = "fake_model_id"
     token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, token_usage = await retrieve_response(
         mock_client, model_id, query_request, token
     )
 
     assert response is not None
     assert conversation_id == "test_conversation_id"
+    assert token_usage["input_tokens"] > 0
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(role="user", content="What is OpenStack?")],
         session_id="test_conversation_id",
@@ -626,8 +681,15 @@ def test_stream_build_event_returns_none(mocker):
 async def test_retrieve_response_with_mcp_servers(prepare_agent_mocks, mocker):
     """Test the retrieve_response function with MCP servers configured."""
     mock_client, mock_agent = prepare_agent_mocks
+
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
+    mock_client.models.list.return_value = [
+        mocker.Mock(
+            identifier="fake_model_id", model_type="llm", provider_id="test_provider"
+        ),
+    ]
     mock_client.vector_dbs.list.return_value = []
 
     # Mock configuration with MCP servers
@@ -653,12 +715,13 @@ async def test_retrieve_response_with_mcp_servers(prepare_agent_mocks, mocker):
     model_id = "fake_model_id"
     access_token = "test_token_123"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, token_usage = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     assert response is not None
     assert conversation_id == "test_conversation_id"
+    assert token_usage["input_tokens"] > 0
 
     # Verify get_agent was called with the correct parameters
     mock_get_agent.assert_called_once_with(
@@ -699,8 +762,15 @@ async def test_retrieve_response_with_mcp_servers_empty_token(
 ):
     """Test the retrieve_response function with MCP servers and empty access token."""
     mock_client, mock_agent = prepare_agent_mocks
+
+    mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
+    mock_client.models.list.return_value = [
+        mocker.Mock(
+            identifier="fake_model_id", model_type="llm", provider_id="test_provider"
+        ),
+    ]
     mock_client.vector_dbs.list.return_value = []
 
     # Mock configuration with MCP servers
@@ -719,12 +789,13 @@ async def test_retrieve_response_with_mcp_servers_empty_token(
     model_id = "fake_model_id"
     access_token = ""  # Empty token
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, token_usage = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     assert response is not None
     assert conversation_id == "test_conversation_id"
+    assert token_usage["input_tokens"] > 0
 
     # Verify get_agent was called with the correct parameters
     mock_get_agent.assert_called_once_with(
@@ -792,7 +863,7 @@ async def test_retrieve_response_with_mcp_servers_and_mcp_headers(mocker):
         },
     }
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, _ = await retrieve_response(
         mock_client,
         model_id,
         query_request,
@@ -1154,7 +1225,11 @@ async def test_auth_tuple_unpacking_in_streaming_query_endpoint_handler(mocker):
     mock_streaming_response.__aiter__.return_value = iter([])
     mock_retrieve_response = mocker.patch(
         "app.endpoints.streaming_query.retrieve_response",
-        return_value=(mock_streaming_response, "test_conversation_id"),
+        return_value=(
+            mock_streaming_response,
+            "test_conversation_id",
+            {"input_tokens": 10, "output_tokens": 20},
+        ),
     )
 
     mocker.patch(
