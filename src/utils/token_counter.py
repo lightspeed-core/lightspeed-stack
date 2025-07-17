@@ -109,13 +109,11 @@ class TokenCounter:
             input_messages.append(
                 SystemMessage(role="system", content=str(system_prompt))
             )
-        input_messages.append(UserMessage(role="user", content=query_request.query))
-
+        input_content = query_request.query
         if query_request.attachments:
             for attachment in query_request.attachments:
-                input_messages.append(
-                    UserMessage(role="user", content=attachment.content)
-                )
+                input_content += "\n" + attachment.content
+        input_messages.append(UserMessage(role="user", content=input_content))
 
         input_tokens = self.count_message_tokens(input_messages)
         output_tokens = self.count_tokens(response)
