@@ -151,7 +151,8 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
 
     # Mock the streaming response from LLama Stack
     mock_streaming_response = mocker.AsyncMock()
-    # Currently usage is not returned by the API, we simulate by using del to prevent pytest from returning a Mock
+    # Currently usage is not returned by the API
+    # we simulate by using del to prevent pytest from returning a Mock
     del mock_streaming_response.usage
     mock_streaming_response.__aiter__.return_value = [
         mocker.Mock(
@@ -862,7 +863,7 @@ async def test_retrieve_response_with_mcp_servers_and_mcp_headers(mocker):
         },
     }
 
-    response, conversation_id, token_usage = await retrieve_response(
+    response, conversation_id, _ = await retrieve_response(
         mock_client,
         model_id,
         query_request,
@@ -1224,7 +1225,11 @@ async def test_auth_tuple_unpacking_in_streaming_query_endpoint_handler(mocker):
     mock_streaming_response.__aiter__.return_value = iter([])
     mock_retrieve_response = mocker.patch(
         "app.endpoints.streaming_query.retrieve_response",
-        return_value=(mock_streaming_response, "test_conversation_id", {"input_tokens": 10, "output_tokens": 20}),
+        return_value=(
+            mock_streaming_response,
+            "test_conversation_id",
+            {"input_tokens": 10, "output_tokens": 20},
+        ),
     )
 
     mocker.patch(

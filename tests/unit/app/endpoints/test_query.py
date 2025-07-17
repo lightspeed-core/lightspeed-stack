@@ -760,7 +760,7 @@ def test_retrieve_response_with_mcp_servers_and_mcp_headers(mocker):
         },
     }
 
-    response, conversation_id, token_usage = retrieve_response(
+    response, conversation_id, _ = retrieve_response(
         mock_client,
         model_id,
         query_request,
@@ -1204,7 +1204,11 @@ def test_auth_tuple_unpacking_in_query_endpoint_handler(mocker):
 
     mock_retrieve_response = mocker.patch(
         "app.endpoints.query.retrieve_response",
-        return_value=("test response", "test_conversation_id", {"input_tokens": 10, "output_tokens": 20}),
+        return_value=(
+            "test response",
+            "test_conversation_id",
+            {"input_tokens": 10, "output_tokens": 20},
+        ),
     )
 
     mocker.patch("app.endpoints.query.select_model_id", return_value="test_model")

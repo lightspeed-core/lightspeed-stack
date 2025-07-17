@@ -1,7 +1,8 @@
 """Unit tests for token counter utilities."""
 
-from utils.token_counter import TokenCounter
 from llama_stack_client.types import UserMessage, CompletionMessage
+
+from utils.token_counter import TokenCounter
 from models.requests import QueryRequest, Attachment
 from configuration import AppConfig
 
@@ -31,6 +32,7 @@ class TestTokenCounter:
     """Test cases for TokenCounter class."""
 
     def setup_class(self):
+        """Setup the test class."""
         cfg = AppConfig()
         cfg.init_from_dict(config_dict)
 
@@ -40,6 +42,7 @@ class TestTokenCounter:
         assert counter.count_tokens("") == 0
 
     def test_count_tokens_simple(self):
+        """Test counting tokens for a simple message."""
         counter = TokenCounter("llama3.2:1b")
         assert counter.count_tokens("Hello World!") == 3
 
@@ -104,21 +107,18 @@ class TestTokenCounter:
             Attachment(
                 attachment_type="configuration",
                 content_type="application/yaml",
-                content="kind: Pod\nmetadata:\n  name: test-pod\nspec:\n  containers:\n  - name: app",
+                content="kind: Pod\nmetadata:\n  name: test-pod\nspec:\n"
+                + "  containers:\n  - name: app\n    image: nginx:latest",
             ),
         ]
 
         query_request = QueryRequest(
-            query="Analyze these files for me",
-            attachments=attachments
+            query="Analyze these files for me", attachments=attachments
         )
 
         # Test the conversation turn with attachments
         result = counter.count_conversation_turn_tokens(
-            "conv_with_attachments",
-            "System prompt",
-            query_request,
-            "Analysis complete"
+            "conv_with_attachments", "System prompt", query_request, "Analysis complete"
         )
 
         # Verify that the result contains the expected structure
@@ -142,7 +142,7 @@ class TestTokenCounter:
             "conv_no_attachments",
             "System prompt",
             query_request_no_attachments,
-            "Analysis complete"
+            "Analysis complete",
         )
 
         # The version with attachments should have more input tokens

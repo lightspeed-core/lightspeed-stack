@@ -11,6 +11,8 @@ import logging
 from typing import Sequence
 
 from cachetools import TTLCache  # type: ignore
+import tiktoken
+
 
 from llama_stack_client.types import (
     UserMessage,
@@ -19,7 +21,6 @@ from llama_stack_client.types import (
     CompletionMessage,
 )
 from models.requests import QueryRequest
-import tiktoken
 
 from configuration import configuration, AppConfig
 from constants import DEFAULT_ESTIMATION_TOKENIZER
@@ -127,7 +128,11 @@ class TokenCounter:
         }
 
     def count_conversation_turn_tokens(
-        self, conversation_id: str, system_prompt: str, query_request: QueryRequest, response: str = ""
+        self,
+        conversation_id: str,
+        system_prompt: str,
+        query_request: QueryRequest,
+        response: str = "",
     ) -> dict[str, int]:
         """Count tokens for a conversation turn with cumulative tracking.
 
@@ -148,7 +153,9 @@ class TokenCounter:
                 - 'output_tokens': Total tokens in the response message
         """
         # Get the current turn's token usage
-        turn_token_usage = self.count_turn_tokens(system_prompt, query_request, response)
+        turn_token_usage = self.count_turn_tokens(
+            system_prompt, query_request, response
+        )
 
         # Get cumulative input tokens for this conversation
         cumulative_input_tokens = _conversation_cache.get(conversation_id, 0)
