@@ -24,7 +24,8 @@ jobs:
       - name: Install buildah
         run: |
           sudo apt update
-          sudo apt install -y buildah
+          # qemu is required for arm64 builds
+          sudo apt install -y buildah qemu-user-static
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build image with Buildah
@@ -37,7 +38,17 @@ jobs:
             ${{ env.LATEST_TAG }}
           containerfiles: |
             ${{ env.CONTAINER_FILE }}
+          archs: amd64, arm64
           oci: true
+      - name: Check images
+        run: |
+          buildah images | grep '${{ env.IMAGE_NAME }}'
+          echo '${{ steps.build_image.outputs.image }}'
+          echo '${{ steps.build_image.outputs.tags }}'
+      - name: Check manifest
+        run: |
+          set -x
+          buildah manifest inspect ${{ steps.build_image.outputs.image }}:${{ env.LATEST_TAG }}
       - name: Push image to Quay.io
         uses: redhat-actions/push-to-registry@v2
         with:

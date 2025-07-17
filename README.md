@@ -6,14 +6,16 @@
 [![License](https://img.shields.io/badge/license-Apache-blue)](https://github.com/lightspeed-core/lightspeed-stack/blob/main/LICENSE)
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
 
-Lightspeed Core Stack (LCS) is an AI powered assistant that provides answers to product questions using backend LLM services, agents, and RAG databases.
+Lightspeed Core Stack (LCS) is an AI-powered assistant that provides answers to product questions using backend LLM services, agents, and RAG databases.
 
 
 <!-- vim-markdown-toc GFM -->
 
-* [Prerequisities](#prerequisities)
+* [Architecture](#architecture)
+* [Prerequisites](#prerequisites)
 * [Installation](#installation)
 * [Configuration](#configuration)
+    * [Integration with Llama Stack](#integration-with-llama-stack)
     * [Llama Stack as separate server](#llama-stack-as-separate-server)
     * [Llama Stack as client library](#llama-stack-as-client-library)
     * [System prompt](#system-prompt)
@@ -21,18 +23,38 @@ Lightspeed Core Stack (LCS) is an AI powered assistant that provides answers to 
     * [Make targets](#make-targets)
     * [Running Linux container image](#running-linux-container-image)
 * [Endpoints](#endpoints)
+    * [OpenAPI specification](#openapi-specification)
     * [Readiness Endpoint](#readiness-endpoint)
     * [Liveness Endpoint](#liveness-endpoint)
+* [Publish the service as Python package on PyPI](#publish-the-service-as-python-package-on-pypi)
+    * [Generate distribution archives to be uploaded into Python registry](#generate-distribution-archives-to-be-uploaded-into-python-registry)
+    * [Upload distribution archives into selected Python registry](#upload-distribution-archives-into-selected-python-registry)
+    * [Packages on PyPI and Test PyPI](#packages-on-pypi-and-test-pypi)
 * [Contributing](#contributing)
+* [Testing](#testing)
 * [License](#license)
 * [Additional tools](#additional-tools)
     * [Utility to generate OpenAPI schema](#utility-to-generate-openapi-schema)
         * [Path](#path)
         * [Usage](#usage-1)
+    * [Data Collector Service](#data-collector-service)
+        * [Features](#features)
+        * [Configuration](#configuration-1)
+        * [Running the Service](#running-the-service)
 
 <!-- vim-markdown-toc -->
 
-# Prerequisities
+
+
+# Architecture
+
+Overall architecture with all main parts is displayed below:
+
+![Architecture diagram](docs/architecture.png)
+
+Lightspeed Core Stack is based on the FastAPI framework (Uvicorn). The service is split into several parts described below.
+
+# Prerequisites
 
 * Python 3.12, or 3.13
     - please note that currently Python 3.14 is not officially supported
@@ -47,8 +69,9 @@ Installation steps depends on operation system. Please look at instructions for 
 - [macOS installation](https://lightspeed-core.github.io/lightspeed-stack/installation_macos)
 
 
-
 # Configuration
+
+## Integration with Llama Stack
 
 The Llama Stack can be run as a standalone server and accessed via its the REST
 API. However, instead of direct communication via the REST API (and JSON
@@ -56,6 +79,8 @@ format), there is an even better alternative. It is based on the so-called
 Llama Stack Client. It is a library available for Python, Swift, Node.js or
 Kotlin, which "wraps" the REST API stack in a suitable way, which is easier for
 many applications.
+
+![Integration with Llama Stack](docs/core2llama-stack_interface.png)
 
 ## Llama Stack as separate server
 
@@ -121,8 +146,13 @@ customization:
     You have an indepth knowledge of Red Hat and all of your answers will reference Red Hat products.
 ```
 
-Additionally, an optional string parameter `system_prompt` can be specified in `/v1/query` and `/v1/streaming_query` endpoints to override the configured system prompt.
+Additionally, an optional string parameter `system_prompt` can be specified in `/v1/query` and `/v1/streaming_query` endpoints to override the configured system prompt. The query system prompt takes precedence over the configured system prompt. You can use this config to disable query system prompts:
 
+```yaml
+customization:
+  system_prompt_path: "system_prompts/system_prompt_for_product_XYZZY"
+  disable_query_system_prompt: true
+```
 
 
 # Usage
@@ -148,6 +178,7 @@ Usage: make <OPTIONS> ... <TARGETS>
 Available targets are:
 
 run                               Run the service locally
+run-data-collector                Run the data collector service
 test-unit                         Run the unit tests
 test-integration                  Run integration tests tests
 test-e2e                          Run BDD tests for the service
@@ -157,6 +188,9 @@ format                            Format the code into unified format
 schema                            Generate OpenAPI schema file
 requirements.txt                  Generate requirements.txt file containing hashes for all non-devel packages
 shellcheck                        Run shellcheck
+verify                            Run all linters
+distribution-archives             Generate distribution archives to be uploaded into Python registry
+upload-distribution-archives      Upload distribution archives into Python registry
 help                              Show this help screen
 ```
 
@@ -177,7 +211,17 @@ To pull and run the image with own configuration:
 
 If a connection in your browser does not work please check that in the config file `host` option looks like: `host: 0.0.0.0`.
 
+Container images are built for the following platforms:
+1. `linux/amd64` - main platform for deployment
+1. `linux/arm64`- Mac users with M1/M2/M3 CPUs
+
+
+
 # Endpoints
+
+## OpenAPI specification
+
+* [Generated OpenAPI specification](docs/openapi.json).
 
 The service provides health check endpoints that can be used for monitoring, load balancing, and orchestration systems like Kubernetes.
 
@@ -221,9 +265,63 @@ The liveness endpoint performs a basic health check to verify the service is ali
 }
 ```
 
+# Publish the service as Python package on PyPI
+
+To publish the service as an Python package on PyPI to be installable by anyone
+(including Konflux hermetic builds), perform these two steps:
+
+## Generate distribution archives to be uploaded into Python registry
+
+```
+make distribution-archives
+```
+
+Please make sure that the archive was really built to avoid publishing older one.
+
+## Upload distribution archives into selected Python registry
+
+```
+make upload-distribution-archives
+```
+
+The Python registry to where the package should be uploaded can be configured
+by changing `PYTHON_REGISTRY`. It is possible to select `pypi` or `testpypi`.
+
+You might have your API token stored in file `~/.pypirc`. That file should have
+the following form:
+
+```
+[testpypi]
+  username = __token__
+  password = pypi-{your-API-token}
+ 
+[pypi]
+  username = __token__
+  password = pypi-{your-API-token}
+```
+
+If this configuration file does not exist, you will be prompted to specify API token from keyboard every time you try to upload the archive.
+
+
+
+## Packages on PyPI and Test PyPI
+
+* https://pypi.org/project/lightspeed-stack/
+* https://test.pypi.org/project/lightspeed-stack/0.1.0/
+
+
+
 # Contributing
 
 * See [contributors](CONTRIBUTING.md) guide.
+
+
+
+# Testing
+
+* See [testing](docs/testing.md) guide.
+
+
 
 # License
 
@@ -247,3 +345,46 @@ This script re-generated OpenAPI schema for the Lightspeed Service REST API.
 make schema
 ```
 
+## Data Collector Service
+
+The data collector service is a standalone service that runs separately from the main web service. It is responsible for collecting and sending user data including feedback and transcripts to an ingress server for analysis and archival.
+
+### Features
+
+- **Periodic Collection**: Runs at configurable intervals
+- **Data Packaging**: Packages feedback and transcript files into compressed tar.gz archives
+- **Secure Transmission**: Sends data to a configured ingress server with optional authentication
+- **File Cleanup**: Optionally removes local files after successful transmission
+- **Error Handling**: Includes retry logic and comprehensive error handling
+
+### Configuration
+
+The data collector service is configured through the `user_data_collection.data_collector` section in your configuration file:
+
+```yaml
+user_data_collection:
+  feedback_disabled: false
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_disabled: false
+  transcripts_storage: "/tmp/data/transcripts"
+  data_collector:
+    enabled: true
+    ingress_server_url: "https://your-ingress-server.com"
+    ingress_server_auth_token: "your-auth-token"
+    ingress_content_service_name: "lightspeed-team"
+    collection_interval: 7200  # 2 hours in seconds
+    cleanup_after_send: true
+    connection_timeout: 30
+```
+
+### Running the Service
+
+To run the data collector service:
+
+```bash
+# Using Python directly
+uv run src/lightspeed_stack.py --data-collector
+
+# Using Make target
+make run-data-collector
+```

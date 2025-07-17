@@ -1,18 +1,28 @@
 """Unit tests for functions defined in src/models/config.py."""
 
 import json
-import pytest
-
 from pathlib import Path
 
-from constants import AUTH_MOD_NOOP, AUTH_MOD_K8S
+import pytest
+
+from pydantic import ValidationError
+
+from constants import (
+    AUTH_MOD_NOOP,
+    AUTH_MOD_K8S,
+    DATA_COLLECTOR_COLLECTION_INTERVAL,
+    DATA_COLLECTOR_CONNECTION_TIMEOUT,
+)
+
 from models.config import (
+    AuthenticationConfiguration,
     Configuration,
     LLamaStackConfiguration,
     ServiceConfiguration,
     UserDataCollection,
     TLSConfiguration,
     ModelContextProtocolServer,
+    DataCollectorConfiguration,
 )
 
 
@@ -86,10 +96,8 @@ def test_llama_stack_wrong_configuration_constructor_library_mode_off() -> None:
 
 def test_llama_stack_wrong_configuration_no_config_file() -> None:
     """Test the LLamaStackConfiguration constructor."""
-    with pytest.raises(
-        ValueError,
-        match="LLama stack library client mode is enabled but a configuration file path is not specified",
-    ):
+    m = "LLama stack library client mode is enabled but a configuration file path is not specified"
+    with pytest.raises(ValueError, match=m):
         LLamaStackConfiguration(use_as_library_client=True)
 
 
@@ -129,12 +137,59 @@ def test_user_data_collection_transcripts_disabled() -> None:
         UserDataCollection(transcripts_disabled=False, transcripts_storage=None)
 
 
+def test_user_data_collection_data_collector_enabled() -> None:
+    """Test the UserDataCollection constructor for data collector."""
+    # correct configuration
+    cfg = UserDataCollection(
+        data_collector=DataCollectorConfiguration(
+            enabled=True,
+            ingress_server_url="http://localhost:8080",
+            ingress_server_auth_token="xyzzy",
+            ingress_content_service_name="lightspeed-core",
+            collection_interval=60,
+        )
+    )
+    assert cfg is not None
+    assert cfg.data_collector.enabled is True
+
+
+def test_user_data_collection_data_collector_wrong_configuration() -> None:
+    """Test the UserDataCollection constructor for data collector."""
+    # incorrect configuration
+    with pytest.raises(
+        ValueError,
+        match="ingress_server_url is required when data collector is enabled",
+    ):
+        UserDataCollection(
+            data_collector=DataCollectorConfiguration(
+                enabled=True,
+                ingress_server_url=None,
+                ingress_server_auth_token="xyzzy",
+                ingress_content_service_name="lightspeed-core",
+                collection_interval=60,
+            )
+        )
+    with pytest.raises(
+        ValueError,
+        match="ingress_content_service_name is required when data collector is enabled",
+    ):
+        UserDataCollection(
+            data_collector=DataCollectorConfiguration(
+                enabled=True,
+                ingress_server_url="http://localhost:8080",
+                ingress_server_auth_token="xyzzy",
+                ingress_content_service_name=None,
+                collection_interval=60,
+            )
+        )
+
+
 def test_tls_configuration() -> None:
     """Test the TLS configuration."""
     cfg = TLSConfiguration(
-        tls_certificate_path="tests/configuration/server.crt",
-        tls_key_path="tests/configuration/server.key",
-        tls_key_password="tests/configuration/password",
+        tls_certificate_path=Path("tests/configuration/server.crt"),
+        tls_key_path=Path("tests/configuration/server.key"),
+        tls_key_password=Path("tests/configuration/password"),
     )
     assert cfg is not None
     assert cfg.tls_certificate_path == Path("tests/configuration/server.crt")
@@ -146,9 +201,9 @@ def test_tls_configuration_wrong_certificate_path() -> None:
     """Test the TLS configuration loading when some path is broken."""
     with pytest.raises(ValueError, match="Path does not point to a file"):
         TLSConfiguration(
-            tls_certificate_path="this-is-wrong",
-            tls_key_path="tests/configuration/server.key",
-            tls_key_password="tests/configuration/password",
+            tls_certificate_path=Path("this-is-wrong"),
+            tls_key_path=Path("tests/configuration/server.key"),
+            tls_key_password=Path("tests/configuration/password"),
         )
 
 
@@ -156,9 +211,9 @@ def test_tls_configuration_wrong_key_path() -> None:
     """Test the TLS configuration loading when some path is broken."""
     with pytest.raises(ValueError, match="Path does not point to a file"):
         TLSConfiguration(
-            tls_certificate_path="tests/configurationserver.crt",
-            tls_key_path="this-is-wrong",
-            tls_key_password="tests/configuration/password",
+            tls_certificate_path=Path("tests/configurationserver.crt"),
+            tls_key_path=Path("this-is-wrong"),
+            tls_key_password=Path("tests/configuration/password"),
         )
 
 
@@ -166,9 +221,9 @@ def test_tls_configuration_wrong_password_path() -> None:
     """Test the TLS configuration loading when some path is broken."""
     with pytest.raises(ValueError, match="Path does not point to a file"):
         TLSConfiguration(
-            tls_certificate_path="tests/configurationserver.crt",
-            tls_key_path="tests/configuration/server.key",
-            tls_key_password="this-is-wrong",
+            tls_certificate_path=Path("tests/configurationserver.crt"),
+            tls_key_path=Path("tests/configuration/server.key"),
+            tls_key_password=Path("this-is-wrong"),
         )
 
 
@@ -176,9 +231,9 @@ def test_tls_configuration_certificate_path_to_directory() -> None:
     """Test the TLS configuration loading when some path points to a directory."""
     with pytest.raises(ValueError, match="Path does not point to a file"):
         TLSConfiguration(
-            tls_certificate_path="tests/",
-            tls_key_path="tests/configuration/server.key",
-            tls_key_password="tests/configuration/password",
+            tls_certificate_path=Path("tests/"),
+            tls_key_path=Path("tests/configuration/server.key"),
+            tls_key_password=Path("tests/configuration/password"),
         )
 
 
@@ -186,9 +241,9 @@ def test_tls_configuration_key_path_to_directory() -> None:
     """Test the TLS configuration loading when some path points to a directory."""
     with pytest.raises(ValueError, match="Path does not point to a file"):
         TLSConfiguration(
-            tls_certificate_path="tests/configurationserver.crt",
-            tls_key_path="tests/",
-            tls_key_password="tests/configuration/password",
+            tls_certificate_path=Path("tests/configurationserver.crt"),
+            tls_key_path=Path("tests/"),
+            tls_key_password=Path("tests/configuration/password"),
         )
 
 
@@ -196,9 +251,9 @@ def test_tls_configuration_password_path_to_directory() -> None:
     """Test the TLS configuration loading when some path points to a directory."""
     with pytest.raises(ValueError, match="Path does not point to a file"):
         TLSConfiguration(
-            tls_certificate_path="tests/configurationserver.crt",
-            tls_key_path="tests/configuration/server.key",
-            tls_key_password="tests/",
+            tls_certificate_path=Path("tests/configurationserver.crt"),
+            tls_key_path=Path("tests/configuration/server.key"),
+            tls_key_password=Path("tests/"),
         )
 
 
@@ -226,16 +281,15 @@ def test_model_context_protocol_server_custom_provider() -> None:
 
 def test_model_context_protocol_server_required_fields() -> None:
     """Test that ModelContextProtocolServer requires name and url."""
-    from pydantic import ValidationError
 
     with pytest.raises(ValidationError):
-        ModelContextProtocolServer()
+        ModelContextProtocolServer()  # pyright: ignore
 
     with pytest.raises(ValidationError):
-        ModelContextProtocolServer(name="test-server")
+        ModelContextProtocolServer(name="test-server")  # pyright: ignore
 
     with pytest.raises(ValidationError):
-        ModelContextProtocolServer(url="http://localhost:8080")
+        ModelContextProtocolServer(url="http://localhost:8080")  # pyright: ignore
 
 
 def test_configuration_empty_mcp_servers() -> None:
@@ -253,7 +307,7 @@ def test_configuration_empty_mcp_servers() -> None:
         customization=None,
     )
     assert cfg is not None
-    assert cfg.mcp_servers == []
+    assert not cfg.mcp_servers
 
 
 def test_configuration_single_mcp_server() -> None:
@@ -366,6 +420,15 @@ def test_dump_configuration(tmp_path) -> None:
                 "feedback_storage": None,
                 "transcripts_disabled": True,
                 "transcripts_storage": None,
+                "data_collector": {
+                    "enabled": False,
+                    "ingress_server_url": None,
+                    "ingress_server_auth_token": None,
+                    "ingress_content_service_name": None,
+                    "collection_interval": DATA_COLLECTOR_COLLECTION_INTERVAL,
+                    "cleanup_after_send": True,
+                    "connection_timeout": DATA_COLLECTOR_CONNECTION_TIMEOUT,
+                },
             },
             "mcp_servers": [],
             "authentication": {
@@ -434,6 +497,15 @@ def test_dump_configuration_with_one_mcp_server(tmp_path) -> None:
                 "feedback_storage": None,
                 "transcripts_disabled": True,
                 "transcripts_storage": None,
+                "data_collector": {
+                    "enabled": False,
+                    "ingress_server_url": None,
+                    "ingress_server_auth_token": None,
+                    "ingress_content_service_name": None,
+                    "collection_interval": DATA_COLLECTOR_COLLECTION_INTERVAL,
+                    "cleanup_after_send": True,
+                    "connection_timeout": DATA_COLLECTOR_CONNECTION_TIMEOUT,
+                },
             },
             "mcp_servers": [
                 {
@@ -516,6 +588,15 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path) -> None:
                 "feedback_storage": None,
                 "transcripts_disabled": True,
                 "transcripts_storage": None,
+                "data_collector": {
+                    "enabled": False,
+                    "ingress_server_url": None,
+                    "ingress_server_auth_token": None,
+                    "ingress_content_service_name": None,
+                    "collection_interval": DATA_COLLECTOR_COLLECTION_INTERVAL,
+                    "cleanup_after_send": True,
+                    "connection_timeout": DATA_COLLECTOR_CONNECTION_TIMEOUT,
+                },
             },
             "mcp_servers": [
                 {
@@ -546,7 +627,6 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path) -> None:
 
 def test_authentication_configuration() -> None:
     """Test the AuthenticationConfiguration constructor."""
-    from models.config import AuthenticationConfiguration
 
     auth_config = AuthenticationConfiguration(
         module=AUTH_MOD_NOOP,
@@ -563,8 +643,6 @@ def test_authentication_configuration() -> None:
 
 def test_authentication_configuration_supported() -> None:
     """Test the AuthenticationConfiguration constructor."""
-    from models.config import AuthenticationConfiguration
-
     auth_config = AuthenticationConfiguration(
         module=AUTH_MOD_K8S,
         skip_tls_verification=False,
@@ -580,9 +658,6 @@ def test_authentication_configuration_supported() -> None:
 
 def test_authentication_configuration_module_unsupported() -> None:
     """Test the AuthenticationConfiguration constructor with module as None."""
-    from models.config import AuthenticationConfiguration
-    from pydantic import ValidationError
-
     with pytest.raises(ValidationError, match="Unsupported authentication module"):
         AuthenticationConfiguration(
             module="non-existing-module",

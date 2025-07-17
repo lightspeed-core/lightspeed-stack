@@ -6,30 +6,49 @@ from models.config import ModelContextProtocolServer
 
 
 def test_default_configuration() -> None:
+    """Test that configuration attributes are not accessible for uninitialized app."""
     cfg = AppConfig()
     assert cfg is not None
 
     # configuration is not loaded
     with pytest.raises(Exception, match="logic error: configuration is not loaded"):
         # try to read property
-        cfg.configuration
+        cfg.configuration  # pylint: disable=pointless-statement
 
     with pytest.raises(Exception, match="logic error: configuration is not loaded"):
         # try to read property
-        cfg.llama_stack_configuration
+        cfg.service_configuration  # pylint: disable=pointless-statement
 
     with pytest.raises(Exception, match="logic error: configuration is not loaded"):
         # try to read property
-        cfg.user_data_collection_configuration
+        cfg.llama_stack_configuration  # pylint: disable=pointless-statement
+
+    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+        # try to read property
+        cfg.user_data_collection_configuration  # pylint: disable=pointless-statement
+
+    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+        # try to read property
+        cfg.mcp_servers  # pylint: disable=pointless-statement
+
+    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+        # try to read property
+        cfg.authentication_configuration  # pylint: disable=pointless-statement
+
+    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+        # try to read property
+        cfg.customization  # pylint: disable=pointless-statement
 
 
 def test_configuration_is_singleton() -> None:
+    """Test that configuration is singleton."""
     cfg1 = AppConfig()
     cfg2 = AppConfig()
     assert cfg1 == cfg2
 
 
 def test_init_from_dict() -> None:
+    """Test the configuration initialization from dictionary with config values."""
     config_dict = {
         "name": "foo",
         "service": {
@@ -126,8 +145,9 @@ def test_init_from_dict_with_mcp_servers() -> None:
 
 
 def test_load_proper_configuration(tmpdir) -> None:
+    """Test loading proper configuration from YAML file."""
     cfg_filename = tmpdir / "config.yaml"
-    with open(cfg_filename, "w") as fout:
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
         fout.write(
             """
 name: foo bar baz
@@ -159,7 +179,7 @@ mcp_servers: []
 def test_load_configuration_with_mcp_servers(tmpdir) -> None:
     """Test loading configuration from YAML file with MCP servers."""
     cfg_filename = tmpdir / "config.yaml"
-    with open(cfg_filename, "w") as fout:
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
         fout.write(
             """
 name: test service
@@ -273,7 +293,7 @@ def test_configuration_not_loaded():
     with pytest.raises(
         AssertionError, match="logic error: configuration is not loaded"
     ):
-        cfg.configuration
+        cfg.configuration  # pylint: disable=pointless-statement
 
 
 def test_service_configuration_not_loaded():
@@ -282,7 +302,7 @@ def test_service_configuration_not_loaded():
     with pytest.raises(
         AssertionError, match="logic error: configuration is not loaded"
     ):
-        cfg.service_configuration
+        cfg.service_configuration  # pylint: disable=pointless-statement
 
 
 def test_llama_stack_configuration_not_loaded():
@@ -291,7 +311,7 @@ def test_llama_stack_configuration_not_loaded():
     with pytest.raises(
         AssertionError, match="logic error: configuration is not loaded"
     ):
-        cfg.llama_stack_configuration
+        cfg.llama_stack_configuration  # pylint: disable=pointless-statement
 
 
 def test_user_data_collection_configuration_not_loaded():
@@ -300,7 +320,7 @@ def test_user_data_collection_configuration_not_loaded():
     with pytest.raises(
         AssertionError, match="logic error: configuration is not loaded"
     ):
-        cfg.user_data_collection_configuration
+        cfg.user_data_collection_configuration  # pylint: disable=pointless-statement
 
 
 def test_mcp_servers_not_loaded():
@@ -309,17 +329,35 @@ def test_mcp_servers_not_loaded():
     with pytest.raises(
         AssertionError, match="logic error: configuration is not loaded"
     ):
-        cfg.mcp_servers
+        cfg.mcp_servers  # pylint: disable=pointless-statement
+
+
+def test_authentication_configuration_not_loaded():
+    """Test that accessing authentication_configuration before loading raises an error."""
+    cfg = AppConfig()
+    with pytest.raises(
+        AssertionError, match="logic error: configuration is not loaded"
+    ):
+        cfg.authentication_configuration  # pylint: disable=pointless-statement
+
+
+def test_customization_not_loaded():
+    """Test that accessing customization before loading raises an error."""
+    cfg = AppConfig()
+    with pytest.raises(
+        AssertionError, match="logic error: configuration is not loaded"
+    ):
+        cfg.customization  # pylint: disable=pointless-statement
 
 
 def test_load_configuration_with_customization_system_prompt_path(tmpdir) -> None:
     """Test loading configuration from YAML file with customization."""
     system_prompt_filename = tmpdir / "system_prompt.txt"
-    with open(system_prompt_filename, "w") as fout:
+    with open(system_prompt_filename, "w", encoding="utf-8") as fout:
         fout.write("this is system prompt")
 
     cfg_filename = tmpdir / "config.yaml"
-    with open(cfg_filename, "w") as fout:
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
         fout.write(
             f"""
 name: test service
@@ -343,6 +381,7 @@ mcp_servers:
     provider_id: custom-git-provider
     url: https://git.example.com/mcp
 customization:
+  disable_query_system_prompt: true
   system_prompt_path: {system_prompt_filename}
             """
         )
@@ -358,7 +397,7 @@ customization:
 def test_load_configuration_with_customization_system_prompt(tmpdir) -> None:
     """Test loading configuration from YAML file with system_prompt in the customization."""
     cfg_filename = tmpdir / "config.yaml"
-    with open(cfg_filename, "w") as fout:
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
         fout.write(
             """
 name: test service

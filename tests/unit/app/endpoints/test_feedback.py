@@ -1,3 +1,5 @@
+"""Unit tests for the /feedback REST API endpoint."""
+
 from fastapi import HTTPException, status
 import pytest
 
@@ -123,7 +125,7 @@ def test_store_feedback(mocker):
     )
 
 
-def test_feedback_status(mocker):
+def test_feedback_status():
     """Test that feedback_status returns the correct status response."""
     configuration.user_data_collection_configuration.feedback_disabled = False
 

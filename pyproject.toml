@@ -23,6 +23,7 @@ exclude = [
   # might need to be rewritten down the line.
   "src/auth/k8s.py",
 ]
+extraPaths = ["./src"]
 
 [tool.pdm]
 distribution = true
@@ -47,9 +48,14 @@ dev = [
     "pydocstyle>=6.3.0",
     "mypy>=1.16.0",
     "types-PyYAML>=6.0.2",
+    "types-requests>=2.28.0",
     "ruff>=0.11.13",
     "aiosqlite",
     "behave>=1.2.6",
+]
+build = [
+    "build>=1.2.2.post1",
+    "twine>=5.1.1",
 ]
 
 [tool.pytest.ini_options]

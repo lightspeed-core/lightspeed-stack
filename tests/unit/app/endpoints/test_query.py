@@ -1,6 +1,13 @@
+"""Unit tests for the /query REST API endpoint."""
+
+# pylint: disable=too-many-lines
+
 import json
 from fastapi import HTTPException, status
 import pytest
+
+from llama_stack_client import APIConnectionError
+from llama_stack_client.types import UserMessage  # type: ignore
 
 from configuration import AppConfig
 from app.endpoints.query import (
@@ -15,14 +22,15 @@ from app.endpoints.query import (
     get_agent,
     _agent_cache,
 )
-from llama_stack_client import APIConnectionError
+
 from models.requests import QueryRequest, Attachment
 from models.config import ModelContextProtocolServer
-from llama_stack_client.types import UserMessage  # type: ignore
+
+MOCK_AUTH = ("mock_user_id", "mock_username", "mock_token")
 
 
-@pytest.fixture(autouse=True)
-def setup_configuration():
+@pytest.fixture(name="setup_configuration")
+def setup_configuration_fixture():
     """Set up configuration for tests."""
     config_dict = {
         "name": "test",
@@ -50,12 +58,13 @@ def setup_configuration():
     return cfg
 
 
-@pytest.fixture(autouse=True)
-def prepare_agent_mocks(mocker):
+@pytest.fixture(autouse=True, name="prepare_agent_mocks")
+def prepare_agent_mocks_fixture(mocker):
+    """Fixture that yields mock agent when called."""
     mock_client = mocker.Mock()
     mock_agent = mocker.Mock()
-    """Cleanup agent cache after tests."""
     yield mock_client, mock_agent
+    # cleanup agent cache after tests
     _agent_cache.clear()
 
 
@@ -96,7 +105,7 @@ def test_is_transcripts_disabled(setup_configuration, mocker):
     assert is_transcripts_enabled() is False, "Transcripts should be disabled"
 
 
-def _test_query_endpoint_handler(mocker, store_transcript=False):
+def _test_query_endpoint_handler(mocker, store_transcript_to_file=False):
     """Test the query endpoint handler."""
     mock_client = mocker.Mock()
     mock_lsc = mocker.patch("client.LlamaStackClientHolder.get_client")
@@ -108,7 +117,7 @@ def _test_query_endpoint_handler(mocker, store_transcript=False):
 
     mock_config = mocker.Mock()
     mock_config.user_data_collection_configuration.transcripts_disabled = (
-        not store_transcript
+        not store_transcript_to_file
     )
     mocker.patch("app.endpoints.query.configuration", mock_config)
 
@@ -126,20 +135,21 @@ def _test_query_endpoint_handler(mocker, store_transcript=False):
     )
     mocker.patch("app.endpoints.query.select_model_id", return_value="fake_model_id")
     mocker.patch(
-        "app.endpoints.query.is_transcripts_enabled", return_value=store_transcript
+        "app.endpoints.query.is_transcripts_enabled",
+        return_value=store_transcript_to_file,
     )
     mock_transcript = mocker.patch("app.endpoints.query.store_transcript")
 
     query_request = QueryRequest(query=query)
 
-    response = query_endpoint_handler(query_request)
+    response = query_endpoint_handler(query_request, auth=MOCK_AUTH)
 
     # Assert the response is as expected
     assert response.response == llm_response
     assert response.conversation_id == conversation_id
 
     # Assert the store_transcript function is called if transcripts are enabled
-    if store_transcript:
+    if store_transcript_to_file:
         mock_transcript.assert_called_once_with(
             user_id="user_id_placeholder",
             conversation_id=conversation_id,
@@ -157,12 +167,12 @@ def _test_query_endpoint_handler(mocker, store_transcript=False):
 
 def test_query_endpoint_handler_transcript_storage_disabled(mocker):
     """Test the query endpoint handler with transcript storage disabled."""
-    _test_query_endpoint_handler(mocker, store_transcript=False)
+    _test_query_endpoint_handler(mocker, store_transcript_to_file=False)
 
 
 def test_query_endpoint_handler_store_transcript(mocker):
     """Test the query endpoint handler with transcript storage enabled."""
-    _test_query_endpoint_handler(mocker, store_transcript=True)
+    _test_query_endpoint_handler(mocker, store_transcript_to_file=True)
 
 
 def test_select_model_id(mocker):
@@ -377,8 +387,16 @@ def test_retrieve_response_one_available_shield(prepare_agent_mocks, mocker):
     """Test the retrieve_response function."""
 
     class MockShield:
+        """Mock for Llama Stack shield to be used."""
+
         def __init__(self, identifier):
             self.identifier = identifier
+
+        def __str__(self):
+            return "MockShield"
+
+        def __repr__(self):
+            return "MockShield"
 
     mock_client, mock_agent = prepare_agent_mocks
 
@@ -420,8 +438,16 @@ def test_retrieve_response_two_available_shields(prepare_agent_mocks, mocker):
     """Test the retrieve_response function."""
 
     class MockShield:
+        """Mock for Llama Stack shield to be used."""
+
         def __init__(self, identifier):
             self.identifier = identifier
+
+        def __str__(self):
+            return "MockShield"
+
+        def __repr__(self):
+            return "MockShield"
 
     mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value = mocker.Mock(spec=["output_message"])
@@ -724,8 +750,14 @@ def test_retrieve_response_with_mcp_servers_and_mcp_headers(mocker):
     model_id = "fake_model_id"
     access_token = ""
     mcp_headers = {
-        "http://localhost:3000": {"Authorization": "Bearer test_token_123"},
-        "https://git.example.com/mcp": {"Authorization": "Bearer test_token_123"},
+        "filesystem-server": {"Authorization": "Bearer test_token_123"},
+        "git-server": {"Authorization": "Bearer test_token_456"},
+        "http://another-server-mcp-server:3000": {
+            "Authorization": "Bearer test_token_789"
+        },
+        "unknown-mcp-server": {
+            "Authorization": "Bearer test_token_for_unknown-mcp-server"
+        },
     }
 
     response, conversation_id, token_usage = retrieve_response(
@@ -748,11 +780,20 @@ def test_retrieve_response_with_mcp_servers_and_mcp_headers(mocker):
         None,  # conversation_id
     )
 
+    expected_mcp_headers = {
+        "http://localhost:3000": {"Authorization": "Bearer test_token_123"},
+        "https://git.example.com/mcp": {"Authorization": "Bearer test_token_456"},
+        "http://another-server-mcp-server:3000": {
+            "Authorization": "Bearer test_token_789"
+        },
+        # we do not put "unknown-mcp-server" url as it's unknown to lightspeed-stack
+    }
+
     # Check that the agent's extra_headers property was set correctly
     expected_extra_headers = {
         "X-LlamaStack-Provider-Data": json.dumps(
             {
-                "mcp_headers": mcp_headers,
+                "mcp_headers": expected_mcp_headers,
             }
         )
     }
@@ -845,7 +886,7 @@ def test_store_transcript(mocker):
     )
 
 
-def test_get_rag_toolgroups(mocker):
+def test_get_rag_toolgroups():
     """Test get_rag_toolgroups function."""
     vector_db_ids = []
     result = get_rag_toolgroups(vector_db_ids)
@@ -877,7 +918,7 @@ def test_query_endpoint_handler_on_connection_error(mocker):
         query_endpoint_handler(query_request)
 
 
-def test_get_agent_cache_hit(prepare_agent_mocks, mocker):
+def test_get_agent_cache_hit(prepare_agent_mocks):
     """Test get_agent function when agent exists in cache."""
     mock_client, mock_agent = prepare_agent_mocks
 
@@ -943,6 +984,7 @@ def test_get_agent_cache_miss_with_conversation_id(
         model="test_model",
         instructions="test_prompt",
         input_shields=["shield1"],
+        tool_parser=None,
         enable_session_persistence=True,
     )
 
@@ -993,6 +1035,7 @@ def test_get_agent_no_conversation_id(setup_configuration, prepare_agent_mocks, 
         model="test_model",
         instructions="test_prompt",
         input_shields=["shield1"],
+        tool_parser=None,
         enable_session_persistence=True,
     )
 
@@ -1043,6 +1086,7 @@ def test_get_agent_empty_shields(setup_configuration, prepare_agent_mocks, mocke
         model="test_model",
         instructions="test_prompt",
         input_shields=[],
+        tool_parser=None,
         enable_session_persistence=True,
     )
 
@@ -1094,6 +1138,7 @@ def test_get_agent_multiple_mcp_servers(
         model="test_model",
         instructions="test_prompt",
         input_shields=["shield1", "shield2"],
+        tool_parser=None,
         enable_session_persistence=True,
     )
 
@@ -1139,5 +1184,36 @@ def test_get_agent_session_persistence_enabled(
         model="test_model",
         instructions="test_prompt",
         input_shields=["shield1"],
+        tool_parser=None,
         enable_session_persistence=True,
     )
+
+
+def test_auth_tuple_unpacking_in_query_endpoint_handler(mocker):
+    """Test that auth tuple is correctly unpacked in query endpoint handler."""
+    # Mock dependencies
+    mock_config = mocker.Mock()
+    mock_config.llama_stack_configuration = mocker.Mock()
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+
+    mock_client = mocker.Mock()
+    mock_client.models.list.return_value = [
+        mocker.Mock(identifier="model1", model_type="llm", provider_id="provider1")
+    ]
+    mocker.patch("client.LlamaStackClientHolder.get_client", return_value=mock_client)
+
+    mock_retrieve_response = mocker.patch(
+        "app.endpoints.query.retrieve_response",
+        return_value=("test response", "test_conversation_id"),
+    )
+
+    mocker.patch("app.endpoints.query.select_model_id", return_value="test_model")
+    mocker.patch("app.endpoints.query.is_transcripts_enabled", return_value=False)
+
+    _ = query_endpoint_handler(
+        QueryRequest(query="test query"),
+        auth=("user123", "username", "auth_token_123"),
+        mcp_headers=None,
+    )
+
+    assert mock_retrieve_response.call_args[0][3] == "auth_token_123"

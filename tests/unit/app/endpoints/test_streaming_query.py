@@ -1,7 +1,16 @@
-import pytest
+"""Unit tests for the /streaming-query REST API endpoint."""
+
+# pylint: disable=too-many-lines
+
 import json
 
+import pytest
+
 from fastapi import HTTPException, status
+from fastapi.responses import StreamingResponse
+
+from llama_stack_client import APIConnectionError
+from llama_stack_client.types import UserMessage  # type: ignore
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 
 from configuration import AppConfig
@@ -13,10 +22,10 @@ from app.endpoints.streaming_query import (
     get_agent,
     _agent_cache,
 )
-from llama_stack_client import APIConnectionError
 from models.requests import QueryRequest, Attachment
 from models.config import ModelContextProtocolServer
-from llama_stack_client.types import UserMessage  # type: ignore
+
+MOCK_AUTH = ("mock_user_id", "mock_username", "mock_token")
 
 
 SAMPLE_KNOWLEDGE_SEARCH_RESULTS = [
@@ -45,8 +54,8 @@ Use them as supporting information only in answering this query.
 ]
 
 
-@pytest.fixture(autouse=True)
-def setup_configuration():
+@pytest.fixture(autouse=True, name="setup_configuration")
+def setup_configuration_fixture():
     """Set up configuration for tests."""
     config_dict = {
         "name": "test",
@@ -73,12 +82,13 @@ def setup_configuration():
     return cfg
 
 
-@pytest.fixture(autouse=True)
-def prepare_agent_mocks(mocker):
+@pytest.fixture(autouse=True, name="prepare_agent_mocks")
+def prepare_agent_mocks_fixture(mocker):
+    """Preparation for mock for the LLM agent."""
     mock_client = mocker.AsyncMock()
     mock_agent = mocker.AsyncMock()
-    """Cleanup agent cache after tests."""
     yield mock_client, mock_agent
+    # cleanup agent cache after tests
     _agent_cache.clear()
 
 
@@ -97,7 +107,7 @@ async def test_streaming_query_endpoint_handler_configuration_not_loaded(mocker)
 
     # await the async function
     with pytest.raises(HTTPException) as e:
-        await streaming_query_endpoint_handler(None, query_request, auth="mock_auth")
+        await streaming_query_endpoint_handler(None, query_request, auth=MOCK_AUTH)
         assert e.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert e.detail["response"] == "Configuration is not loaded"
 
@@ -124,7 +134,7 @@ async def test_streaming_query_endpoint_on_connection_error(mocker):
 
     # await the async function
     with pytest.raises(HTTPException) as e:
-        await streaming_query_endpoint_handler(None, query_request, auth="mock_auth")
+        await streaming_query_endpoint_handler(None, query_request, auth=MOCK_AUTH)
         assert e.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert e.detail["response"] == "Configuration is not loaded"
 
@@ -206,12 +216,10 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
 
     # Await the async function
     response = await streaming_query_endpoint_handler(
-        None, query_request, auth="mock_auth"
+        None, query_request, auth=MOCK_AUTH
     )
 
-    # Assert the response is a StreamingResponse
-    from fastapi.responses import StreamingResponse
-
+    # assert the response is a StreamingResponse
     assert isinstance(response, StreamingResponse)
 
     # Collect the streaming response content
@@ -299,7 +307,8 @@ async def test_retrieve_response_vector_db_available(prepare_agent_mocks, mocker
         mock_client, model_id, query_request, token
     )
 
-    # For streaming, the response should be the streaming object and conversation_id should be returned
+    # For streaming, the response should be the streaming object and
+    # conversation_id should be returned
     assert response is not None
     assert conversation_id == "test_conversation_id"
     assert token_usage["input_tokens"] > 0
@@ -343,7 +352,8 @@ async def test_retrieve_response_no_available_shields(prepare_agent_mocks, mocke
         mock_client, model_id, query_request, token
     )
 
-    # For streaming, the response should be the streaming object and conversation_id should be returned
+    # For streaming, the response should be the streaming object and
+    # conversation_id should be returned
     assert response is not None
     assert conversation_id == "test_conversation_id"
     assert token_usage["input_tokens"] > 0
@@ -360,11 +370,16 @@ async def test_retrieve_response_one_available_shield(prepare_agent_mocks, mocke
     """Test the retrieve_response function."""
 
     class MockShield:
+        """Mock for Llama Stack shield to be used."""
+
         def __init__(self, identifier):
             self.identifier = identifier
 
-        def identifier(self):
-            return self.identifier
+        def __str__(self):
+            return "MockShield"
+
+        def __repr__(self):
+            return "MockShield"
 
     mock_client, mock_agent = prepare_agent_mocks
 
@@ -411,11 +426,16 @@ async def test_retrieve_response_two_available_shields(prepare_agent_mocks, mock
     """Test the retrieve_response function."""
 
     class MockShield:
+        """Mock for Llama Stack shield to be used."""
+
         def __init__(self, identifier):
             self.identifier = identifier
 
-        def identifier(self):
-            return self.identifier
+        def __str__(self):
+            return "MockShield"
+
+        def __repr__(self):
+            return "MockShield"
 
     mock_client, mock_agent = prepare_agent_mocks
 
@@ -832,8 +852,14 @@ async def test_retrieve_response_with_mcp_servers_and_mcp_headers(mocker):
     model_id = "fake_model_id"
     access_token = ""
     mcp_headers = {
-        "http://localhost:3000": {"Authorization": "Bearer test_token_123"},
-        "https://git.example.com/mcp": {"Authorization": "Bearer test_token_456"},
+        "filesystem-server": {"Authorization": "Bearer test_token_123"},
+        "git-server": {"Authorization": "Bearer test_token_456"},
+        "http://another-server-mcp-server:3000": {
+            "Authorization": "Bearer test_token_789"
+        },
+        "unknown-mcp-server": {
+            "Authorization": "Bearer test_token_for_unknown-mcp-server"
+        },
     }
 
     response, conversation_id, token_usage = await retrieve_response(
@@ -856,9 +882,17 @@ async def test_retrieve_response_with_mcp_servers_and_mcp_headers(mocker):
         None,  # conversation_id
     )
 
+    expected_mcp_headers = {
+        "http://localhost:3000": {"Authorization": "Bearer test_token_123"},
+        "https://git.example.com/mcp": {"Authorization": "Bearer test_token_456"},
+        "http://another-server-mcp-server:3000": {
+            "Authorization": "Bearer test_token_789"
+        },
+        # we do not put "unknown-mcp-server" url as it's unknown to lightspeed-stack
+    }
     # Check that the agent's extra_headers property was set correctly
     expected_extra_headers = {
-        "X-LlamaStack-Provider-Data": json.dumps({"mcp_headers": mcp_headers})
+        "X-LlamaStack-Provider-Data": json.dumps({"mcp_headers": expected_mcp_headers})
     }
     assert mock_agent.extra_headers == expected_extra_headers
 
@@ -1167,3 +1201,47 @@ async def test_get_agent_session_persistence_enabled(
         tool_parser=None,
         enable_session_persistence=True,
     )
+
+
+@pytest.mark.asyncio
+async def test_auth_tuple_unpacking_in_streaming_query_endpoint_handler(mocker):
+    """Test that auth tuple is correctly unpacked in streaming query endpoint handler."""
+    # Mock dependencies
+    mock_config = mocker.Mock()
+    mock_config.llama_stack_configuration = mocker.Mock()
+    mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
+
+    mock_client = mocker.AsyncMock()
+    mock_client.models.list.return_value = [
+        mocker.Mock(identifier="model1", model_type="llm", provider_id="provider1")
+    ]
+    mocker.patch(
+        "client.AsyncLlamaStackClientHolder.get_client", return_value=mock_client
+    )
+
+    # Mock retrieve_response to verify token is passed correctly
+    mock_streaming_response = mocker.AsyncMock()
+    mock_streaming_response.__aiter__.return_value = iter([])
+    mock_retrieve_response = mocker.patch(
+        "app.endpoints.streaming_query.retrieve_response",
+        return_value=(mock_streaming_response, "test_conversation_id"),
+    )
+
+    mocker.patch(
+        "app.endpoints.streaming_query.select_model_id", return_value="test_model"
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query.is_transcripts_enabled", return_value=False
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query.retrieve_user_id", return_value="user123"
+    )
+
+    _ = await streaming_query_endpoint_handler(
+        None,
+        QueryRequest(query="test query"),
+        auth=("user123", "username", "auth_token_123"),
+        mcp_headers=None,
+    )
+
+    assert mock_retrieve_response.call_args[0][3] == "auth_token_123"

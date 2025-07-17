@@ -23,15 +23,17 @@ from fastapi import APIRouter, HTTPException, status, Depends
 
 from client import LlamaStackClientHolder
 from configuration import configuration
-from models.responses import QueryResponse
+from app.endpoints.conversations import conversation_id_to_agent_id
+from models.responses import QueryResponse, UnauthorizedResponse, ForbiddenResponse
 from models.requests import QueryRequest, Attachment
 import constants
 from auth import get_auth_dependency
 from utils.common import retrieve_user_id
 from utils.endpoints import check_configuration_loaded, get_system_prompt
-from utils.mcp_headers import mcp_headers_dependency
+from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
 from utils.suid import get_suid
 from utils.token_counter import get_token_counter
+from utils.types import GraniteToolParser
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
@@ -44,6 +46,14 @@ query_response: dict[int | str, dict[str, Any]] = {
     200: {
         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
         "response": "LLM ansert",
+    },
+    400: {
+        "description": "Missing or invalid credentials provided by client",
+        "model": UnauthorizedResponse,
+    },
+    403: {
+        "description": "User is not authorized",
+        "model": ForbiddenResponse,
     },
     503: {
         "detail": {
@@ -84,10 +94,13 @@ def get_agent(
         model=model_id,
         instructions=system_prompt,
         input_shields=available_shields if available_shields else [],
+        tool_parser=GraniteToolParser.get_parser(model_id),
         enable_session_persistence=True,
     )
     conversation_id = agent.create_session(get_suid())
     _agent_cache[conversation_id] = agent
+    conversation_id_to_agent_id[conversation_id] = agent.agent_id
+
     return agent, conversation_id
 
 
@@ -103,6 +116,8 @@ def query_endpoint_handler(
     llama_stack_config = configuration.llama_stack_configuration
     logger.info("LLama stack config: %s", llama_stack_config)
 
+    _user_id, _user_name, token = auth
+
     try:
         # try to get Llama Stack client
         client = LlamaStackClientHolder().get_client()
@@ -111,7 +126,7 @@ def query_endpoint_handler(
             client,
             model_id,
             query_request,
-            auth,
+            token,
             mcp_headers=mcp_headers,
         )
 
@@ -235,6 +250,7 @@ def retrieve_response(
     # preserve compatibility when mcp_headers is not provided
     if mcp_headers is None:
         mcp_headers = {}
+    mcp_headers = handle_mcp_headers_with_toolgroups(mcp_headers, configuration)
     if not mcp_headers and token:
         for mcp_server in configuration.mcp_servers:
             mcp_headers[mcp_server.url] = {

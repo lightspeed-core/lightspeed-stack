@@ -69,7 +69,7 @@ async def test_noop_with_token_auth_dependency_no_token():
 
     # Assert that an HTTPException is raised when no Authorization header is found
     with pytest.raises(HTTPException) as exc_info:
-        user_id, username, user_token = await dependency(request)
+        await dependency(request)
 
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "No Authorization header found"
@@ -90,7 +90,7 @@ async def test_noop_with_token_auth_dependency_no_bearer():
 
     # Assert that an HTTPException is raised when no Authorization header is found
     with pytest.raises(HTTPException) as exc_info:
-        user_id, username, user_token = await dependency(request)
+        await dependency(request)
 
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "No token found in Authorization header"

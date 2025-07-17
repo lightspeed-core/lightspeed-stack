@@ -2,7 +2,12 @@
 
 import json
 import logging
+from urllib.parse import urlparse
+
 from fastapi import Request
+
+from configuration import AppConfig
+
 
 logger = logging.getLogger("app.endpoints.dependencies")
 
@@ -46,3 +51,40 @@ def extract_mcp_headers(request: Request) -> dict[str, dict[str, str]]:
             )
             mcp_headers = {}
     return mcp_headers
+
+
+def handle_mcp_headers_with_toolgroups(
+    mcp_headers: dict[str, dict[str, str]], config: AppConfig
+) -> dict[str, dict[str, str]]:
+    """Process MCP headers by converting toolgroup names to URLs.
+
+    This function takes MCP headers where keys can be either valid URLs or
+    toolgroup names. For valid URLs (HTTP/HTTPS), it keeps them as-is. For
+    toolgroup names, it looks up the corresponding MCP server URL in the
+    configuration and replaces the key with the URL. Unknown toolgroup names
+    are filtered out.
+
+    Args:
+        mcp_headers: Dictionary with keys as URLs or toolgroup names
+        config: Application configuration containing MCP server definitions
+
+    Returns:
+        Dictionary with URLs as keys and their corresponding headers as values
+    """
+    converted_mcp_headers = {}
+
+    for key, item in mcp_headers.items():
+        key_url_parsed = urlparse(key)
+        if key_url_parsed.scheme in ("http", "https") and key_url_parsed.netloc:
+            # a valid url is supplied, deliver it as is
+            converted_mcp_headers[key] = item
+        else:
+            # assume the key is a toolgroup name
+            # look for toolgroups name in mcp_servers configuration
+            # if the mcp server is not found, the mcp header gets ignored
+            for mcp_server in config.mcp_servers:
+                if mcp_server.name == key and mcp_server.url:
+                    converted_mcp_headers[mcp_server.url] = item
+                    break
+
+    return converted_mcp_headers

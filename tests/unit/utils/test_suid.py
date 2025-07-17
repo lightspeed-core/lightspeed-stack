@@ -1,7 +1,11 @@
+"""Unit tests for functions defined in utils.suid module."""
+
 from utils import suid
 
 
 class TestSUID:
+    """Unit tests for functions defined in utils.suid module."""
+
     def test_get_suid(self):
         """Test that get_suid generates a valid UUID."""
         suid_value = suid.get_suid()

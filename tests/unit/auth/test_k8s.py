@@ -1,5 +1,7 @@
 """Unit tests for auth/k8s module."""
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-few-public-methods,protected-access
+
 import os
 
 import pytest

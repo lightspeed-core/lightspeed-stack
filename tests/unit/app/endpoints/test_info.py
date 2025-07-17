@@ -1,8 +1,10 @@
+"""Unit tests for the /info REST API endpoint."""
+
 from app.endpoints.info import info_endpoint_handler
 from configuration import AppConfig
 
 
-def test_info_endpoint(mocker):
+def test_info_endpoint():
     """Test the info endpoint handler."""
     config_dict = {
         "name": "foo",

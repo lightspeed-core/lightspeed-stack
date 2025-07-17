@@ -24,11 +24,12 @@ from configuration import configuration
 from models.requests import QueryRequest
 from utils.endpoints import check_configuration_loaded, get_system_prompt
 from utils.common import retrieve_user_id
-from utils.mcp_headers import mcp_headers_dependency
+from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
 from utils.suid import get_suid
 from utils.token_counter import get_token_counter
 from utils.types import GraniteToolParser
 
+from app.endpoints.conversations import conversation_id_to_agent_id
 from app.endpoints.query import (
     get_rag_toolgroups,
     is_transcripts_enabled,
@@ -70,6 +71,7 @@ async def get_agent(
     )
     conversation_id = await agent.create_session(get_suid())
     _agent_cache[conversation_id] = agent
+    conversation_id_to_agent_id[conversation_id] = agent.agent_id
     return agent, conversation_id
 
 
@@ -204,6 +206,8 @@ async def streaming_query_endpoint_handler(
     llama_stack_config = configuration.llama_stack_configuration
     logger.info("LLama stack config: %s", llama_stack_config)
 
+    _user_id, _user_name, token = auth
+
     try:
         # try to get Llama Stack client
         client = AsyncLlamaStackClientHolder().get_client()
@@ -212,7 +216,7 @@ async def streaming_query_endpoint_handler(
             client,
             model_id,
             query_request,
-            auth,
+            token,
             mcp_headers=mcp_headers,
         )
         metadata_map: dict[str, dict[str, Any]] = {}
@@ -325,6 +329,9 @@ async def retrieve_response(
     # preserve compatibility when mcp_headers is not provided
     if mcp_headers is None:
         mcp_headers = {}
+
+    mcp_headers = handle_mcp_headers_with_toolgroups(mcp_headers, configuration)
+
     if not mcp_headers and token:
         for mcp_server in configuration.mcp_servers:
             mcp_headers[mcp_server.url] = {

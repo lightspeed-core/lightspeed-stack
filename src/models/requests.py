@@ -5,7 +5,10 @@ from typing import Optional, Self
 from pydantic import BaseModel, model_validator, field_validator, Field
 from llama_stack_client.types.agents.turn_create_params import Document
 
+from log import get_logger
 from utils import suid
+
+logger = get_logger(__name__)
 
 
 class Attachment(BaseModel):
@@ -55,8 +58,6 @@ class Attachment(BaseModel):
     }
 
 
-# TODO(lucasagomes): add media_type when needed, current implementation
-# does not support streaming response, so this is not used
 class QueryRequest(BaseModel):
     """Model representing a request for the LLM (Language Model).
 
@@ -80,6 +81,9 @@ class QueryRequest(BaseModel):
     model: Optional[str] = None
     system_prompt: Optional[str] = None
     attachments: Optional[list[Attachment]] = None
+    # media_type is not used in 'lightspeed-stack' that only supports application/json.
+    # the field is kept here to enable compatibility with 'road-core' clients.
+    media_type: Optional[str] = None
 
     # provides examples for /docs endpoint
     model_config = {
@@ -130,6 +134,15 @@ class QueryRequest(BaseModel):
             raise ValueError("Provider must be specified if model is specified")
         if self.provider and not self.model:
             raise ValueError("Model must be specified if provider is specified")
+        return self
+
+    @model_validator(mode="after")
+    def validate_media_type(self) -> Self:
+        """Log use of media_type that is unsupported but kept for backwards compatibility."""
+        if self.media_type:
+            logger.warning(
+                "media_type was set in the request but is not supported. The value will be ignored."
+            )
         return self
 
 

@@ -10,7 +10,12 @@ from fastapi import APIRouter, Request, HTTPException, Depends, status
 
 from auth import get_auth_dependency
 from configuration import configuration
-from models.responses import FeedbackResponse, StatusResponse
+from models.responses import (
+    FeedbackResponse,
+    StatusResponse,
+    UnauthorizedResponse,
+    ForbiddenResponse,
+)
 from models.requests import FeedbackRequest
 from utils.suid import get_suid
 from utils.common import retrieve_user_id
@@ -22,6 +27,14 @@ auth_dependency = get_auth_dependency()
 # Response for the feedback endpoint
 feedback_response: dict[int | str, dict[str, Any]] = {
     200: {"response": "Feedback received and stored"},
+    400: {
+        "description": "Missing or invalid credentials provided by client",
+        "model": UnauthorizedResponse,
+    },
+    403: {
+        "description": "User is not authorized",
+        "model": ForbiddenResponse,
+    },
 }
 
 

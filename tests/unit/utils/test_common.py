@@ -1,8 +1,9 @@
 """Test module for utils/common.py."""
 
-import pytest
 from unittest.mock import Mock, AsyncMock
 from logging import Logger
+
+import pytest
 
 from utils.common import (
     retrieve_user_id,

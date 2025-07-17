@@ -3,7 +3,7 @@
 import json
 
 import requests
-from behave import given, then, when
+from behave import given, then, when  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 from tests.e2e.utils.utils import normalize_endpoint, validate_json
 
@@ -33,9 +33,16 @@ def request_endpoint_with_body(
 def request_endpoint_with_json(
     context: Context, endpoint: str, hostname: str, port: int
 ) -> None:
-    """Perform a request to the local server with a given JSON in the request."""
+    """Perform a request to the local server with a given JSON in the request.
+
+    The JSON payload is parsed from `context.text`, which must not
+    be None in order for this step to succeed. The response is
+    saved to `context.response` attribute.
+    """
     # initial value
     context.response = None
+
+    assert context.text is not None, "Payload needs to be specified"
 
     # perform REST API call
     context.response = requests.get(
@@ -51,8 +58,15 @@ def request_endpoint_with_json(
 def request_endpoint_with_url_params(
     context: Context, endpoint: str, hostname: str, port: int
 ) -> None:
-    """Perform a request to the server defined by URL to a given endpoint."""
+    """Perform a request to the server defined by URL to a given endpoint.
+
+    The function asserts that `context.table` is provided and uses
+    its rows to build the query parameters for the request. The
+    HTTP response is stored in `context.response` attribute.
+    """
     params = {}
+
+    assert context.table is not None, "Request parameters needs to be specified"
 
     for row in context.table:
         name = row["param"]
@@ -118,8 +132,14 @@ def check_content_type(context: Context, content_type: str) -> None:
 
 @then("The body of the response has the following schema")
 def check_response_body_schema(context: Context) -> None:
-    """Check that response body is compliant with a given schema."""
+    """Check that response body is compliant with a given schema.
+
+    Asserts that a response has been received and that a schema is
+    present in `context.text` attribute. Loads the schema from
+    `context.text` attribute and validates the response body.
+    """
     assert context.response is not None, "Request needs to be performed first"
+    assert context.text is not None, "Response does not contain any payload"
     schema = json.loads(context.text)
     body = context.response.json()
 
@@ -137,8 +157,14 @@ def check_response_body_contains(context: Context, substring: str) -> None:
 
 @then("The body of the response is the following")
 def check_prediction_result(context: Context) -> None:
-    """Check the content of the response to be exactly the same."""
+    """Check the content of the response to be exactly the same.
+
+    Raises an assertion error if the response is missing, the
+    expected payload is not provided, or if the actual and expected
+    JSON objects differ.
+    """
     assert context.response is not None, "Request needs to be performed first"
+    assert context.text is not None, "Response does not contain any payload"
     expected_body = json.loads(context.text)
     result = context.response.json()
 
@@ -148,8 +174,16 @@ def check_prediction_result(context: Context) -> None:
 
 @then('The body of the response, ignoring the "{field}" field, is the following')
 def check_prediction_result_ignoring_field(context: Context, field: str) -> None:
-    """Check the content of the response to be exactly the same."""
+    """Check the content of the response to be exactly the same.
+
+    Asserts that the JSON response body matches the expected JSON
+    payload, ignoring a specified field.
+
+    Parameters:
+        field (str): The name of the field to exclude from both the actual and expected JSON objects during comparison.
+    """
     assert context.response is not None, "Request needs to be performed first"
+    assert context.text is not None, "Response does not contain any payload"
     expected_body = json.loads(context.text).copy()
     result = context.response.json().copy()
 
@@ -212,11 +246,17 @@ def access_rest_api_endpoint_get(context: Context, endpoint: str) -> None:
 
 @when("I access endpoint {endpoint:w} using HTTP POST method")
 def access_rest_api_endpoint_post(context: Context, endpoint: str) -> None:
-    """Send GET HTTP request to tested service."""
+    """Send POST HTTP request with JSON payload to tested service.
+
+    The JSON payload is retrieved from `context.text` attribute,
+    which must not be None. The response is stored in
+    `context.response` attribute.
+    """
     base = f"http://{context.hostname}:{context.port}"
     path = f"{context.api_prefix}/{endpoint}".replace("//", "/")
     url = base + path
 
+    assert context.text is not None, "Payload needs to be specified"
     data = json.loads(context.text)
     # initial value
     context.response = None

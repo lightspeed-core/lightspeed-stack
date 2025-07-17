@@ -1,4 +1,8 @@
+"""Unit tests for the /health REST API endpoint."""
+
 from unittest.mock import Mock
+
+from llama_stack.providers.datatypes import HealthStatus
 
 from app.endpoints.health import (
     readiness_probe_get_method,
@@ -6,7 +10,6 @@ from app.endpoints.health import (
     get_providers_health_statuses,
 )
 from models.responses import ProviderHealthStatus, ReadinessResponse
-from llama_stack.providers.datatypes import HealthStatus
 
 
 def test_readiness_probe_fails_due_to_unhealthy_providers(mocker):

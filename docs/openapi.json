@@ -134,6 +134,26 @@
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                         "response": "LLM ansert"
                     },
+                    "400": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "User is not authorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
                     "503": {
                         "description": "Service Unavailable",
                         "detail": {
@@ -154,63 +174,39 @@
                 }
             }
         },
-        "/v1/readiness": {
-            "get": {
+        "/v1/streaming_query": {
+            "post": {
                 "tags": [
-                    "health"
+                    "streaming_query"
                 ],
-                "summary": "Readiness Probe Get Method",
-                "description": "Ready status of service with provider health details.",
-                "operationId": "readiness_probe_get_method_v1_readiness_get",
-                "responses": {
-                    "200": {
-                        "description": "Service is ready",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ReadinessResponse"
-                                }
+                "summary": "Streaming Query Endpoint Handler",
+                "description": "Handle request to the /streaming_query endpoint.",
+                "operationId": "streaming_query_endpoint_handler_v1_streaming_query_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/QueryRequest"
                             }
                         }
                     },
-                    "503": {
-                        "description": "Service is not ready",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ReadinessResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/liveness": {
-            "get": {
-                "tags": [
-                    "health"
-                ],
-                "summary": "Liveness Probe Get Method",
-                "description": "Live status of service.",
-                "operationId": "liveness_probe_get_method_v1_liveness_get",
+                    "required": true
+                },
                 "responses": {
                     "200": {
-                        "description": "Service is alive",
+                        "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LivenessResponse"
-                                }
+                                "schema": {}
                             }
                         }
                     },
-                    "503": {
-                        "description": "Service is not alive",
+                    "422": {
+                        "description": "Validation Error",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/LivenessResponse"
+                                    "$ref": "#/components/schemas/HTTPValidationError"
                                 }
                             }
                         }
@@ -316,6 +312,26 @@
                         },
                         "response": "Feedback received and stored"
                     },
+                    "400": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "User is not authorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "description": "Validation Error",
                         "content": {
@@ -351,39 +367,105 @@
                 }
             }
         },
-        "/v1/streaming_query": {
-            "post": {
+        "/readiness": {
+            "get": {
                 "tags": [
-                    "streaming_query"
+                    "health"
                 ],
-                "summary": "Streaming Query Endpoint Handler",
-                "description": "Handle request to the /streaming_query endpoint.",
-                "operationId": "streaming_query_endpoint_handler_v1_streaming_query_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/QueryRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
+                "summary": "Readiness Probe Get Method",
+                "description": "Ready status of service with provider health details.",
+                "operationId": "readiness_probe_get_method_readiness_get",
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
+                        "description": "Service is ready",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                    "$ref": "#/components/schemas/ReadinessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service is not ready",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReadinessResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/liveness": {
+            "get": {
+                "tags": [
+                    "health"
+                ],
+                "summary": "Liveness Probe Get Method",
+                "description": "Live status of service.",
+                "operationId": "liveness_probe_get_method_liveness_get",
+                "responses": {
+                    "200": {
+                        "description": "Service is alive",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LivenessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service is not alive",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LivenessResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/authorized": {
+            "post": {
+                "tags": [
+                    "authorized"
+                ],
+                "summary": "Authorized Endpoint Handler",
+                "description": "Handle request to the /authorized endpoint.",
+                "operationId": "authorized_endpoint_handler_authorized_post",
+                "responses": {
+                    "200": {
+                        "description": "The user is logged-in and authorized to access OLS",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "User is not authorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
                                 }
                             }
                         }
@@ -477,6 +559,31 @@
                 "title": "AuthenticationConfiguration",
                 "description": "Authentication configuration."
             },
+            "AuthorizedResponse": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "title": "User Id"
+                    },
+                    "username": {
+                        "type": "string",
+                        "title": "Username"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "username"
+                ],
+                "title": "AuthorizedResponse",
+                "description": "Model representing a response to an authorization request.\n\nAttributes:\n    user_id: The ID of the logged in user.\n    username: The name of the logged in user.",
+                "examples": [
+                    {
+                        "user_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "username": "user1"
+                    }
+                ]
+            },
             "Configuration": {
                 "properties": {
                     "name": {
@@ -537,6 +644,11 @@
             },
             "Customization": {
                 "properties": {
+                    "disable_query_system_prompt": {
+                        "type": "boolean",
+                        "title": "Disable Query System Prompt",
+                        "default": false
+                    },
                     "system_prompt_path": {
                         "anyOf": [
                             {
@@ -569,6 +681,68 @@
                 "type": "object",
                 "title": "Customization",
                 "description": "Service customization."
+            },
+            "DataCollectorConfiguration": {
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Enabled",
+                        "default": false
+                    },
+                    "ingress_server_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ingress Server Url"
+                    },
+                    "ingress_server_auth_token": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ingress Server Auth Token"
+                    },
+                    "ingress_content_service_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Ingress Content Service Name"
+                    },
+                    "collection_interval": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Collection Interval",
+                        "default": 7200
+                    },
+                    "cleanup_after_send": {
+                        "type": "boolean",
+                        "title": "Cleanup After Send",
+                        "default": true
+                    },
+                    "connection_timeout": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Connection Timeout",
+                        "default": 30
+                    }
+                },
+                "type": "object",
+                "title": "DataCollectorConfiguration",
+                "description": "Data collector configuration for sending data to ingress server."
             },
             "FeedbackRequest": {
                 "properties": {
@@ -646,6 +820,25 @@
                 "examples": [
                     {
                         "response": "feedback received"
+                    }
+                ]
+            },
+            "ForbiddenResponse": {
+                "properties": {
+                    "detail": {
+                        "type": "string",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "detail"
+                ],
+                "title": "ForbiddenResponse",
+                "description": "Model representing response for forbidden access.",
+                "examples": [
+                    {
+                        "detail": "Forbidden: User is not authorized to access this resource"
                     }
                 ]
             },
@@ -1127,6 +1320,25 @@
                 "title": "TLSConfiguration",
                 "description": "TLS configuration."
             },
+            "UnauthorizedResponse": {
+                "properties": {
+                    "detail": {
+                        "type": "string",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "detail"
+                ],
+                "title": "UnauthorizedResponse",
+                "description": "Model representing response for missing or invalid credentials.",
+                "examples": [
+                    {
+                        "detail": "Unauthorized: No auth header found"
+                    }
+                ]
+            },
             "UserDataCollection": {
                 "properties": {
                     "feedback_disabled": {
@@ -1160,6 +1372,15 @@
                             }
                         ],
                         "title": "Transcripts Storage"
+                    },
+                    "data_collector": {
+                        "$ref": "#/components/schemas/DataCollectorConfiguration",
+                        "default": {
+                            "enabled": false,
+                            "collection_interval": 7200,
+                            "cleanup_after_send": true,
+                            "connection_timeout": 30
+                        }
                     }
                 },
                 "type": "object",

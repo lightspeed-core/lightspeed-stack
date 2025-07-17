@@ -6,8 +6,8 @@ from configuration import configuration
 from models.config import ModelContextProtocolServer
 
 
-@pytest.fixture
-def configuration_filename() -> str:
+@pytest.fixture(name="configuration_filename")
+def configuration_filename_fixture() -> str:
     """Retrieve configuration file name to be used by integration tests."""
     return "tests/configuration/lightspeed-stack.yaml"
 
@@ -17,7 +17,7 @@ def test_default_configuration() -> None:
     cfg = configuration
     assert cfg is not None
     with pytest.raises(Exception, match="logic error: configuration is not loaded"):
-        configuration.configuration
+        configuration.configuration  # pylint: disable=pointless-statement
 
 
 def test_loading_proper_configuration(configuration_filename: str) -> None:
@@ -60,7 +60,7 @@ def test_loading_proper_configuration(configuration_filename: str) -> None:
 
     # check MCP servers section
     mcp_servers = cfg.mcp_servers
-    assert mcp_servers != []
+    assert mcp_servers != []  # pylint: disable=use-implicit-booleaness-not-comparison
     assert len(mcp_servers) == 3
     assert mcp_servers[0] == ModelContextProtocolServer(
         name="server1", provider_id="provider1", url="http://url.com:1"

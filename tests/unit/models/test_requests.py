@@ -1,3 +1,8 @@
+"""Test the QueryRequest, Attachment, and FeedbackRequest models."""
+
+from unittest.mock import Mock
+from logging import Logger
+
 import pytest
 from pydantic import ValidationError
 from models.requests import QueryRequest, Attachment, FeedbackRequest
@@ -15,6 +20,18 @@ class TestAttachment:
         )
         assert a.attachment_type == "configuration"
         assert a.content_type == "application/yaml"
+        assert a.content == "kind: Pod\n metadata:\n name:    private-reg"
+
+    def test_constructor_unknown_attachment_type(self) -> None:
+        """Test the Attachment with custom values."""
+        # for now we allow any content type
+        a = Attachment(
+            attachment_type="configuration",
+            content_type="unknown/type",
+            content="kind: Pod\n metadata:\n name:    private-reg",
+        )
+        assert a.attachment_type == "configuration"
+        assert a.content_type == "unknown/type"
         assert a.content == "kind: Pod\n metadata:\n name:    private-reg"
 
 
@@ -52,6 +69,9 @@ class TestQueryRequest:
         )
         assert qr.attachments is not None
         assert len(qr.attachments) == 2
+
+        # the following warning is false positive
+        # pylint: disable=unsubscriptable-object
         assert qr.attachments[0].attachment_type == "log"
         assert qr.attachments[0].content_type == "text/plain"
         assert qr.attachments[0].content == "this is attachment"
@@ -125,6 +145,28 @@ class TestQueryRequest:
             ValueError, match="Model must be specified if provider is specified"
         ):
             QueryRequest(query="Tell me about Kubernetes", provider="OpenAI")
+
+    def test_validate_media_type(self, mocker) -> None:
+        """Test the validate_media_type method."""
+
+        # Mock the logger
+        mock_logger = Mock(spec=Logger)
+        mocker.patch("models.requests.logger", mock_logger)
+
+        qr = QueryRequest(
+            query="Tell me about Kubernetes",
+            provider="OpenAI",
+            model="gpt-3.5-turbo",
+            media_type="text/plain",
+        )
+        assert qr is not None
+        assert qr.provider == "OpenAI"
+        assert qr.model == "gpt-3.5-turbo"
+        assert qr.media_type == "text/plain"
+
+        mock_logger.warning.assert_called_once_with(
+            "media_type was set in the request but is not supported. The value will be ignored."
+        )
 
 
 class TestFeedbackRequest:

@@ -21,8 +21,11 @@
 
 import os
 
+# repository URL
+REPO_URL = "https://github.com/lightspeed-core/lightspeed-stack/"
+
 # URL prefix to create links to feature files
-FEATURES_URL_PREFIX = "https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features"  # noqa E501
+FEATURES_URL_PREFIX = f"{REPO_URL}blob/main/tests/e2e/features"
 
 # list of prefixes for scenarios or scenario outlines
 PREFIXES = ("Scenario: ", "Scenario Outline: ")
@@ -40,16 +43,18 @@ print("# List of scenarios")
 print()
 
 # generage list of scenarios
-directory = FEATURE_DIRECTORY
+
 # files within one subdirectory needs to be sorted so the
 # resulting scenario list will have stable structure across versions
-files = sorted(os.listdir(directory))
+files = sorted(os.listdir(FEATURE_DIRECTORY))
 for filename in files:
     # grep all .feature files
     if filename.endswith(".feature"):
         # feature file header
-        print("## [`{}`]({}/{})\n".format(filename, FEATURES_URL_PREFIX, filename))
-        with open(os.path.join(directory, filename), "r") as fin:
+        print(f"## [`{filename}`]({FEATURES_URL_PREFIX}/{filename})\n")
+        with open(
+            os.path.join(FEATURE_DIRECTORY, filename), "r", encoding="utf-8"
+        ) as fin:
             for line in fin.readlines():
                 line = line.strip()
                 # process all scenarios and scenario outlines

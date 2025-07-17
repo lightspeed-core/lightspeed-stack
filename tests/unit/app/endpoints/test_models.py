@@ -1,7 +1,10 @@
-import pytest
+"""Unit tests for the /models REST API endpoint."""
 
 from unittest.mock import Mock
-from fastapi import HTTPException, status
+
+import pytest
+
+from fastapi import HTTPException, Request, status
 
 from app.endpoints.models import models_endpoint_handler
 from configuration import AppConfig
@@ -16,7 +19,13 @@ def test_models_endpoint_handler_configuration_not_loaded(mocker):
     )
     mocker.patch("app.endpoints.models.configuration", None)
 
-    request = None
+    request = Request(
+        scope={
+            "type": "http",
+            "headers": [(b"authorization", b"Bearer invalid-token")],
+        }
+    )
+
     with pytest.raises(HTTPException) as e:
         models_endpoint_handler(request)
         assert e.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -55,14 +64,19 @@ def test_models_endpoint_handler_improper_llama_stack_configuration(mocker):
         return_value=None,
     )
 
-    request = None
+    request = Request(
+        scope={
+            "type": "http",
+            "headers": [(b"authorization", b"Bearer invalid-token")],
+        }
+    )
     with pytest.raises(HTTPException) as e:
         models_endpoint_handler(request)
         assert e.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert e.detail["response"] == "LLama stack is not configured"
 
 
-def test_models_endpoint_handler_configuration_loaded(mocker):
+def test_models_endpoint_handler_configuration_loaded():
     """Test the models endpoint handler if configuration is loaded."""
     # configuration for tests
     config_dict = {
@@ -88,8 +102,14 @@ def test_models_endpoint_handler_configuration_loaded(mocker):
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
+    request = Request(
+        scope={
+            "type": "http",
+            "headers": [(b"authorization", b"Bearer invalid-token")],
+        }
+    )
+
     with pytest.raises(HTTPException) as e:
-        request = None
         models_endpoint_handler(request)
         assert e.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert e.detail["response"] == "Unable to connect to Llama Stack"
@@ -129,6 +149,11 @@ def test_models_endpoint_handler_unable_to_retrieve_models_list(mocker):
     mock_config = mocker.Mock()
     mocker.patch("app.endpoints.models.configuration", mock_config)
 
-    request = None
+    request = Request(
+        scope={
+            "type": "http",
+            "headers": [(b"authorization", b"Bearer invalid-token")],
+        }
+    )
     response = models_endpoint_handler(request)
     assert response is not None

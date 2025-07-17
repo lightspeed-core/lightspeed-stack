@@ -1,3 +1,5 @@
+"""Unit tests for the /config REST API endpoint."""
+
 import pytest
 
 from fastapi import HTTPException, status
@@ -20,7 +22,7 @@ def test_config_endpoint_handler_configuration_not_loaded(mocker):
         assert e.detail["response"] == "Configuration is not loaded"
 
 
-def test_config_endpoint_handler_configuration_loaded(mocker):
+def test_config_endpoint_handler_configuration_loaded():
     """Test the config endpoint handler."""
     config_dict = {
         "name": "foo",

@@ -1,9 +1,15 @@
 ARTIFACT_DIR := $(if $(ARTIFACT_DIR),$(ARTIFACT_DIR),tests/test_results)
 PATH_TO_PLANTUML := ~/bin
 
+# Python registry to where the package should be uploaded
+PYTHON_REGISTRY = pypi
+
 
 run: ## Run the service locally
 	uv run src/lightspeed_stack.py
+
+run-data-collector: ## Run the data collector service locally
+	uv run src/lightspeed_stack.py --data-collector
 
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."
@@ -54,7 +60,7 @@ black:
 	uv run black --check .
 
 pylint:
-	uv run pylint src
+	uv run pylint src tests
 
 pyright:
 	uv run pyright src
@@ -65,13 +71,20 @@ docstyle:
 ruff:
 	uv run ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 
-verify:
+verify: ## Run all linters
 	$(MAKE) black
 	$(MAKE) pylint
 	$(MAKE) pyright
 	$(MAKE) ruff
 	$(MAKE) docstyle
 	$(MAKE) check-types
+
+distribution-archives: ## Generate distribution archives to be uploaded into Python registry
+	rm -rf dist
+	pdm run python -m build
+
+upload-distribution-archives: ## Upload distribution archives into Python registry
+	pdm run python -m twine upload --repository ${PYTHON_REGISTRY} dist/*
 
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'

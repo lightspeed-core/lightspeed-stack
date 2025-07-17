@@ -20,4 +20,4 @@ jobs:
       - name: Install dependencies
         run: uv sync
       - name: Python linter
-        run: uv run pylint src
+        run: uv run pylint src tests

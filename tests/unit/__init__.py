@@ -28,6 +28,7 @@ config_dict = {
         "k8s_cluster_api": None,
     },
     "customization": {
+        "disable_query_system_prompt": False,
         "system_prompt_path": None,
         "system_prompt": None,
     },

@@ -1,19 +1,21 @@
 """Unit tests for functions defined in auth/utils.py"""
 
-from auth.utils import extract_user_token
 from fastapi import HTTPException
+from starlette.datastructures import Headers
+
+from auth.utils import extract_user_token
 
 
 def test_extract_user_token():
     """Test extracting user token from headers."""
-    headers = {"Authorization": "Bearer abcdef123"}
+    headers = Headers({"Authorization": "Bearer abcdef123"})
     token = extract_user_token(headers)
     assert token == "abcdef123"
 
 
 def test_extract_user_token_no_header():
     """Test extracting user token when no Authorization header is present."""
-    headers = {}
+    headers = Headers({})
     try:
         extract_user_token(headers)
     except HTTPException as exc:
@@ -23,7 +25,7 @@ def test_extract_user_token_no_header():
 
 def test_extract_user_token_invalid_format():
     """Test extracting user token with invalid Authorization header format."""
-    headers = {"Authorization": "InvalidFormat"}
+    headers = Headers({"Authorization": "InvalidFormat"})
     try:
         extract_user_token(headers)
     except HTTPException as exc:

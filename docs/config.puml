@@ -1,12 +1,37 @@
 @startuml classes
 set namespaceSeparator none
+class "AuthenticationConfiguration" as src.models.config.AuthenticationConfiguration {
+  k8s_ca_cert_path : Optional[FilePath]
+  k8s_cluster_api : Optional[AnyHttpUrl]
+  module : str
+  skip_tls_verification : bool
+  check_authentication_model() -> Self
+}
 class "Configuration" as src.models.config.Configuration {
+  authentication : Optional[AuthenticationConfiguration]
+  customization : Optional[Customization]
   llama_stack
   mcp_servers : list[ModelContextProtocolServer]
   name : str
   service
   user_data_collection
   dump(filename: str) -> None
+}
+class "Customization" as src.models.config.Customization {
+  disable_query_system_prompt : bool
+  system_prompt : Optional[str]
+  system_prompt_path : Optional[FilePath]
+  check_customization_model() -> Self
+}
+class "DataCollectorConfiguration" as src.models.config.DataCollectorConfiguration {
+  cleanup_after_send : bool
+  collection_interval : Annotated
+  connection_timeout : Annotated
+  enabled : bool
+  ingress_content_service_name : Optional[str]
+  ingress_server_auth_token : Optional[str]
+  ingress_server_url : Optional[str]
+  check_data_collector_configuration() -> Self
 }
 class "LLamaStackConfiguration" as src.models.config.LLamaStackConfiguration {
   api_key : Optional[str]
@@ -37,12 +62,14 @@ class "TLSConfiguration" as src.models.config.TLSConfiguration {
   check_tls_configuration() -> Self
 }
 class "UserDataCollection" as src.models.config.UserDataCollection {
+  data_collector
   feedback_disabled : bool
   feedback_storage : Optional[str]
   transcripts_disabled : bool
   transcripts_storage : Optional[str]
   check_storage_location_is_set_when_needed() -> Self
 }
+src.models.config.DataCollectorConfiguration --* src.models.config.UserDataCollection : data_collector
 src.models.config.LLamaStackConfiguration --* src.models.config.Configuration : llama_stack
 src.models.config.ServiceConfiguration --* src.models.config.Configuration : service
 src.models.config.TLSConfiguration --* src.models.config.ServiceConfiguration : tls_config

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from pydantic import BaseModel, model_validator, FilePath, AnyHttpUrl
+from pydantic import BaseModel, model_validator, FilePath, AnyHttpUrl, PositiveInt
 from typing_extensions import Self
 
 import constants
@@ -85,6 +85,31 @@ class LLamaStackConfiguration(BaseModel):
         return self
 
 
+class DataCollectorConfiguration(BaseModel):
+    """Data collector configuration for sending data to ingress server."""
+
+    enabled: bool = False
+    ingress_server_url: Optional[str] = None
+    ingress_server_auth_token: Optional[str] = None
+    ingress_content_service_name: Optional[str] = None
+    collection_interval: PositiveInt = constants.DATA_COLLECTOR_COLLECTION_INTERVAL
+    cleanup_after_send: bool = True  # Remove local files after successful send
+    connection_timeout: PositiveInt = constants.DATA_COLLECTOR_CONNECTION_TIMEOUT
+
+    @model_validator(mode="after")
+    def check_data_collector_configuration(self) -> Self:
+        """Check data collector configuration."""
+        if self.enabled and self.ingress_server_url is None:
+            raise ValueError(
+                "ingress_server_url is required when data collector is enabled"
+            )
+        if self.enabled and self.ingress_content_service_name is None:
+            raise ValueError(
+                "ingress_content_service_name is required when data collector is enabled"
+            )
+        return self
+
+
 class UserDataCollection(BaseModel):
     """User data collection configuration."""
 
@@ -92,6 +117,7 @@ class UserDataCollection(BaseModel):
     feedback_storage: Optional[str] = None
     transcripts_disabled: bool = True
     transcripts_storage: Optional[str] = None
+    data_collector: DataCollectorConfiguration = DataCollectorConfiguration()
 
     @model_validator(mode="after")
     def check_storage_location_is_set_when_needed(self) -> Self:
@@ -128,12 +154,13 @@ class AuthenticationConfiguration(BaseModel):
 class Customization(BaseModel):
     """Service customization."""
 
+    disable_query_system_prompt: bool = False
     system_prompt_path: Optional[FilePath] = None
     system_prompt: Optional[str] = None
     default_estimation_tokenizer: str = constants.DEFAULT_ESTIMATION_TOKENIZER
 
     @model_validator(mode="after")
-    def check_authentication_model(self) -> Self:
+    def check_customization_model(self) -> Self:
         """Load system prompt from file."""
         if self.system_prompt_path is not None:
             checks.file_check(self.system_prompt_path, "system prompt")
