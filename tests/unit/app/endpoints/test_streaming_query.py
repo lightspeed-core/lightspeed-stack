@@ -1,5 +1,7 @@
 """Unit tests for the /streaming-query REST API endpoint."""
 
+from datetime import datetime
+
 # pylint: disable=too-many-lines
 
 import json
@@ -11,7 +13,26 @@ from fastapi.responses import StreamingResponse
 
 from llama_stack_client import APIConnectionError
 from llama_stack_client.types import UserMessage  # type: ignore
+from llama_stack_client.types.agents import Turn
+from llama_stack_client.types.shared.completion_message import CompletionMessage
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
+from llama_stack_client.types.shared.safety_violation import SafetyViolation
+from llama_stack_client.types.shield_call_step import ShieldCallStep
+from llama_stack_client.types.shared.tool_call import ToolCall
+from llama_stack_client.types.shared.content_delta import TextDelta, ToolCallDelta
+from llama_stack_client.types.agents.turn_response_event import TurnResponseEvent
+from llama_stack_client.types.agents.agent_turn_response_stream_chunk import (
+    AgentTurnResponseStreamChunk,
+)
+from llama_stack_client.types.agents.turn_response_event_payload import (
+    AgentTurnResponseStepProgressPayload,
+    AgentTurnResponseStepCompletePayload,
+    AgentTurnResponseTurnStartPayload,
+    AgentTurnResponseTurnAwaitingInputPayload,
+    AgentTurnResponseTurnCompletePayload,
+)
+from llama_stack_client.types.tool_execution_step import ToolExecutionStep
+from llama_stack_client.types.tool_response import ToolResponse
 
 from configuration import AppConfig
 from app.endpoints.query import get_rag_toolgroups
@@ -149,27 +170,34 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
         mocker.Mock(identifier="model2", model_type="llm", provider_id="provider2"),
     ]
 
-    # Mock the streaming response from LLama Stack
+    # Construct the streaming response from LLama Stack.
+    # We cannot use 'mock' as 'hasattr(mock, "xxx")' adds the missing
+    # attribute and therefore makes checks to see whether it is missing fail.
     mock_streaming_response = mocker.AsyncMock()
     mock_streaming_response.__aiter__.return_value = [
-        mocker.Mock(
-            event=mocker.Mock(
-                payload=mocker.Mock(
+        AgentTurnResponseStreamChunk(
+            event=TurnResponseEvent(
+                payload=AgentTurnResponseStepProgressPayload(
                     event_type="step_progress",
-                    delta=mocker.Mock(text="LLM answer"),
                     step_type="inference",
+                    delta=TextDelta(text="LLM answer", type="text"),
+                    step_id="s1",
                 )
             )
         ),
-        mocker.Mock(
-            event=mocker.Mock(
-                payload=mocker.Mock(
+        AgentTurnResponseStreamChunk(
+            event=TurnResponseEvent(
+                payload=AgentTurnResponseStepCompletePayload(
                     event_type="step_complete",
+                    step_id="s1",
                     step_type="tool_execution",
-                    step_details=mocker.Mock(
+                    step_details=ToolExecutionStep(
+                        turn_id="t1",
+                        step_id="s2",
                         step_type="tool_execution",
                         tool_responses=[
-                            mocker.Mock(
+                            ToolResponse(
+                                call_id="c1",
                                 tool_name="knowledge_search",
                                 content=[
                                     TextContentItem(text=s, type="text")
@@ -178,8 +206,8 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
                             )
                         ],
                         tool_calls=[
-                            mocker.Mock(
-                                tool_name="knowledge_search",
+                            ToolCall(
+                                call_id="t1", tool_name="knowledge_search", arguments={}
                             )
                         ],
                     ),
@@ -233,8 +261,8 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
     assert "LLM answer" in full_content
 
     # Assert referenced documents
-    assert len(streaming_content) == 4
-    d = json.loads(streaming_content[3][5:])
+    assert len(streaming_content) == 5
+    d = json.loads(streaming_content[4][5:])
     referenced_documents = d["data"]["referenced_documents"]
     assert len(referenced_documents) == 2
     assert referenced_documents[1]["doc_title"] == "Doc2"
@@ -247,7 +275,8 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
             query_is_valid=True,
             query=query,
             query_request=query_request,
-            response="LLM answerknowledge_search",
+            response="LLM answerTool:knowledge_search arguments:{}Tool:knowledge_search "
+            "summary:knowledge_search tool found 2 chunks:",
             attachments=[],
             rag_chunks=[],
             truncated=False,
@@ -548,19 +577,182 @@ async def test_retrieve_response_with_two_attachments(prepare_agent_mocks, mocke
     )
 
 
-def test_stream_build_event_step_progress(mocker):
-    """Test stream_build_event function with step_progress event type."""
-    # Create a properly nested mock chunk structure
-    mock_chunk = mocker.Mock()
-    mock_chunk.event = mocker.Mock()
-    mock_chunk.event.payload = mocker.Mock()
-    mock_chunk.event.payload.event_type = "step_progress"
-    mock_chunk.event.payload.step_type = "inference"
-    mock_chunk.event.payload.delta = mocker.Mock()
-    mock_chunk.event.payload.delta.text = "This is a test response"
+def test_stream_build_event_turn_start():
+    """Test stream_build_event function with turn_start event type."""
+    # Create a properly nested chunk structure
+    # We cannot use 'mock' as 'hasattr(mock, "xxx")' adds the missing
+    # attribute and therefore makes checks to see whether it is missing fail.
+    chunk = AgentTurnResponseStreamChunk(
+        event=TurnResponseEvent(
+            payload=AgentTurnResponseTurnStartPayload(
+                event_type="turn_start",
+                turn_id="t1",
+            )
+        )
+    )
 
-    chunk_id = 0
-    result = stream_build_event(mock_chunk, chunk_id, {})
+    result = next(stream_build_event(chunk, 0, {}))
+
+    assert result is not None
+    assert "data: " in result
+    assert '"event": "token"' in result
+    assert '"token": ""' in result
+    assert '"id": 0' in result
+
+
+def test_stream_build_event_turn_awaiting_input():
+    """Test stream_build_event function with turn_awaiting_input event type."""
+    # Create a properly nested chunk structure
+    # We cannot use 'mock' as 'hasattr(mock, "xxx")' adds the missing
+    # attribute and therefore makes checks to see whether it is missing fail.
+    chunk = AgentTurnResponseStreamChunk(
+        event=TurnResponseEvent(
+            payload=AgentTurnResponseTurnAwaitingInputPayload(
+                event_type="turn_awaiting_input",
+                turn=Turn(
+                    input_messages=[],
+                    output_message=CompletionMessage(
+                        content="content",
+                        role="assistant",
+                        stop_reason="end_of_turn",
+                    ),
+                    session_id="session-1",
+                    started_at=datetime.now(),
+                    steps=[],
+                    turn_id="t1",
+                ),
+            )
+        )
+    )
+
+    result = next(stream_build_event(chunk, 0, {}))
+
+    assert result is not None
+    assert "data: " in result
+    assert '"event": "token"' in result
+    assert '"token": ""' in result
+    assert '"id": 0' in result
+
+
+def test_stream_build_event_turn_complete():
+    """Test stream_build_event function with turn_complete event type."""
+    # Create a properly nested chunk structure
+    # We cannot use 'mock' as 'hasattr(mock, "xxx")' adds the missing
+    # attribute and therefore makes checks to see whether it is missing fail.
+    chunk = AgentTurnResponseStreamChunk(
+        event=TurnResponseEvent(
+            payload=AgentTurnResponseTurnCompletePayload(
+                event_type="turn_complete",
+                turn=Turn(
+                    input_messages=[],
+                    output_message=CompletionMessage(
+                        content="content",
+                        role="assistant",
+                        stop_reason="end_of_turn",
+                    ),
+                    session_id="session-1",
+                    started_at=datetime.now(),
+                    steps=[],
+                    turn_id="t1",
+                ),
+            )
+        )
+    )
+
+    result = next(stream_build_event(chunk, 0, {}))
+
+    assert result is not None
+    assert "data: " in result
+    assert '"event": "turn_complete"' in result
+    assert '"token": "content"' in result
+    assert '"id": 0' in result
+
+
+def test_stream_build_event_shield_call_step_complete_no_violation():
+    """Test stream_build_event function with shield_call_step_complete event type."""
+    # Create a properly nested chunk structure
+    # We cannot use 'mock' as 'hasattr(mock, "xxx")' adds the missing
+    # attribute and therefore makes checks to see whether it is missing fail.
+    chunk = AgentTurnResponseStreamChunk(
+        event=TurnResponseEvent(
+            payload=AgentTurnResponseStepCompletePayload(
+                event_type="step_complete",
+                step_type="shield_call",
+                step_details=ShieldCallStep(
+                    step_id="s1",
+                    step_type="shield_call",
+                    turn_id="t1",
+                ),
+                step_id="s1",
+            )
+        )
+    )
+
+    result = next(stream_build_event(chunk, 0, {}))
+
+    assert result is not None
+    assert "data: " in result
+    assert '"event": "token"' in result
+    assert '"token": "No Violation"' in result
+    assert '"role": "shield_call"' in result
+    assert '"id": 0' in result
+
+
+def test_stream_build_event_shield_call_step_complete_with_violation():
+    """Test stream_build_event function with shield_call_step_complete event type with violation."""
+    # Create a properly nested chunk structure
+    # We cannot use 'mock' as 'hasattr(mock, "xxx")' adds the missing
+    # attribute and therefore makes checks to see whether it is missing fail.
+    chunk = AgentTurnResponseStreamChunk(
+        event=TurnResponseEvent(
+            payload=AgentTurnResponseStepCompletePayload(
+                event_type="step_complete",
+                step_type="shield_call",
+                step_details=ShieldCallStep(
+                    step_id="s1",
+                    step_type="shield_call",
+                    turn_id="t1",
+                    violation=SafetyViolation(
+                        metadata={},
+                        violation_level="info",
+                        user_message="I don't like the cut of your jib",
+                    ),
+                ),
+                step_id="s1",
+            )
+        )
+    )
+
+    result = next(stream_build_event(chunk, 0, {}))
+
+    assert result is not None
+    assert "data: " in result
+    assert '"event": "token"' in result
+    assert (
+        '"token": "Violation: I don\'t like the cut of your jib (Metadata: {})"'
+        in result
+    )
+    assert '"role": "shield_call"' in result
+    assert '"id": 0' in result
+
+
+def test_stream_build_event_step_progress():
+    """Test stream_build_event function with step_progress event type."""
+    # Create a properly nested chunk structure
+    # We cannot use 'mock' as 'hasattr(mock, "xxx")' adds the missing
+    # attribute and therefore makes checks to see whether it is missing fail.
+    chunk = AgentTurnResponseStreamChunk(
+        event=TurnResponseEvent(
+            payload=AgentTurnResponseStepProgressPayload(
+                event_type="step_progress",
+                step_type="inference",
+                delta=TextDelta(text="This is a test response", type="text"),
+                step_id="s1",
+            )
+        )
+    )
+
+    result = next(stream_build_event(chunk, 0, {}))
 
     assert result is not None
     assert "data: " in result
@@ -570,18 +762,84 @@ def test_stream_build_event_step_progress(mocker):
     assert '"id": 0' in result
 
 
-def test_stream_build_event_step_complete(mocker):
+def test_stream_build_event_step_progress_tool_call_str():
+    """Test stream_build_event function with step_progress_tool_call event type with a string."""
+    # Create a properly nested chunk structure
+    # We cannot use 'mock' as 'hasattr(mock, "xxx")' adds the missing
+    # attribute and therefore makes checks to see whether it is missing fail.
+    chunk = AgentTurnResponseStreamChunk(
+        event=TurnResponseEvent(
+            payload=AgentTurnResponseStepProgressPayload(
+                event_type="step_progress",
+                step_type="inference",
+                delta=ToolCallDelta(
+                    parse_status="succeeded", tool_call="tool-called", type="tool_call"
+                ),
+                step_id="s1",
+            )
+        )
+    )
+
+    result = next(stream_build_event(chunk, 0, {}))
+
+    assert result is not None
+    assert "data: " in result
+    assert '"event": "tool_call"' in result
+    assert '"token": "tool-called"' in result
+    assert '"role": "inference"' in result
+    assert '"id": 0' in result
+
+
+def test_stream_build_event_step_progress_tool_call_tool_call():
+    """Test stream_build_event function with step_progress_tool_call event type with a ToolCall."""
+    # Create a properly nested chunk structure
+    # We cannot use 'mock' as 'hasattr(mock, "xxx")' adds the missing
+    # attribute and therefore makes checks to see whether it is missing fail.
+    chunk = AgentTurnResponseStreamChunk(
+        event=TurnResponseEvent(
+            payload=AgentTurnResponseStepProgressPayload(
+                event_type="step_progress",
+                step_type="inference",
+                delta=ToolCallDelta(
+                    parse_status="succeeded",
+                    tool_call=ToolCall(
+                        arguments={}, call_id="tc1", tool_name="my-tool"
+                    ),
+                    type="tool_call",
+                ),
+                step_id="s1",
+            )
+        )
+    )
+
+    result = next(stream_build_event(chunk, 0, {}))
+
+    assert result is not None
+    assert "data: " in result
+    assert '"event": "tool_call"' in result
+    assert '"token": "my-tool"' in result
+    assert '"role": "inference"' in result
+    assert '"id": 0' in result
+
+
+def test_stream_build_event_step_complete():
     """Test stream_build_event function with step_complete event type."""
-    # Create a properly nested mock chunk structure
-    mock_chunk = mocker.Mock(
-        event=mocker.Mock(
-            payload=mocker.Mock(
+    # Create a properly nested chunk structure
+    # We cannot use 'mock' as 'hasattr(mock, "xxx")' adds the missing
+    # attribute and therefore makes checks to see whether it is missing fail.
+    chunk = AgentTurnResponseStreamChunk(
+        event=TurnResponseEvent(
+            payload=AgentTurnResponseStepCompletePayload(
                 event_type="step_complete",
+                step_id="s1",
                 step_type="tool_execution",
-                step_details=mocker.Mock(
+                step_details=ToolExecutionStep(
+                    turn_id="t1",
+                    step_id="s2",
                     step_type="tool_execution",
                     tool_responses=[
-                        mocker.Mock(
+                        ToolResponse(
+                            call_id="c1",
                             tool_name="knowledge_search",
                             content=[
                                 TextContentItem(text=s, type="text")
@@ -590,8 +848,8 @@ def test_stream_build_event_step_complete(mocker):
                         )
                     ],
                     tool_calls=[
-                        mocker.Mock(
-                            tool_name="knowledge_search",
+                        ToolCall(
+                            call_id="t1", tool_name="knowledge_search", arguments={}
                         )
                     ],
                 ),
@@ -599,28 +857,61 @@ def test_stream_build_event_step_complete(mocker):
         )
     )
 
-    chunk_id = 0
-    result = stream_build_event(mock_chunk, chunk_id, {})
+    itr = stream_build_event(chunk, 0, {})
 
+    result = next(itr)
     assert result is not None
     assert "data: " in result
-    assert '"event": "token"' in result
-    assert '"token": "knowledge_search"' in result
+    assert '"event": "tool_call"' in result
+    assert '"token": "Tool:knowledge_search arguments:' in result
+
+    result = next(itr)
+    assert (
+        '"token": "Tool:knowledge_search summary:knowledge_search tool found 2 chunks:"'
+        in result
+    )
     assert '"role": "tool_execution"' in result
     assert '"id": 0' in result
 
 
-def test_stream_build_event_returns_none(mocker):
-    """Test stream_build_event function returns None when chunk doesn't have expected structure."""
-    # Create a mock chunk without the expected payload structure
-    mock_chunk = mocker.Mock()
-    mock_chunk.event = mocker.Mock()
-    # Deliberately not setting payload attribute
+def test_stream_build_event_error():
+    """Test stream_build_event function returns a 'error' when chunk contains error information."""
+    # Create a mock chunk without an expected payload structure
 
-    chunk_id = 0
-    result = stream_build_event(mock_chunk, chunk_id, {})
+    # pylint: disable=R0903
+    class MockError:
+        """Dummy class to mock an exception."""
 
-    assert result is None
+        error = {"message": "Something went wrong"}
+
+    result = next(stream_build_event(MockError(), 0, {}))
+
+    assert result is not None
+    assert '"id": 0' in result
+    assert '"event": "error"' in result
+    assert '"token": "Something went wrong"' in result
+
+
+def test_stream_build_event_returns_heartbeat():
+    """Test stream_build_event function returns a 'heartbeat' when chunk is unrecognised."""
+    # Create a mock chunk without an expected payload structure
+    chunk = AgentTurnResponseStreamChunk(
+        event=TurnResponseEvent(
+            payload=AgentTurnResponseStepProgressPayload(
+                event_type="step_progress",
+                step_type="memory_retrieval",
+                delta=TextDelta(text="", type="text"),
+                step_id="s1",
+            )
+        )
+    )
+
+    result = next(stream_build_event(chunk, 0, {}))
+
+    assert result is not None
+    assert '"id": 0' in result
+    assert '"event": "heartbeat"' in result
+    assert '"token": "heartbeat"' in result
 
 
 async def test_retrieve_response_with_mcp_servers(prepare_agent_mocks, mocker):
