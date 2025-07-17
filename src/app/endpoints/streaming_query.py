@@ -367,7 +367,7 @@ async def retrieve_response(
     try:
         token_counter = get_token_counter(model_id)
         token_usage = token_counter.count_conversation_turn_tokens(
-            conversation_id, system_prompt, query_request.query
+            conversation_id, system_prompt, query_request
         )
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.warning("Failed to estimate token usage: %s", e)

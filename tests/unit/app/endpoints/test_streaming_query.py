@@ -1224,7 +1224,7 @@ async def test_auth_tuple_unpacking_in_streaming_query_endpoint_handler(mocker):
     mock_streaming_response.__aiter__.return_value = iter([])
     mock_retrieve_response = mocker.patch(
         "app.endpoints.streaming_query.retrieve_response",
-        return_value=(mock_streaming_response, "test_conversation_id"),
+        return_value=(mock_streaming_response, "test_conversation_id", {"input_tokens": 10, "output_tokens": 20}),
     )
 
     mocker.patch(

@@ -18,6 +18,7 @@ from llama_stack_client.types import (
     ToolResponseMessage,
     CompletionMessage,
 )
+from models.requests import QueryRequest
 import tiktoken
 
 from configuration import configuration, AppConfig
@@ -83,7 +84,7 @@ class TokenCounter:
         return len(self._encoder.encode(text))
 
     def count_turn_tokens(
-        self, system_prompt: str, query: str, response: str = ""
+        self, system_prompt: str, query_request: QueryRequest, response: str = ""
     ) -> dict[str, int]:
         """Count tokens for a complete conversation turn.
 
@@ -107,7 +108,13 @@ class TokenCounter:
             input_messages.append(
                 SystemMessage(role="system", content=str(system_prompt))
             )
-        input_messages.append(UserMessage(role="user", content=query))
+        input_messages.append(UserMessage(role="user", content=query_request.query))
+
+        if query_request.attachments:
+            for attachment in query_request.attachments:
+                input_messages.append(
+                    UserMessage(role="user", content=attachment.content)
+                )
 
         input_tokens = self.count_message_tokens(input_messages)
         output_tokens = self.count_tokens(response)
@@ -120,7 +127,7 @@ class TokenCounter:
         }
 
     def count_conversation_turn_tokens(
-        self, conversation_id: str, system_prompt: str, query: str, response: str = ""
+        self, conversation_id: str, system_prompt: str, query_request: QueryRequest, response: str = ""
     ) -> dict[str, int]:
         """Count tokens for a conversation turn with cumulative tracking.
 
@@ -141,7 +148,7 @@ class TokenCounter:
                 - 'output_tokens': Total tokens in the response message
         """
         # Get the current turn's token usage
-        turn_token_usage = self.count_turn_tokens(system_prompt, query, response)
+        turn_token_usage = self.count_turn_tokens(system_prompt, query_request, response)
 
         # Get cumulative input tokens for this conversation
         cumulative_input_tokens = _conversation_cache.get(conversation_id, 0)
