@@ -33,15 +33,19 @@ NO_USER_TOKEN = ""
 AUTH_MOD_K8S = "k8s"
 AUTH_MOD_NOOP = "noop"
 AUTH_MOD_NOOP_WITH_TOKEN = "noop-with-token"
+AUTH_MOD_JWK_TOKEN = "jwk-token"
 # Supported authentication modules
 SUPPORTED_AUTHENTICATION_MODULES = frozenset(
     {
         AUTH_MOD_K8S,
         AUTH_MOD_NOOP,
         AUTH_MOD_NOOP_WITH_TOKEN,
+        AUTH_MOD_JWK_TOKEN,
     }
 )
 DEFAULT_AUTHENTICATION_MODULE = AUTH_MOD_NOOP
+DEFAULT_JWT_UID_CLAIM = "user_id"
+DEFAULT_JWT_USER_NAME_CLAIM = "username"
 
 # Data collector constants
 DATA_COLLECTOR_COLLECTION_INTERVAL = 7200  # 2 hours in seconds
