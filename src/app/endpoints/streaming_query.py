@@ -19,6 +19,7 @@ from fastapi.responses import StreamingResponse
 from auth import get_auth_dependency
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+import metrics
 from models.requests import QueryRequest
 from utils.endpoints import check_configuration_loaded, get_system_prompt
 from utils.common import retrieve_user_id
@@ -31,7 +32,7 @@ from app.endpoints.query import (
     get_rag_toolgroups,
     is_transcripts_enabled,
     store_transcript,
-    select_model_id,
+    select_model_and_provider_id,
     validate_attachments_metadata,
 )
 
@@ -182,6 +183,24 @@ def stream_build_event(chunk: Any, chunk_id: int, metadata_map: dict) -> str | N
                         },
                     }
                 )
+        if (
+            chunk.event.payload.event_type == "step_complete"
+            and chunk.event.payload.step_type == "shield_call"
+        ):
+            violation = chunk.event.payload.step_details.violation
+            if violation:
+                # Metric for LLM validation errors
+                metrics.llm_calls_validation_errors_total.inc()
+                return format_stream_data(
+                    {
+                        "event": "token",
+                        "data": {
+                            "id": chunk_id,
+                            "role": chunk.event.payload.step_type,
+                            "token": violation.user_message,
+                        },
+                    }
+                )
     return None
 
 
@@ -203,7 +222,9 @@ async def streaming_query_endpoint_handler(
     try:
         # try to get Llama Stack client
         client = AsyncLlamaStackClientHolder().get_client()
-        model_id = select_model_id(await client.models.list(), query_request)
+        model_id, provider_id = select_model_and_provider_id(
+            await client.models.list(), query_request
+        )
         response, conversation_id = await retrieve_response(
             client,
             model_id,
@@ -211,6 +232,8 @@ async def streaming_query_endpoint_handler(
             token,
             mcp_headers=mcp_headers,
         )
+        # Update metrics for the LLM call
+        metrics.llm_calls_total.labels(provider_id, model_id).inc()
         metadata_map: dict[str, dict[str, Any]] = {}
 
         async def response_generator(turn_response: Any) -> AsyncIterator[str]:
@@ -250,6 +273,8 @@ async def streaming_query_endpoint_handler(
         return StreamingResponse(response_generator(response))
     # connection to Llama Stack server
     except APIConnectionError as e:
+        # Update metrics for the LLM call failure
+        metrics.llm_calls_failures_total.inc()
         logger.error("Unable to connect to Llama Stack: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

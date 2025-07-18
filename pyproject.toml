@@ -13,6 +13,8 @@ dependencies = [
     "llama-stack>=0.2.13",
     "rich>=14.0.0",
     "cachetools>=6.1.0",
+    "prometheus-client>=0.22.1",
+    "starlette>=0.47.1",
 ]
 
 [tool.pyright]

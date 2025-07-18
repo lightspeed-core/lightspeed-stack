@@ -5,7 +5,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Tuple
 
 from cachetools import TTLCache  # type: ignore
 
@@ -24,6 +24,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from client import LlamaStackClientHolder
 from configuration import configuration
 from app.endpoints.conversations import conversation_id_to_agent_id
+import metrics
 from models.responses import QueryResponse, UnauthorizedResponse, ForbiddenResponse
 from models.requests import QueryRequest, Attachment
 import constants
@@ -120,7 +121,9 @@ def query_endpoint_handler(
     try:
         # try to get Llama Stack client
         client = LlamaStackClientHolder().get_client()
-        model_id = select_model_id(client.models.list(), query_request)
+        model_id, provider_id = select_model_and_provider_id(
+            client.models.list(), query_request
+        )
         response, conversation_id = retrieve_response(
             client,
             model_id,
@@ -128,6 +131,8 @@ def query_endpoint_handler(
             token,
             mcp_headers=mcp_headers,
         )
+        # Update metrics for the LLM call
+        metrics.llm_calls_total.labels(provider_id, model_id).inc()
 
         if not is_transcripts_enabled():
             logger.debug("Transcript collection is disabled in the configuration")
@@ -148,6 +153,8 @@ def query_endpoint_handler(
 
     # connection to Llama Stack server
     except APIConnectionError as e:
+        # Update metrics for the LLM call failure
+        metrics.llm_calls_failures_total.inc()
         logger.error("Unable to connect to Llama Stack: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -158,8 +165,10 @@ def query_endpoint_handler(
         ) from e
 
 
-def select_model_id(models: ModelListResponse, query_request: QueryRequest) -> str:
-    """Select the model ID based on the request or available models."""
+def select_model_and_provider_id(
+    models: ModelListResponse, query_request: QueryRequest
+) -> Tuple[str, str | None]:
+    """Select the model ID and provider ID based on the request or available models."""
     model_id = query_request.model
     provider_id = query_request.provider
 
@@ -171,9 +180,11 @@ def select_model_id(models: ModelListResponse, query_request: QueryRequest) -> s
                 m
                 for m in models
                 if m.model_type == "llm"  # pyright: ignore[reportAttributeAccessIssue]
-            ).identifier
+            )
+            model_id = model.identifier
+            provider_id = model.provider_id
             logger.info("Selected model: %s", model)
-            return model
+            return model_id, provider_id
         except (StopIteration, AttributeError) as e:
             message = "No LLM model found in available models"
             logger.error(message)
@@ -199,7 +210,7 @@ def select_model_id(models: ModelListResponse, query_request: QueryRequest) -> s
             },
         )
 
-    return model_id
+    return model_id, provider_id
 
 
 def retrieve_response(
@@ -262,6 +273,14 @@ def retrieve_response(
         stream=False,
         toolgroups=toolgroups or None,
     )
+
+    # Check for validation errors in the response
+    steps = getattr(response, "steps", [])
+    for step in steps:
+        if step.step_type == "shield_call" and step.violation:
+            # Metric for LLM validation errors
+            metrics.llm_calls_validation_errors_total.inc()
+            break
 
     return str(response.output_message.content), conversation_id  # type: ignore[union-attr]
 

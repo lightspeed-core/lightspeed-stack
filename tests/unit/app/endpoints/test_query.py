@@ -12,7 +12,7 @@ from llama_stack_client.types import UserMessage  # type: ignore
 from configuration import AppConfig
 from app.endpoints.query import (
     query_endpoint_handler,
-    select_model_id,
+    select_model_and_provider_id,
     retrieve_response,
     validate_attachments_metadata,
     is_transcripts_enabled,
@@ -63,6 +63,7 @@ def prepare_agent_mocks_fixture(mocker):
     """Fixture that yields mock agent when called."""
     mock_client = mocker.Mock()
     mock_agent = mocker.Mock()
+    mock_agent.create_turn.return_value.steps = []
     yield mock_client, mock_agent
     # cleanup agent cache after tests
     _agent_cache.clear()
@@ -129,7 +130,10 @@ def _test_query_endpoint_handler(mocker, store_transcript_to_file=False):
         "app.endpoints.query.retrieve_response",
         return_value=(llm_response, conversation_id),
     )
-    mocker.patch("app.endpoints.query.select_model_id", return_value="fake_model_id")
+    mocker.patch(
+        "app.endpoints.query.select_model_and_provider_id",
+        return_value=("fake_model_id", "fake_provider_id"),
+    )
     mocker.patch(
         "app.endpoints.query.is_transcripts_enabled",
         return_value=store_transcript_to_file,
@@ -171,8 +175,8 @@ def test_query_endpoint_handler_store_transcript(mocker):
     _test_query_endpoint_handler(mocker, store_transcript_to_file=True)
 
 
-def test_select_model_id(mocker):
-    """Test the select_model_id function."""
+def test_select_model_and_provider_id(mocker):
+    """Test the select_model_and_provider_id function."""
     mock_client = mocker.Mock()
     mock_client.models.list.return_value = [
         mocker.Mock(identifier="model1", model_type="llm", provider_id="provider1"),
@@ -183,13 +187,16 @@ def test_select_model_id(mocker):
         query="What is OpenStack?", model="model1", provider="provider1"
     )
 
-    model_id = select_model_id(mock_client.models.list(), query_request)
+    model_id, provider_id = select_model_and_provider_id(
+        mock_client.models.list(), query_request
+    )
 
     assert model_id == "model1"
+    assert provider_id == "provider1"
 
 
-def test_select_model_id_no_model(mocker):
-    """Test the select_model_id function when no model is specified."""
+def test_select_model_and_provider_id_no_model(mocker):
+    """Test the select_model_and_provider_id function when no model is specified."""
     mock_client = mocker.Mock()
     mock_client.models.list.return_value = [
         mocker.Mock(
@@ -205,14 +212,17 @@ def test_select_model_id_no_model(mocker):
 
     query_request = QueryRequest(query="What is OpenStack?")
 
-    model_id = select_model_id(mock_client.models.list(), query_request)
+    model_id, provider_id = select_model_and_provider_id(
+        mock_client.models.list(), query_request
+    )
 
     # Assert return the first available LLM model
     assert model_id == "first_model"
+    assert provider_id == "provider1"
 
 
-def test_select_model_id_invalid_model(mocker):
-    """Test the select_model_id function with an invalid model."""
+def test_select_model_and_provider_id_invalid_model(mocker):
+    """Test the select_model_and_provider_id function with an invalid model."""
     mock_client = mocker.Mock()
     mock_client.models.list.return_value = [
         mocker.Mock(identifier="model1", model_type="llm", provider_id="provider1"),
@@ -222,8 +232,8 @@ def test_select_model_id_invalid_model(mocker):
         query="What is OpenStack?", model="invalid_model", provider="provider1"
     )
 
-    with pytest.raises(Exception) as exc_info:
-        select_model_id(mock_client.models.list(), query_request)
+    with pytest.raises(HTTPException) as exc_info:
+        select_model_and_provider_id(mock_client.models.list(), query_request)
 
     assert (
         "Model invalid_model from provider provider1 not found in available models"
@@ -231,16 +241,16 @@ def test_select_model_id_invalid_model(mocker):
     )
 
 
-def test_no_available_models(mocker):
-    """Test the select_model_id function with an invalid model."""
+def test_select_model_and_provider_id_no_available_models(mocker):
+    """Test the select_model_and_provider_id function with no available models."""
     mock_client = mocker.Mock()
     # empty list of models
     mock_client.models.list.return_value = []
 
     query_request = QueryRequest(query="What is OpenStack?", model=None, provider=None)
 
-    with pytest.raises(Exception) as exc_info:
-        select_model_id(mock_client.models.list(), query_request)
+    with pytest.raises(HTTPException) as exc_info:
+        select_model_and_provider_id(mock_client.models.list(), query_request)
 
     assert "No LLM model found in available models" in str(exc_info.value)
 
@@ -690,11 +700,12 @@ def test_retrieve_response_with_mcp_servers_empty_token(prepare_agent_mocks, moc
     )
 
 
-def test_retrieve_response_with_mcp_servers_and_mcp_headers(mocker):
+def test_retrieve_response_with_mcp_servers_and_mcp_headers(
+    prepare_agent_mocks, mocker
+):
     """Test the retrieve_response function with MCP servers configured."""
-    mock_agent = mocker.Mock()
+    mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
-    mock_client = mocker.Mock()
     mock_client.shields.list.return_value = []
     mock_client.vector_dbs.list.return_value = []
 
@@ -1177,7 +1188,10 @@ def test_auth_tuple_unpacking_in_query_endpoint_handler(mocker):
         return_value=("test response", "test_conversation_id"),
     )
 
-    mocker.patch("app.endpoints.query.select_model_id", return_value="test_model")
+    mocker.patch(
+        "app.endpoints.query.select_model_and_provider_id",
+        return_value=("test_model", "test_provider"),
+    )
     mocker.patch("app.endpoints.query.is_transcripts_enabled", return_value=False)
 
     _ = query_endpoint_handler(

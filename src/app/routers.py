@@ -13,6 +13,7 @@ from app.endpoints import (
     streaming_query,
     authorized,
     conversations,
+    metrics,
 )
 
 
@@ -34,3 +35,4 @@ def include_routers(app: FastAPI) -> None:
     # road-core does not version these endpoints
     app.include_router(health.router)
     app.include_router(authorized.router)
+    app.include_router(metrics.router)
