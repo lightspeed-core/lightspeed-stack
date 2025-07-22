@@ -244,7 +244,11 @@ async def test_register_mcp_servers_with_custom_provider(mocker):
 
 @pytest.mark.asyncio
 async def test_register_mcp_servers_async_with_library_client(mocker):
-    """Test register_mcp_servers_async with library client configuration."""
+    """
+    Test that `register_mcp_servers_async` correctly registers MCP servers when using the library client configuration.
+    
+    This test verifies that the function initializes the async client, checks for existing toolgroups, and registers new MCP servers as needed when the configuration specifies the use of a library client.
+    """
     # Mock the logger
     mock_logger = Mock(spec=Logger)
 

@@ -65,7 +65,14 @@ class LlamaStackConfiguration(BaseModel):
 
     @model_validator(mode="after")
     def check_llama_stack_model(self) -> Self:
-        """Check Llama stack configuration."""
+        """
+        Validates the Llama stack configuration after model initialization.
+        
+        Ensures that either a URL is provided or library client mode is explicitly enabled. If library client mode is enabled, verifies that a configuration file path is specified and points to an existing, readable file. Raises a ValueError if any required condition is not met.
+        
+        Returns:
+            Self: The validated LlamaStackConfiguration instance.
+        """
         if self.url is None:
             if self.use_as_library_client is None:
                 raise ValueError(

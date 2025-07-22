@@ -29,7 +29,9 @@ from utils.checks import InvalidConfigurationError
 
 
 def test_service_configuration_constructor() -> None:
-    """Test the ServiceConfiguration constructor."""
+    """
+    Verify that the ServiceConfiguration constructor sets default values for all fields.
+    """
     s = ServiceConfiguration()
     assert s is not None
 
@@ -58,7 +60,9 @@ def test_service_configuration_workers_value() -> None:
 
 
 def test_llama_stack_configuration_constructor() -> None:
-    """Test the LLamaStackConfiguration constructor."""
+    """
+    Verify that the LlamaStackConfiguration constructor accepts valid combinations of parameters and creates instances successfully.
+    """
     llama_stack_configuration = LlamaStackConfiguration(
         use_as_library_client=True,
         library_client_config_path="tests/configuration/run.yaml",
@@ -80,7 +84,9 @@ def test_llama_stack_configuration_constructor() -> None:
 
 
 def test_llama_stack_configuration_no_run_yaml() -> None:
-    """Test the LLamaStackConfiguration constructor when run.yaml file is not a file."""
+    """
+    Verify that constructing a LlamaStackConfiguration with a non-existent or invalid library_client_config_path raises InvalidConfigurationError.
+    """
     with pytest.raises(
         InvalidConfigurationError,
         match="Llama Stack configuration file 'not a file' is not a file",
@@ -92,7 +98,9 @@ def test_llama_stack_configuration_no_run_yaml() -> None:
 
 
 def test_llama_stack_wrong_configuration_constructor_no_url() -> None:
-    """Test the LLamaStackConfiguration constructor."""
+    """
+    Verify that constructing a LlamaStackConfiguration without specifying either a URL or enabling library client mode raises a ValueError.
+    """
     with pytest.raises(
         ValueError,
         match="LLama stack URL is not specified and library client mode is not specified",
@@ -308,7 +316,11 @@ def test_model_context_protocol_server_required_fields() -> None:
 
 
 def test_configuration_empty_mcp_servers() -> None:
-    """Test Configuration with empty MCP servers list."""
+    """
+    Test that a Configuration object can be created with an empty list of MCP servers.
+    
+    Verifies that the Configuration instance is constructed successfully and that the mcp_servers attribute is empty.
+    """
     cfg = Configuration(
         name="test_name",
         service=ServiceConfiguration(),
@@ -327,7 +339,9 @@ def test_configuration_empty_mcp_servers() -> None:
 
 
 def test_configuration_single_mcp_server() -> None:
-    """Test Configuration with a single MCP server."""
+    """
+    Test that a Configuration object can be created with a single MCP server and verifies its properties.
+    """
     mcp_server = ModelContextProtocolServer(
         name="test-server", url="http://localhost:8080"
     )
@@ -351,7 +365,9 @@ def test_configuration_single_mcp_server() -> None:
 
 
 def test_configuration_multiple_mcp_servers() -> None:
-    """Test Configuration with multiple MCP servers."""
+    """
+    Verify that the Configuration object correctly handles multiple ModelContextProtocolServer instances in its mcp_servers list, including custom provider IDs.
+    """
     mcp_servers = [
         ModelContextProtocolServer(name="server1", url="http://localhost:8080"),
         ModelContextProtocolServer(
@@ -381,7 +397,9 @@ def test_configuration_multiple_mcp_servers() -> None:
 
 
 def test_dump_configuration(tmp_path) -> None:
-    """Test the ability to dump configuration."""
+    """
+    Test that the Configuration object can be serialized to a JSON file and that the resulting file contains all expected sections and values.
+    """
     cfg = Configuration(
         name="test_name",
         service=ServiceConfiguration(),
@@ -461,7 +479,12 @@ def test_dump_configuration(tmp_path) -> None:
 
 
 def test_dump_configuration_with_one_mcp_server(tmp_path) -> None:
-    """Test the ability to dump configuration with one MCP server configured."""
+    """
+    Verify that a configuration with a single MCP server can be serialized to JSON and that all expected fields and values are present in the output.
+    
+    Parameters:
+        tmp_path: Temporary directory path provided by pytest for file output.
+    """
     mcp_servers = [
         ModelContextProtocolServer(name="test-server", url="http://localhost:8080"),
     ]
@@ -545,7 +568,11 @@ def test_dump_configuration_with_one_mcp_server(tmp_path) -> None:
 
 
 def test_dump_configuration_with_more_mcp_servers(tmp_path) -> None:
-    """Test the ability to dump configuration with more MCP servers configured."""
+    """
+    Test that a configuration with multiple MCP servers can be serialized to JSON and that all server entries are correctly included in the output.
+    
+    Verifies that the dumped configuration file contains all expected fields and that each MCP server is present with the correct name, URL, and provider ID.
+    """
     mcp_servers = [
         ModelContextProtocolServer(name="test-server-1", url="http://localhost:8081"),
         ModelContextProtocolServer(name="test-server-2", url="http://localhost:8082"),
