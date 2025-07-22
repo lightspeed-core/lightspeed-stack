@@ -72,7 +72,7 @@ def test_collect_feedback_files_no_storage(mock_config) -> None:
 def test_collect_feedback_files_directory_not_exists(mock_config) -> None:
     """Test collecting feedback files when directory doesn't exist."""
     service = DataCollectorService()
-    mock_config.user_data_collection_configuration.feedback_enabled = False
+    mock_config.user_data_collection_configuration.feedback_enabled = True
     mock_config.user_data_collection_configuration.feedback_storage = "/tmp/feedback"
 
     with patch("services.data_collector.Path") as mock_path:
