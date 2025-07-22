@@ -99,7 +99,7 @@ def test_is_transcripts_enabled(setup_configuration, mocker):
 
 def test_is_transcripts_disabled(setup_configuration, mocker):
     """Test that is_transcripts_enabled returns False when transcripts is disabled."""
-    # Use default transcripts_enabled=True from setup
+    # Use default transcripts_enabled=False from setup
     mocker.patch("app.endpoints.query.configuration", setup_configuration)
 
     assert is_transcripts_enabled() is False, "Transcripts should be disabled"
