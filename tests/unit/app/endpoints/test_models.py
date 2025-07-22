@@ -51,7 +51,7 @@ def test_models_endpoint_handler_improper_llama_stack_configuration(mocker):
             "use_as_library_client": False,
         },
         "user_data_collection": {
-            "transcripts_disabled": True,
+            "transcripts_enabled": False,
         },
         "mcp_servers": [],
         "customization": None,
@@ -95,7 +95,7 @@ def test_models_endpoint_handler_configuration_loaded():
             "use_as_library_client": False,
         },
         "user_data_collection": {
-            "feedback_disabled": True,
+            "feedback_enabled": False,
         },
         "customization": None,
     }
@@ -134,7 +134,7 @@ def test_models_endpoint_handler_unable_to_retrieve_models_list(mocker):
             "use_as_library_client": False,
         },
         "user_data_collection": {
-            "feedback_disabled": True,
+            "feedback_enabled": False,
         },
         "customization": None,
     }

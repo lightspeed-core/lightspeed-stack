@@ -36,9 +36,9 @@ get_config_responses: dict[int | str, dict[str, Any]] = {
             "library_client_config_path": None,
         },
         "user_data_collection": {
-            "feedback_disabled": False,
+            "feedback_enabled": True,
             "feedback_storage": "/tmp/data/feedback",
-            "transcripts_disabled": True,
+            "transcripts_enabled": False,
             "transcripts_storage": None,
         },
         "mcp_servers": [

@@ -65,7 +65,7 @@ def test_init_from_dict() -> None:
             "use_as_library_client": False,
         },
         "user_data_collection": {
-            "feedback_disabled": True,
+            "feedback_enabled": False,
         },
         "mcp_servers": [],
         "customization": None,
@@ -96,7 +96,7 @@ def test_init_from_dict() -> None:
     assert cfg.service_configuration.access_log is True
 
     # check for user data collection subsection
-    assert cfg.user_data_collection_configuration.feedback_disabled is True
+    assert cfg.user_data_collection_configuration.feedback_enabled is False
 
 
 def test_init_from_dict_with_mcp_servers() -> None:
@@ -117,7 +117,7 @@ def test_init_from_dict_with_mcp_servers() -> None:
             "use_as_library_client": False,
         },
         "user_data_collection": {
-            "feedback_disabled": True,
+            "feedback_enabled": False,
         },
         "mcp_servers": [
             {
@@ -163,7 +163,7 @@ llama_stack:
   url: http://localhost:8321
   api_key: xyzzy
 user_data_collection:
-  feedback_disabled: true
+  feedback_enabled: false
 mcp_servers: []
             """
         )
@@ -195,7 +195,7 @@ llama_stack:
   url: http://localhost:8321
   api_key: test-key
 user_data_collection:
-  feedback_disabled: true
+  feedback_enabled: false
 mcp_servers:
   - name: filesystem-server
     url: http://localhost:3000
@@ -235,7 +235,7 @@ def test_mcp_servers_property_empty() -> None:
             "use_as_library_client": False,
         },
         "user_data_collection": {
-            "feedback_disabled": True,
+            "feedback_enabled": False,
         },
         "mcp_servers": [],
         "customization": None,
@@ -266,7 +266,7 @@ def test_mcp_servers_property_with_servers() -> None:
             "use_as_library_client": False,
         },
         "user_data_collection": {
-            "feedback_disabled": True,
+            "feedback_enabled": False,
         },
         "mcp_servers": [
             {
@@ -373,7 +373,7 @@ llama_stack:
   url: http://localhost:8321
   api_key: test-key
 user_data_collection:
-  feedback_disabled: true
+  feedback_enabled: false
 mcp_servers:
   - name: filesystem-server
     url: http://localhost:3000
@@ -413,7 +413,7 @@ llama_stack:
   url: http://localhost:8321
   api_key: test-key
 user_data_collection:
-  feedback_disabled: true
+  feedback_enabled: false
 mcp_servers:
   - name: filesystem-server
     url: http://localhost:3000

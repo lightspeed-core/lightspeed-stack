@@ -15,13 +15,13 @@ from app.endpoints.feedback import (
 
 def test_is_feedback_enabled():
     """Test that is_feedback_enabled returns True when feedback is not disabled."""
-    configuration.user_data_collection_configuration.feedback_disabled = False
+    configuration.user_data_collection_configuration.feedback_enabled = True
     assert is_feedback_enabled() is True, "Feedback should be enabled"
 
 
 def test_is_feedback_disabled():
     """Test that is_feedback_enabled returns False when feedback is disabled."""
-    configuration.user_data_collection_configuration.feedback_disabled = True
+    configuration.user_data_collection_configuration.feedback_enabled = False
     assert is_feedback_enabled() is False, "Feedback should be disabled"
 
 
@@ -127,7 +127,7 @@ def test_store_feedback(mocker):
 
 def test_feedback_status():
     """Test that feedback_status returns the correct status response."""
-    configuration.user_data_collection_configuration.feedback_disabled = False
+    configuration.user_data_collection_configuration.feedback_enabled = True
 
     response = feedback_status()
     assert response.functionality == "feedback"

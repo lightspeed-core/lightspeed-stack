@@ -119,9 +119,9 @@ def test_llama_stack_wrong_configuration_no_config_file() -> None:
 def test_user_data_collection_feedback_enabled() -> None:
     """Test the UserDataCollection constructor for feedback."""
     # correct configuration
-    cfg = UserDataCollection(feedback_disabled=True, feedback_storage=None)
+    cfg = UserDataCollection(feedback_enabled=False, feedback_storage=None)
     assert cfg is not None
-    assert cfg.feedback_disabled is True
+    assert cfg.feedback_enabled is False
     assert cfg.feedback_storage is None
 
 
@@ -132,13 +132,13 @@ def test_user_data_collection_feedback_disabled() -> None:
         ValueError,
         match="feedback_storage is required when feedback is enabled",
     ):
-        UserDataCollection(feedback_disabled=False, feedback_storage=None)
+        UserDataCollection(feedback_enabled=True, feedback_storage=None)
 
 
 def test_user_data_collection_transcripts_enabled() -> None:
     """Test the UserDataCollection constructor for transcripts."""
     # correct configuration
-    cfg = UserDataCollection(transcripts_disabled=True, transcripts_storage=None)
+    cfg = UserDataCollection(transcripts_enabled=False, transcripts_storage=None)
     assert cfg is not None
 
 
@@ -149,7 +149,7 @@ def test_user_data_collection_transcripts_disabled() -> None:
         ValueError,
         match="transcripts_storage is required when transcripts is enabled",
     ):
-        UserDataCollection(transcripts_disabled=False, transcripts_storage=None)
+        UserDataCollection(transcripts_enabled=True, transcripts_storage=None)
 
 
 def test_user_data_collection_data_collector_enabled() -> None:
@@ -317,7 +317,7 @@ def test_configuration_empty_mcp_servers() -> None:
             library_client_config_path="tests/configuration/run.yaml",
         ),
         user_data_collection=UserDataCollection(
-            feedback_disabled=True, feedback_storage=None
+            feedback_enabled=False, feedback_storage=None
         ),
         mcp_servers=[],
         customization=None,
@@ -339,7 +339,7 @@ def test_configuration_single_mcp_server() -> None:
             library_client_config_path="tests/configuration/run.yaml",
         ),
         user_data_collection=UserDataCollection(
-            feedback_disabled=True, feedback_storage=None
+            feedback_enabled=False, feedback_storage=None
         ),
         mcp_servers=[mcp_server],
         customization=None,
@@ -367,7 +367,7 @@ def test_configuration_multiple_mcp_servers() -> None:
             library_client_config_path="tests/configuration/run.yaml",
         ),
         user_data_collection=UserDataCollection(
-            feedback_disabled=True, feedback_storage=None
+            feedback_enabled=False, feedback_storage=None
         ),
         mcp_servers=mcp_servers,
         customization=None,
@@ -390,7 +390,7 @@ def test_dump_configuration(tmp_path) -> None:
             library_client_config_path="tests/configuration/run.yaml",
         ),
         user_data_collection=UserDataCollection(
-            feedback_disabled=True, feedback_storage=None
+            feedback_enabled=False, feedback_storage=None
         ),
         mcp_servers=[],
         customization=None,
@@ -435,9 +435,9 @@ def test_dump_configuration(tmp_path) -> None:
                 "library_client_config_path": "tests/configuration/run.yaml",
             },
             "user_data_collection": {
-                "feedback_disabled": True,
+                "feedback_enabled": False,
                 "feedback_storage": None,
-                "transcripts_disabled": True,
+                "transcripts_enabled": False,
                 "transcripts_storage": None,
                 "data_collector": {
                     "enabled": False,
@@ -473,7 +473,7 @@ def test_dump_configuration_with_one_mcp_server(tmp_path) -> None:
             library_client_config_path="tests/configuration/run.yaml",
         ),
         user_data_collection=UserDataCollection(
-            feedback_disabled=True, feedback_storage=None
+            feedback_enabled=False, feedback_storage=None
         ),
         mcp_servers=mcp_servers,
         customization=None,
@@ -513,9 +513,9 @@ def test_dump_configuration_with_one_mcp_server(tmp_path) -> None:
                 "library_client_config_path": "tests/configuration/run.yaml",
             },
             "user_data_collection": {
-                "feedback_disabled": True,
+                "feedback_enabled": False,
                 "feedback_storage": None,
-                "transcripts_disabled": True,
+                "transcripts_enabled": False,
                 "transcripts_storage": None,
                 "data_collector": {
                     "enabled": False,
@@ -559,7 +559,7 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path) -> None:
             library_client_config_path="tests/configuration/run.yaml",
         ),
         user_data_collection=UserDataCollection(
-            feedback_disabled=True, feedback_storage=None
+            feedback_enabled=False, feedback_storage=None
         ),
         mcp_servers=mcp_servers,
         customization=None,
@@ -605,9 +605,9 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path) -> None:
                 "library_client_config_path": "tests/configuration/run.yaml",
             },
             "user_data_collection": {
-                "feedback_disabled": True,
+                "feedback_enabled": False,
                 "feedback_storage": None,
-                "transcripts_disabled": True,
+                "transcripts_enabled": False,
                 "transcripts_storage": None,
                 "data_collector": {
                     "enabled": False,

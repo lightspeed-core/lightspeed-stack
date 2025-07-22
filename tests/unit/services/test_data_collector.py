@@ -51,7 +51,7 @@ def test_run_with_exception(mock_config, mock_sleep) -> None:
 def test_collect_feedback_files_disabled(mock_config) -> None:
     """Test collecting feedback files when disabled."""
     service = DataCollectorService()
-    mock_config.user_data_collection_configuration.feedback_disabled = True
+    mock_config.user_data_collection_configuration.feedback_enabled = False
 
     result = service._collect_feedback_files()
     assert result == []
@@ -61,7 +61,7 @@ def test_collect_feedback_files_disabled(mock_config) -> None:
 def test_collect_feedback_files_no_storage(mock_config) -> None:
     """Test collecting feedback files when no storage configured."""
     service = DataCollectorService()
-    mock_config.user_data_collection_configuration.feedback_disabled = False
+    mock_config.user_data_collection_configuration.feedback_enabled = True
     mock_config.user_data_collection_configuration.feedback_storage = None
 
     result = service._collect_feedback_files()
@@ -72,7 +72,7 @@ def test_collect_feedback_files_no_storage(mock_config) -> None:
 def test_collect_feedback_files_directory_not_exists(mock_config) -> None:
     """Test collecting feedback files when directory doesn't exist."""
     service = DataCollectorService()
-    mock_config.user_data_collection_configuration.feedback_disabled = False
+    mock_config.user_data_collection_configuration.feedback_enabled = False
     mock_config.user_data_collection_configuration.feedback_storage = "/tmp/feedback"
 
     with patch("services.data_collector.Path") as mock_path:
@@ -86,7 +86,7 @@ def test_collect_feedback_files_directory_not_exists(mock_config) -> None:
 def test_collect_feedback_files_success(mock_config) -> None:
     """Test collecting feedback files successfully."""
     service = DataCollectorService()
-    mock_config.user_data_collection_configuration.feedback_disabled = False
+    mock_config.user_data_collection_configuration.feedback_enabled = True
     mock_config.user_data_collection_configuration.feedback_storage = "/tmp/feedback"
 
     mock_files = [Path("/tmp/feedback/file1.json")]
@@ -103,7 +103,7 @@ def test_collect_feedback_files_success(mock_config) -> None:
 def test_collect_transcript_files_disabled(mock_config) -> None:
     """Test collecting transcript files when disabled."""
     service = DataCollectorService()
-    mock_config.user_data_collection_configuration.transcripts_disabled = True
+    mock_config.user_data_collection_configuration.transcripts_enabled = False
 
     result = service._collect_transcript_files()
     assert result == []
@@ -113,7 +113,7 @@ def test_collect_transcript_files_disabled(mock_config) -> None:
 def test_collect_transcript_files_directory_not_exists(mock_config) -> None:
     """Test collecting transcript files when directory doesn't exist."""
     service = DataCollectorService()
-    mock_config.user_data_collection_configuration.transcripts_disabled = False
+    mock_config.user_data_collection_configuration.transcripts_enabled = True
     mock_config.user_data_collection_configuration.transcripts_storage = (
         "/tmp/transcripts"
     )
@@ -129,7 +129,7 @@ def test_collect_transcript_files_directory_not_exists(mock_config) -> None:
 def test_collect_transcript_files_success(mock_config) -> None:
     """Test collecting transcript files successfully."""
     service = DataCollectorService()
-    mock_config.user_data_collection_configuration.transcripts_disabled = False
+    mock_config.user_data_collection_configuration.transcripts_enabled = True
     mock_config.user_data_collection_configuration.transcripts_storage = (
         "/tmp/transcripts"
     )
@@ -488,7 +488,7 @@ def test_cleanup_tarball_with_error() -> None:
 def test_cleanup_empty_directories_disabled(mock_config) -> None:
     """Test directory cleanup when transcripts disabled."""
     service = DataCollectorService()
-    mock_config.user_data_collection_configuration.transcripts_disabled = True
+    mock_config.user_data_collection_configuration.transcripts_enabled = False
 
     service._cleanup_empty_directories()
 
@@ -497,7 +497,7 @@ def test_cleanup_empty_directories_disabled(mock_config) -> None:
 def test_cleanup_empty_directories_success(mock_config) -> None:
     """Test successful directory cleanup."""
     service = DataCollectorService()
-    mock_config.user_data_collection_configuration.transcripts_disabled = False
+    mock_config.user_data_collection_configuration.transcripts_enabled = True
     mock_config.user_data_collection_configuration.transcripts_storage = (
         "/tmp/transcripts"
     )
@@ -527,7 +527,7 @@ def test_cleanup_empty_directories_success(mock_config) -> None:
 def test_cleanup_empty_directories_with_errors(mock_config) -> None:
     """Test directory cleanup when rmdir operations fail."""
     service = DataCollectorService()
-    mock_config.user_data_collection_configuration.transcripts_disabled = False
+    mock_config.user_data_collection_configuration.transcripts_enabled = True
     mock_config.user_data_collection_configuration.transcripts_storage = (
         "/tmp/transcripts"
     )
@@ -559,7 +559,7 @@ def test_cleanup_empty_directories_with_errors(mock_config) -> None:
 def test_cleanup_empty_directories_directory_not_exists(mock_config) -> None:
     """Test directory cleanup when transcripts directory doesn't exist."""
     service = DataCollectorService()
-    mock_config.user_data_collection_configuration.transcripts_disabled = False
+    mock_config.user_data_collection_configuration.transcripts_enabled = True
     mock_config.user_data_collection_configuration.transcripts_storage = (
         "/tmp/transcripts"
     )

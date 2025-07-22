@@ -38,7 +38,7 @@ def setup_configuration_fixture():
             "use_as_library_client": False,
         },
         "user_data_collection": {
-            "transcripts_disabled": True,
+            "transcripts_enabled": False,
         },
         "mcp_servers": [],
         "customization": None,

@@ -69,7 +69,7 @@ def is_transcripts_enabled() -> bool:
     Returns:
         bool: True if transcripts is enabled, False otherwise.
     """
-    return not configuration.user_data_collection_configuration.transcripts_disabled
+    return configuration.user_data_collection_configuration.transcripts_enabled
 
 
 def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-arguments

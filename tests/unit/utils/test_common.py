@@ -41,7 +41,7 @@ async def test_register_mcp_servers_empty_list(mocker):
         llama_stack=LlamaStackConfiguration(
             use_as_library_client=False, url="http://localhost:8321"
         ),
-        user_data_collection=UserDataCollection(feedback_disabled=True),
+        user_data_collection=UserDataCollection(feedback_enabled=False),
         mcp_servers=[],
         customization=None,
     )
@@ -81,7 +81,7 @@ async def test_register_mcp_servers_single_server_not_registered(mocker):
         llama_stack=LlamaStackConfiguration(
             use_as_library_client=False, url="http://localhost:8321"
         ),
-        user_data_collection=UserDataCollection(feedback_disabled=True),
+        user_data_collection=UserDataCollection(feedback_enabled=False),
         mcp_servers=[mcp_server],
         customization=None,
     )
@@ -125,7 +125,7 @@ async def test_register_mcp_servers_single_server_already_registered(mocker):
         llama_stack=LlamaStackConfiguration(
             use_as_library_client=False, url="http://localhost:8321"
         ),
-        user_data_collection=UserDataCollection(feedback_disabled=True),
+        user_data_collection=UserDataCollection(feedback_enabled=False),
         mcp_servers=[mcp_server],
         customization=None,
     )
@@ -172,7 +172,7 @@ async def test_register_mcp_servers_multiple_servers_mixed_registration(mocker):
         llama_stack=LlamaStackConfiguration(
             use_as_library_client=False, url="http://localhost:8321"
         ),
-        user_data_collection=UserDataCollection(feedback_disabled=True),
+        user_data_collection=UserDataCollection(feedback_enabled=False),
         mcp_servers=mcp_servers,
         customization=None,
     )
@@ -226,7 +226,7 @@ async def test_register_mcp_servers_with_custom_provider(mocker):
         llama_stack=LlamaStackConfiguration(
             use_as_library_client=False, url="http://localhost:8321"
         ),
-        user_data_collection=UserDataCollection(feedback_disabled=True),
+        user_data_collection=UserDataCollection(feedback_enabled=False),
         mcp_servers=[mcp_server],
         customization=None,
     )
@@ -271,7 +271,7 @@ async def test_register_mcp_servers_async_with_library_client(mocker):
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
-        user_data_collection=UserDataCollection(feedback_disabled=True),
+        user_data_collection=UserDataCollection(feedback_enabled=False),
         mcp_servers=[mcp_server],
         customization=None,
     )

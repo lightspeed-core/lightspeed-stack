@@ -63,9 +63,9 @@ class "TLSConfiguration" as src.models.config.TLSConfiguration {
 }
 class "UserDataCollection" as src.models.config.UserDataCollection {
   data_collector
-  feedback_disabled : bool
+  feedback_enabled : bool
   feedback_storage : Optional[str]
-  transcripts_disabled : bool
+  transcripts_enabled : bool
   transcripts_storage : Optional[str]
   check_storage_location_is_set_when_needed() -> Self
 }

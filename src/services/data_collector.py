@@ -95,7 +95,7 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
         """Collect all feedback files that need to be collected."""
         udc_config = configuration.user_data_collection_configuration
 
-        if udc_config.feedback_disabled or not udc_config.feedback_storage:
+        if not udc_config.feedback_enabled or not udc_config.feedback_storage:
             return []
 
         feedback_dir = Path(udc_config.feedback_storage)
@@ -108,7 +108,7 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
         """Collect all transcript files that need to be collected."""
         udc_config = configuration.user_data_collection_configuration
 
-        if udc_config.transcripts_disabled or not udc_config.transcripts_storage:
+        if not udc_config.transcripts_enabled or not udc_config.transcripts_storage:
             return []
 
         transcripts_dir = Path(udc_config.transcripts_storage)
@@ -223,7 +223,7 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
         """Remove empty directories from transcript storage."""
         udc_config = configuration.user_data_collection_configuration
 
-        if udc_config.transcripts_disabled or not udc_config.transcripts_storage:
+        if not udc_config.transcripts_enabled or not udc_config.transcripts_storage:
             return
 
         transcripts_dir = Path(udc_config.transcripts_storage)

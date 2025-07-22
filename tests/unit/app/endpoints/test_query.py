@@ -48,7 +48,7 @@ def setup_configuration_fixture():
             "use_as_library_client": False,
         },
         "user_data_collection": {
-            "transcripts_disabled": True,
+            "transcripts_enabled": False,
         },
         "mcp_servers": [],
         "customization": None,
@@ -86,11 +86,11 @@ def test_query_endpoint_handler_configuration_not_loaded(mocker):
 
 def test_is_transcripts_enabled(setup_configuration, mocker):
     """Test that is_transcripts_enabled returns True when transcripts is not disabled."""
-    # Override the transcripts_disabled setting
+    # Override the transcripts_enabled setting
     mocker.patch.object(
         setup_configuration.user_data_collection_configuration,
-        "transcripts_disabled",
-        False,
+        "transcripts_enabled",
+        True,
     )
     mocker.patch("app.endpoints.query.configuration", setup_configuration)
 
@@ -99,7 +99,7 @@ def test_is_transcripts_enabled(setup_configuration, mocker):
 
 def test_is_transcripts_disabled(setup_configuration, mocker):
     """Test that is_transcripts_enabled returns False when transcripts is disabled."""
-    # Use default transcripts_disabled=True from setup
+    # Use default transcripts_enabled=True from setup
     mocker.patch("app.endpoints.query.configuration", setup_configuration)
 
     assert is_transcripts_enabled() is False, "Transcripts should be disabled"
@@ -116,8 +116,8 @@ def _test_query_endpoint_handler(mocker, store_transcript_to_file=False):
     ]
 
     mock_config = mocker.Mock()
-    mock_config.user_data_collection_configuration.transcripts_disabled = (
-        not store_transcript_to_file
+    mock_config.user_data_collection_configuration.transcripts_enabled = (
+        store_transcript_to_file
     )
     mocker.patch("app.endpoints.query.configuration", mock_config)
 

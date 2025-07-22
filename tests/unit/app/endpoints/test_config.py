@@ -40,7 +40,7 @@ def test_config_endpoint_handler_configuration_loaded():
             "use_as_library_client": False,
         },
         "user_data_collection": {
-            "feedback_disabled": True,
+            "feedback_enabled": False,
         },
         "authentication": {
             "module": "noop",

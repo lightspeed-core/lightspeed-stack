@@ -106,9 +106,9 @@ llama_stack:
   use_as_library_client: false
   url: http://localhost:8321
 user_data_collection:
-  feedback_disabled: false
+  feedback_enabled: true
   feedback_storage: "/tmp/data/feedback"
-  transcripts_disabled: false
+  transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
 ```
 
@@ -185,9 +185,9 @@ llama_stack:
   use_as_library_client: true
   library_client_config_path: <path-to-llama-stack-run.yaml-file>
 user_data_collection:
-  feedback_disabled: false
+  feedback_enabled: true
   feedback_storage: "/tmp/data/feedback"
-  transcripts_disabled: false
+  transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
 ```
 
@@ -437,9 +437,9 @@ The data collector service is configured through the `user_data_collection.data_
 
 ```yaml
 user_data_collection:
-  feedback_disabled: false
+  feedback_enabled: true
   feedback_storage: "/tmp/data/feedback"
-  transcripts_disabled: false
+  transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
   data_collector:
     enabled: true

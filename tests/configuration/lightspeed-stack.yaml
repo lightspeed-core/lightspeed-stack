@@ -16,7 +16,7 @@ llama_stack:
   url: http://localhost:8321
   api_key: xyzzy
 user_data_collection:
-  feedback_disabled: false
+  feedback_enabled: true
   feedback_storage: "/tmp/data/feedback"
 mcp_servers:
   - name: "server1"

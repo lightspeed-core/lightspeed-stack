@@ -780,9 +780,9 @@ User data collection configuration.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| feedback_disabled | boolean |  |
+| feedback_enabled | boolean |  |
 | feedback_storage |  |  |
-| transcripts_disabled | boolean |  |
+| transcripts_enabled | boolean |  |
 | transcripts_storage |  |  |
 | data_collector |  |  |
 

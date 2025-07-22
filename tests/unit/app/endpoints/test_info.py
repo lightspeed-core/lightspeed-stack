@@ -22,7 +22,7 @@ def test_info_endpoint():
             "use_as_library_client": False,
         },
         "user_data_collection": {
-            "feedback_disabled": True,
+            "feedback_enabled": False,
         },
         "customization": None,
     }

@@ -44,7 +44,7 @@ def is_feedback_enabled() -> bool:
     Returns:
         bool: True if feedback is enabled, False otherwise.
     """
-    return not configuration.user_data_collection_configuration.feedback_disabled
+    return configuration.user_data_collection_configuration.feedback_enabled
 
 
 async def assert_feedback_enabled(_request: Request) -> None:
