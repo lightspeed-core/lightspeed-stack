@@ -17,9 +17,8 @@ llama_stack:
   api_key: xyzzy
 user_data_collection:
   feedback_enabled: true
-  feedback_storage: "/tmp/data/feedback"
   transcripts_enabled: true
-  transcripts_storage: "/tmp/data/transcripts"
+  user_data_dir: "/tmp/data"
   data_collector:
     enabled: false
     ingress_server_url: null

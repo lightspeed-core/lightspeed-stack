@@ -17,7 +17,7 @@ llama_stack:
   api_key: xyzzy
 user_data_collection:
   feedback_enabled: true
-  feedback_storage: "/tmp/data/feedback"
+  user_data_dir: "/tmp/ls_user_data"
 mcp_servers:
   - name: "server1"
     provider_id: "provider1"

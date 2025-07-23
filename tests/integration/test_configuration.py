@@ -56,7 +56,7 @@ def test_loading_proper_configuration(configuration_filename: str) -> None:
     # check 'user_data_collection' section
     udc_config = cfg.user_data_collection_configuration
     assert udc_config.feedback_enabled is True
-    assert udc_config.feedback_storage == "/tmp/data/feedback"
+    assert udc_config.feedback_storage == "/tmp/ls_user_data/feedback"
 
     # check MCP servers section
     mcp_servers = cfg.mcp_servers

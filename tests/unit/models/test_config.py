@@ -134,37 +134,28 @@ def test_llama_stack_wrong_configuration_no_config_file() -> None:
 def test_user_data_collection_feedback_enabled() -> None:
     """Test the UserDataCollection constructor for feedback."""
     # correct configuration
-    cfg = UserDataCollection(feedback_enabled=False, feedback_storage=None)
+    cfg = UserDataCollection(feedback_enabled=False)
     assert cfg is not None
     assert cfg.feedback_enabled is False
-    assert cfg.feedback_storage is None
-
-
-def test_user_data_collection_feedback_disabled() -> None:
-    """Test the UserDataCollection constructor for feedback."""
-    # incorrect configuration
-    with pytest.raises(
-        ValueError,
-        match="feedback_storage is required when feedback is enabled",
-    ):
-        UserDataCollection(feedback_enabled=True, feedback_storage=None)
+    assert cfg.user_data_dir == "user_data"
+    assert cfg.feedback_storage == "user_data/feedback"
 
 
 def test_user_data_collection_transcripts_enabled() -> None:
     """Test the UserDataCollection constructor for transcripts."""
     # correct configuration
-    cfg = UserDataCollection(transcripts_enabled=False, transcripts_storage=None)
+    cfg = UserDataCollection(transcripts_enabled=False)
     assert cfg is not None
+    assert cfg.transcripts_enabled is False
+    assert cfg.user_data_dir == "user_data"
+    assert cfg.transcripts_storage == "user_data/transcripts"
 
 
-def test_user_data_collection_transcripts_disabled() -> None:
-    """Test the UserDataCollection constructor for transcripts."""
-    # incorrect configuration
-    with pytest.raises(
-        ValueError,
-        match="transcripts_storage is required when transcripts is enabled",
-    ):
-        UserDataCollection(transcripts_enabled=True, transcripts_storage=None)
+def test_user_data_collection_custom_dir() -> None:
+    """Test the UserDataCollection constructor with custom directory."""
+    cfg = UserDataCollection(user_data_dir="/custom/path")
+    assert cfg.feedback_storage == "/custom/path/feedback"
+    assert cfg.transcripts_storage == "/custom/path/transcripts"
 
 
 def test_user_data_collection_data_collector_enabled() -> None:
@@ -337,9 +328,7 @@ def test_configuration_empty_mcp_servers() -> None:
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
-        user_data_collection=UserDataCollection(
-            feedback_enabled=False, feedback_storage=None
-        ),
+        user_data_collection=UserDataCollection(feedback_enabled=False),
         mcp_servers=[],
         customization=None,
     )
@@ -362,9 +351,7 @@ def test_configuration_single_mcp_server() -> None:
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
-        user_data_collection=UserDataCollection(
-            feedback_enabled=False, feedback_storage=None
-        ),
+        user_data_collection=UserDataCollection(feedback_enabled=False),
         mcp_servers=[mcp_server],
         customization=None,
     )
@@ -394,9 +381,7 @@ def test_configuration_multiple_mcp_servers() -> None:
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
-        user_data_collection=UserDataCollection(
-            feedback_enabled=False, feedback_storage=None
-        ),
+        user_data_collection=UserDataCollection(feedback_enabled=False),
         mcp_servers=mcp_servers,
         customization=None,
     )
@@ -421,9 +406,7 @@ def test_dump_configuration(tmp_path) -> None:
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
-        user_data_collection=UserDataCollection(
-            feedback_enabled=False, feedback_storage=None
-        ),
+        user_data_collection=UserDataCollection(feedback_enabled=False),
         mcp_servers=[],
         customization=None,
     )
@@ -468,9 +451,8 @@ def test_dump_configuration(tmp_path) -> None:
             },
             "user_data_collection": {
                 "feedback_enabled": False,
-                "feedback_storage": None,
                 "transcripts_enabled": False,
-                "transcripts_storage": None,
+                "user_data_dir": "user_data",
                 "data_collector": {
                     "enabled": False,
                     "ingress_server_url": None,
@@ -511,9 +493,7 @@ def test_dump_configuration_with_one_mcp_server(tmp_path) -> None:
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
-        user_data_collection=UserDataCollection(
-            feedback_enabled=False, feedback_storage=None
-        ),
+        user_data_collection=UserDataCollection(feedback_enabled=False),
         mcp_servers=mcp_servers,
         customization=None,
     )
@@ -553,9 +533,8 @@ def test_dump_configuration_with_one_mcp_server(tmp_path) -> None:
             },
             "user_data_collection": {
                 "feedback_enabled": False,
-                "feedback_storage": None,
                 "transcripts_enabled": False,
-                "transcripts_storage": None,
+                "user_data_dir": "user_data",
                 "data_collector": {
                     "enabled": False,
                     "ingress_server_url": None,
@@ -605,9 +584,7 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path) -> None:
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
         ),
-        user_data_collection=UserDataCollection(
-            feedback_enabled=False, feedback_storage=None
-        ),
+        user_data_collection=UserDataCollection(feedback_enabled=False),
         mcp_servers=mcp_servers,
         customization=None,
     )
@@ -653,9 +630,8 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path) -> None:
             },
             "user_data_collection": {
                 "feedback_enabled": False,
-                "feedback_storage": None,
                 "transcripts_enabled": False,
-                "transcripts_storage": None,
+                "user_data_dir": "user_data",
                 "data_collector": {
                     "enabled": False,
                     "ingress_server_url": None,

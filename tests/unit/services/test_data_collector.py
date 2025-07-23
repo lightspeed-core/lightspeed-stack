@@ -58,17 +58,6 @@ def test_collect_feedback_files_disabled(mock_config) -> None:
 
 
 @patch("services.data_collector.configuration")
-def test_collect_feedback_files_no_storage(mock_config) -> None:
-    """Test collecting feedback files when no storage configured."""
-    service = DataCollectorService()
-    mock_config.user_data_collection_configuration.feedback_enabled = True
-    mock_config.user_data_collection_configuration.feedback_storage = None
-
-    result = service._collect_feedback_files()
-    assert result == []
-
-
-@patch("services.data_collector.configuration")
 def test_collect_feedback_files_directory_not_exists(mock_config) -> None:
     """Test collecting feedback files when directory doesn't exist."""
     service = DataCollectorService()

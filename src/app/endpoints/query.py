@@ -350,9 +350,7 @@ def construct_transcripts_path(user_id: str, conversation_id: str) -> Path:
     # this Path sanitization pattern
     uid = os.path.normpath("/" + user_id).lstrip("/")
     cid = os.path.normpath("/" + conversation_id).lstrip("/")
-    file_path = (
-        configuration.user_data_collection_configuration.transcripts_storage or ""
-    )
+    file_path = configuration.user_data_collection_configuration.transcripts_storage
     return Path(file_path, uid, cid)
 
 

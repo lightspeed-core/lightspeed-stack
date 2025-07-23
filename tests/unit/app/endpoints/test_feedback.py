@@ -96,7 +96,7 @@ def test_feedback_endpoint_handler_error(mocker):
 
 def test_store_feedback(mocker):
     """Test that store_feedback calls the correct storage function."""
-    configuration.user_data_collection_configuration.feedback_storage = "fake-path"
+    configuration.user_data_collection_configuration.user_data_dir = "fake"
 
     mocker.patch("builtins.open", mocker.mock_open())
     mocker.patch("app.endpoints.feedback.Path", return_value=mocker.MagicMock())

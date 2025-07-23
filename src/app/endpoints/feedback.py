@@ -109,19 +109,18 @@ def store_feedback(user_id: str, feedback: dict) -> None:
         feedback: The feedback to store.
     """
     logger.debug("Storing feedback for user %s", user_id)
-    # Creates storage path only if it doesn't exist. The `exist_ok=True` prevents
-    # race conditions in case of multiple server instances trying to set up storage
-    # at the same location.
-    storage_path = Path(
-        configuration.user_data_collection_configuration.feedback_storage or ""
-    )
-    storage_path.mkdir(parents=True, exist_ok=True)
+
+    # Create feedback directory if it doesn't exist
+    feedback_dir = Path(
+        configuration.user_data_collection_configuration.feedback_storage
+    ) or Path("")
+    feedback_dir.mkdir(parents=True, exist_ok=True)
 
     current_time = str(datetime.now(UTC))
     data_to_store = {"user_id": user_id, "timestamp": current_time, **feedback}
 
     # stores feedback in a file under unique uuid
-    feedback_file_path = storage_path / f"{get_suid()}.json"
+    feedback_file_path = feedback_dir / f"{get_suid()}.json"
     with open(feedback_file_path, "w", encoding="utf-8") as feedback_file:
         json.dump(data_to_store, feedback_file)
 
