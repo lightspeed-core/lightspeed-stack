@@ -2,7 +2,6 @@
 
 import logging
 from typing import Any
-from pathlib import Path
 import json
 from datetime import datetime, UTC
 
@@ -111,9 +110,7 @@ def store_feedback(user_id: str, feedback: dict) -> None:
     logger.debug("Storing feedback for user %s", user_id)
 
     # Create feedback directory if it doesn't exist
-    feedback_dir = Path(
-        configuration.user_data_collection_configuration.feedback_storage
-    )
+    feedback_dir = configuration.user_data_collection_configuration.feedback_storage
     feedback_dir.mkdir(parents=True, exist_ok=True)
 
     current_time = str(datetime.now(UTC))

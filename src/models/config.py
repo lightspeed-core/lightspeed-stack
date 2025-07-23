@@ -131,18 +131,18 @@ class UserDataCollection(BaseModel):
 
     feedback_enabled: bool = False
     transcripts_enabled: bool = False
-    user_data_dir: str = "user_data"
+    user_data_dir: Path = Path("user_data")
     data_collector: DataCollectorConfiguration = DataCollectorConfiguration()
 
     @property
-    def feedback_storage(self) -> str:
+    def feedback_storage(self) -> Path:
         """Feedback storage directory path."""
-        return str(Path(self.user_data_dir) / "feedback")
+        return self.user_data_dir / "feedback"
 
     @property
-    def transcripts_storage(self) -> str:
+    def transcripts_storage(self) -> Path:
         """Transcripts storage directory path."""
-        return str(Path(self.user_data_dir) / "transcripts")
+        return self.user_data_dir / "transcripts"
 
 
 class AuthenticationConfiguration(BaseModel):

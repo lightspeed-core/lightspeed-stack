@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 import requests
 import tarfile
-
 from services.data_collector import DataCollectorService
 
 
@@ -62,7 +61,9 @@ def test_collect_feedback_files_directory_not_exists(mock_config) -> None:
     """Test collecting feedback files when directory doesn't exist."""
     service = DataCollectorService()
     mock_config.user_data_collection_configuration.feedback_enabled = True
-    mock_config.user_data_collection_configuration.feedback_storage = "/tmp/feedback"
+    mock_config.user_data_collection_configuration.feedback_storage = Path(
+        "/tmp/feedback"
+    )
 
     with patch("services.data_collector.Path") as mock_path:
         mock_path.return_value.exists.return_value = False
@@ -76,16 +77,17 @@ def test_collect_feedback_files_success(mock_config) -> None:
     """Test collecting feedback files successfully."""
     service = DataCollectorService()
     mock_config.user_data_collection_configuration.feedback_enabled = True
-    mock_config.user_data_collection_configuration.feedback_storage = "/tmp/feedback"
 
+    # Create a mock Path object with the required methods
+    mock_feedback_dir = MagicMock()
+    mock_feedback_dir.exists.return_value = True
     mock_files = [Path("/tmp/feedback/file1.json")]
+    mock_feedback_dir.glob.return_value = mock_files
 
-    with patch("services.data_collector.Path") as mock_path:
-        mock_path.return_value.exists.return_value = True
-        mock_path.return_value.glob.return_value = mock_files
+    mock_config.user_data_collection_configuration.feedback_storage = mock_feedback_dir
 
-        result = service._collect_feedback_files()
-        assert result == mock_files
+    result = service._collect_feedback_files()
+    assert result == mock_files
 
 
 @patch("services.data_collector.configuration")
@@ -103,7 +105,7 @@ def test_collect_transcript_files_directory_not_exists(mock_config) -> None:
     """Test collecting transcript files when directory doesn't exist."""
     service = DataCollectorService()
     mock_config.user_data_collection_configuration.transcripts_enabled = True
-    mock_config.user_data_collection_configuration.transcripts_storage = (
+    mock_config.user_data_collection_configuration.transcripts_storage = Path(
         "/tmp/transcripts"
     )
 
@@ -119,18 +121,19 @@ def test_collect_transcript_files_success(mock_config) -> None:
     """Test collecting transcript files successfully."""
     service = DataCollectorService()
     mock_config.user_data_collection_configuration.transcripts_enabled = True
+
+    # Create a mock Path object with required methods
+    mock_transcripts_dir = MagicMock()
+    mock_transcripts_dir.exists.return_value = True
+    mock_files = [Path("/tmp/transcripts/user1/conv1/file1.json")]
+    mock_transcripts_dir.rglob.return_value = mock_files
+
     mock_config.user_data_collection_configuration.transcripts_storage = (
-        "/tmp/transcripts"
+        mock_transcripts_dir
     )
 
-    mock_files = [Path("/tmp/transcripts/user1/conv1/file1.json")]
-
-    with patch("services.data_collector.Path") as mock_path:
-        mock_path.return_value.exists.return_value = True
-        mock_path.return_value.rglob.return_value = mock_files
-
-        result = service._collect_transcript_files()
-        assert result == mock_files
+    result = service._collect_transcript_files()
+    assert result == mock_files
 
 
 @patch("services.data_collector.configuration")
@@ -487,9 +490,6 @@ def test_cleanup_empty_directories_success(mock_config) -> None:
     """Test successful directory cleanup."""
     service = DataCollectorService()
     mock_config.user_data_collection_configuration.transcripts_enabled = True
-    mock_config.user_data_collection_configuration.transcripts_storage = (
-        "/tmp/transcripts"
-    )
 
     transcripts_dir = MagicMock()
     user_dir = MagicMock()
@@ -505,11 +505,12 @@ def test_cleanup_empty_directories_success(mock_config) -> None:
     conv_dir.is_dir.return_value = True
     conv_dir.iterdir.return_value = []  # Empty directory
 
-    with patch("services.data_collector.Path", return_value=transcripts_dir):
-        service._cleanup_empty_directories()
+    mock_config.user_data_collection_configuration.transcripts_storage = transcripts_dir
 
-        conv_dir.rmdir.assert_called_once()
-        user_dir.rmdir.assert_called_once()
+    service._cleanup_empty_directories()
+
+    conv_dir.rmdir.assert_called_once()
+    user_dir.rmdir.assert_called_once()
 
 
 @patch("services.data_collector.configuration")
@@ -517,9 +518,6 @@ def test_cleanup_empty_directories_with_errors(mock_config) -> None:
     """Test directory cleanup when rmdir operations fail."""
     service = DataCollectorService()
     mock_config.user_data_collection_configuration.transcripts_enabled = True
-    mock_config.user_data_collection_configuration.transcripts_storage = (
-        "/tmp/transcripts"
-    )
 
     transcripts_dir = MagicMock()
     user_dir = MagicMock()
@@ -536,12 +534,13 @@ def test_cleanup_empty_directories_with_errors(mock_config) -> None:
     conv_dir.rmdir.side_effect = OSError("Permission denied")
     user_dir.rmdir.side_effect = OSError("Permission denied")
 
-    with patch("services.data_collector.Path", return_value=transcripts_dir):
-        # Should not raise exception
-        service._cleanup_empty_directories()
+    mock_config.user_data_collection_configuration.transcripts_storage = transcripts_dir
 
-        conv_dir.rmdir.assert_called_once()
-        user_dir.rmdir.assert_called_once()
+    # Should not raise exception
+    service._cleanup_empty_directories()
+
+    conv_dir.rmdir.assert_called_once()
+    user_dir.rmdir.assert_called_once()
 
 
 @patch("services.data_collector.configuration")
@@ -549,14 +548,15 @@ def test_cleanup_empty_directories_directory_not_exists(mock_config) -> None:
     """Test directory cleanup when transcripts directory doesn't exist."""
     service = DataCollectorService()
     mock_config.user_data_collection_configuration.transcripts_enabled = True
+
+    # Create a mock Path object that doesn't exist
+    mock_transcripts_dir = MagicMock()
+    mock_transcripts_dir.exists.return_value = False
     mock_config.user_data_collection_configuration.transcripts_storage = (
-        "/tmp/transcripts"
+        mock_transcripts_dir
     )
 
-    with patch("services.data_collector.Path") as mock_path:
-        mock_path.return_value.exists.return_value = False
-
-        service._cleanup_empty_directories()
+    service._cleanup_empty_directories()
 
 
 @patch("services.data_collector.configuration")

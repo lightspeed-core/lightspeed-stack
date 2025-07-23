@@ -137,8 +137,8 @@ def test_user_data_collection_feedback_enabled() -> None:
     cfg = UserDataCollection(feedback_enabled=False)
     assert cfg is not None
     assert cfg.feedback_enabled is False
-    assert cfg.user_data_dir == "user_data"
-    assert cfg.feedback_storage == "user_data/feedback"
+    assert cfg.user_data_dir == Path("user_data")
+    assert cfg.feedback_storage == Path("user_data/feedback")
 
 
 def test_user_data_collection_transcripts_enabled() -> None:
@@ -147,15 +147,15 @@ def test_user_data_collection_transcripts_enabled() -> None:
     cfg = UserDataCollection(transcripts_enabled=False)
     assert cfg is not None
     assert cfg.transcripts_enabled is False
-    assert cfg.user_data_dir == "user_data"
-    assert cfg.transcripts_storage == "user_data/transcripts"
+    assert cfg.user_data_dir == Path("user_data")
+    assert cfg.transcripts_storage == Path("user_data/transcripts")
 
 
 def test_user_data_collection_custom_dir() -> None:
     """Test the UserDataCollection constructor with custom directory."""
     cfg = UserDataCollection(user_data_dir="/custom/path")
-    assert cfg.feedback_storage == "/custom/path/feedback"
-    assert cfg.transcripts_storage == "/custom/path/transcripts"
+    assert cfg.feedback_storage == Path("/custom/path/feedback")
+    assert cfg.transcripts_storage == Path("/custom/path/transcripts")
 
 
 def test_user_data_collection_data_collector_enabled() -> None:

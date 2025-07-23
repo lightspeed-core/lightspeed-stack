@@ -1,5 +1,7 @@
 """Unit tests for the /feedback REST API endpoint."""
 
+from pathlib import Path
+
 from fastapi import HTTPException, status
 import pytest
 
@@ -96,10 +98,11 @@ def test_feedback_endpoint_handler_error(mocker):
 
 def test_store_feedback(mocker):
     """Test that store_feedback calls the correct storage function."""
-    configuration.user_data_collection_configuration.user_data_dir = "fake"
+    configuration.user_data_collection_configuration.user_data_dir = Path("fake")
 
     mocker.patch("builtins.open", mocker.mock_open())
-    mocker.patch("app.endpoints.feedback.Path", return_value=mocker.MagicMock())
+    # Mock mkdir to prevent actual directory creation
+    mocker.patch.object(Path, "mkdir")
     mocker.patch("app.endpoints.feedback.get_suid", return_value="fake-uuid")
 
     # Mock the JSON to assert the data is stored correctly

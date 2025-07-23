@@ -71,13 +71,13 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
         try:
             if feedback_files:
                 udc_config = configuration.user_data_collection_configuration
-                feedback_base = Path(udc_config.feedback_storage)
+                feedback_base = udc_config.feedback_storage
                 collections_sent += self._create_and_send_tarball(
                     feedback_files, "feedback", feedback_base
                 )
             if transcript_files:
                 udc_config = configuration.user_data_collection_configuration
-                transcript_base = Path(udc_config.transcripts_storage)
+                transcript_base = udc_config.transcripts_storage
                 collections_sent += self._create_and_send_tarball(
                     transcript_files, "transcripts", transcript_base
                 )
@@ -96,7 +96,7 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
         if not udc_config.feedback_enabled:
             return []
 
-        feedback_dir = Path(udc_config.feedback_storage)
+        feedback_dir = udc_config.feedback_storage
         if not feedback_dir.exists():
             return []
 
@@ -109,7 +109,7 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
         if not udc_config.transcripts_enabled:
             return []
 
-        transcripts_dir = Path(udc_config.transcripts_storage)
+        transcripts_dir = udc_config.transcripts_storage
         if not transcripts_dir.exists():
             return []
 
@@ -224,7 +224,7 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
         if not udc_config.transcripts_enabled:
             return
 
-        transcripts_dir = Path(udc_config.transcripts_storage)
+        transcripts_dir = udc_config.transcripts_storage
         if not transcripts_dir.exists():
             return
 

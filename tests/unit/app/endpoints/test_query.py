@@ -2,6 +2,8 @@
 
 # pylint: disable=too-many-lines
 
+from pathlib import Path
+
 import json
 from fastapi import HTTPException, status
 import pytest
@@ -911,7 +913,7 @@ def test_retrieve_response_shield_violation(prepare_agent_mocks, mocker):
 def test_construct_transcripts_path(setup_configuration, mocker):
     """Test the construct_transcripts_path function."""
     # Update configuration for this test
-    setup_configuration.user_data_collection_configuration.user_data_dir = "/tmp"
+    setup_configuration.user_data_collection_configuration.user_data_dir = Path("/tmp")
     mocker.patch("app.endpoints.query.configuration", setup_configuration)
 
     user_id = "user123"
