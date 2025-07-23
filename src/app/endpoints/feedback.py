@@ -113,7 +113,7 @@ def store_feedback(user_id: str, feedback: dict) -> None:
     # Create feedback directory if it doesn't exist
     feedback_dir = Path(
         configuration.user_data_collection_configuration.feedback_storage
-    ) or Path("")
+    )
     feedback_dir.mkdir(parents=True, exist_ok=True)
 
     current_time = str(datetime.now(UTC))
