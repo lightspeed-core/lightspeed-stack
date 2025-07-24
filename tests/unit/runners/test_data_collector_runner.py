@@ -2,18 +2,17 @@
 
 from unittest.mock import patch
 
-from models.config import DataCollectorConfiguration
+from models.config import UserDataCollection
 from runners.data_collector import start_data_collector
 
 
 def test_start_data_collector() -> None:
     """Test the function to start data collector service."""
-    configuration = DataCollectorConfiguration(
-        enabled=True,
+    configuration = UserDataCollection(
+        export_enabled=True,
         ingress_server_url="http://localhost:8080",
         ingress_server_auth_token="xyzzy",
         ingress_content_service_name="lightspeed-core",
-        collection_interval=60,
     )
 
     # don't start real data collector service
@@ -24,12 +23,11 @@ def test_start_data_collector() -> None:
 
 def test_start_data_collector_disabled() -> None:
     """Test the function to start data collector service."""
-    configuration = DataCollectorConfiguration(
-        enabled=False,
+    configuration = UserDataCollection(
+        export_enabled=False,
         ingress_server_url="http://localhost:8080",
         ingress_server_auth_token="xyzzy",
         ingress_content_service_name="lightspeed-core",
-        collection_interval=60,
     )
 
     # don't start real data collector service
@@ -40,12 +38,11 @@ def test_start_data_collector_disabled() -> None:
 
 def test_start_data_collector_exception() -> None:
     """Test the function to start data collector service when an exception occurs."""
-    configuration = DataCollectorConfiguration(
-        enabled=True,
+    configuration = UserDataCollection(
+        export_enabled=True,
         ingress_server_url="http://localhost:8080",
         ingress_server_auth_token="xyzzy",
         ingress_content_service_name="lightspeed-core",
-        collection_interval=60,
     )
 
     # Mock the DataCollectorService to raise an exception

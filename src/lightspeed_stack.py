@@ -79,9 +79,7 @@ def main() -> None:
     if args.dump_configuration:
         configuration.configuration.dump()
     elif args.start_data_collector:
-        start_data_collector(
-            configuration.user_data_collection_configuration.data_collector
-        )
+        start_data_collector(configuration.user_data_collection_configuration)
     else:
         start_uvicorn(configuration.service_configuration)
     logger.info("Lightspeed stack finished")

@@ -9,12 +9,12 @@ from typing import List
 
 import requests
 import constants
-from configuration import configuration
 from log import get_logger
 
 logger = get_logger(__name__)
 
 
+# pylint: disable=too-many-instance-attributes
 class DataCollectorService:  # pylint: disable=too-few-public-methods
     """Service for collecting and sending user data to ingress server.
 
@@ -22,12 +22,30 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
     including feedback and transcripts to the configured ingress server.
     """
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def __init__(
+        self,
+        feedback_dir: Path,
+        transcripts_dir: Path,
+        collection_interval: int,
+        ingress_server_url: str,
+        ingress_server_auth_token: str,
+        ingress_content_service_name: str,
+        connection_timeout: int,
+        cleanup_after_send: bool,
+    ) -> None:
+        """Initialize the data collector service."""
+        self.feedback_dir = feedback_dir
+        self.transcripts_dir = transcripts_dir
+        self.collection_interval = collection_interval
+        self.ingress_server_url = ingress_server_url
+        self.ingress_server_auth_token = ingress_server_auth_token
+        self.ingress_content_service_name = ingress_content_service_name
+        self.connection_timeout = connection_timeout
+        self.cleanup_after_send = cleanup_after_send
+
     def run(self) -> None:
         """Run the periodic data collection loop."""
-        collector_config = (
-            configuration.user_data_collection_configuration.data_collector
-        )
-
         logger.info("Starting data collection service")
 
         while True:
@@ -35,10 +53,10 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
                 self._perform_collection()
                 logger.info(
                     "Next collection scheduled in %s seconds",
-                    collector_config.collection_interval,
+                    self.collection_interval,
                 )
-                if collector_config.collection_interval is not None:
-                    time.sleep(collector_config.collection_interval)
+                if self.collection_interval is not None:
+                    time.sleep(self.collection_interval)
             except KeyboardInterrupt:
                 logger.info("Data collection service stopped by user")
                 break
@@ -70,14 +88,12 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
         collections_sent = 0
         try:
             if feedback_files:
-                udc_config = configuration.user_data_collection_configuration
-                feedback_base = udc_config.feedback_storage
+                feedback_base = self.feedback_dir
                 collections_sent += self._create_and_send_tarball(
                     feedback_files, "feedback", feedback_base
                 )
             if transcript_files:
-                udc_config = configuration.user_data_collection_configuration
-                transcript_base = udc_config.transcripts_storage
+                transcript_base = self.transcripts_dir
                 collections_sent += self._create_and_send_tarball(
                     transcript_files, "transcripts", transcript_base
                 )
@@ -91,30 +107,18 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
 
     def _collect_feedback_files(self) -> List[Path]:
         """Collect all feedback files that need to be collected."""
-        udc_config = configuration.user_data_collection_configuration
-
-        if not udc_config.feedback_enabled:
+        if not self.feedback_dir.exists():
             return []
 
-        feedback_dir = udc_config.feedback_storage
-        if not feedback_dir.exists():
-            return []
-
-        return list(feedback_dir.glob("*.json"))
+        return list(self.feedback_dir.glob("*.json"))
 
     def _collect_transcript_files(self) -> List[Path]:
         """Collect all transcript files that need to be collected."""
-        udc_config = configuration.user_data_collection_configuration
-
-        if not udc_config.transcripts_enabled:
-            return []
-
-        transcripts_dir = udc_config.transcripts_storage
-        if not transcripts_dir.exists():
+        if not self.transcripts_dir.exists():
             return []
 
         # Recursively find all JSON files in the transcript directory structure
-        return list(transcripts_dir.rglob("*.json"))
+        return list(self.transcripts_dir.rglob("*.json"))
 
     def _create_and_send_tarball(
         self, files: List[Path], data_type: str, base_directory: Path
@@ -123,15 +127,11 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
         if not files:
             return 0
 
-        collector_config = (
-            configuration.user_data_collection_configuration.data_collector
-        )
-
         # Create one tarball with all files
         tarball_path = self._create_tarball(files, data_type, base_directory)
         try:
             self._send_tarball(tarball_path)
-            if collector_config.cleanup_after_send:
+            if self.cleanup_after_send:
                 self._cleanup_files(files)
                 self._cleanup_empty_directories()
             return 1
@@ -167,22 +167,13 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
 
     def _send_tarball(self, tarball_path: Path) -> None:
         """Send the tarball to the ingress server."""
-        collector_config = (
-            configuration.user_data_collection_configuration.data_collector
-        )
-
-        if collector_config.ingress_server_url is None:
-            raise ValueError("Ingress server URL is not configured")
-
         # pylint: disable=line-too-long
         headers = {
-            "Content-Type": f"application/vnd.redhat.{collector_config.ingress_content_service_name}.periodic+tar",
+            "Content-Type": f"application/vnd.redhat.{self.ingress_content_service_name}.periodic+tar",
         }
 
-        if collector_config.ingress_server_auth_token:
-            headers["Authorization"] = (
-                f"Bearer {collector_config.ingress_server_auth_token}"
-            )
+        if self.ingress_server_auth_token:
+            headers["Authorization"] = f"Bearer {self.ingress_server_auth_token}"
 
         with open(tarball_path, "rb") as f:
             data = f.read()
@@ -190,14 +181,14 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
         logger.info(
             "Sending tarball %s to %s",
             tarball_path.name,
-            collector_config.ingress_server_url,
+            self.ingress_server_url,
         )
 
         response = requests.post(
-            collector_config.ingress_server_url,
+            self.ingress_server_url,
             data=data,
             headers=headers,
-            timeout=collector_config.connection_timeout,
+            timeout=self.connection_timeout,
         )
 
         if response.status_code >= 400:
@@ -219,17 +210,11 @@ class DataCollectorService:  # pylint: disable=too-few-public-methods
 
     def _cleanup_empty_directories(self) -> None:
         """Remove empty directories from transcript storage."""
-        udc_config = configuration.user_data_collection_configuration
-
-        if not udc_config.transcripts_enabled:
-            return
-
-        transcripts_dir = udc_config.transcripts_storage
-        if not transcripts_dir.exists():
+        if not self.transcripts_dir.exists():
             return
 
         # Remove empty directories (conversation and user directories)
-        for user_dir in transcripts_dir.iterdir():
+        for user_dir in self.transcripts_dir.iterdir():
             if user_dir.is_dir():
                 for conv_dir in user_dir.iterdir():
                     if conv_dir.is_dir() and not any(conv_dir.iterdir()):

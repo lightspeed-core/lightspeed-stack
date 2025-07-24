@@ -101,38 +101,24 @@ class LlamaStackConfiguration(BaseModel):
         return self
 
 
-class DataCollectorConfiguration(BaseModel):
-    """Data collector configuration for sending data to ingress server."""
-
-    enabled: bool = False
-    ingress_server_url: Optional[str] = None
-    ingress_server_auth_token: Optional[str] = None
-    ingress_content_service_name: Optional[str] = None
-    collection_interval: PositiveInt = constants.DATA_COLLECTOR_COLLECTION_INTERVAL
-    cleanup_after_send: bool = True  # Remove local files after successful send
-    connection_timeout: PositiveInt = constants.DATA_COLLECTOR_CONNECTION_TIMEOUT
-
-    @model_validator(mode="after")
-    def check_data_collector_configuration(self) -> Self:
-        """Check data collector configuration."""
-        if self.enabled and self.ingress_server_url is None:
-            raise ValueError(
-                "ingress_server_url is required when data collector is enabled"
-            )
-        if self.enabled and self.ingress_content_service_name is None:
-            raise ValueError(
-                "ingress_content_service_name is required when data collector is enabled"
-            )
-        return self
-
-
 class UserDataCollection(BaseModel):
     """User data collection configuration."""
 
+    # data collection
     feedback_enabled: bool = False
     transcripts_enabled: bool = False
     user_data_dir: Path = Path("user_data")
-    data_collector: DataCollectorConfiguration = DataCollectorConfiguration()
+
+    # data export
+    export_enabled: bool = False
+    ingress_server_url: str = ""
+    ingress_server_auth_token: str = ""
+    ingress_content_service_name: str = ""
+    export_collection_interval: PositiveInt = (
+        constants.DATA_COLLECTOR_COLLECTION_INTERVAL
+    )
+    export_connection_timeout: PositiveInt = constants.DATA_COLLECTOR_CONNECTION_TIMEOUT
+    cleanup_after_send: bool = True  # Remove local files after successful export
 
     @property
     def feedback_storage(self) -> Path:
@@ -143,6 +129,23 @@ class UserDataCollection(BaseModel):
     def transcripts_storage(self) -> Path:
         """Transcripts storage directory path."""
         return self.user_data_dir / "transcripts"
+
+    @model_validator(mode="after")
+    def check_data_collector_configuration(self) -> Self:
+        """Check data collector configuration."""
+        if self.export_enabled and self.ingress_server_url == "":
+            raise ValueError(
+                "ingress_server_url is required when data export is enabled"
+            )
+        if self.export_enabled and self.ingress_server_auth_token == "":
+            raise ValueError(
+                "ingress_server_auth_token is required when data export is enabled"
+            )
+        if self.export_enabled and self.ingress_content_service_name == "":
+            raise ValueError(
+                "ingress_content_service_name is required when data export is enabled"
+            )
+        return self
 
 
 class AuthenticationConfiguration(BaseModel):

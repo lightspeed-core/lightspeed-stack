@@ -22,7 +22,6 @@ from models.config import (
     UserDataCollection,
     TLSConfiguration,
     ModelContextProtocolServer,
-    DataCollectorConfiguration,
 )
 
 from utils.checks import InvalidConfigurationError
@@ -153,7 +152,7 @@ def test_user_data_collection_transcripts_enabled() -> None:
 
 def test_user_data_collection_custom_dir() -> None:
     """Test the UserDataCollection constructor with custom directory."""
-    cfg = UserDataCollection(user_data_dir="/custom/path")
+    cfg = UserDataCollection(user_data_dir=Path("/custom/path"))
     assert cfg.feedback_storage == Path("/custom/path/feedback")
     assert cfg.transcripts_storage == Path("/custom/path/transcripts")
 
@@ -162,16 +161,13 @@ def test_user_data_collection_data_collector_enabled() -> None:
     """Test the UserDataCollection constructor for data collector."""
     # correct configuration
     cfg = UserDataCollection(
-        data_collector=DataCollectorConfiguration(
-            enabled=True,
-            ingress_server_url="http://localhost:8080",
-            ingress_server_auth_token="xyzzy",
-            ingress_content_service_name="lightspeed-core",
-            collection_interval=60,
-        )
+        export_enabled=True,
+        ingress_server_url="http://localhost:8080",
+        ingress_server_auth_token="xyzzy",
+        ingress_content_service_name="lightspeed-core",
     )
     assert cfg is not None
-    assert cfg.data_collector.enabled is True
+    assert cfg.export_enabled is True
 
 
 def test_user_data_collection_data_collector_wrong_configuration() -> None:
@@ -179,29 +175,33 @@ def test_user_data_collection_data_collector_wrong_configuration() -> None:
     # incorrect configuration
     with pytest.raises(
         ValueError,
-        match="ingress_server_url is required when data collector is enabled",
+        match="ingress_server_url is required when data export is enabled",
     ):
         UserDataCollection(
-            data_collector=DataCollectorConfiguration(
-                enabled=True,
-                ingress_server_url=None,
-                ingress_server_auth_token="xyzzy",
-                ingress_content_service_name="lightspeed-core",
-                collection_interval=60,
-            )
+            export_enabled=True,
+            ingress_server_url="",
+            ingress_server_auth_token="xyzzy",
+            ingress_content_service_name="lightspeed-core",
         )
     with pytest.raises(
         ValueError,
-        match="ingress_content_service_name is required when data collector is enabled",
+        match="ingress_content_service_name is required when data export is enabled",
     ):
         UserDataCollection(
-            data_collector=DataCollectorConfiguration(
-                enabled=True,
-                ingress_server_url="http://localhost:8080",
-                ingress_server_auth_token="xyzzy",
-                ingress_content_service_name=None,
-                collection_interval=60,
-            )
+            export_enabled=True,
+            ingress_server_url="http://localhost:8080",
+            ingress_server_auth_token="xyzzy",
+            ingress_content_service_name="",
+        )
+    with pytest.raises(
+        ValueError,
+        match="ingress_server_auth_token is required when data export is enabled",
+    ):
+        UserDataCollection(
+            export_enabled=True,
+            ingress_server_url="http://localhost:8080",
+            ingress_server_auth_token="",
+            ingress_content_service_name="lightspeed-core",
         )
 
 
@@ -453,15 +453,13 @@ def test_dump_configuration(tmp_path) -> None:
                 "feedback_enabled": False,
                 "transcripts_enabled": False,
                 "user_data_dir": "user_data",
-                "data_collector": {
-                    "enabled": False,
-                    "ingress_server_url": None,
-                    "ingress_server_auth_token": None,
-                    "ingress_content_service_name": None,
-                    "collection_interval": DATA_COLLECTOR_COLLECTION_INTERVAL,
-                    "cleanup_after_send": True,
-                    "connection_timeout": DATA_COLLECTOR_CONNECTION_TIMEOUT,
-                },
+                "export_enabled": False,
+                "ingress_server_url": "",
+                "ingress_server_auth_token": "",
+                "ingress_content_service_name": "",
+                "export_collection_interval": DATA_COLLECTOR_COLLECTION_INTERVAL,
+                "export_connection_timeout": DATA_COLLECTOR_CONNECTION_TIMEOUT,
+                "cleanup_after_send": True,
             },
             "mcp_servers": [],
             "authentication": {
@@ -535,15 +533,13 @@ def test_dump_configuration_with_one_mcp_server(tmp_path) -> None:
                 "feedback_enabled": False,
                 "transcripts_enabled": False,
                 "user_data_dir": "user_data",
-                "data_collector": {
-                    "enabled": False,
-                    "ingress_server_url": None,
-                    "ingress_server_auth_token": None,
-                    "ingress_content_service_name": None,
-                    "collection_interval": DATA_COLLECTOR_COLLECTION_INTERVAL,
-                    "cleanup_after_send": True,
-                    "connection_timeout": DATA_COLLECTOR_CONNECTION_TIMEOUT,
-                },
+                "export_enabled": False,
+                "ingress_server_url": "",
+                "ingress_server_auth_token": "",
+                "ingress_content_service_name": "",
+                "export_collection_interval": DATA_COLLECTOR_COLLECTION_INTERVAL,
+                "export_connection_timeout": DATA_COLLECTOR_CONNECTION_TIMEOUT,
+                "cleanup_after_send": True,
             },
             "mcp_servers": [
                 {
@@ -632,15 +628,13 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path) -> None:
                 "feedback_enabled": False,
                 "transcripts_enabled": False,
                 "user_data_dir": "user_data",
-                "data_collector": {
-                    "enabled": False,
-                    "ingress_server_url": None,
-                    "ingress_server_auth_token": None,
-                    "ingress_content_service_name": None,
-                    "collection_interval": DATA_COLLECTOR_COLLECTION_INTERVAL,
-                    "cleanup_after_send": True,
-                    "connection_timeout": DATA_COLLECTOR_CONNECTION_TIMEOUT,
-                },
+                "export_enabled": False,
+                "ingress_server_url": "",
+                "ingress_server_auth_token": "",
+                "ingress_content_service_name": "",
+                "export_collection_interval": DATA_COLLECTOR_COLLECTION_INTERVAL,
+                "export_connection_timeout": DATA_COLLECTOR_CONNECTION_TIMEOUT,
+                "cleanup_after_send": True,
             },
             "mcp_servers": [
                 {
