@@ -18,6 +18,7 @@ from llama_stack_client.types.agents.turn_create_params import (
     Toolgroup,
 )
 from llama_stack_client.types.model_list_response import ModelListResponse
+from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 
 from fastapi import APIRouter, HTTPException, status, Depends
 
@@ -295,8 +296,27 @@ def retrieve_response(  # pylint: disable=too-many-locals
     toolgroups = (get_rag_toolgroups(vector_db_ids) or []) + [
         mcp_server.name for mcp_server in configuration.mcp_servers
     ]
+
+    attachment_lines = [
+        f"attachment_type: {attachment.attachment_type}, "
+        f"content_type: {attachment.content_type}"
+        for attachment in (query_request.attachments or [])
+    ]
+
     response = agent.create_turn(
-        messages=[UserMessage(role="user", content=query_request.query)],
+        messages=[
+            UserMessage(
+                role="user",
+                content=[
+                    TextContentItem(type="text", text=query_request.query),
+                    TextContentItem(
+                        type="text",
+                        text=f"<attachments_info>\n{'\n'.join(attachment_lines)}\n"
+                        f"</attachments_info>",
+                    ),
+                ],
+            )
+        ],
         session_id=conversation_id,
         documents=query_request.get_documents(),
         stream=False,

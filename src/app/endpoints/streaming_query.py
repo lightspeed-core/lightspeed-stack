@@ -517,8 +517,9 @@ async def retrieve_response(
             available_output_shields,
         )
     # use system prompt from request or default one
-    system_prompt = get_system_prompt(query_request, configuration)
-    logger.debug("Using system prompt: %s", system_prompt)
+    logger.debug(
+        "Using system prompt: %s", get_system_prompt(query_request, configuration)
+    )
 
     # TODO(lucasagomes): redact attachments content before sending to LLM
     # if attachments are provided, validate them
@@ -528,7 +529,7 @@ async def retrieve_response(
     agent, conversation_id = await get_agent(
         client,
         model_id,
-        system_prompt,
+        get_system_prompt(query_request, configuration),
         available_input_shields,
         available_output_shields,
         query_request.conversation_id,
@@ -561,8 +562,28 @@ async def retrieve_response(
     toolgroups = (get_rag_toolgroups(vector_db_ids) or []) + [
         mcp_server.name for mcp_server in configuration.mcp_servers
     ]
+
+    # Generate attachment info lines
+    attachment_lines = [
+        f"attachment_type: {attachment.attachment_type}, "
+        f"content_type: {attachment.content_type}"
+        for attachment in (query_request.attachments or [])
+    ]
+
     response = await agent.create_turn(
-        messages=[UserMessage(role="user", content=query_request.query)],
+        messages=[
+            UserMessage(
+                role="user",
+                content=[
+                    TextContentItem(type="text", text=query_request.query),
+                    TextContentItem(
+                        type="text",
+                        text=f"<attachments_info>\n{'\n'.join(attachment_lines)}\n"
+                        f"</attachments_info>",
+                    ),
+                ],
+            )
+        ],
         session_id=conversation_id,
         documents=query_request.get_documents(),
         stream=True,
