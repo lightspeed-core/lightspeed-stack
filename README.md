@@ -107,9 +107,8 @@ llama_stack:
   url: http://localhost:8321
 user_data_collection:
   feedback_enabled: true
-  feedback_storage: "/tmp/data/feedback"
   transcripts_enabled: true
-  transcripts_storage: "/tmp/data/transcripts"
+  user_data_dir: "/tmp/data"
 ```
 
 ### Llama Stack project and configuration
@@ -186,9 +185,8 @@ llama_stack:
   library_client_config_path: <path-to-llama-stack-run.yaml-file>
 user_data_collection:
   feedback_enabled: true
-  feedback_storage: "/tmp/data/feedback"
   transcripts_enabled: true
-  transcripts_storage: "/tmp/data/transcripts"
+  user_data_dir: "/tmp/data"
 ```
 
 ## System prompt
@@ -438,9 +436,8 @@ The data collector service is configured through the `user_data_collection.data_
 ```yaml
 user_data_collection:
   feedback_enabled: true
-  feedback_storage: "/tmp/data/feedback"
   transcripts_enabled: true
-  transcripts_storage: "/tmp/data/transcripts"
+  user_data_dir: "/tmp/data"
   data_collector:
     enabled: true
     ingress_server_url: "https://your-ingress-server.com"
