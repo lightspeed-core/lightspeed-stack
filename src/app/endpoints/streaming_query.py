@@ -562,7 +562,7 @@ async def retrieve_response(
         mcp_server.name for mcp_server in configuration.mcp_servers
     ]
     response = await agent.create_turn(
-        messages=[UserMessage(role="user", content=query_request.query)],
+        messages=[UserMessage(role="user", content=[TextContentItem(type="text", text=query_request.query)])],
         session_id=conversation_id,
         documents=query_request.get_documents(),
         stream=True,
