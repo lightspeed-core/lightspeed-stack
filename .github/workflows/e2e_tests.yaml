@@ -6,13 +6,13 @@ on: [push, pull_request]
 jobs:
   e2e_tests:
     runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: 1arp/create-a-file-action@0.4.5
-        env: 
-            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
           path: '.'
           isAbsolutePath: false
@@ -52,8 +52,6 @@ jobs:
               module: "noop"
       
       - uses: 1arp/create-a-file-action@0.4.5
-        env: 
-            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
           path: '.'
           isAbsolutePath: false
@@ -192,8 +190,6 @@ jobs:
           cat run.yaml
 
       - name: Run service manually
-        env: 
-            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           chmod +x /usr/local/bin/docker-compose
@@ -208,4 +204,4 @@ jobs:
       - name: Run tests in test container
         run: |
           echo "We got here and the setup is done, yey"
-          curl http://localhost:8080/v1/models
+          make test-e2e
