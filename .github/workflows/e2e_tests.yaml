@@ -122,7 +122,7 @@ jobs:
                 - provider_id: openai
                   provider_type: remote::openai
                   config:
-                    api_key: ${env.OPENAI_API_KEY}
+                    api_key: ${{ env.OPENAI_API_KEY }}
               post_training:
               - config:
                   checkpoint_format: huggingface
@@ -193,18 +193,11 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          # Debug: Verify the environment variable is available
-          echo "OPENAI_API_KEY is set: $([ -n "$OPENAI_API_KEY" ] && echo 'YES' || echo 'NO')"
-          
           docker compose --version
           docker compose up -d
 
       - name: Wait for services
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          echo "OPENAI_API_KEY is set: $([ -n "$OPENAI_API_KEY" ] && echo 'YES' || echo 'NO')"
-          
           echo "Waiting for services to be healthy..."
           # Wait for services to be ready with timeout
           timeout=300
