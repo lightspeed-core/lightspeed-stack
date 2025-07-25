@@ -8,7 +8,7 @@ ENV PATH="$PATH:/root/.local/bin"
 ADD run.yaml ./
 
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
-    python3.11 python3.11-devel python3.11-pip git tar
+    python3.12 python3.12-devel python3.12-pip git tar
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
