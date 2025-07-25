@@ -1,0 +1,32 @@
+services:
+  llama-stack:
+    build:
+      context: .
+      dockerfile: test.containerfile
+    container_name: llama-stack
+    ports:
+      - "8321:8321"  # Expose llama-stack on 8321 (adjust if needed)
+    volumes:
+      - ./run.yaml:/app-root/run.yaml:Z
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - lightspeednet
+
+  lightspeed-stack:
+    image: quay.io/lightspeed-core/lightspeed-stack:latest
+    container_name: lightspeed-stack
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./lightspeed-stack.yaml:/app-root/lightspeed-stack.yaml:Z
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - llama-stack
+    networks:
+      - lightspeednet
+
+networks:
+  lightspeednet:
+    driver: bridge

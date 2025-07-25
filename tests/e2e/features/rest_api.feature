@@ -16,12 +16,13 @@ Feature: REST API tests
           """
           {
               "ready": "bool",
-              "reason": "str"
+              "reason": "str",
+              "providers": "list"
           }
           """
       And The body of the response is the following
           """
-          {"ready": true, "reason": "service is ready"}
+          {"ready": true, "reason": "All providers are healthy", "providers": []}
           """
 
 
