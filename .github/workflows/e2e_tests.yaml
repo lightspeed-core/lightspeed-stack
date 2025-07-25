@@ -20,16 +20,19 @@ jobs:
           content: |
             name: foo bar baz
             service:
-              host: localhost
+              host: 0.0.0.0
               port: 8080
               auth_enabled: false
               workers: 1
               color_log: true
               access_log: true
             llama_stack:
+              # Uses a remote llama-stack service
+              # The instance would have already been started with a llama-stack-run.yaml file
               use_as_library_client: false
+              # Alternative for "as library use"
               # use_as_library_client: true
-              # library_client_config_path: /app-root/run.yaml
+              # library_client_config_path: <path-to-llama-stack-run.yaml-file>
               url: http://llama-stack:8321
               api_key: xyzzy
             user_data_collection:
@@ -37,7 +40,17 @@ jobs:
               feedback_storage: "/tmp/data/feedback"
               transcripts_disabled: false
               transcripts_storage: "/tmp/data/transcripts"
-      
+              data_collector:
+                enabled: false
+                ingress_server_url: null
+                ingress_server_auth_token: null
+                ingress_content_service_name: null
+                collection_interval: 7200  # 2 hours in seconds
+                cleanup_after_send: true
+                connection_timeout_seconds: 30
+            authentication:
+              module: "noop"
+
       - uses: 1arp/create-a-file-action@0.4.5
         env: 
             OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -48,7 +61,6 @@ jobs:
           content: |
             version: '2'
             image_name: simplest-llamastack-app
-
             apis:
               - agents
               - datasetio
@@ -111,7 +123,7 @@ jobs:
                 - provider_id: openai
                   provider_type: remote::openai
                   config:
-                    api_key: ${{ secrets.OPENAI_API_KEY }}
+                    api_key: ${env.OPENAI_API_KEY}
               post_training:
               - config:
                   checkpoint_format: huggingface
@@ -165,11 +177,12 @@ jobs:
               tls_keyfile: null
             shields: []
             vector_dbs: []
+
             models:
-              - model_id: gpt-4-turbo
+              - model_id: gpt-4o-mini
                 provider_id: openai
                 model_type: llm
-                provider_model_id: gpt-4-turbo
+                provider_model_id: gpt-4o-mini
 
       - name: list files
         run: |
@@ -189,9 +202,7 @@ jobs:
           echo "Waiting for services to be healthy..."
           sleep 20  # adjust depending on boot time
 
-      - name: Test services
+      - name: Run tests in test container
         run: |
-          echo "Testing service connectivity..."
+          echo "We got here and the setup is done, yey"
           curl http://localhost:8080/v1/models
-          
-          
