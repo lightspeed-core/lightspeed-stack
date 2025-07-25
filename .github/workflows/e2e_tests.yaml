@@ -122,7 +122,7 @@ jobs:
                 - provider_id: openai
                   provider_type: remote::openai
                   config:
-                    api_key: ${{ env.OPENAI_API_KEY }}
+                    api_key: ${OPENAI_API_KEY}
               post_training:
               - config:
                   checkpoint_format: huggingface
