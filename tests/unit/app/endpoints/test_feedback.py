@@ -48,15 +48,31 @@ async def test_assert_feedback_enabled(mocker):
     await assert_feedback_enabled(mocker.Mock())
 
 
-def test_feedback_endpoint_handler(mocker):
-    """Test that feedback_endpoint_handler processes feedback correctly."""
+@pytest.mark.parametrize(
+    "feedback_request_data",
+    [
+        {},
+        {
+            "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
+            "user_question": "What is Kubernetes?",
+            "llm_response": "It's some computer thing.",
+            "sentiment": -1,
+            "categories": ["incorrect", "incomplete"],
+        },
+    ],
+    ids=["no_categories", "with_negative_categories"],
+)
+def test_feedback_endpoint_handler(mocker, feedback_request_data):
+    """Test that feedback_endpoint_handler processes feedback for different payloads."""
+
     # Mock the dependencies
     mocker.patch("app.endpoints.feedback.assert_feedback_enabled", return_value=None)
     mocker.patch("utils.common.retrieve_user_id", return_value="test_user_id")
     mocker.patch("app.endpoints.feedback.store_feedback", return_value=None)
 
-    # Mock the feedback request
+    # Prepare the feedback request mock
     feedback_request = mocker.Mock()
+    feedback_request.model_dump.return_value = feedback_request_data
 
     # Call the endpoint handler
     result = feedback_endpoint_handler(
@@ -65,7 +81,7 @@ def test_feedback_endpoint_handler(mocker):
         _ensure_feedback_enabled=assert_feedback_enabled,
     )
 
-    # Assert that the response is as expected
+    # Assert that the expected response is returned
     assert result.response == "feedback received"
 
 
@@ -94,35 +110,50 @@ def test_feedback_endpoint_handler_error(mocker):
     assert exc_info.value.detail["response"] == "Error storing user feedback"
 
 
-def test_store_feedback(mocker):
-    """Test that store_feedback calls the correct storage function."""
+@pytest.mark.parametrize(
+    "feedback_request_data",
+    [
+        {
+            "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
+            "user_question": "What is OpenStack?",
+            "llm_response": "It's some cloud thing.",
+            "user_feedback": "This response is not helpful!",
+            "sentiment": -1,
+        },
+        {
+            "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
+            "user_question": "What is Kubernetes?",
+            "llm_response": "K8s.",
+            "sentiment": -1,
+            "categories": ["incorrect", "not_relevant", "incomplete"],
+        },
+    ],
+    ids=["negative_text_feedback", "negative_feedback_with_categories"],
+)
+def test_store_feedback(mocker, feedback_request_data):
+    """Test that store_feedback correctly stores various feedback payloads."""
+
     configuration.user_data_collection_configuration.feedback_storage = "fake-path"
 
+    # Patch filesystem and helpers
     mocker.patch("builtins.open", mocker.mock_open())
     mocker.patch("app.endpoints.feedback.Path", return_value=mocker.MagicMock())
     mocker.patch("app.endpoints.feedback.get_suid", return_value="fake-uuid")
 
-    # Mock the JSON to assert the data is stored correctly
+    # Patch json to inspect stored data
     mock_json = mocker.patch("app.endpoints.feedback.json")
 
     user_id = "test_user_id"
-    feedback_request = {
-        "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
-        "user_question": "What is OpenStack?",
-        "llm_response": "OpenStack is a cloud computing platform.",
-        "user_feedback": "Great service!",
-        "sentiment": 1,
+
+    store_feedback(user_id, feedback_request_data)
+
+    expected_data = {
+        "user_id": user_id,
+        "timestamp": mocker.ANY,
+        **feedback_request_data,
     }
 
-    store_feedback(user_id, feedback_request)
-    mock_json.dump.assert_called_once_with(
-        {
-            "user_id": user_id,
-            "timestamp": mocker.ANY,
-            **feedback_request,
-        },
-        mocker.ANY,
-    )
+    mock_json.dump.assert_called_once_with(expected_data, mocker.ANY)
 
 
 def test_feedback_status():

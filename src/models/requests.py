@@ -1,6 +1,7 @@
 """Model for service requests."""
 
 from typing import Optional, Self
+from enum import Enum
 
 from pydantic import BaseModel, model_validator, field_validator, Field
 from llama_stack_client.types.agents.turn_create_params import Document
@@ -146,6 +147,22 @@ class QueryRequest(BaseModel):
         return self
 
 
+class FeedbackCategory(str, Enum):
+    """Enum representing predefined feedback categories for AI responses.
+
+    These categories help provide structured feedback about AI inference quality
+    when users provide negative feedback (thumbs down). Multiple categories can
+    be selected to provide comprehensive feedback about response issues.
+    """
+
+    INCORRECT = "incorrect"  # "The answer provided is completely wrong"
+    NOT_RELEVANT = "not_relevant"  # "This answer doesn't address my question at all"
+    INCOMPLETE = "incomplete"  # "The answer only covers part of what I asked about"
+    OUTDATED_INFORMATION = "outdated_information"  # "This information is from several years ago and no longer accurate"  # pylint: disable=line-too-long
+    UNSAFE = "unsafe"  # "This response could be harmful or dangerous if followed"
+    OTHER = "other"  # "The response has issues not covered by other categories"
+
+
 class FeedbackRequest(BaseModel):
     """Model representing a feedback request.
 
@@ -155,15 +172,17 @@ class FeedbackRequest(BaseModel):
         llm_response: The required LLM response.
         sentiment: The optional sentiment.
         user_feedback: The optional user feedback.
+        categories: The optional list of feedback categories (multi-select for negative feedback).
 
     Example:
         ```python
         feedback_request = FeedbackRequest(
             conversation_id="12345678-abcd-0000-0123-456789abcdef",
             user_question="what are you doing?",
-            user_feedback="Great service!",
+            user_feedback="This response is not helpful",
             llm_response="I don't know",
             sentiment=-1,
+            categories=[FeedbackCategory.INCORRECT, FeedbackCategory.INCOMPLETE]
         )
         ```
     """
@@ -179,6 +198,15 @@ class FeedbackRequest(BaseModel):
         description="Feedback on the LLM response.",
         examples=["I'm not satisfied with the response because it is too vague."],
     )
+    # Optional list of predefined feedback categories for negative feedback
+    categories: Optional[list[FeedbackCategory]] = Field(
+        default=None,
+        description=(
+            "List of feedback categories that describe issues with the LLM response "
+            "(for negative feedback)."
+        ),
+        examples=[["incorrect", "incomplete"]],
+    )
 
     # provides examples for /docs endpoint
     model_config = {
@@ -188,9 +216,26 @@ class FeedbackRequest(BaseModel):
                     "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
                     "user_question": "foo",
                     "llm_response": "bar",
-                    "user_feedback": "Great service!",
-                    "sentiment": 1,
-                }
+                    "user_feedback": "Not satisfied with the response quality.",
+                    "sentiment": -1,
+                },
+                {
+                    "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
+                    "user_question": "What is the capital of France?",
+                    "llm_response": "The capital of France is Berlin.",
+                    "sentiment": -1,
+                    "categories": ["incorrect"],
+                },
+                {
+                    "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
+                    "user_question": "How do I deploy a web app?",
+                    "llm_response": "Use Docker.",
+                    "user_feedback": (
+                        "This response is too general and doesn't provide specific steps."
+                    ),
+                    "sentiment": -1,
+                    "categories": ["incomplete", "not_relevant"],
+                },
             ]
         }
     }
@@ -213,9 +258,31 @@ class FeedbackRequest(BaseModel):
             )
         return value
 
+    @field_validator("categories")
+    @classmethod
+    def validate_categories(
+        cls, value: Optional[list[FeedbackCategory]]
+    ) -> Optional[list[FeedbackCategory]]:
+        """Validate feedback categories list."""
+        if value is None:
+            return value
+
+        if len(value) == 0:
+            return None  # Convert empty list to None for consistency
+
+        unique_categories = list(set(value))
+        return unique_categories
+
     @model_validator(mode="after")
-    def check_sentiment_or_user_feedback_set(self) -> Self:
-        """Ensure that either 'sentiment' or 'user_feedback' is set."""
-        if self.sentiment is None and self.user_feedback is None:
-            raise ValueError("Either 'sentiment' or 'user_feedback' must be set")
+    def check_feedback_provided(self) -> Self:
+        """Ensure that at least one form of feedback is provided."""
+        if (
+            self.sentiment is None
+            and self.user_feedback is None
+            and self.categories is None
+        ):
+            raise ValueError(
+                "At least one form of feedback must be provided: "
+                "'sentiment', 'user_feedback', or 'categories'"
+            )
         return self

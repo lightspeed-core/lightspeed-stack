@@ -12,6 +12,7 @@ from models.config import (
     ServiceConfiguration,
     ModelContextProtocolServer,
     AuthenticationConfiguration,
+    InferenceConfiguration,
 )
 
 logger = logging.getLogger(__name__)
@@ -84,11 +85,16 @@ class AppConfig:
         return self._configuration.mcp_servers
 
     @property
-    def authentication_configuration(self) -> Optional[AuthenticationConfiguration]:
+    def authentication_configuration(self) -> AuthenticationConfiguration:
         """Return authentication configuration."""
         assert (
             self._configuration is not None
         ), "logic error: configuration is not loaded"
+
+        assert (
+            self._configuration.authentication is not None
+        ), "logic error: authentication configuration is not loaded"
+
         return self._configuration.authentication
 
     @property
@@ -98,6 +104,14 @@ class AppConfig:
             self._configuration is not None
         ), "logic error: configuration is not loaded"
         return self._configuration.customization
+
+    @property
+    def inference(self) -> Optional[InferenceConfiguration]:
+        """Return inference configuration."""
+        assert (
+            self._configuration is not None
+        ), "logic error: configuration is not loaded"
+        return self._configuration.inference
 
 
 configuration: AppConfig = AppConfig()

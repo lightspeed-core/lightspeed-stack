@@ -5,7 +5,7 @@ from logging import Logger
 
 import pytest
 from pydantic import ValidationError
-from models.requests import QueryRequest, Attachment, FeedbackRequest
+from models.requests import QueryRequest, Attachment, FeedbackRequest, FeedbackCategory
 
 
 class TestAttachment:
@@ -122,6 +122,16 @@ class TestQueryRequest:
         assert documents[1]["content"] == "kind: Pod\n metadata:\n name:    private-reg"
         assert documents[1]["mime_type"] == "application/yaml"
 
+    def test_get_documents_no_attachments(self) -> None:
+        """Test the get_documents method."""
+        attachments = []
+        qr = QueryRequest(
+            query="Tell me about Kubernetes",
+            attachments=attachments,
+        )
+        documents = qr.get_documents()
+        assert len(documents) == 0
+
     def test_validate_provider_and_model(self) -> None:
         """Test the validate_provider_and_model method."""
         qr = QueryRequest(
@@ -208,10 +218,10 @@ class TestFeedbackRequest:
                 sentiment=99,  # Invalid sentiment
             )
 
-    def test_check_sentiment_or_user_feedback(self) -> None:
-        """Test that at least one of sentiment or user_feedback is provided."""
+    def test_check_feedback_provided(self) -> None:
+        """Test that at least one form of feedback is provided."""
         with pytest.raises(
-            ValueError, match="Either 'sentiment' or 'user_feedback' must be set"
+            ValueError, match="At least one form of feedback must be provided"
         ):
             FeedbackRequest(
                 conversation_id="123e4567-e89b-12d3-a456-426614174000",
@@ -219,6 +229,7 @@ class TestFeedbackRequest:
                 llm_response="OpenStack is a cloud computing platform.",
                 sentiment=None,
                 user_feedback=None,
+                categories=None,
             )
 
     def test_feedback_too_long(self) -> None:
@@ -231,4 +242,116 @@ class TestFeedbackRequest:
                 user_question="What is this?",
                 llm_response="Some response",
                 user_feedback="a" * 4097,
+            )
+
+    def test_with_categories(self) -> None:
+        """Test FeedbackRequest with categories for negative feedback."""
+        fr = FeedbackRequest(
+            conversation_id="123e4567-e89b-12d3-a456-426614174000",
+            user_question="What is Kubernetes?",
+            llm_response="It's just some software thing.",
+            categories=[FeedbackCategory.INCORRECT, FeedbackCategory.INCOMPLETE],
+        )
+        assert fr.conversation_id == "123e4567-e89b-12d3-a456-426614174000"
+        assert fr.user_question == "What is Kubernetes?"
+        assert fr.llm_response == "It's just some software thing."
+        assert set(fr.categories) == {
+            FeedbackCategory.INCORRECT,
+            FeedbackCategory.INCOMPLETE,
+        }
+        assert fr.sentiment is None
+        assert fr.user_feedback is None
+
+    def test_with_single_category(self) -> None:
+        """Test FeedbackRequest with single category for negative feedback."""
+        fr = FeedbackRequest(
+            conversation_id="123e4567-e89b-12d3-a456-426614174000",
+            user_question="What is Docker?",
+            llm_response="Docker is a database system.",
+            categories=[FeedbackCategory.INCORRECT],
+        )
+        assert fr.categories == [FeedbackCategory.INCORRECT]
+
+    def test_categories_with_duplicates(self) -> None:
+        """Test that duplicate categories are removed."""
+        fr = FeedbackRequest(
+            conversation_id="123e4567-e89b-12d3-a456-426614174000",
+            user_question="What is API?",
+            llm_response="API is some computer thing.",
+            categories=[
+                FeedbackCategory.INCORRECT,
+                FeedbackCategory.INCOMPLETE,
+                FeedbackCategory.INCORRECT,  # Duplicate
+            ],
+        )
+        assert len(fr.categories) == 2
+        assert set(fr.categories) == {
+            FeedbackCategory.INCORRECT,
+            FeedbackCategory.INCOMPLETE,
+        }
+
+    def test_empty_categories_converted_to_none(self) -> None:
+        """Test that empty categories list is converted to None."""
+        with pytest.raises(
+            ValueError, match="At least one form of feedback must be provided"
+        ):
+            FeedbackRequest(
+                conversation_id="123e4567-e89b-12d3-a456-426614174000",
+                user_question="What is testing?",
+                llm_response="Testing is a verification process.",
+                categories=[],  # Empty list should be converted to None
+            )
+
+    def test_categories_only_feedback(self) -> None:
+        """Test that categories alone are sufficient for negative feedback."""
+        fr = FeedbackRequest(
+            conversation_id="123e4567-e89b-12d3-a456-426614174000",
+            user_question="Explain machine learning",
+            llm_response="It's AI stuff.",
+            categories=[FeedbackCategory.NOT_RELEVANT, FeedbackCategory.INCOMPLETE],
+        )
+        assert fr.sentiment is None
+        assert fr.user_feedback is None
+        assert len(fr.categories) == 2
+
+    def test_mixed_feedback_types(self) -> None:
+        """Test FeedbackRequest with categories, sentiment, and user feedback for negative feedback."""  # pylint: disable=line-too-long
+        fr = FeedbackRequest(
+            conversation_id="123e4567-e89b-12d3-a456-426614174000",
+            user_question="What is cloud computing?",
+            llm_response="It's computing in the sky.",
+            sentiment=-1,
+            user_feedback="This response is not informative and lacks detail",
+            categories=[FeedbackCategory.OTHER, FeedbackCategory.INCOMPLETE],
+        )
+        assert fr.sentiment == -1
+        assert fr.user_feedback == "This response is not informative and lacks detail"
+        assert len(fr.categories) == 2
+        assert set(fr.categories) == {
+            FeedbackCategory.OTHER,
+            FeedbackCategory.INCOMPLETE,
+        }
+
+    def test_all_feedback_categories(self) -> None:
+        """Test that all defined feedback categories are valid."""
+        all_categories = list(FeedbackCategory)
+
+        fr = FeedbackRequest(
+            conversation_id="123e4567-e89b-12d3-a456-426614174000",
+            user_question="Test question",
+            llm_response="Test response",
+            categories=all_categories,
+        )
+        assert len(fr.categories) == len(all_categories)
+        for category in all_categories:
+            assert category in fr.categories
+
+    def test_categories_invalid_type(self) -> None:
+        """Test validation error for invalid categories type."""
+        with pytest.raises(ValidationError):
+            FeedbackRequest(
+                conversation_id="123e4567-e89b-12d3-a456-426614174000",
+                user_question="Test question",
+                llm_response="Test response",
+                categories="invalid_type",  # Should be list, not string
             )

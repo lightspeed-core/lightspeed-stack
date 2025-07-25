@@ -175,12 +175,26 @@ def select_model_and_provider_id(
     models: ModelListResponse, query_request: QueryRequest
 ) -> tuple[str, str | None]:
     """Select the model ID and provider ID based on the request or available models."""
+    # If model_id and provider_id are provided in the request, use them
     model_id = query_request.model
     provider_id = query_request.provider
 
-    # TODO(lucasagomes): support default model selection via configuration
-    if not model_id:
-        logger.info("No model specified in request, using the first available LLM")
+    # If model_id is not provided in the request, check the configuration
+    if not model_id or not provider_id:
+        logger.debug(
+            "No model ID or provider ID specified in request, checking configuration"
+        )
+        model_id = configuration.inference.default_model  # type: ignore[reportAttributeAccessIssue]
+        provider_id = (
+            configuration.inference.default_provider  # type: ignore[reportAttributeAccessIssue]
+        )
+
+    # If no model is specified in the request or configuration, use the first available LLM
+    if not model_id or not provider_id:
+        logger.debug(
+            "No model ID or provider ID specified in request or configuration, "
+            "using the first available LLM"
+        )
         try:
             model = next(
                 m
@@ -202,7 +216,8 @@ def select_model_and_provider_id(
                 },
             ) from e
 
-    logger.info("Searching for model: %s, provider: %s", model_id, provider_id)
+    # Validate that the model_id and provider_id are in the available models
+    logger.debug("Searching for model: %s, provider: %s", model_id, provider_id)
     if not any(
         m.identifier == model_id and m.provider_id == provider_id for m in models
     ):

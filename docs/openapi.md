@@ -457,6 +457,24 @@ Data collector configuration for sending data to ingress server.
 | connection_timeout | integer |  |
 
 
+## FeedbackCategory
+
+
+Enum representing predefined feedback categories for AI responses.
+
+These categories help provide structured feedback about AI inference quality.
+Multiple categories can be selected to provide comprehensive feedback.
+
+| Value | Description |
+|-------|-------------|
+| incorrect | The answer provided is completely wrong |
+| not_relevant | This answer doesn't address my question at all |
+| incomplete | The answer only covers part of what I asked about |
+| outdated_information | This information is from several years ago and no longer accurate |
+| unsafe | This response could be harmful or dangerous if followed |
+| other | The response has issues not covered by other categories |
+
+
 ## FeedbackRequest
 
 
@@ -468,15 +486,27 @@ Attributes:
     llm_response: The required LLM response.
     sentiment: The optional sentiment.
     user_feedback: The optional user feedback.
+    categories: The optional list of feedback categories (multi-select).
 
-Example:
+Examples:
     ```python
+    # Basic feedback
     feedback_request = FeedbackRequest(
         conversation_id="12345678-abcd-0000-0123-456789abcdef",
         user_question="what are you doing?",
         user_feedback="Great service!",
         llm_response="I don't know",
+        sentiment=1
+    )
+    
+    # Feedback with categories
+    feedback_request = FeedbackRequest(
+        conversation_id="12345678-abcd-0000-0123-456789abcdef",
+        user_question="How do I deploy a web app?",
+        llm_response="You need to use Docker and Kubernetes for everything.",
+        user_feedback="This response is too general and doesn't provide specific steps.",
         sentiment=-1,
+        categories=["incomplete", "not_relevant"]
     )
     ```
 
@@ -488,6 +518,7 @@ Example:
 | llm_response | string |  |
 | sentiment |  |  |
 | user_feedback |  | Feedback on the LLM response. |
+| categories | array[FeedbackCategory] | List of feedback categories that apply to the LLM response. |
 
 
 ## FeedbackResponse

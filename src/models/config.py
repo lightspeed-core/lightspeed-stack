@@ -147,6 +147,20 @@ class UserDataCollection(BaseModel):
         return self
 
 
+class JwtConfiguration(BaseModel):
+    """JWT configuration."""
+
+    user_id_claim: str = constants.DEFAULT_JWT_UID_CLAIM
+    username_claim: str = constants.DEFAULT_JWT_USER_NAME_CLAIM
+
+
+class JwkConfiguration(BaseModel):
+    """JWK configuration."""
+
+    url: AnyHttpUrl
+    jwt_configuration: JwtConfiguration = JwtConfiguration()
+
+
 class AuthenticationConfiguration(BaseModel):
     """Authentication configuration."""
 
@@ -154,6 +168,7 @@ class AuthenticationConfiguration(BaseModel):
     skip_tls_verification: bool = False
     k8s_cluster_api: Optional[AnyHttpUrl] = None
     k8s_ca_cert_path: Optional[FilePath] = None
+    jwk_config: Optional[JwkConfiguration] = None
 
     @model_validator(mode="after")
     def check_authentication_model(self) -> Self:
@@ -164,7 +179,24 @@ class AuthenticationConfiguration(BaseModel):
                 f"Unsupported authentication module '{self.module}'. "
                 f"Supported modules: {supported_modules}"
             )
+
+        if self.module == constants.AUTH_MOD_JWK_TOKEN:
+            if self.jwk_config is None:
+                raise ValueError(
+                    "JWK configuration must be specified when using JWK token authentication"
+                )
+
         return self
+
+    @property
+    def jwk_configuration(self) -> JwkConfiguration:
+        """Return JWK configuration if the module is JWK token."""
+        if self.module != constants.AUTH_MOD_JWK_TOKEN:
+            raise ValueError(
+                "JWK configuration is only available for JWK token authentication module"
+            )
+        assert self.jwk_config is not None, "JWK configuration should not be None"
+        return self.jwk_config
 
 
 class Customization(BaseModel):
@@ -185,6 +217,26 @@ class Customization(BaseModel):
         return self
 
 
+class InferenceConfiguration(BaseModel):
+    """Inference configuration."""
+
+    default_model: Optional[str] = None
+    default_provider: Optional[str] = None
+
+    @model_validator(mode="after")
+    def check_default_model_and_provider(self) -> Self:
+        """Check default model and provider."""
+        if self.default_model is None and self.default_provider is not None:
+            raise ValueError(
+                "Default model must be specified when default provider is set"
+            )
+        if self.default_model is not None and self.default_provider is None:
+            raise ValueError(
+                "Default provider must be specified when default model is set"
+            )
+        return self
+
+
 class Configuration(BaseModel):
     """Global service configuration."""
 
@@ -197,6 +249,7 @@ class Configuration(BaseModel):
         AuthenticationConfiguration()
     )
     customization: Optional[Customization] = None
+    inference: Optional[InferenceConfiguration] = InferenceConfiguration()
 
     def dump(self, filename: str = "configuration.json") -> None:
         """Dump actual configuration into JSON file."""

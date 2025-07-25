@@ -74,8 +74,6 @@ app_routes_paths = [
     if isinstance(route, (Mount, Route, WebSocketRoute))
 ]
 
-setup_model_metrics()
-
 
 @app.on_event("startup")
 async def startup_event() -> None:
@@ -83,4 +81,6 @@ async def startup_event() -> None:
     logger.info("Registering MCP servers")
     await register_mcp_servers_async(logger, configuration.configuration)
     get_logger("app.endpoints.handlers")
+    logger.info("Setting up model metrics")
+    await setup_model_metrics()
     logger.info("App startup complete")

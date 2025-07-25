@@ -6,6 +6,32 @@ from client import LlamaStackClientHolder, AsyncLlamaStackClientHolder
 from models.config import LlamaStackConfiguration
 
 
+def test_client_get_client_method() -> None:
+    """Test how get_client method works for unitialized client."""
+
+    client = LlamaStackClientHolder()
+
+    with pytest.raises(
+        RuntimeError,
+        match="LlamaStackClient has not been initialised. Ensure 'load\\(..\\)' has been called.",
+    ):
+        client.get_client()
+
+
+def test_async_client_get_client_method() -> None:
+    """Test how get_client method works for unitialized client."""
+    client = AsyncLlamaStackClientHolder()
+
+    with pytest.raises(
+        RuntimeError,
+        match=(
+            "AsyncLlamaStackClient has not been initialised. "
+            "Ensure 'load\\(..\\)' has been called."
+        ),
+    ):
+        client.get_client()
+
+
 def test_get_llama_stack_library_client() -> None:
     """Test if Llama Stack can be initialized in library client mode."""
     cfg = LlamaStackConfiguration(
@@ -17,6 +43,9 @@ def test_get_llama_stack_library_client() -> None:
     client = LlamaStackClientHolder()
     client.load(cfg)
     assert client is not None
+
+    ls_client = client.get_client()
+    assert ls_client is not None
 
 
 def test_get_llama_stack_remote_client() -> None:
@@ -30,6 +59,9 @@ def test_get_llama_stack_remote_client() -> None:
     client = LlamaStackClientHolder()
     client.load(cfg)
     assert client is not None
+
+    ls_client = client.get_client()
+    assert ls_client is not None
 
 
 def test_get_llama_stack_wrong_configuration() -> None:
@@ -61,6 +93,9 @@ async def test_get_async_llama_stack_library_client() -> None:
     await client.load(cfg)
     assert client is not None
 
+    ls_client = client.get_client()
+    assert ls_client is not None
+
 
 async def test_get_async_llama_stack_remote_client() -> None:
     """Test the initialization of asynchronous Llama Stack client in server mode."""
@@ -73,6 +108,9 @@ async def test_get_async_llama_stack_remote_client() -> None:
     client = AsyncLlamaStackClientHolder()
     await client.load(cfg)
     assert client is not None
+
+    ls_client = client.get_client()
+    assert ls_client is not None
 
 
 async def test_get_async_llama_stack_wrong_configuration() -> None:

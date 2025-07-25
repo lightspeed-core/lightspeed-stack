@@ -179,30 +179,70 @@ def test_query_endpoint_handler_store_transcript(mocker):
     _test_query_endpoint_handler(mocker, store_transcript_to_file=True)
 
 
-def test_select_model_and_provider_id(mocker):
+def test_select_model_and_provider_id_from_request(mocker):
     """Test the select_model_and_provider_id function."""
-    mock_client = mocker.Mock()
-    mock_client.models.list.return_value = [
+    mocker.patch(
+        "metrics.utils.configuration.inference.default_provider",
+        "default_provider",
+    )
+    mocker.patch(
+        "metrics.utils.configuration.inference.default_model",
+        "default_model",
+    )
+
+    model_list = [
         mocker.Mock(identifier="model1", model_type="llm", provider_id="provider1"),
         mocker.Mock(identifier="model2", model_type="llm", provider_id="provider2"),
+        mocker.Mock(
+            identifier="default_model", model_type="llm", provider_id="default_provider"
+        ),
     ]
 
+    # Create a query request with model and provider specified
     query_request = QueryRequest(
-        query="What is OpenStack?", model="model1", provider="provider1"
+        query="What is OpenStack?", model="model2", provider="provider2"
     )
 
-    model_id, provider_id = select_model_and_provider_id(
-        mock_client.models.list(), query_request
+    # Assert the model and provider from request take precedence from the configuration one
+    model_id, provider_id = select_model_and_provider_id(model_list, query_request)
+
+    assert model_id == "model2"
+    assert provider_id == "provider2"
+
+
+def test_select_model_and_provider_id_from_configuration(mocker):
+    """Test the select_model_and_provider_id function."""
+    mocker.patch(
+        "metrics.utils.configuration.inference.default_provider",
+        "default_provider",
+    )
+    mocker.patch(
+        "metrics.utils.configuration.inference.default_model",
+        "default_model",
     )
 
-    assert model_id == "model1"
-    assert provider_id == "provider1"
+    model_list = [
+        mocker.Mock(identifier="model1", model_type="llm", provider_id="provider1"),
+        mocker.Mock(
+            identifier="default_model", model_type="llm", provider_id="default_provider"
+        ),
+    ]
+
+    # Create a query request without model and provider specified
+    query_request = QueryRequest(
+        query="What is OpenStack?",
+    )
+
+    model_id, provider_id = select_model_and_provider_id(model_list, query_request)
+
+    # Assert that the default model and provider from the configuration are returned
+    assert model_id == "default_model"
+    assert provider_id == "default_provider"
 
 
-def test_select_model_and_provider_id_no_model(mocker):
+def test_select_model_and_provider_id_first_from_list(mocker):
     """Test the select_model_and_provider_id function when no model is specified."""
-    mock_client = mocker.Mock()
-    mock_client.models.list.return_value = [
+    model_list = [
         mocker.Mock(
             identifier="not_llm_type", model_type="embedding", provider_id="provider1"
         ),
@@ -216,11 +256,10 @@ def test_select_model_and_provider_id_no_model(mocker):
 
     query_request = QueryRequest(query="What is OpenStack?")
 
-    model_id, provider_id = select_model_and_provider_id(
-        mock_client.models.list(), query_request
-    )
+    model_id, provider_id = select_model_and_provider_id(model_list, query_request)
 
-    # Assert return the first available LLM model
+    # Assert return the first available LLM model when no model/provider is
+    # specified in the request or in the configuration
     assert model_id == "first_model"
     assert provider_id == "provider1"
 
