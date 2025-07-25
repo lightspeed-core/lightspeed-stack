@@ -14,7 +14,7 @@ jobs:
         env: 
             OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
-          path: 'src'
+          path: '.'
           isAbsolutePath: false
           file: 'lightspeed-stack.yaml'
           content: |
@@ -41,7 +41,7 @@ jobs:
         env: 
             OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
-          path: 'src'
+          path: '.'
           isAbsolutePath: false
           file: 'run.yaml'
           content: |
