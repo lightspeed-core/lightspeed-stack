@@ -122,8 +122,8 @@ jobs:
               inference:
                 - provider_id: openai
                   provider_type: remote::openai
-                  config:
-                    api_key: ${env.OPENAI_API_KEY}
+                config:
+                  api_key: ${{ secrets.OPENAI_API_KEY }}
               post_training:
               - config:
                   checkpoint_format: huggingface
@@ -194,6 +194,10 @@ jobs:
         env: 
             OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
+          # Debug: Check if environment variable is available for docker-compose
+          echo "OPENAI_API_KEY is set: $([ -n "$OPENAI_API_KEY" ] && echo 'YES' || echo 'NO')"
+          echo "OPENAI_API_KEY length: ${#OPENAI_API_KEY}"
+          
           docker compose --version
           docker compose up -d
 
