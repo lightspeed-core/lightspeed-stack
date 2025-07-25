@@ -190,6 +190,8 @@ jobs:
           cat run.yaml
 
       - name: Run service manually
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           # Debug: Verify the environment variable is available for file creation
           echo "OPENAI_API_KEY is set: $([ -n "$OPENAI_API_KEY" ] && echo 'YES' || echo 'NO')"
