@@ -201,7 +201,16 @@ jobs:
           echo "Waiting for services to be healthy..."
           sleep 20  # adjust depending on boot time
 
-      - name: Run tests in test container
+      - name: Install uv
         run: |
-          echo "We got here and the setup is done, yey"
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install Python dependencies
+        run: |
+          uv sync
+
+      - name: Run e2e tests
+        run: |
+          echo "Running e2e tests against running services..."
           make test-e2e
