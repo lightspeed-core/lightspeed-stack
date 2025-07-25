@@ -27,10 +27,10 @@ jobs:
               color_log: true
               access_log: true
             llama_stack:
-              # use_as_library_client: true
-              # library_client_config_path: /app-root/run.yaml
-              url: http://lightspeednet:8321
-              api_key: "$OPENAI_API_KEY"
+                # use_as_library_client: true
+                # library_client_config_path: /app-root/run.yaml
+                url: http://llama-stack:8321
+                api_key: ${{ env.OPENAI_API_KEY }}
             user_data_collection:
               feedback_disabled: false
               feedback_storage: "/tmp/data/feedback"
@@ -186,9 +186,40 @@ jobs:
       - name: Wait for services
         run: |
           echo "Waiting for services to be healthy..."
-          sleep 20  # adjust depending on boot time
+          
+          # Check container status
+          echo "=== Container Status ==="
+          docker compose ps
+          
+          # Show logs to check for startup errors
+          echo "=== Initial Logs ==="
+          docker compose logs --tail=20
+          
+          # Wait longer for services to fully initialize
+          sleep 40
+          
+          # Check final status
+          echo "=== Final Container Status ==="
+          docker compose ps
+          
+          # Show any error logs
+          echo "=== Recent Logs ==="
+          docker compose logs --tail=30
 
-      - name: Run tests in test container
+      - name: Test services
         run: |
-          echo "We got here and the setup is done, yey"
-          curl http://localhost:8080/v1/models
+          echo "Testing service connectivity..."
+          
+          # Test basic connectivity first
+          echo "Testing basic connectivity to port 8080:"
+          curl -v --connect-timeout 10 http://localhost:8080/ || echo "❌ Basic connection failed"
+          
+          echo "Testing /v1/models endpoint:"
+          curl -v --connect-timeout 10 http://localhost:8080/v1/models || echo "❌ Models endpoint failed"
+          
+          # If that fails, show logs again
+          if ! curl -s --connect-timeout 5 http://localhost:8080/v1/models > /dev/null; then
+            echo "=== Service appears to be failing - showing logs ==="
+            docker compose logs lightspeed-stack --tail=50
+            docker compose logs llama-stack --tail=50
+          fi
