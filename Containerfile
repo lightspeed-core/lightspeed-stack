@@ -2,6 +2,7 @@
 FROM registry.access.redhat.com/ubi9/python-312-minimal AS builder
 
 ARG APP_ROOT=/app-root
+ARG LSC_SOURCE_DIR=.
 
 # UV_PYTHON_DOWNLOADS=0 : Disable Python interpreter downloads and use the system interpreter.
 ENV UV_COMPILE_BYTECODE=0 \
@@ -15,8 +16,8 @@ RUN pip3.12 install uv
 
 # Add explicit files and directories
 # (avoid accidental inclusion of local directories or env files or credentials)
-COPY src ./src
-COPY pyproject.toml LICENSE README.md uv.lock ./
+COPY ${LSC_SOURCE_DIR}/src ./src
+COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR}/README.md ${LSC_SOURCE_DIR}/uv.lock ./
 
 RUN uv sync --locked --no-install-project --no-dev
 
