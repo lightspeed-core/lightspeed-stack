@@ -203,7 +203,7 @@ jobs:
         run: |
           echo "Waiting for services to be healthy..."
           # Wait for services to be ready with timeout
-          timeout=300
+          timeout=30
           while [ $timeout -gt 0 ]; do
             if curl -f -X 'GET' 'http://localhost:8080/v1/readiness' -H 'accept: application/json'; then
               echo "Services are ready!"
