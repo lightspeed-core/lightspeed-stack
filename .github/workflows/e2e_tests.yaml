@@ -200,7 +200,7 @@ jobs:
           # Wait for services to be ready with timeout
           timeout=300
           while [ $timeout -gt 0 ]; do
-            if curl -X 'GET' 'http://localhost:8080/v1/readiness' -H 'accept: application/json'then
+            if curl -X 'GET' 'http://localhost:8080/v1/readiness' -H 'accept: application/json'; then
               echo "Services are ready!"
               break
             fi
@@ -210,7 +210,7 @@ jobs:
           done
           if [ $timeout -le 0 ]; then
             echo "Services failed to become ready within timeout"
-            docker-compose logs
+            docker compose logs
             exit 1
           fi
 
