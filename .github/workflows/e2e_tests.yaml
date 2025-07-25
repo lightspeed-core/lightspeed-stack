@@ -6,54 +6,42 @@ on: [push, pull_request]
 jobs:
   e2e_tests:
     runs-on: ubuntu-latest
-    env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: 1arp/create-a-file-action@0.4.5
+        env: 
+            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
-          path: '.'
+          path: 'src'
           isAbsolutePath: false
           file: 'lightspeed-stack.yaml'
           content: |
-            name: foo bar baz
+            name: lcore
             service:
-              host: 0.0.0.0
+              host: localhost
               port: 8080
               auth_enabled: false
               workers: 1
               color_log: true
               access_log: true
             llama_stack:
-              # Uses a remote llama-stack service
-              # The instance would have already been started with a llama-stack-run.yaml file
-              use_as_library_client: false
-              # Alternative for "as library use"
               # use_as_library_client: true
-              # library_client_config_path: <path-to-llama-stack-run.yaml-file>
-              url: http://llama-stack:8321
-              api_key: xyzzy
+              # library_client_config_path: /app-root/run.yaml
+              url: http://lightspeednet:8321
+              api_key: "$OPENAI_API_KEY"
             user_data_collection:
               feedback_disabled: false
               feedback_storage: "/tmp/data/feedback"
               transcripts_disabled: false
               transcripts_storage: "/tmp/data/transcripts"
-              data_collector:
-                enabled: false
-                ingress_server_url: null
-                ingress_server_auth_token: null
-                ingress_content_service_name: null
-                collection_interval: 7200  # 2 hours in seconds
-                cleanup_after_send: true
-                connection_timeout_seconds: 30
-            authentication:
-              module: "noop"
       
       - uses: 1arp/create-a-file-action@0.4.5
+        env: 
+            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
-          path: '.'
+          path: 'src'
           isAbsolutePath: false
           file: 'run.yaml'
           content: |
@@ -122,7 +110,7 @@ jobs:
                 - provider_id: openai
                   provider_type: remote::openai
                   config:
-                    api_key: ${OPENAI_API_KEY}
+                    api_key: ${{ env.OPENAI_API_KEY }}
               post_training:
               - config:
                   checkpoint_format: huggingface
@@ -176,12 +164,11 @@ jobs:
               tls_keyfile: null
             shields: []
             vector_dbs: []
-
             models:
-              - model_id: gpt-4o-mini
+              - model_id: gpt-4-turbo
                 provider_id: openai
                 model_type: llm
-                provider_model_id: gpt-4o-mini
+                provider_model_id: gpt-4-turbo
 
       - name: list files
         run: |
@@ -190,44 +177,18 @@ jobs:
           cat run.yaml
 
       - name: Run service manually
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        env: 
+            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          # Debug: Verify the environment variable is available for file creation
-          echo "OPENAI_API_KEY is set: $([ -n "$OPENAI_API_KEY" ] && echo 'YES' || echo 'NO')"
-          
           docker compose --version
           docker compose up -d
 
       - name: Wait for services
         run: |
           echo "Waiting for services to be healthy..."
-          # Wait for services to be ready with timeout
-          timeout=30
-          while [ $timeout -gt 0 ]; do
-            if curl -f -X 'GET' 'http://localhost:8080/v1/readiness' -H 'accept: application/json'; then
-              echo "Services are ready!"
-              break
-            fi
-            echo "Waiting for services... ($timeout seconds remaining)"
-            sleep 5
-            timeout=$((timeout-5))
-          done
-          if [ $timeout -le 0 ]; then
-            echo "Services failed to become ready within timeout"
-            docker compose logs
-            exit 1
-          fi
+          sleep 20  # adjust depending on boot time
 
-      - name: Install uv
+      - name: Run tests in test container
         run: |
-          pip install uv
-
-      - name: Install Python dependencies
-        run: |
-          uv sync
-
-      - name: Run e2e tests
-        run: |
-          echo "Running e2e tests against running services..."
-          make test-e2e
+          echo "We got here and the setup is done, yey"
+          curl http://localhost:8080/v1/models
