@@ -22,6 +22,9 @@ Lightspeed Core Stack (LCS) is an AI-powered assistant that provides answers to 
     * [Llama Stack as client library](#llama-stack-as-client-library)
     * [System prompt](#system-prompt)
     * [Safety Shields](#safety-shields)
+    * [Persistence Configuration](#persistence-configuration)
+        * [Database Setup](#database-setup)
+        * [Migration Support](#migration-support)
 * [Usage](#usage)
     * [Make targets](#make-targets)
     * [Running Linux container image](#running-linux-container-image)
@@ -57,11 +60,23 @@ Overall architecture with all main parts is displayed below:
 
 Lightspeed Core Stack is based on the FastAPI framework (Uvicorn). The service is split into several parts described below.
 
+## Persistence Layer
+
+The service includes a robust persistence layer that replaces the in-memory conversation mapping with PostgreSQL-based storage.
+
+See more information in [persistence.md](docs/persistence.md).
+
+
 # Prerequisites
 
 * Python 3.12, or 3.13
     - please note that currently Python 3.14 is not officially supported
     - all sources are made (backward) compatible with Python 3.12; it is checked on CI
+
+* PostgreSQL (for persistence features)
+    - Required for conversation persistence
+    - Supports connection pooling and SSL
+    - Can be run locally or in cloud
 
 # Installation
 
@@ -71,6 +86,13 @@ Installation steps depends on operation system. Please look at instructions for 
 - [Linux installation](https://lightspeed-core.github.io/lightspeed-stack/installation_linux)
 - [macOS installation](https://lightspeed-core.github.io/lightspeed-stack/installation_macos)
 
+## Additional Dependencies for Persistence
+
+If you plan to use the persistence features, install the additional dependencies:
+
+```bash
+pip install sqlalchemy psycopg2-binary alembic
+```
 
 # Configuration
 

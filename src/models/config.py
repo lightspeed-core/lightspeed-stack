@@ -24,6 +24,68 @@ class TLSConfiguration(BaseModel):
         return self
 
 
+class DatabaseConfiguration(BaseModel):
+    """Database configuration for persistent storage."""
+
+    host: str = "localhost"
+    port: int = 5432
+    name: str = "lightspeed_stack"
+    username: str = "postgres"
+    password: Optional[str] = None
+    ssl_mode: str = "prefer"
+    pool_size: int = 20
+    max_overflow: int = 30
+    pool_timeout: int = 30
+    pool_recycle: int = 3600
+
+    @model_validator(mode="after")
+    def check_database_configuration(self) -> Self:
+        """Check database configuration."""
+        if self.port <= 0 or self.port > 65535:
+            raise ValueError("Port value should be between 1 and 65535")
+        if self.pool_size < 1:
+            raise ValueError("Pool size must be at least 1")
+        if self.max_overflow < 0:
+            raise ValueError("Max overflow must be non-negative")
+        return self
+
+
+class PersistenceConfiguration(BaseModel):
+    """Persistence configuration for conversation and agent state."""
+
+    type: str = "postgresql"  # postgresql, mongodb, firestore
+    database: Optional[DatabaseConfiguration] = None
+    agent_cache_max_size: int = 1000
+    agent_cache_ttl_seconds: int = 3600
+    enable_rehydration: bool = True
+    conversation_retention_days: int = 90
+    enable_archival: bool = False
+    archival_storage: Optional[str] = None
+
+    @model_validator(mode="after")
+    def check_persistence_configuration(self) -> Self:
+        """Check persistence configuration."""
+        if self.type not in ["postgresql", "mongodb", "firestore"]:
+            raise ValueError(
+                f"Unsupported persistence type '{self.type}'. "
+                "Supported types: postgresql, mongodb, firestore"
+            )
+        
+        if self.type == "postgresql" and self.database is None:
+            raise ValueError("Database configuration is required for PostgreSQL persistence")
+        
+        if self.agent_cache_max_size < 1:
+            raise ValueError("Agent cache max size must be at least 1")
+        
+        if self.agent_cache_ttl_seconds < 1:
+            raise ValueError("Agent cache TTL must be at least 1 second")
+        
+        if self.conversation_retention_days < 1:
+            raise ValueError("Conversation retention days must be at least 1")
+        
+        return self
+
+
 class ServiceConfiguration(BaseModel):
     """Service configuration."""
 
@@ -115,14 +177,15 @@ class DataCollectorConfiguration(BaseModel):
     @model_validator(mode="after")
     def check_data_collector_configuration(self) -> Self:
         """Check data collector configuration."""
-        if self.enabled and self.ingress_server_url is None:
-            raise ValueError(
-                "ingress_server_url is required when data collector is enabled"
-            )
-        if self.enabled and self.ingress_content_service_name is None:
-            raise ValueError(
-                "ingress_content_service_name is required when data collector is enabled"
-            )
+        if self.enabled:
+            if self.ingress_server_url is None:
+                raise ValueError(
+                    "Ingress server URL must be specified when data collector is enabled"
+                )
+            if self.ingress_content_service_name is None:
+                raise ValueError(
+                    "Ingress content service name must be specified when data collector is enabled"
+                )
         return self
 
 
@@ -137,12 +200,14 @@ class UserDataCollection(BaseModel):
 
     @model_validator(mode="after")
     def check_storage_location_is_set_when_needed(self) -> Self:
-        """Check that storage_location is set when enabled."""
+        """Check storage location is set when needed."""
         if self.feedback_enabled and self.feedback_storage is None:
-            raise ValueError("feedback_storage is required when feedback is enabled")
+            raise ValueError(
+                "Feedback storage location must be specified when feedback is enabled"
+            )
         if self.transcripts_enabled and self.transcripts_storage is None:
             raise ValueError(
-                "transcripts_storage is required when transcripts is enabled"
+                "Transcripts storage location must be specified when transcripts are enabled"
             )
         return self
 
@@ -250,6 +315,7 @@ class Configuration(BaseModel):
     )
     customization: Optional[Customization] = None
     inference: Optional[InferenceConfiguration] = InferenceConfiguration()
+    persistence: Optional[PersistenceConfiguration] = None
 
     def dump(self, filename: str = "configuration.json") -> None:
         """Dump actual configuration into JSON file."""

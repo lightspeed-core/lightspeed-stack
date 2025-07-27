@@ -5,7 +5,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from cachetools import TTLCache  # type: ignore
 
@@ -34,6 +34,8 @@ from utils.endpoints import check_configuration_loaded, get_system_prompt
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
 from utils.suid import get_suid
 from utils.types import GraniteToolParser
+from services.agent_manager import PersistentAgentManager
+from services.persistence import PersistenceManager
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
@@ -41,6 +43,9 @@ auth_dependency = get_auth_dependency()
 
 # Global agent registry to persist agents across requests
 _agent_cache: TTLCache[str, Agent] = TTLCache(maxsize=1000, ttl=3600)
+
+# Global persistent agent manager
+_persistent_agent_manager: Optional[PersistentAgentManager] = None
 
 query_response: dict[int | str, dict[str, Any]] = {
     200: {
@@ -64,6 +69,29 @@ query_response: dict[int | str, dict[str, Any]] = {
 }
 
 
+def get_persistent_agent_manager() -> Optional[PersistentAgentManager]:
+    """Get the global persistent agent manager."""
+    global _persistent_agent_manager
+    return _persistent_agent_manager
+
+
+def initialize_persistent_agent_manager() -> None:
+    """Initialize the persistent agent manager."""
+    global _persistent_agent_manager
+    
+    if configuration.persistence_configuration:
+        try:
+            persistence_manager = PersistenceManager(configuration.persistence_configuration)
+            persistence_manager.initialize()
+            _persistent_agent_manager = PersistentAgentManager(persistence_manager)
+            logger.info("Persistent agent manager initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize persistent agent manager: %s", e)
+            _persistent_agent_manager = None
+    else:
+        logger.info("No persistence configuration found, using in-memory agent cache")
+
+
 def is_transcripts_enabled() -> bool:
     """Check if transcripts is enabled.
 
@@ -80,8 +108,28 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     available_input_shields: list[str],
     available_output_shields: list[str],
     conversation_id: str | None,
+    user_id: str | None = None,
 ) -> tuple[Agent, str]:
     """Get existing agent or create a new one with session persistence."""
+    
+    # Try persistent agent manager first
+    persistent_manager = get_persistent_agent_manager()
+    if persistent_manager:
+        try:
+            return persistent_manager.get_or_create_agent(
+                client=client,
+                model_id=model_id,
+                system_prompt=system_prompt,
+                available_input_shields=available_input_shields,
+                available_output_shields=available_output_shields,
+                conversation_id=conversation_id,
+                user_id=user_id,
+            )
+        except Exception as e:
+            logger.error("Failed to get agent from persistent manager: %s", e)
+            # Fall back to in-memory cache
+    
+    # Fallback to in-memory cache
     if conversation_id is not None:
         agent = _agent_cache.get(conversation_id)
         if agent:
@@ -136,6 +184,7 @@ def query_endpoint_handler(
             query_request,
             token,
             mcp_headers=mcp_headers,
+            user_id=_user_id,
         )
         # Update metrics for the LLM call
         metrics.llm_calls_total.labels(provider_id, model_id).inc()
@@ -157,15 +206,21 @@ def query_endpoint_handler(
 
         return QueryResponse(conversation_id=conversation_id, response=response)
 
-    # connection to Llama Stack server
     except APIConnectionError as e:
-        # Update metrics for the LLM call failure
-        metrics.llm_calls_failures_total.inc()
         logger.error("Unable to connect to Llama Stack: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "response": "Unable to connect to Llama Stack",
+                "cause": str(e),
+            },
+        ) from e
+    except Exception as e:
+        logger.exception("Error processing query: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "response": "Unable to connect to Llama Stack",
+                "response": "Internal server error",
                 "cause": str(e),
             },
         ) from e
@@ -174,78 +229,47 @@ def query_endpoint_handler(
 def select_model_and_provider_id(
     models: ModelListResponse, query_request: QueryRequest
 ) -> tuple[str, str | None]:
-    """Select the model ID and provider ID based on the request or available models."""
-    # If model_id and provider_id are provided in the request, use them
-    model_id = query_request.model
-    provider_id = query_request.provider
+    """Select model and provider ID based on request and configuration."""
+    # Use model from request if specified
+    if query_request.model:
+        model_id = query_request.model
+    else:
+        # Use default model from configuration
+        inference_config = configuration.inference
+        if inference_config and inference_config.default_model:
+            model_id = inference_config.default_model
+        else:
+            # Use first available model
+            if not models.models:
+                raise ValueError("No models available")
+            model_id = models.models[0].model_id
 
-    # If model_id is not provided in the request, check the configuration
-    if not model_id or not provider_id:
-        logger.debug(
-            "No model ID or provider ID specified in request, checking configuration"
-        )
-        model_id = configuration.inference.default_model  # type: ignore[reportAttributeAccessIssue]
-        provider_id = (
-            configuration.inference.default_provider  # type: ignore[reportAttributeAccessIssue]
-        )
-
-    # If no model is specified in the request or configuration, use the first available LLM
-    if not model_id or not provider_id:
-        logger.debug(
-            "No model ID or provider ID specified in request or configuration, "
-            "using the first available LLM"
-        )
-        try:
-            model = next(
-                m
-                for m in models
-                if m.model_type == "llm"  # pyright: ignore[reportAttributeAccessIssue]
-            )
-            model_id = model.identifier
+    # Find provider for the selected model
+    provider_id = None
+    for model in models.models:
+        if model.model_id == model_id:
             provider_id = model.provider_id
-            logger.info("Selected model: %s", model)
-            return model_id, provider_id
-        except (StopIteration, AttributeError) as e:
-            message = "No LLM model found in available models"
-            logger.error(message)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "response": constants.UNABLE_TO_PROCESS_RESPONSE,
-                    "cause": message,
-                },
-            ) from e
+            break
 
-    # Validate that the model_id and provider_id are in the available models
-    logger.debug("Searching for model: %s, provider: %s", model_id, provider_id)
-    if not any(
-        m.identifier == model_id and m.provider_id == provider_id for m in models
-    ):
-        message = f"Model {model_id} from provider {provider_id} not found in available models"
-        logger.error(message)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "response": constants.UNABLE_TO_PROCESS_RESPONSE,
-                "cause": message,
-            },
-        )
+    if not provider_id:
+        raise ValueError(f"Provider not found for model: {model_id}")
 
     return model_id, provider_id
 
 
 def _is_inout_shield(shield: Shield) -> bool:
+    """Check if shield is for both input and output."""
     return shield.identifier.startswith("inout_")
 
 
 def is_output_shield(shield: Shield) -> bool:
-    """Determine if the shield is for monitoring output."""
-    return _is_inout_shield(shield) or shield.identifier.startswith("output_")
+    """Check if shield is for output only."""
+    return shield.identifier.startswith("output_")
 
 
 def is_input_shield(shield: Shield) -> bool:
-    """Determine if the shield is for monitoring input."""
-    return _is_inout_shield(shield) or not is_output_shield(shield)
+    """Check if shield is for input only."""
+    return shield.identifier.startswith("input_")
 
 
 def retrieve_response(  # pylint: disable=too-many-locals
@@ -254,6 +278,7 @@ def retrieve_response(  # pylint: disable=too-many-locals
     query_request: QueryRequest,
     token: str,
     mcp_headers: dict[str, dict[str, str]] | None = None,
+    user_id: str | None = None,
 ) -> tuple[str, str]:
     """Retrieve response from LLMs and agents."""
     available_input_shields = [
@@ -286,6 +311,7 @@ def retrieve_response(  # pylint: disable=too-many-locals
         available_input_shields,
         available_output_shields,
         query_request.conversation_id,
+        user_id,
     )
 
     # preserve compatibility when mcp_headers is not provided
@@ -326,49 +352,47 @@ def retrieve_response(  # pylint: disable=too-many-locals
             metrics.llm_calls_validation_errors_total.inc()
             break
 
+    # Store conversation turn in persistent storage if available
+    persistent_manager = get_persistent_agent_manager()
+    if persistent_manager and conversation_id:
+        try:
+            # Get turn number from existing turns
+            turns = persistent_manager.get_conversation_history(conversation_id) or []
+            turn_number = len(turns) + 1
+            
+            persistent_manager.add_conversation_turn(
+                conversation_id=conversation_id,
+                turn_number=turn_number,
+                input_messages=[{"role": "user", "content": query_request.query}],
+                output_message={"role": "assistant", "content": str(response.output_message.content)},
+                metadata={
+                    "model_id": model_id,
+                    "provider_id": provider_id,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                },
+            )
+        except Exception as e:
+            logger.error("Failed to store conversation turn: %s", e)
+
     return str(response.output_message.content), conversation_id  # type: ignore[union-attr]
 
 
 def validate_attachments_metadata(attachments: list[Attachment]) -> None:
-    """Validate the attachments metadata provided in the request.
-
-    Raises HTTPException if any attachment has an improper type or content type.
-    """
+    """Validate attachments metadata."""
     for attachment in attachments:
-        if attachment.attachment_type not in constants.ATTACHMENT_TYPES:
-            message = (
-                f"Attachment with improper type {attachment.attachment_type} detected"
-            )
-            logger.error(message)
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "response": constants.UNABLE_TO_PROCESS_RESPONSE,
-                    "cause": message,
-                },
-            )
-        if attachment.content_type not in constants.ATTACHMENT_CONTENT_TYPES:
-            message = f"Attachment with improper content type {attachment.content_type} detected"
-            logger.error(message)
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "response": constants.UNABLE_TO_PROCESS_RESPONSE,
-                    "cause": message,
-                },
-            )
+        if not attachment.filename:
+            raise ValueError("Attachment filename is required")
+        if not attachment.content_type:
+            raise ValueError("Attachment content type is required")
 
 
 def construct_transcripts_path(user_id: str, conversation_id: str) -> Path:
-    """Construct path to transcripts."""
-    # these two normalizations are required by Snyk as it detects
-    # this Path sanitization pattern
-    uid = os.path.normpath("/" + user_id).lstrip("/")
-    cid = os.path.normpath("/" + conversation_id).lstrip("/")
-    file_path = (
-        configuration.user_data_collection_configuration.transcripts_storage or ""
-    )
-    return Path(file_path, uid, cid)
+    """Construct path for storing transcripts."""
+    transcripts_storage = configuration.user_data_collection_configuration.transcripts_storage
+    if not transcripts_storage:
+        raise ValueError("Transcripts storage path is not configured")
+    
+    return Path(transcripts_storage) / user_id / conversation_id
 
 
 def store_transcript(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -425,16 +449,18 @@ def store_transcript(  # pylint: disable=too-many-arguments,too-many-positional-
 def get_rag_toolgroups(
     vector_db_ids: list[str],
 ) -> list[Toolgroup] | None:
-    """Return a list of RAG Tool groups if the given vector DB list is not empty."""
-    return (
-        [
-            ToolgroupAgentToolGroupWithArgs(
-                name="builtin::rag/knowledge_search",
-                args={
-                    "vector_db_ids": vector_db_ids,
-                },
-            )
-        ]
-        if vector_db_ids
-        else None
-    )
+    """Get RAG toolgroups for vector databases."""
+    if not vector_db_ids:
+        return None
+    
+    return [
+        ToolgroupAgentToolGroupWithArgs(
+            toolgroup=Toolgroup(
+                identifier=f"rag-{vector_db_id}",
+                name=f"RAG for {vector_db_id}",
+                description=f"Retrieval Augmented Generation for {vector_db_id}",
+            ),
+            args={"vector_db_id": vector_db_id},
+        )
+        for vector_db_id in vector_db_ids
+    ]

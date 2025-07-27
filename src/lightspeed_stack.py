@@ -58,6 +58,19 @@ def create_argument_parser() -> ArgumentParser:
     return parser
 
 
+def initialize_persistence() -> None:
+    """Initialize persistence layer if configured."""
+    if configuration.persistence_configuration:
+        try:
+            from app.endpoints.query import initialize_persistent_agent_manager
+            initialize_persistent_agent_manager()
+            logger.info("Persistence layer initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize persistence layer: %s", e)
+    else:
+        logger.info("No persistence configuration found, skipping persistence initialization")
+
+
 def main() -> None:
     """Entry point to the web service."""
     logger.info("Lightspeed stack startup")
@@ -75,6 +88,9 @@ def main() -> None:
     asyncio.run(
         AsyncLlamaStackClientHolder().load(configuration.configuration.llama_stack)
     )
+
+    # Initialize persistence layer
+    initialize_persistence()
 
     if args.dump_configuration:
         configuration.configuration.dump()

@@ -30,3 +30,21 @@ user_data_collection:
     connection_timeout_seconds: 30
 authentication:
   module: "noop"
+persistence:
+  type: "postgresql"
+  database:
+    host: "localhost"
+    port: 5432
+    name: "lightspeed_stack"
+    username: "postgres"
+    password: "your-password-here"
+    ssl_mode: "prefer"
+    pool_size: 20
+    max_overflow: 30
+    pool_timeout: 30
+    pool_recycle: 3600
+  agent_cache_max_size: 1000
+  agent_cache_ttl_seconds: 3600
+  enable_rehydration: true
+  conversation_retention_days: 90
+  enable_archival: false 

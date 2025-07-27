@@ -13,11 +13,14 @@ from models.responses import ConversationResponse, ConversationDeleteResponse
 from auth import get_auth_dependency
 from utils.endpoints import check_configuration_loaded
 from utils.suid import check_suid
+from services.agent_manager import PersistentAgentManager
+from services.persistence import PersistenceManager
 
-logger = logging.getLogger("app.endpoints.handlers")
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["conversations"])
 auth_dependency = get_auth_dependency()
 
+# Legacy in-memory mapping (fallback)
 conversation_id_to_agent_id: dict[str, str] = {}
 
 conversation_responses: dict[int | str, dict[str, Any]] = {
@@ -62,6 +65,34 @@ conversation_delete_responses: dict[int | str, dict[str, Any]] = {
         }
     },
 }
+
+
+def get_persistent_agent_manager() -> PersistentAgentManager | None:
+    """Get the persistent agent manager from the query module."""
+    try:
+        from app.endpoints.query import get_persistent_agent_manager
+        return get_persistent_agent_manager()
+    except ImportError:
+        return None
+
+
+def get_agent_id_from_persistent_storage(conversation_id: str) -> str | None:
+    """Get agent ID from persistent storage."""
+    try:
+        persistent_manager = get_persistent_agent_manager()
+        if persistent_manager:
+            # Try to get from persistent storage
+            conversation_history = persistent_manager.get_conversation_history(conversation_id)
+            if conversation_history:
+                # Extract agent_id from conversation metadata
+                # This is a simplified approach - in a real implementation,
+                # you'd have a more direct way to get the agent_id
+                return None  # TODO: Implement proper agent_id retrieval
+    except Exception as e:
+        logger.error("Failed to get agent_id from persistent storage: %s", e)
+    
+    # Fallback to in-memory mapping
+    return conversation_id_to_agent_id.get(conversation_id)
 
 
 def simplify_session_data(session_data: Any) -> list[dict[str, Any]]:
@@ -126,7 +157,22 @@ def get_conversation_endpoint_handler(
             },
         )
 
-    agent_id = conversation_id_to_agent_id.get(conversation_id)
+    # Try to get conversation from persistent storage first
+    persistent_manager = get_persistent_agent_manager()
+    if persistent_manager:
+        try:
+            conversation_history = persistent_manager.get_conversation_history(conversation_id)
+            if conversation_history:
+                logger.info("Retrieved conversation %s from persistent storage", conversation_id)
+                return ConversationResponse(
+                    conversation_id=conversation_id,
+                    chat_history=conversation_history,
+                )
+        except Exception as e:
+            logger.error("Failed to get conversation from persistent storage: %s", e)
+
+    # Fallback to llama-stack session retrieval
+    agent_id = get_agent_id_from_persistent_storage(conversation_id)
     if not agent_id:
         logger.error("Agent ID not found for conversation %s", conversation_id)
         raise HTTPException(
@@ -137,7 +183,7 @@ def get_conversation_endpoint_handler(
             },
         )
 
-    logger.info("Retrieving conversation %s", conversation_id)
+    logger.info("Retrieving conversation %s from llama-stack", conversation_id)
 
     try:
         client = LlamaStackClientHolder().get_client()
@@ -206,7 +252,24 @@ def delete_conversation_endpoint_handler(
                 "cause": f"Conversation ID {conversation_id} is not a valid UUID",
             },
         )
-    agent_id = conversation_id_to_agent_id.get(conversation_id)
+
+    # Try to delete from persistent storage first
+    persistent_manager = get_persistent_agent_manager()
+    if persistent_manager:
+        try:
+            success = persistent_manager.delete_conversation(conversation_id)
+            if success:
+                logger.info("Successfully deleted conversation %s from persistent storage", conversation_id)
+                return ConversationDeleteResponse(
+                    conversation_id=conversation_id,
+                    success=True,
+                    response="Conversation deleted successfully",
+                )
+        except Exception as e:
+            logger.error("Failed to delete conversation from persistent storage: %s", e)
+
+    # Fallback to llama-stack session deletion
+    agent_id = get_agent_id_from_persistent_storage(conversation_id)
     if not agent_id:
         logger.error("Agent ID not found for conversation %s", conversation_id)
         raise HTTPException(
@@ -216,7 +279,7 @@ def delete_conversation_endpoint_handler(
                 "cause": f"conversation ID {conversation_id} not found!",
             },
         )
-    logger.info("Deleting conversation %s", conversation_id)
+    logger.info("Deleting conversation %s from llama-stack", conversation_id)
 
     try:
         # Get Llama Stack client
