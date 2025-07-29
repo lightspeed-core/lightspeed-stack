@@ -1,6 +1,7 @@
 """Handler for REST API calls to manage conversation history."""
 
 import logging
+import re
 from typing import Any
 
 from llama_stack_client import APIConnectionError, NotFoundError
@@ -19,6 +20,60 @@ router = APIRouter(tags=["conversations"])
 auth_dependency = get_auth_dependency()
 
 conversation_id_to_agent_id: dict[str, str] = {}
+
+
+def parse_attachments_from_content(
+    content: list[dict[str, str]],
+) -> list[dict[str, str]] | None:
+    """Parse attachment information from content items.
+
+    The content structure is:
+    - Index 0: User message
+    - Index 1: <attachments_info> section with metadata
+    - Index 2+: Actual attachment content (one per attachment line)
+
+    Args:
+        content: The content list of TextContentItems
+
+    Returns:
+        List of attachment dictionaries or None if no attachments found
+    """
+    if len(content) < 2:
+        return None
+
+    attachments_info_text = content[1].get("text", "")
+    attachments_pattern = r"<attachments_info>\n(.*?)\n</attachments_info>"
+    attachments_match = re.search(attachments_pattern, attachments_info_text, re.DOTALL)
+
+    if not attachments_match:
+        return None
+
+    attachments_text = attachments_match.group(1)
+    attachments_info: list[dict[str, str]] = []
+
+    attachment_lines = []
+    for line in attachments_text.strip().split("\n"):
+        line = line.strip()
+        if line:
+            attachment_lines.append(line)
+            # Parse: "attachment_type: value, content_type: value"
+            attachment_match = re.match(
+                r"attachment_type:\s*([^,]+),\s*content_type:\s*(.+)", line
+            )
+            if attachment_match:
+                attachment_info = {
+                    "attachment_type": attachment_match.group(1).strip(),
+                    "content_type": attachment_match.group(2).strip(),
+                }
+                attachments_info.append(attachment_info)
+
+    for i, attachment_info in enumerate(attachments_info):
+        content_index = 2 + i
+        if content_index < len(content):
+            attachment_info["content"] = content[content_index].get("text", "")
+
+    return attachments_info if attachments_info else None
+
 
 conversation_responses: dict[int | str, dict[str, Any]] = {
     200: {
@@ -82,9 +137,14 @@ def simplify_session_data(session_data: Any) -> list[dict[str, Any]]:
         # Clean up input messages
         cleaned_messages = []
         for msg in turn.get("input_messages", []):
+            content = msg.get("content", "")
+            # Parse attachments from content (handles both string and list of TextContentItems)
+            attachments = parse_attachments_from_content(content)
+
             cleaned_msg = {
-                "content": msg.get("content"),
+                "content": content[0].get("text"),
                 "type": msg.get("role"),  # Rename role to type
+                "attachments": attachments,
             }
             cleaned_messages.append(cleaned_msg)
 
