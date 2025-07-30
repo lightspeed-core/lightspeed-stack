@@ -81,7 +81,7 @@ async def get_agent(
         await client.agents.delete(agent_id=orphan_agent_id)
         sessions_response = await client.agents.session.list(agent_id=conversation_id)
         logger.info(f"session response: {sessions_response}")
-        session_id = str(sessions_response.data[0]["id"])
+        session_id = str(sessions_response.data[0]["session_id"])
     else:
         conversation_id = agent.agent_id
         session_id = await agent.create_session(get_suid())

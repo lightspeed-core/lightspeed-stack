@@ -99,11 +99,10 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     if existing_agent_id and conversation_id:
         orphan_agent_id = agent.agent_id
         agent.agent_id = conversation_id
-        session_id = agent.sessions[0]
         client.agents.delete(agent_id=orphan_agent_id)
         sessions_response = client.agents.session.list(agent_id=conversation_id)
         logger.info(f"session response: {sessions_response}")
-        session_id = str(sessions_response.data[0]["id"])
+        session_id = str(sessions_response.data[0]["session_id"])
     else:
         conversation_id = agent.agent_id
         session_id = agent.create_session(get_suid())
