@@ -71,7 +71,9 @@ async def get_agent(
     )
 
     if conversation_id:
+        orphan_agent_id = agent.agent_id
         agent._agent_id = conversation_id
+        await client.agents.delete(agent_id=orphan_agent_id)
     else:
         conversation_id = agent.agent_id
         await agent.create_session(get_suid())

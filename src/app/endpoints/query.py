@@ -93,10 +93,12 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         enable_session_persistence=True,
     )
     if conversation_id:
+        orphan_agent_id = agent.agent_id
         agent.agent_id = conversation_id
+        client.agents.delete(agent_id=orphan_agent_id)
     else:
-        agent.create_session(get_suid())
         conversation_id = agent.agent_id
+        agent.create_session(get_suid())
 
     return agent, conversation_id
 
