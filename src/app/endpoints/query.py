@@ -78,7 +78,7 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     available_output_shields: list[str],
     conversation_id: str | None,
     no_tools: bool = False,
-) -> tuple[Agent, str]:
+) -> tuple[Agent, str, str]:
     """Get existing agent or create a new one with session persistence."""
     existing_agent_id = None
     if conversation_id:
@@ -99,12 +99,13 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     if existing_agent_id and conversation_id:
         orphan_agent_id = agent.agent_id
         agent.agent_id = conversation_id
+        session_id = agent.session_id
         client.agents.delete(agent_id=orphan_agent_id)
     else:
         conversation_id = agent.agent_id
-        agent.create_session(get_suid())
+        session_id = agent.create_session(get_suid())
 
-    return agent, conversation_id
+    return agent, conversation_id, session_id
 
 
 @router.post("/query", responses=query_response)
@@ -278,7 +279,7 @@ def retrieve_response(  # pylint: disable=too-many-locals
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
 
-    agent, conversation_id = get_agent(
+    agent, conversation_id, session_id = get_agent(
         client,
         model_id,
         system_prompt,
@@ -322,6 +323,7 @@ def retrieve_response(  # pylint: disable=too-many-locals
 
     response = agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
+        session_id=session_id,
         documents=query_request.get_documents(),
         stream=False,
         toolgroups=toolgroups,
