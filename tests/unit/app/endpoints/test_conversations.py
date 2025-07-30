@@ -7,7 +7,6 @@ from llama_stack_client import APIConnectionError, NotFoundError
 from app.endpoints.conversations import (
     get_conversation_endpoint_handler,
     delete_conversation_endpoint_handler,
-    conversation_id_to_agent_id,
     simplify_session_data,
 )
 from models.responses import ConversationResponse, ConversationDeleteResponse
@@ -46,16 +45,6 @@ def setup_configuration_fixture():
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
     return cfg
-
-
-@pytest.fixture(autouse=True)
-def setup_conversation_mapping():
-    """Set up and clean up the conversation ID to agent ID mapping."""
-    # Clear the mapping before each test
-    conversation_id_to_agent_id.clear()
-    yield
-    # Clean up after each test
-    conversation_id_to_agent_id.clear()
 
 
 @pytest.fixture(name="mock_session_data")
@@ -243,9 +232,6 @@ class TestGetConversationEndpoint:
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
         mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
 
-        # Set up conversation mapping
-        conversation_id_to_agent_id[VALID_CONVERSATION_ID] = VALID_AGENT_ID
-
         # Mock LlamaStackClientHolder to raise APIConnectionError
         mock_client = mocker.Mock()
         mock_client.agents.session.retrieve.side_effect = APIConnectionError(
@@ -267,9 +253,6 @@ class TestGetConversationEndpoint:
         """Test the endpoint when LlamaStack returns NotFoundError."""
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
         mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-
-        # Set up conversation mapping
-        conversation_id_to_agent_id[VALID_CONVERSATION_ID] = VALID_AGENT_ID
 
         # Mock LlamaStackClientHolder to raise NotFoundError
         mock_client = mocker.Mock()
@@ -293,9 +276,6 @@ class TestGetConversationEndpoint:
         """Test the endpoint when session retrieval raises an exception."""
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
         mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-
-        # Set up conversation mapping
-        conversation_id_to_agent_id[VALID_CONVERSATION_ID] = VALID_AGENT_ID
 
         # Mock LlamaStackClientHolder to raise a general exception
         mock_client = mocker.Mock()
@@ -322,9 +302,6 @@ class TestGetConversationEndpoint:
         """Test successful conversation retrieval with simplified response structure."""
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
         mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-
-        # Set up conversation mapping
-        conversation_id_to_agent_id[VALID_CONVERSATION_ID] = VALID_AGENT_ID
 
         # Mock session data with model_dump method
         mock_session_obj = mocker.Mock()
@@ -394,9 +371,6 @@ class TestDeleteConversationEndpoint:
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
         mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
 
-        # Set up conversation mapping
-        conversation_id_to_agent_id[VALID_CONVERSATION_ID] = VALID_AGENT_ID
-
         # Mock LlamaStackClientHolder to raise APIConnectionError
         mock_client = mocker.Mock()
         mock_client.agents.session.delete.side_effect = APIConnectionError(request=None)
@@ -415,9 +389,6 @@ class TestDeleteConversationEndpoint:
         """Test the endpoint when LlamaStack returns NotFoundError."""
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
         mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-
-        # Set up conversation mapping
-        conversation_id_to_agent_id[VALID_CONVERSATION_ID] = VALID_AGENT_ID
 
         # Mock LlamaStackClientHolder to raise NotFoundError
         mock_client = mocker.Mock()
@@ -441,9 +412,6 @@ class TestDeleteConversationEndpoint:
         """Test the endpoint when session deletion raises an exception."""
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
         mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-
-        # Set up conversation mapping
-        conversation_id_to_agent_id[VALID_CONVERSATION_ID] = VALID_AGENT_ID
 
         # Mock LlamaStackClientHolder to raise a general exception
         mock_client = mocker.Mock()
@@ -469,9 +437,6 @@ class TestDeleteConversationEndpoint:
         """Test successful conversation deletion."""
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
         mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-
-        # Set up conversation mapping
-        conversation_id_to_agent_id[VALID_CONVERSATION_ID] = VALID_AGENT_ID
 
         # Mock LlamaStackClientHolder
         mock_client = mocker.Mock()
