@@ -81,6 +81,11 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     no_tools: bool = False,
 ) -> tuple[Agent, str]:
     """Get existing agent or create a new one with session persistence."""
+    existing_agent_id = None
+    if conversation_id:
+        agent_reponse = client.agents.retrieve(agent_id=conversation_id)
+        existing_agent_id = agent_reponse.agent_id
+
     logger.debug("Creating new agent")
     # TODO(lucasagomes): move to ReActAgent
     agent = Agent(
@@ -92,7 +97,7 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         tool_parser=None if no_tools else GraniteToolParser.get_parser(model_id),
         enable_session_persistence=True,
     )
-    if conversation_id:
+    if existing_agent_id and conversation_id:
         orphan_agent_id = agent.agent_id
         agent.agent_id = conversation_id
         client.agents.delete(agent_id=orphan_agent_id)

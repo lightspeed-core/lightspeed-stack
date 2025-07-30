@@ -59,6 +59,11 @@ async def get_agent(
     no_tools: bool = False,
 ) -> tuple[AsyncAgent, str]:
     """Get existing agent or create a new one with session persistence."""
+    existing_agent_id = None
+    if conversation_id:
+        agent_reponse = await client.agents.retrieve(agent_id=conversation_id)
+        existing_agent_id = agent_reponse.agent_id
+
     logger.debug("Creating new agent")
     agent = AsyncAgent(
         client,  # type: ignore[arg-type]
@@ -70,7 +75,7 @@ async def get_agent(
         enable_session_persistence=True,
     )
 
-    if conversation_id:
+    if existing_agent_id and conversation_id:
         orphan_agent_id = agent.agent_id
         agent._agent_id = conversation_id
         await client.agents.delete(agent_id=orphan_agent_id)
