@@ -99,7 +99,7 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     if existing_agent_id and conversation_id:
         orphan_agent_id = agent.agent_id
         agent.agent_id = conversation_id
-        session_id = agent.session_id
+        session_id = agent.sessions[0]
         client.agents.delete(agent_id=orphan_agent_id)
     else:
         conversation_id = agent.agent_id

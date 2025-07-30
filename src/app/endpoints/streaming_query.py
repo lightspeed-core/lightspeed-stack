@@ -77,7 +77,7 @@ async def get_agent(
     if existing_agent_id and conversation_id:
         orphan_agent_id = agent.agent_id
         agent._agent_id = conversation_id
-        session_id = agent.session_id
+        session_id = agent.sessions[0]
         await client.agents.delete(agent_id=orphan_agent_id)
     else:
         conversation_id = agent.agent_id
