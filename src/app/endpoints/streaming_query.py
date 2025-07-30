@@ -1,6 +1,7 @@
 """Handler for REST API call to provide answer to streaming query."""
 
 import ast
+from contextlib import suppress
 import json
 import re
 import logging
@@ -59,8 +60,8 @@ async def get_agent(
     """Get existing agent or create a new one with session persistence."""
     existing_agent_id = None
     if conversation_id:
-        agent_reponse = await client.agents.retrieve(agent_id=conversation_id)
-        existing_agent_id = agent_reponse.agent_id
+        with suppress(ValueError):
+            existing_agent_id = (await client.agents.retrieve(agent_id=conversation_id)).agent_id
 
     logger.debug("Creating new agent")
     agent = AsyncAgent(

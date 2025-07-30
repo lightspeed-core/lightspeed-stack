@@ -1,5 +1,6 @@
 """Handler for REST API call to provide answer to query."""
 
+from contextlib import suppress
 from datetime import datetime, UTC
 import json
 import logging
@@ -81,8 +82,8 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     """Get existing agent or create a new one with session persistence."""
     existing_agent_id = None
     if conversation_id:
-        agent_reponse = client.agents.retrieve(agent_id=conversation_id)
-        existing_agent_id = agent_reponse.agent_id
+        with suppress(ValueError):
+            existing_agent_id = client.agents.retrieve(agent_id=conversation_id).agent_id
 
     logger.debug("Creating new agent")
     # TODO(lucasagomes): move to ReActAgent
