@@ -18,8 +18,6 @@ logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["conversations"])
 auth_dependency = get_auth_dependency()
 
-conversation_id_to_agent_id: dict[str, str] = {}
-
 conversation_responses: dict[int | str, dict[str, Any]] = {
     200: {
         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
@@ -131,17 +129,7 @@ def get_conversation_endpoint_handler(
             },
         )
 
-    agent_id = conversation_id_to_agent_id.get(conversation_id)
-    if not agent_id:
-        logger.error("Agent ID not found for conversation %s", conversation_id)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "response": "conversation ID not found",
-                "cause": f"conversation ID {conversation_id} not found!",
-            },
-        )
-
+    agent_id = conversation_id
     logger.info("Retrieving conversation %s", conversation_id)
 
     try:
@@ -211,16 +199,7 @@ def delete_conversation_endpoint_handler(
                 "cause": f"Conversation ID {conversation_id} is not a valid UUID",
             },
         )
-    agent_id = conversation_id_to_agent_id.get(conversation_id)
-    if not agent_id:
-        logger.error("Agent ID not found for conversation %s", conversation_id)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "response": "conversation ID not found",
-                "cause": f"conversation ID {conversation_id} not found!",
-            },
-        )
+    agent_id = conversation_id
     logger.info("Deleting conversation %s", conversation_id)
 
     try:

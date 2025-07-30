@@ -20,7 +20,6 @@ from app.endpoints.query import (
     store_transcript,
     get_rag_toolgroups,
     get_agent,
-    _agent_cache,
 )
 
 from models.requests import QueryRequest, Attachment
@@ -65,8 +64,6 @@ def prepare_agent_mocks_fixture(mocker):
     mock_agent = mocker.Mock()
     mock_agent.create_turn.return_value.steps = []
     yield mock_client, mock_agent
-    # cleanup agent cache after tests
-    _agent_cache.clear()
 
 
 def test_query_endpoint_handler_configuration_not_loaded(mocker):
@@ -1079,7 +1076,6 @@ def test_get_agent_cache_hit(prepare_agent_mocks):
 
     # Set up cache with existing agent
     conversation_id = "test_conversation_id"
-    _agent_cache[conversation_id] = mock_agent
 
     result_agent, result_conversation_id = get_agent(
         client=mock_client,
@@ -1146,9 +1142,6 @@ def test_get_agent_cache_miss_with_conversation_id(
         enable_session_persistence=True,
     )
 
-    # Verify agent was stored in cache
-    assert _agent_cache["new_session_id"] == mock_agent
-
 
 def test_get_agent_no_conversation_id(setup_configuration, prepare_agent_mocks, mocker):
     """Test get_agent function when conversation_id is None."""
@@ -1198,9 +1191,6 @@ def test_get_agent_no_conversation_id(setup_configuration, prepare_agent_mocks, 
         tool_parser=None,
         enable_session_persistence=True,
     )
-
-    # Verify agent was stored in cache
-    assert _agent_cache["new_session_id"] == mock_agent
 
 
 def test_get_agent_empty_shields(setup_configuration, prepare_agent_mocks, mocker):

@@ -1,6 +1,7 @@
 """Handler for REST API call to provide answer to query."""
 
 from datetime import datetime, UTC
+from functools import lru_cache
 import json
 import logging
 import os
@@ -23,7 +24,6 @@ from fastapi import APIRouter, HTTPException, status, Depends
 
 from client import LlamaStackClientHolder
 from configuration import configuration
-from app.endpoints.conversations import conversation_id_to_agent_id
 import metrics
 from models.responses import QueryResponse, UnauthorizedResponse, ForbiddenResponse
 from models.requests import QueryRequest, Attachment
@@ -38,9 +38,6 @@ from utils.types import GraniteToolParser
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
 auth_dependency = get_auth_dependency()
-
-# Global agent registry to persist agents across requests
-_agent_cache: TTLCache[str, Agent] = TTLCache(maxsize=1000, ttl=3600)
 
 query_response: dict[int | str, dict[str, Any]] = {
     200: {
@@ -73,6 +70,7 @@ def is_transcripts_enabled() -> bool:
     return configuration.user_data_collection_configuration.transcripts_enabled
 
 
+@lru_cache
 def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     client: LlamaStackClient,
     model_id: str,
@@ -83,15 +81,6 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     no_tools: bool = False,
 ) -> tuple[Agent, str]:
     """Get existing agent or create a new one with session persistence."""
-    if conversation_id is not None:
-        agent = _agent_cache.get(conversation_id)
-        if agent:
-            logger.debug(
-                "Reusing existing agent with conversation_id: %s", conversation_id
-            )
-            return agent, conversation_id
-        logger.debug("No existing agent found for conversation_id: %s", conversation_id)
-
     logger.debug("Creating new agent")
     # TODO(lucasagomes): move to ReActAgent
     agent = Agent(
@@ -103,10 +92,11 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         tool_parser=None if no_tools else GraniteToolParser.get_parser(model_id),
         enable_session_persistence=True,
     )
-    conversation_id = agent.create_session(get_suid())
-    logger.debug("Created new agent and conversation_id: %s", conversation_id)
-    _agent_cache[conversation_id] = agent
-    conversation_id_to_agent_id[conversation_id] = agent.agent_id
+    if conversation_id:
+        agent.agent_id = conversation_id
+    else:
+        agent.create_session(get_suid())
+        conversation_id = agent.agent_id
 
     return agent, conversation_id
 

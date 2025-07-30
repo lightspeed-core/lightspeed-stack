@@ -1,6 +1,7 @@
 """Handler for REST API call to provide answer to streaming query."""
 
 import ast
+from functools import lru_cache
 import json
 import re
 import logging
@@ -31,7 +32,6 @@ from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_to
 from utils.suid import get_suid
 from utils.types import GraniteToolParser
 
-from app.endpoints.conversations import conversation_id_to_agent_id
 from app.endpoints.query import (
     get_rag_toolgroups,
     is_input_shield,
@@ -46,11 +46,9 @@ logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query"])
 auth_dependency = get_auth_dependency()
 
-# Global agent registry to persist agents across requests
-_agent_cache: TTLCache[str, AsyncAgent] = TTLCache(maxsize=1000, ttl=3600)
-
 
 # # pylint: disable=R0913,R0917
+@lru_cache
 async def get_agent(
     client: AsyncLlamaStackClient,
     model_id: str,
@@ -61,15 +59,6 @@ async def get_agent(
     no_tools: bool = False,
 ) -> tuple[AsyncAgent, str]:
     """Get existing agent or create a new one with session persistence."""
-    if conversation_id is not None:
-        agent = _agent_cache.get(conversation_id)
-        if agent:
-            logger.debug(
-                "Reusing existing agent with conversation_id: %s", conversation_id
-            )
-            return agent, conversation_id
-        logger.debug("No existing agent found for conversation_id: %s", conversation_id)
-
     logger.debug("Creating new agent")
     agent = AsyncAgent(
         client,  # type: ignore[arg-type]
@@ -80,10 +69,13 @@ async def get_agent(
         tool_parser=None if no_tools else GraniteToolParser.get_parser(model_id),
         enable_session_persistence=True,
     )
-    conversation_id = await agent.create_session(get_suid())
-    logger.debug("Created new agent and conversation_id: %s", conversation_id)
-    _agent_cache[conversation_id] = agent
-    conversation_id_to_agent_id[conversation_id] = agent.agent_id
+
+    if conversation_id:
+        agent._agent_id = conversation_id
+    else:
+        conversation_id = agent.agent_id
+        await agent.create_session(get_suid())
+
     return agent, conversation_id
 
 

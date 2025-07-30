@@ -41,7 +41,6 @@ from app.endpoints.streaming_query import (
     retrieve_response,
     stream_build_event,
     get_agent,
-    _agent_cache,
 )
 
 from models.requests import QueryRequest, Attachment
@@ -113,8 +112,6 @@ def prepare_agent_mocks_fixture(mocker):
     mock_client = mocker.AsyncMock()
     mock_agent = mocker.AsyncMock()
     yield mock_client, mock_agent
-    # cleanup agent cache after tests
-    _agent_cache.clear()
 
 
 @pytest.mark.asyncio
@@ -1221,7 +1218,6 @@ async def test_get_agent_cache_hit(prepare_agent_mocks):
 
     # Set up cache with existing agent
     conversation_id = "test_conversation_id"
-    _agent_cache[conversation_id] = mock_agent
 
     result_agent, result_conversation_id = await get_agent(
         client=mock_client,
@@ -1292,9 +1288,6 @@ async def test_get_agent_cache_miss_with_conversation_id(
         enable_session_persistence=True,
     )
 
-    # Verify agent was stored in cache
-    assert _agent_cache["new_session_id"] == mock_agent
-
 
 @pytest.mark.asyncio
 async def test_get_agent_no_conversation_id(
@@ -1350,9 +1343,6 @@ async def test_get_agent_no_conversation_id(
         tool_parser=None,
         enable_session_persistence=True,
     )
-
-    # Verify agent was stored in cache
-    assert _agent_cache["new_session_id"] == mock_agent
 
 
 @pytest.mark.asyncio
