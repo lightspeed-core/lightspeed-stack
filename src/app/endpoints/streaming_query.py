@@ -61,7 +61,8 @@ async def get_agent(
     existing_agent_id = None
     if conversation_id:
         with suppress(ValueError):
-            existing_agent_id = (await client.agents.retrieve(agent_id=conversation_id)).agent_id
+            agent_response = await client.agents.retrieve(agent_id=conversation_id)
+            existing_agent_id = agent_response.agent_id
 
     logger.debug("Creating new agent")
     agent = AsyncAgent(
@@ -77,8 +78,10 @@ async def get_agent(
     if existing_agent_id and conversation_id:
         orphan_agent_id = agent.agent_id
         agent._agent_id = conversation_id
-        session_id = agent.sessions[0]
         await client.agents.delete(agent_id=orphan_agent_id)
+        sessions_response = await client.agents.session.list(agent_id=conversation_id)
+        logger.info(f"session response: {sessions_response}")
+        session_id = str(sessions_response.data[0]["id"])
     else:
         conversation_id = agent.agent_id
         session_id = await agent.create_session(get_suid())
