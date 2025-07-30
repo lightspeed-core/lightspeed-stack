@@ -67,16 +67,15 @@ conversation_delete_responses: dict[int | str, dict[str, Any]] = {
 }
 
 
-def simplify_session_data(session_data: Any) -> list[dict[str, Any]]:
+def simplify_session_data(session_dict: dict) -> list[dict[str, Any]]:
     """Simplify session data to include only essential conversation information.
 
     Args:
-        session_data: The full session data from llama-stack
+        session_dict: The full session data dict from llama-stack
 
     Returns:
         Simplified session data with only input_messages and output_message per turn
     """
-    session_dict = session_data.model_dump()
     # Create simplified structure
     chat_history = []
 
@@ -135,9 +134,7 @@ def get_conversation_endpoint_handler(
     try:
         client = LlamaStackClientHolder().get_client()
 
-        session_data = client.agents.session.retrieve(
-            agent_id=agent_id, session_id=conversation_id
-        )
+        session_data = client.agents.session.list(agent_id=agent_id).data[0]
 
         logger.info("Successfully retrieved conversation %s", conversation_id)
 
