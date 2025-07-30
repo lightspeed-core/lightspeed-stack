@@ -1,7 +1,6 @@
 """Handler for REST API call to provide answer to query."""
 
 from datetime import datetime, UTC
-from functools import lru_cache
 import json
 import logging
 import os
@@ -70,7 +69,6 @@ def is_transcripts_enabled() -> bool:
     return configuration.user_data_collection_configuration.transcripts_enabled
 
 
-@lru_cache
 def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     client: LlamaStackClient,
     model_id: str,

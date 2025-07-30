@@ -1,7 +1,6 @@
 """Handler for REST API call to provide answer to streaming query."""
 
 import ast
-from functools import lru_cache
 import json
 import re
 import logging
@@ -48,7 +47,6 @@ auth_dependency = get_auth_dependency()
 
 
 # # pylint: disable=R0913,R0917
-@lru_cache
 async def get_agent(
     client: AsyncLlamaStackClient,
     model_id: str,
