@@ -561,7 +561,7 @@ async def retrieve_response(
     ]
     response = await agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
-        session_id=conversation_id,
+        session_id=agent.session_id,
         documents=query_request.get_documents(),
         stream=True,
         toolgroups=toolgroups or None,

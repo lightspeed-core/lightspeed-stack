@@ -308,7 +308,7 @@ def retrieve_response(  # pylint: disable=too-many-locals
     ]
     response = agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
-        session_id=conversation_id,
+        session_id=agent.session_id,
         documents=query_request.get_documents(),
         stream=False,
         toolgroups=toolgroups or None,
