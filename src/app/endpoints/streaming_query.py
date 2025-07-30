@@ -55,7 +55,7 @@ async def get_agent(
     available_input_shields: list[str],
     available_output_shields: list[str],
     conversation_id: str | None,
-) -> tuple[AsyncAgent, str]:
+) -> tuple[AsyncAgent, str, str]:
     """Get existing agent or create a new one with session persistence."""
     existing_agent_id = None
     if conversation_id:
@@ -76,12 +76,13 @@ async def get_agent(
     if existing_agent_id and conversation_id:
         orphan_agent_id = agent.agent_id
         agent._agent_id = conversation_id
+        session_id = agent.session_id
         await client.agents.delete(agent_id=orphan_agent_id)
     else:
         conversation_id = agent.agent_id
-        await agent.create_session(get_suid())
+        session_id = await agent.create_session(get_suid())
 
-    return agent, conversation_id
+    return agent, conversation_id, session_id
 
 
 METADATA_PATTERN = re.compile(r"\nMetadata: (\{.+})\n")
@@ -523,7 +524,7 @@ async def retrieve_response(
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
 
-    agent, conversation_id = await get_agent(
+    agent, conversation_id, session_id = await get_agent(
         client,
         model_id,
         system_prompt,
@@ -561,6 +562,7 @@ async def retrieve_response(
     ]
     response = await agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
+        session_id=session_id,
         documents=query_request.get_documents(),
         stream=True,
         toolgroups=toolgroups or None,
