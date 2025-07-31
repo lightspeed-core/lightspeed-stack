@@ -10,7 +10,6 @@ from app import routers
 from configuration import configuration
 from log import get_logger
 import metrics
-from metrics.utils import setup_model_metrics
 from utils.common import register_mcp_servers_async
 import version
 
@@ -81,6 +80,4 @@ async def startup_event() -> None:
     logger.info("Registering MCP servers")
     await register_mcp_servers_async(logger, configuration.configuration)
     get_logger("app.endpoints.handlers")
-    logger.info("Setting up model metrics")
-    await setup_model_metrics()
     logger.info("App startup complete")
