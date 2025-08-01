@@ -860,14 +860,9 @@ def test_stream_build_event_step_progress_tool_call_str():
         )
     )
 
-    result = next(stream_build_event(chunk, 0, {}))
+    results = list(stream_build_event(chunk, 0, {}))
 
-    assert result is not None
-    assert "data: " in result
-    assert '"event": "tool_call"' in result
-    assert '"token": "tool-called"' in result
-    assert '"role": "inference"' in result
-    assert '"id": 0' in result
+    assert len(results) == 0
 
 
 def test_stream_build_event_step_progress_tool_call_tool_call():
@@ -892,14 +887,9 @@ def test_stream_build_event_step_progress_tool_call_tool_call():
         )
     )
 
-    result = next(stream_build_event(chunk, 0, {}))
+    results = list(stream_build_event(chunk, 0, {}))
 
-    assert result is not None
-    assert "data: " in result
-    assert '"event": "tool_call"' in result
-    assert '"token": "my-tool"' in result
-    assert '"role": "inference"' in result
-    assert '"id": 0' in result
+    assert len(results) == 0
 
 
 def test_stream_build_event_step_complete():
