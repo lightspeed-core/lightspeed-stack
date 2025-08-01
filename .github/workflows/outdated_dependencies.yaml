@@ -1,8 +1,9 @@
 name: List outdated dependencies
 
 on:
-  - push
-  - pull_request
+  pull_request:
+    branches:
+      - main
 
 jobs:
   list_outdated_dependencies:

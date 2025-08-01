@@ -1,8 +1,9 @@
 name: Check dependencies
 
 on:
-  - push
-  - pull_request
+  pull_request:
+    branches:
+      - main
 
 jobs:
   check_dependencies:
