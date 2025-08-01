@@ -14,7 +14,6 @@ from llama_stack_client import AsyncLlamaStackClient  # type: ignore
 from llama_stack_client.types import UserMessage  # type: ignore
 
 from llama_stack_client.lib.agents.event_logger import interleaved_content_as_str
-from llama_stack_client.types.shared import ToolCall
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 
 from fastapi import APIRouter, HTTPException, Request, Depends, status
@@ -256,7 +255,10 @@ def _handle_shield_event(chunk: Any, chunk_id: int) -> Iterator[str]:
 # Inference handling
 # -----------------------------------
 def _handle_inference_event(chunk: Any, chunk_id: int) -> Iterator[str]:
-    if chunk.event.payload.event_type == "step_progress" and chunk.event.payload.delta.type == "text":
+    if (
+        chunk.event.payload.event_type == "step_progress"
+        and chunk.event.payload.delta.type == "text"
+    ):
         yield format_stream_data(
             {
                 "event": "token",
