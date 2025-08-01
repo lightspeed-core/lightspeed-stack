@@ -256,54 +256,17 @@ def _handle_shield_event(chunk: Any, chunk_id: int) -> Iterator[str]:
 # Inference handling
 # -----------------------------------
 def _handle_inference_event(chunk: Any, chunk_id: int) -> Iterator[str]:
-    if chunk.event.payload.event_type == "step_start":
+    if chunk.event.payload.event_type == "step_progress" and chunk.event.payload.delta.type == "text":
         yield format_stream_data(
             {
                 "event": "token",
                 "data": {
                     "id": chunk_id,
                     "role": chunk.event.payload.step_type,
-                    "token": "",
+                    "token": chunk.event.payload.delta.text,
                 },
             }
         )
-
-    elif chunk.event.payload.event_type == "step_progress":
-        if chunk.event.payload.delta.type == "tool_call":
-            if isinstance(chunk.event.payload.delta.tool_call, str):
-                yield format_stream_data(
-                    {
-                        "event": "tool_call",
-                        "data": {
-                            "id": chunk_id,
-                            "role": chunk.event.payload.step_type,
-                            "token": chunk.event.payload.delta.tool_call,
-                        },
-                    }
-                )
-            elif isinstance(chunk.event.payload.delta.tool_call, ToolCall):
-                yield format_stream_data(
-                    {
-                        "event": "tool_call",
-                        "data": {
-                            "id": chunk_id,
-                            "role": chunk.event.payload.step_type,
-                            "token": chunk.event.payload.delta.tool_call.tool_name,
-                        },
-                    }
-                )
-
-        elif chunk.event.payload.delta.type == "text":
-            yield format_stream_data(
-                {
-                    "event": "token",
-                    "data": {
-                        "id": chunk_id,
-                        "role": chunk.event.payload.step_type,
-                        "token": chunk.event.payload.delta.text,
-                    },
-                }
-            )
 
 
 # -----------------------------------
@@ -313,19 +276,7 @@ def _handle_inference_event(chunk: Any, chunk_id: int) -> Iterator[str]:
 def _handle_tool_execution_event(
     chunk: Any, chunk_id: int, metadata_map: dict
 ) -> Iterator[str]:
-    if chunk.event.payload.event_type == "step_start":
-        yield format_stream_data(
-            {
-                "event": "tool_call",
-                "data": {
-                    "id": chunk_id,
-                    "role": chunk.event.payload.step_type,
-                    "token": "",
-                },
-            }
-        )
-
-    elif chunk.event.payload.event_type == "step_complete":
+    if chunk.event.payload.event_type == "step_complete":
         for t in chunk.event.payload.step_details.tool_calls:
             yield format_stream_data(
                 {
