@@ -18,6 +18,7 @@ from llama_stack_client.types.agents.turn_create_params import (
     Toolgroup,
 )
 from llama_stack_client.types.model_list_response import ModelListResponse
+from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 
 from fastapi import APIRouter, HTTPException, status, Depends
 
@@ -325,7 +326,7 @@ def retrieve_response(  # pylint: disable=too-many-locals
             toolgroups = None
 
     response = agent.create_turn(
-        messages=[UserMessage(role="user", content=query_request.query)],
+        messages=[UserMessage(role="user", content=[TextContentItem(type="text", text=query_request.query)])],
         session_id=conversation_id,
         documents=query_request.get_documents(),
         stream=False,
