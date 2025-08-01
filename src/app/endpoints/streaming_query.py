@@ -1,6 +1,7 @@
 """Handler for REST API call to provide answer to streaming query."""
 
 import ast
+from contextlib import suppress
 import json
 import re
 import logging
@@ -31,7 +32,6 @@ from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_to
 from utils.suid import get_suid
 from utils.types import GraniteToolParser
 
-from app.endpoints.conversations import conversation_id_to_agent_id
 from app.endpoints.query import (
     get_rag_toolgroups,
     is_input_shield,
@@ -46,9 +46,6 @@ logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query"])
 auth_dependency = get_auth_dependency()
 
-# Global agent registry to persist agents across requests
-_agent_cache: TTLCache[str, AsyncAgent] = TTLCache(maxsize=1000, ttl=3600)
-
 
 # # pylint: disable=R0913,R0917
 async def get_agent(
@@ -58,16 +55,13 @@ async def get_agent(
     available_input_shields: list[str],
     available_output_shields: list[str],
     conversation_id: str | None,
-) -> tuple[AsyncAgent, str]:
+) -> tuple[AsyncAgent, str, str]:
     """Get existing agent or create a new one with session persistence."""
-    if conversation_id is not None:
-        agent = _agent_cache.get(conversation_id)
-        if agent:
-            logger.debug(
-                "Reusing existing agent with conversation_id: %s", conversation_id
-            )
-            return agent, conversation_id
-        logger.debug("No existing agent found for conversation_id: %s", conversation_id)
+    existing_agent_id = None
+    if conversation_id:
+        with suppress(ValueError):
+            agent_response = await client.agents.retrieve(agent_id=conversation_id)
+            existing_agent_id = agent_response.agent_id
 
     logger.debug("Creating new agent")
     agent = AsyncAgent(
@@ -79,11 +73,19 @@ async def get_agent(
         tool_parser=GraniteToolParser.get_parser(model_id),
         enable_session_persistence=True,
     )
-    conversation_id = await agent.create_session(get_suid())
-    logger.debug("Created new agent and conversation_id: %s", conversation_id)
-    _agent_cache[conversation_id] = agent
-    conversation_id_to_agent_id[conversation_id] = agent.agent_id
-    return agent, conversation_id
+
+    if existing_agent_id and conversation_id:
+        orphan_agent_id = agent.agent_id
+        agent._agent_id = conversation_id
+        await client.agents.delete(agent_id=orphan_agent_id)
+        sessions_response = await client.agents.session.list(agent_id=conversation_id)
+        logger.info(f"session response: {sessions_response}")
+        session_id = str(sessions_response.data[0]["session_id"])
+    else:
+        conversation_id = agent.agent_id
+        session_id = await agent.create_session(get_suid())
+
+    return agent, conversation_id, session_id
 
 
 METADATA_PATTERN = re.compile(r"\nMetadata: (\{.+})\n")
@@ -525,7 +527,7 @@ async def retrieve_response(
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
 
-    agent, conversation_id = await get_agent(
+    agent, conversation_id, session_id = await get_agent(
         client,
         model_id,
         system_prompt,
@@ -563,7 +565,7 @@ async def retrieve_response(
     ]
     response = await agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
-        session_id=conversation_id,
+        session_id=session_id,
         documents=query_request.get_documents(),
         stream=True,
         toolgroups=toolgroups or None,

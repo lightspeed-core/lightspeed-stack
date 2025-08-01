@@ -18,8 +18,6 @@ logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["conversations"])
 auth_dependency = get_auth_dependency()
 
-conversation_id_to_agent_id: dict[str, str] = {}
-
 conversation_responses: dict[int | str, dict[str, Any]] = {
     200: {
         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
@@ -64,16 +62,15 @@ conversation_delete_responses: dict[int | str, dict[str, Any]] = {
 }
 
 
-def simplify_session_data(session_data: Any) -> list[dict[str, Any]]:
+def simplify_session_data(session_dict: dict) -> list[dict[str, Any]]:
     """Simplify session data to include only essential conversation information.
 
     Args:
-        session_data: The full session data from llama-stack
+        session_dict: The full session data dict from llama-stack
 
     Returns:
         Simplified session data with only input_messages and output_message per turn
     """
-    session_dict = session_data.model_dump()
     # Create simplified structure
     chat_history = []
 
@@ -126,25 +123,13 @@ def get_conversation_endpoint_handler(
             },
         )
 
-    agent_id = conversation_id_to_agent_id.get(conversation_id)
-    if not agent_id:
-        logger.error("Agent ID not found for conversation %s", conversation_id)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "response": "conversation ID not found",
-                "cause": f"conversation ID {conversation_id} not found!",
-            },
-        )
-
+    agent_id = conversation_id
     logger.info("Retrieving conversation %s", conversation_id)
 
     try:
         client = LlamaStackClientHolder().get_client()
 
-        session_data = client.agents.session.retrieve(
-            agent_id=agent_id, session_id=conversation_id
-        )
+        session_data = client.agents.session.list(agent_id=agent_id).data[0]
 
         logger.info("Successfully retrieved conversation %s", conversation_id)
 
@@ -206,16 +191,7 @@ def delete_conversation_endpoint_handler(
                 "cause": f"Conversation ID {conversation_id} is not a valid UUID",
             },
         )
-    agent_id = conversation_id_to_agent_id.get(conversation_id)
-    if not agent_id:
-        logger.error("Agent ID not found for conversation %s", conversation_id)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "response": "conversation ID not found",
-                "cause": f"conversation ID {conversation_id} not found!",
-            },
-        )
+    agent_id = conversation_id
     logger.info("Deleting conversation %s", conversation_id)
 
     try:

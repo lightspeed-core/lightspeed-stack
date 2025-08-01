@@ -1,5 +1,6 @@
 """Handler for REST API call to provide answer to query."""
 
+from contextlib import suppress
 from datetime import datetime, UTC
 import json
 import logging
@@ -23,7 +24,6 @@ from fastapi import APIRouter, HTTPException, status, Depends
 
 from client import LlamaStackClientHolder
 from configuration import configuration
-from app.endpoints.conversations import conversation_id_to_agent_id
 import metrics
 from models.responses import QueryResponse, UnauthorizedResponse, ForbiddenResponse
 from models.requests import QueryRequest, Attachment
@@ -38,9 +38,6 @@ from utils.types import GraniteToolParser
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
 auth_dependency = get_auth_dependency()
-
-# Global agent registry to persist agents across requests
-_agent_cache: TTLCache[str, Agent] = TTLCache(maxsize=1000, ttl=3600)
 
 query_response: dict[int | str, dict[str, Any]] = {
     200: {
@@ -80,16 +77,12 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     available_input_shields: list[str],
     available_output_shields: list[str],
     conversation_id: str | None,
-) -> tuple[Agent, str]:
+) -> tuple[Agent, str, str]:
     """Get existing agent or create a new one with session persistence."""
-    if conversation_id is not None:
-        agent = _agent_cache.get(conversation_id)
-        if agent:
-            logger.debug(
-                "Reusing existing agent with conversation_id: %s", conversation_id
-            )
-            return agent, conversation_id
-        logger.debug("No existing agent found for conversation_id: %s", conversation_id)
+    existing_agent_id = None
+    if conversation_id:
+        with suppress(ValueError):
+            existing_agent_id = client.agents.retrieve(agent_id=conversation_id).agent_id
 
     logger.debug("Creating new agent")
     # TODO(lucasagomes): move to ReActAgent
@@ -102,12 +95,18 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         tool_parser=GraniteToolParser.get_parser(model_id),
         enable_session_persistence=True,
     )
-    conversation_id = agent.create_session(get_suid())
-    logger.debug("Created new agent and conversation_id: %s", conversation_id)
-    _agent_cache[conversation_id] = agent
-    conversation_id_to_agent_id[conversation_id] = agent.agent_id
+    if existing_agent_id and conversation_id:
+        orphan_agent_id = agent.agent_id
+        agent.agent_id = conversation_id
+        client.agents.delete(agent_id=orphan_agent_id)
+        sessions_response = client.agents.session.list(agent_id=conversation_id)
+        logger.info(f"session response: {sessions_response}")
+        session_id = str(sessions_response.data[0]["session_id"])
+    else:
+        conversation_id = agent.agent_id
+        session_id = agent.create_session(get_suid())
 
-    return agent, conversation_id
+    return agent, conversation_id, session_id
 
 
 @router.post("/query", responses=query_response)
@@ -281,7 +280,7 @@ def retrieve_response(  # pylint: disable=too-many-locals
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
 
-    agent, conversation_id = get_agent(
+    agent, conversation_id, session_id = get_agent(
         client,
         model_id,
         system_prompt,
@@ -314,7 +313,7 @@ def retrieve_response(  # pylint: disable=too-many-locals
     ]
     response = agent.create_turn(
         messages=[UserMessage(role="user", content=query_request.query)],
-        session_id=conversation_id,
+        session_id=session_id,
         documents=query_request.get_documents(),
         stream=False,
         toolgroups=toolgroups or None,
