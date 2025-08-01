@@ -1,10 +1,11 @@
 """Common utilities for the project."""
 
-from typing import Any, List, cast
+import asyncio
+from functools import wraps
 from logging import Logger
+from typing import Any, List, cast, Callable
 
 from llama_stack_client import LlamaStackClient, AsyncLlamaStackClient
-
 from llama_stack.distribution.library_client import (
     AsyncLlamaStackAsLibraryClient,
 )
@@ -103,3 +104,18 @@ def _register_mcp_toolgroups_sync(
 
             client.toolgroups.register(**registration_params)
             logger.debug("MCP server %s registered successfully", mcp.name)
+
+
+def run_once_async(func: Callable) -> Callable:
+    """Decorate an async function to run only once."""
+    task = None
+
+    @wraps(func)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        nonlocal task
+        if task is None:
+            loop = asyncio.get_running_loop()
+            task = loop.create_task(func(*args, **kwargs))
+        return await task
+
+    return wrapper

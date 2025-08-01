@@ -4,12 +4,15 @@ from configuration import configuration
 from client import LlamaStackClientHolder, AsyncLlamaStackClientHolder
 from log import get_logger
 import metrics
+from utils.common import run_once_async
 
 logger = get_logger(__name__)
 
 
+@run_once_async
 async def setup_model_metrics() -> None:
     """Perform setup of all metrics related to LLM model and provider."""
+    logger.info("Setting up model metrics")
     model_list = []
     if configuration.llama_stack_configuration.use_as_library_client:
         model_list = await AsyncLlamaStackClientHolder().get_client().models.list()
@@ -48,3 +51,4 @@ async def setup_model_metrics() -> None:
                 model_name,
                 default_model_value,
             )
+    logger.info("Model metrics setup complete")
