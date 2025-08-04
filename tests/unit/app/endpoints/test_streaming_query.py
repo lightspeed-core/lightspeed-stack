@@ -1211,12 +1211,11 @@ async def test_retrieve_response_with_mcp_servers_and_mcp_headers(mocker):
 
 
 @pytest.mark.asyncio
-async def test_get_agent_cache_hit(prepare_agent_mocks, mocker):
-    """Test get_agent function when agent exists in cache."""
+async def test_get_agent_with_conversation_id(prepare_agent_mocks, mocker):
+    """Test get_agent function when agent exists in llama stack."""
 
     mock_client, mock_agent = prepare_agent_mocks
 
-    # Set up cache with existing agent
     conversation_id = "test_conversation_id"
 
     # Mock Agent class
@@ -1231,16 +1230,17 @@ async def test_get_agent_cache_hit(prepare_agent_mocks, mocker):
         conversation_id=conversation_id,
     )
 
-    # Assert cached agent is returned
+    # Assert the same agent is returned
     assert result_agent == mock_agent
     assert result_conversation_id == conversation_id
+    assert conversation_id == mock_agent._agent_id
 
 
 @pytest.mark.asyncio
-async def test_get_agent_cache_miss_with_conversation_id(
+async def test_get_agent_with_conversation_id_and_no_agent_in_llama_stack(
     setup_configuration, prepare_agent_mocks, mocker
 ):
-    """Test get_agent function when conversation_id is provided but agent not in cache."""
+    """Test get_agent function when conversation_id is provided but agent not in llama stack."""
 
     mock_client, mock_agent = prepare_agent_mocks
     mock_client.agents.retrieve.side_effect = ValueError(
@@ -1269,7 +1269,7 @@ async def test_get_agent_cache_miss_with_conversation_id(
     )
     mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
 
-    # Call function with conversation_id but no cached agent
+    # Call function with conversation_id
     result_agent, result_conversation_id, result_session_id = await get_agent(
         client=mock_client,
         model_id="test_model",
@@ -1282,6 +1282,7 @@ async def test_get_agent_cache_miss_with_conversation_id(
     # Assert new agent is created
     assert result_agent == mock_agent
     assert result_conversation_id == result_agent.agent_id
+    assert "non_existent_conversation_id" != result_agent.agent_id
     assert result_session_id == "new_session_id"
 
     # Verify Agent was created with correct parameters
