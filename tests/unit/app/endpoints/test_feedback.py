@@ -76,8 +76,8 @@ def test_feedback_endpoint_handler(mocker, feedback_request_data):
     # Call the endpoint handler
     result = feedback_endpoint_handler(
         feedback_request=feedback_request,
-        auth=["test-user", "", ""],
         _ensure_feedback_enabled=assert_feedback_enabled,
+        auth=("test_user_id", "test_username", "test_token"),
     )
 
     # Assert that the expected response is returned
@@ -100,8 +100,8 @@ def test_feedback_endpoint_handler_error(mocker):
     with pytest.raises(HTTPException) as exc_info:
         feedback_endpoint_handler(
             feedback_request=feedback_request,
-            auth=["test-user", "", ""],
             _ensure_feedback_enabled=assert_feedback_enabled,
+            auth=("test_user_id", "test_username", "test_token"),
         )
 
     assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR

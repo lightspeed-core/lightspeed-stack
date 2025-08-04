@@ -48,6 +48,15 @@ from models.config import ModelContextProtocolServer
 MOCK_AUTH = ("mock_user_id", "mock_username", "mock_token")
 
 
+def mock_database_operations(mocker):
+    """Helper function to mock database operations for streaming query endpoints."""
+    mocker.patch(
+        "app.endpoints.streaming_query.validate_conversation_ownership",
+        return_value=True,
+    )
+    mocker.patch("app.endpoints.streaming_query.persist_user_conversation_details")
+
+
 SAMPLE_KNOWLEDGE_SEARCH_RESULTS = [
     """knowledge_search tool found 2 chunks:
 BEGIN of knowledge_search tool results.
@@ -253,6 +262,8 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
         return_value=store_transcript,
     )
     mock_transcript = mocker.patch("app.endpoints.streaming_query.store_transcript")
+
+    mock_database_operations(mocker)
 
     query_request = QueryRequest(query=query)
 
@@ -1258,6 +1269,7 @@ async def test_auth_tuple_unpacking_in_streaming_query_endpoint_handler(mocker):
     mocker.patch(
         "app.endpoints.streaming_query.is_transcripts_enabled", return_value=False
     )
+    mock_database_operations(mocker)
 
     await streaming_query_endpoint_handler(
         None,
@@ -1298,6 +1310,8 @@ async def test_streaming_query_endpoint_handler_no_tools_true(mocker):
     mocker.patch(
         "app.endpoints.streaming_query.is_transcripts_enabled", return_value=False
     )
+    # Mock database operations
+    mock_database_operations(mocker)
 
     query_request = QueryRequest(query="What is OpenStack?", no_tools=True)
 
@@ -1338,6 +1352,8 @@ async def test_streaming_query_endpoint_handler_no_tools_false(mocker):
     mocker.patch(
         "app.endpoints.streaming_query.is_transcripts_enabled", return_value=False
     )
+    # Mock database operations
+    mock_database_operations(mocker)
 
     query_request = QueryRequest(query="What is OpenStack?", no_tools=False)
 

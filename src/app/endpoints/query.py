@@ -22,11 +22,18 @@ from auth import get_auth_dependency
 from auth.interface import AuthTuple
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from app.database import get_session
 import metrics
+from models.database.conversations import UserConversation
 from models.responses import QueryResponse, UnauthorizedResponse, ForbiddenResponse
 from models.requests import QueryRequest, Attachment
 import constants
-from utils.endpoints import check_configuration_loaded, get_agent, get_system_prompt
+from utils.endpoints import (
+    check_configuration_loaded,
+    get_agent,
+    get_system_prompt,
+    validate_conversation_ownership,
+)
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
 from utils.suid import get_suid
 
@@ -65,6 +72,80 @@ def is_transcripts_enabled() -> bool:
     return configuration.user_data_collection_configuration.transcripts_enabled
 
 
+def persist_user_conversation_details(
+    user_id: str, conversation_id: str, model: str, provider_id: str
+) -> None:
+    """Associate conversation to user in the database."""
+    with get_session() as session:
+        existing_conversation = (
+            session.query(UserConversation)
+            .filter_by(id=conversation_id, user_id=user_id)
+            .first()
+        )
+
+        if not existing_conversation:
+            conversation = UserConversation(
+                id=conversation_id,
+                user_id=user_id,
+                last_used_model=model,
+                last_used_provider=provider_id,
+                message_count=1,
+            )
+            session.add(conversation)
+            logger.debug(
+                "Associated conversation %s to user %s", conversation_id, user_id
+            )
+        else:
+            existing_conversation.last_used_model = model
+            existing_conversation.last_used_provider = provider_id
+            existing_conversation.last_message_at = datetime.now(UTC)
+            existing_conversation.message_count += 1
+
+        session.commit()
+
+
+def evaluate_model_hints(
+    user_conversation: UserConversation | None,
+    query_request: QueryRequest,
+) -> tuple[str | None, str | None]:
+    """Evaluate model hints from user conversation."""
+    model_id: str | None = query_request.model
+    provider_id: str | None = query_request.provider
+
+    if user_conversation is not None:
+        if query_request.model is not None:
+            if query_request.model != user_conversation.last_used_model:
+                logger.debug(
+                    "Model specified in request: %s, preferring it over user conversation model %s",
+                    query_request.model,
+                    user_conversation.last_used_model,
+                )
+        else:
+            logger.debug(
+                "No model specified in request, using latest model from user conversation: %s",
+                user_conversation.last_used_model,
+            )
+            model_id = user_conversation.last_used_model
+
+        if query_request.provider is not None:
+            if query_request.provider != user_conversation.last_used_provider:
+                logger.debug(
+                    "Provider specified in request: %s, "
+                    "preferring it over user conversation provider %s",
+                    query_request.provider,
+                    user_conversation.last_used_provider,
+                )
+        else:
+            logger.debug(
+                "No provider specified in request, "
+                "using latest provider from user conversation: %s",
+                user_conversation.last_used_provider,
+            )
+            provider_id = user_conversation.last_used_provider
+
+    return model_id, provider_id
+
+
 @router.post("/query", responses=query_response)
 async def query_endpoint_handler(
     query_request: QueryRequest,
@@ -79,11 +160,34 @@ async def query_endpoint_handler(
 
     user_id, _, token = auth
 
+    user_conversation: UserConversation | None = None
+    if query_request.conversation_id:
+        user_conversation = validate_conversation_ownership(
+            user_id=user_id, conversation_id=query_request.conversation_id
+        )
+
+        if user_conversation is None:
+            logger.warning(
+                "User %s attempted to query conversation %s they don't own",
+                user_id,
+                query_request.conversation_id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "response": "Access denied",
+                    "cause": "You do not have permission to access this conversation",
+                },
+            )
+
     try:
         # try to get Llama Stack client
         client = AsyncLlamaStackClientHolder().get_client()
         model_id, provider_id = select_model_and_provider_id(
-            await client.models.list(), query_request
+            await client.models.list(),
+            *evaluate_model_hints(
+                user_conversation=user_conversation, query_request=query_request
+            ),
         )
         response, conversation_id = await retrieve_response(
             client,
@@ -110,6 +214,13 @@ async def query_endpoint_handler(
                 attachments=query_request.attachments or [],
             )
 
+        persist_user_conversation_details(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            model=model_id,
+            provider_id=provider_id,
+        )
+
         return QueryResponse(conversation_id=conversation_id, response=response)
 
     # connection to Llama Stack server
@@ -127,12 +238,10 @@ async def query_endpoint_handler(
 
 
 def select_model_and_provider_id(
-    models: ModelListResponse, query_request: QueryRequest
-) -> tuple[str, str | None]:
+    models: ModelListResponse, model_id: str | None, provider_id: str | None
+) -> tuple[str, str]:
     """Select the model ID and provider ID based on the request or available models."""
     # If model_id and provider_id are provided in the request, use them
-    model_id = query_request.model
-    provider_id = query_request.provider
 
     # If model_id is not provided in the request, check the configuration
     if not model_id or not provider_id:

@@ -499,6 +499,7 @@ def test_dump_configuration(tmp_path) -> None:
         assert "authentication" in content
         assert "customization" in content
         assert "inference" in content
+        assert "database" in content
 
         # check the whole deserialized JSON file content
         assert content == {
@@ -549,6 +550,10 @@ def test_dump_configuration(tmp_path) -> None:
             "inference": {
                 "default_provider": "default_provider",
                 "default_model": "default_model",
+            },
+            "database": {
+                "sqlite": {"db_path": "/tmp/lightspeed-stack.db"},
+                "postgres": None,
             },
         }
 

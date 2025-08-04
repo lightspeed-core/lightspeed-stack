@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel, model_validator, FilePath, AnyHttpUrl, PositiveInt
-from typing_extensions import Self
+from typing_extensions import Self, Literal
 
 import constants
 
@@ -22,6 +22,78 @@ class TLSConfiguration(BaseModel):
     def check_tls_configuration(self) -> Self:
         """Check TLS configuration."""
         return self
+
+
+class SQLiteDatabaseConfiguration(BaseModel):
+    """SQLite database configuration."""
+
+    db_path: str
+
+
+class PostgreSQLDatabaseConfiguration(BaseModel):
+    """PostgreSQL database configuration."""
+
+    host: str = "localhost"
+    port: int = 5432
+    db: str
+    user: str
+    password: str
+    namespace: Optional[str] = "lightspeed-stack"
+    ssl_mode: str = constants.POSTGRES_DEFAULT_SSL_MODE
+    gss_encmode: str = constants.POSTGRES_DEFAULT_GSS_ENCMODE
+    ca_cert_path: Optional[FilePath] = None
+
+    @model_validator(mode="after")
+    def check_postgres_configuration(self) -> Self:
+        """Check PostgreSQL configuration."""
+        if self.port <= 0:
+            raise ValueError("Port value should not be negative")
+        if self.port > 65535:
+            raise ValueError("Port value should be less than 65536")
+        if self.ca_cert_path is not None and not self.ca_cert_path.exists():
+            raise ValueError(f"CA certificate file does not exist: {self.ca_cert_path}")
+        return self
+
+
+class DatabaseConfiguration(BaseModel):
+    """Database configuration."""
+
+    sqlite: Optional[SQLiteDatabaseConfiguration] = None
+    postgres: Optional[PostgreSQLDatabaseConfiguration] = None
+
+    @model_validator(mode="after")
+    def check_database_configuration(self) -> Self:
+        """Check that exactly one database type is configured."""
+        total_configured_dbs = sum([self.sqlite is not None, self.postgres is not None])
+
+        if total_configured_dbs == 0:
+            # Default to SQLite in a (hopefully) tmpfs if no database configuration is provided.
+            # This is good for backwards compatibility for deployments that do not mind having
+            # no persistent database.
+            sqlite_file_name = "/tmp/lightspeed-stack.db"
+            self.sqlite = SQLiteDatabaseConfiguration(db_path=sqlite_file_name)
+        elif total_configured_dbs > 1:
+            raise ValueError("Only one database configuration can be provided")
+
+        return self
+
+    @property
+    def db_type(self) -> Literal["sqlite", "postgres"]:
+        """Return the configured database type."""
+        if self.sqlite is not None:
+            return "sqlite"
+        if self.postgres is not None:
+            return "postgres"
+        raise ValueError("No database configuration found")
+
+    @property
+    def config(self) -> SQLiteDatabaseConfiguration | PostgreSQLDatabaseConfiguration:
+        """Return the active database configuration."""
+        if self.sqlite is not None:
+            return self.sqlite
+        if self.postgres is not None:
+            return self.postgres
+        raise ValueError("No database configuration found")
 
 
 class ServiceConfiguration(BaseModel):
@@ -244,6 +316,7 @@ class Configuration(BaseModel):
     service: ServiceConfiguration
     llama_stack: LlamaStackConfiguration
     user_data_collection: UserDataCollection
+    database: DatabaseConfiguration = DatabaseConfiguration()
     mcp_servers: list[ModelContextProtocolServer] = []
     authentication: Optional[AuthenticationConfiguration] = (
         AuthenticationConfiguration()

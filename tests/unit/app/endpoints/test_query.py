@@ -19,12 +19,22 @@ from app.endpoints.query import (
     construct_transcripts_path,
     store_transcript,
     get_rag_toolgroups,
+    evaluate_model_hints,
 )
 
 from models.requests import QueryRequest, Attachment
 from models.config import ModelContextProtocolServer
+from models.database.conversations import UserConversation
 
 MOCK_AUTH = ("mock_user_id", "mock_username", "mock_token")
+
+
+def mock_database_operations(mocker):
+    """Helper function to mock database operations for query endpoints."""
+    mocker.patch(
+        "app.endpoints.query.validate_conversation_ownership", return_value=True
+    )
+    mocker.patch("app.endpoints.query.persist_user_conversation_details")
 
 
 @pytest.fixture(name="setup_configuration")
@@ -129,6 +139,9 @@ async def _test_query_endpoint_handler(mocker, store_transcript_to_file=False):
     )
     mock_transcript = mocker.patch("app.endpoints.query.store_transcript")
 
+    # Mock database operations
+    mock_database_operations(mocker)
+
     query_request = QueryRequest(query=query)
 
     response = await query_endpoint_handler(query_request, auth=MOCK_AUTH)
@@ -200,7 +213,9 @@ def test_select_model_and_provider_id_from_request(mocker):
     )
 
     # Assert the model and provider from request take precedence from the configuration one
-    model_id, provider_id = select_model_and_provider_id(model_list, query_request)
+    model_id, provider_id = select_model_and_provider_id(
+        model_list, query_request.model, query_request.provider
+    )
 
     assert model_id == "provider2/model2"
     assert provider_id == "provider2"
@@ -233,7 +248,9 @@ def test_select_model_and_provider_id_from_configuration(mocker):
         query="What is OpenStack?",
     )
 
-    model_id, provider_id = select_model_and_provider_id(model_list, query_request)
+    model_id, provider_id = select_model_and_provider_id(
+        model_list, query_request.model, query_request.provider
+    )
 
     # Assert that the default model and provider from the configuration are returned
     assert model_id == "default_provider/default_model"
@@ -256,7 +273,9 @@ def test_select_model_and_provider_id_first_from_list(mocker):
 
     query_request = QueryRequest(query="What is OpenStack?")
 
-    model_id, provider_id = select_model_and_provider_id(model_list, query_request)
+    model_id, provider_id = select_model_and_provider_id(
+        model_list, query_request.model, query_request.provider
+    )
 
     # Assert return the first available LLM model when no model/provider is
     # specified in the request or in the configuration
@@ -276,7 +295,9 @@ def test_select_model_and_provider_id_invalid_model(mocker):
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        select_model_and_provider_id(mock_client.models.list(), query_request)
+        select_model_and_provider_id(
+            mock_client.models.list(), query_request.model, query_request.provider
+        )
 
     assert (
         "Model invalid_model from provider provider1 not found in available models"
@@ -293,7 +314,9 @@ def test_select_model_and_provider_id_no_available_models(mocker):
     query_request = QueryRequest(query="What is OpenStack?", model=None, provider=None)
 
     with pytest.raises(HTTPException) as exc_info:
-        select_model_and_provider_id(mock_client.models.list(), query_request)
+        select_model_and_provider_id(
+            mock_client.models.list(), query_request.model, query_request.provider
+        )
 
     assert "No LLM model found in available models" in str(exc_info.value)
 
@@ -1114,6 +1137,8 @@ async def test_auth_tuple_unpacking_in_query_endpoint_handler(mocker):
         return_value=("test_model", "test_provider"),
     )
     mocker.patch("app.endpoints.query.is_transcripts_enabled", return_value=False)
+    # Mock database operations
+    mock_database_operations(mocker)
 
     _ = await query_endpoint_handler(
         QueryRequest(query="test query"),
@@ -1151,6 +1176,8 @@ async def test_query_endpoint_handler_no_tools_true(mocker):
         return_value=("fake_model_id", "fake_provider_id"),
     )
     mocker.patch("app.endpoints.query.is_transcripts_enabled", return_value=False)
+    # Mock database operations
+    mock_database_operations(mocker)
 
     query_request = QueryRequest(query=query, no_tools=True)
 
@@ -1188,6 +1215,8 @@ async def test_query_endpoint_handler_no_tools_false(mocker):
         return_value=("fake_model_id", "fake_provider_id"),
     )
     mocker.patch("app.endpoints.query.is_transcripts_enabled", return_value=False)
+    # Mock database operations
+    mock_database_operations(mocker)
 
     query_request = QueryRequest(query=query, no_tools=False)
 
@@ -1319,3 +1348,88 @@ def test_no_tools_parameter_backward_compatibility():
     # Test that QueryRequest can be created without no_tools parameter
     query_request_minimal = QueryRequest(query="Simple query")
     assert query_request_minimal.no_tools is False
+
+
+@pytest.mark.parametrize(
+    "user_conversation,request_values,expected_values",
+    [
+        # No user conversation, no request values
+        (
+            None,
+            (None, None),
+            # Expect no values to be used
+            (None, None),
+        ),
+        # No user conversation, request values provided
+        (
+            None,
+            ("foo", "bar"),
+            # Expect request values to be used
+            ("foo", "bar"),
+        ),
+        # User conversation exists, no request values
+        (
+            UserConversation(
+                id="conv1",
+                user_id="user1",
+                last_used_provider="foo",
+                last_used_model="bar",
+                message_count=1,
+            ),
+            (
+                None,
+                None,
+            ),
+            # Expect conversation values to be used
+            (
+                "foo",
+                "bar",
+            ),
+        ),
+        # Request matches user conversation
+        (
+            UserConversation(
+                id="conv1",
+                user_id="user1",
+                last_used_provider="foo",
+                last_used_model="bar",
+                message_count=1,
+            ),
+            (
+                "foo",
+                "bar",
+            ),
+            # Expect request values to be used
+            (
+                "foo",
+                "bar",
+            ),
+        ),
+    ],
+    ids=[
+        "No user conversation, no request values",
+        "No user conversation, request values provided",
+        "User conversation exists, no request values",
+        "Request matches user conversation",
+    ],
+)
+def test_evaluate_model_hints(
+    user_conversation,
+    request_values,
+    expected_values,
+):
+    """Test evaluate_model_hints function with various scenarios."""
+    # Unpack fixtures
+    request_provider, request_model = request_values
+    expected_provider, expected_model = expected_values
+
+    query_request = QueryRequest(
+        query="What is love?",
+        provider=request_provider,
+        model=request_model,
+    )  # pylint: disable=missing-kwoa
+
+    model_id, provider_id = evaluate_model_hints(user_conversation, query_request)
+
+    assert provider_id == expected_provider
+    assert model_id == expected_model

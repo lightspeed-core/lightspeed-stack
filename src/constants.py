@@ -51,3 +51,9 @@ DEFAULT_JWT_USER_NAME_CLAIM = "username"
 DATA_COLLECTOR_COLLECTION_INTERVAL = 7200  # 2 hours in seconds
 DATA_COLLECTOR_CONNECTION_TIMEOUT = 30
 DATA_COLLECTOR_RETRY_INTERVAL = 300  # 5 minutes in seconds
+
+# PostgreSQL connection constants
+# See: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLMODE
+POSTGRES_DEFAULT_SSL_MODE = "prefer"
+# See: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-GSSENCMODE
+POSTGRES_DEFAULT_GSS_ENCMODE = "prefer"
