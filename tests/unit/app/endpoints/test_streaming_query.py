@@ -1220,11 +1220,9 @@ async def test_get_agent_cache_hit(prepare_agent_mocks, mocker):
     conversation_id = "test_conversation_id"
 
     # Mock Agent class
-    mock_agent_class = mocker.patch(
-        "app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent
-    )
+    mocker.patch("app.endpoints.streaming_query.AsyncAgent", return_value=mock_agent)
 
-    result_agent, result_conversation_id, result_session_id = await get_agent(
+    result_agent, result_conversation_id, _ = await get_agent(
         client=mock_client,
         model_id="test_model",
         system_prompt="test_prompt",
@@ -1558,7 +1556,7 @@ async def test_auth_tuple_unpacking_in_streaming_query_endpoint_handler(mocker):
         "app.endpoints.streaming_query.retrieve_user_id", return_value="user123"
     )
 
-    result_session_id = await streaming_query_endpoint_handler(
+    await streaming_query_endpoint_handler(
         None,
         QueryRequest(query="test query"),
         auth=("user123", "username", "auth_token_123"),

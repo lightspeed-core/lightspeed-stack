@@ -123,7 +123,7 @@ class TestSimplifySessionData:
 
         assert result == expected_chat_history
 
-    def test_simplify_session_data_empty_turns(self, mocker):
+    def test_simplify_session_data_empty_turns(self):
         """Test simplify_session_data with empty turns."""
         session_data = {
             "session_id": VALID_CONVERSATION_ID,
@@ -135,7 +135,7 @@ class TestSimplifySessionData:
 
         assert not result
 
-    def test_simplify_session_data_filters_unwanted_fields(self, mocker):
+    def test_simplify_session_data_filters_unwanted_fields(self):
         """Test that simplify_session_data properly filters out unwanted fields."""
         session_data = {
             "session_id": VALID_CONVERSATION_ID,
@@ -162,8 +162,6 @@ class TestSimplifySessionData:
                 }
             ],
         }
-
-        mock_session_obj = mocker.Mock()
 
         result = simplify_session_data(session_data)
 

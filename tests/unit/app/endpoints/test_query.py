@@ -1092,9 +1092,7 @@ def test_get_agent_cache_hit(prepare_agent_mocks, mocker):
     conversation_id = "test_conversation_id"
 
     # Mock Agent class
-    mock_agent_class = mocker.patch(
-        "app.endpoints.query.Agent", return_value=mock_agent
-    )
+    mocker.patch("app.endpoints.query.Agent", return_value=mock_agent)
 
     result_agent, result_conversation_id, result_session_id = get_agent(
         client=mock_client,
