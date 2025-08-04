@@ -8,8 +8,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-from cachetools import TTLCache  # type: ignore
-
 from llama_stack_client.lib.agents.agent import Agent
 from llama_stack_client import APIConnectionError
 from llama_stack_client import LlamaStackClient  # type: ignore
@@ -83,7 +81,9 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     existing_agent_id = None
     if conversation_id:
         with suppress(ValueError):
-            existing_agent_id = client.agents.retrieve(agent_id=conversation_id).agent_id
+            existing_agent_id = client.agents.retrieve(
+                agent_id=conversation_id
+            ).agent_id
 
     logger.debug("Creating new agent")
     # TODO(lucasagomes): move to ReActAgent
@@ -101,7 +101,7 @@ def get_agent(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         agent.agent_id = conversation_id
         client.agents.delete(agent_id=orphan_agent_id)
         sessions_response = client.agents.session.list(agent_id=conversation_id)
-        logger.info(f"session response: {sessions_response}")
+        logger.info("session response: %s", sessions_response)
         session_id = str(sessions_response.data[0]["session_id"])
     else:
         conversation_id = agent.agent_id

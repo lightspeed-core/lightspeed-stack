@@ -116,17 +116,12 @@ class TestSimplifySessionData:
     """Test cases for the simplify_session_data function."""
 
     def test_simplify_session_data_with_model_dump(
-        self, mock_session_data, expected_chat_history, mocker
+        self, mock_session_data, expected_chat_history
     ):
-        """Test simplify_session_data with session data that has model_dump method."""
-        # Create a mock object with model_dump method
-        mock_session_obj = mocker.Mock()
-        mock_session_obj.model_dump.return_value = mock_session_data
-
-        result = simplify_session_data(mock_session_obj)
+        """Test simplify_session_data with session data."""
+        result = simplify_session_data(mock_session_data)
 
         assert result == expected_chat_history
-        mock_session_obj.model_dump.assert_called_once()
 
     def test_simplify_session_data_empty_turns(self, mocker):
         """Test simplify_session_data with empty turns."""
@@ -136,10 +131,7 @@ class TestSimplifySessionData:
             "turns": [],
         }
 
-        mock_session_obj = mocker.Mock()
-        mock_session_obj.model_dump.return_value = session_data
-
-        result = simplify_session_data(mock_session_obj)
+        result = simplify_session_data(session_data)
 
         assert not result
 
@@ -172,9 +164,8 @@ class TestSimplifySessionData:
         }
 
         mock_session_obj = mocker.Mock()
-        mock_session_obj.model_dump.return_value = session_data
 
-        result = simplify_session_data(mock_session_obj)
+        result = simplify_session_data(session_data)
 
         expected = [
             {
@@ -455,5 +446,5 @@ class TestDeleteConversationEndpoint:
         assert response.success is True
         assert response.response == "Conversation deleted successfully"
         mock_client.agents.session.delete.assert_called_once_with(
-            agent_id=VALID_AGENT_ID, session_id=VALID_CONVERSATION_ID
+            agent_id=VALID_CONVERSATION_ID, session_id=VALID_CONVERSATION_ID
         )
