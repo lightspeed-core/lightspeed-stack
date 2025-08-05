@@ -4,10 +4,6 @@ import logging
 
 from typing import Optional
 
-from llama_stack.distribution.library_client import (
-    AsyncLlamaStackAsLibraryClient,  # type: ignore
-    LlamaStackAsLibraryClient,  # type: ignore
-)
 from llama_stack_client import AsyncLlamaStackClient, LlamaStackClient  # type: ignore
 from models.config import LlamaStackConfiguration
 from utils.types import Singleton
@@ -26,6 +22,7 @@ class LlamaStackClientHolder(metaclass=Singleton):
         if llama_stack_config.use_as_library_client is True:
             if llama_stack_config.library_client_config_path is not None:
                 logger.info("Using Llama stack as library client")
+                from llama_stack.distribution.library_client import LlamaStackAsLibraryClient  # type: ignore
                 client = LlamaStackAsLibraryClient(
                     llama_stack_config.library_client_config_path
                 )
@@ -62,6 +59,7 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
         if llama_stack_config.use_as_library_client is True:
             if llama_stack_config.library_client_config_path is not None:
                 logger.info("Using Llama stack as library client")
+                from llama_stack.distribution.library_client import AsyncLlamaStackAsLibraryClient  # type: ignore
                 client = AsyncLlamaStackAsLibraryClient(
                     llama_stack_config.library_client_config_path
                 )
