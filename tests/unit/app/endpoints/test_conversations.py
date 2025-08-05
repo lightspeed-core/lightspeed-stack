@@ -228,7 +228,6 @@ class TestGetConversationEndpoint:
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
         mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
 
-
         # Mock LlamaStackClientHolder to raise NotFoundError
         mock_client = mocker.Mock()
         mock_client.agents.session.list.side_effect = NotFoundError(
@@ -246,7 +245,7 @@ class TestGetConversationEndpoint:
         assert "Conversation not found" in exc_info.value.detail["response"]
         assert "could not be retrieved" in exc_info.value.detail["cause"]
         assert VALID_CONVERSATION_ID in exc_info.value.detail["cause"]
-        
+
     def test_session_retrieve_exception(self, mocker, setup_configuration):
         """Test the endpoint when session retrieval raises an exception."""
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)

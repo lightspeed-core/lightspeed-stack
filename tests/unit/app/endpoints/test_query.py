@@ -1138,7 +1138,7 @@ def test_get_agent_with_conversation_id_and_no_agent_in_llama_stack(
         return_value=[mock_mcp_server],
     )
     mocker.patch("app.endpoints.query.configuration", setup_configuration)
-    conversation_id="non_existent_conversation_id"
+    conversation_id = "non_existent_conversation_id"
     # Call function with conversation_id
     result_agent, result_conversation_id, result_session_id = get_agent(
         client=mock_client,
