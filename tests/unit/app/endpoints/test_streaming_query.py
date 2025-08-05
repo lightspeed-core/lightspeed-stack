@@ -1233,7 +1233,7 @@ async def test_get_agent_with_conversation_id(prepare_agent_mocks, mocker):
     # Assert the same agent is returned
     assert result_agent == mock_agent
     assert result_conversation_id == conversation_id
-    assert conversation_id == mock_agent._agent_id
+    assert conversation_id == mock_agent._agent_id  # pylint: disable=protected-access
 
 
 @pytest.mark.asyncio
