@@ -67,11 +67,11 @@ conversation_delete_responses: dict[int | str, dict[str, Any]] = {
 }
 
 
-def simplify_session_data(session_dict: dict) -> list[dict[str, Any]]:
+def simplify_session_data(session_data: dict) -> list[dict[str, Any]]:
     """Simplify session data to include only essential conversation information.
 
     Args:
-        session_dict: The full session data dict from llama-stack
+        session_data: The full session data dict from llama-stack
 
     Returns:
         Simplified session data with only input_messages and output_message per turn
@@ -80,7 +80,7 @@ def simplify_session_data(session_dict: dict) -> list[dict[str, Any]]:
     chat_history = []
 
     # Extract only essential data from each turn
-    for turn in session_dict.get("turns", []):
+    for turn in session_data.get("turns", []):
         # Clean up input messages
         cleaned_messages = []
         for msg in turn.get("input_messages", []):
