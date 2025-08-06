@@ -34,6 +34,8 @@ from utils.endpoints import (
     get_system_prompt,
     validate_conversation_ownership,
 )
+from authorization.middleware import authorize
+from authorization.models import Action
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
 from utils.suid import get_suid
 
@@ -147,6 +149,7 @@ def evaluate_model_hints(
 
 
 @router.post("/query", responses=query_response)
+@authorize(Action.QUERY)
 async def query_endpoint_handler(
     query_request: QueryRequest,
     auth: Annotated[AuthTuple, Depends(auth_dependency)],

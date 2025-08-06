@@ -7,6 +7,8 @@ from fastapi import APIRouter, Request
 
 from models.config import Configuration
 from configuration import configuration
+from authorization.middleware import authorize
+from authorization.models import Action
 from utils.endpoints import check_configuration_loaded
 
 logger = logging.getLogger(__name__)
@@ -56,6 +58,7 @@ get_config_responses: dict[int | str, dict[str, Any]] = {
 
 
 @router.get("/config", responses=get_config_responses)
+@authorize(Action.GET_CONFIG)
 def config_endpoint_handler(_request: Request) -> Configuration:
     """
     Handle requests to the /config endpoint.

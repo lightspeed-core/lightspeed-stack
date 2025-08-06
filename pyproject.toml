@@ -36,6 +36,7 @@ dependencies = [
     "openai==1.99.1",
     "sqlalchemy>=2.0.42",
     "email-validator>=2.2.0",
+    "jsonpath-ng>=1.6.1",
 ]
 
 [tool.pyright]

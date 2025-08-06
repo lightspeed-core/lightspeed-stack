@@ -19,6 +19,8 @@ from fastapi.responses import StreamingResponse
 
 from auth import get_auth_dependency
 from auth.interface import AuthTuple
+from authorization.middleware import authorize
+from authorization.models import Action
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 import metrics
@@ -384,6 +386,7 @@ def _handle_heartbeat_event(chunk_id: int) -> Iterator[str]:
 
 
 @router.post("/streaming_query")
+@authorize(Action.STREAMING_QUERY)
 async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     _request: Request,
     query_request: QueryRequest,
