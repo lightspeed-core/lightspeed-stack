@@ -9,6 +9,7 @@ from typing_extensions import Self
 import constants
 
 from utils import checks
+from authorization.models import AuthorizationConfiguration
 
 
 class TLSConfiguration(BaseModel):
@@ -159,6 +160,12 @@ class JwkConfiguration(BaseModel):
 
     url: AnyHttpUrl
     jwt_configuration: JwtConfiguration = JwtConfiguration()
+    authorization: Optional[AuthorizationConfiguration] = None
+
+    @property
+    def authorization_configuration(self) -> Optional[AuthorizationConfiguration]:
+        """Return authorization configuration if available."""
+        return self.authorization
 
 
 class AuthenticationConfiguration(BaseModel):

@@ -3,16 +3,23 @@
 import logging
 from typing import Any
 
+from fastapi.params import Depends
 from llama_stack_client import APIConnectionError
 from fastapi import APIRouter, HTTPException, Request, status
 
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from authorization.middleware import authorize
+from authorization.models import Action
 from models.responses import ModelsResponse
 from utils.endpoints import check_configuration_loaded
+from auth import get_auth_dependency
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["models"])
+
+
+auth_dependency = get_auth_dependency()
 
 
 models_responses: dict[int | str, dict[str, Any]] = {
@@ -43,8 +50,15 @@ models_responses: dict[int | str, dict[str, Any]] = {
 
 
 @router.get("/models", responses=models_responses)
-async def models_endpoint_handler(_request: Request) -> ModelsResponse:
+@authorize(Action.GET_MODELS)
+async def models_endpoint_handler(
+    _request: Request, auth: Any = Depends(get_auth_dependency())
+) -> ModelsResponse:
     """Handle requests to the /models endpoint."""
+
+    # Used only by the middleware
+    _ = auth
+
     check_configuration_loaded(configuration)
 
     llama_stack_configuration = configuration.llama_stack_configuration

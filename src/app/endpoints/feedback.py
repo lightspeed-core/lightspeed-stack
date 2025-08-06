@@ -9,6 +9,8 @@ from fastapi import APIRouter, Request, HTTPException, Depends, status
 
 from auth import get_auth_dependency
 from auth.interface import AuthTuple
+from authorization.middleware import authorize
+from authorization.models import Action
 from configuration import configuration
 from models.responses import (
     FeedbackResponse,
@@ -64,6 +66,7 @@ async def assert_feedback_enabled(_request: Request) -> None:
 
 
 @router.post("", responses=feedback_response)
+@authorize(Action.FEEDBACK)
 def feedback_endpoint_handler(
     feedback_request: FeedbackRequest,
     auth: Annotated[AuthTuple, Depends(auth_dependency)],
