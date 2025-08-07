@@ -11,6 +11,8 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from models.responses import ConversationResponse, ConversationDeleteResponse
 from auth import get_auth_dependency
+from authorization.middleware import authorize
+from authorization.models import Action
 from utils.endpoints import check_configuration_loaded
 from utils.suid import check_suid
 
@@ -110,6 +112,7 @@ def simplify_session_data(session_data: dict) -> list[dict[str, Any]]:
 
 
 @router.get("/conversations/{conversation_id}", responses=conversation_responses)
+@authorize(Action.GET_CONVERSATION)
 async def get_conversation_endpoint_handler(
     conversation_id: str,
     _auth: Any = Depends(auth_dependency),
@@ -185,6 +188,7 @@ async def get_conversation_endpoint_handler(
 @router.delete(
     "/conversations/{conversation_id}", responses=conversation_delete_responses
 )
+@authorize(Action.DELETE_CONVERSATION)
 async def delete_conversation_endpoint_handler(
     conversation_id: str,
     _auth: Any = Depends(auth_dependency),

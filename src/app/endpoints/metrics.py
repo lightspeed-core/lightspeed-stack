@@ -7,12 +7,15 @@ from prometheus_client import (
     CONTENT_TYPE_LATEST,
 )
 
+from authorization.middleware import authorize
+from authorization.models import Action
 from metrics.utils import setup_model_metrics
 
 router = APIRouter(tags=["metrics"])
 
 
 @router.get("/metrics", response_class=PlainTextResponse)
+@authorize(Action.GET_METRICS)
 async def metrics_endpoint_handler(_request: Request) -> PlainTextResponse:
     """Handle request to the /metrics endpoint."""
     # Setup the model metrics if not already done. This is a one-time setup

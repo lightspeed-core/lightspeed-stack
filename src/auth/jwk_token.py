@@ -3,6 +3,7 @@
 import logging
 from asyncio import Lock
 from typing import Any, Callable
+import json
 
 from fastapi import Request, HTTPException, status
 from authlib.jose import JsonWebKey, KeySet, jwt, Key
@@ -188,4 +189,4 @@ class JwkTokenAuthDependency(AuthInterface):  # pylint: disable=too-few-public-m
 
         logger.info("Successfully authenticated user %s (ID: %s)", username, user_id)
 
-        return user_id, username, user_token
+        return user_id, username, json.dumps(claims)

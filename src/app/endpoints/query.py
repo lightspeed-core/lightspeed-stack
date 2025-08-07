@@ -26,6 +26,8 @@ import metrics
 from models.responses import QueryResponse, UnauthorizedResponse, ForbiddenResponse
 from models.requests import QueryRequest, Attachment
 import constants
+from authorization.middleware import authorize
+from authorization.models import Action
 from utils.endpoints import check_configuration_loaded, get_agent, get_system_prompt
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
 from utils.suid import get_suid
@@ -66,6 +68,7 @@ def is_transcripts_enabled() -> bool:
 
 
 @router.post("/query", responses=query_response)
+@authorize(Action.QUERY)
 async def query_endpoint_handler(
     query_request: QueryRequest,
     auth: Annotated[AuthTuple, Depends(auth_dependency)],

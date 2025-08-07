@@ -33,6 +33,7 @@ dependencies = [
     "starlette>=0.47.1",
     "aiohttp>=3.12.14",
     "authlib>=1.6.0",
+    "jsonpath-ng>=1.6.1",
 ]
 
 [tool.pyright]
