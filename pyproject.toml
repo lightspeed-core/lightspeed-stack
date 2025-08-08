@@ -33,6 +33,7 @@ dependencies = [
     "starlette>=0.47.1",
     "aiohttp>=3.12.14",
     "authlib>=1.6.0",
+    "sqlalchemy>=2.0.42",
 ]
 
 [tool.pyright]

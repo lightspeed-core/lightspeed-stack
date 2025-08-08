@@ -184,6 +184,14 @@ class QueryRequest(BaseModel):
         },
     }
 
+    @field_validator("conversation_id")
+    @classmethod
+    def check_uuid(cls, value: str | None) -> str | None:
+        """Check if conversation ID has the proper format."""
+        if value and not suid.check_suid(value):
+            raise ValueError(f"Improper conversation ID '{value}'")
+        return value
+
     def get_documents(self) -> list[Document]:
         """Return the list of documents from the attachments."""
         if not self.attachments:

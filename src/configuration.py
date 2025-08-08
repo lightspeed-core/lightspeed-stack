@@ -13,6 +13,7 @@ from models.config import (
     ModelContextProtocolServer,
     AuthenticationConfiguration,
     InferenceConfiguration,
+    DatabaseConfiguration,
 )
 
 logger = logging.getLogger(__name__)
@@ -112,6 +113,14 @@ class AppConfig:
             self._configuration is not None
         ), "logic error: configuration is not loaded"
         return self._configuration.inference
+
+    @property
+    def database_configuration(self) -> DatabaseConfiguration:
+        """Return database configuration."""
+        assert (
+            self._configuration is not None
+        ), "logic error: configuration is not loaded"
+        return self._configuration.database
 
 
 configuration: AppConfig = AppConfig()

@@ -384,3 +384,89 @@ class ConversationDeleteResponse(BaseModel):
             ]
         }
     }
+
+
+class ConversationDetails(BaseModel):
+    """Model representing the details of a user conversation.
+
+    Attributes:
+        conversation_id: The conversation ID (UUID).
+        created_at: When the conversation was created.
+        last_message_at: When the last message was sent.
+        message_count: Number of user messages in the conversation.
+        model: The model used for the conversation.
+
+    Example:
+        ```python
+        conversation = ConversationSummary(
+            conversation_id="123e4567-e89b-12d3-a456-426614174000"
+            created_at="2024-01-01T00:00:00Z",
+            last_message_at="2024-01-01T00:05:00Z",
+            message_count=5,
+            model="gemini/gemini-2.0-flash"
+        )
+        ```
+    """
+
+    conversation_id: str
+    created_at: Optional[str] = None
+    last_message_at: Optional[str] = None
+    message_count: Optional[int] = None
+    last_used_model: Optional[str] = None
+    last_used_provider: Optional[str] = None
+
+
+class ConversationsListResponse(BaseModel):
+    """Model representing a response for listing conversations of a user.
+
+    Attributes:
+        conversations: List of conversation details associated with the user.
+
+    Example:
+        ```python
+        conversations_list = ConversationsListResponse(
+            conversations=[
+                ConversationDetails(
+                    conversation_id="123e4567-e89b-12d3-a456-426614174000",
+                    created_at="2024-01-01T00:00:00Z",
+                    last_message_at="2024-01-01T00:05:00Z",
+                    message_count=5,
+                    model="gemini/gemini-2.0-flash"
+                ),
+                ConversationDetails(
+                    conversation_id="456e7890-e12b-34d5-a678-901234567890"
+                    created_at="2024-01-01T01:00:00Z",
+                    message_count=2,
+                    model="gemini/gemini-2.5-flash"
+                )
+            ]
+        )
+        ```
+    """
+
+    conversations: list[ConversationDetails]
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "conversations": [
+                        {
+                            "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                            "created_at": "2024-01-01T00:00:00Z",
+                            "last_message_at": "2024-01-01T00:05:00Z",
+                            "message_count": 5,
+                            "model": "gemini/gemini-2.0-flash",
+                        },
+                        {
+                            "conversation_id": "456e7890-e12b-34d5-a678-901234567890",
+                            "created_at": "2024-01-01T01:00:00Z",
+                            "message_count": 2,
+                            "model": "gemini/gemini-2.5-flash",
+                        },
+                    ]
+                }
+            ]
+        }
+    }

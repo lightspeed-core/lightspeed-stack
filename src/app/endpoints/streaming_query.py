@@ -23,6 +23,7 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 import metrics
 from models.requests import QueryRequest
+from models.database.conversations import UserConversation
 from utils.endpoints import check_configuration_loaded, get_agent, get_system_prompt
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
 
@@ -34,6 +35,9 @@ from app.endpoints.query import (
     store_transcript,
     select_model_and_provider_id,
     validate_attachments_metadata,
+    validate_conversation_ownership,
+    persist_user_conversation_details,
+    evaluate_model_hints,
 )
 
 logger = logging.getLogger("app.endpoints.handlers")
@@ -380,7 +384,7 @@ def _handle_heartbeat_event(chunk_id: int) -> Iterator[str]:
 
 
 @router.post("/streaming_query")
-async def streaming_query_endpoint_handler(
+async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     _request: Request,
     query_request: QueryRequest,
     auth: Annotated[AuthTuple, Depends(auth_dependency)],
@@ -394,11 +398,34 @@ async def streaming_query_endpoint_handler(
 
     user_id, _user_name, token = auth
 
+    user_conversation: UserConversation | None = None
+    if query_request.conversation_id is not None:
+        user_conversation = validate_conversation_ownership(
+            user_id=user_id, conversation_id=query_request.conversation_id
+        )
+
+        if user_conversation is None:
+            logger.warning(
+                "User %s attempted to query conversation %s they don't own",
+                user_id,
+                query_request.conversation_id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "response": "Access denied",
+                    "cause": "You do not have permission to access this conversation",
+                },
+            )
+
     try:
         # try to get Llama Stack client
         client = AsyncLlamaStackClientHolder().get_client()
         model_id, provider_id = select_model_and_provider_id(
-            await client.models.list(), query_request
+            await client.models.list(),
+            *evaluate_model_hints(
+                user_conversation=user_conversation, query_request=query_request
+            ),
         )
         response, conversation_id = await retrieve_response(
             client,
@@ -446,6 +473,13 @@ async def streaming_query_endpoint_handler(
                     # of quota work
                     attachments=query_request.attachments or [],
                 )
+
+        persist_user_conversation_details(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            model=model_id,
+            provider_id=provider_id,
+        )
 
         # Update metrics for the LLM call
         metrics.llm_calls_total.labels(provider_id, model_id).inc()

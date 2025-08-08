@@ -8,12 +8,27 @@ from llama_stack_client.lib.agents.agent import AsyncAgent
 
 import constants
 from models.requests import QueryRequest
+from models.database.conversations import UserConversation
+from app.database import get_session
 from configuration import AppConfig
 from utils.suid import get_suid
 from utils.types import GraniteToolParser
 
 
 logger = logging.getLogger("utils.endpoints")
+
+
+def validate_conversation_ownership(
+    user_id: str, conversation_id: str
+) -> UserConversation | None:
+    """Validate that the conversation belongs to the user."""
+    with get_session() as session:
+        conversation = (
+            session.query(UserConversation)
+            .filter_by(id=conversation_id, user_id=user_id)
+            .first()
+        )
+        return conversation
 
 
 def check_configuration_loaded(config: AppConfig) -> None:
