@@ -75,6 +75,26 @@ dev = [
     "build>=1.2.2.post1",
     "twine>=6.1.0",
 ]
+llslibdev = [
+    "fastapi>=0.115.12",
+    "opentelemetry-sdk>=1.34.0",
+    "opentelemetry-exporter-otlp>=1.34.0",
+    "opentelemetry-instrumentation>=0.55b0",
+    "aiosqlite>=0.21.0",
+    "litellm>=1.72.1",
+    "uvicorn>=0.34.3",
+    "blobfile>=3.0.0",
+    "datasets>=3.6.0",
+    "sqlalchemy>=2.0.41",
+    "faiss-cpu>=1.11.0",
+    "mcp>=1.9.4",
+    "autoevals>=0.0.129",
+    "psutil>=7.0.0",
+    "torch>=2.7.1",
+    "peft>=0.15.2",
+    "trl>=0.18.2",
+]
+
 build = [
     "build>=1.2.2.post1",
     "twine>=5.1.1",

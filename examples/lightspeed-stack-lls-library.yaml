@@ -1,0 +1,26 @@
+name: Lightspeed Core Service (LCS)
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: true
+  library_client_config_path: run.yaml
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+  data_collector:
+    enabled: false
+    ingress_server_url: null
+    ingress_server_auth_token: null
+    ingress_content_service_name: null
+    collection_interval: 7200  # 2 hours in seconds
+    cleanup_after_send: true
+    connection_timeout_seconds: 30
+authentication:
+  module: "noop"

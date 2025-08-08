@@ -136,48 +136,19 @@ The easiest option is to run Llama Stack in a separate process. This means that 
 #### Installing dependencies for Llama Stack
 
 
-1. Create a new directory
+1. Create a new directory outside of the lightspeed-stack project directory
     ```bash
-    mkdir llama-stack-server
-    cd llama-stack-server
+    mkdir /tmp/llama-stack-server
     ```
-1. Create project file named `pyproject.toml` in this directory. This file should have the following content:
-    ```toml
-    [project]
-    name = "llama-stack-demo"
-    version = "0.1.0"
-    description = "Default template for PDM package"
-    authors = []
-    dependencies = [
-        "llama-stack==0.2.14",
-        "fastapi>=0.115.12",
-        "opentelemetry-sdk>=1.34.0",
-        "opentelemetry-exporter-otlp>=1.34.0",
-        "opentelemetry-instrumentation>=0.55b0",
-        "aiosqlite>=0.21.0",
-        "litellm>=1.72.1",
-        "uvicorn>=0.34.3",
-        "blobfile>=3.0.0",
-        "datasets>=3.6.0",
-        "sqlalchemy>=2.0.41",
-        "faiss-cpu>=1.11.0",
-        "mcp>=1.9.4",
-        "autoevals>=0.0.129",
-        "psutil>=7.0.0",
-        "torch>=2.7.1",
-        "peft>=0.15.2",
-        "trl>=0.18.2"]
-    requires-python = "==3.12.*"
-    readme = "README.md"
-    license = {text = "MIT"}
-
-
-    [tool.pdm]
-    distribution = false
+1. Copy the project file named `pyproject.llamastack.toml` into the new directory, renaming it to `pyproject.toml':
+    ```bash
+    cp examples/pyproject.llamastack.toml /tmp/llama-stack-server/pyproject.toml
     ```
-1. Run the following command to install all dependencies:
+
+1. Run the following command to install all llama-stack dependencies in a new venv located in your new directory:
 
     ```bash
+    cd /tmp/llama-stack-server
     uv sync
     ```
 
@@ -262,136 +233,11 @@ The easiest option is to run Llama Stack in a separate process. This means that 
 
 #### Llama Stack configuration
 
-Llama Stack needs to be configured properly. For using the default runnable Llama Stack a file named `run.yaml` with following content needs to be created:
+Llama Stack needs to be configured properly. For using the default runnable Llama Stack a file named `run.yaml` needs to be created.  Copy the example `examples/run.yaml` from the lightspeed-stack project directory into your llama-stack directory.
 
-```yaml
-version: '2'
-image_name: minimal-viable-llama-stack-configuration
-
-apis:
-  - agents
-  - datasetio
-  - eval
-  - inference
-  - post_training
-  - safety
-  - scoring
-  - telemetry
-  - tool_runtime
-  - vector_io
-benchmarks: []
-container_image: null
-datasets: []
-external_providers_dir: null
-inference_store:
-  db_path: .llama/distributions/ollama/inference_store.db
-  type: sqlite
-logging: null
-metadata_store:
-  db_path: .llama/distributions/ollama/registry.db
-  namespace: null
-  type: sqlite
-providers:
-  agents:
-  - config:
-      persistence_store:
-        db_path: .llama/distributions/ollama/agents_store.db
-        namespace: null
-        type: sqlite
-      responses_store:
-        db_path: .llama/distributions/ollama/responses_store.db
-        type: sqlite
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
-  datasetio:
-  - config:
-      kvstore:
-        db_path: .llama/distributions/ollama/huggingface_datasetio.db
-        namespace: null
-        type: sqlite
-    provider_id: huggingface
-    provider_type: remote::huggingface
-  - config:
-      kvstore:
-        db_path: .llama/distributions/ollama/localfs_datasetio.db
-        namespace: null
-        type: sqlite
-    provider_id: localfs
-    provider_type: inline::localfs
-  eval:
-  - config:
-      kvstore:
-        db_path: .llama/distributions/ollama/meta_reference_eval.db
-        namespace: null
-        type: sqlite
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
-  inference:
-    - provider_id: openai
-      provider_type: remote::openai
-      config:
-        api_key: ${env.OPENAI_API_KEY}
-  post_training:
-  - config:
-      checkpoint_format: huggingface
-      device: cpu
-      distributed_backend: null
-    provider_id: huggingface
-    provider_type: inline::huggingface
-  safety:
-  - config:
-      excluded_categories: []
-    provider_id: llama-guard
-    provider_type: inline::llama-guard
-  scoring:
-  - config: {}
-    provider_id: basic
-    provider_type: inline::basic
-  - config: {}
-    provider_id: llm-as-judge
-    provider_type: inline::llm-as-judge
-  - config:
-      openai_api_key: '********'
-    provider_id: braintrust
-    provider_type: inline::braintrust
-  telemetry:
-  - config:
-      service_name: 'lightspeed-stack'
-      sinks: sqlite
-      sqlite_db_path: .llama/distributions/ollama/trace_store.db
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
-  tool_runtime:
-    - provider_id: model-context-protocol
-      provider_type: remote::model-context-protocol
-      config: {}
-  vector_io:
-  - config:
-      kvstore:
-        db_path: .llama/distributions/ollama/faiss_store.db
-        namespace: null
-        type: sqlite
-    provider_id: faiss
-    provider_type: inline::faiss
-scoring_fns: []
-server:
-  auth: null
-  host: null
-  port: 8321
-  quota: null
-  tls_cafile: null
-  tls_certfile: null
-  tls_keyfile: null
-shields: []
-vector_dbs: []
-
-models:
-  - model_id: gpt-4-turbo
-    provider_id: openai
-    model_type: llm
-    provider_model_id: gpt-4-turbo
+```bash
+cp examples/run.yaml /tmp/llama-stack-server
 ```
-
 
 
 #### Run Llama Stack in a separate process
@@ -551,35 +397,12 @@ models:
 
 #### LCS configuration to connect to Llama Stack running in separate process
 
-```yaml
-name: Lightspeed Core Service (LCS)
-service:
-  host: localhost
-  port: 8080
-  auth_enabled: false
-  workers: 1
-  color_log: true
-  access_log: true
-llama_stack:
-  use_as_library_client: false
-  url: http://localhost:8321
-  api_key: xyzzy
-user_data_collection:
-  feedback_enabled: true
-  feedback_storage: "/tmp/data/feedback"
-  transcripts_enabled: true
-  transcripts_storage: "/tmp/data/transcripts"
-  data_collector:
-    enabled: false
-    ingress_server_url: null
-    ingress_server_auth_token: null
-    ingress_content_service_name: null
-    collection_interval: 7200  # 2 hours in seconds
-    cleanup_after_send: true
-    connection_timeout_seconds: 30
-authentication:
-  module: "noop"
+Copy the `examples/lightspeed-stack-lls-external.yaml` file to your llama-stack project directory, naming it `lightspeed-stack.yaml`:
+
+```bash
+cp examples/lightspeed-stack-lls-external.yaml lightspeed-stack.yaml`
 ```
+
 
 #### Start LCS
 
@@ -649,256 +472,25 @@ It is possible to run Lightspeed Core Stack service with Llama Stack "embedded" 
 1. Clone LCS repository
 1. Add and install all required dependencies
     ```bash
-    uv add \
-    "llama-stack==0.2.16" \
-    "fastapi>=0.115.12" \
-    "opentelemetry-sdk>=1.34.0" \
-    "opentelemetry-exporter-otlp>=1.34.0" \
-    "opentelemetry-instrumentation>=0.55b0" \
-    "aiosqlite>=0.21.0" \
-    "litellm>=1.72.1" \
-    "uvicorn>=0.34.3" \
-    "blobfile>=3.0.0" \
-    "datasets>=3.6.0" \
-    "sqlalchemy>=2.0.41" \
-    "faiss-cpu>=1.11.0" \
-    "mcp>=1.9.4" \
-    "autoevals>=0.0.129" \
-    "psutil>=7.0.0" \
-    "torch>=2.7.1" \
-    "peft>=0.15.2" \
-    "trl>=0.18.2"
-    ```
-1. Check if all dependencies are really installed
-    ```text
-    Resolved 195 packages in 1.19s
-          Built lightspeed-stack @ file:///tmp/ramdisk/lightspeed-stack
-    Prepared 12 packages in 1.72s
-    Installed 60 packages in 4.47s
-     + accelerate==1.9.0
-     + autoevals==0.0.129
-     + blobfile==3.0.0
-     + braintrust-core==0.0.59
-     + chevron==0.14.0
-     + datasets==4.0.0
-     + dill==0.3.8
-     + faiss-cpu==1.11.0.post1
-     + fsspec==2025.3.0
-     + greenlet==3.2.3
-     + grpcio==1.74.0
-     + httpx-sse==0.4.1
-     ~ lightspeed-stack==0.1.3 (from file:///tmp/ramdisk/lightspeed-stack)
-     + litellm==1.74.9.post1
-     + lxml==6.0.0
-     + mcp==1.12.2
-     + mpmath==1.3.0
-     + multiprocess==0.70.16
-     + networkx==3.5
-     + nvidia-cublas-cu12==12.6.4.1
-     + nvidia-cuda-cupti-cu12==12.6.80
-     + nvidia-cuda-nvrtc-cu12==12.6.77
-     + nvidia-cuda-runtime-cu12==12.6.77
-     + nvidia-cudnn-cu12==9.5.1.17
-     + nvidia-cufft-cu12==11.3.0.4
-     + nvidia-cufile-cu12==1.11.1.6
-     + nvidia-curand-cu12==10.3.7.77
-     + nvidia-cusolver-cu12==11.7.1.2
-     + nvidia-cusparse-cu12==12.5.4.2
-     + nvidia-cusparselt-cu12==0.6.3
-     + nvidia-nccl-cu12==2.26.2
-     + nvidia-nvjitlink-cu12==12.6.85
-     + nvidia-nvtx-cu12==12.6.77
-     + opentelemetry-api==1.36.0
-     + opentelemetry-exporter-otlp==1.36.0
-     + opentelemetry-exporter-otlp-proto-common==1.36.0
-     + opentelemetry-exporter-otlp-proto-grpc==1.36.0
-     + opentelemetry-exporter-otlp-proto-http==1.36.0
-     + opentelemetry-instrumentation==0.57b0
-     + opentelemetry-proto==1.36.0
-     + opentelemetry-sdk==1.36.0
-     + opentelemetry-semantic-conventions==0.57b0
-     + peft==0.16.0
-     + polyleven==0.9.0
-     + psutil==7.0.0
-     + pyarrow==21.0.0
-     + pycryptodomex==3.23.0
-     + pydantic-settings==2.10.1
-     + safetensors==0.5.3
-     + setuptools==80.9.0
-     + sqlalchemy==2.0.42
-     + sse-starlette==3.0.2
-     + sympy==1.14.0
-     + tokenizers==0.21.4
-     + torch==2.7.1
-     + transformers==4.54.1
-     + triton==3.3.1
-     + trl==0.20.0
-     + wrapt==1.17.2
-     + xxhash==3.5.0
+    uv sync --group llslibdev
     ```
 
 #### Llama Stack configuration
 
-Llama Stack needs to be configured properly. For using the default runnable Llama Stack a file named `run.yaml` with following content needs to be created:
+Llama Stack needs to be configured properly. Copy the example config from examples/run.yaml to the project directory:
 
-```yaml
-version: '2'
-image_name: minimal-viable-llama-stack-configuration
-
-apis:
-  - agents
-  - datasetio
-  - eval
-  - inference
-  - post_training
-  - safety
-  - scoring
-  - telemetry
-  - tool_runtime
-  - vector_io
-benchmarks: []
-container_image: null
-datasets: []
-external_providers_dir: null
-inference_store:
-  db_path: .llama/distributions/ollama/inference_store.db
-  type: sqlite
-logging: null
-metadata_store:
-  db_path: .llama/distributions/ollama/registry.db
-  namespace: null
-  type: sqlite
-providers:
-  agents:
-  - config:
-      persistence_store:
-        db_path: .llama/distributions/ollama/agents_store.db
-        namespace: null
-        type: sqlite
-      responses_store:
-        db_path: .llama/distributions/ollama/responses_store.db
-        type: sqlite
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
-  datasetio:
-  - config:
-      kvstore:
-        db_path: .llama/distributions/ollama/huggingface_datasetio.db
-        namespace: null
-        type: sqlite
-    provider_id: huggingface
-    provider_type: remote::huggingface
-  - config:
-      kvstore:
-        db_path: .llama/distributions/ollama/localfs_datasetio.db
-        namespace: null
-        type: sqlite
-    provider_id: localfs
-    provider_type: inline::localfs
-  eval:
-  - config:
-      kvstore:
-        db_path: .llama/distributions/ollama/meta_reference_eval.db
-        namespace: null
-        type: sqlite
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
-  inference:
-    - provider_id: openai
-      provider_type: remote::openai
-      config:
-        api_key: ${env.OPENAI_API_KEY}
-  post_training:
-  - config:
-      checkpoint_format: huggingface
-      device: cpu
-      distributed_backend: null
-    provider_id: huggingface
-    provider_type: inline::huggingface
-  safety:
-  - config:
-      excluded_categories: []
-    provider_id: llama-guard
-    provider_type: inline::llama-guard
-  scoring:
-  - config: {}
-    provider_id: basic
-    provider_type: inline::basic
-  - config: {}
-    provider_id: llm-as-judge
-    provider_type: inline::llm-as-judge
-  - config:
-      openai_api_key: '********'
-    provider_id: braintrust
-    provider_type: inline::braintrust
-  telemetry:
-  - config:
-      service_name: 'lightspeed-stack'
-      sinks: sqlite
-      sqlite_db_path: .llama/distributions/ollama/trace_store.db
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
-  tool_runtime:
-    - provider_id: model-context-protocol
-      provider_type: remote::model-context-protocol
-      config: {}
-  vector_io:
-  - config:
-      kvstore:
-        db_path: .llama/distributions/ollama/faiss_store.db
-        namespace: null
-        type: sqlite
-    provider_id: faiss
-    provider_type: inline::faiss
-scoring_fns: []
-server:
-  auth: null
-  host: null
-  port: 8321
-  quota: null
-  tls_cafile: null
-  tls_certfile: null
-  tls_keyfile: null
-shields: []
-vector_dbs: []
-
-models:
-  - model_id: gpt-4-turbo
-    provider_id: openai
-    model_type: llm
-    provider_model_id: gpt-4-turbo
+```bash
+cp examples/run.yaml .
 ```
+
 
 #### LCS configuration to use Llama Stack in library mode
+Copy the example LCS config file from examples/lightspeed-stack-library.yaml to the project directory:
 
-```yaml
-name: Lightspeed Core Service (LCS)
-service:
-  host: localhost
-  port: 8080
-  auth_enabled: false
-  workers: 1
-  color_log: true
-  access_log: true
-llama_stack:
-  use_as_library_client: true
-  library_client_config_path: run.yaml
-user_data_collection:
-  feedback_enabled: true
-  feedback_storage: "/tmp/data/feedback"
-  transcripts_enabled: true
-  transcripts_storage: "/tmp/data/transcripts"
-  data_collector:
-    enabled: false
-    ingress_server_url: null
-    ingress_server_auth_token: null
-    ingress_content_service_name: null
-    collection_interval: 7200  # 2 hours in seconds
-    cleanup_after_send: true
-    connection_timeout_seconds: 30
-authentication:
-  module: "noop"
+```bash
+cp examples/lightspeed-stack-lls-library.yaml lightspeed-stack.yaml
 ```
+
 
 #### Start LCS
 
