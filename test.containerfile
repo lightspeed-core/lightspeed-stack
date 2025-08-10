@@ -22,7 +22,8 @@ RUN uv venv && \
     opentelemetry-exporter-otlp \
     opentelemetry-instrumentation \
     aiosqlite \
-    litellm \
+    litellm[proxy]==1.75.3 \
+    openai==1.99.1 \
     uvicorn \
     blobfile \
     datasets \
