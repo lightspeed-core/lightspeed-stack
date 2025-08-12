@@ -1,6 +1,6 @@
 name: Lightspeed Core Service (LCS)
 service:
-  host: localhost
+  host: 0.0.0.0
   port: 8080
   auth_enabled: false
   workers: 1
@@ -13,7 +13,7 @@ llama_stack:
   # Alternative for "as library use"
   # use_as_library_client: true
   # library_client_config_path: <path-to-llama-stack-run.yaml-file>
-  url: http://localhost:8321
+  url: http://llama-stack:8321
   api_key: xyzzy
 user_data_collection:
   feedback_enabled: true

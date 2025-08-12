@@ -290,6 +290,70 @@ Container images are built for the following platforms:
 1. `linux/amd64` - main platform for deployment
 1. `linux/arm64`- Mac users with M1/M2/M3 CPUs
 
+## Building Container Images
+
+The repository includes production-ready container configurations that support two deployment modes:
+
+1. **Server Mode**: lightspeed-core connects to llama-stack as a separate service
+2. **Library Mode**: llama-stack runs as a library within lightspeed-core
+
+### Llama-Stack as Separate Service (Server Mode)
+
+When using llama-stack as a separate service, the existing `docker-compose.yaml` provides the complete setup. This builds two containers for lightspeed core and llama stack.
+
+**Configuration** (`lightspeed-stack.yaml`):
+```yaml
+llama_stack:
+  use_as_library_client: false
+  url: http://llama-stack:8321  # container name from docker-compose.yaml
+  api_key: xyzzy
+```
+
+In the root of this project simply run:
+
+```bash
+# Set your OpenAI API key
+export OPENAI_API_KEY="your-api-key-here"
+
+# Start both services
+docker-compose up --build
+
+# Access lightspeed-core at http://localhost:8080
+# Access llama-stack at http://localhost:8321
+```
+
+### Llama-Stack as Library (Library Mode)
+
+When embedding llama-stack directly in the container, use the existing `Containerfile` directly (this will not build the llama stack service in a separate container). First modify the `lightspeed-stack.yaml` config to use llama stack in library mode.
+
+**Configuration** (`lightspeed-stack.yaml`):
+```yaml
+llama_stack:
+  use_as_library_client: true
+  library_client_config_path: /app-root/run.yaml
+```
+
+**Build and run**:
+```bash
+# Build lightspeed-core with embedded llama-stack
+docker build -f Containerfile -t my-lightspeed-core:latest .
+
+# Run with embedded llama-stack
+docker run -d \
+  -p 8080:8080 \
+  -v ./lightspeed-stack.yaml:/app-root/lightspeed-stack.yaml:ro \
+  -v ./run.yaml:/app-root/run.yaml:ro \
+  -e OPENAI_API_KEY=your-api-key \
+  my-lightspeed-core:latest
+```
+
+### Verify it's running properly
+
+A simple sanity check:
+
+```bash
+curl -H "Accept: application/json" http://localhost:8080/v1/models
+```
 
 
 # Endpoints
