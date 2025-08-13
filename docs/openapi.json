@@ -74,7 +74,7 @@
                     "models"
                 ],
                 "summary": "Models Endpoint Handler",
-                "description": "Handle requests to the /models endpoint.",
+                "description": "Handle requests to the /models endpoint.\n\nProcess GET requests to the /models endpoint, returning a list of available\nmodels from the Llama Stack service.\n\nRaises:\n    HTTPException: If unable to connect to the Llama Stack server or if\n    model retrieval fails for any reason.\n\nReturns:\n    ModelsResponse: An object containing the list of available models.",
                 "operationId": "models_endpoint_handler_v1_models_get",
                 "responses": {
                     "200": {
@@ -300,7 +300,7 @@
                     "feedback"
                 ],
                 "summary": "Feedback Endpoint Handler",
-                "description": "Handle feedback requests.\n\nArgs:\n    feedback_request: The request containing feedback information.\n    ensure_feedback_enabled: The feedback handler (FastAPI Depends) that\n        will handle feedback status checks.\n    auth: The Authentication handler (FastAPI Depends) that will\n        handle authentication Logic.\n\nReturns:\n    Response indicating the status of the feedback storage request.",
+                "description": "Handle feedback requests.\n\nProcesses a user feedback submission, storing the feedback and\nreturning a confirmation response.\n\nArgs:\n    feedback_request: The request containing feedback information.\n    ensure_feedback_enabled: The feedback handler (FastAPI Depends) that\n        will handle feedback status checks.\n    auth: The Authentication handler (FastAPI Depends) that will\n        handle authentication Logic.\n\nReturns:\n    Response indicating the status of the feedback storage request.\n\nRaises:\n    HTTPException: Returns HTTP 500 if feedback storage fails.",
                 "operationId": "feedback_endpoint_handler_v1_feedback_post",
                 "requestBody": {
                     "content": {
@@ -372,7 +372,7 @@
                     "feedback"
                 ],
                 "summary": "Feedback Status",
-                "description": "Handle feedback status requests.\n\nReturns:\n    Response indicating the status of the feedback.",
+                "description": "Handle feedback status requests.\n\nReturn the current enabled status of the feedback\nfunctionality.\n\nReturns:\n    StatusResponse: Indicates whether feedback collection is enabled.",
                 "operationId": "feedback_status_v1_feedback_status_get",
                 "responses": {
                     "200": {
@@ -441,7 +441,7 @@
                     "conversations"
                 ],
                 "summary": "Get Conversation Endpoint Handler",
-                "description": "Handle request to retrieve a conversation by ID.",
+                "description": "Handle request to retrieve a conversation by ID.\n\nRetrieve a conversation's chat history by its ID. Then fetches\nthe conversation session from the Llama Stack backend,\nsimplifies the session data to essential chat history, and\nreturns it in a structured response. Raises HTTP 400 for\ninvalid IDs, 404 if not found, 503 if the backend is\nunavailable, and 500 for unexpected errors.\n\nParameters:\n    conversation_id (str): Unique identifier of the conversation to retrieve.\n\nReturns:\n    ConversationResponse: Structured response containing the conversation\n    ID and simplified chat history.",
                 "operationId": "get_conversation_endpoint_handler_v1_conversations__conversation_id__get",
                 "parameters": [
                     {
@@ -513,7 +513,7 @@
                     "conversations"
                 ],
                 "summary": "Delete Conversation Endpoint Handler",
-                "description": "Handle request to delete a conversation by ID.",
+                "description": "Handle request to delete a conversation by ID.\n\nValidates the conversation ID format and attempts to delete the\ncorresponding session from the Llama Stack backend. Raises HTTP\nerrors for invalid IDs, not found conversations, connection\nissues, or unexpected failures.\n\nReturns:\n    ConversationDeleteResponse: Response indicating the result of the deletion operation.",
                 "operationId": "delete_conversation_endpoint_handler_v1_conversations__conversation_id__delete",
                 "parameters": [
                     {
@@ -756,12 +756,24 @@
                     "module": {
                         "type": "string",
                         "title": "Module",
-                        "default": "noop"
+                        "description": "Authentication module to be used for REST API",
+                        "default": "noop",
+                        "examples": [
+                            "noop",
+                            "noop-with-token",
+                            "k8s",
+                            "jwk-token"
+                        ]
                     },
                     "skip_tls_verification": {
                         "type": "boolean",
                         "title": "Skip Tls Verification",
-                        "default": false
+                        "description": "If set to true, the service skips TLS certificate verification",
+                        "default": false,
+                        "examples": [
+                            true,
+                            false
+                        ]
                     },
                     "k8s_cluster_api": {
                         "anyOf": [
@@ -774,7 +786,11 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "K8S Cluster Api"
+                        "title": "K8S Cluster Api",
+                        "description": "The URL of the K8S/OCP API server where tokens are validated",
+                        "examples": [
+                            "http://localhost:8080/api/validation/"
+                        ]
                     },
                     "k8s_ca_cert_path": {
                         "anyOf": [
@@ -786,7 +802,11 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "K8S Ca Cert Path"
+                        "title": "K8S Ca Cert Path",
+                        "description": "Path to a CA certificate for clusters with self-signed certificates",
+                        "examples": [
+                            "/tmp/certs.crt"
+                        ]
                     },
                     "jwk_config": {
                         "anyOf": [
@@ -796,7 +816,8 @@
                             {
                                 "type": "null"
                             }
-                        ]
+                        ],
+                        "description": "JWK configuration"
                     }
                 },
                 "type": "object",
@@ -807,11 +828,20 @@
                 "properties": {
                     "user_id": {
                         "type": "string",
-                        "title": "User Id"
+                        "title": "User Id",
+                        "description": "User ID, for example UUID",
+                        "examples": [
+                            "c5260aec-4d82-4370-9fdf-05cf908b3f16"
+                        ]
                     },
                     "username": {
                         "type": "string",
-                        "title": "Username"
+                        "title": "Username",
+                        "description": "User name",
+                        "examples": [
+                            "John Doe",
+                            "Adam Smith"
+                        ]
                     }
                 },
                 "type": "object",
@@ -1112,33 +1142,6 @@
                 "type": "object",
                 "title": "Customization",
                 "description": "Service customization."
-            },
-            "DatabaseConfiguration": {
-                "properties": {
-                    "sqlite": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/SQLiteDatabaseConfiguration"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "postgres": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/PostgreSQLDatabaseConfiguration"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    }
-                },
-                "type": "object",
-                "title": "DatabaseConfiguration",
-                "description": "Database configuration."
             },
             "DatabaseConfiguration": {
                 "properties": {
@@ -2016,7 +2019,11 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Tls Certificate Path"
+                        "title": "Tls Certificate Path",
+                        "description": "Path to TLS certificate",
+                        "examples": [
+                            "/etc/certs/certs.pem"
+                        ]
                     },
                     "tls_key_path": {
                         "anyOf": [
@@ -2028,7 +2035,11 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Tls Key Path"
+                        "title": "Tls Key Path",
+                        "description": "Path to TLS certificate key",
+                        "examples": [
+                            "/etc/certs/key.pem"
+                        ]
                     },
                     "tls_key_password": {
                         "anyOf": [
@@ -2040,7 +2051,11 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Tls Key Password"
+                        "title": "Tls Key Password",
+                        "description": "Path to file containing TLS key passowrd",
+                        "examples": [
+                            "/app-root/certs/password.txt"
+                        ]
                     }
                 },
                 "type": "object",
