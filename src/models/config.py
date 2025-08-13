@@ -3,7 +3,14 @@
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, model_validator, FilePath, AnyHttpUrl
+from pydantic import (
+    BaseModel,
+    model_validator,
+    FilePath,
+    AnyHttpUrl,
+    PositiveInt,
+    Field,
+)
 from typing_extensions import Self, Literal
 
 import constants
@@ -210,11 +217,34 @@ class JwkConfiguration(BaseModel):
 class AuthenticationConfiguration(BaseModel):
     """Authentication configuration."""
 
-    module: str = constants.DEFAULT_AUTHENTICATION_MODULE
-    skip_tls_verification: bool = False
-    k8s_cluster_api: Optional[AnyHttpUrl] = None
-    k8s_ca_cert_path: Optional[FilePath] = None
-    jwk_config: Optional[JwkConfiguration] = None
+    module: str = Field(
+        constants.DEFAULT_AUTHENTICATION_MODULE,
+        description="Authentication module to be used for REST API",
+        examples=["noop", "noop-with-token", "k8s", "jwk-token"],
+    )
+
+    skip_tls_verification: bool = Field(
+        False,
+        description="If set to true, the service skips TLS certificate verification",
+        examples=[True, False],
+    )
+
+    k8s_cluster_api: Optional[AnyHttpUrl] = Field(
+        None,
+        description="The URL of the K8S/OCP API server where tokens are validated",
+        examples=["http://localhost:8080/api/validation/"],
+    )
+
+    k8s_ca_cert_path: Optional[FilePath] = Field(
+        None,
+        description="Path to a CA certificate for clusters with self-signed certificates",
+        examples=["/tmp/certs.crt"],
+    )
+
+    jwk_config: Optional[JwkConfiguration] = Field(
+        None,
+        description="JWK configuration",
+    )
 
     @model_validator(mode="after")
     def check_authentication_model(self) -> Self:
