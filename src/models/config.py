@@ -21,9 +21,23 @@ from utils import checks
 class TLSConfiguration(BaseModel):
     """TLS configuration."""
 
-    tls_certificate_path: Optional[FilePath] = None
-    tls_key_path: Optional[FilePath] = None
-    tls_key_password: Optional[FilePath] = None
+    tls_certificate_path: Optional[FilePath] = Field(
+        None,
+        description="Path to TLS certificate",
+        examples=["/etc/certs/certs.pem"],
+    )
+
+    tls_key_path: Optional[FilePath] = Field(
+        None,
+        description="Path to TLS certificate key",
+        examples=["/etc/certs/key.pem"],
+    )
+
+    tls_key_password: Optional[FilePath] = Field(
+        None,
+        description="Path to file containing TLS key passowrd",
+        examples=["/app-root/certs/password.txt"],
+    )
 
     @model_validator(mode="after")
     def check_tls_configuration(self) -> Self:
