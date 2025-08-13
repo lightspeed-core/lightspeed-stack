@@ -3,7 +3,13 @@
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, model_validator, FilePath, AnyHttpUrl
+from pydantic import (
+    BaseModel,
+    model_validator,
+    FilePath,
+    AnyHttpUrl,
+    Field,
+)
 from typing_extensions import Self, Literal
 
 import constants
@@ -14,9 +20,20 @@ from utils import checks
 class TLSConfiguration(BaseModel):
     """TLS configuration."""
 
-    tls_certificate_path: Optional[FilePath] = None
-    tls_key_path: Optional[FilePath] = None
-    tls_key_password: Optional[FilePath] = None
+    tls_certificate_path: Optional[FilePath] = Field(
+        description="Path to TLS certificate",
+        examples=["/etc/certs/certs.pem"],
+    )
+
+    tls_key_path: Optional[FilePath] = Field(
+        description="Path to TLS certificate key",
+        examples=["/etc/certs/key.pem"],
+    )
+
+    tls_key_password: Optional[FilePath] = Field(
+        description="Path to file containing TLS key passowrd",
+        examples=["/app-root/certs/password.txt"],
+    )
 
     @model_validator(mode="after")
     def check_tls_configuration(self) -> Self:
@@ -105,7 +122,11 @@ class ServiceConfiguration(BaseModel):
     workers: int = 1
     color_log: bool = True
     access_log: bool = True
-    tls_config: TLSConfiguration = TLSConfiguration()
+    tls_config: TLSConfiguration = Field(
+        default=TLSConfiguration(
+            tls_certificate_path=None, tls_key_path=None, tls_key_password=None
+        )
+    )
 
     @model_validator(mode="after")
     def check_service_configuration(self) -> Self:
@@ -210,11 +231,34 @@ class JwkConfiguration(BaseModel):
 class AuthenticationConfiguration(BaseModel):
     """Authentication configuration."""
 
-    module: str = constants.DEFAULT_AUTHENTICATION_MODULE
-    skip_tls_verification: bool = False
-    k8s_cluster_api: Optional[AnyHttpUrl] = None
-    k8s_ca_cert_path: Optional[FilePath] = None
-    jwk_config: Optional[JwkConfiguration] = None
+    module: str = Field(
+        constants.DEFAULT_AUTHENTICATION_MODULE,
+        description="Authentication module to be used for REST API",
+        examples=["noop", "noop-with-token", "k8s", "jwk-token"],
+    )
+
+    skip_tls_verification: bool = Field(
+        False,
+        description="If set to true, the service skips TLS certificate verification",
+        examples=[True, False],
+    )
+
+    k8s_cluster_api: Optional[AnyHttpUrl] = Field(
+        None,
+        description="The URL of the K8S/OCP API server where tokens are validated",
+        examples=["http://localhost:8080/api/validation/"],
+    )
+
+    k8s_ca_cert_path: Optional[FilePath] = Field(
+        None,
+        description="Path to a CA certificate for clusters with self-signed certificates",
+        examples=["/tmp/certs.crt"],
+    )
+
+    jwk_config: Optional[JwkConfiguration] = Field(
+        None,
+        description="JWK configuration",
+    )
 
     @model_validator(mode="after")
     def check_authentication_model(self) -> Self:
@@ -292,8 +336,14 @@ class Configuration(BaseModel):
     user_data_collection: UserDataCollection
     database: DatabaseConfiguration = DatabaseConfiguration()
     mcp_servers: list[ModelContextProtocolServer] = []
-    authentication: Optional[AuthenticationConfiguration] = (
-        AuthenticationConfiguration()
+    authentication: Optional[AuthenticationConfiguration] = Field(
+        default=AuthenticationConfiguration(
+            module=constants.DEFAULT_AUTHENTICATION_MODULE,
+            skip_tls_verification=False,
+            k8s_cluster_api=None,
+            k8s_ca_cert_path=None,
+            jwk_config=None,
+        ),
     )
     customization: Optional[Customization] = None
     inference: InferenceConfiguration = InferenceConfiguration()

@@ -56,6 +56,16 @@ Returns:
 
 Handle requests to the /models endpoint.
 
+Process GET requests to the /models endpoint, returning a list of available
+models from the Llama Stack service.
+
+Raises:
+    HTTPException: If unable to connect to the Llama Stack server or if
+    model retrieval fails for any reason.
+
+Returns:
+    ModelsResponse: An object containing the list of available models.
+
 
 
 
@@ -138,6 +148,9 @@ Returns:
 
 Handle feedback requests.
 
+Processes a user feedback submission, storing the feedback and
+returning a confirmation response.
+
 Args:
     feedback_request: The request containing feedback information.
     ensure_feedback_enabled: The feedback handler (FastAPI Depends) that
@@ -147,6 +160,9 @@ Args:
 
 Returns:
     Response indicating the status of the feedback storage request.
+
+Raises:
+    HTTPException: Returns HTTP 500 if feedback storage fails.
 
 
 
@@ -171,8 +187,11 @@ Returns:
 
 Handle feedback status requests.
 
+Return the current enabled status of the feedback
+functionality.
+
 Returns:
-    Response indicating the status of the feedback.
+    StatusResponse: Indicates whether feedback collection is enabled.
 
 
 
@@ -205,6 +224,20 @@ Handle request to retrieve all conversations for the authenticated user.
 
 Handle request to retrieve a conversation by ID.
 
+Retrieve a conversation's chat history by its ID. Then fetches
+the conversation session from the Llama Stack backend,
+simplifies the session data to essential chat history, and
+returns it in a structured response. Raises HTTP 400 for
+invalid IDs, 404 if not found, 503 if the backend is
+unavailable, and 500 for unexpected errors.
+
+Parameters:
+    conversation_id (str): Unique identifier of the conversation to retrieve.
+
+Returns:
+    ConversationResponse: Structured response containing the conversation
+    ID and simplified chat history.
+
 
 
 ### 🔗 Parameters
@@ -227,6 +260,14 @@ Handle request to retrieve a conversation by ID.
 > **Delete Conversation Endpoint Handler**
 
 Handle request to delete a conversation by ID.
+
+Validates the conversation ID format and attempts to delete the
+corresponding session from the Llama Stack backend. Raises HTTP
+errors for invalid IDs, not found conversations, connection
+issues, or unexpected failures.
+
+Returns:
+    ConversationDeleteResponse: Response indicating the result of the deletion operation.
 
 
 
@@ -372,11 +413,11 @@ Authentication configuration.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| module | string |  |
-| skip_tls_verification | boolean |  |
-| k8s_cluster_api |  |  |
-| k8s_ca_cert_path |  |  |
-| jwk_config |  |  |
+| module | string | Authentication module to be used for REST API |
+| skip_tls_verification | boolean | If set to true, the service skips TLS certificate verification |
+| k8s_cluster_api |  | The URL of the K8S/OCP API server where tokens are validated |
+| k8s_ca_cert_path |  | Path to a CA certificate for clusters with self-signed certificates |
+| jwk_config |  | JWK configuration |
 
 
 ## AuthorizedResponse
@@ -391,8 +432,8 @@ Attributes:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| user_id | string |  |
-| username | string |  |
+| user_id | string | User ID, for example UUID |
+| username | string | User name |
 
 
 ## Configuration
@@ -973,9 +1014,9 @@ TLS configuration.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| tls_certificate_path |  |  |
-| tls_key_path |  |  |
-| tls_key_password |  |  |
+| tls_certificate_path |  | Path to TLS certificate |
+| tls_key_path |  | Path to TLS certificate key |
+| tls_key_password |  | Path to file containing TLS key passowrd |
 
 
 ## UnauthorizedResponse

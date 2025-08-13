@@ -52,7 +52,9 @@ def test_start_uvicorn_different_host_port() -> None:
 
 def test_start_uvicorn_empty_tls_configuration() -> None:
     """Test the function to start Uvicorn server using empty TLS configuration."""
-    tls_config = TLSConfiguration()
+    tls_config = TLSConfiguration(
+        tls_certificate_path=None, tls_key_path=None, tls_key_password=None
+    )
     configuration = ServiceConfiguration(
         host="x.y.com", port=1234, workers=10, tls_config=tls_config
     )
