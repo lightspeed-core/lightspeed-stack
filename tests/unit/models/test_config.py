@@ -42,7 +42,9 @@ def test_service_configuration_constructor() -> None:
     assert s.workers == 1
     assert s.color_log is True
     assert s.access_log is True
-    assert s.tls_config == TLSConfiguration()
+    assert s.tls_config == TLSConfiguration(
+        tls_certificate_path=None, tls_key_path=None, tls_key_password=None
+    )
 
 
 def test_service_configuration_port_value() -> None:
@@ -225,6 +227,22 @@ def test_tls_configuration() -> None:
     assert cfg.tls_certificate_path == Path("tests/configuration/server.crt")
     assert cfg.tls_key_path == Path("tests/configuration/server.key")
     assert cfg.tls_key_password == Path("tests/configuration/password")
+
+
+def test_tls_configuration_in_service_configuration() -> None:
+    """Test the TLS configuration in service configuration."""
+    cfg = ServiceConfiguration(
+        tls_config=TLSConfiguration(
+            tls_certificate_path=Path("tests/configuration/server.crt"),
+            tls_key_path=Path("tests/configuration/server.key"),
+            tls_key_password=Path("tests/configuration/password"),
+        )
+    )
+    assert cfg is not None
+    assert cfg.tls_config is not None
+    assert cfg.tls_config.tls_certificate_path == Path("tests/configuration/server.crt")
+    assert cfg.tls_config.tls_key_path == Path("tests/configuration/server.key")
+    assert cfg.tls_config.tls_key_password == Path("tests/configuration/password")
 
 
 def test_tls_configuration_wrong_certificate_path() -> None:
@@ -416,7 +434,13 @@ def test_dump_configuration(tmp_path) -> None:
     """
     cfg = Configuration(
         name="test_name",
-        service=ServiceConfiguration(),
+        service=ServiceConfiguration(
+            tls_config=TLSConfiguration(
+                tls_certificate_path=Path("tests/configuration/server.crt"),
+                tls_key_path=Path("tests/configuration/server.key"),
+                tls_key_password=Path("tests/configuration/password"),
+            )
+        ),
         llama_stack=LlamaStackConfiguration(
             use_as_library_client=True,
             library_client_config_path="tests/configuration/run.yaml",
@@ -462,9 +486,9 @@ def test_dump_configuration(tmp_path) -> None:
                 "color_log": True,
                 "access_log": True,
                 "tls_config": {
-                    "tls_certificate_path": None,
-                    "tls_key_path": None,
-                    "tls_key_password": None,
+                    "tls_certificate_path": "tests/configuration/server.crt",
+                    "tls_key_password": "tests/configuration/password",
+                    "tls_key_path": "tests/configuration/server.key",
                 },
             },
             "llama_stack": {

@@ -21,19 +21,16 @@ class TLSConfiguration(BaseModel):
     """TLS configuration."""
 
     tls_certificate_path: Optional[FilePath] = Field(
-        None,
         description="Path to TLS certificate",
         examples=["/etc/certs/certs.pem"],
     )
 
     tls_key_path: Optional[FilePath] = Field(
-        None,
         description="Path to TLS certificate key",
         examples=["/etc/certs/key.pem"],
     )
 
     tls_key_password: Optional[FilePath] = Field(
-        None,
         description="Path to file containing TLS key passowrd",
         examples=["/app-root/certs/password.txt"],
     )
@@ -125,7 +122,11 @@ class ServiceConfiguration(BaseModel):
     workers: int = 1
     color_log: bool = True
     access_log: bool = True
-    tls_config: TLSConfiguration = TLSConfiguration()
+    tls_config: TLSConfiguration = Field(
+        default=TLSConfiguration(
+            tls_certificate_path=None, tls_key_path=None, tls_key_password=None
+        )
+    )
 
     @model_validator(mode="after")
     def check_service_configuration(self) -> Self:
@@ -335,8 +336,14 @@ class Configuration(BaseModel):
     user_data_collection: UserDataCollection
     database: DatabaseConfiguration = DatabaseConfiguration()
     mcp_servers: list[ModelContextProtocolServer] = []
-    authentication: Optional[AuthenticationConfiguration] = (
-        AuthenticationConfiguration()
+    authentication: Optional[AuthenticationConfiguration] = Field(
+        default=AuthenticationConfiguration(
+            module=constants.DEFAULT_AUTHENTICATION_MODULE,
+            skip_tls_verification=False,
+            k8s_cluster_api=None,
+            k8s_ca_cert_path=None,
+            jwk_config=None,
+        ),
     )
     customization: Optional[Customization] = None
     inference: InferenceConfiguration = InferenceConfiguration()

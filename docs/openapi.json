@@ -2059,6 +2059,11 @@
                     }
                 },
                 "type": "object",
+                "required": [
+                    "tls_certificate_path",
+                    "tls_key_path",
+                    "tls_key_password"
+                ],
                 "title": "TLSConfiguration",
                 "description": "TLS configuration."
             },
