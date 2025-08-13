@@ -2,7 +2,7 @@
 
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ModelsResponse(BaseModel):
@@ -252,8 +252,16 @@ class AuthorizedResponse(BaseModel):
         username: The name of the logged in user.
     """
 
-    user_id: str
-    username: str
+    user_id: str = Field(
+        ...,
+        description="User ID, for example UUID",
+        examples=["c5260aec-4d82-4370-9fdf-05cf908b3f16"],
+    )
+    username: str = Field(
+        ...,
+        description="User name",
+        examples=["John Doe", "Adam Smith"],
+    )
 
     # provides examples for /docs endpoint
     model_config = {
