@@ -1,13 +1,13 @@
 """Handler for REST API call to provide answer to query."""
 
-import ast
 from datetime import datetime, UTC
 import json
 import logging
 import os
 from pathlib import Path
-import re
 from typing import Annotated, Any, cast
+
+import pydantic
 
 from llama_stack_client import APIConnectionError
 from llama_stack_client import AsyncLlamaStackClient  # type: ignore
@@ -43,12 +43,11 @@ from utils.endpoints import (
 )
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
 from utils.suid import get_suid
+from utils.metadata import parse_knowledge_search_metadata
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
 auth_dependency = get_auth_dependency()
-
-METADATA_PATTERN = re.compile(r"^\s*Metadata:\s*(\{.*?\})\s*$", re.MULTILINE)
 
 
 def _process_knowledge_search_content(
@@ -75,17 +74,14 @@ def _process_knowledge_search_content(
         if not text:
             continue
 
-        for match in METADATA_PATTERN.findall(text):
-            try:
-                meta = ast.literal_eval(match)
-                # Verify the result is a dict before accessing keys
-                if isinstance(meta, dict) and "document_id" in meta:
-                    metadata_map[meta["document_id"]] = meta
-            except (SyntaxError, ValueError):  # only expected from literal_eval
-                logger.exception(
-                    "An exception was thrown in processing %s",
-                    match,
-                )
+        try:
+            parsed_metadata = parse_knowledge_search_metadata(text)
+            metadata_map.update(parsed_metadata)
+        except ValueError:
+            logger.exception(
+                "An exception was thrown in processing metadata from text: %s",
+                text[:200] + "..." if len(text) > 200 else text,
+            )
 
 
 def extract_referenced_documents_from_steps(steps: list) -> list[ReferencedDocument]:
@@ -113,12 +109,23 @@ def extract_referenced_documents_from_steps(steps: list) -> list[ReferencedDocum
 
             _process_knowledge_search_content(tool_response, metadata_map)
 
-    # Extract referenced documents from metadata
-    return [
-        ReferencedDocument(doc_url=v["docs_url"], doc_title=v["title"])
-        for v in metadata_map.values()
-        if "docs_url" in v and "title" in v
-    ]
+    # Extract referenced documents from metadata with error handling
+    referenced_documents = []
+    for v in metadata_map.values():
+        if "docs_url" in v and "title" in v:
+            try:
+                doc = ReferencedDocument(doc_url=v["docs_url"], doc_title=v["title"])
+                referenced_documents.append(doc)
+            except (pydantic.ValidationError, ValueError, Exception) as e:
+                logger.warning(
+                    "Skipping invalid referenced document with docs_url='%s', title='%s': %s",
+                    v.get("docs_url", "<missing>"),
+                    v.get("title", "<missing>"),
+                    str(e),
+                )
+                continue
+
+    return referenced_documents
 
 
 query_response: dict[int | str, dict[str, Any]] = {

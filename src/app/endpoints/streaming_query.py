@@ -1,10 +1,10 @@
 """Handler for REST API call to provide answer to streaming query."""
 
-import ast
 import json
-import re
 import logging
 from typing import Annotated, Any, AsyncIterator, Iterator
+
+import pydantic
 
 from llama_stack_client import APIConnectionError
 from llama_stack_client import AsyncLlamaStackClient  # type: ignore
@@ -27,6 +27,7 @@ from models.database.conversations import UserConversation
 from models.responses import ReferencedDocument
 from utils.endpoints import check_configuration_loaded, get_agent, get_system_prompt
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
+from utils.metadata import parse_knowledge_search_metadata
 
 from app.endpoints.query import (
     get_rag_toolgroups,
@@ -44,9 +45,6 @@ from app.endpoints.query import (
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query"])
 auth_dependency = get_auth_dependency()
-
-
-METADATA_PATTERN = re.compile(r"\nMetadata: (\{.+})\n")
 
 
 def format_stream_data(d: dict) -> str:
@@ -79,15 +77,24 @@ def stream_end_event(metadata_map: dict) -> str:
         lambda v: ("docs_url" in v) and ("title" in v),
         metadata_map.values(),
     ):
-        doc = ReferencedDocument(doc_url=v["docs_url"], doc_title=v["title"])
-        referenced_documents.append(
-            {
-                "doc_url": str(
-                    doc.doc_url
-                ),  # Convert AnyUrl to string for JSON serialization
-                "doc_title": doc.doc_title,
-            }
-        )
+        try:
+            doc = ReferencedDocument(doc_url=v["docs_url"], doc_title=v["title"])
+            referenced_documents.append(
+                {
+                    "doc_url": str(
+                        doc.doc_url
+                    ),  # Convert AnyUrl to string for JSON serialization
+                    "doc_title": doc.doc_title,
+                }
+            )
+        except (pydantic.ValidationError, ValueError, Exception) as e:
+            logger.warning(
+                "Skipping invalid referenced document with docs_url='%s', title='%s': %s",
+                v.get("docs_url", "<missing>"),
+                v.get("title", "<missing>"),
+                str(e),
+            )
+            continue
 
     return format_stream_data(
         {
@@ -335,20 +342,20 @@ def _handle_tool_execution_event(
                             newline_pos = summary.find("\n")
                             if newline_pos > 0:
                                 summary = summary[:newline_pos]
-                        for match in METADATA_PATTERN.findall(text_content_item.text):
-                            try:
-                                meta = ast.literal_eval(match)
-                                # Verify the result is a dict before accessing keys
-                                if isinstance(meta, dict) and "document_id" in meta:
-                                    metadata_map[meta["document_id"]] = meta
-                            except (
-                                SyntaxError,
-                                ValueError,
-                            ):  # only expected from literal_eval
-                                logger.exception(
-                                    "An exception was thrown in processing %s",
-                                    match,
-                                )
+                        try:
+                            parsed_metadata = parse_knowledge_search_metadata(
+                                text_content_item.text
+                            )
+                            metadata_map.update(parsed_metadata)
+                        except ValueError:
+                            logger.exception(
+                                "An exception was thrown in processing metadata from text: %s",
+                                (
+                                    text_content_item.text[:200] + "..."
+                                    if len(text_content_item.text) > 200
+                                    else text_content_item.text
+                                ),
+                            )
 
                 yield format_stream_data(
                     {

@@ -1104,6 +1104,44 @@ def test_stream_end_event_with_referenced_documents():
     assert "Test Document 4" not in doc_titles
 
 
+def test_stream_end_event_skips_invalid_docs_url():
+    """Test stream_end_event skips entries with invalid docs_url."""
+    metadata_map = {
+        "doc-1": {
+            "docs_url": "https://example.com/doc1",
+            "title": "Valid Document",
+            "document_id": "doc-1",
+        },
+        "doc-2": {
+            "docs_url": "not-a-valid-url",  # Invalid URL that will cause ValidationError
+            "title": "Invalid Document",
+            "document_id": "doc-2",
+        },
+        "doc-3": {
+            "docs_url": "",  # Empty URL that will cause ValidationError
+            "title": "Empty URL Document",
+            "document_id": "doc-3",
+        },
+    }
+
+    result = stream_end_event(metadata_map)
+
+    # Parse the JSON response
+    parsed = json.loads(result.replace("data: ", ""))
+
+    # Verify structure
+    assert parsed["event"] == "end"
+    assert "referenced_documents" in parsed["data"]
+
+    # Verify only valid documents are included, invalid ones are skipped
+    referenced_docs = parsed["data"]["referenced_documents"]
+    assert len(referenced_docs) == 1
+
+    # Verify the valid document is included
+    assert referenced_docs[0]["doc_url"] == "https://example.com/doc1"
+    assert referenced_docs[0]["doc_title"] == "Valid Document"
+
+
 def test_stream_build_event_error():
     """Test stream_build_event function returns a 'error' when chunk contains error information."""
     # Create a mock chunk without an expected payload structure

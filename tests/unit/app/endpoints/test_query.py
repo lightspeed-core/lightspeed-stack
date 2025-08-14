@@ -1888,3 +1888,107 @@ async def test_retrieve_response_with_structured_content_object(
     # Should convert the structured object to string representation
     assert response == str(structured_content)
     assert conversation_id == "fake_conversation_id"
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_skips_invalid_docs_url(prepare_agent_mocks, mocker):
+    """Test that retrieve_response skips entries with invalid docs_url."""
+    mock_client, mock_agent = prepare_agent_mocks
+    mock_agent.create_turn.return_value.output_message.content = "LLM answer"
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock tool response with valid and invalid docs_url entries
+    invalid_docs_url_results = [
+        """knowledge_search tool found 2 chunks:
+BEGIN of knowledge_search tool results.
+""",
+        """Result 1
+Content: Valid content
+Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Valid Doc', 'document_id': 'doc-1'}
+""",
+        """Result 2
+Content: Invalid content
+Metadata: {'docs_url': 'not-a-valid-url', 'title': 'Invalid Doc', 'document_id': 'doc-2'}
+""",
+        """END of knowledge_search tool results.
+""",
+    ]
+
+    mock_tool_response = mocker.Mock()
+    mock_tool_response.call_id = "c1"
+    mock_tool_response.tool_name = "knowledge_search"
+    mock_tool_response.content = [
+        mocker.Mock(text=s, type="text") for s in invalid_docs_url_results
+    ]
+
+    mock_tool_execution_step = mocker.Mock()
+    mock_tool_execution_step.step_type = "tool_execution"
+    mock_tool_execution_step.tool_responses = [mock_tool_response]
+
+    mock_agent.create_turn.return_value.steps = [mock_tool_execution_step]
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.query.get_agent",
+        return_value=(mock_agent, "fake_conversation_id", "fake_session_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response, conversation_id, referenced_documents = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    assert response == "LLM answer"
+    assert conversation_id == "fake_conversation_id"
+
+    # Assert only the valid document is included, invalid one is skipped
+    assert len(referenced_documents) == 1
+    assert str(referenced_documents[0].doc_url) == "https://example.com/doc1"
+    assert referenced_documents[0].doc_title == "Valid Doc"
+
+
+@pytest.mark.asyncio
+async def test_extract_referenced_documents_from_steps_handles_validation_errors(
+    mocker,
+):
+    """Test that extract_referenced_documents_from_steps handles validation errors gracefully."""
+    # Mock tool response with invalid docs_url that will cause pydantic validation error
+    mock_tool_response = mocker.Mock()
+    mock_tool_response.tool_name = "knowledge_search"
+    mock_tool_response.content = [
+        mocker.Mock(
+            text="""Result 1
+Content: Valid content
+Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Valid Doc', 'document_id': 'doc-1'}
+"""
+        ),
+        mocker.Mock(
+            text="""Result 2
+Content: Invalid content  
+Metadata: {'docs_url': 'invalid-url', 'title': 'Invalid Doc', 'document_id': 'doc-2'}
+"""
+        ),
+    ]
+
+    mock_tool_execution_step = mocker.Mock()
+    mock_tool_execution_step.step_type = "tool_execution"
+    mock_tool_execution_step.tool_responses = [mock_tool_response]
+
+    steps = [mock_tool_execution_step]
+
+    # Import the function directly to test it
+    from app.endpoints.query import extract_referenced_documents_from_steps
+
+    referenced_documents = extract_referenced_documents_from_steps(steps)
+
+    # Should only return the valid document, skipping the invalid one
+    assert len(referenced_documents) == 1
+    assert str(referenced_documents[0].doc_url) == "https://example.com/doc1"
+    assert referenced_documents[0].doc_title == "Valid Doc"
