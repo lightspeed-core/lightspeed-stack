@@ -44,6 +44,7 @@ from app.endpoints.streaming_query import (
 
 from models.requests import QueryRequest, Attachment
 from models.config import ModelContextProtocolServer
+from utils.types import ToolCallSummary, TurnSummary
 
 MOCK_AUTH = ("mock_user_id", "mock_username", "mock_token")
 
@@ -218,7 +219,7 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
                         step_type="tool_execution",
                         tool_responses=[
                             ToolResponse(
-                                call_id="c1",
+                                call_id="t1",
                                 tool_name="knowledge_search",
                                 content=[
                                     TextContentItem(text=s, type="text")
@@ -323,7 +324,17 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
             query_is_valid=True,
             query=query,
             query_request=query_request,
-            response="LLM answer",
+            summary=TurnSummary(
+                llm_response="LLM answer",
+                tool_calls=[
+                    ToolCallSummary(
+                        id="t1",
+                        name="knowledge_search",
+                        args={},
+                        response=" ".join(SAMPLE_KNOWLEDGE_SEARCH_RESULTS),
+                    )
+                ],
+            ),
             attachments=[],
             rag_chunks=[],
             truncated=False,
