@@ -36,8 +36,6 @@ class ModelsResponse(BaseModel):
 
 # TODO(lucasagomes): a lot of fields to add to QueryResponse. For now
 # we are keeping it simple. The missing fields are:
-# - referenced_documents: The optional URLs and titles for the documents used
-#   to generate the response.
 # - truncated: Set to True if conversation history was truncated to be within context window.
 # - input_tokens: Number of tokens sent to LLM
 # - output_tokens: Number of tokens received from LLM
@@ -51,6 +49,8 @@ class QueryResponse(BaseModel):
     Attributes:
         conversation_id: The optional conversation ID (UUID).
         response: The response.
+        referenced_documents: The optional URLs and titles for the documents used
+            to generate the response.
     """
 
     conversation_id: Optional[str] = Field(
@@ -66,6 +66,22 @@ class QueryResponse(BaseModel):
         ],
     )
 
+    referenced_documents: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="List of documents referenced in generating the response",
+        examples=[
+            [
+                {
+                    "doc_url": (
+                        "https://docs.openshift.com/container-platform/"
+                        "4.15/operators/olm/index.html"
+                    ),
+                    "doc_title": "Operator Lifecycle Manager (OLM)",
+                }
+            ]
+        ],
+    )
+
     # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
@@ -73,6 +89,15 @@ class QueryResponse(BaseModel):
                 {
                     "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                     "response": "Operator Lifecycle Manager (OLM) helps users install...",
+                    "referenced_documents": [
+                        {
+                            "doc_url": (
+                                "https://docs.openshift.com/container-platform/"
+                                "4.15/operators/olm/index.html"
+                            ),
+                            "doc_title": "Operator Lifecycle Manager (OLM)",
+                        }
+                    ],
                 }
             ]
         }
