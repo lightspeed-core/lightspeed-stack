@@ -43,7 +43,7 @@ logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
 auth_dependency = get_auth_dependency()
 
-METADATA_PATTERN = re.compile(r"\nMetadata: (\{.+})\n")
+METADATA_PATTERN = re.compile(r"^Metadata:\s*(\{.*?\})\s*$", re.MULTILINE)
 
 
 def _process_knowledge_search_content(
@@ -78,28 +78,20 @@ def extract_referenced_documents_from_steps(steps: list) -> list[dict[str, str]]
     metadata_map: dict[str, dict[str, Any]] = {}
 
     for step in steps:
-        if step.step_type != "tool_execution" or not hasattr(step, "tool_responses"):
+        if getattr(step, "step_type", "") != "tool_execution" or not hasattr(step, "tool_responses"):
             continue
 
-        for tool_response in step.tool_responses:
-            if (
-                tool_response.tool_name != "knowledge_search"
-                or not tool_response.content
-            ):
+        for tool_response in getattr(step, "tool_responses", []) or []:
+            if getattr(tool_response, "tool_name", "") != "knowledge_search" or not getattr(tool_response, "content", []):
                 continue
 
             _process_knowledge_search_content(tool_response, metadata_map)
 
     # Extract referenced documents from metadata
     return [
-        {
-            "doc_url": v["docs_url"],
-            "doc_title": v["title"],
-        }
-        for v in filter(
-            lambda v: ("docs_url" in v) and ("title" in v),
-            metadata_map.values(),
-        )
+        {"doc_url": v["docs_url"], "doc_title": v["title"]}
+        for v in metadata_map.values()
+        if "docs_url" in v and "title" in v
     ]
 
 
@@ -480,10 +472,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     # Check for validation errors and extract referenced documents
     steps = getattr(response, "steps", [])
     for step in steps:
-        if step.step_type == "shield_call" and step.violation:
+        if getattr(step, "step_type", "") == "shield_call" and getattr(step, "violation", False):
             # Metric for LLM validation errors
             metrics.llm_calls_validation_errors_total.inc()
-            break
 
     # Extract referenced documents from tool execution steps
     referenced_documents = extract_referenced_documents_from_steps(steps)
