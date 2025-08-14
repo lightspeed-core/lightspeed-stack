@@ -27,7 +27,12 @@ from configuration import configuration
 from app.database import get_session
 import metrics
 from models.database.conversations import UserConversation
-from models.responses import QueryResponse, UnauthorizedResponse, ForbiddenResponse
+from models.responses import (
+    QueryResponse,
+    UnauthorizedResponse,
+    ForbiddenResponse,
+    ReferencedDocument,
+)
 from models.requests import QueryRequest, Attachment
 import constants
 from utils.endpoints import (
@@ -50,24 +55,40 @@ def _process_knowledge_search_content(
     tool_response: Any, metadata_map: dict[str, dict[str, Any]]
 ) -> None:
     """Process knowledge search tool response content for metadata."""
-    for text_content_item in tool_response.content:
-        if not hasattr(text_content_item, "text"):
+    # Guard against missing tool_response or content
+    if not tool_response:
+        return
+
+    content = getattr(tool_response, "content", None)
+    if not content:
+        return
+
+    # Ensure content is iterable
+    try:
+        iter(content)
+    except TypeError:
+        return
+
+    for text_content_item in content:
+        # Skip items that lack a non-empty "text" attribute
+        text = getattr(text_content_item, "text", None)
+        if not text:
             continue
 
-        for match in METADATA_PATTERN.findall(text_content_item.text):
+        for match in METADATA_PATTERN.findall(text):
             try:
                 meta = ast.literal_eval(match)
-                if "document_id" in meta:
+                # Verify the result is a dict before accessing keys
+                if isinstance(meta, dict) and "document_id" in meta:
                     metadata_map[meta["document_id"]] = meta
             except (SyntaxError, ValueError):  # only expected from literal_eval
-                logger.debug(
+                logger.exception(
                     "An exception was thrown in processing %s",
                     match,
-                    exc_info=True,
                 )
 
 
-def extract_referenced_documents_from_steps(steps: list) -> list[dict[str, str]]:
+def extract_referenced_documents_from_steps(steps: list) -> list[ReferencedDocument]:
     """Extract referenced documents from tool execution steps.
 
     Args:
@@ -94,7 +115,7 @@ def extract_referenced_documents_from_steps(steps: list) -> list[dict[str, str]]
 
     # Extract referenced documents from metadata
     return [
-        {"doc_url": v["docs_url"], "doc_title": v["title"]}
+        ReferencedDocument(doc_url=v["docs_url"], doc_title=v["title"])
         for v in metadata_map.values()
         if "docs_url" in v and "title" in v
     ]
@@ -388,13 +409,13 @@ def is_input_shield(shield: Shield) -> bool:
     return _is_inout_shield(shield) or not is_output_shield(shield)
 
 
-async def retrieve_response(  # pylint: disable=too-many-locals
+async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branches
     client: AsyncLlamaStackClient,
     model_id: str,
     query_request: QueryRequest,
     token: str,
     mcp_headers: dict[str, dict[str, str]] | None = None,
-) -> tuple[str, str, list[dict[str, str]]]:
+) -> tuple[str, str, list[ReferencedDocument]]:
     """Retrieve response from LLMs and agents."""
     available_input_shields = [
         shield.identifier
@@ -488,8 +509,14 @@ async def retrieve_response(  # pylint: disable=too-many-locals
 
     # When stream=False, response should have output_message attribute
     response_obj = cast(Any, response)
-    content = getattr(getattr(response_obj, "output_message", None), "content", "")
-    content_str = "" if content is None else str(content)
+
+    # Safely guard access to output_message and content
+    output_message = getattr(response_obj, "output_message", None)
+    if output_message and getattr(output_message, "content", None) is not None:
+        content_str = str(output_message.content)
+    else:
+        content_str = ""
+
     return (
         content_str,
         conversation_id,

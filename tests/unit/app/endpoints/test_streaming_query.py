@@ -40,6 +40,7 @@ from app.endpoints.streaming_query import (
     streaming_query_endpoint_handler,
     retrieve_response,
     stream_build_event,
+    stream_end_event,
 )
 
 from models.requests import QueryRequest, Attachment
@@ -994,6 +995,113 @@ def test_stream_build_event_step_complete():
     )
     assert '"role": "tool_execution"' in result
     assert '"id": 0' in result
+
+
+def test_stream_build_event_knowledge_search_with_invalid_metadata(mocker):
+    """Test stream_build_event handles invalid metadata in knowledge_search tool response."""
+    mock_logger = mocker.patch("app.endpoints.streaming_query.logger")
+
+    # Create a mock chunk with knowledge_search tool response containing invalid metadata
+    chunk = AgentTurnResponseStreamChunk(
+        event=TurnResponseEvent(
+            payload=AgentTurnResponseStepCompletePayload(
+                event_type="step_complete",
+                step_id="s1",
+                step_type="tool_execution",
+                step_details=ToolExecutionStep(
+                    turn_id="t1",
+                    step_id="s2",
+                    step_type="tool_execution",
+                    tool_responses=[
+                        ToolResponse(
+                            call_id="c1",
+                            tool_name="knowledge_search",
+                            content=[
+                                TextContentItem(
+                                    text="""Result 1
+Content: Test content
+Metadata: {'docs_url': 'https://example.com/doc1' 'title': 'Test Doc', 'document_id': 'doc-1'}
+""",  # Missing comma - invalid syntax
+                                    type="text",
+                                )
+                            ],
+                        )
+                    ],
+                    tool_calls=[
+                        ToolCall(
+                            call_id="t1", tool_name="knowledge_search", arguments={}
+                        )
+                    ],
+                ),
+            )
+        )
+    )
+
+    metadata_map = {}
+    result_list = list(stream_build_event(chunk, 0, metadata_map))
+
+    # Verify metadata_map remains empty due to invalid metadata
+    assert len(metadata_map) == 0
+
+    # Verify the function still returns tool execution events
+    assert len(result_list) == 2  # One for tool_calls, one for tool_responses
+
+    # Verify exception logging was called
+    mock_logger.exception.assert_called_once()
+    args = mock_logger.exception.call_args[0]
+    assert "An exception was thrown in processing" in args[0]
+
+
+def test_stream_end_event_with_referenced_documents():
+    """Test stream_end_event creates proper JSON with ReferencedDocument validation."""
+    metadata_map = {
+        "doc-1": {
+            "docs_url": "https://example.com/doc1",
+            "title": "Test Document 1",
+            "document_id": "doc-1",
+        },
+        "doc-2": {
+            "docs_url": "https://example.com/doc2",
+            "title": "Test Document 2",
+            "document_id": "doc-2",
+        },
+        "doc-3": {
+            # Missing title - should be filtered out
+            "docs_url": "https://example.com/doc3",
+            "document_id": "doc-3",
+        },
+        "doc-4": {
+            # Missing docs_url - should be filtered out
+            "title": "Test Document 4",
+            "document_id": "doc-4",
+        },
+    }
+
+    result = stream_end_event(metadata_map)
+
+    # Parse the JSON response
+    parsed = json.loads(result.replace("data: ", ""))
+
+    # Verify structure
+    assert parsed["event"] == "end"
+    assert "referenced_documents" in parsed["data"]
+
+    # Verify only valid documents are included
+    referenced_docs = parsed["data"]["referenced_documents"]
+    assert len(referenced_docs) == 2
+
+    # Verify document structure and URL validation
+    doc_urls = [doc["doc_url"] for doc in referenced_docs]
+    doc_titles = [doc["doc_title"] for doc in referenced_docs]
+
+    assert "https://example.com/doc1" in doc_urls
+    assert "https://example.com/doc2" in doc_urls
+    assert "Test Document 1" in doc_titles
+    assert "Test Document 2" in doc_titles
+
+    # Verify filtered documents are not included
+    assert "https://example.com/doc3" not in doc_urls
+    assert "Test Document 4" not in doc_titles
 
 
 def test_stream_build_event_error():

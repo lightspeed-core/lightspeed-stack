@@ -2,7 +2,7 @@
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, AnyUrl
 
 
 class ModelsResponse(BaseModel):
@@ -43,6 +43,15 @@ class ModelsResponse(BaseModel):
 # - tool_calls: List of tool requests.
 # - tool_results: List of tool results.
 # See LLMResponse in ols-service for more details.
+
+
+class ReferencedDocument(BaseModel):
+    """Model representing a document referenced in generating a response."""
+
+    doc_url: AnyUrl = Field(description="URL of the referenced document")
+    doc_title: str = Field(description="Title of the referenced document")
+
+
 class QueryResponse(BaseModel):
     """Model representing LLM response to a query.
 
@@ -66,7 +75,7 @@ class QueryResponse(BaseModel):
         ],
     )
 
-    referenced_documents: list[dict[str, str]] = Field(
+    referenced_documents: list[ReferencedDocument] = Field(
         default_factory=list,
         description="List of documents referenced in generating the response",
         examples=[

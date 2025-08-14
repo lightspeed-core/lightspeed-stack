@@ -27,6 +27,7 @@ from app.endpoints.query import (
 
 from models.requests import QueryRequest, Attachment
 from models.config import ModelContextProtocolServer
+from models.responses import ReferencedDocument
 from models.database.conversations import UserConversation
 
 MOCK_AUTH = ("mock_user_id", "mock_username", "mock_token")
@@ -236,8 +237,8 @@ async def test_query_endpoint_handler_with_referenced_documents(mocker):
     llm_response = "LLM answer with referenced documents"
     conversation_id = "fake_conversation_id"
     referenced_documents = [
-        {"doc_url": "https://example.com/doc1", "doc_title": "Doc1"},
-        {"doc_url": "https://example.com/doc2", "doc_title": "Doc2"},
+        ReferencedDocument(doc_url="https://example.com/doc1", doc_title="Doc1"),
+        ReferencedDocument(doc_url="https://example.com/doc2", doc_title="Doc2"),
     ]
     query = "What is OpenStack?"
 
@@ -263,8 +264,8 @@ async def test_query_endpoint_handler_with_referenced_documents(mocker):
     assert response.conversation_id == conversation_id
     assert response.referenced_documents == referenced_documents
     assert len(response.referenced_documents) == 2
-    assert response.referenced_documents[0]["doc_title"] == "Doc1"
-    assert response.referenced_documents[1]["doc_title"] == "Doc2"
+    assert response.referenced_documents[0].doc_title == "Doc1"
+    assert response.referenced_documents[1].doc_title == "Doc2"
 
     # Assert the metric for successful LLM calls is incremented
     mock_metric.labels("fake_provider_id", "fake_model_id").inc.assert_called_once()
@@ -557,15 +558,15 @@ async def test_retrieve_response_with_knowledge_search_extracts_referenced_docum
 
     # Assert referenced documents were extracted correctly
     assert len(referenced_documents) == 3
-    assert referenced_documents[0]["doc_url"] == "https://example.com/doc1"
-    assert referenced_documents[0]["doc_title"] == "Doc1"
-    assert referenced_documents[1]["doc_url"] == "https://example.com/doc2"
-    assert referenced_documents[1]["doc_title"] == "Doc2"
-    assert referenced_documents[2]["doc_url"] == "https://example.com/doc2b"
-    assert referenced_documents[2]["doc_title"] == "Doc2b"
+    assert str(referenced_documents[0].doc_url) == "https://example.com/doc1"
+    assert referenced_documents[0].doc_title == "Doc1"
+    assert str(referenced_documents[1].doc_url) == "https://example.com/doc2"
+    assert referenced_documents[1].doc_title == "Doc2"
+    assert str(referenced_documents[2].doc_url) == "https://example.com/doc2b"
+    assert referenced_documents[2].doc_title == "Doc2b"
 
     # Doc3 should not be included because it has "Title" instead of "title"
-    doc_titles = [doc["doc_title"] for doc in referenced_documents]
+    doc_titles = [doc.doc_title for doc in referenced_documents]
     assert "Doc3" not in doc_titles
 
 
@@ -1631,9 +1632,9 @@ Metadata: {'docs_url': 'https://example.com/doc1' 'title': 'Test Doc', 'document
     # Verify metadata_map remains empty due to exception
     assert len(metadata_map) == 0
 
-    # Verify debug logging was called
-    mock_logger.debug.assert_called_once()
-    args = mock_logger.debug.call_args[0]
+    # Verify exception logging was called
+    mock_logger.exception.assert_called_once()
+    args = mock_logger.exception.call_args[0]
     assert "An exception was thrown in processing" in args[0]
 
 
@@ -1658,9 +1659,9 @@ Metadata: {func_call(): 'value', 'title': 'Test Doc', 'document_id': 'doc-1'}
     # Verify metadata_map remains empty due to exception
     assert len(metadata_map) == 0
 
-    # Verify debug logging was called
-    mock_logger.debug.assert_called_once()
-    args = mock_logger.debug.call_args[0]
+    # Verify exception logging was called
+    mock_logger.exception.assert_called_once()
+    args = mock_logger.exception.call_args[0]
     assert "An exception was thrown in processing" in args[0]
 
 
@@ -1722,6 +1723,20 @@ def test_process_knowledge_search_content_with_no_text_attribute(mocker):
     _process_knowledge_search_content(tool_response, metadata_map)
 
     # Verify metadata_map remains empty since text attribute is missing
+    assert len(metadata_map) == 0
+
+
+def test_process_knowledge_search_content_with_none_content(mocker):
+    """Test _process_knowledge_search_content handles tool_response with content=None."""
+    # Mock tool response with content = None
+    tool_response = mocker.Mock()
+    tool_response.content = None
+
+    metadata_map = {}
+
+    _process_knowledge_search_content(tool_response, metadata_map)
+
+    # Verify metadata_map remains empty when content is None
     assert len(metadata_map) == 0
 
 

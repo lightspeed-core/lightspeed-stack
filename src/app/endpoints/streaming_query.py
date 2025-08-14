@@ -24,6 +24,7 @@ from configuration import configuration
 import metrics
 from models.requests import QueryRequest
 from models.database.conversations import UserConversation
+from models.responses import ReferencedDocument
 from utils.endpoints import check_configuration_loaded, get_agent, get_system_prompt
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
 
@@ -72,20 +73,27 @@ def stream_start_event(conversation_id: str) -> str:
 
 def stream_end_event(metadata_map: dict) -> str:
     """Yield the end of the data stream."""
+    # Create ReferencedDocument objects and convert them to serializable dict format
+    referenced_documents = []
+    for v in filter(
+        lambda v: ("docs_url" in v) and ("title" in v),
+        metadata_map.values(),
+    ):
+        doc = ReferencedDocument(doc_url=v["docs_url"], doc_title=v["title"])
+        referenced_documents.append(
+            {
+                "doc_url": str(
+                    doc.doc_url
+                ),  # Convert AnyUrl to string for JSON serialization
+                "doc_title": doc.doc_title,
+            }
+        )
+
     return format_stream_data(
         {
             "event": "end",
             "data": {
-                "referenced_documents": [
-                    {
-                        "doc_url": v["docs_url"],
-                        "doc_title": v["title"],
-                    }
-                    for v in filter(
-                        lambda v: ("docs_url" in v) and ("title" in v),
-                        metadata_map.values(),
-                    )
-                ],
+                "referenced_documents": referenced_documents,
                 "truncated": None,  # TODO(jboos): implement truncated
                 "input_tokens": 0,  # TODO(jboos): implement input tokens
                 "output_tokens": 0,  # TODO(jboos): implement output tokens
@@ -330,10 +338,14 @@ def _handle_tool_execution_event(
                         for match in METADATA_PATTERN.findall(text_content_item.text):
                             try:
                                 meta = ast.literal_eval(match)
-                                if "document_id" in meta:
+                                # Verify the result is a dict before accessing keys
+                                if isinstance(meta, dict) and "document_id" in meta:
                                     metadata_map[meta["document_id"]] = meta
-                            except Exception:  # pylint: disable=broad-except
-                                logger.debug(
+                            except (
+                                SyntaxError,
+                                ValueError,
+                            ):  # only expected from literal_eval
+                                logger.exception(
                                     "An exception was thrown in processing %s",
                                     match,
                                 )
