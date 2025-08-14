@@ -1594,14 +1594,14 @@ def test_process_knowledge_search_content_with_valid_metadata(mocker):
 Content: Test content
 Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Test Doc', 'document_id': 'doc-1'}
 """
-    
+
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
-    
+
     metadata_map = {}
-    
+
     _process_knowledge_search_content(tool_response, metadata_map)
-    
+
     # Verify metadata was correctly parsed and added
     assert "doc-1" in metadata_map
     assert metadata_map["doc-1"]["docs_url"] == "https://example.com/doc1"
@@ -1612,24 +1612,24 @@ Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Test Doc', 'documen
 def test_process_knowledge_search_content_with_invalid_metadata_syntax_error(mocker):
     """Test _process_knowledge_search_content handles SyntaxError from invalid metadata."""
     mock_logger = mocker.patch("app.endpoints.query.logger")
-    
+
     # Mock tool response with invalid metadata (invalid Python syntax)
     text_content_item = mocker.Mock()
     text_content_item.text = """Result 1
 Content: Test content
 Metadata: {'docs_url': 'https://example.com/doc1' 'title': 'Test Doc', 'document_id': 'doc-1'}
 """  # Missing comma between 'doc1' and 'title' - will cause SyntaxError
-    
+
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
-    
+
     metadata_map = {}
-    
+
     _process_knowledge_search_content(tool_response, metadata_map)
-    
+
     # Verify metadata_map remains empty due to exception
     assert len(metadata_map) == 0
-    
+
     # Verify debug logging was called
     mock_logger.debug.assert_called_once()
     args = mock_logger.debug.call_args[0]
@@ -1639,24 +1639,24 @@ Metadata: {'docs_url': 'https://example.com/doc1' 'title': 'Test Doc', 'document
 def test_process_knowledge_search_content_with_invalid_metadata_value_error(mocker):
     """Test _process_knowledge_search_content handles ValueError from invalid metadata."""
     mock_logger = mocker.patch("app.endpoints.query.logger")
-    
+
     # Mock tool response with invalid metadata containing complex expressions
     text_content_item = mocker.Mock()
     text_content_item.text = """Result 1
 Content: Test content
 Metadata: {func_call(): 'value', 'title': 'Test Doc', 'document_id': 'doc-1'}
 """  # Function call in dict - will cause ValueError since it's not a literal
-    
+
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
-    
+
     metadata_map = {}
-    
+
     _process_knowledge_search_content(tool_response, metadata_map)
-    
+
     # Verify metadata_map remains empty due to exception
     assert len(metadata_map) == 0
-    
+
     # Verify debug logging was called
     mock_logger.debug.assert_called_once()
     args = mock_logger.debug.call_args[0]
@@ -1666,24 +1666,24 @@ Metadata: {func_call(): 'value', 'title': 'Test Doc', 'document_id': 'doc-1'}
 def test_process_knowledge_search_content_with_non_dict_metadata(mocker):
     """Test _process_knowledge_search_content handles non-dict metadata gracefully."""
     mock_logger = mocker.patch("app.endpoints.query.logger")
-    
+
     # Mock tool response with metadata that's not a dict
     text_content_item = mocker.Mock()
     text_content_item.text = """Result 1
 Content: Test content
 Metadata: "just a string"
 """
-    
+
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
-    
+
     metadata_map = {}
-    
+
     _process_knowledge_search_content(tool_response, metadata_map)
-    
+
     # Verify metadata_map remains empty (no document_id in string)
     assert len(metadata_map) == 0
-    
+
     # No exception should be logged since string is valid literal
     mock_logger.debug.assert_not_called()
 
@@ -1696,14 +1696,14 @@ def test_process_knowledge_search_content_with_metadata_missing_document_id(mock
 Content: Test content
 Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Test Doc'}
 """  # No document_id field
-    
+
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
-    
+
     metadata_map = {}
-    
+
     _process_knowledge_search_content(tool_response, metadata_map)
-    
+
     # Verify metadata_map remains empty since document_id is missing
     assert len(metadata_map) == 0
 
@@ -1712,13 +1712,13 @@ def test_process_knowledge_search_content_with_no_text_attribute(mocker):
     """Test _process_knowledge_search_content skips content items without text attribute."""
     # Mock tool response with content item that has no text attribute
     text_content_item = mocker.Mock(spec=[])  # spec=[] means no attributes
-    
+
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
-    
+
     metadata_map = {}
-    
+
     _process_knowledge_search_content(tool_response, metadata_map)
-    
+
     # Verify metadata_map remains empty since text attribute is missing
     assert len(metadata_map) == 0
