@@ -43,7 +43,7 @@ logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
 auth_dependency = get_auth_dependency()
 
-METADATA_PATTERN = re.compile(r"^Metadata:\s*(\{.*?\})\s*$", re.MULTILINE)
+METADATA_PATTERN = re.compile(r"^\s*Metadata:\s*(\{.*?\})\s*$", re.MULTILINE)
 
 
 def _process_knowledge_search_content(
@@ -59,10 +59,11 @@ def _process_knowledge_search_content(
                 meta = ast.literal_eval(match)
                 if "document_id" in meta:
                     metadata_map[meta["document_id"]] = meta
-            except Exception:  # pylint: disable=broad-except
+            except (SyntaxError, ValueError):  # only expected from literal_eval
                 logger.debug(
                     "An exception was thrown in processing %s",
                     match,
+                    exc_info=True,
                 )
 
 
@@ -121,7 +122,7 @@ query_response: dict[int | str, dict[str, Any]] = {
         "description": "User is not authorized",
         "model": ForbiddenResponse,
     },
-    503: {
+    500: {
         "detail": {
             "response": "Unable to connect to Llama Stack",
             "cause": "Connection error.",
@@ -487,8 +488,10 @@ async def retrieve_response(  # pylint: disable=too-many-locals
 
     # When stream=False, response should have output_message attribute
     response_obj = cast(Any, response)
+    content = getattr(getattr(response_obj, "output_message", None), "content", "")
+    content_str = "" if content is None else str(content)
     return (
-        str(response_obj.output_message.content),
+        content_str,
         conversation_id,
         referenced_documents,
     )

@@ -45,6 +45,11 @@ Content: ABC
 Metadata: {'docs_url': 'https://example.com/doc2', 'title': 'Doc2', 'document_id': 'doc-2', \
 'source': None}
 """,
+    """Result 2b
+Content: ABC
+    Metadata: {'docs_url': 'https://example.com/doc2b', 'title': 'Doc2b', 'document_id': 'doc-2b', \
+'source': None}
+""",
     """END of knowledge_search tool results.
 """,
     # Following metadata contains an intentionally incorrect keyword "Title" (instead of "title")
@@ -101,10 +106,6 @@ def setup_configuration_fixture():
 async def test_query_endpoint_handler_configuration_not_loaded(mocker):
     """Test the query endpoint handler if configuration is not loaded."""
     # simulate state when no configuration is loaded
-    mocker.patch(
-        "app.endpoints.query.configuration",
-        return_value=mocker.Mock(),
-    )
     mocker.patch("app.endpoints.query.configuration", None)
 
     query = "What is OpenStack?"
@@ -272,12 +273,11 @@ async def test_query_endpoint_handler_with_referenced_documents(mocker):
 def test_select_model_and_provider_id_from_request(mocker):
     """Test the select_model_and_provider_id function."""
     mocker.patch(
-        "metrics.utils.configuration.inference.default_provider",
+        "app.endpoints.query.configuration.inference.default_provider",
         "default_provider",
     )
     mocker.patch(
-        "metrics.utils.configuration.inference.default_model",
-        "default_model",
+        "app.endpoints.query.configuration.inference.default_model", "default_model"
     )
 
     model_list = [
@@ -312,12 +312,11 @@ def test_select_model_and_provider_id_from_request(mocker):
 def test_select_model_and_provider_id_from_configuration(mocker):
     """Test the select_model_and_provider_id function."""
     mocker.patch(
-        "metrics.utils.configuration.inference.default_provider",
+        "app.endpoints.query.configuration.inference.default_provider",
         "default_provider",
     )
     mocker.patch(
-        "metrics.utils.configuration.inference.default_model",
-        "default_model",
+        "app.endpoints.query.configuration.inference.default_model", "default_model"
     )
 
     model_list = [
@@ -557,11 +556,13 @@ async def test_retrieve_response_with_knowledge_search_extracts_referenced_docum
     assert conversation_id == "fake_conversation_id"
 
     # Assert referenced documents were extracted correctly
-    assert len(referenced_documents) == 2
+    assert len(referenced_documents) == 3
     assert referenced_documents[0]["doc_url"] == "https://example.com/doc1"
     assert referenced_documents[0]["doc_title"] == "Doc1"
     assert referenced_documents[1]["doc_url"] == "https://example.com/doc2"
     assert referenced_documents[1]["doc_title"] == "Doc2"
+    assert referenced_documents[2]["doc_url"] == "https://example.com/doc2b"
+    assert referenced_documents[2]["doc_title"] == "Doc2b"
 
     # Doc3 should not be included because it has "Title" instead of "title"
     doc_titles = [doc["doc_title"] for doc in referenced_documents]
@@ -1722,3 +1723,153 @@ def test_process_knowledge_search_content_with_no_text_attribute(mocker):
 
     # Verify metadata_map remains empty since text attribute is missing
     assert len(metadata_map) == 0
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_with_none_content(prepare_agent_mocks, mocker):
+    """Test retrieve_response handles None content gracefully."""
+    mock_client, mock_agent = prepare_agent_mocks
+
+    # Mock response with None content
+    mock_response = mocker.Mock()
+    mock_response.output_message.content = None
+    mock_response.steps = []
+    mock_agent.create_turn.return_value = mock_response
+
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.query.get_agent",
+        return_value=(mock_agent, "fake_conversation_id", "fake_session_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response, conversation_id, _ = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    # Should return empty string instead of "None"
+    assert response == ""
+    assert conversation_id == "fake_conversation_id"
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_with_missing_output_message(
+    prepare_agent_mocks, mocker
+):
+    """Test retrieve_response handles missing output_message gracefully."""
+    mock_client, mock_agent = prepare_agent_mocks
+
+    # Mock response without output_message attribute
+    mock_response = mocker.Mock(spec=["steps"])  # Only has steps attribute
+    mock_response.steps = []
+    mock_agent.create_turn.return_value = mock_response
+
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.query.get_agent",
+        return_value=(mock_agent, "fake_conversation_id", "fake_session_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response, conversation_id, _ = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    # Should return empty string when output_message is missing
+    assert response == ""
+    assert conversation_id == "fake_conversation_id"
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_with_missing_content_attribute(
+    prepare_agent_mocks, mocker
+):
+    """Test retrieve_response handles missing content attribute gracefully."""
+    mock_client, mock_agent = prepare_agent_mocks
+
+    # Mock response with output_message but no content attribute
+    mock_response = mocker.Mock()
+    mock_response.output_message = mocker.Mock(spec=[])  # No content attribute
+    mock_response.steps = []
+    mock_agent.create_turn.return_value = mock_response
+
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.query.get_agent",
+        return_value=(mock_agent, "fake_conversation_id", "fake_session_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response, conversation_id, _ = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    # Should return empty string when content attribute is missing
+    assert response == ""
+    assert conversation_id == "fake_conversation_id"
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_with_structured_content_object(
+    prepare_agent_mocks, mocker
+):
+    """Test retrieve_response handles structured content objects properly."""
+    mock_client, mock_agent = prepare_agent_mocks
+
+    # Mock response with a structured content object
+    structured_content = {"type": "text", "value": "This is structured content"}
+    mock_response = mocker.Mock()
+    mock_response.output_message.content = structured_content
+    mock_response.steps = []
+    mock_agent.create_turn.return_value = mock_response
+
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.query.get_agent",
+        return_value=(mock_agent, "fake_conversation_id", "fake_session_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response, conversation_id, _ = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    # Should convert the structured object to string representation
+    assert response == str(structured_content)
+    assert conversation_id == "fake_conversation_id"
