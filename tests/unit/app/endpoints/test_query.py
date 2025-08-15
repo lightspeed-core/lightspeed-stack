@@ -23,6 +23,7 @@ from app.endpoints.query import (
     get_rag_toolgroups,
     evaluate_model_hints,
     _process_knowledge_search_content,
+    extract_referenced_documents_from_steps,
 )
 
 from models.requests import QueryRequest, Attachment
@@ -1982,9 +1983,6 @@ Metadata: {'docs_url': 'invalid-url', 'title': 'Invalid Doc', 'document_id': 'do
     mock_tool_execution_step.tool_responses = [mock_tool_response]
 
     steps = [mock_tool_execution_step]
-
-    # Import the function directly to test it
-    from app.endpoints.query import extract_referenced_documents_from_steps
 
     referenced_documents = extract_referenced_documents_from_steps(steps)
 

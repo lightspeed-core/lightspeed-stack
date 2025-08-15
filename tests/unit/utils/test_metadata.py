@@ -128,3 +128,65 @@ Content: Some content
     assert len(result) == 1
     assert "doc-1" in result
     assert result["doc-1"]["title"] == "Doc1"
+
+
+def test_parse_metadata_duplicate_document_id_last_wins():
+    """Test that duplicate document_id entries overwrite (last wins)."""
+    text = (
+        "Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Doc1a', "
+        "'document_id': 'dup'}\n"
+        "Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Doc1b', "
+        "'document_id': 'dup'}"
+    )
+    result = parse_knowledge_search_metadata(text)
+
+    assert list(result.keys()) == ["dup"]
+    assert result["dup"]["title"] == "Doc1b"
+
+
+def test_parse_knowledge_search_metadata_non_strict_mode():
+    """Test non-strict mode skips invalid blocks and continues parsing."""
+    text = """Result 1
+Content: Valid content
+Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Doc1', 'document_id': 'doc-1'}
+
+Result 2
+Content: Bad content
+Metadata: {'docs_url': 'https://example.com/doc2' 'title': 'Doc2', 'document_id': 'doc-2'}
+
+Result 3
+Content: More valid content
+Metadata: {'docs_url': 'https://example.com/doc3', 'title': 'Doc3', 'document_id': 'doc-3'}
+"""
+    result = parse_knowledge_search_metadata(text, strict=False)
+
+    # Should have 2 valid documents, skipping the malformed one
+    assert len(result) == 2
+    assert "doc-1" in result
+    assert "doc-3" in result
+    assert "doc-2" not in result  # malformed entry should be skipped
+    assert result["doc-1"]["title"] == "Doc1"
+    assert result["doc-3"]["title"] == "Doc3"
+
+
+def test_parse_knowledge_search_metadata_strict_mode_default():
+    """Test that strict mode is the default behavior."""
+    text = """Result 1
+Content: Valid content
+Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Doc1', 'document_id': 'doc-1'}
+
+Result 2
+Content: Bad content
+Metadata: {'docs_url': 'https://example.com/doc2' 'title': 'Doc2', 'document_id': 'doc-2'}
+"""
+    # Should raise ValueError in strict mode (default)
+    with pytest.raises(ValueError) as exc_info:
+        parse_knowledge_search_metadata(text)
+
+    assert "Failed to parse metadata" in str(exc_info.value)
+
+    # Explicitly setting strict=True should behave the same
+    with pytest.raises(ValueError) as exc_info:
+        parse_knowledge_search_metadata(text, strict=True)
+
+    assert "Failed to parse metadata" in str(exc_info.value)

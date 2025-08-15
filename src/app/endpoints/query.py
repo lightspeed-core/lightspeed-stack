@@ -84,7 +84,9 @@ def _process_knowledge_search_content(
             )
 
 
-def extract_referenced_documents_from_steps(steps: list) -> list[ReferencedDocument]:
+def extract_referenced_documents_from_steps(
+    steps: list[Any],
+) -> list[ReferencedDocument]:
     """Extract referenced documents from tool execution steps.
 
     Args:
@@ -116,7 +118,7 @@ def extract_referenced_documents_from_steps(steps: list) -> list[ReferencedDocum
             try:
                 doc = ReferencedDocument(doc_url=v["docs_url"], doc_title=v["title"])
                 referenced_documents.append(doc)
-            except (pydantic.ValidationError, ValueError, Exception) as e:
+            except (pydantic.ValidationError, ValueError) as e:
                 logger.warning(
                     "Skipping invalid referenced document with docs_url='%s', title='%s': %s",
                     v.get("docs_url", "<missing>"),

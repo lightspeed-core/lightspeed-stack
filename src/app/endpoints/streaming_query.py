@@ -87,7 +87,7 @@ def stream_end_event(metadata_map: dict) -> str:
                     "doc_title": doc.doc_title,
                 }
             )
-        except (pydantic.ValidationError, ValueError, Exception) as e:
+        except (pydantic.ValidationError, ValueError) as e:
             logger.warning(
                 "Skipping invalid referenced document with docs_url='%s', title='%s': %s",
                 v.get("docs_url", "<missing>"),
