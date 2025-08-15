@@ -19,6 +19,8 @@ from models.database.conversations import UserConversation
 from auth import get_auth_dependency
 from app.database import get_session
 from utils.endpoints import check_configuration_loaded, validate_conversation_ownership
+from authorization.middleware import authorize
+from authorization.models import Action
 from utils.suid import check_suid
 
 logger = logging.getLogger("app.endpoints.handlers")
@@ -200,6 +202,7 @@ def get_conversations_list_endpoint_handler(
 
 
 @router.get("/conversations/{conversation_id}", responses=conversation_responses)
+@authorize(Action.GET_CONVERSATION)
 async def get_conversation_endpoint_handler(
     conversation_id: str,
     auth: Any = Depends(auth_dependency),
@@ -309,6 +312,7 @@ async def get_conversation_endpoint_handler(
 @router.delete(
     "/conversations/{conversation_id}", responses=conversation_delete_responses
 )
+@authorize(Action.DELETE_CONVERSATION)
 async def delete_conversation_endpoint_handler(
     conversation_id: str,
     auth: Any = Depends(auth_dependency),
