@@ -14,7 +14,8 @@ COPY README.md ./
 COPY src/ ./src/
 
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
-    python3.12 python3.12-devel python3.12-pip git tar
+    python3.12 python3.12-devel python3.12-pip git tar \
+    gcc gcc-c++ make
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 

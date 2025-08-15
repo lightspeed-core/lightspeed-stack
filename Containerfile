@@ -1,5 +1,5 @@
 # vim: set filetype=dockerfile
-FROM registry.access.redhat.com/ubi9/python-312-minimal AS builder
+FROM registry.access.redhat.com/ubi9/ubi-minimal AS builder
 
 ARG APP_ROOT=/app-root
 ARG LSC_SOURCE_DIR=.
@@ -7,19 +7,39 @@ ARG LSC_SOURCE_DIR=.
 # UV_PYTHON_DOWNLOADS=0 : Disable Python interpreter downloads and use the system interpreter.
 ENV UV_COMPILE_BYTECODE=0 \
     UV_LINK_MODE=copy \
-    UV_PYTHON_DOWNLOADS=0
+    UV_PYTHON_DOWNLOADS=0 \
+    PATH="$PATH:/root/.local/bin"
 
 WORKDIR /app-root
 
-# Install uv package manager
-RUN pip3.12 install uv
+RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
+    python3.12 python3.12-devel python3.12-pip git tar \
+    gcc gcc-c++ make
 
 # Add explicit files and directories
 # (avoid accidental inclusion of local directories or env files or credentials)
 COPY ${LSC_SOURCE_DIR}/src ./src
 COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR}/README.md ${LSC_SOURCE_DIR}/uv.lock ./
 
-RUN uv sync --locked --no-dev
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
+RUN uv sync --locked --no-dev && \
+    uv pip install \
+    opentelemetry-sdk \
+    opentelemetry-exporter-otlp \
+    opentelemetry-instrumentation \
+    aiosqlite \
+    litellm \
+    blobfile \
+    datasets \
+    sqlalchemy \
+    faiss-cpu \
+    mcp \
+    autoevals \
+    psutil \
+    torch \
+    peft \
+    trl
 
 
 # Final image without uv package manager
