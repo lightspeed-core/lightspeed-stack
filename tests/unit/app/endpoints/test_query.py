@@ -1762,10 +1762,12 @@ def test_process_knowledge_search_content_duplicate_document_id_last_wins(mocker
 def test_process_knowledge_search_content_with_braces_inside_strings(mocker):
     """Test that braces inside strings are handled correctly."""
     text_content_item = mocker.Mock()
-    text_content_item.text = """Result 1
-Content: Test content
-metadata: {'document_id': 'doc-100', 'title': 'A {weird} title', "
-"'docs_url': 'https://example.com/100', 'extra': {'note': 'contains {braces}'}}"""
+    text_content_item.text = (
+        "Result 1\n"
+        "Content: Test content\n"
+        "Metadata: {'document_id': 'doc-100', 'title': 'A {weird} title', "
+        "'docs_url': 'https://example.com/100', 'extra': {'note': 'contains {braces}'}}"
+    )
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
@@ -1779,10 +1781,12 @@ metadata: {'document_id': 'doc-100', 'title': 'A {weird} title', "
 def test_process_knowledge_search_content_with_nested_objects(mocker):
     """Test that nested objects are parsed correctly."""
     text_content_item = mocker.Mock()
-    text_content_item.text = """Result 1
-Content: Test content
-MetaData: {"document_id": "doc-200", "title": "Nested JSON", "
-""docs_url": "https://example.com/200", "meta": {"k": {"inner": 1}}}"""
+    text_content_item.text = (
+        "Result 1\n"
+        "Content: Test content\n"
+        'Metadata: {"document_id": "doc-200", "title": "Nested JSON", '
+        '"docs_url": "https://example.com/200", "meta": {"k": {"inner": 1}}}'
+    )
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
