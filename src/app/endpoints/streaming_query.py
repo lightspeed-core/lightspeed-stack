@@ -4,13 +4,16 @@ import ast
 import json
 import re
 import logging
-from typing import Annotated, Any, AsyncIterator, Iterator
+from typing import Annotated, Any, AsyncIterator, Iterator, cast
 
 from llama_stack_client import APIConnectionError
 from llama_stack_client import AsyncLlamaStackClient  # type: ignore
 from llama_stack_client.types import UserMessage  # type: ignore
 
 from llama_stack_client.lib.agents.event_logger import interleaved_content_as_str
+from llama_stack_client.types.agents.agent_turn_response_stream_chunk import (
+    AgentTurnResponseStreamChunk,
+)
 from llama_stack_client.types.shared import ToolCall
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 
@@ -26,13 +29,14 @@ from models.requests import QueryRequest
 from models.database.conversations import UserConversation
 from utils.endpoints import check_configuration_loaded, get_agent, get_system_prompt
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
+from utils.transcripts import store_transcript
+from utils.types import TurnSummary
 
 from app.endpoints.query import (
     get_rag_toolgroups,
     is_input_shield,
     is_output_shield,
     is_transcripts_enabled,
-    store_transcript,
     select_model_and_provider_id,
     validate_attachments_metadata,
     validate_conversation_ownership,
@@ -436,23 +440,29 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         )
         metadata_map: dict[str, dict[str, Any]] = {}
 
-        async def response_generator(turn_response: Any) -> AsyncIterator[str]:
+        async def response_generator(
+            turn_response: AsyncIterator[AgentTurnResponseStreamChunk],
+        ) -> AsyncIterator[str]:
             """Generate SSE formatted streaming response."""
             chunk_id = 0
-            complete_response = "No response from the model"
+            summary = TurnSummary(
+                llm_response="No response from the model", tool_calls=[]
+            )
 
             # Send start event
             yield stream_start_event(conversation_id)
 
             async for chunk in turn_response:
+                p = chunk.event.payload
+                if p.event_type == "turn_complete":
+                    summary.llm_response = interleaved_content_as_str(
+                        p.turn.output_message.content
+                    )
+                elif p.event_type == "step_complete":
+                    if p.step_details.step_type == "tool_execution":
+                        summary.append_tool_calls_from_llama(p.step_details)
+
                 for event in stream_build_event(chunk, chunk_id, metadata_map):
-                    if (
-                        json.loads(event.replace("data: ", ""))["event"]
-                        == "turn_complete"
-                    ):
-                        complete_response = json.loads(event.replace("data: ", ""))[
-                            "data"
-                        ]["token"]
                     chunk_id += 1
                     yield event
 
@@ -469,7 +479,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
                     query_is_valid=True,  # TODO(lucasagomes): implement as part of query validation
                     query=query_request.query,
                     query_request=query_request,
-                    response=complete_response,
+                    summary=summary,
                     rag_chunks=[],  # TODO(lucasagomes): implement rag_chunks
                     truncated=False,  # TODO(lucasagomes): implement truncation as part
                     # of quota work
@@ -507,7 +517,7 @@ async def retrieve_response(
     query_request: QueryRequest,
     token: str,
     mcp_headers: dict[str, dict[str, str]] | None = None,
-) -> tuple[Any, str]:
+) -> tuple[AsyncIterator[AgentTurnResponseStreamChunk], str]:
     """Retrieve response from LLMs and agents."""
     available_input_shields = [
         shield.identifier
@@ -588,5 +598,6 @@ async def retrieve_response(
         stream=True,
         toolgroups=toolgroups,
     )
+    response = cast(AsyncIterator[AgentTurnResponseStreamChunk], response)
 
     return response, conversation_id
