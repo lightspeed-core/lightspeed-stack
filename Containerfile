@@ -42,6 +42,11 @@ COPY --from=builder --chown=1001:1001 /app-root /app-root
 # this directory is checked by ecosystem-cert-preflight-checks task in Konflux
 COPY --from=builder /app-root/LICENSE /licenses/
 
+# Add uv to final image for derived images to add additional dependencies
+# with command:
+# $ uv pip install <dependency>
+RUN pip3.12 install uv
+
 # Add executables from .venv to system PATH
 ENV PATH="/app-root/.venv/bin:$PATH"
 
