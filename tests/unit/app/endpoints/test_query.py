@@ -1601,9 +1601,7 @@ Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Test Doc', 'documen
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = {}
-
-    _process_knowledge_search_content(tool_response, metadata_map)
+    metadata_map = _process_knowledge_search_content(tool_response)
 
     # Verify metadata was correctly parsed and added
     assert "doc-1" in metadata_map
@@ -1626,9 +1624,7 @@ Metadata: {'docs_url': 'https://example.com/doc1' 'title': 'Test Doc', 'document
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = {}
-
-    _process_knowledge_search_content(tool_response, metadata_map)
+    metadata_map = _process_knowledge_search_content(tool_response)
 
     # Verify metadata_map remains empty due to exception
     assert len(metadata_map) == 0
@@ -1653,9 +1649,7 @@ Metadata: {func_call(): 'value', 'title': 'Test Doc', 'document_id': 'doc-1'}
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = {}
-
-    _process_knowledge_search_content(tool_response, metadata_map)
+    metadata_map = _process_knowledge_search_content(tool_response)
 
     # Verify metadata_map remains empty due to exception
     assert len(metadata_map) == 0
@@ -1680,9 +1674,7 @@ Metadata: "just a string"
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = {}
-
-    _process_knowledge_search_content(tool_response, metadata_map)
+    metadata_map = _process_knowledge_search_content(tool_response)
 
     # Verify metadata_map remains empty (no document_id in string)
     assert len(metadata_map) == 0
@@ -1703,9 +1695,7 @@ Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Test Doc'}
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = {}
-
-    _process_knowledge_search_content(tool_response, metadata_map)
+    metadata_map = _process_knowledge_search_content(tool_response)
 
     # Verify metadata_map remains empty since document_id is missing
     assert len(metadata_map) == 0
@@ -1719,9 +1709,7 @@ def test_process_knowledge_search_content_with_no_text_attribute(mocker):
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = {}
-
-    _process_knowledge_search_content(tool_response, metadata_map)
+    metadata_map = _process_knowledge_search_content(tool_response)
 
     # Verify metadata_map remains empty since text attribute is missing
     assert len(metadata_map) == 0
@@ -1733,9 +1721,7 @@ def test_process_knowledge_search_content_with_none_content(mocker):
     tool_response = mocker.Mock()
     tool_response.content = None
 
-    metadata_map = {}
-
-    _process_knowledge_search_content(tool_response, metadata_map)
+    metadata_map = _process_knowledge_search_content(tool_response)
 
     # Verify metadata_map remains empty when content is None
     assert len(metadata_map) == 0

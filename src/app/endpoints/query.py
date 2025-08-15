@@ -50,23 +50,30 @@ router = APIRouter(tags=["query"])
 auth_dependency = get_auth_dependency()
 
 
-def _process_knowledge_search_content(
-    tool_response: Any, metadata_map: dict[str, dict[str, Any]]
-) -> None:
-    """Process knowledge search tool response content for metadata."""
+def _process_knowledge_search_content(tool_response: Any) -> dict[str, dict[str, Any]]:
+    """Process knowledge search tool response content for metadata.
+
+    Args:
+        tool_response: Tool response object containing content to parse
+
+    Returns:
+        Dictionary mapping document_id to metadata dict
+    """
+    metadata_map: dict[str, dict[str, Any]] = {}
+
     # Guard against missing tool_response or content
     if not tool_response:
-        return
+        return metadata_map
 
     content = getattr(tool_response, "content", None)
     if not content:
-        return
+        return metadata_map
 
     # Ensure content is iterable
     try:
         iter(content)
     except TypeError:
-        return
+        return metadata_map
 
     for text_content_item in content:
         # Skip items that lack a non-empty "text" attribute
@@ -82,6 +89,8 @@ def _process_knowledge_search_content(
                 "An exception was thrown in processing metadata from text: %s",
                 text[:200] + "..." if len(text) > 200 else text,
             )
+
+    return metadata_map
 
 
 def extract_referenced_documents_from_steps(
@@ -109,7 +118,8 @@ def extract_referenced_documents_from_steps(
             ) != "knowledge_search" or not getattr(tool_response, "content", []):
                 continue
 
-            _process_knowledge_search_content(tool_response, metadata_map)
+            response_metadata = _process_knowledge_search_content(tool_response)
+            metadata_map.update(response_metadata)
 
     # Extract referenced documents from metadata with error handling
     referenced_documents = []
