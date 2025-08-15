@@ -264,6 +264,7 @@ async def test_query_endpoint_handler_with_referenced_documents(mocker):
     assert response.response == llm_response
     assert response.conversation_id == conversation_id
     assert response.referenced_documents == referenced_documents
+    assert all(isinstance(d, ReferencedDocument) for d in response.referenced_documents)
     assert len(response.referenced_documents) == 2
     assert response.referenced_documents[0].doc_title == "Doc1"
     assert response.referenced_documents[1].doc_title == "Doc2"
@@ -1727,6 +1728,71 @@ def test_process_knowledge_search_content_with_none_content(mocker):
     assert len(metadata_map) == 0
 
 
+def test_process_knowledge_search_content_duplicate_document_id_last_wins(mocker):
+    """The last metadata block for a given document_id should win."""
+    text_items = [
+        mocker.Mock(
+            text="Metadata: {'docs_url': 'https://example.com/first', "
+            "'title': 'First', 'document_id': 'doc-x'}"
+        ),
+        mocker.Mock(
+            text="Metadata: {'docs_url': 'https://example.com/second', "
+            "'title': 'Second', 'document_id': 'doc-x'}"
+        ),
+    ]
+    tool_response = mocker.Mock()
+    tool_response.tool_name = "knowledge_search"
+    tool_response.content = text_items
+
+    # Process content
+    metadata_map = _process_knowledge_search_content(tool_response)
+    assert metadata_map["doc-x"]["docs_url"] == "https://example.com/second"
+    assert metadata_map["doc-x"]["title"] == "Second"
+
+    # Ensure extraction reflects last-wins as well
+    step = mocker.Mock()
+    step.step_type = "tool_execution"
+    step.tool_responses = [tool_response]
+    docs = extract_referenced_documents_from_steps([step])
+    assert len(docs) == 1
+    assert str(docs[0].doc_url) == "https://example.com/second"
+    assert docs[0].doc_title == "Second"
+
+
+def test_process_knowledge_search_content_with_braces_inside_strings(mocker):
+    """Test that braces inside strings are handled correctly."""
+    text_content_item = mocker.Mock()
+    text_content_item.text = """Result 1
+Content: Test content
+metadata: {'document_id': 'doc-100', 'title': 'A {weird} title', "
+"'docs_url': 'https://example.com/100', 'extra': {'note': 'contains {braces}'}}"""
+    tool_response = mocker.Mock()
+    tool_response.content = [text_content_item]
+
+    metadata_map = _process_knowledge_search_content(tool_response)
+    assert "doc-100" in metadata_map
+    assert metadata_map["doc-100"]["title"] == "A {weird} title"
+    assert metadata_map["doc-100"]["docs_url"] == "https://example.com/100"
+    assert metadata_map["doc-100"]["extra"]["note"] == "contains {braces}"
+
+
+def test_process_knowledge_search_content_with_nested_objects(mocker):
+    """Test that nested objects are parsed correctly."""
+    text_content_item = mocker.Mock()
+    text_content_item.text = """Result 1
+Content: Test content
+MetaData: {"document_id": "doc-200", "title": "Nested JSON", "
+""docs_url": "https://example.com/200", "meta": {"k": {"inner": 1}}}"""
+    tool_response = mocker.Mock()
+    tool_response.content = [text_content_item]
+
+    metadata_map = _process_knowledge_search_content(tool_response)
+    assert "doc-200" in metadata_map
+    assert metadata_map["doc-200"]["title"] == "Nested JSON"
+    assert metadata_map["doc-200"]["docs_url"] == "https://example.com/200"
+    assert metadata_map["doc-200"]["meta"]["k"]["inner"] == 1
+
+
 @pytest.mark.asyncio
 async def test_retrieve_response_with_none_content(prepare_agent_mocks, mocker):
     """Test retrieve_response handles None content gracefully."""
@@ -1880,6 +1946,9 @@ async def test_retrieve_response_with_structured_content_object(
 @pytest.mark.asyncio
 async def test_retrieve_response_skips_invalid_docs_url(prepare_agent_mocks, mocker):
     """Test that retrieve_response skips entries with invalid docs_url."""
+    # Mock logger to capture warning logs
+    mock_logger = mocker.patch("app.endpoints.query.logger")
+
     mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
@@ -1939,6 +2008,13 @@ Metadata: {'docs_url': 'not-a-valid-url', 'title': 'Invalid Doc', 'document_id':
     assert len(referenced_documents) == 1
     assert str(referenced_documents[0].doc_url) == "https://example.com/doc1"
     assert referenced_documents[0].doc_title == "Valid Doc"
+
+    # Ensure we logged a warning for the invalid docs_url
+    assert any(
+        call[0][0].startswith("Skipping invalid referenced document")
+        or "Skipping invalid referenced document" in str(call)
+        for call in mock_logger.warning.call_args_list
+    )
 
 
 @pytest.mark.asyncio
