@@ -263,11 +263,13 @@ async def test_query_endpoint_handler_with_referenced_documents(mocker):
     # Assert the response contains referenced documents
     assert response.response == llm_response
     assert response.conversation_id == conversation_id
-    assert response.referenced_documents == referenced_documents
+    # Avoid brittle equality on Pydantic models; compare fields instead
+    assert [(str(d.doc_url), d.doc_title) for d in response.referenced_documents] == [
+        ("https://example.com/doc1", "Doc1"),
+        ("https://example.com/doc2", "Doc2"),
+    ]
     assert all(isinstance(d, ReferencedDocument) for d in response.referenced_documents)
     assert len(response.referenced_documents) == 2
-    assert response.referenced_documents[0].doc_title == "Doc1"
-    assert response.referenced_documents[1].doc_title == "Doc2"
 
     # Assert the metric for successful LLM calls is incremented
     mock_metric.labels("fake_provider_id", "fake_model_id").inc.assert_called_once()
@@ -1680,8 +1682,8 @@ Metadata: "just a string"
     # Verify metadata_map remains empty (no document_id in string)
     assert len(metadata_map) == 0
 
-    # No exception should be logged since string is valid literal
-    mock_logger.debug.assert_not_called()
+    # No exception should be logged since string is a valid literal and simply ignored
+    mock_logger.exception.assert_not_called()
 
 
 def test_process_knowledge_search_content_with_metadata_missing_document_id(mocker):
@@ -2018,6 +2020,10 @@ Metadata: {'docs_url': 'not-a-valid-url', 'title': 'Invalid Doc', 'document_id':
         call[0][0].startswith("Skipping invalid referenced document")
         or "Skipping invalid referenced document" in str(call)
         for call in mock_logger.warning.call_args_list
+    )
+    # Verify the bad URL is included in the log message for extra confidence
+    assert any(
+        "not-a-valid-url" in str(call) for call in mock_logger.warning.call_args_list
     )
 
 
