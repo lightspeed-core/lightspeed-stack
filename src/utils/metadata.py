@@ -128,9 +128,16 @@ def process_knowledge_search_content(tool_response: Any) -> dict[str, dict[str, 
         try:
             content = json.loads(content, strict=False)
         except (json.JSONDecodeError, TypeError):
-            # If JSON parsing fails or content is still a string, return empty
-            if isinstance(content, str):
-                return metadata_map
+            # If JSON parsing fails, try parsing as metadata text
+            try:
+                parsed_metadata = parse_knowledge_search_metadata(content, strict=False)
+                metadata_map.update(parsed_metadata)
+            except ValueError as e:
+                logger.exception(
+                    "Error processing string content as metadata; position=%s",
+                    getattr(e, "position", "unknown"),
+                )
+            return metadata_map
 
     # Ensure content is iterable (but not a string)
     if isinstance(content, str):

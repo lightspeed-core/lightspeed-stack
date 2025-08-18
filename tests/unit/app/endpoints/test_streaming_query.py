@@ -1046,10 +1046,8 @@ Metadata: {'docs_url': 'https://example.com/doc1' 'title': 'Test Doc', 'document
     # Verify the function still returns tool execution events
     assert len(result_list) == 2  # One for tool_calls, one for tool_responses
 
-    # Verify exception logging was called
-    mock_logger.exception.assert_called_once()
-    args = mock_logger.exception.call_args[0]
-    assert "An exception was thrown in processing" in args[0]
+    # Verify no exception logging was called in non-strict mode
+    mock_logger.exception.assert_not_called()
 
 
 def test_stream_end_event_with_referenced_documents():

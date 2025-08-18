@@ -1592,7 +1592,7 @@ def test_evaluate_model_hints(
     assert model_id == expected_model
 
 
-def testprocess_knowledge_search_content_with_valid_metadata(mocker):
+def test_process_knowledge_search_content_with_valid_metadata(mocker):
     """Test process_knowledge_search_content with valid metadata."""
     # Mock tool response with valid metadata
     text_content_item = mocker.Mock()
@@ -1613,7 +1613,7 @@ Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Test Doc', 'documen
     assert metadata_map["doc-1"]["document_id"] == "doc-1"
 
 
-def testprocess_knowledge_search_content_with_invalid_metadata_syntax_error(mocker):
+def test_process_knowledge_search_content_with_invalid_metadata_syntax_error(mocker):
     """Test process_knowledge_search_content gracefully handles SyntaxError."""
     # Mock tool response with invalid metadata (invalid Python syntax)
     text_content_item = mocker.Mock()
@@ -1631,7 +1631,7 @@ Metadata: {'docs_url': 'https://example.com/doc1' 'title': 'Test Doc', 'document
     assert len(metadata_map) == 0
 
 
-def testprocess_knowledge_search_content_with_invalid_metadata_value_error(mocker):
+def test_process_knowledge_search_content_with_invalid_metadata_value_error(mocker):
     """Test process_knowledge_search_content gracefully handles ValueError from invalid metadata."""
     # Mock tool response with invalid metadata containing complex expressions
     text_content_item = mocker.Mock()
@@ -1649,7 +1649,7 @@ Metadata: {func_call(): 'value', 'title': 'Test Doc', 'document_id': 'doc-1'}
     assert len(metadata_map) == 0
 
 
-def testprocess_knowledge_search_content_with_non_dict_metadata(mocker):
+def test_process_knowledge_search_content_with_non_dict_metadata(mocker):
     """Test process_knowledge_search_content handles non-dict metadata gracefully."""
     mock_logger = mocker.patch("app.endpoints.query.logger")
 
@@ -1672,7 +1672,7 @@ Metadata: "just a string"
     mock_logger.exception.assert_not_called()
 
 
-def testprocess_knowledge_search_content_with_metadata_missing_document_id(mocker):
+def test_process_knowledge_search_content_with_metadata_missing_document_id(mocker):
     """Test process_knowledge_search_content skips metadata without document_id."""
     # Mock tool response with valid metadata but missing document_id
     text_content_item = mocker.Mock()
@@ -1690,7 +1690,7 @@ Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Test Doc'}
     assert len(metadata_map) == 0
 
 
-def testprocess_knowledge_search_content_with_no_text_attribute(mocker):
+def test_process_knowledge_search_content_with_no_text_attribute(mocker):
     """Test process_knowledge_search_content skips content items without text attribute."""
     # Mock tool response with content item that has no text attribute
     text_content_item = mocker.Mock(spec=[])  # spec=[] means no attributes
@@ -1704,7 +1704,7 @@ def testprocess_knowledge_search_content_with_no_text_attribute(mocker):
     assert len(metadata_map) == 0
 
 
-def testprocess_knowledge_search_content_with_none_content(mocker):
+def test_process_knowledge_search_content_with_none_content(mocker):
     """Test process_knowledge_search_content handles tool_response with content=None."""
     # Mock tool response with content = None
     tool_response = mocker.Mock()
@@ -1716,7 +1716,7 @@ def testprocess_knowledge_search_content_with_none_content(mocker):
     assert len(metadata_map) == 0
 
 
-def testprocess_knowledge_search_content_duplicate_document_id_last_wins(mocker):
+def test_process_knowledge_search_content_duplicate_document_id_last_wins(mocker):
     """The last metadata block for a given document_id should win."""
     text_items = [
         mocker.Mock(
@@ -1747,7 +1747,7 @@ def testprocess_knowledge_search_content_duplicate_document_id_last_wins(mocker)
     assert docs[0].doc_title == "Second"
 
 
-def testprocess_knowledge_search_content_with_braces_inside_strings(mocker):
+def test_process_knowledge_search_content_with_braces_inside_strings(mocker):
     """Test that braces inside strings are handled correctly."""
     text_content_item = mocker.Mock()
     text_content_item.text = (
@@ -1766,7 +1766,7 @@ def testprocess_knowledge_search_content_with_braces_inside_strings(mocker):
     assert metadata_map["doc-100"]["extra"]["note"] == "contains {braces}"
 
 
-def testprocess_knowledge_search_content_with_nested_objects(mocker):
+def test_process_knowledge_search_content_with_nested_objects(mocker):
     """Test that nested objects are parsed correctly."""
     text_content_item = mocker.Mock()
     text_content_item.text = (
@@ -1783,6 +1783,33 @@ def testprocess_knowledge_search_content_with_nested_objects(mocker):
     assert metadata_map["doc-200"]["title"] == "Nested JSON"
     assert metadata_map["doc-200"]["docs_url"] == "https://example.com/200"
     assert metadata_map["doc-200"]["meta"]["k"]["inner"] == 1
+
+
+def test_process_knowledge_search_content_with_string_fallback_parsing(mocker):
+    """Test that string content uses parse_knowledge_search_metadata as fallback."""
+    # Create a tool response with string content containing metadata
+    string_content = """Result 1
+Content: Test content
+Metadata: {'docs_url': 'https://example.com/fallback', 'title': 'Fallback Doc', 'document_id': 'fallback-1'}
+
+Result 2
+Content: More content
+Metadata: {'docs_url': 'https://example.com/fallback2', 'title': 'Fallback Doc 2', 'document_id': 'fallback-2'}
+"""
+
+    tool_response = mocker.Mock()
+    tool_response.content = string_content  # String instead of list
+
+    metadata_map = process_knowledge_search_content(tool_response)
+
+    # Verify fallback parsing worked correctly
+    assert len(metadata_map) == 2
+    assert "fallback-1" in metadata_map
+    assert "fallback-2" in metadata_map
+    assert metadata_map["fallback-1"]["title"] == "Fallback Doc"
+    assert metadata_map["fallback-1"]["docs_url"] == "https://example.com/fallback"
+    assert metadata_map["fallback-2"]["title"] == "Fallback Doc 2"
+    assert metadata_map["fallback-2"]["docs_url"] == "https://example.com/fallback2"
 
 
 @pytest.mark.asyncio
