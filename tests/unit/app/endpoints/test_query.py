@@ -22,9 +22,9 @@ from app.endpoints.query import (
     store_transcript,
     get_rag_toolgroups,
     evaluate_model_hints,
-    _process_knowledge_search_content,
     extract_referenced_documents_from_steps,
 )
+from utils.metadata import process_knowledge_search_content
 
 from models.requests import QueryRequest, Attachment
 from models.config import ModelContextProtocolServer
@@ -1592,8 +1592,8 @@ def test_evaluate_model_hints(
     assert model_id == expected_model
 
 
-def test_process_knowledge_search_content_with_valid_metadata(mocker):
-    """Test _process_knowledge_search_content with valid metadata."""
+def testprocess_knowledge_search_content_with_valid_metadata(mocker):
+    """Test process_knowledge_search_content with valid metadata."""
     # Mock tool response with valid metadata
     text_content_item = mocker.Mock()
     text_content_item.text = """Result 1
@@ -1604,7 +1604,7 @@ Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Test Doc', 'documen
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = _process_knowledge_search_content(tool_response)
+    metadata_map = process_knowledge_search_content(tool_response)
 
     # Verify metadata was correctly parsed and added
     assert "doc-1" in metadata_map
@@ -1613,10 +1613,8 @@ Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Test Doc', 'documen
     assert metadata_map["doc-1"]["document_id"] == "doc-1"
 
 
-def test_process_knowledge_search_content_with_invalid_metadata_syntax_error(mocker):
-    """Test _process_knowledge_search_content handles SyntaxError from invalid metadata."""
-    mock_logger = mocker.patch("app.endpoints.query.logger")
-
+def testprocess_knowledge_search_content_with_invalid_metadata_syntax_error(mocker):
+    """Test process_knowledge_search_content gracefully handles SyntaxError."""
     # Mock tool response with invalid metadata (invalid Python syntax)
     text_content_item = mocker.Mock()
     text_content_item.text = """Result 1
@@ -1627,21 +1625,14 @@ Metadata: {'docs_url': 'https://example.com/doc1' 'title': 'Test Doc', 'document
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = _process_knowledge_search_content(tool_response)
+    metadata_map = process_knowledge_search_content(tool_response)
 
-    # Verify metadata_map remains empty due to exception
+    # Verify metadata_map remains empty due to invalid syntax (gracefully handled)
     assert len(metadata_map) == 0
 
-    # Verify exception logging was called
-    mock_logger.exception.assert_called_once()
-    args = mock_logger.exception.call_args[0]
-    assert "An exception was thrown in processing" in args[0]
 
-
-def test_process_knowledge_search_content_with_invalid_metadata_value_error(mocker):
-    """Test _process_knowledge_search_content handles ValueError from invalid metadata."""
-    mock_logger = mocker.patch("app.endpoints.query.logger")
-
+def testprocess_knowledge_search_content_with_invalid_metadata_value_error(mocker):
+    """Test process_knowledge_search_content gracefully handles ValueError from invalid metadata."""
     # Mock tool response with invalid metadata containing complex expressions
     text_content_item = mocker.Mock()
     text_content_item.text = """Result 1
@@ -1652,19 +1643,14 @@ Metadata: {func_call(): 'value', 'title': 'Test Doc', 'document_id': 'doc-1'}
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = _process_knowledge_search_content(tool_response)
+    metadata_map = process_knowledge_search_content(tool_response)
 
-    # Verify metadata_map remains empty due to exception
+    # Verify metadata_map remains empty due to invalid expression (gracefully handled)
     assert len(metadata_map) == 0
 
-    # Verify exception logging was called
-    mock_logger.exception.assert_called_once()
-    args = mock_logger.exception.call_args[0]
-    assert "An exception was thrown in processing" in args[0]
 
-
-def test_process_knowledge_search_content_with_non_dict_metadata(mocker):
-    """Test _process_knowledge_search_content handles non-dict metadata gracefully."""
+def testprocess_knowledge_search_content_with_non_dict_metadata(mocker):
+    """Test process_knowledge_search_content handles non-dict metadata gracefully."""
     mock_logger = mocker.patch("app.endpoints.query.logger")
 
     # Mock tool response with metadata that's not a dict
@@ -1677,7 +1663,7 @@ Metadata: "just a string"
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = _process_knowledge_search_content(tool_response)
+    metadata_map = process_knowledge_search_content(tool_response)
 
     # Verify metadata_map remains empty (no document_id in string)
     assert len(metadata_map) == 0
@@ -1686,8 +1672,8 @@ Metadata: "just a string"
     mock_logger.exception.assert_not_called()
 
 
-def test_process_knowledge_search_content_with_metadata_missing_document_id(mocker):
-    """Test _process_knowledge_search_content skips metadata without document_id."""
+def testprocess_knowledge_search_content_with_metadata_missing_document_id(mocker):
+    """Test process_knowledge_search_content skips metadata without document_id."""
     # Mock tool response with valid metadata but missing document_id
     text_content_item = mocker.Mock()
     text_content_item.text = """Result 1
@@ -1698,39 +1684,39 @@ Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Test Doc'}
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = _process_knowledge_search_content(tool_response)
+    metadata_map = process_knowledge_search_content(tool_response)
 
     # Verify metadata_map remains empty since document_id is missing
     assert len(metadata_map) == 0
 
 
-def test_process_knowledge_search_content_with_no_text_attribute(mocker):
-    """Test _process_knowledge_search_content skips content items without text attribute."""
+def testprocess_knowledge_search_content_with_no_text_attribute(mocker):
+    """Test process_knowledge_search_content skips content items without text attribute."""
     # Mock tool response with content item that has no text attribute
     text_content_item = mocker.Mock(spec=[])  # spec=[] means no attributes
 
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = _process_knowledge_search_content(tool_response)
+    metadata_map = process_knowledge_search_content(tool_response)
 
     # Verify metadata_map remains empty since text attribute is missing
     assert len(metadata_map) == 0
 
 
-def test_process_knowledge_search_content_with_none_content(mocker):
-    """Test _process_knowledge_search_content handles tool_response with content=None."""
+def testprocess_knowledge_search_content_with_none_content(mocker):
+    """Test process_knowledge_search_content handles tool_response with content=None."""
     # Mock tool response with content = None
     tool_response = mocker.Mock()
     tool_response.content = None
 
-    metadata_map = _process_knowledge_search_content(tool_response)
+    metadata_map = process_knowledge_search_content(tool_response)
 
     # Verify metadata_map remains empty when content is None
     assert len(metadata_map) == 0
 
 
-def test_process_knowledge_search_content_duplicate_document_id_last_wins(mocker):
+def testprocess_knowledge_search_content_duplicate_document_id_last_wins(mocker):
     """The last metadata block for a given document_id should win."""
     text_items = [
         mocker.Mock(
@@ -1747,7 +1733,7 @@ def test_process_knowledge_search_content_duplicate_document_id_last_wins(mocker
     tool_response.content = text_items
 
     # Process content
-    metadata_map = _process_knowledge_search_content(tool_response)
+    metadata_map = process_knowledge_search_content(tool_response)
     assert metadata_map["doc-x"]["docs_url"] == "https://example.com/second"
     assert metadata_map["doc-x"]["title"] == "Second"
 
@@ -1761,7 +1747,7 @@ def test_process_knowledge_search_content_duplicate_document_id_last_wins(mocker
     assert docs[0].doc_title == "Second"
 
 
-def test_process_knowledge_search_content_with_braces_inside_strings(mocker):
+def testprocess_knowledge_search_content_with_braces_inside_strings(mocker):
     """Test that braces inside strings are handled correctly."""
     text_content_item = mocker.Mock()
     text_content_item.text = (
@@ -1773,14 +1759,14 @@ def test_process_knowledge_search_content_with_braces_inside_strings(mocker):
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = _process_knowledge_search_content(tool_response)
+    metadata_map = process_knowledge_search_content(tool_response)
     assert "doc-100" in metadata_map
     assert metadata_map["doc-100"]["title"] == "A {weird} title"
     assert metadata_map["doc-100"]["docs_url"] == "https://example.com/100"
     assert metadata_map["doc-100"]["extra"]["note"] == "contains {braces}"
 
 
-def test_process_knowledge_search_content_with_nested_objects(mocker):
+def testprocess_knowledge_search_content_with_nested_objects(mocker):
     """Test that nested objects are parsed correctly."""
     text_content_item = mocker.Mock()
     text_content_item.text = (
@@ -1792,7 +1778,7 @@ def test_process_knowledge_search_content_with_nested_objects(mocker):
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
 
-    metadata_map = _process_knowledge_search_content(tool_response)
+    metadata_map = process_knowledge_search_content(tool_response)
     assert "doc-200" in metadata_map
     assert metadata_map["doc-200"]["title"] == "Nested JSON"
     assert metadata_map["doc-200"]["docs_url"] == "https://example.com/200"
@@ -1953,7 +1939,7 @@ async def test_retrieve_response_with_structured_content_object(
 async def test_retrieve_response_skips_invalid_docs_url(prepare_agent_mocks, mocker):
     """Test that retrieve_response skips entries with invalid docs_url."""
     # Mock logger to capture warning logs
-    mock_logger = mocker.patch("app.endpoints.query.logger")
+    mock_logger = mocker.patch("utils.metadata.logger")
 
     mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"

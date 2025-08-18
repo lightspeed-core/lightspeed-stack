@@ -452,17 +452,13 @@ def _handle_tool_execution_event(
                                 summary = summary[:newline_pos]
                         try:
                             parsed_metadata = parse_knowledge_search_metadata(
-                                text_content_item.text
+                                text_content_item.text, strict=False
                             )
                             metadata_map.update(parsed_metadata)
-                        except ValueError:
+                        except ValueError as e:
                             logger.exception(
-                                "An exception was thrown in processing metadata from text: %s",
-                                (
-                                    text_content_item.text[:200] + "..."
-                                    if len(text_content_item.text) > 200
-                                    else text_content_item.text
-                                ),
+                                "Error processing metadata from text; position=%s",
+                                getattr(e, "position", "unknown"),
                             )
 
                 yield format_stream_data(

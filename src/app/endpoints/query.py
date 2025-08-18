@@ -7,7 +7,6 @@ import os
 from pathlib import Path
 from typing import Annotated, Any, cast
 
-import pydantic
 
 from llama_stack_client import APIConnectionError
 from llama_stack_client import AsyncLlamaStackClient  # type: ignore
@@ -43,101 +42,13 @@ from utils.endpoints import (
 )
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
 from utils.suid import get_suid
-from utils.metadata import parse_knowledge_search_metadata
+from utils.metadata import (
+    extract_referenced_documents_from_steps,
+)
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
 auth_dependency = get_auth_dependency()
-
-
-def _process_knowledge_search_content(tool_response: Any) -> dict[str, dict[str, Any]]:
-    """Process knowledge search tool response content for metadata.
-
-    Args:
-        tool_response: Tool response object containing content to parse
-
-    Returns:
-        Dictionary mapping document_id to metadata dict
-    """
-    metadata_map: dict[str, dict[str, Any]] = {}
-
-    # Guard against missing tool_response or content
-    if not tool_response:
-        return metadata_map
-
-    content = getattr(tool_response, "content", None)
-    if not content:
-        return metadata_map
-
-    # Ensure content is iterable
-    try:
-        iter(content)
-    except TypeError:
-        return metadata_map
-
-    for text_content_item in content:
-        # Skip items that lack a non-empty "text" attribute
-        text = getattr(text_content_item, "text", None)
-        if not text:
-            continue
-
-        try:
-            parsed_metadata = parse_knowledge_search_metadata(text)
-            metadata_map.update(parsed_metadata)
-        except ValueError:
-            logger.exception(
-                "An exception was thrown in processing metadata from text: %s",
-                text[:200] + "..." if len(text) > 200 else text,
-            )
-
-    return metadata_map
-
-
-def extract_referenced_documents_from_steps(
-    steps: list[Any],
-) -> list[ReferencedDocument]:
-    """Extract referenced documents from tool execution steps.
-
-    Args:
-        steps: List of response steps from the agent
-
-    Returns:
-        List of referenced documents with doc_url and doc_title
-    """
-    metadata_map: dict[str, dict[str, Any]] = {}
-
-    for step in steps:
-        if getattr(step, "step_type", "") != "tool_execution" or not hasattr(
-            step, "tool_responses"
-        ):
-            continue
-
-        for tool_response in getattr(step, "tool_responses", []) or []:
-            if getattr(
-                tool_response, "tool_name", ""
-            ) != "knowledge_search" or not getattr(tool_response, "content", []):
-                continue
-
-            response_metadata = _process_knowledge_search_content(tool_response)
-            metadata_map.update(response_metadata)
-
-    # Extract referenced documents from metadata with error handling
-    referenced_documents = []
-    for v in metadata_map.values():
-        if "docs_url" in v and "title" in v:
-            try:
-                doc = ReferencedDocument(doc_url=v["docs_url"], doc_title=v["title"])
-                referenced_documents.append(doc)
-            except (pydantic.ValidationError, ValueError) as e:
-                logger.warning(
-                    "Skipping invalid referenced document with docs_url='%s', title='%s': %s",
-                    v.get("docs_url", "<missing>"),
-                    v.get("title", "<missing>"),
-                    str(e),
-                )
-                continue
-
-    return referenced_documents
 
 
 query_response: dict[int | str, dict[str, Any]] = {
@@ -516,8 +427,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         mcp_headers (dict[str, dict[str, str]], optional): Headers for multi-component processing.
 
     Returns:
-        tuple[str, str]: A tuple containing the LLM or agent's response content
-        and the conversation ID.
+        tuple[str, str, list[ReferencedDocument]]: A tuple containing the response
+        content, the conversation ID, and the list of referenced documents parsed
+        from tool execution steps.
     """
     available_input_shields = [
         shield.identifier
@@ -615,12 +527,12 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     # Safely guard access to output_message and content
     output_message = getattr(response_obj, "output_message", None)
     if output_message and getattr(output_message, "content", None) is not None:
-        content_str = str(output_message.content)
+        response_text = str(output_message.content)
     else:
-        content_str = ""
+        response_text = ""
 
     return (
-        content_str,
+        response_text,
         conversation_id,
         referenced_documents,
     )

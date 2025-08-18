@@ -1,8 +1,16 @@
 """Shared utilities for parsing metadata from knowledge search responses."""
 
 import ast
+import json
+import logging
 import re
 from typing import Any
+
+import pydantic
+
+from models.responses import ReferencedDocument
+
+logger = logging.getLogger(__name__)
 
 
 # Case-insensitive pattern to find "Metadata:" labels
@@ -94,3 +102,104 @@ def parse_knowledge_search_metadata(
             continue
 
     return metadata_map
+
+
+def process_knowledge_search_content(tool_response: Any) -> dict[str, dict[str, Any]]:
+    """Process knowledge search tool response content for metadata.
+
+    Args:
+        tool_response: Tool response object containing content to parse
+
+    Returns:
+        Dictionary mapping document_id to metadata dict
+    """
+    metadata_map: dict[str, dict[str, Any]] = {}
+
+    # Guard against missing tool_response or content
+    if not tool_response:
+        return metadata_map
+
+    content = getattr(tool_response, "content", None)
+    if not content:
+        return metadata_map
+
+    # Handle string content by attempting JSON parsing
+    if isinstance(content, str):
+        try:
+            content = json.loads(content, strict=False)
+        except (json.JSONDecodeError, TypeError):
+            # If JSON parsing fails or content is still a string, return empty
+            if isinstance(content, str):
+                return metadata_map
+
+    # Ensure content is iterable (but not a string)
+    if isinstance(content, str):
+        return metadata_map
+    try:
+        iter(content)
+    except TypeError:
+        return metadata_map
+
+    for text_content_item in content:
+        # Skip items that lack a non-empty "text" attribute
+        text = getattr(text_content_item, "text", None)
+        if not text:
+            continue
+
+        try:
+            parsed_metadata = parse_knowledge_search_metadata(text, strict=False)
+            metadata_map.update(parsed_metadata)
+        except ValueError as e:
+            logger.exception(
+                "Error processing metadata from text; position=%s",
+                getattr(e, "position", "unknown"),
+            )
+
+    return metadata_map
+
+
+def extract_referenced_documents_from_steps(
+    steps: list[Any],
+) -> list[ReferencedDocument]:
+    """Extract referenced documents from tool execution steps.
+
+    Args:
+        steps: List of response steps from the agent
+
+    Returns:
+        List of referenced documents with doc_url and doc_title, sorted deterministically
+    """
+    metadata_map: dict[str, dict[str, Any]] = {}
+
+    for step in steps:
+        if getattr(step, "step_type", "") != "tool_execution" or not hasattr(
+            step, "tool_responses"
+        ):
+            continue
+
+        for tool_response in getattr(step, "tool_responses", []) or []:
+            if getattr(
+                tool_response, "tool_name", ""
+            ) != "knowledge_search" or not getattr(tool_response, "content", []):
+                continue
+
+            response_metadata = process_knowledge_search_content(tool_response)
+            metadata_map.update(response_metadata)
+
+    # Extract referenced documents from metadata with error handling
+    referenced_documents = []
+    for v in metadata_map.values():
+        if "docs_url" in v and "title" in v:
+            try:
+                doc = ReferencedDocument(doc_url=v["docs_url"], doc_title=v["title"])
+                referenced_documents.append(doc)
+            except (pydantic.ValidationError, ValueError) as e:
+                logger.warning(
+                    "Skipping invalid referenced document with docs_url='%s', title='%s': %s",
+                    v.get("docs_url", "<missing>"),
+                    v.get("title", "<missing>"),
+                    str(e),
+                )
+                continue
+
+    return sorted(referenced_documents, key=lambda d: (d.doc_title, str(d.doc_url)))
