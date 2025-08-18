@@ -22,9 +22,11 @@ from app.endpoints.query import (
     store_transcript,
     get_rag_toolgroups,
     evaluate_model_hints,
+)
+from utils.metadata import (
+    process_knowledge_search_content,
     extract_referenced_documents_from_steps,
 )
-from utils.metadata import process_knowledge_search_content
 
 from models.requests import QueryRequest, Attachment
 from models.config import ModelContextProtocolServer
@@ -270,6 +272,10 @@ async def test_query_endpoint_handler_with_referenced_documents(mocker):
     ]
     assert all(isinstance(d, ReferencedDocument) for d in response.referenced_documents)
     assert len(response.referenced_documents) == 2
+    # Titles should be sorted deterministically by doc_title
+    assert [d.doc_title for d in response.referenced_documents] == sorted(
+        [d.doc_title for d in response.referenced_documents]
+    )
 
     # Assert the metric for successful LLM calls is incremented
     mock_metric.labels("fake_provider_id", "fake_model_id").inc.assert_called_once()
@@ -1317,7 +1323,6 @@ async def test_query_endpoint_handler_no_tools_true(mocker):
     ]
 
     mock_config = mocker.Mock()
-    mock_config.user_data_collection_configuration.transcripts_disabled = True
     mocker.patch("app.endpoints.query.configuration", mock_config)
 
     llm_response = "LLM answer without tools"
@@ -1356,7 +1361,6 @@ async def test_query_endpoint_handler_no_tools_false(mocker):
     ]
 
     mock_config = mocker.Mock()
-    mock_config.user_data_collection_configuration.transcripts_disabled = True
     mocker.patch("app.endpoints.query.configuration", mock_config)
 
     llm_response = "LLM answer with tools"
@@ -1651,7 +1655,7 @@ Metadata: {func_call(): 'value', 'title': 'Test Doc', 'document_id': 'doc-1'}
 
 def test_process_knowledge_search_content_with_non_dict_metadata(mocker):
     """Test process_knowledge_search_content handles non-dict metadata gracefully."""
-    mock_logger = mocker.patch("app.endpoints.query.logger")
+    mock_logger = mocker.patch("utils.metadata.logger")
 
     # Mock tool response with metadata that's not a dict
     text_content_item = mocker.Mock()
@@ -1810,6 +1814,24 @@ Metadata: {'docs_url': 'https://example.com/fallback2', 'title': 'Fallback Doc 2
     assert metadata_map["fallback-1"]["docs_url"] == "https://example.com/fallback"
     assert metadata_map["fallback-2"]["title"] == "Fallback Doc 2"
     assert metadata_map["fallback-2"]["docs_url"] == "https://example.com/fallback2"
+
+
+def test_process_knowledge_search_content_metadata_label_case_insensitive(mocker):
+    """Test that metadata labels are detected case-insensitively."""
+    text_content_item = mocker.Mock()
+    text_content_item.text = (
+        "Result 1\n"
+        "Content: Test content\n"
+        "metadata: {'document_id': 'doc-ci', 'title': 'Case Insensitive', 'docs_url': 'https://example.com/ci'}\n"
+    )
+    tool_response = mocker.Mock()
+    tool_response.content = [text_content_item]
+
+    metadata_map = process_knowledge_search_content(tool_response)
+
+    assert "doc-ci" in metadata_map
+    assert metadata_map["doc-ci"]["title"] == "Case Insensitive"
+    assert metadata_map["doc-ci"]["docs_url"] == "https://example.com/ci"
 
 
 @pytest.mark.asyncio
@@ -1994,7 +2016,7 @@ Metadata: {'docs_url': 'not-a-valid-url', 'title': 'Invalid Doc', 'document_id':
     mock_tool_response.call_id = "c1"
     mock_tool_response.tool_name = "knowledge_search"
     mock_tool_response.content = [
-        mocker.Mock(text=s, type="text") for s in invalid_docs_url_results
+        TextContentItem(text=s, type="text") for s in invalid_docs_url_results
     ]
 
     mock_tool_execution_step = mocker.Mock()
