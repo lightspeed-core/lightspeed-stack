@@ -41,11 +41,13 @@ llm_calls_validation_errors_total = Counter(
 )
 
 # TODO(lucasagomes): Add metric for token usage
+# https://issues.redhat.com/browse/LCORE-411
 llm_token_sent_total = Counter(
     "ls_llm_token_sent_total", "LLM tokens sent", ["provider", "model"]
 )
 
 # TODO(lucasagomes): Add metric for token usage
+# https://issues.redhat.com/browse/LCORE-411
 llm_token_received_total = Counter(
     "ls_llm_token_received_total", "LLM tokens received", ["provider", "model"]
 )

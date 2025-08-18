@@ -6,6 +6,20 @@ service:
   workers: 1
   color_log: true
   access_log: true
+  cors:
+    allow_origins:
+      - foo_origin
+      - bar_origin
+      - baz_origin
+    allow_credentials: false
+    allow_methods:
+      - foo_method
+      - bar_method
+      - baz_method
+    allow_headers:
+      - foo_header
+      - bar_header
+      - baz_header
 llama_stack:
   # Uses a remote llama-stack service
   # The instance would have already been started with a llama-stack-run.yaml file

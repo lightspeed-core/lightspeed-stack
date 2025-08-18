@@ -248,6 +248,15 @@ async def get_conversation_endpoint_handler(
         client = AsyncLlamaStackClientHolder().get_client()
 
         agent_sessions = (await client.agents.session.list(agent_id=agent_id)).data
+        if not agent_sessions:
+            logger.error("No sessions found for conversation %s", conversation_id)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "response": "Conversation not found",
+                    "cause": f"Conversation {conversation_id} could not be retrieved.",
+                },
+            )
         session_id = str(agent_sessions[0].get("session_id"))
 
         session_response = await client.agents.session.retrieve(
@@ -283,6 +292,8 @@ async def get_conversation_endpoint_handler(
                 "cause": f"Conversation {conversation_id} could not be retrieved: {str(e)}",
             },
         ) from e
+    except HTTPException:
+        raise
     except Exception as e:
         # Handle case where session doesn't exist or other errors
         logger.exception("Error retrieving conversation %s: %s", conversation_id, e)
@@ -339,11 +350,21 @@ async def delete_conversation_endpoint_handler(
     try:
         # Get Llama Stack client
         client = AsyncLlamaStackClientHolder().get_client()
-        # Delete session using the conversation_id as session_id
-        # In this implementation, conversation_id and session_id are the same
-        await client.agents.session.delete(
-            agent_id=agent_id, session_id=conversation_id
-        )
+
+        agent_sessions = (await client.agents.session.list(agent_id=agent_id)).data
+
+        if not agent_sessions:
+            # If no sessions are found, do not raise an error, just return a success response
+            logger.info("No sessions found for conversation %s", conversation_id)
+            return ConversationDeleteResponse(
+                conversation_id=conversation_id,
+                success=True,
+                response="Conversation deleted successfully",
+            )
+
+        session_id = str(agent_sessions[0].get("session_id"))
+
+        await client.agents.session.delete(agent_id=agent_id, session_id=session_id)
 
         logger.info("Successfully deleted conversation %s", conversation_id)
 
@@ -371,6 +392,8 @@ async def delete_conversation_endpoint_handler(
                 "cause": f"Conversation {conversation_id} could not be deleted: {str(e)}",
             },
         ) from e
+    except HTTPException:
+        raise
     except Exception as e:
         # Handle case where session doesn't exist or other errors
         logger.exception("Error deleting conversation %s: %s", conversation_id, e)

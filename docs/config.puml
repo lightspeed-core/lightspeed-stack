@@ -9,9 +9,17 @@ class "AuthenticationConfiguration" as src.models.config.AuthenticationConfigura
   skip_tls_verification : bool
   check_authentication_model() -> Self
 }
+class "CORSConfiguration" as src.models.config.CORSConfiguration {
+  allow_credentials : bool
+  allow_headers : list[str]
+  allow_methods : list[str]
+  allow_origins : list[str]
+  check_cors_configuration() -> Self
+}
 class "Configuration" as src.models.config.Configuration {
-  authentication : Optional[AuthenticationConfiguration]
+  authentication
   customization : Optional[Customization]
+  database
   inference
   llama_stack
   mcp_servers : list[ModelContextProtocolServer]
@@ -26,7 +34,13 @@ class "Customization" as src.models.config.Customization {
   system_prompt_path : Optional[FilePath]
   check_customization_model() -> Self
 }
-
+class "DatabaseConfiguration" as src.models.config.DatabaseConfiguration {
+  config
+  db_type
+  postgres : Optional[PostgreSQLDatabaseConfiguration]
+  sqlite : Optional[SQLiteDatabaseConfiguration]
+  check_database_configuration() -> Self
+}
 class "InferenceConfiguration" as src.models.config.InferenceConfiguration {
   default_model : Optional[str]
   default_provider : Optional[str]
@@ -52,10 +66,26 @@ class "ModelContextProtocolServer" as src.models.config.ModelContextProtocolServ
   provider_id : str
   url : str
 }
+class "PostgreSQLDatabaseConfiguration" as src.models.config.PostgreSQLDatabaseConfiguration {
+  ca_cert_path : Optional[FilePath]
+  db : str
+  gss_encmode : str
+  host : str
+  namespace : Optional[str]
+  password : str
+  port : int
+  ssl_mode : str
+  user : str
+  check_postgres_configuration() -> Self
+}
+class "SQLiteDatabaseConfiguration" as src.models.config.SQLiteDatabaseConfiguration {
+  db_path : str
+}
 class "ServiceConfiguration" as src.models.config.ServiceConfiguration {
   access_log : bool
   auth_enabled : bool
   color_log : bool
+  cors
   host : str
   port : int
   tls_config
@@ -75,10 +105,13 @@ class "UserDataCollection" as src.models.config.UserDataCollection {
   transcripts_storage : Optional[str]
   check_storage_location_is_set_when_needed() -> Self
 }
-
+src.models.config.AuthenticationConfiguration --* src.models.config.Configuration : authentication
+src.models.config.CORSConfiguration --* src.models.config.ServiceConfiguration : cors
+src.models.config.DatabaseConfiguration --* src.models.config.Configuration : database
 src.models.config.InferenceConfiguration --* src.models.config.Configuration : inference
 src.models.config.JwtConfiguration --* src.models.config.JwkConfiguration : jwt_configuration
 src.models.config.LlamaStackConfiguration --* src.models.config.Configuration : llama_stack
+src.models.config.SQLiteDatabaseConfiguration --* src.models.config.DatabaseConfiguration : sqlite
 src.models.config.ServiceConfiguration --* src.models.config.Configuration : service
 src.models.config.TLSConfiguration --* src.models.config.ServiceConfiguration : tls_config
 src.models.config.UserDataCollection --* src.models.config.Configuration : user_data_collection

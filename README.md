@@ -15,46 +15,49 @@ The service includes comprehensive user data collection capabilities for various
 
 <!-- vim-markdown-toc GFM -->
 
-* [lightspeed-stack](#lightspeed-stack)
-  * [About The Project](#about-the-project)
 * [Architecture](#architecture)
 * [Prerequisites](#prerequisites)
 * [Installation](#installation)
 * [Configuration](#configuration)
-  * [Integration with Llama Stack](#integration-with-llama-stack)
-  * [Llama Stack as separate server](#llama-stack-as-separate-server)
-    * [Llama Stack project and configuration](#llama-stack-project-and-configuration)
-    * [Check connection to Llama Stack](#check-connection-to-llama-stack)
-  * [Llama Stack as client library](#llama-stack-as-client-library)
-  * [System prompt](#system-prompt)
-  * [Safety Shields](#safety-shields)
-  * [Authentication](#authentication)
-    * [K8s based authentication](#k8s-based-authentication)
-    * [JSON Web Keyset based authentication](#json-web-keyset-based-authentication)
-    * [No-op authentication](#no-op-authentication)
+    * [Integration with Llama Stack](#integration-with-llama-stack)
+    * [Llama Stack as separate server](#llama-stack-as-separate-server)
+        * [MCP Server and Tool Configuration](#mcp-server-and-tool-configuration)
+            * [Configuring MCP Servers](#configuring-mcp-servers)
+            * [Configuring MCP Headers](#configuring-mcp-headers)
+        * [Llama Stack project and configuration](#llama-stack-project-and-configuration)
+        * [Check connection to Llama Stack](#check-connection-to-llama-stack)
+    * [Llama Stack as client library](#llama-stack-as-client-library)
+    * [User data collection](#user-data-collection)
+    * [System prompt](#system-prompt)
+    * [Safety Shields](#safety-shields)
+    * [Authentication](#authentication)
+        * [K8s based authentication](#k8s-based-authentication)
+        * [JSON Web Keyset based authentication](#json-web-keyset-based-authentication)
+        * [No-op authentication](#no-op-authentication)
 * [Usage](#usage)
-  * [Make targets](#make-targets)
-  * [Running Linux container image](#running-linux-container-image)
+    * [Make targets](#make-targets)
+    * [Running Linux container image](#running-linux-container-image)
 * [Endpoints](#endpoints)
-  * [OpenAPI specification](#openapi-specification)
-  * [Readiness Endpoint](#readiness-endpoint)
-  * [Liveness Endpoint](#liveness-endpoint)
+    * [OpenAPI specification](#openapi-specification)
+    * [Readiness Endpoint](#readiness-endpoint)
+    * [Liveness Endpoint](#liveness-endpoint)
 * [Publish the service as Python package on PyPI](#publish-the-service-as-python-package-on-pypi)
-  * [Generate distribution archives to be uploaded into Python registry](#generate-distribution-archives-to-be-uploaded-into-python-registry)
-  * [Upload distribution archives into selected Python registry](#upload-distribution-archives-into-selected-python-registry)
-  * [Packages on PyPI and Test PyPI](#packages-on-pypi-and-test-pypi)
+    * [Generate distribution archives to be uploaded into Python registry](#generate-distribution-archives-to-be-uploaded-into-python-registry)
+    * [Upload distribution archives into selected Python registry](#upload-distribution-archives-into-selected-python-registry)
+    * [Packages on PyPI and Test PyPI](#packages-on-pypi-and-test-pypi)
 * [Contributing](#contributing)
 * [Testing](#testing)
 * [License](#license)
 * [Additional tools](#additional-tools)
-  * [Utility to generate OpenAPI schema](#utility-to-generate-openapi-schema)
-    * [Path](#path)
-    * [Usage](#usage-1)
-* [Project structure](#project-structure)
-  * [Configuration classes](#configuration-classes)
-  * [REST API](#rest-api)
+    * [Utility to generate OpenAPI schema](#utility-to-generate-openapi-schema)
+        * [Path](#path)
+        * [Usage](#usage-1)
 * [Data Export Integration](#data-export-integration)
-
+    * [Quick Integration](#quick-integration)
+    * [Documentation](#documentation)
+* [Project structure](#project-structure)
+    * [Configuration classes](#configuration-classes)
+    * [REST API](#rest-api)
 
 <!-- vim-markdown-toc -->
 
@@ -399,6 +402,49 @@ To activate `noop-with-token`, you need to specify it in the configuration file:
 authentication:
   module: "noop-with-token"
 ```
+
+## CORS
+
+It is possible to configure CORS handling. This configuration is part of service configuration:
+
+```yaml
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+  cors:
+    allow_origins:
+      - http://foo.bar.baz
+      - http://test.com
+    allow_credentials: true
+    allow_methods:
+      - *
+    allow_headers:
+      - *
+```
+
+### Default values
+
+```yaml
+  cors:
+    allow_origins:
+      - *
+    allow_credentials: false
+    allow_methods:
+      - *
+    allow_headers:
+      - *
+```
+
+## Allow credentials
+
+Credentials are not allowed with wildcard origins per CORS/Fetch spec.
+See https://fastapi.tiangolo.com/tutorial/cors/
+
+
 
 # Usage
 

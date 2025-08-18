@@ -490,6 +490,10 @@ class TestDeleteConversationEndpoint:
 
         # Mock AsyncLlamaStackClientHolder
         mock_client = mocker.AsyncMock()
+        # Ensure the endpoint sees an existing session so it proceeds to delete
+        mock_client.agents.session.list.return_value = mocker.Mock(
+            data=[{"session_id": VALID_CONVERSATION_ID}]
+        )
         mock_client.agents.session.delete.return_value = None  # Successful deletion
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations.AsyncLlamaStackClientHolder"
