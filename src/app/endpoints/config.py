@@ -40,6 +40,8 @@ get_config_responses: dict[int | str, dict[str, Any]] = {
             "feedback_storage": "/tmp/data/feedback",
             "transcripts_enabled": False,
             "transcripts_storage": None,
+            "config_enabled": True,
+            "config_storage": "/tmp/data/config",
         },
         "mcp_servers": [
             {"name": "server1", "provider_id": "provider1", "url": "http://url.com:1"},
