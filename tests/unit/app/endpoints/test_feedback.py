@@ -154,6 +154,41 @@ def test_store_feedback(mocker, feedback_request_data):
     mock_json.dump.assert_called_once_with(expected_data, mocker.ANY)
 
 
+@pytest.mark.parametrize(
+    "feedback_request_data",
+    [
+        {
+            "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
+            "user_question": "What is OpenStack?",
+            "llm_response": "It's some cloud thing.",
+            "user_feedback": "This response is not helpful!",
+            "sentiment": -1,
+        },
+        {
+            "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
+            "user_question": "What is Kubernetes?",
+            "llm_response": "K8s.",
+            "sentiment": -1,
+            "categories": ["incorrect", "not_relevant", "incomplete"],
+        },
+    ],
+    ids=["negative_text_feedback", "negative_feedback_with_categories"],
+)
+def test_store_feedback_on_io_error(mocker, feedback_request_data):
+    """Test the OSError and IOError handlings during feedback storage."""
+
+    # non-writable path
+    # avoid touching the real filesystem; simulate a permission error on open
+    configuration.user_data_collection_configuration.feedback_storage = "fake-path"
+    mocker.patch("app.endpoints.feedback.Path", return_value=mocker.MagicMock())
+    mocker.patch("builtins.open", side_effect=PermissionError("EACCES"))
+
+    user_id = "test_user_id"
+
+    with pytest.raises(OSError, match="EACCES"):
+        store_feedback(user_id, feedback_request_data)
+
+
 def test_feedback_status():
     """Test that feedback_status returns the correct status response."""
     configuration.user_data_collection_configuration.feedback_enabled = True

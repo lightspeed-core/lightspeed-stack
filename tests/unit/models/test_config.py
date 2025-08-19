@@ -48,7 +48,7 @@ def test_service_configuration_constructor() -> None:
 
 def test_service_configuration_port_value() -> None:
     """Test the ServiceConfiguration port value validation."""
-    with pytest.raises(ValueError, match="Port value should not be negative"):
+    with pytest.raises(ValidationError, match="Input should be greater than 0"):
         ServiceConfiguration(port=-1)
 
     with pytest.raises(ValueError, match="Port value should be less than 65536"):
@@ -57,7 +57,7 @@ def test_service_configuration_port_value() -> None:
 
 def test_service_configuration_workers_value() -> None:
     """Test the ServiceConfiguration workers value validation."""
-    with pytest.raises(ValueError, match="Workers must be set to at least 1"):
+    with pytest.raises(ValidationError, match="Input should be greater than 0"):
         ServiceConfiguration(workers=-1)
 
 

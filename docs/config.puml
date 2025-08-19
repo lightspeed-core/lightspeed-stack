@@ -73,7 +73,7 @@ class "PostgreSQLDatabaseConfiguration" as src.models.config.PostgreSQLDatabaseC
   host : str
   namespace : Optional[str]
   password : str
-  port : int
+  port : Annotated
   ssl_mode : str
   user : str
   check_postgres_configuration() -> Self
@@ -87,9 +87,9 @@ class "ServiceConfiguration" as src.models.config.ServiceConfiguration {
   color_log : bool
   cors
   host : str
-  port : int
+  port : Annotated
   tls_config
-  workers : int
+  workers : Annotated
   check_service_configuration() -> Self
 }
 class "TLSConfiguration" as src.models.config.TLSConfiguration {

@@ -12,6 +12,12 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     networks:
       - lightspeednet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8321/v1/health"]
+      interval: 10s   # how often to run the check
+      timeout: 5s    # how long to wait before considering it failed
+      retries: 3      # how many times to retry before marking as unhealthy
+      start_period: 15s # time to wait before starting checks
 
   lightspeed-stack:
     build:
@@ -25,9 +31,16 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     depends_on:
-      - llama-stack
+        llama-stack:
+          condition: service_healthy
     networks:
       - lightspeednet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/liveness"]
+      interval: 10s   # how often to run the check
+      timeout: 5s    # how long to wait before considering it failed
+      retries: 3      # how many times to retry before marking as unhealthy
+      start_period: 5s # time to wait before starting checks
 
 networks:
   lightspeednet:

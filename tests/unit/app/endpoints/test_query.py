@@ -479,6 +479,68 @@ def test_validate_attachments_metadata_invalid_content_type():
 
 
 @pytest.mark.asyncio
+async def test_retrieve_response_no_returned_message(prepare_agent_mocks, mocker):
+    """Test the retrieve_response function."""
+    mock_client, mock_agent = prepare_agent_mocks
+    mock_agent.create_turn.return_value.output_message = None
+    mock_client.shields.list.return_value = []
+    mock_vector_db = mocker.Mock()
+    mock_vector_db.identifier = "VectorDB-1"
+    mock_client.vector_dbs.list.return_value = [mock_vector_db]
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.query.get_agent",
+        return_value=(mock_agent, "fake_conversation_id", "fake_session_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response, _ = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    # fallback mechanism: check that the response is empty
+    assert response == ""
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_message_without_content(prepare_agent_mocks, mocker):
+    """Test the retrieve_response function."""
+    mock_client, mock_agent = prepare_agent_mocks
+    mock_agent.create_turn.return_value.output_message.content = None
+    mock_client.shields.list.return_value = []
+    mock_vector_db = mocker.Mock()
+    mock_vector_db.identifier = "VectorDB-1"
+    mock_client.vector_dbs.list.return_value = [mock_vector_db]
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.query.get_agent",
+        return_value=(mock_agent, "fake_conversation_id", "fake_session_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response, _ = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    # fallback mechanism: check that the response is empty
+    assert response == ""
+
+
+@pytest.mark.asyncio
 async def test_retrieve_response_vector_db_available(prepare_agent_mocks, mocker):
     """Test the retrieve_response function."""
     mock_metric = mocker.patch("metrics.llm_calls_validation_errors_total")

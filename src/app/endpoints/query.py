@@ -5,7 +5,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Annotated, Any, cast
+from typing import Annotated, Any
 
 
 from llama_stack_client import APIConnectionError
@@ -522,13 +522,19 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     referenced_documents = extract_referenced_documents_from_steps(steps)
 
     # When stream=False, response should have output_message attribute
-    response_obj = cast(Any, response)
-
-    # Safely guard access to output_message and content
-    output_message = getattr(response_obj, "output_message", None)
-    if output_message and getattr(output_message, "content", None) is not None:
-        response_text = str(output_message.content)
+    output_message = getattr(response, "output_message", None)
+    if output_message is not None:
+        content = getattr(output_message, "content", None)
+        if content is not None:
+            response_text = str(content)
+        else:
+            response_text = ""
     else:
+        # fallback
+        logger.warning(
+            "Response lacks output_message.content (conversation_id=%s)",
+            conversation_id,
+        )
         response_text = ""
 
     return (

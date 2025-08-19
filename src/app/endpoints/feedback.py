@@ -145,8 +145,12 @@ def store_feedback(user_id: str, feedback: dict) -> None:
 
     # stores feedback in a file under unique uuid
     feedback_file_path = storage_path / f"{get_suid()}.json"
-    with open(feedback_file_path, "w", encoding="utf-8") as feedback_file:
-        json.dump(data_to_store, feedback_file)
+    try:
+        with open(feedback_file_path, "w", encoding="utf-8") as feedback_file:
+            json.dump(data_to_store, feedback_file)
+    except (OSError, IOError) as e:
+        logger.error("Failed to store feedback at %s: %s", feedback_file_path, e)
+        raise
 
     logger.info("Feedback stored successfully at %s", feedback_file_path)
 

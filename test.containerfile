@@ -23,22 +23,6 @@ RUN uv -h
 # Install from pyproject.toml using uv sync for version consistency  
 # Note: using --no-install-project since this is llama-stack container, not lightspeed-stack
 # Include dev deps for testing (pytest, behave, etc.)
-RUN uv sync --locked --no-install-project && \
-    uv pip install \
-    opentelemetry-sdk \
-    opentelemetry-exporter-otlp \
-    opentelemetry-instrumentation \
-    aiosqlite \
-    litellm \
-    blobfile \
-    datasets \
-    sqlalchemy \
-    faiss-cpu \
-    mcp \
-    autoevals \
-    psutil \
-    torch \
-    peft \
-    trl
+RUN uv sync --locked --no-install-project --group dev --group llslibdev
 
 CMD ["uv", "run", "llama", "stack", "run", "run.yaml"]

@@ -24,7 +24,7 @@ jobs:
       - name: uv version
         run: uv --version
       - name: Install dependencies
-        run: uv pip install --python ${{ matrix.python-version }} -e .
+        run: uv pip install --python ${{ matrix.python-version }} --group llslibdev .
       - name: Install pdm  # Required for dynamic version test
         run: uv pip install pdm
       - name: Run unit tests

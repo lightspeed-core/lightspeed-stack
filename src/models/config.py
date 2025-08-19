@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, model_validator, FilePath, AnyHttpUrl
+from pydantic import BaseModel, model_validator, FilePath, AnyHttpUrl, PositiveInt
 from typing_extensions import Self, Literal
 
 import constants
@@ -58,7 +58,7 @@ class PostgreSQLDatabaseConfiguration(BaseModel):
     """PostgreSQL database configuration."""
 
     host: str = "localhost"
-    port: int = 5432
+    port: PositiveInt = 5432
     db: str
     user: str
     password: str
@@ -70,8 +70,6 @@ class PostgreSQLDatabaseConfiguration(BaseModel):
     @model_validator(mode="after")
     def check_postgres_configuration(self) -> Self:
         """Check PostgreSQL configuration."""
-        if self.port <= 0:
-            raise ValueError("Port value should not be negative")
         if self.port > 65535:
             raise ValueError("Port value should be less than 65536")
         if self.ca_cert_path is not None and not self.ca_cert_path.exists():
@@ -124,9 +122,9 @@ class ServiceConfiguration(BaseModel):
     """Service configuration."""
 
     host: str = "localhost"
-    port: int = 8080
+    port: PositiveInt = 8080
     auth_enabled: bool = False
-    workers: int = 1
+    workers: PositiveInt = 1
     color_log: bool = True
     access_log: bool = True
     tls_config: TLSConfiguration = TLSConfiguration()
@@ -135,12 +133,8 @@ class ServiceConfiguration(BaseModel):
     @model_validator(mode="after")
     def check_service_configuration(self) -> Self:
         """Check service configuration."""
-        if self.port <= 0:
-            raise ValueError("Port value should not be negative")
         if self.port > 65535:
             raise ValueError("Port value should be less than 65536")
-        if self.workers < 1:
-            raise ValueError("Workers must be set to at least 1")
         return self
 
 
