@@ -264,6 +264,8 @@ user_data_collection:
   feedback_storage: "/tmp/data/feedback"
   transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
+  config_enabled: true
+  config_storage: "/tmp/data/config"
 
 authentication:
   module: "noop"

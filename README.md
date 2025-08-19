@@ -125,6 +125,8 @@ user_data_collection:
   feedback_storage: "/tmp/data/feedback"
   transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
+  config_enabled: true
+  config_storage: "/tmp/data/config"
 ```
 
 ### MCP Server and Tool Configuration
@@ -241,6 +243,8 @@ user_data_collection:
   feedback_storage: "/tmp/data/feedback"
   transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
+  config_enabled: true
+  config_storage: "/tmp/data/config"
 ```
 
 ## User data collection
@@ -255,6 +259,8 @@ user_data_collection:
   feedback_storage: "/tmp/data/feedback"
   transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
+  config_enabled: true
+  config_storage: "/tmp/data/config"
 ```
 
 **Configuration options:**
@@ -263,6 +269,8 @@ user_data_collection:
 - `feedback_storage`: Directory path where feedback JSON files are stored
 - `transcripts_enabled`: Enable/disable collection of conversation transcripts
 - `transcripts_storage`: Directory path where transcript JSON files are stored
+- `config_enabled`: Enable/disable collection of service configuration at startup
+- `config_storage`: Directory path where configuration JSON files are stored
 
 > **Note**: The data collection system is designed to be extensible. Additional data types can be configured and collected as needed for your specific use case.
 
@@ -650,6 +658,8 @@ The Lightspeed Core Stack integrates with the [lightspeed-to-dataverse-exporter]
      feedback_storage: "/shared/data/feedback"
      transcripts_enabled: true
      transcripts_storage: "/shared/data/transcripts"
+     config_enabled: true
+     config_storage: "/shared/data/config"
    ```
 
 2. **Deploy the exporter service** pointing to the same data directories
