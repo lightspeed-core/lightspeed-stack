@@ -1,15 +1,18 @@
 """Model with service configuration."""
 
+import logging
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
-from pydantic import BaseModel, model_validator, FilePath, AnyHttpUrl, PositiveInt
+from pydantic import BaseModel, model_validator, FilePath, AnyHttpUrl, PositiveInt, Field
+from pydantic.dataclasses import dataclass
 from typing_extensions import Self, Literal
 
 import constants
 
 from utils import checks
 
+logger = logging.getLogger(__name__)
 
 class TLSConfiguration(BaseModel):
     """TLS configuration."""
@@ -260,19 +263,43 @@ class AuthenticationConfiguration(BaseModel):
             )
         assert self.jwk_config is not None, "JWK configuration should not be None"
         return self.jwk_config
+@dataclass
+class CustomProfile():
+    """Custom profile customization for prompts and validation."""
 
+    name: str
+    prompts: Dict[str, str] = Field(default={}, init=False) 
+
+    def __post_init__(self):
+        self._validate_and_process()
+
+    def _validate_and_process(self) -> None:
+        checks.profile_check(self.name)
+        opened_profile = checks.read_profile_file("utils.profiles", self.name, logger)
+        if opened_profile is None:
+            logger.debug("Profile is empty or does not exist.")
+        else:
+            self.prompts = opened_profile.PROFILE_CONFIG.get("system_prompts", {})
+    
+    def get_prompts(self) -> Dict[str, str]:
+        return self.prompts
 
 class Customization(BaseModel):
     """Service customization."""
 
+    profile_name: Optional[str] = None
     disable_query_system_prompt: bool = False
     system_prompt_path: Optional[FilePath] = None
     system_prompt: Optional[str] = None
+    custom_profile: Optional[CustomProfile] = Field(default=None, init=False)
 
     @model_validator(mode="after")
     def check_customization_model(self) -> Self:
-        """Load system prompt from file."""
-        if self.system_prompt_path is not None:
+        """Load customizations."""
+        if self.profile_name: # custom profile overrides all
+            self.custom_profile = CustomProfile(name=self.profile_name)
+            self.system_prompt = self.custom_profile.get_prompts().get("default") # set to default prompt from the profile
+        elif self.system_prompt_path is not None:
             checks.file_check(self.system_prompt_path, "system prompt")
             self.system_prompt = checks.get_attribute_from_file(
                 dict(self), "system_prompt_path"

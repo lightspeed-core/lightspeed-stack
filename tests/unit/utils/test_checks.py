@@ -1,7 +1,9 @@
 """Unit tests for functions defined in utils/checks module."""
 
+from logging import Logger
 import os
 from pathlib import Path
+from types import ModuleType
 from unittest.mock import patch
 
 import pytest
@@ -78,3 +80,23 @@ def test_file_check_not_readable_file(input_file):
     with patch("os.access", return_value=False):
         with pytest.raises(checks.InvalidConfigurationError):
             checks.file_check(input_file, "description")
+
+def test_profile_check_empty():
+    with pytest.raises(KeyError):
+        checks.profile_check(None)
+
+def test_profile_check_missing():
+    with pytest.raises(checks.InvalidConfigurationError):
+        checks.profile_check("fake")
+
+def test_read_profile_error():
+    logger = Logger("test")
+    data = checks.read_profile_file("/fake/path", "fake-profile", logger)
+    assert data is None
+
+def test_read_profile():
+    logger = Logger("test")
+    fpath = "utils.profiles"
+    profile = "rhdh"
+    data = checks.read_profile_file(fpath, profile, logger)
+    assert type(data) is ModuleType
