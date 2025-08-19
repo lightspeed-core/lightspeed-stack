@@ -501,12 +501,13 @@ async def test_retrieve_response_no_returned_message(prepare_agent_mocks, mocker
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, _ = await retrieve_response(
+    response, _, referenced_documents = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     # fallback mechanism: check that the response is empty
     assert response == ""
+    assert referenced_documents == []
 
 
 @pytest.mark.asyncio
@@ -532,12 +533,13 @@ async def test_retrieve_response_message_without_content(prepare_agent_mocks, mo
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, _ = await retrieve_response(
+    response, _, referenced_documents = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     # fallback mechanism: check that the response is empty
     assert response == ""
+    assert referenced_documents == []
 
 
 @pytest.mark.asyncio
@@ -1884,7 +1886,8 @@ def test_process_knowledge_search_content_metadata_label_case_insensitive(mocker
     text_content_item.text = (
         "Result 1\n"
         "Content: Test content\n"
-        "metadata: {'document_id': 'doc-ci', 'title': 'Case Insensitive', 'docs_url': 'https://example.com/ci'}\n"
+        "metadata: {'document_id': 'doc-ci', 'title': 'Case Insensitive', "
+        "'docs_url': 'https://example.com/ci'}\n"
     )
     tool_response = mocker.Mock()
     tool_response.content = [text_content_item]
