@@ -598,6 +598,8 @@ def test_dump_configuration(tmp_path) -> None:
                 "feedback_storage": None,
                 "transcripts_enabled": False,
                 "transcripts_storage": None,
+                "config_enabled": False,
+                "config_storage": None,
             },
             "mcp_servers": [],
             "authentication": {
