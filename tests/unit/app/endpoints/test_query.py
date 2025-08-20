@@ -8,6 +8,8 @@ import pytest
 
 from llama_stack_client import APIConnectionError
 from llama_stack_client.types import UserMessage  # type: ignore
+from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
+from llama_stack_client.types.tool_response import ToolResponse
 
 from configuration import AppConfig
 from app.endpoints.query import (
@@ -21,12 +23,50 @@ from app.endpoints.query import (
     get_rag_toolgroups,
     evaluate_model_hints,
 )
+from utils.metadata import (
+    process_knowledge_search_content,
+    extract_referenced_documents_from_steps,
+)
 
 from models.requests import QueryRequest, Attachment
 from models.config import ModelContextProtocolServer
+from models.responses import ReferencedDocument
 from models.database.conversations import UserConversation
 
 MOCK_AUTH = ("mock_user_id", "mock_username", "mock_token")
+
+SAMPLE_KNOWLEDGE_SEARCH_RESULTS = [
+    """knowledge_search tool found 2 chunks:
+BEGIN of knowledge_search tool results.
+""",
+    """Result 1
+Content: ABC
+Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Doc1', 'document_id': 'doc-1', \
+'source': None}
+""",
+    """Result 2
+Content: ABC
+Metadata: {'docs_url': 'https://example.com/doc2', 'title': 'Doc2', 'document_id': 'doc-2', \
+'source': None}
+""",
+    """Result 2b
+Content: ABC
+    Metadata: {'docs_url': 'https://example.com/doc2b', 'title': 'Doc2b', 'document_id': 'doc-2b', \
+'source': None}
+""",
+    """END of knowledge_search tool results.
+""",
+    # Following metadata contains an intentionally incorrect keyword "Title" (instead of "title")
+    # and it is not picked as a referenced document.
+    """Result 3
+Content: ABC
+Metadata: {'docs_url': 'https://example.com/doc3', 'Title': 'Doc3', 'document_id': 'doc-3', \
+'source': None}
+""",
+    """The above results were retrieved to help answer the user\'s query: "Sample Query".
+Use them as supporting information only in answering this query.
+""",
+]
 
 
 def mock_database_operations(mocker):
@@ -70,10 +110,6 @@ def setup_configuration_fixture():
 async def test_query_endpoint_handler_configuration_not_loaded(mocker):
     """Test the query endpoint handler if configuration is not loaded."""
     # simulate state when no configuration is loaded
-    mocker.patch(
-        "app.endpoints.query.configuration",
-        return_value=mocker.Mock(),
-    )
     mocker.patch("app.endpoints.query.configuration", None)
 
     query = "What is OpenStack?"
@@ -128,7 +164,7 @@ async def _test_query_endpoint_handler(mocker, store_transcript_to_file=False):
 
     mocker.patch(
         "app.endpoints.query.retrieve_response",
-        return_value=(llm_response, conversation_id),
+        return_value=(llm_response, conversation_id, []),
     )
     mocker.patch(
         "app.endpoints.query.select_model_and_provider_id",
@@ -185,15 +221,74 @@ async def test_query_endpoint_handler_store_transcript(mocker):
     await _test_query_endpoint_handler(mocker, store_transcript_to_file=True)
 
 
+@pytest.mark.asyncio
+async def test_query_endpoint_handler_with_referenced_documents(mocker):
+    """Test the query endpoint handler returns referenced documents."""
+    mock_metric = mocker.patch("metrics.llm_calls_total")
+    mock_client = mocker.AsyncMock()
+    mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc.return_value = mock_client
+    mock_client.models.list.return_value = [
+        mocker.Mock(identifier="model1", model_type="llm", provider_id="provider1"),
+        mocker.Mock(identifier="model2", model_type="llm", provider_id="provider2"),
+    ]
+
+    mock_config = mocker.Mock()
+    mock_config.user_data_collection_configuration.transcripts_enabled = False
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+
+    llm_response = "LLM answer with referenced documents"
+    conversation_id = "fake_conversation_id"
+    referenced_documents = [
+        ReferencedDocument(doc_url="https://example.com/doc1", doc_title="Doc1"),
+        ReferencedDocument(doc_url="https://example.com/doc2", doc_title="Doc2"),
+    ]
+    query = "What is OpenStack?"
+
+    mocker.patch(
+        "app.endpoints.query.retrieve_response",
+        return_value=(llm_response, conversation_id, referenced_documents),
+    )
+    mocker.patch(
+        "app.endpoints.query.select_model_and_provider_id",
+        return_value=("fake_model_id", "fake_model_id", "fake_provider_id"),
+    )
+    mocker.patch("app.endpoints.query.is_transcripts_enabled", return_value=False)
+
+    # Mock database operations
+    mock_database_operations(mocker)
+
+    query_request = QueryRequest(query=query)
+
+    response = await query_endpoint_handler(query_request, auth=MOCK_AUTH)
+
+    # Assert the response contains referenced documents
+    assert response.response == llm_response
+    assert response.conversation_id == conversation_id
+    # Avoid brittle equality on Pydantic models; compare fields instead
+    assert [(str(d.doc_url), d.doc_title) for d in response.referenced_documents] == [
+        ("https://example.com/doc1", "Doc1"),
+        ("https://example.com/doc2", "Doc2"),
+    ]
+    assert all(isinstance(d, ReferencedDocument) for d in response.referenced_documents)
+    assert len(response.referenced_documents) == 2
+    # Titles should be sorted deterministically by doc_title
+    assert [d.doc_title for d in response.referenced_documents] == sorted(
+        [d.doc_title for d in response.referenced_documents]
+    )
+
+    # Assert the metric for successful LLM calls is incremented
+    mock_metric.labels("fake_provider_id", "fake_model_id").inc.assert_called_once()
+
+
 def test_select_model_and_provider_id_from_request(mocker):
     """Test the select_model_and_provider_id function."""
     mocker.patch(
-        "metrics.utils.configuration.inference.default_provider",
+        "app.endpoints.query.configuration.inference.default_provider",
         "default_provider",
     )
     mocker.patch(
-        "metrics.utils.configuration.inference.default_model",
-        "default_model",
+        "app.endpoints.query.configuration.inference.default_model", "default_model"
     )
 
     model_list = [
@@ -228,12 +323,11 @@ def test_select_model_and_provider_id_from_request(mocker):
 def test_select_model_and_provider_id_from_configuration(mocker):
     """Test the select_model_and_provider_id function."""
     mocker.patch(
-        "metrics.utils.configuration.inference.default_provider",
+        "app.endpoints.query.configuration.inference.default_provider",
         "default_provider",
     )
     mocker.patch(
-        "metrics.utils.configuration.inference.default_model",
-        "default_model",
+        "app.endpoints.query.configuration.inference.default_model", "default_model"
     )
 
     model_list = [
@@ -407,12 +501,13 @@ async def test_retrieve_response_no_returned_message(prepare_agent_mocks, mocker
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, _ = await retrieve_response(
+    response, _, referenced_documents = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     # fallback mechanism: check that the response is empty
     assert response == ""
+    assert referenced_documents == []
 
 
 @pytest.mark.asyncio
@@ -438,12 +533,13 @@ async def test_retrieve_response_message_without_content(prepare_agent_mocks, mo
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, _ = await retrieve_response(
+    response, _, referenced_documents = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
     # fallback mechanism: check that the response is empty
     assert response == ""
+    assert referenced_documents == []
 
 
 @pytest.mark.asyncio
@@ -470,7 +566,7 @@ async def test_retrieve_response_vector_db_available(prepare_agent_mocks, mocker
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, referenced_documents = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -478,6 +574,7 @@ async def test_retrieve_response_vector_db_available(prepare_agent_mocks, mocker
     mock_metric.inc.assert_not_called()
     assert response == "LLM answer"
     assert conversation_id == "fake_conversation_id"
+    assert referenced_documents == []  # No knowledge_search in this test, so empty list
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(content="What is OpenStack?", role="user")],
         session_id="fake_session_id",
@@ -485,6 +582,66 @@ async def test_retrieve_response_vector_db_available(prepare_agent_mocks, mocker
         stream=False,
         toolgroups=get_rag_toolgroups(["VectorDB-1"]),
     )
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_with_knowledge_search_extracts_referenced_documents(
+    prepare_agent_mocks, mocker
+):
+    """Test the retrieve_response function extracts referenced documents from knowledge_search."""
+    mock_client, mock_agent = prepare_agent_mocks
+    mock_agent.create_turn.return_value.output_message.content = "LLM answer"
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock the response with tool execution steps containing knowledge_search results
+    mock_tool_response = ToolResponse(
+        call_id="c1",
+        tool_name="knowledge_search",
+        content=[
+            TextContentItem(text=s, type="text")
+            for s in SAMPLE_KNOWLEDGE_SEARCH_RESULTS
+        ],
+    )
+
+    mock_tool_execution_step = mocker.Mock()
+    mock_tool_execution_step.step_type = "tool_execution"
+    mock_tool_execution_step.tool_responses = [mock_tool_response]
+
+    mock_agent.create_turn.return_value.steps = [mock_tool_execution_step]
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.query.get_agent",
+        return_value=(mock_agent, "fake_conversation_id", "fake_session_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response, conversation_id, referenced_documents = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    assert response == "LLM answer"
+    assert conversation_id == "fake_conversation_id"
+
+    # Assert referenced documents were extracted correctly
+    assert len(referenced_documents) == 3
+    assert str(referenced_documents[0].doc_url) == "https://example.com/doc1"
+    assert referenced_documents[0].doc_title == "Doc1"
+    assert str(referenced_documents[1].doc_url) == "https://example.com/doc2"
+    assert referenced_documents[1].doc_title == "Doc2"
+    assert str(referenced_documents[2].doc_url) == "https://example.com/doc2b"
+    assert referenced_documents[2].doc_title == "Doc2b"
+
+    # Doc3 should not be included because it has "Title" instead of "title"
+    doc_titles = [doc.doc_title for doc in referenced_documents]
+    assert "Doc3" not in doc_titles
 
 
 @pytest.mark.asyncio
@@ -508,7 +665,7 @@ async def test_retrieve_response_no_available_shields(prepare_agent_mocks, mocke
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -557,7 +714,7 @@ async def test_retrieve_response_one_available_shield(prepare_agent_mocks, mocke
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -609,7 +766,7 @@ async def test_retrieve_response_two_available_shields(prepare_agent_mocks, mock
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -663,7 +820,7 @@ async def test_retrieve_response_four_available_shields(prepare_agent_mocks, moc
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -719,7 +876,7 @@ async def test_retrieve_response_with_one_attachment(prepare_agent_mocks, mocker
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -773,7 +930,7 @@ async def test_retrieve_response_with_two_attachments(prepare_agent_mocks, mocke
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -828,7 +985,7 @@ async def test_retrieve_response_with_mcp_servers(prepare_agent_mocks, mocker):
     model_id = "fake_model_id"
     access_token = "test_token_123"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -897,7 +1054,7 @@ async def test_retrieve_response_with_mcp_servers_empty_token(
     model_id = "fake_model_id"
     access_token = ""  # Empty token
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -955,8 +1112,6 @@ async def test_retrieve_response_with_mcp_servers_and_mcp_headers(
     )
 
     query_request = QueryRequest(query="What is OpenStack?")
-    model_id = "fake_model_id"
-    access_token = ""
     mcp_headers = {
         "filesystem-server": {"Authorization": "Bearer test_token_123"},
         "git-server": {"Authorization": "Bearer test_token_456"},
@@ -968,11 +1123,11 @@ async def test_retrieve_response_with_mcp_servers_and_mcp_headers(
         },
     }
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, _ = await retrieve_response(
         mock_client,
-        model_id,
+        "fake_model_id",
         query_request,
-        access_token,
+        "",
         mcp_headers=mcp_headers,
     )
 
@@ -982,7 +1137,7 @@ async def test_retrieve_response_with_mcp_servers_and_mcp_headers(
     # Verify get_agent was called with the correct parameters
     mock_get_agent.assert_called_once_with(
         mock_client,
-        model_id,
+        "fake_model_id",
         mocker.ANY,  # system_prompt
         [],  # available_input_shields
         [],  # available_output_shields
@@ -990,20 +1145,20 @@ async def test_retrieve_response_with_mcp_servers_and_mcp_headers(
         False,  # no_tools
     )
 
-    expected_mcp_headers = {
-        "http://localhost:3000": {"Authorization": "Bearer test_token_123"},
-        "https://git.example.com/mcp": {"Authorization": "Bearer test_token_456"},
-        "http://another-server-mcp-server:3000": {
-            "Authorization": "Bearer test_token_789"
-        },
-        # we do not put "unknown-mcp-server" url as it's unknown to lightspeed-stack
-    }
-
     # Check that the agent's extra_headers property was set correctly
     expected_extra_headers = {
         "X-LlamaStack-Provider-Data": json.dumps(
             {
-                "mcp_headers": expected_mcp_headers,
+                "mcp_headers": {
+                    "http://localhost:3000": {"Authorization": "Bearer test_token_123"},
+                    "https://git.example.com/mcp": {
+                        "Authorization": "Bearer test_token_456"
+                    },
+                    "http://another-server-mcp-server:3000": {
+                        "Authorization": "Bearer test_token_789"
+                    },
+                    # we do not put "unknown-mcp-server" url as it's unknown to lightspeed-stack
+                },
             }
         )
     }
@@ -1049,7 +1204,7 @@ async def test_retrieve_response_shield_violation(prepare_agent_mocks, mocker):
 
     query_request = QueryRequest(query="What is OpenStack?")
 
-    _, conversation_id = await retrieve_response(
+    _, conversation_id, _ = await retrieve_response(
         mock_client, "fake_model_id", query_request, "test_token"
     )
 
@@ -1201,7 +1356,7 @@ async def test_auth_tuple_unpacking_in_query_endpoint_handler(mocker):
 
     mock_retrieve_response = mocker.patch(
         "app.endpoints.query.retrieve_response",
-        return_value=("test response", "test_conversation_id"),
+        return_value=("test response", "test_conversation_id", []),
     )
 
     mocker.patch(
@@ -1232,7 +1387,6 @@ async def test_query_endpoint_handler_no_tools_true(mocker):
     ]
 
     mock_config = mocker.Mock()
-    mock_config.user_data_collection_configuration.transcripts_disabled = True
     mocker.patch("app.endpoints.query.configuration", mock_config)
 
     llm_response = "LLM answer without tools"
@@ -1241,7 +1395,7 @@ async def test_query_endpoint_handler_no_tools_true(mocker):
 
     mocker.patch(
         "app.endpoints.query.retrieve_response",
-        return_value=(llm_response, conversation_id),
+        return_value=(llm_response, conversation_id, []),
     )
     mocker.patch(
         "app.endpoints.query.select_model_and_provider_id",
@@ -1271,7 +1425,6 @@ async def test_query_endpoint_handler_no_tools_false(mocker):
     ]
 
     mock_config = mocker.Mock()
-    mock_config.user_data_collection_configuration.transcripts_disabled = True
     mocker.patch("app.endpoints.query.configuration", mock_config)
 
     llm_response = "LLM answer with tools"
@@ -1280,7 +1433,7 @@ async def test_query_endpoint_handler_no_tools_false(mocker):
 
     mocker.patch(
         "app.endpoints.query.retrieve_response",
-        return_value=(llm_response, conversation_id),
+        return_value=(llm_response, conversation_id, []),
     )
     mocker.patch(
         "app.endpoints.query.select_model_and_provider_id",
@@ -1329,7 +1482,7 @@ async def test_retrieve_response_no_tools_bypasses_mcp_and_rag(
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -1379,7 +1532,7 @@ async def test_retrieve_response_no_tools_false_preserves_functionality(
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, conversation_id = await retrieve_response(
+    response, conversation_id, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -1505,3 +1658,507 @@ def test_evaluate_model_hints(
 
     assert provider_id == expected_provider
     assert model_id == expected_model
+
+
+def test_process_knowledge_search_content_with_valid_metadata(mocker):
+    """Test process_knowledge_search_content with valid metadata."""
+    # Mock tool response with valid metadata
+    text_content_item = mocker.Mock()
+    text_content_item.text = """Result 1
+Content: Test content
+Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Test Doc', 'document_id': 'doc-1'}
+"""
+
+    tool_response = mocker.Mock()
+    tool_response.content = [text_content_item]
+
+    metadata_map = process_knowledge_search_content(tool_response)
+
+    # Verify metadata was correctly parsed and added
+    assert "doc-1" in metadata_map
+    assert metadata_map["doc-1"]["docs_url"] == "https://example.com/doc1"
+    assert metadata_map["doc-1"]["title"] == "Test Doc"
+    assert metadata_map["doc-1"]["document_id"] == "doc-1"
+
+
+def test_process_knowledge_search_content_with_invalid_metadata_syntax_error(mocker):
+    """Test process_knowledge_search_content gracefully handles SyntaxError."""
+    # Mock tool response with invalid metadata (invalid Python syntax)
+    text_content_item = mocker.Mock()
+    text_content_item.text = """Result 1
+Content: Test content
+Metadata: {'docs_url': 'https://example.com/doc1' 'title': 'Test Doc', 'document_id': 'doc-1'}
+"""  # Missing comma between 'doc1' and 'title' - will cause SyntaxError
+
+    tool_response = mocker.Mock()
+    tool_response.content = [text_content_item]
+
+    metadata_map = process_knowledge_search_content(tool_response)
+
+    # Verify metadata_map remains empty due to invalid syntax (gracefully handled)
+    assert len(metadata_map) == 0
+
+
+def test_process_knowledge_search_content_with_invalid_metadata_value_error(mocker):
+    """Test process_knowledge_search_content gracefully handles ValueError from invalid metadata."""
+    # Mock tool response with invalid metadata containing complex expressions
+    text_content_item = mocker.Mock()
+    text_content_item.text = """Result 1
+Content: Test content
+Metadata: {func_call(): 'value', 'title': 'Test Doc', 'document_id': 'doc-1'}
+"""  # Function call in dict - will cause ValueError since it's not a literal
+
+    tool_response = mocker.Mock()
+    tool_response.content = [text_content_item]
+
+    metadata_map = process_knowledge_search_content(tool_response)
+
+    # Verify metadata_map remains empty due to invalid expression (gracefully handled)
+    assert len(metadata_map) == 0
+
+
+def test_process_knowledge_search_content_with_non_dict_metadata(mocker):
+    """Test process_knowledge_search_content handles non-dict metadata gracefully."""
+    mock_logger = mocker.patch("utils.metadata.logger")
+
+    # Mock tool response with metadata that's not a dict
+    text_content_item = mocker.Mock()
+    text_content_item.text = """Result 1
+Content: Test content
+Metadata: "just a string"
+"""
+
+    tool_response = mocker.Mock()
+    tool_response.content = [text_content_item]
+
+    metadata_map = process_knowledge_search_content(tool_response)
+
+    # Verify metadata_map remains empty (no document_id in string)
+    assert len(metadata_map) == 0
+
+    # No exception should be logged since string is a valid literal and simply ignored
+    mock_logger.exception.assert_not_called()
+
+
+def test_process_knowledge_search_content_with_metadata_missing_document_id(mocker):
+    """Test process_knowledge_search_content skips metadata without document_id."""
+    # Mock tool response with valid metadata but missing document_id
+    text_content_item = mocker.Mock()
+    text_content_item.text = """Result 1
+Content: Test content
+Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Test Doc'}
+"""  # No document_id field
+
+    tool_response = mocker.Mock()
+    tool_response.content = [text_content_item]
+
+    metadata_map = process_knowledge_search_content(tool_response)
+
+    # Verify metadata_map remains empty since document_id is missing
+    assert len(metadata_map) == 0
+
+
+def test_process_knowledge_search_content_with_no_text_attribute(mocker):
+    """Test process_knowledge_search_content skips content items without text attribute."""
+    # Mock tool response with content item that has no text attribute
+    text_content_item = mocker.Mock(spec=[])  # spec=[] means no attributes
+
+    tool_response = mocker.Mock()
+    tool_response.content = [text_content_item]
+
+    metadata_map = process_knowledge_search_content(tool_response)
+
+    # Verify metadata_map remains empty since text attribute is missing
+    assert len(metadata_map) == 0
+
+
+def test_process_knowledge_search_content_with_none_content(mocker):
+    """Test process_knowledge_search_content handles tool_response with content=None."""
+    # Mock tool response with content = None
+    tool_response = mocker.Mock()
+    tool_response.content = None
+
+    metadata_map = process_knowledge_search_content(tool_response)
+
+    # Verify metadata_map remains empty when content is None
+    assert len(metadata_map) == 0
+
+
+def test_process_knowledge_search_content_duplicate_document_id_last_wins(mocker):
+    """The last metadata block for a given document_id should win."""
+    text_items = [
+        mocker.Mock(
+            text="Metadata: {'docs_url': 'https://example.com/first', "
+            "'title': 'First', 'document_id': 'doc-x'}"
+        ),
+        mocker.Mock(
+            text="Metadata: {'docs_url': 'https://example.com/second', "
+            "'title': 'Second', 'document_id': 'doc-x'}"
+        ),
+    ]
+    tool_response = mocker.Mock()
+    tool_response.tool_name = "knowledge_search"
+    tool_response.content = text_items
+
+    # Process content
+    metadata_map = process_knowledge_search_content(tool_response)
+    assert metadata_map["doc-x"]["docs_url"] == "https://example.com/second"
+    assert metadata_map["doc-x"]["title"] == "Second"
+
+    # Ensure extraction reflects last-wins as well
+    step = mocker.Mock()
+    step.step_type = "tool_execution"
+    step.tool_responses = [tool_response]
+    docs = extract_referenced_documents_from_steps([step])
+    assert len(docs) == 1
+    assert str(docs[0].doc_url) == "https://example.com/second"
+    assert docs[0].doc_title == "Second"
+
+
+def test_process_knowledge_search_content_with_braces_inside_strings(mocker):
+    """Test that braces inside strings are handled correctly."""
+    text_content_item = mocker.Mock()
+    text_content_item.text = (
+        "Result 1\n"
+        "Content: Test content\n"
+        "Metadata: {'document_id': 'doc-100', 'title': 'A {weird} title', "
+        "'docs_url': 'https://example.com/100', 'extra': {'note': 'contains {braces}'}}"
+    )
+    tool_response = mocker.Mock()
+    tool_response.content = [text_content_item]
+
+    metadata_map = process_knowledge_search_content(tool_response)
+    assert "doc-100" in metadata_map
+    assert metadata_map["doc-100"]["title"] == "A {weird} title"
+    assert metadata_map["doc-100"]["docs_url"] == "https://example.com/100"
+    assert metadata_map["doc-100"]["extra"]["note"] == "contains {braces}"
+
+
+def test_process_knowledge_search_content_with_nested_objects(mocker):
+    """Test that nested objects are parsed correctly."""
+    text_content_item = mocker.Mock()
+    text_content_item.text = (
+        "Result 1\n"
+        "Content: Test content\n"
+        'Metadata: {"document_id": "doc-200", "title": "Nested JSON", '
+        '"docs_url": "https://example.com/200", "meta": {"k": {"inner": 1}}}'
+    )
+    tool_response = mocker.Mock()
+    tool_response.content = [text_content_item]
+
+    metadata_map = process_knowledge_search_content(tool_response)
+    assert "doc-200" in metadata_map
+    assert metadata_map["doc-200"]["title"] == "Nested JSON"
+    assert metadata_map["doc-200"]["docs_url"] == "https://example.com/200"
+    assert metadata_map["doc-200"]["meta"]["k"]["inner"] == 1
+
+
+def test_process_knowledge_search_content_with_string_fallback_parsing(mocker):
+    """Test that string content uses parse_knowledge_search_metadata as fallback."""
+    # Create a tool response with string content containing metadata
+    string_content = """Result 1
+Content: Test content
+Metadata: {'docs_url': 'https://example.com/fallback', 'title': 'Fallback Doc', 'document_id': 'fallback-1'}
+
+Result 2
+Content: More content
+Metadata: {'docs_url': 'https://example.com/fallback2', 'title': 'Fallback Doc 2', 'document_id': 'fallback-2'}
+"""
+
+    tool_response = mocker.Mock()
+    tool_response.content = string_content  # String instead of list
+
+    metadata_map = process_knowledge_search_content(tool_response)
+
+    # Verify fallback parsing worked correctly
+    assert len(metadata_map) == 2
+    assert "fallback-1" in metadata_map
+    assert "fallback-2" in metadata_map
+    assert metadata_map["fallback-1"]["title"] == "Fallback Doc"
+    assert metadata_map["fallback-1"]["docs_url"] == "https://example.com/fallback"
+    assert metadata_map["fallback-2"]["title"] == "Fallback Doc 2"
+    assert metadata_map["fallback-2"]["docs_url"] == "https://example.com/fallback2"
+
+
+def test_process_knowledge_search_content_metadata_label_case_insensitive(mocker):
+    """Test that metadata labels are detected case-insensitively."""
+    text_content_item = mocker.Mock()
+    text_content_item.text = (
+        "Result 1\n"
+        "Content: Test content\n"
+        "metadata: {'document_id': 'doc-ci', 'title': 'Case Insensitive', "
+        "'docs_url': 'https://example.com/ci'}\n"
+    )
+    tool_response = mocker.Mock()
+    tool_response.content = [text_content_item]
+
+    metadata_map = process_knowledge_search_content(tool_response)
+
+    assert "doc-ci" in metadata_map
+    assert metadata_map["doc-ci"]["title"] == "Case Insensitive"
+    assert metadata_map["doc-ci"]["docs_url"] == "https://example.com/ci"
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_with_none_content(prepare_agent_mocks, mocker):
+    """Test retrieve_response handles None content gracefully."""
+    mock_client, mock_agent = prepare_agent_mocks
+
+    # Mock response with None content
+    mock_response = mocker.Mock()
+    mock_response.output_message.content = None
+    mock_response.steps = []
+    mock_agent.create_turn.return_value = mock_response
+
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.query.get_agent",
+        return_value=(mock_agent, "fake_conversation_id", "fake_session_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response, conversation_id, _ = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    # Should return empty string instead of "None"
+    assert response == ""
+    assert conversation_id == "fake_conversation_id"
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_with_missing_output_message(
+    prepare_agent_mocks, mocker
+):
+    """Test retrieve_response handles missing output_message gracefully."""
+    mock_client, mock_agent = prepare_agent_mocks
+
+    # Mock response without output_message attribute
+    mock_response = mocker.Mock(spec=["steps"])  # Only has steps attribute
+    mock_response.steps = []
+    mock_agent.create_turn.return_value = mock_response
+
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.query.get_agent",
+        return_value=(mock_agent, "fake_conversation_id", "fake_session_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response, conversation_id, _ = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    # Should return empty string when output_message is missing
+    assert response == ""
+    assert conversation_id == "fake_conversation_id"
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_with_missing_content_attribute(
+    prepare_agent_mocks, mocker
+):
+    """Test retrieve_response handles missing content attribute gracefully."""
+    mock_client, mock_agent = prepare_agent_mocks
+
+    # Mock response with output_message but no content attribute
+    mock_response = mocker.Mock()
+    mock_response.output_message = mocker.Mock(spec=[])  # No content attribute
+    mock_response.steps = []
+    mock_agent.create_turn.return_value = mock_response
+
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.query.get_agent",
+        return_value=(mock_agent, "fake_conversation_id", "fake_session_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response, conversation_id, _ = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    # Should return empty string when content attribute is missing
+    assert response == ""
+    assert conversation_id == "fake_conversation_id"
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_with_structured_content_object(
+    prepare_agent_mocks, mocker
+):
+    """Test retrieve_response handles structured content objects properly."""
+    mock_client, mock_agent = prepare_agent_mocks
+
+    # Mock response with a structured content object
+    structured_content = {"type": "text", "value": "This is structured content"}
+    mock_response = mocker.Mock()
+    mock_response.output_message.content = structured_content
+    mock_response.steps = []
+    mock_agent.create_turn.return_value = mock_response
+
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.query.get_agent",
+        return_value=(mock_agent, "fake_conversation_id", "fake_session_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response, conversation_id, _ = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    # Should convert the structured object to string representation
+    assert response == str(structured_content)
+    assert conversation_id == "fake_conversation_id"
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_skips_invalid_docs_url(prepare_agent_mocks, mocker):
+    """Test that retrieve_response skips entries with invalid docs_url."""
+    # Mock logger to capture warning logs
+    mock_logger = mocker.patch("utils.metadata.logger")
+
+    mock_client, mock_agent = prepare_agent_mocks
+    mock_agent.create_turn.return_value.output_message.content = "LLM answer"
+    mock_client.shields.list.return_value = []
+    mock_client.vector_dbs.list.return_value = []
+
+    # Mock tool response with valid and invalid docs_url entries
+    invalid_docs_url_results = [
+        """knowledge_search tool found 2 chunks:
+BEGIN of knowledge_search tool results.
+""",
+        """Result 1
+Content: Valid content
+Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Valid Doc', 'document_id': 'doc-1'}
+""",
+        """Result 2
+Content: Invalid content
+Metadata: {'docs_url': 'not-a-valid-url', 'title': 'Invalid Doc', 'document_id': 'doc-2'}
+""",
+        """END of knowledge_search tool results.
+""",
+    ]
+
+    mock_tool_response = mocker.Mock()
+    mock_tool_response.call_id = "c1"
+    mock_tool_response.tool_name = "knowledge_search"
+    mock_tool_response.content = [
+        TextContentItem(text=s, type="text") for s in invalid_docs_url_results
+    ]
+
+    mock_tool_execution_step = mocker.Mock()
+    mock_tool_execution_step.step_type = "tool_execution"
+    mock_tool_execution_step.tool_responses = [mock_tool_response]
+
+    mock_agent.create_turn.return_value.steps = [mock_tool_execution_step]
+
+    # Mock configuration with empty MCP servers
+    mock_config = mocker.Mock()
+    mock_config.mcp_servers = []
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+    mocker.patch(
+        "app.endpoints.query.get_agent",
+        return_value=(mock_agent, "fake_conversation_id", "fake_session_id"),
+    )
+
+    query_request = QueryRequest(query="What is OpenStack?")
+    model_id = "fake_model_id"
+    access_token = "test_token"
+
+    response, conversation_id, referenced_documents = await retrieve_response(
+        mock_client, model_id, query_request, access_token
+    )
+
+    assert response == "LLM answer"
+    assert conversation_id == "fake_conversation_id"
+
+    # Assert only the valid document is included, invalid one is skipped
+    assert len(referenced_documents) == 1
+    assert str(referenced_documents[0].doc_url) == "https://example.com/doc1"
+    assert referenced_documents[0].doc_title == "Valid Doc"
+
+    # Ensure we logged a warning for the invalid docs_url
+    assert any(
+        call[0][0].startswith("Skipping invalid referenced document")
+        or "Skipping invalid referenced document" in str(call)
+        for call in mock_logger.warning.call_args_list
+    )
+    # Verify the bad URL is included in the log message for extra confidence
+    assert any(
+        "not-a-valid-url" in str(call) for call in mock_logger.warning.call_args_list
+    )
+
+
+@pytest.mark.asyncio
+async def test_extract_referenced_documents_from_steps_handles_validation_errors(
+    mocker,
+):
+    """Test that extract_referenced_documents_from_steps handles validation errors gracefully."""
+    # Mock tool response with invalid docs_url that will cause pydantic validation error
+    mock_tool_response = mocker.Mock()
+    mock_tool_response.tool_name = "knowledge_search"
+    mock_tool_response.content = [
+        mocker.Mock(
+            text="""Result 1
+Content: Valid content
+Metadata: {'docs_url': 'https://example.com/doc1', 'title': 'Valid Doc', 'document_id': 'doc-1'}
+"""
+        ),
+        mocker.Mock(
+            text="""Result 2
+Content: Invalid content  
+Metadata: {'docs_url': 'invalid-url', 'title': 'Invalid Doc', 'document_id': 'doc-2'}
+"""
+        ),
+    ]
+
+    mock_tool_execution_step = mocker.Mock()
+    mock_tool_execution_step.step_type = "tool_execution"
+    mock_tool_execution_step.tool_responses = [mock_tool_response]
+
+    steps = [mock_tool_execution_step]
+
+    referenced_documents = extract_referenced_documents_from_steps(steps)
+
+    # Should only return the valid document, skipping the invalid one
+    assert len(referenced_documents) == 1
+    assert str(referenced_documents[0].doc_url) == "https://example.com/doc1"
+    assert referenced_documents[0].doc_title == "Valid Doc"

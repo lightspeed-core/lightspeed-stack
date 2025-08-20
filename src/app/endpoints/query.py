@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from typing import Annotated, Any
 
+
 from llama_stack_client import APIConnectionError
 from llama_stack_client import AsyncLlamaStackClient  # type: ignore
 from llama_stack_client.types import UserMessage, Shield  # type: ignore
@@ -25,7 +26,12 @@ from configuration import configuration
 from app.database import get_session
 import metrics
 from models.database.conversations import UserConversation
-from models.responses import QueryResponse, UnauthorizedResponse, ForbiddenResponse
+from models.responses import (
+    QueryResponse,
+    UnauthorizedResponse,
+    ForbiddenResponse,
+    ReferencedDocument,
+)
 from models.requests import QueryRequest, Attachment
 import constants
 from utils.endpoints import (
@@ -36,15 +42,28 @@ from utils.endpoints import (
 )
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
 from utils.suid import get_suid
+from utils.metadata import (
+    extract_referenced_documents_from_steps,
+)
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
 auth_dependency = get_auth_dependency()
 
+
 query_response: dict[int | str, dict[str, Any]] = {
     200: {
         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
         "response": "LLM answer",
+        "referenced_documents": [
+            {
+                "doc_url": (
+                    "https://docs.openshift.com/container-platform/"
+                    "4.15/operators/olm/index.html"
+                ),
+                "doc_title": "Operator Lifecycle Manager (OLM)",
+            }
+        ],
     },
     400: {
         "description": "Missing or invalid credentials provided by client",
@@ -54,7 +73,7 @@ query_response: dict[int | str, dict[str, Any]] = {
         "description": "User is not authorized",
         "model": ForbiddenResponse,
     },
-    503: {
+    500: {
         "detail": {
             "response": "Unable to connect to Llama Stack",
             "cause": "Connection error.",
@@ -203,7 +222,7 @@ async def query_endpoint_handler(
                 user_conversation=user_conversation, query_request=query_request
             ),
         )
-        response, conversation_id = await retrieve_response(
+        response, conversation_id, referenced_documents = await retrieve_response(
             client,
             llama_stack_model_id,
             query_request,
@@ -237,7 +256,11 @@ async def query_endpoint_handler(
             provider_id=provider_id,
         )
 
-        return QueryResponse(conversation_id=conversation_id, response=response)
+        return QueryResponse(
+            conversation_id=conversation_id,
+            response=response,
+            referenced_documents=referenced_documents,
+        )
 
     # connection to Llama Stack server
     except APIConnectionError as e:
@@ -381,7 +404,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     query_request: QueryRequest,
     token: str,
     mcp_headers: dict[str, dict[str, str]] | None = None,
-) -> tuple[str, str]:
+) -> tuple[str, str, list[ReferencedDocument]]:
     """
     Retrieve response from LLMs and agents.
 
@@ -404,8 +427,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         mcp_headers (dict[str, dict[str, str]], optional): Headers for multi-component processing.
 
     Returns:
-        tuple[str, str]: A tuple containing the LLM or agent's response content
-        and the conversation ID.
+        tuple[str, str, list[ReferencedDocument]]: A tuple containing the response
+        content, the conversation ID, and the list of referenced documents parsed
+        from tool execution steps.
     """
     available_input_shields = [
         shield.identifier
@@ -485,26 +509,39 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         toolgroups=toolgroups,
     )
 
-    # Check for validation errors in the response
+    # Check for validation errors and extract referenced documents
     steps = getattr(response, "steps", [])
     for step in steps:
-        if step.step_type == "shield_call" and step.violation:
+        if getattr(step, "step_type", "") == "shield_call" and getattr(
+            step, "violation", False
+        ):
             # Metric for LLM validation errors
             metrics.llm_calls_validation_errors_total.inc()
-            break
 
+    # Extract referenced documents from tool execution steps
+    referenced_documents = extract_referenced_documents_from_steps(steps)
+
+    # When stream=False, response should have output_message attribute
     output_message = getattr(response, "output_message", None)
     if output_message is not None:
         content = getattr(output_message, "content", None)
         if content is not None:
-            return str(content), conversation_id
+            response_text = str(content)
+        else:
+            response_text = ""
+    else:
+        # fallback
+        logger.warning(
+            "Response lacks output_message.content (conversation_id=%s)",
+            conversation_id,
+        )
+        response_text = ""
 
-    # fallback
-    logger.warning(
-        "Response lacks output_message.content (conversation_id=%s)",
+    return (
+        response_text,
         conversation_id,
+        referenced_documents,
     )
-    return "", conversation_id
 
 
 def validate_attachments_metadata(attachments: list[Attachment]) -> None:
