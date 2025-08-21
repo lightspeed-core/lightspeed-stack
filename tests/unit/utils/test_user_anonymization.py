@@ -10,12 +10,8 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from models.database.user_mapping import UserMapping
-from utils.user_anonymization import (
-    get_anonymous_user_id,
-    get_user_count,
-    find_anonymous_user_id,
-    _hash_user_id,
-)
+
+# Functions under test are accessed via a module fixture (see `ua` below)
 
 
 # Set up test environment variable for each test
@@ -31,29 +27,40 @@ def setup_test_pepper():
         yield
 
 
-class TestUserAnonymization:
+@pytest.fixture
+def user_anon_module():
+    """Return a fresh reference to the reloaded utils.user_anonymization module."""
+    import utils.user_anonymization as _ua  # pylint: disable=import-outside-toplevel
+
+    importlib.reload(_ua)
+    return _ua
+
+
+class TestUserAnonymization:  # pylint: disable=redefined-outer-name,protected-access
     """Test user anonymization functionality."""
 
-    def test_hash_user_id_consistency(self):
+    def test_hash_user_id_consistency(self, user_anon_module):
         """Test that user ID hashing is consistent."""
         user_id = "test@example.com"
-        hash1 = _hash_user_id(user_id)
-        hash2 = _hash_user_id(user_id)
+        hash1 = user_anon_module._hash_user_id(user_id)
+        hash2 = user_anon_module._hash_user_id(user_id)
 
         assert hash1 == hash2
         assert len(hash1) == 64  # SHA-256 hex length
         assert hash1 != user_id  # Should be different from original
 
-    def test_hash_user_id_different_for_different_users(self):
+    def test_hash_user_id_different_for_different_users(self, user_anon_module):
         """Test that different user IDs produce different hashes."""
-        user1_hash = _hash_user_id("user1@example.com")
-        user2_hash = _hash_user_id("user2@example.com")
+        user1_hash = user_anon_module._hash_user_id("user1@example.com")
+        user2_hash = user_anon_module._hash_user_id("user2@example.com")
 
         assert user1_hash != user2_hash
 
     @patch("utils.user_anonymization.get_session")
     @patch("utils.user_anonymization.get_suid")
-    def test_get_anonymous_user_id_new_user(self, mock_get_suid, mock_get_session):
+    def test_get_anonymous_user_id_new_user(
+        self, mock_get_suid, mock_get_session, user_anon_module
+    ):
         """Test creating new anonymous ID for first-time user."""
         # Setup mocks
         mock_session = MagicMock()
@@ -62,7 +69,7 @@ class TestUserAnonymization:
         mock_get_suid.return_value = "anon-123-456"
 
         user_id = "new_user@example.com"
-        result = get_anonymous_user_id(user_id)
+        result = user_anon_module.get_anonymous_user_id(user_id)
 
         # Verify result
         assert result == "anon-123-456"
@@ -75,15 +82,19 @@ class TestUserAnonymization:
         added_mapping = mock_session.add.call_args[0][0]
         assert isinstance(added_mapping, UserMapping)
         assert added_mapping.anonymous_id == "anon-123-456"
-        assert added_mapping.user_id_hash == _hash_user_id(user_id)
+        assert added_mapping.user_id_hash == user_anon_module._hash_user_id(user_id)
 
     @patch("utils.user_anonymization.get_session")
-    def test_get_anonymous_user_id_existing_user(self, mock_get_session):
+    def test_get_anonymous_user_id_existing_user(
+        self, mock_get_session, user_anon_module
+    ):
         """Test retrieving existing anonymous ID for returning user."""
         # Setup existing mapping
         existing_mapping = UserMapping()
         existing_mapping.anonymous_id = "existing-anon-789"
-        existing_mapping.user_id_hash = _hash_user_id("existing@example.com")
+        existing_mapping.user_id_hash = user_anon_module._hash_user_id(
+            "existing@example.com"
+        )
 
         mock_session = MagicMock()
         mock_get_session.return_value.__enter__.return_value = mock_session
@@ -91,7 +102,7 @@ class TestUserAnonymization:
             existing_mapping
         )
 
-        result = get_anonymous_user_id("existing@example.com")
+        result = user_anon_module.get_anonymous_user_id("existing@example.com")
 
         # Verify result
         assert result == "existing-anon-789"
@@ -103,7 +114,7 @@ class TestUserAnonymization:
     @patch("utils.user_anonymization.get_session")
     @patch("utils.user_anonymization.get_suid")
     def test_get_anonymous_user_id_race_condition(
-        self, mock_get_suid, mock_get_session
+        self, mock_get_suid, mock_get_session, user_anon_module
     ):
         """Test handling race condition when creating user mapping."""
         # Setup mocks for race condition scenario
@@ -123,7 +134,7 @@ class TestUserAnonymization:
         mock_session.add.side_effect = IntegrityError("Duplicate key", None, None)
         mock_get_suid.return_value = "new-uuid"
 
-        result = get_anonymous_user_id("race_user@example.com")
+        result = user_anon_module.get_anonymous_user_id("race_user@example.com")
 
         # Should return the mapping created by the other thread
         assert result == "race-condition-uuid"
@@ -132,7 +143,7 @@ class TestUserAnonymization:
     @patch("utils.user_anonymization.get_session")
     @patch("utils.user_anonymization.get_suid")
     def test_get_anonymous_user_id_race_condition_failure(
-        self, mock_get_suid, mock_get_session
+        self, mock_get_suid, mock_get_session, user_anon_module
     ):
         """Test handling race condition where retrieval also fails."""
         mock_session = MagicMock()
@@ -149,22 +160,22 @@ class TestUserAnonymization:
         with pytest.raises(
             RuntimeError, match="Unable to create or retrieve anonymous user ID"
         ):
-            get_anonymous_user_id("problematic_user@example.com")
+            user_anon_module.get_anonymous_user_id("problematic_user@example.com")
 
     @patch("utils.user_anonymization.get_session")
-    def test_get_user_count(self, mock_get_session):
+    def test_get_user_count(self, mock_get_session, user_anon_module):
         """Test getting total user count."""
         mock_session = MagicMock()
         mock_get_session.return_value.__enter__.return_value = mock_session
         mock_session.query.return_value.count.return_value = 42
 
-        result = get_user_count()
+        result = user_anon_module.get_user_count()
 
         assert result == 42
         mock_session.query.assert_called_once_with(UserMapping)
 
     @patch("utils.user_anonymization.get_session")
-    def test_find_anonymous_user_id_existing(self, mock_get_session):
+    def test_find_anonymous_user_id_existing(self, mock_get_session, user_anon_module):
         """Test finding existing anonymous ID without creating new one."""
         existing_mapping = UserMapping()
         existing_mapping.anonymous_id = "found-uuid"
@@ -175,28 +186,28 @@ class TestUserAnonymization:
             existing_mapping
         )
 
-        result = find_anonymous_user_id("existing@example.com")
+        result = user_anon_module.find_anonymous_user_id("existing@example.com")
 
         assert result == "found-uuid"
 
     @patch("utils.user_anonymization.get_session")
-    def test_find_anonymous_user_id_not_found(self, mock_get_session):
+    def test_find_anonymous_user_id_not_found(self, mock_get_session, user_anon_module):
         """Test finding non-existing anonymous ID returns None."""
         mock_session = MagicMock()
         mock_get_session.return_value.__enter__.return_value = mock_session
         mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
-        result = find_anonymous_user_id("nonexistent@example.com")
+        result = user_anon_module.find_anonymous_user_id("nonexistent@example.com")
 
         assert result is None
 
-    def test_hmac_prevents_rainbow_attacks(self):
+    def test_hmac_prevents_rainbow_attacks(self, user_anon_module):
         """Test that HMAC makes rainbow table attacks impractical."""
         # Common passwords/emails that might be in rainbow tables
         common_ids = ["admin", "test@test.com", "user123", "john.doe@company.com"]
 
         for user_id in common_ids:
-            hash_result = _hash_user_id(user_id)
+            hash_result = user_anon_module._hash_user_id(user_id)
             # Hash should not match simple SHA-256 of just the user ID
             simple_hash = hashlib.sha256(user_id.encode()).hexdigest()
             assert hash_result != simple_hash
@@ -207,7 +218,7 @@ class TestUserAnonymization:
             ).hexdigest()
             assert hash_result != hmac_without_pepper
 
-    def test_anonymization_preserves_uniqueness(self):
+    def test_anonymization_preserves_uniqueness(self, user_anon_module):
         """Test that different users get different anonymous IDs."""
         users = [
             "user1@example.com",
@@ -216,12 +227,12 @@ class TestUserAnonymization:
             "test.user@domain.org",
         ]
 
-        hashes = [_hash_user_id(user) for user in users]
+        hashes = [user_anon_module._hash_user_id(user) for user in users]
 
         # All hashes should be unique
         assert len(set(hashes)) == len(hashes)
 
-    def test_user_id_normalization(self):
+    def test_user_id_normalization(self, user_anon_module):
         """Test that user ID normalization works correctly."""
         # Test case variations should produce the same hash
         variations = [
@@ -232,7 +243,7 @@ class TestUserAnonymization:
             "  USER@EXAMPLE.COM  ",
         ]
 
-        hashes = [_hash_user_id(variation) for variation in variations]
+        hashes = [user_anon_module._hash_user_id(variation) for variation in variations]
 
         # All variations should produce the same hash
         assert (
@@ -240,7 +251,7 @@ class TestUserAnonymization:
         ), "All case/whitespace variations should hash the same"
 
         # But different actual users should still be different
-        different_user = _hash_user_id("different@example.com")
+        different_user = user_anon_module._hash_user_id("different@example.com")
         assert different_user not in hashes
 
     def test_missing_pepper_env_var(self):
@@ -256,7 +267,7 @@ class TestUserAnonymization:
                 importlib.reload(utils.user_anonymization)
 
 
-class TestUserMappingModel:
+class TestUserMappingModel:  # pylint: disable=redefined-outer-name
     """Test the UserMapping database model."""
 
     def test_user_mapping_attributes(self):

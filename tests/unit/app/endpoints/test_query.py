@@ -169,7 +169,7 @@ async def _test_query_endpoint_handler(mocker, store_transcript_to_file=False):
     # Assert the store_transcript function is called if transcripts are enabled
     if store_transcript_to_file:
         mock_transcript.assert_called_once_with(
-            user_id="mock_user_id",
+            anonymous_user_id="mock_user_id",
             conversation_id=conversation_id,
             model_id="fake_model_id",
             provider_id="fake_provider_id",
@@ -1409,7 +1409,7 @@ def test_no_tools_parameter_backward_compatibility():
         (
             UserConversation(
                 id="conv1",
-                user_id="user1",
+                anonymous_user_id="user1",
                 last_used_provider="foo",
                 last_used_model="bar",
                 message_count=1,
@@ -1428,7 +1428,7 @@ def test_no_tools_parameter_backward_compatibility():
         (
             UserConversation(
                 id="conv1",
-                user_id="user1",
+                anonymous_user_id="user1",
                 last_used_provider="foo",
                 last_used_model="bar",
                 message_count=1,
