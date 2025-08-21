@@ -1,3 +1,5 @@
+"""Custom profile for RHDH."""
+
 SUBJECT_ALLOWED = "ALLOWED"
 SUBJECT_REJECTED = "REJECTED"
 

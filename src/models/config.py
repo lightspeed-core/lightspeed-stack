@@ -280,10 +280,12 @@ class CustomProfile:
     name: str
     prompts: Dict[str, str] = Field(default={}, init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
+        """Validate and load profile."""
         self._validate_and_process()
 
     def _validate_and_process(self) -> None:
+        """Validate and load the profile."""
         checks.profile_check(self.name)
         opened_profile = checks.read_profile_file("utils.profiles", self.name, logger)
         if opened_profile is None:
@@ -292,6 +294,7 @@ class CustomProfile:
             self.prompts = opened_profile.PROFILE_CONFIG.get("system_prompts", {})
 
     def get_prompts(self) -> Dict[str, str]:
+        """Retrieve prompt attribute."""
         return self.prompts
 
 

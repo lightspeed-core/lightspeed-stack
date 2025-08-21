@@ -7,11 +7,12 @@ from fastapi import HTTPException
 import constants
 from configuration import AppConfig
 from models.config import CustomProfile
-from tests.unit import config_dict
-
 from models.requests import QueryRequest
+
 from utils import endpoints
 from utils.endpoints import get_agent
+
+from tests.unit import config_dict
 
 CONFIGURED_SYSTEM_PROMPT = "This is a configured system prompt"
 

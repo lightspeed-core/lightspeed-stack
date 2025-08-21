@@ -438,7 +438,7 @@ customization:
 
 
 def test_configuration_with_profile_customization(tmpdir) -> None:
-    """Test loading configuration from YAML file with a custom profile in the customization section"""
+    """Test loading configuration from YAML file with a custom profile."""
     expected_profile = CustomProfile("rhdh")
     expected_prompts = expected_profile.get_prompts()
     cfg_filename = tmpdir / "config.yaml"
@@ -477,7 +477,7 @@ customization:
 
 
 def test_configuration_with_all_customizations(tmpdir) -> None:
-    """Test loading configuration from YAML file with a custom profile in the customization section alongside prompt and prompt path"""
+    """Test loading configuration from YAML file with a custom profile, prompt and prompt path."""
     expected_profile = CustomProfile("rhdh")
     expected_prompts = expected_profile.get_prompts()
     system_prompt_filename = tmpdir / "system_prompt.txt"

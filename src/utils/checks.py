@@ -1,13 +1,12 @@
 """Checks that are performed to configuration options."""
 
 import os
-from types import ModuleType
-import constants
 import importlib
+from types import ModuleType
 from logging import Logger
 from typing import Optional
-
 from pydantic import FilePath
+import constants
 
 
 class InvalidConfigurationError(Exception):
@@ -32,6 +31,7 @@ def file_check(path: FilePath, desc: str) -> None:
 
 
 def profile_check(profile: str | None) -> None:
+    """Check that a profile exists in the list of profiles."""
     if profile is None:
         raise KeyError("Missing profile_name.")
     if profile not in constants.CUSTOM_PROFILES:
@@ -45,6 +45,7 @@ def read_profile_file(
     profile_name: str,
     logger: Logger,
 ) -> ModuleType | None:
+    """Import Python module related to a custom profile."""
     try:
         data = importlib.import_module(f"{profile_path}.{profile_name}.profile")
     except (FileNotFoundError, ModuleNotFoundError):
