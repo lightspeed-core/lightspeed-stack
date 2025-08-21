@@ -20,6 +20,7 @@ from auth import get_auth_dependency
 from app.database import get_session
 from utils.endpoints import check_configuration_loaded, validate_conversation_ownership
 from utils.suid import check_suid
+from utils.user_anonymization import get_anonymous_user_id
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["conversations"])
@@ -154,13 +155,22 @@ def get_conversations_list_endpoint_handler(
 
     user_id, _, _ = auth
 
-    logger.info("Retrieving conversations for user %s", user_id)
+    # Get anonymous user ID for database lookup
+    anonymous_user_id = get_anonymous_user_id(user_id)
+
+    logger.info(
+        "Retrieving conversations for user %s (anonymous: %s)",
+        user_id[:8] + "..." if len(user_id) > 8 else user_id,
+        anonymous_user_id,
+    )
 
     with get_session() as session:
         try:
-            # Get all conversations for this user
+            # Get all conversations for this user using anonymous ID
             user_conversations = (
-                session.query(UserConversation).filter_by(user_id=user_id).all()
+                session.query(UserConversation)
+                .filter_by(anonymous_user_id=anonymous_user_id)
+                .all()
             )
 
             # Return conversation summaries with metadata

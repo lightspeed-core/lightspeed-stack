@@ -13,6 +13,7 @@ from app.database import get_session
 from configuration import AppConfig
 from utils.suid import get_suid
 from utils.types import GraniteToolParser
+from utils.user_anonymization import get_anonymous_user_id
 
 
 logger = logging.getLogger("utils.endpoints")
@@ -21,11 +22,14 @@ logger = logging.getLogger("utils.endpoints")
 def validate_conversation_ownership(
     user_id: str, conversation_id: str
 ) -> UserConversation | None:
-    """Validate that the conversation belongs to the user."""
+    """Validate that the conversation belongs to the user using anonymous ID lookup."""
+    # Get anonymous user ID for database lookup
+    anonymous_user_id = get_anonymous_user_id(user_id)
+
     with get_session() as session:
         conversation = (
             session.query(UserConversation)
-            .filter_by(id=conversation_id, user_id=user_id)
+            .filter_by(id=conversation_id, anonymous_user_id=anonymous_user_id)
             .first()
         )
         return conversation

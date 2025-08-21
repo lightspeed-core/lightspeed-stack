@@ -16,8 +16,8 @@ class UserConversation(Base):  # pylint: disable=too-few-public-methods
     # The conversation ID
     id: Mapped[str] = mapped_column(primary_key=True)
 
-    # The user ID associated with the conversation
-    user_id: Mapped[str] = mapped_column(index=True)
+    # The anonymous user ID associated with the conversation
+    anonymous_user_id: Mapped[str] = mapped_column(index=True)
 
     # The last provider/model used in the conversation
     last_used_model: Mapped[str] = mapped_column()
