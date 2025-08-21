@@ -65,7 +65,10 @@ def get_system_prompt(query_request: QueryRequest, config: AppConfig) -> str:
         return query_request.system_prompt
 
     # profile takes precedence for setting prompt
-    if config.customization is not None and config.customization.custom_profile is not None:
+    if (
+        config.customization is not None
+        and config.customization.custom_profile is not None
+    ):
         prompt = config.customization.custom_profile.get_prompts().get("default")
         if prompt is not None:
             return prompt

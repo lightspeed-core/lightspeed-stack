@@ -10,7 +10,6 @@ from typing import Optional
 from pydantic import FilePath
 
 
-
 class InvalidConfigurationError(Exception):
     """Lightspeed configuration is invalid."""
 
@@ -31,13 +30,21 @@ def file_check(path: FilePath, desc: str) -> None:
     if not os.access(path, os.R_OK):
         raise InvalidConfigurationError(f"{desc} '{path}' is not readable")
 
+
 def profile_check(profile: str | None) -> None:
     if profile is None:
         raise KeyError("Missing profile_name.")
     if profile not in constants.CUSTOM_PROFILES:
-        raise InvalidConfigurationError(f"Profile {profile} not present. Must be one of: {constants.CUSTOM_PROFILES}")
+        raise InvalidConfigurationError(
+            f"Profile {profile} not present. Must be one of: {constants.CUSTOM_PROFILES}"
+        )
 
-def read_profile_file(profile_path: str, profile_name: str, logger: Logger,) -> ModuleType | None:
+
+def read_profile_file(
+    profile_path: str,
+    profile_name: str,
+    logger: Logger,
+) -> ModuleType | None:
     try:
         data = importlib.import_module(f"{profile_path}.{profile_name}.profile")
     except (FileNotFoundError, ModuleNotFoundError):

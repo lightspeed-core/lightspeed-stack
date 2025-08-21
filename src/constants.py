@@ -58,7 +58,4 @@ POSTGRES_DEFAULT_SSL_MODE = "prefer"
 # See: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-GSSENCMODE
 POSTGRES_DEFAULT_GSS_ENCMODE = "prefer"
 
-CUSTOM_PROFILES = frozenset({
-    "rhdh"
-}
-)
+CUSTOM_PROFILES = frozenset({"rhdh"})

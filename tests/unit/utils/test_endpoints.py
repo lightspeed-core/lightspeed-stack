@@ -15,6 +15,7 @@ from utils.endpoints import get_agent
 
 CONFIGURED_SYSTEM_PROMPT = "This is a configured system prompt"
 
+
 @pytest.fixture(name="input_file")
 def input_file_fixture(tmp_path):
     """Create file manually using the tmp_path fixture."""
@@ -68,7 +69,10 @@ def config_with_custom_system_prompt_and_disable_query_system_prompt_fixture():
 
     return cfg
 
-@pytest.fixture(name="config_with_custom_profile_prompt_and_enabled_query_system_prompt")
+
+@pytest.fixture(
+    name="config_with_custom_profile_prompt_and_enabled_query_system_prompt"
+)
 def config_with_custom_profile_prompt_and_enabled_query_system_prompt_fixture():
     """Configuration with custom profile loaded for prompt and disabled query system prompt set."""
     test_config = config_dict.copy()
@@ -83,7 +87,10 @@ def config_with_custom_profile_prompt_and_enabled_query_system_prompt_fixture():
 
     return cfg
 
-@pytest.fixture(name="config_with_custom_profile_prompt_and_disable_query_system_prompt")
+
+@pytest.fixture(
+    name="config_with_custom_profile_prompt_and_disable_query_system_prompt"
+)
 def config_with_custom_profile_prompt_and_disable_query_system_prompt_fixture():
     """Configuration with custom profile loaded for prompt and disabled query system prompt set."""
     test_config = config_dict.copy()
@@ -203,6 +210,7 @@ def test_get_system_prompt_with_disable_query_system_prompt_and_non_system_promp
     )
     assert system_prompt == CONFIGURED_SYSTEM_PROMPT
 
+
 def test_get_profile_prompt_with_disable_query_system_prompt(
     config_with_custom_profile_prompt_and_disable_query_system_prompt,
     query_request_without_system_prompt,
@@ -215,6 +223,7 @@ def test_get_profile_prompt_with_disable_query_system_prompt(
         config_with_custom_profile_prompt_and_disable_query_system_prompt,
     )
     assert system_prompt == prompts.get("default")
+
 
 def test_get_profile_prompt_with_enabled_query_system_prompt(
     config_with_custom_profile_prompt_and_enabled_query_system_prompt,
