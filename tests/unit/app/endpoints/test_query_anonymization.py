@@ -1,12 +1,23 @@
 """Tests for query endpoint anonymization functionality."""
 
 import logging
+import os
 from unittest.mock import patch, MagicMock
 
+import pytest
 from sqlalchemy import inspect
 
 from app.endpoints.query import persist_user_conversation_details
 from models.database.conversations import UserConversation
+
+
+# Set up test environment variable before importing the module
+@pytest.fixture(autouse=True)
+def setup_test_pepper():
+    """Set up test pepper environment variable for all tests."""
+    test_pepper = "test-pepper-for-query-tests"
+    with patch.dict(os.environ, {"USER_ANON_PEPPER": test_pepper}):
+        yield
 
 
 class TestQueryAnonymization:
@@ -126,11 +137,13 @@ class TestQueryAnonymization:
         ]
         assert len(anonymization_logs) > 0
 
-        # Verify log contains both anonymous and truncated original user
+        # Verify log contains anonymous user and conversation ID (but no original user ID)
         log_msg = anonymization_logs[0]
         assert "anon-logging-456" in log_msg
         assert "logging-conv-789" in log_msg
-        assert "logging_..." in log_msg  # Truncated original user ID
+        # Should NOT contain any reference to original user ID
+        assert "logging_test_user" not in log_msg
+        assert "logging_..." not in log_msg
 
     def test_conversation_model_uses_anonymous_field(self):
         """Test that UserConversation model uses anonymous_user_id field."""

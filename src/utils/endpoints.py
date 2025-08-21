@@ -21,8 +21,13 @@ logger = logging.getLogger("utils.endpoints")
 
 def validate_conversation_ownership(
     user_id: str, conversation_id: str
-) -> UserConversation | None:
-    """Validate that the conversation belongs to the user using anonymous ID lookup."""
+) -> UserConversation:
+    """
+    Validate that the conversation belongs to the user using anonymous ID lookup.
+
+    Raises HTTPException(403) if conversation is not found or doesn't belong to user.
+    Returns the conversation object if valid.
+    """
     # Get anonymous user ID for database lookup
     anonymous_user_id = get_anonymous_user_id(user_id)
 
@@ -32,6 +37,13 @@ def validate_conversation_ownership(
             .filter_by(id=conversation_id, anonymous_user_id=anonymous_user_id)
             .first()
         )
+
+        if not conversation:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: conversation does not belong to user",
+            )
+
         return conversation
 
 

@@ -1,7 +1,9 @@
 """User ID anonymization utilities."""
 
 import hashlib
+import hmac
 import logging
+import os
 from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
@@ -12,18 +14,30 @@ from utils.suid import get_suid
 
 logger = logging.getLogger("utils.user_anonymization")
 
+# Load HMAC pepper from environment - fail at startup if missing
+try:
+    _USER_ANON_PEPPER = os.environ["USER_ANON_PEPPER"].encode("utf-8")
+except KeyError as e:
+    raise RuntimeError(
+        "USER_ANON_PEPPER environment variable is required for user anonymization. "
+        "Set a secure random value (e.g., 'export USER_ANON_PEPPER=<your-secret-key>')"
+    ) from e
+
 
 def _hash_user_id(user_id: str) -> str:
     """
     Create a consistent hash of the user ID for mapping purposes.
 
-    Uses SHA-256 with a fixed salt to ensure consistent hashing
-    while preventing rainbow table attacks.
+    Uses HMAC-SHA256 with a server-secret pepper to ensure consistent hashing
+    while preventing rainbow table attacks and providing cryptographic security.
     """
-    # Use a fixed salt - in production, this should be configurable
-    salt = "lightspeed_user_anonymization_salt_v1"
-    hash_input = f"{salt}:{user_id}".encode("utf-8")
-    return hashlib.sha256(hash_input).hexdigest()
+    # Normalize user ID: trim whitespace and lowercase
+    normalized_user_id = user_id.strip().lower()
+
+    # Use HMAC-SHA256 with secret pepper
+    return hmac.new(
+        _USER_ANON_PEPPER, normalized_user_id.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
 
 
 def get_anonymous_user_id(auth_user_id: str) -> str:

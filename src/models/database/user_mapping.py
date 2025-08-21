@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import DateTime, func, Index
+from sqlalchemy import DateTime, func, Index, String
 
 from models.database.base import Base
 
@@ -14,10 +14,14 @@ class UserMapping(Base):  # pylint: disable=too-few-public-methods
     __tablename__ = "user_mapping"
 
     # Anonymous UUID used for all storage/analytics (primary key)
-    anonymous_id: Mapped[str] = mapped_column(primary_key=True)
+    anonymous_id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, nullable=False
+    )
 
     # Original user ID from authentication (hashed for security)
-    user_id_hash: Mapped[str] = mapped_column(index=True, unique=True)
+    user_id_hash: Mapped[str] = mapped_column(
+        String(64), index=True, unique=True, nullable=False
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

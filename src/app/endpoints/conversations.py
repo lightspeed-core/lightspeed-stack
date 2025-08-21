@@ -159,8 +159,7 @@ def get_conversations_list_endpoint_handler(
     anonymous_user_id = get_anonymous_user_id(user_id)
 
     logger.info(
-        "Retrieving conversations for user %s (anonymous: %s)",
-        user_id[:8] + "..." if len(user_id) > 8 else user_id,
+        "Retrieving conversations for anonymous user %s",
         anonymous_user_id,
     )
 

@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import DateTime, func
+from sqlalchemy import DateTime, func, ForeignKey
 
 from models.database.base import Base
 
@@ -17,7 +17,9 @@ class UserConversation(Base):  # pylint: disable=too-few-public-methods
     id: Mapped[str] = mapped_column(primary_key=True)
 
     # The anonymous user ID associated with the conversation
-    anonymous_user_id: Mapped[str] = mapped_column(index=True)
+    anonymous_user_id: Mapped[str] = mapped_column(
+        ForeignKey("user_mapping.anonymous_id"), index=True, nullable=False
+    )
 
     # The last provider/model used in the conversation
     last_used_model: Mapped[str] = mapped_column()

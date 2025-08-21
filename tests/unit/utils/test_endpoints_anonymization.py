@@ -1,10 +1,22 @@
 """Tests for endpoint utilities anonymization functionality."""
 
+import os
 from unittest.mock import patch, MagicMock
-import pytest
 
-from utils.endpoints import validate_conversation_ownership
+import pytest
+from fastapi import HTTPException
+
 from models.database.conversations import UserConversation
+from utils.endpoints import validate_conversation_ownership
+
+
+# Set up test environment variable before importing the module
+@pytest.fixture(autouse=True)
+def setup_test_pepper():
+    """Set up test pepper environment variable for all tests."""
+    test_pepper = "test-pepper-for-endpoints-tests"
+    with patch.dict(os.environ, {"USER_ANON_PEPPER": test_pepper}):
+        yield
 
 
 class TestEndpointsAnonymization:
@@ -50,24 +62,28 @@ class TestEndpointsAnonymization:
     def test_validate_conversation_ownership_not_owned(
         self, mock_get_session, mock_get_anonymous
     ):
-        """Test validation fails when user doesn't own conversation."""
+        """Test validation raises 403 when user doesn't own conversation."""
         mock_get_anonymous.return_value = "anon-not-owner-789"
         mock_session = MagicMock()
         mock_get_session.return_value.__enter__.return_value = mock_session
         mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
-        # Call validation
-        result = validate_conversation_ownership(
-            user_id="notowner@example.com", conversation_id="not-owned-conv"
-        )
+        # Call validation should raise HTTPException
+        with pytest.raises(HTTPException) as exc_info:
+            validate_conversation_ownership(
+                user_id="notowner@example.com", conversation_id="not-owned-conv"
+            )
 
         # Verify anonymous user ID was used for lookup
         mock_get_anonymous.assert_called_once_with("notowner@example.com")
         filter_call = mock_session.query.return_value.filter_by.call_args
         assert filter_call[1]["anonymous_user_id"] == "anon-not-owner-789"
 
-        # Verify None returned for non-owned conversation
-        assert result is None
+        # Verify 403 error raised for non-owned conversation
+        assert exc_info.value.status_code == 403
+        assert "Forbidden: conversation does not belong to user" in str(
+            exc_info.value.detail
+        )
 
     @patch("utils.endpoints.get_anonymous_user_id")
     @patch("utils.endpoints.get_session")
@@ -89,10 +105,11 @@ class TestEndpointsAnonymization:
         mock_get_session.return_value.__enter__.return_value = mock_session
         mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
-        # Validate for user 1
-        result1 = validate_conversation_ownership(
-            user_id="user1@example.com", conversation_id="shared-conv-test"
-        )
+        # Validate for user 1 - should raise 403
+        with pytest.raises(HTTPException) as exc_info1:
+            validate_conversation_ownership(
+                user_id="user1@example.com", conversation_id="shared-conv-test"
+            )
 
         first_call = mock_session.query.return_value.filter_by.call_args
         assert first_call[1]["anonymous_user_id"] == "anon-user1-validation"
@@ -101,18 +118,19 @@ class TestEndpointsAnonymization:
         mock_session.reset_mock()
         mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
-        # Validate for user 2
-        result2 = validate_conversation_ownership(
-            user_id="user2@example.com",
-            conversation_id="shared-conv-test",  # Same conversation ID
-        )
+        # Validate for user 2 - should also raise 403
+        with pytest.raises(HTTPException) as exc_info2:
+            validate_conversation_ownership(
+                user_id="user2@example.com",
+                conversation_id="shared-conv-test",  # Same conversation ID
+            )
 
         second_call = mock_session.query.return_value.filter_by.call_args
         assert second_call[1]["anonymous_user_id"] == "anon-user2-validation"
 
-        # Both should return None since neither owns the conversation
-        assert result1 is None
-        assert result2 is None
+        # Both should raise 403 since neither owns the conversation
+        assert exc_info1.value.status_code == 403
+        assert exc_info2.value.status_code == 403
 
         # But they used different anonymous IDs (checking the calls, not constant comparison)
         assert first_call[1]["anonymous_user_id"] != second_call[1]["anonymous_user_id"]

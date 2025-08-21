@@ -60,8 +60,7 @@ def store_transcript(  # pylint: disable=too-many-arguments,too-many-positional-
     # Get anonymous user ID for storage
     anonymous_user_id = get_anonymous_user_id(user_id)
     logger.debug(
-        "Anonymized user %s to %s for transcript storage",
-        user_id[:8] + "..." if len(user_id) > 8 else user_id,
+        "Storing transcript for anonymous user %s",
         anonymous_user_id,
     )
 

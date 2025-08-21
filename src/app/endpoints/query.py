@@ -98,10 +98,9 @@ def persist_user_conversation_details(
             )
             session.add(conversation)
             logger.debug(
-                "Associated conversation %s to anonymous user %s (original: %s)",
+                "Associated conversation %s to anonymous user %s",
                 conversation_id,
                 anonymous_user_id,
-                user_id[:8] + "..." if len(user_id) > 8 else user_id,
             )
         else:
             existing_conversation.last_used_model = model

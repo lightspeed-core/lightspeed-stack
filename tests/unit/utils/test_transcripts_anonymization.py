@@ -1,14 +1,25 @@
 """Tests for transcript anonymization functionality."""
 
 import json
+import os
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 
 from models.requests import QueryRequest, Attachment
 from utils.transcripts import store_transcript, construct_transcripts_path
 from utils.types import TurnSummary
+
+
+# Set up test environment variable before importing the module
+@pytest.fixture(autouse=True)
+def setup_test_pepper():
+    """Set up test pepper environment variable for all tests."""
+    test_pepper = "test-pepper-for-transcript-tests"
+    with patch.dict(os.environ, {"USER_ANON_PEPPER": test_pepper}):
+        yield
 
 
 class TestTranscriptAnonymization:
@@ -260,12 +271,18 @@ class TestTranscriptAnonymization:
                             attachments=[],
                         )
 
-        # Check that anonymization is logged
+        # Check that transcript storage is logged
         log_messages = [record.message for record in caplog.records]
-        anonymization_logs = [msg for msg in log_messages if "Anonymized user" in msg]
-        assert len(anonymization_logs) > 0
+        storage_logs = [
+            msg
+            for msg in log_messages
+            if "Storing transcript for anonymous user" in msg
+        ]
+        assert len(storage_logs) > 0
 
-        # Verify the log shows original user is being anonymized
-        anonymization_log = anonymization_logs[0]
-        assert "anon-logging-test" in anonymization_log
-        assert "log_test..." in anonymization_log  # Truncated original user ID
+        # Verify the log shows only anonymous user ID (no original user ID)
+        storage_log = storage_logs[0]
+        assert "anon-logging-test" in storage_log
+        # Should NOT contain any reference to original user ID
+        assert "log_test_user" not in storage_log
+        assert "log_test..." not in storage_log

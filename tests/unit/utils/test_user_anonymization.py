@@ -1,18 +1,34 @@
 """Tests for user anonymization utilities."""
 
 import hashlib
+import hmac
+import importlib
+import os
 from unittest.mock import patch, MagicMock
 
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from models.database.user_mapping import UserMapping
 from utils.user_anonymization import (
     get_anonymous_user_id,
     get_user_count,
     find_anonymous_user_id,
     _hash_user_id,
 )
-from models.database.user_mapping import UserMapping
+
+
+# Set up test environment variable for each test
+@pytest.fixture(autouse=True)
+def setup_test_pepper():
+    """Set up test pepper environment variable for all tests."""
+    test_pepper = "test-pepper-for-anonymization-tests"
+    with patch.dict(os.environ, {"USER_ANON_PEPPER": test_pepper}):
+        # Reload the module to pick up the new environment variable
+        import utils.user_anonymization  # pylint: disable=import-outside-toplevel
+
+        importlib.reload(utils.user_anonymization)
+        yield
 
 
 class TestUserAnonymization:
@@ -174,8 +190,8 @@ class TestUserAnonymization:
 
         assert result is None
 
-    def test_salt_prevents_rainbow_attacks(self):
-        """Test that salt makes rainbow table attacks impractical."""
+    def test_hmac_prevents_rainbow_attacks(self):
+        """Test that HMAC makes rainbow table attacks impractical."""
         # Common passwords/emails that might be in rainbow tables
         common_ids = ["admin", "test@test.com", "user123", "john.doe@company.com"]
 
@@ -184,6 +200,12 @@ class TestUserAnonymization:
             # Hash should not match simple SHA-256 of just the user ID
             simple_hash = hashlib.sha256(user_id.encode()).hexdigest()
             assert hash_result != simple_hash
+
+            # Hash should not match HMAC without pepper
+            hmac_without_pepper = hmac.new(
+                b"", user_id.strip().lower().encode(), hashlib.sha256
+            ).hexdigest()
+            assert hash_result != hmac_without_pepper
 
     def test_anonymization_preserves_uniqueness(self):
         """Test that different users get different anonymous IDs."""
@@ -198,6 +220,40 @@ class TestUserAnonymization:
 
         # All hashes should be unique
         assert len(set(hashes)) == len(hashes)
+
+    def test_user_id_normalization(self):
+        """Test that user ID normalization works correctly."""
+        # Test case variations should produce the same hash
+        variations = [
+            "User@Example.Com",
+            "user@example.com",
+            " user@example.com ",
+            "USER@EXAMPLE.COM",
+            "  USER@EXAMPLE.COM  ",
+        ]
+
+        hashes = [_hash_user_id(variation) for variation in variations]
+
+        # All variations should produce the same hash
+        assert (
+            len(set(hashes)) == 1
+        ), "All case/whitespace variations should hash the same"
+
+        # But different actual users should still be different
+        different_user = _hash_user_id("different@example.com")
+        assert different_user not in hashes
+
+    def test_missing_pepper_env_var(self):
+        """Test that missing pepper environment variable raises clear error."""
+        import utils.user_anonymization  # pylint: disable=import-outside-toplevel
+
+        # Test that module import fails with missing env var
+        with patch.dict(os.environ, {}, clear=True):
+            with pytest.raises(
+                RuntimeError, match="USER_ANON_PEPPER environment variable is required"
+            ):
+                # Force reimport to trigger the env var check
+                importlib.reload(utils.user_anonymization)
 
 
 class TestUserMappingModel:
