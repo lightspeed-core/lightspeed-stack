@@ -30,6 +30,7 @@ services:
       - ./lightspeed-stack.yaml:/app-root/lightspeed-stack.yaml:Z
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - USER_ANON_PEPPER=${USER_ANON_PEPPER:-default-pepper-for-development-only}
     depends_on:
         llama-stack:
           condition: service_healthy
