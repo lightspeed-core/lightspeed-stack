@@ -202,6 +202,15 @@ Output:
 
 PROFILE_CONFIG = {
     "system_prompts": {
-        "default": QUERY_SYSTEM_INSTRUCTION
-        }
+        "default": QUERY_SYSTEM_INSTRUCTION,
+        "validation": QUESTION_VALIDATOR_PROMPT_TEMPLATE,
+        "topic_summary": TOPIC_SUMMARY_PROMPT_TEMPLATE
+        },
+    "query_responses": {
+        "invalid_resp": INVALID_QUERY_RESP
+    },
+    "instructions": {
+        "context": USE_CONTEXT_INSTRUCTION,
+        "history": USE_HISTORY_INSTRUCTION
+    }
 }
