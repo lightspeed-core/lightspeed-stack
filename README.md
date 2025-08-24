@@ -79,6 +79,17 @@ Lightspeed Core Stack is based on the FastAPI framework (Uvicorn). The service i
     - please note that currently Python 3.14 is not officially supported
     - all sources are made (backward) compatible with Python 3.12; it is checked on CI
 
+## Environment Variables
+
+The following environment variable is required for the service to start:
+
+* `USER_ANON_PEPPER` - A secure random string used for user anonymization. Set this to a cryptographically secure random value:
+  ```bash
+  export USER_ANON_PEPPER="your-secure-random-string-here"
+  ```
+  
+  **Security Note**: This value should be treated as a secret and kept secure. It's used for HMAC-based user ID hashing to protect user privacy while enabling usage analytics.
+
 # Installation
 
 Installation steps depends on operation system. Please look at instructions for your system:
