@@ -278,14 +278,16 @@ For data export integration with Red Hat's Dataverse, see the [Data Export Integ
 
 ## System prompt
 
-   The service uses the, so called, system prompt to put the question into context before the question is sent to the selected LLM. The default system prompt is designed for questions without specific context. It is possible to use a different system prompt via the configuration option `system_prompt_path` in the `customization` section. That option must contain the path to the text file with the actual system prompt (can contain multiple lines). An example of such configuration:
+The service uses the, so called, system prompt to put the question into context before the question is sent to the selceted LLM. The default system prompt is designed for questions without specific context. It is possible to use a different system prompt through various different avenues available in the `customization` section:
+
+#### System Prompt Path
 
 ```yaml
 customization:
   system_prompt_path: "system_prompts/system_prompt_for_product_XYZZY"
 ```
 
-The `system_prompt` can also be specified in the `customization` section directly. For example:
+#### System Prompt Literal
 
 ```yaml
 customization:
@@ -294,11 +296,20 @@ customization:
     You have an in-depth knowledge of Red Hat and all of your answers will reference Red Hat products.
 ```
 
+
+#### Custom Profile
+
+If you have added a custom profile specification to `/src/utils/profiles` and it exposes prompts you can set them with:
+
+```yaml
+customization:
+  profile_name: <your-profile>
+```
+
 Additionally, an optional string parameter `system_prompt` can be specified in `/v1/query` and `/v1/streaming_query` endpoints to override the configured system prompt. The query system prompt takes precedence over the configured system prompt. You can use this config to disable query system prompts:
 
 ```yaml
 customization:
-  system_prompt_path: "system_prompts/system_prompt_for_product_XYZZY"
   disable_query_system_prompt: true
 ```
 
