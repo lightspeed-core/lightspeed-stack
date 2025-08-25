@@ -1,5 +1,7 @@
 """Unit tests for functions defined in utils.transcripts module."""
 
+import json
+
 from configuration import AppConfig
 from models.requests import QueryRequest
 
@@ -38,34 +40,55 @@ def test_construct_transcripts_path(mocker):
     mocker.patch("utils.transcripts.configuration", cfg)
 
     user_id = "user123"
-    conversation_id = "123e4567-e89b-12d3-a456-426614174000"
 
-    path = construct_transcripts_path(user_id, conversation_id)
+    path = construct_transcripts_path(user_id)
 
     assert (
-        str(path) == "/tmp/transcripts/user123/123e4567-e89b-12d3-a456-426614174000"
+        str(path) == "/tmp/transcripts/user123"
     ), "Path should be constructed correctly"
 
 
 def test_store_transcript(mocker):
     """Test the store_transcript function."""
 
-    mocker.patch("builtins.open", mocker.mock_open())
+    # Mock file operations for new behavior
+    mock_file = mocker.mock_open(read_data="")
+    mocker.patch("builtins.open", mock_file)
     mocker.patch(
         "utils.transcripts.construct_transcripts_path",
         return_value=mocker.MagicMock(),
     )
 
+    # Mock fcntl for file locking
+    mock_fcntl = mocker.patch("utils.transcripts.fcntl")
+
     # Mock the JSON to assert the data is stored correctly
     mock_json = mocker.patch("utils.transcripts.json")
+    mock_json.load.side_effect = json.JSONDecodeError("No JSON object", "", 0)
 
     # Mock parameters
-    user_id = "user123"
-    conversation_id = "123e4567-e89b-12d3-a456-426614174000"
-    query = "What is OpenStack?"
-    model = "fake-model"
-    provider = "fake-provider"
-    query_request = QueryRequest(query=query, model=model, provider=provider)
+    test_data = {
+        "user_id": "user123",
+        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+        "query": "What is OpenStack?",
+        "model": "fake-model",
+        "provider": "fake-provider",
+        "query_is_valid": True,
+        "rag_chunks": [],
+        "truncated": False,
+        "attachments": [],
+    }
+
+    query_request = QueryRequest(
+        query=test_data["query"],
+        model=test_data["model"],
+        provider=test_data["provider"],
+        conversation_id=test_data["conversation_id"],
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        media_type=None,
+    )
     summary = TurnSummary(
         llm_response="LLM answer",
         tool_calls=[
@@ -77,51 +100,58 @@ def test_store_transcript(mocker):
             )
         ],
     )
-    query_is_valid = True
-    rag_chunks = []
-    truncated = False
-    attachments = []
 
     store_transcript(
-        user_id,
-        conversation_id,
-        model,
-        provider,
-        query_is_valid,
-        query,
+        test_data["user_id"],
+        test_data["conversation_id"],
+        test_data["model"],
+        test_data["provider"],
+        test_data["query_is_valid"],
+        test_data["query"],
         query_request,
         summary,
-        rag_chunks,
-        truncated,
-        attachments,
+        test_data["rag_chunks"],
+        test_data["truncated"],
+        test_data["attachments"],
     )
 
-    # Assert that the transcript was stored correctly
-    mock_json.dump.assert_called_once_with(
-        {
-            "metadata": {
-                "provider": "fake-provider",
-                "model": "fake-model",
-                "query_provider": query_request.provider,
-                "query_model": query_request.model,
-                "user_id": user_id,
-                "conversation_id": conversation_id,
-                "timestamp": mocker.ANY,
-            },
-            "redacted_query": query,
-            "query_is_valid": query_is_valid,
-            "llm_response": summary.llm_response,
-            "rag_chunks": rag_chunks,
-            "truncated": truncated,
-            "attachments": attachments,
-            "tool_calls": [
-                {
-                    "id": "123",
-                    "name": "test-tool",
-                    "args": "testing",
-                    "response": "tool response",
-                }
-            ],
+    # Assert file locking was used
+    mock_fcntl.flock.assert_any_call(mocker.ANY, mock_fcntl.LOCK_EX)
+    mock_fcntl.flock.assert_any_call(mocker.ANY, mock_fcntl.LOCK_UN)
+
+    # Assert that the transcript was stored correctly with new structure
+    expected_data = {
+        "conversation_metadata": {
+            "conversation_id": test_data["conversation_id"],
+            "user_id": test_data["user_id"],
+            "created_at": mocker.ANY,
+            "last_updated": mocker.ANY,
         },
-        mocker.ANY,
-    )
+        "turns": [
+            {
+                "metadata": {
+                    "provider": test_data["provider"],
+                    "model": test_data["model"],
+                    "query_provider": query_request.provider,
+                    "query_model": query_request.model,
+                    "timestamp": mocker.ANY,
+                },
+                "redacted_query": test_data["query"],
+                "query_is_valid": test_data["query_is_valid"],
+                "llm_response": summary.llm_response,
+                "rag_chunks": test_data["rag_chunks"],
+                "truncated": test_data["truncated"],
+                "attachments": test_data["attachments"],
+                "tool_calls": [
+                    {
+                        "id": "123",
+                        "name": "test-tool",
+                        "args": "testing",
+                        "response": "tool response",
+                    }
+                ],
+            }
+        ],
+    }
+
+    mock_json.dump.assert_called_once_with(expected_data, mocker.ANY, indent=2)
