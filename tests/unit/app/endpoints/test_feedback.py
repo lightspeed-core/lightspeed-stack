@@ -11,6 +11,7 @@ from app.endpoints.feedback import (
     store_feedback,
     feedback_status,
 )
+from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
 def test_is_feedback_enabled():
@@ -62,8 +63,11 @@ async def test_assert_feedback_enabled(mocker):
     ],
     ids=["no_categories", "with_negative_categories"],
 )
-def test_feedback_endpoint_handler(mocker, feedback_request_data):
+@pytest.mark.asyncio
+async def test_feedback_endpoint_handler(mocker, feedback_request_data):
     """Test that feedback_endpoint_handler processes feedback for different payloads."""
+
+    mock_authorization_resolvers(mocker)
 
     # Mock the dependencies
     mocker.patch("app.endpoints.feedback.assert_feedback_enabled", return_value=None)
@@ -74,7 +78,7 @@ def test_feedback_endpoint_handler(mocker, feedback_request_data):
     feedback_request.model_dump.return_value = feedback_request_data
 
     # Call the endpoint handler
-    result = feedback_endpoint_handler(
+    result = await feedback_endpoint_handler(
         feedback_request=feedback_request,
         _ensure_feedback_enabled=assert_feedback_enabled,
         auth=("test_user_id", "test_username", "test_token"),
@@ -84,8 +88,11 @@ def test_feedback_endpoint_handler(mocker, feedback_request_data):
     assert result.response == "feedback received"
 
 
-def test_feedback_endpoint_handler_error(mocker):
+@pytest.mark.asyncio
+async def test_feedback_endpoint_handler_error(mocker):
     """Test that feedback_endpoint_handler raises an HTTPException on error."""
+    mock_authorization_resolvers(mocker)
+
     # Mock the dependencies
     mocker.patch("app.endpoints.feedback.assert_feedback_enabled", return_value=None)
     mocker.patch(
@@ -98,7 +105,7 @@ def test_feedback_endpoint_handler_error(mocker):
 
     # Call the endpoint handler and assert it raises an exception
     with pytest.raises(HTTPException) as exc_info:
-        feedback_endpoint_handler(
+        await feedback_endpoint_handler(
             feedback_request=feedback_request,
             _ensure_feedback_enabled=assert_feedback_enabled,
             auth=("test_user_id", "test_username", "test_token"),

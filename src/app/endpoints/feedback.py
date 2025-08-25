@@ -5,11 +5,14 @@ from typing import Annotated, Any
 from pathlib import Path
 import json
 from datetime import datetime, UTC
-from fastapi import APIRouter, Request, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, Request, status
 
 from auth import get_auth_dependency
 from auth.interface import AuthTuple
+from authorization.middleware import authorize
 from configuration import configuration
+from models.config import Action
+from models.requests import FeedbackRequest
 from models.responses import (
     ErrorResponse,
     FeedbackResponse,
@@ -17,7 +20,6 @@ from models.responses import (
     UnauthorizedResponse,
     ForbiddenResponse,
 )
-from models.requests import FeedbackRequest
 from utils.suid import get_suid
 
 logger = logging.getLogger(__name__)
@@ -79,7 +81,8 @@ async def assert_feedback_enabled(_request: Request) -> None:
 
 
 @router.post("", responses=feedback_response)
-def feedback_endpoint_handler(
+@authorize(Action.FEEDBACK)
+async def feedback_endpoint_handler(
     feedback_request: FeedbackRequest,
     auth: Annotated[AuthTuple, Depends(auth_dependency)],
     _ensure_feedback_enabled: Any = Depends(assert_feedback_enabled),

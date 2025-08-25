@@ -22,9 +22,11 @@ from fastapi.responses import StreamingResponse
 
 from auth import get_auth_dependency
 from auth.interface import AuthTuple
+from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 import metrics
+from models.config import Action
 from models.requests import QueryRequest
 from models.database.conversations import UserConversation
 from utils.endpoints import check_configuration_loaded, get_agent, get_system_prompt
@@ -509,8 +511,9 @@ def _handle_heartbeat_event(chunk_id: int) -> Iterator[str]:
 
 
 @router.post("/streaming_query")
+@authorize(Action.STREAMING_QUERY)
 async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
-    _request: Request,
+    request: Request,
     query_request: QueryRequest,
     auth: Annotated[AuthTuple, Depends(auth_dependency)],
     mcp_headers: dict[str, dict[str, str]] = Depends(mcp_headers_dependency),
@@ -533,6 +536,9 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         HTTPException: Returns HTTP 500 if unable to connect to the
         Llama Stack server.
     """
+    # Nothing interesting in the request
+    _ = request
+
     check_configuration_loaded(configuration)
 
     llama_stack_config = configuration.llama_stack_configuration

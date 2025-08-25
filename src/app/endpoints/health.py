@@ -6,12 +6,16 @@ methods. For HEAD HTTP method, just the HTTP response code is used.
 """
 
 import logging
-from typing import Any
+from typing import Annotated, Any
 
 from llama_stack.providers.datatypes import HealthStatus
 
-from fastapi import APIRouter, status, Response
+from fastapi import APIRouter, status, Response, Depends
 from client import AsyncLlamaStackClientHolder
+from auth.interface import AuthTuple
+from auth import get_auth_dependency
+from authorization.middleware import authorize
+from models.config import Action
 from models.responses import (
     LivenessResponse,
     ReadinessResponse,
@@ -20,6 +24,8 @@ from models.responses import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
+
+auth_dependency = get_auth_dependency()
 
 
 async def get_providers_health_statuses() -> list[ProviderHealthStatus]:
@@ -72,7 +78,11 @@ get_readiness_responses: dict[int | str, dict[str, Any]] = {
 
 
 @router.get("/readiness", responses=get_readiness_responses)
-async def readiness_probe_get_method(response: Response) -> ReadinessResponse:
+@authorize(Action.INFO)
+async def readiness_probe_get_method(
+    auth: Annotated[AuthTuple, Depends(auth_dependency)],
+    response: Response,
+) -> ReadinessResponse:
     """
     Handle the readiness probe endpoint, returning service readiness.
 
@@ -80,6 +90,9 @@ async def readiness_probe_get_method(response: Response) -> ReadinessResponse:
     and details of unhealthy providers; otherwise, indicates the
     service is ready.
     """
+    # Used only for authorization
+    _ = auth
+
     provider_statuses = await get_providers_health_statuses()
 
     # Check if any provider is unhealthy (not counting not_implemented as unhealthy)
@@ -112,11 +125,17 @@ get_liveness_responses: dict[int | str, dict[str, Any]] = {
 
 
 @router.get("/liveness", responses=get_liveness_responses)
-def liveness_probe_get_method() -> LivenessResponse:
+@authorize(Action.INFO)
+async def liveness_probe_get_method(
+    auth: Annotated[AuthTuple, Depends(auth_dependency)],
+) -> LivenessResponse:
     """
     Return the liveness status of the service.
 
     Returns:
         LivenessResponse: Indicates that the service is alive.
     """
+    # Used only for authorization
+    _ = auth
+
     return LivenessResponse(alive=True)

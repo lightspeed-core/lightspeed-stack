@@ -5,19 +5,21 @@ from typing import Any
 
 from llama_stack_client import APIConnectionError, NotFoundError
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, Request, status, Depends
 
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from app.database import get_session
+from auth import get_auth_dependency
+from authorization.middleware import authorize
+from models.config import Action
+from models.database.conversations import UserConversation
 from models.responses import (
     ConversationResponse,
     ConversationDeleteResponse,
     ConversationsListResponse,
     ConversationDetails,
 )
-from models.database.conversations import UserConversation
-from auth import get_auth_dependency
-from app.database import get_session
 from utils.endpoints import check_configuration_loaded, validate_conversation_ownership
 from utils.suid import check_suid
 
@@ -146,7 +148,9 @@ def simplify_session_data(session_data: dict) -> list[dict[str, Any]]:
 
 
 @router.get("/conversations", responses=conversations_list_responses)
-def get_conversations_list_endpoint_handler(
+@authorize(Action.LIST_CONVERSATIONS)
+async def get_conversations_list_endpoint_handler(
+    request: Request,
     auth: Any = Depends(auth_dependency),
 ) -> ConversationsListResponse:
     """Handle request to retrieve all conversations for the authenticated user."""
@@ -158,10 +162,15 @@ def get_conversations_list_endpoint_handler(
 
     with get_session() as session:
         try:
-            # Get all conversations for this user
-            user_conversations = (
-                session.query(UserConversation).filter_by(user_id=user_id).all()
+            query = session.query(UserConversation)
+
+            filtered_query = (
+                query
+                if Action.LIST_OTHERS_CONVERSATIONS in request.state.authorized_actions
+                else query.filter_by(user_id=user_id)
             )
+
+            user_conversations = filtered_query.all()
 
             # Return conversation summaries with metadata
             conversations = [
@@ -200,7 +209,9 @@ def get_conversations_list_endpoint_handler(
 
 
 @router.get("/conversations/{conversation_id}", responses=conversation_responses)
+@authorize(Action.GET_CONVERSATION)
 async def get_conversation_endpoint_handler(
+    request: Request,
     conversation_id: str,
     auth: Any = Depends(auth_dependency),
 ) -> ConversationResponse:
@@ -239,6 +250,9 @@ async def get_conversation_endpoint_handler(
     validate_conversation_ownership(
         user_id=user_id,
         conversation_id=conversation_id,
+        others_allowed=(
+            Action.READ_OTHERS_CONVERSATIONS in request.state.authorized_actions
+        ),
     )
 
     agent_id = conversation_id
@@ -309,7 +323,9 @@ async def get_conversation_endpoint_handler(
 @router.delete(
     "/conversations/{conversation_id}", responses=conversation_delete_responses
 )
+@authorize(Action.DELETE_CONVERSATION)
 async def delete_conversation_endpoint_handler(
+    request: Request,
     conversation_id: str,
     auth: Any = Depends(auth_dependency),
 ) -> ConversationDeleteResponse:
@@ -342,6 +358,9 @@ async def delete_conversation_endpoint_handler(
     validate_conversation_ownership(
         user_id=user_id,
         conversation_id=conversation_id,
+        others_allowed=(
+            Action.DELETE_OTHERS_CONVERSATIONS in request.state.authorized_actions
+        ),
     )
 
     agent_id = conversation_id

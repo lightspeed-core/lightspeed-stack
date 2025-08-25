@@ -9,6 +9,7 @@ from llama_stack.core.stack import replace_env_vars
 
 import yaml
 from models.config import (
+    AuthorizationConfiguration,
     Configuration,
     Customization,
     LlamaStackConfiguration,
@@ -103,6 +104,18 @@ class AppConfig:
         ), "logic error: authentication configuration is not loaded"
 
         return self._configuration.authentication
+
+    @property
+    def authorization_configuration(self) -> AuthorizationConfiguration:
+        """Return authorization configuration or default no-op configuration."""
+        assert (
+            self._configuration is not None
+        ), "logic error: configuration is not loaded"
+
+        if self._configuration.authorization is None:
+            return AuthorizationConfiguration()
+
+        return self._configuration.authorization
 
     @property
     def customization(self) -> Optional[Customization]:

@@ -37,6 +37,7 @@ dependencies = [
     "openai==1.99.9",
     "sqlalchemy>=2.0.42",
     "semver<4.0.0",
+    "jsonpath-ng>=1.6.1",
 ]
 
 

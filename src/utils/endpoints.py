@@ -19,15 +19,25 @@ logger = logging.getLogger("utils.endpoints")
 
 
 def validate_conversation_ownership(
-    user_id: str, conversation_id: str
+    user_id: str, conversation_id: str, others_allowed: bool = False
 ) -> UserConversation | None:
-    """Validate that the conversation belongs to the user."""
+    """Validate that the conversation belongs to the user.
+
+    Validates that the conversation with the given ID belongs to the user with the given ID.
+    If `others_allowed` is True, it allows conversations that do not belong to the user,
+    which is useful for admin access.
+    """
     with get_session() as session:
-        conversation = (
-            session.query(UserConversation)
-            .filter_by(id=conversation_id, user_id=user_id)
-            .first()
+        conversation_query = session.query(UserConversation)
+
+        filtered_conversation_query = (
+            conversation_query.filter_by(id=conversation_id)
+            if others_allowed
+            else conversation_query.filter_by(id=conversation_id, user_id=user_id)
         )
+
+        conversation: UserConversation | None = filtered_conversation_query.first()
+
         return conversation
 
 

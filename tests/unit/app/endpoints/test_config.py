@@ -5,10 +5,14 @@ import pytest
 from fastapi import HTTPException, Request, status
 from app.endpoints.config import config_endpoint_handler
 from configuration import AppConfig
+from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
-def test_config_endpoint_handler_configuration_not_loaded(mocker):
+@pytest.mark.asyncio
+async def test_config_endpoint_handler_configuration_not_loaded(mocker):
     """Test the config endpoint handler."""
+    mock_authorization_resolvers(mocker)
+
     mocker.patch(
         "app.endpoints.config.configuration._configuration",
         new=None,
@@ -20,14 +24,19 @@ def test_config_endpoint_handler_configuration_not_loaded(mocker):
             "type": "http",
         }
     )
-    with pytest.raises(HTTPException) as e:
-        config_endpoint_handler(request)
-        assert e.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert e.detail["response"] == "Configuration is not loaded"
+    auth = ("test_user", "token", {})
+    with pytest.raises(HTTPException) as exc_info:
+        await config_endpoint_handler(auth=auth, request=request)
+
+    assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert exc_info.value.detail["response"] == "Configuration is not loaded"
 
 
-def test_config_endpoint_handler_configuration_loaded():
+@pytest.mark.asyncio
+async def test_config_endpoint_handler_configuration_loaded(mocker):
     """Test the config endpoint handler."""
+    mock_authorization_resolvers(mocker)
+
     config_dict = {
         "name": "foo",
         "service": {
@@ -49,15 +58,21 @@ def test_config_endpoint_handler_configuration_loaded():
         "authentication": {
             "module": "noop",
         },
+        "authorization": {"access_rules": []},
         "customization": None,
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
+
+    # Mock configuration
+    mocker.patch("app.endpoints.config.configuration", cfg)
+
     request = Request(
         scope={
             "type": "http",
         }
     )
-    response = config_endpoint_handler(request)
+    auth = ("test_user", "token", {})
+    response = await config_endpoint_handler(auth=auth, request=request)
     assert response is not None
     assert response == cfg.configuration

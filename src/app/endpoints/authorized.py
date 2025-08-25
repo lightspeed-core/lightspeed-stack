@@ -1,10 +1,11 @@
 """Handler for REST API call to authorized endpoint."""
 
 import logging
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 
+from auth.interface import AuthTuple
 from auth import get_auth_dependency
 from models.responses import AuthorizedResponse, UnauthorizedResponse, ForbiddenResponse
 
@@ -31,7 +32,7 @@ authorized_responses: dict[int | str, dict[str, Any]] = {
 
 @router.post("/authorized", responses=authorized_responses)
 async def authorized_endpoint_handler(
-    auth: Any = Depends(auth_dependency),
+    auth: Annotated[AuthTuple, Depends(auth_dependency)],
 ) -> AuthorizedResponse:
     """
     Handle request to the /authorized endpoint.
