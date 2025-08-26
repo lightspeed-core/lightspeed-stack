@@ -190,20 +190,27 @@ def get_conversations_list_endpoint_handler(
             ]
 
             logger.info(
-                "Found %d conversations for user %s", len(conversations), user_id
+                "Found %d conversations for anonymous user %s",
+                len(conversations),
+                anonymous_user_id,
             )
 
             return ConversationsListResponse(conversations=conversations)
 
         except Exception as e:
             logger.exception(
-                "Error retrieving conversations for user %s: %s", user_id, e
+                "Error retrieving conversations for anonymous user %s: %s",
+                anonymous_user_id,
+                e,
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={
                     "response": "Unknown error",
-                    "cause": f"Unknown error while getting conversations for user {user_id}",
+                    "cause": (
+                        f"Unknown error while getting conversations for "
+                        f"anonymous user {anonymous_user_id}"
+                    ),
                 },
             ) from e
 

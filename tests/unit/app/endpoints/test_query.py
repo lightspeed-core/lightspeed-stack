@@ -169,7 +169,7 @@ async def _test_query_endpoint_handler(mocker, store_transcript_to_file=False):
     # Assert the store_transcript function is called if transcripts are enabled
     if store_transcript_to_file:
         mock_transcript.assert_called_once_with(
-            anonymous_user_id="mock_user_id",
+            user_id="mock_user_id",
             conversation_id=conversation_id,
             model_id="fake_model_id",
             provider_id="fake_provider_id",
@@ -177,9 +177,9 @@ async def _test_query_endpoint_handler(mocker, store_transcript_to_file=False):
             query=query,
             query_request=query_request,
             summary=summary,
-            attachments=[],
             rag_chunks=[],
             truncated=False,
+            attachments=[],
         )
     else:
         mock_transcript.assert_not_called()

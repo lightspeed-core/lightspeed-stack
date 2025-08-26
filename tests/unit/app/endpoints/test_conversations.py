@@ -46,6 +46,10 @@ def create_mock_conversation(
 
 def mock_database_session(mocker, query_result=None):
     """Helper function to mock get_session with proper context manager support."""
+    # Mock database initialization
+    mocker.patch("app.database.engine", mocker.Mock())
+    mocker.patch("app.database.SessionLocal", mocker.Mock())
+
     mock_session = mocker.Mock()
     if query_result is not None:
         mock_session.query.return_value.filter_by.return_value.all.return_value = (
@@ -530,6 +534,10 @@ class TestGetConversationsListEndpoint:
     def test_successful_conversations_list_retrieval(self, mocker, setup_configuration):
         """Test successful retrieval of conversations list."""
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+        mocker.patch(
+            "app.endpoints.conversations.get_anonymous_user_id",
+            return_value="anon-test-user",
+        )
 
         # Mock database session and query results
         mock_conversations = [
@@ -570,6 +578,10 @@ class TestGetConversationsListEndpoint:
     def test_empty_conversations_list(self, mocker, setup_configuration):
         """Test when user has no conversations."""
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+        mocker.patch(
+            "app.endpoints.conversations.get_anonymous_user_id",
+            return_value="anon-test-user",
+        )
 
         # Mock database session with no results
         mock_database_session(mocker, [])
@@ -583,6 +595,10 @@ class TestGetConversationsListEndpoint:
     def test_database_exception(self, mocker, setup_configuration):
         """Test when database query raises an exception."""
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+        mocker.patch(
+            "app.endpoints.conversations.get_anonymous_user_id",
+            return_value="anon-test-user",
+        )
 
         # Mock database session to raise exception
         mock_session = mock_database_session(mocker)
@@ -594,6 +610,6 @@ class TestGetConversationsListEndpoint:
         assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert "Unknown error" in exc_info.value.detail["response"]
         assert (
-            "Unknown error while getting conversations for user"
+            "Unknown error while getting conversations for anonymous user"
             in exc_info.value.detail["cause"]
         )

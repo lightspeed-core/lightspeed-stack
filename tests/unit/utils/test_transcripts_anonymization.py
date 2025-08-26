@@ -213,8 +213,14 @@ class TestTranscriptAnonymization:
             assert data["attachments"][0]["attachment_type"] == "text"
             assert data["attachments"][0]["content"] == "Test attachment content"
 
-    def test_path_sanitization_with_anonymous_ids(self):
+    @patch("utils.transcripts.configuration")
+    def test_path_sanitization_with_anonymous_ids(self, mock_config):
         """Test that path sanitization works correctly with anonymous UUIDs."""
+        # Setup mock configuration
+        mock_config.user_data_collection_configuration.transcripts_storage = (
+            "/tmp/transcripts"
+        )
+
         # Test with various UUID formats and potential path injection
         test_cases = [
             ("anon-uuid-123", "conv-456"),
@@ -229,7 +235,8 @@ class TestTranscriptAnonymization:
 
             # Should not contain path traversal sequences
             assert "../" not in result_str
-            assert not result_str.startswith("/")
+            # Paths should be absolute (start with /) since we use /tmp/transcripts as base
+            assert result_str.startswith("/tmp/transcripts/")
 
     @patch("utils.transcripts.get_anonymous_user_id")
     def test_logging_shows_anonymization(self, mock_get_anonymous, caplog):

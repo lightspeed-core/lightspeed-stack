@@ -137,6 +137,9 @@ def test_store_feedback(mocker, feedback_request_data):
     mocker.patch("builtins.open", mocker.mock_open())
     mocker.patch("app.endpoints.feedback.Path", return_value=mocker.MagicMock())
     mocker.patch("app.endpoints.feedback.get_suid", return_value="fake-uuid")
+    mocker.patch(
+        "app.endpoints.feedback.get_anonymous_user_id", return_value="anon-test-user"
+    )
 
     # Patch json to inspect stored data
     mock_json = mocker.patch("app.endpoints.feedback.json")
@@ -146,7 +149,7 @@ def test_store_feedback(mocker, feedback_request_data):
     store_feedback(user_id, feedback_request_data)
 
     expected_data = {
-        "user_id": user_id,
+        "anonymous_user_id": "anon-test-user",
         "timestamp": mocker.ANY,
         **feedback_request_data,
     }
@@ -182,6 +185,9 @@ def test_store_feedback_on_io_error(mocker, feedback_request_data):
     configuration.user_data_collection_configuration.feedback_storage = "fake-path"
     mocker.patch("app.endpoints.feedback.Path", return_value=mocker.MagicMock())
     mocker.patch("builtins.open", side_effect=PermissionError("EACCES"))
+    mocker.patch(
+        "app.endpoints.feedback.get_anonymous_user_id", return_value="anon-test-user"
+    )
 
     user_id = "test_user_id"
 

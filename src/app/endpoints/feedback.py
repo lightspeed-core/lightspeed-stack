@@ -19,6 +19,7 @@ from models.responses import (
 )
 from models.requests import FeedbackRequest
 from utils.suid import get_suid
+from utils.user_anonymization import get_anonymous_user_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
@@ -131,7 +132,8 @@ def store_feedback(user_id: str, feedback: dict) -> None:
         user_id (str): Unique identifier of the user submitting feedback.
         feedback (dict): Feedback data to be stored, merged with user ID and timestamp.
     """
-    logger.debug("Storing feedback for user %s", user_id)
+    anonymous_user_id = get_anonymous_user_id(user_id)
+    logger.debug("Storing feedback for anonymous user %s", anonymous_user_id)
     # Creates storage path only if it doesn't exist. The `exist_ok=True` prevents
     # race conditions in case of multiple server instances trying to set up storage
     # at the same location.
@@ -141,7 +143,11 @@ def store_feedback(user_id: str, feedback: dict) -> None:
     storage_path.mkdir(parents=True, exist_ok=True)
 
     current_time = str(datetime.now(UTC))
-    data_to_store = {"user_id": user_id, "timestamp": current_time, **feedback}
+    data_to_store = {
+        "anonymous_user_id": anonymous_user_id,
+        "timestamp": current_time,
+        **feedback,
+    }
 
     # stores feedback in a file under unique uuid
     feedback_file_path = storage_path / f"{get_suid()}.json"
