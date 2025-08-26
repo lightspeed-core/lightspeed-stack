@@ -1,16 +1,23 @@
 """Handler for REST API call to provide info."""
 
 import logging
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Request
+from fastapi import Depends
 
+from auth.interface import AuthTuple
+from auth import get_auth_dependency
+from authorization.middleware import authorize
 from configuration import configuration
-from version import __version__
+from models.config import Action
 from models.responses import InfoResponse
+from version import __version__
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["info"])
+
+auth_dependency = get_auth_dependency()
 
 
 get_info_responses: dict[int | str, dict[str, Any]] = {
@@ -22,7 +29,11 @@ get_info_responses: dict[int | str, dict[str, Any]] = {
 
 
 @router.get("/info", responses=get_info_responses)
-def info_endpoint_handler(_request: Request) -> InfoResponse:
+@authorize(Action.INFO)
+async def info_endpoint_handler(
+    auth: Annotated[AuthTuple, Depends(auth_dependency)],
+    request: Request,
+) -> InfoResponse:
     """
     Handle request to the /info endpoint.
 
@@ -32,4 +43,10 @@ def info_endpoint_handler(_request: Request) -> InfoResponse:
     Returns:
         InfoResponse: An object containing the service's name and version.
     """
+    # Used only for authorization
+    _ = auth
+
+    # Nothing interesting in the request
+    _ = request
+
     return InfoResponse(name=configuration.configuration.name, version=__version__)

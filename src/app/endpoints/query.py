@@ -16,7 +16,7 @@ from llama_stack_client.types.agents.turn_create_params import (
 )
 from llama_stack_client.types.model_list_response import ModelListResponse
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, Request, status, Depends
 
 from auth import get_auth_dependency
 from auth.interface import AuthTuple
@@ -25,9 +25,11 @@ from configuration import configuration
 from app.database import get_session
 import metrics
 import constants
+from authorization.middleware import authorize
+from models.config import Action
 from models.database.conversations import UserConversation
-from models.responses import QueryResponse, UnauthorizedResponse, ForbiddenResponse
 from models.requests import QueryRequest, Attachment
+from models.responses import QueryResponse, UnauthorizedResponse, ForbiddenResponse
 from utils.endpoints import (
     check_configuration_loaded,
     get_agent,
@@ -154,7 +156,9 @@ def evaluate_model_hints(
 
 
 @router.post("/query", responses=query_response)
+@authorize(Action.QUERY)
 async def query_endpoint_handler(
+    request: Request,
     query_request: QueryRequest,
     auth: Annotated[AuthTuple, Depends(auth_dependency)],
     mcp_headers: dict[str, dict[str, str]] = Depends(mcp_headers_dependency),
@@ -184,7 +188,11 @@ async def query_endpoint_handler(
     user_conversation: UserConversation | None = None
     if query_request.conversation_id:
         user_conversation = validate_conversation_ownership(
-            user_id=user_id, conversation_id=query_request.conversation_id
+            user_id=user_id,
+            conversation_id=query_request.conversation_id,
+            others_allowed=(
+                Action.QUERY_OTHERS_CONVERSATIONS in request.state.authorized_actions
+            ),
         )
 
         if user_conversation is None:

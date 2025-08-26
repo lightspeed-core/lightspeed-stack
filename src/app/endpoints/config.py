@@ -1,16 +1,21 @@
 """Handler for REST API call to retrieve service configuration."""
 
 import logging
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 
-from models.config import Configuration
+from auth.interface import AuthTuple
+from auth import get_auth_dependency
+from authorization.middleware import authorize
 from configuration import configuration
+from models.config import Action, Configuration
 from utils.endpoints import check_configuration_loaded
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["config"])
+
+auth_dependency = get_auth_dependency()
 
 
 get_config_responses: dict[int | str, dict[str, Any]] = {
@@ -56,7 +61,11 @@ get_config_responses: dict[int | str, dict[str, Any]] = {
 
 
 @router.get("/config", responses=get_config_responses)
-def config_endpoint_handler(_request: Request) -> Configuration:
+@authorize(Action.GET_CONFIG)
+async def config_endpoint_handler(
+    auth: Annotated[AuthTuple, Depends(auth_dependency)],
+    request: Request,
+) -> Configuration:
     """
     Handle requests to the /config endpoint.
 
@@ -66,6 +75,12 @@ def config_endpoint_handler(_request: Request) -> Configuration:
     Returns:
         Configuration: The loaded service configuration object.
     """
+    # Used only for authorization
+    _ = auth
+
+    # Nothing interesting in the request
+    _ = request
+
     # ensure that configuration is loaded
     check_configuration_loaded(configuration)
 

@@ -24,7 +24,7 @@ It is possible to run Lightspeed Core Stack service with Llama Stack "embedded" 
 1. Add and install all required dependencies
     ```bash
     uv add \
-    "llama-stack==0.2.16" \
+    "llama-stack==0.2.17" \
     "fastapi>=0.115.12" \
     "opentelemetry-sdk>=1.34.0" \
     "opentelemetry-exporter-otlp>=1.34.0" \
@@ -61,7 +61,7 @@ It is possible to run Lightspeed Core Stack service with Llama Stack "embedded" 
      + greenlet==3.2.3
      + grpcio==1.74.0
      + httpx-sse==0.4.1
-     ~ lightspeed-stack==0.1.3 (from file:///tmp/ramdisk/lightspeed-stack)
+     ~ lightspeed-stack==0.2.0 (from file:///tmp/ramdisk/lightspeed-stack)
      + litellm==1.74.9.post1
      + lxml==6.0.0
      + mcp==1.12.2

@@ -404,12 +404,32 @@ Prometheus format.
 
 
 
+## AccessRule
+
+
+Rule defining what actions a role can perform.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| role | string |  |
+| actions | array |  |
+
+
+## Action
+
+
+Available actions in the system.
+
+
+
+
 ## Attachment
 
 
-Model representing an attachment that can be send from UI as part of query.
+Model representing an attachment that can be send from the UI as part of query.
 
-List of attachments can be optional part of 'query' request.
+A list of attachments can be an optional part of 'query' request.
 
 Attributes:
     attachment_type: The attachment type, like "log", "configuration" etc.
@@ -417,7 +437,7 @@ Attributes:
     content: The actual attachment content
 
 YAML attachments with **kind** and **metadata/name** attributes will
-be handled as resources with specified name:
+be handled as resources with the specified name:
 ```
 kind: Pod
 metadata:
@@ -445,6 +465,17 @@ Authentication configuration.
 | k8s_cluster_api |  |  |
 | k8s_ca_cert_path |  |  |
 | jwk_config |  |  |
+
+
+## AuthorizationConfiguration
+
+
+Authorization configuration.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| access_rules | array |  |
 
 
 ## AuthorizedResponse
@@ -492,6 +523,7 @@ Global service configuration.
 | database |  |  |
 | mcp_servers | array |  |
 | authentication |  |  |
+| authorization |  |  |
 | customization |  |  |
 | inference |  |  |
 
@@ -533,16 +565,18 @@ Attributes:
     created_at: When the conversation was created.
     last_message_at: When the last message was sent.
     message_count: Number of user messages in the conversation.
-    model: The model used for the conversation.
+    last_used_model: The last model used for the conversation.
+    last_used_provider: The provider of the last used model.
 
 Example:
     ```python
-    conversation = ConversationSummary(
+    conversation = ConversationDetails(
         conversation_id="123e4567-e89b-12d3-a456-426614174000"
         created_at="2024-01-01T00:00:00Z",
         last_message_at="2024-01-01T00:05:00Z",
         message_count=5,
-        model="gemini/gemini-2.0-flash"
+        last_used_model="gemini/gemini-2.0-flash",
+        last_used_provider="gemini",
     )
     ```
 
@@ -607,13 +641,15 @@ Example:
                 created_at="2024-01-01T00:00:00Z",
                 last_message_at="2024-01-01T00:05:00Z",
                 message_count=5,
-                model="gemini/gemini-2.0-flash"
+                last_used_model="gemini/gemini-2.0-flash",
+                last_used_provider="gemini",
             ),
             ConversationDetails(
                 conversation_id="456e7890-e12b-34d5-a678-901234567890"
                 created_at="2024-01-01T01:00:00Z",
                 message_count=2,
-                model="gemini/gemini-2.5-flash"
+                last_used_model="gemini/gemini-2.0-flash",
+                last_used_provider="gemini",
             )
         ]
     )
@@ -763,7 +799,7 @@ Inference configuration.
 ## InfoResponse
 
 
-Model representing a response to a info request.
+Model representing a response to an info request.
 
 Attributes:
     name: Service name.
@@ -782,6 +818,14 @@ Example:
 |-------|------|-------------|
 | name | string | Service name |
 | version | string | Service version |
+
+
+## JsonPathOperator
+
+
+Supported operators for JSONPath evaluation.
+
+
 
 
 ## JwkConfiguration
@@ -806,6 +850,22 @@ JWT configuration.
 |-------|------|-------------|
 | user_id_claim | string |  |
 | username_claim | string |  |
+| role_rules | array |  |
+
+
+## JwtRoleRule
+
+
+Rule for extracting roles from JWT claims.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| jsonpath | string |  |
+| operator |  |  |
+| negate | boolean |  |
+| value |  |  |
+| roles | array |  |
 
 
 ## LivenessResponse

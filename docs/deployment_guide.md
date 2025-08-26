@@ -614,14 +614,14 @@ Writing manifest to image destination
 4468f475931a54ad1e5c26270ff4c3e55ec31444c1b0bf8fb77a576db7ab33f1
 ```
 
-To retrieve stable version `0.1.3`, use the following command:
+To retrieve stable version `0.2.0`, use the following command:
 
 ```bash
-podman pull quay.io/lightspeed-core/lightspeed-stack:0.1.3
+podman pull quay.io/lightspeed-core/lightspeed-stack:0.2.0
 ```
 
 ```text
-Trying to pull quay.io/lightspeed-core/lightspeed-stack:0.1.3...
+Trying to pull quay.io/lightspeed-core/lightspeed-stack:0.2.0...
 Getting image source signatures
 Copying blob 7c9e86f872c9 done   | 
 Copying blob 455d71b0a12b skipped: already exists  
@@ -1323,7 +1323,7 @@ The response should look like:
 ```json
 {
   "name": "Lightspeed Core Service (LCS)",
-  "version": "0.1.3"
+  "version": "0.2.0"
 }
 ```
 

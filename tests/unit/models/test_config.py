@@ -552,6 +552,7 @@ def test_dump_configuration(tmp_path) -> None:
         assert "user_data_collection" in content
         assert "mcp_servers" in content
         assert "authentication" in content
+        assert "authorization" in content
         assert "customization" in content
         assert "inference" in content
         assert "database" in content
@@ -619,6 +620,7 @@ def test_dump_configuration(tmp_path) -> None:
                 "sqlite": {"db_path": "/tmp/lightspeed-stack.db"},
                 "postgres": None,
             },
+            "authorization": None,
         }
 
 

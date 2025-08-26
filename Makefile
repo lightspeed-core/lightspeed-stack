@@ -43,6 +43,9 @@ openapi-doc:	docs/openapi.json	## Generate OpenAPI documentation
 requirements.txt:	pyproject.toml pdm.lock ## Generate requirements.txt file containing hashes for all non-devel packages
 	pdm export --prod --format requirements --output requirements.txt --no-extras --without evaluation
 
+doc:
+	scripts/gen_doc.py
+
 docs/config.puml:	src/models/config.py ## Generate PlantUML class diagram for configuration
 	pyreverse src/models/config.py --output puml --output-directory=docs/
 	mv docs/classes.puml docs/config.puml

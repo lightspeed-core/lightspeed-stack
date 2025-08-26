@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.1.3"
+        "version": "0.2.0"
     },
     "servers": [
         {
@@ -698,6 +698,50 @@
     },
     "components": {
         "schemas": {
+            "AccessRule": {
+                "properties": {
+                    "role": {
+                        "type": "string",
+                        "title": "Role"
+                    },
+                    "actions": {
+                        "items": {
+                            "$ref": "#/components/schemas/Action"
+                        },
+                        "type": "array",
+                        "title": "Actions"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "role",
+                    "actions"
+                ],
+                "title": "AccessRule",
+                "description": "Rule defining what actions a role can perform."
+            },
+            "Action": {
+                "type": "string",
+                "enum": [
+                    "admin",
+                    "list_other_conversations",
+                    "read_other_conversations",
+                    "query_other_conversations",
+                    "delete_other_conversations",
+                    "query",
+                    "streaming_query",
+                    "get_conversation",
+                    "list_conversations",
+                    "delete_conversation",
+                    "feedback",
+                    "get_models",
+                    "get_metrics",
+                    "get_config",
+                    "info"
+                ],
+                "title": "Action",
+                "description": "Available actions in the system."
+            },
             "Attachment": {
                 "properties": {
                     "attachment_type": {
@@ -721,7 +765,7 @@
                         "title": "Content",
                         "description": "The actual attachment content",
                         "examples": [
-                            "warning: quota exceed"
+                            "warning: quota exceeded"
                         ]
                     }
                 },
@@ -732,7 +776,7 @@
                     "content"
                 ],
                 "title": "Attachment",
-                "description": "Model representing an attachment that can be send from UI as part of query.\n\nList of attachments can be optional part of 'query' request.\n\nAttributes:\n    attachment_type: The attachment type, like \"log\", \"configuration\" etc.\n    content_type: The content type as defined in MIME standard\n    content: The actual attachment content\n\nYAML attachments with **kind** and **metadata/name** attributes will\nbe handled as resources with specified name:\n```\nkind: Pod\nmetadata:\n    name: private-reg\n```",
+                "description": "Model representing an attachment that can be send from the UI as part of query.\n\nA list of attachments can be an optional part of 'query' request.\n\nAttributes:\n    attachment_type: The attachment type, like \"log\", \"configuration\" etc.\n    content_type: The content type as defined in MIME standard\n    content: The actual attachment content\n\nYAML attachments with **kind** and **metadata/name** attributes will\nbe handled as resources with the specified name:\n```\nkind: Pod\nmetadata:\n    name: private-reg\n```",
                 "examples": [
                     {
                         "attachment_type": "log",
@@ -802,6 +846,20 @@
                 "type": "object",
                 "title": "AuthenticationConfiguration",
                 "description": "Authentication configuration."
+            },
+            "AuthorizationConfiguration": {
+                "properties": {
+                    "access_rules": {
+                        "items": {
+                            "$ref": "#/components/schemas/AccessRule"
+                        },
+                        "type": "array",
+                        "title": "Access Rules"
+                    }
+                },
+                "type": "object",
+                "title": "AuthorizationConfiguration",
+                "description": "Authorization configuration."
             },
             "AuthorizedResponse": {
                 "properties": {
@@ -916,6 +974,16 @@
                             "module": "noop",
                             "skip_tls_verification": false
                         }
+                    },
+                    "authorization": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AuthorizationConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "customization": {
                         "anyOf": [
@@ -1040,7 +1108,7 @@
                     "conversation_id"
                 ],
                 "title": "ConversationDetails",
-                "description": "Model representing the details of a user conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    created_at: When the conversation was created.\n    last_message_at: When the last message was sent.\n    message_count: Number of user messages in the conversation.\n    model: The model used for the conversation.\n\nExample:\n    ```python\n    conversation = ConversationSummary(\n        conversation_id=\"123e4567-e89b-12d3-a456-426614174000\"\n        created_at=\"2024-01-01T00:00:00Z\",\n        last_message_at=\"2024-01-01T00:05:00Z\",\n        message_count=5,\n        model=\"gemini/gemini-2.0-flash\"\n    )\n    ```"
+                "description": "Model representing the details of a user conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    created_at: When the conversation was created.\n    last_message_at: When the last message was sent.\n    message_count: Number of user messages in the conversation.\n    last_used_model: The last model used for the conversation.\n    last_used_provider: The provider of the last used model.\n\nExample:\n    ```python\n    conversation = ConversationDetails(\n        conversation_id=\"123e4567-e89b-12d3-a456-426614174000\"\n        created_at=\"2024-01-01T00:00:00Z\",\n        last_message_at=\"2024-01-01T00:05:00Z\",\n        message_count=5,\n        last_used_model=\"gemini/gemini-2.0-flash\",\n        last_used_provider=\"gemini\",\n    )\n    ```"
             },
             "ConversationResponse": {
                 "properties": {
@@ -1101,7 +1169,7 @@
                     "conversations"
                 ],
                 "title": "ConversationsListResponse",
-                "description": "Model representing a response for listing conversations of a user.\n\nAttributes:\n    conversations: List of conversation details associated with the user.\n\nExample:\n    ```python\n    conversations_list = ConversationsListResponse(\n        conversations=[\n            ConversationDetails(\n                conversation_id=\"123e4567-e89b-12d3-a456-426614174000\",\n                created_at=\"2024-01-01T00:00:00Z\",\n                last_message_at=\"2024-01-01T00:05:00Z\",\n                message_count=5,\n                model=\"gemini/gemini-2.0-flash\"\n            ),\n            ConversationDetails(\n                conversation_id=\"456e7890-e12b-34d5-a678-901234567890\"\n                created_at=\"2024-01-01T01:00:00Z\",\n                message_count=2,\n                model=\"gemini/gemini-2.5-flash\"\n            )\n        ]\n    )\n    ```",
+                "description": "Model representing a response for listing conversations of a user.\n\nAttributes:\n    conversations: List of conversation details associated with the user.\n\nExample:\n    ```python\n    conversations_list = ConversationsListResponse(\n        conversations=[\n            ConversationDetails(\n                conversation_id=\"123e4567-e89b-12d3-a456-426614174000\",\n                created_at=\"2024-01-01T00:00:00Z\",\n                last_message_at=\"2024-01-01T00:05:00Z\",\n                message_count=5,\n                last_used_model=\"gemini/gemini-2.0-flash\",\n                last_used_provider=\"gemini\",\n            ),\n            ConversationDetails(\n                conversation_id=\"456e7890-e12b-34d5-a678-901234567890\"\n                created_at=\"2024-01-01T01:00:00Z\",\n                message_count=2,\n                last_used_model=\"gemini/gemini-2.0-flash\",\n                last_used_provider=\"gemini\",\n            )\n        ]\n    )\n    ```",
                 "examples": [
                     {
                         "conversations": [
@@ -1109,14 +1177,16 @@
                                 "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                                 "created_at": "2024-01-01T00:00:00Z",
                                 "last_message_at": "2024-01-01T00:05:00Z",
-                                "message_count": 5,
-                                "model": "gemini/gemini-2.0-flash"
+                                "last_used_model": "gemini/gemini-2.0-flash",
+                                "last_used_provider": "gemini",
+                                "message_count": 5
                             },
                             {
                                 "conversation_id": "456e7890-e12b-34d5-a678-901234567890",
                                 "created_at": "2024-01-01T01:00:00Z",
-                                "message_count": 2,
-                                "model": "gemini/gemini-2.5-flash"
+                                "last_used_model": "gemini/gemini-2.5-flash",
+                                "last_used_provider": "gemini",
+                                "message_count": 2
                             }
                         ]
                     }
@@ -1464,13 +1534,23 @@
                     "version"
                 ],
                 "title": "InfoResponse",
-                "description": "Model representing a response to a info request.\n\nAttributes:\n    name: Service name.\n    version: Service version.\n\nExample:\n    ```python\n    info_response = InfoResponse(\n        name=\"Lightspeed Stack\",\n        version=\"1.0.0\",\n    )\n    ```",
+                "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    version: Service version.\n\nExample:\n    ```python\n    info_response = InfoResponse(\n        name=\"Lightspeed Stack\",\n        version=\"1.0.0\",\n    )\n    ```",
                 "examples": [
                     {
                         "name": "Lightspeed Stack",
                         "version": "1.0.0"
                     }
                 ]
+            },
+            "JsonPathOperator": {
+                "type": "string",
+                "enum": [
+                    "equals",
+                    "contains",
+                    "in"
+                ],
+                "title": "JsonPathOperator",
+                "description": "Supported operators for JSONPath evaluation."
             },
             "JwkConfiguration": {
                 "properties": {
@@ -1484,7 +1564,8 @@
                         "$ref": "#/components/schemas/JwtConfiguration",
                         "default": {
                             "user_id_claim": "user_id",
-                            "username_claim": "username"
+                            "username_claim": "username",
+                            "role_rules": []
                         }
                     }
                 },
@@ -1506,11 +1587,53 @@
                         "type": "string",
                         "title": "Username Claim",
                         "default": "username"
+                    },
+                    "role_rules": {
+                        "items": {
+                            "$ref": "#/components/schemas/JwtRoleRule"
+                        },
+                        "type": "array",
+                        "title": "Role Rules"
                     }
                 },
                 "type": "object",
                 "title": "JwtConfiguration",
                 "description": "JWT configuration."
+            },
+            "JwtRoleRule": {
+                "properties": {
+                    "jsonpath": {
+                        "type": "string",
+                        "title": "Jsonpath"
+                    },
+                    "operator": {
+                        "$ref": "#/components/schemas/JsonPathOperator"
+                    },
+                    "negate": {
+                        "type": "boolean",
+                        "title": "Negate",
+                        "default": false
+                    },
+                    "value": {
+                        "title": "Value"
+                    },
+                    "roles": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Roles"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "jsonpath",
+                    "operator",
+                    "value",
+                    "roles"
+                ],
+                "title": "JwtRoleRule",
+                "description": "Rule for extracting roles from JWT claims."
             },
             "LivenessResponse": {
                 "properties": {

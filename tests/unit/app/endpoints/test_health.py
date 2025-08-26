@@ -2,18 +2,22 @@
 
 from unittest.mock import Mock
 
+import pytest
 from llama_stack.providers.datatypes import HealthStatus
-
 from app.endpoints.health import (
     readiness_probe_get_method,
     liveness_probe_get_method,
     get_providers_health_statuses,
 )
 from models.responses import ProviderHealthStatus, ReadinessResponse
+from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
+@pytest.mark.asyncio
 async def test_readiness_probe_fails_due_to_unhealthy_providers(mocker):
     """Test the readiness endpoint handler fails when providers are unhealthy."""
+    mock_authorization_resolvers(mocker)
+
     # Mock get_providers_health_statuses to return an unhealthy provider
     mock_get_providers_health_statuses = mocker.patch(
         "app.endpoints.health.get_providers_health_statuses"
@@ -26,10 +30,11 @@ async def test_readiness_probe_fails_due_to_unhealthy_providers(mocker):
         )
     ]
 
-    # Mock the Response object
+    # Mock the Response object and auth
     mock_response = Mock()
+    auth = ("test_user", "token", {})
 
-    response = await readiness_probe_get_method(mock_response)
+    response = await readiness_probe_get_method(auth=auth, response=mock_response)
 
     assert response.ready is False
     assert "test_provider" in response.reason
@@ -37,8 +42,11 @@ async def test_readiness_probe_fails_due_to_unhealthy_providers(mocker):
     assert mock_response.status_code == 503
 
 
+@pytest.mark.asyncio
 async def test_readiness_probe_success_when_all_providers_healthy(mocker):
     """Test the readiness endpoint handler succeeds when all providers are healthy."""
+    mock_authorization_resolvers(mocker)
+
     # Mock get_providers_health_statuses to return healthy providers
     mock_get_providers_health_statuses = mocker.patch(
         "app.endpoints.health.get_providers_health_statuses"
@@ -56,10 +64,11 @@ async def test_readiness_probe_success_when_all_providers_healthy(mocker):
         ),
     ]
 
-    # Mock the Response object
+    # Mock the Response object and auth
     mock_response = Mock()
+    auth = ("test_user", "token", {})
 
-    response = await readiness_probe_get_method(mock_response)
+    response = await readiness_probe_get_method(auth=auth, response=mock_response)
     assert response is not None
     assert isinstance(response, ReadinessResponse)
     assert response.ready is True
@@ -68,9 +77,13 @@ async def test_readiness_probe_success_when_all_providers_healthy(mocker):
     assert len(response.providers) == 0
 
 
-def test_liveness_probe():
+@pytest.mark.asyncio
+async def test_liveness_probe(mocker):
     """Test the liveness endpoint handler."""
-    response = liveness_probe_get_method()
+    mock_authorization_resolvers(mocker)
+
+    auth = ("test_user", "token", {})
+    response = await liveness_probe_get_method(auth=auth)
     assert response is not None
     assert response.alive is True
 

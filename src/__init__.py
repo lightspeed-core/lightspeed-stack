@@ -1,1 +1,1 @@
-"""Main classes for the Lightspeed-stack."""
+"""Main classes for the Lightspeed Core Stack REST API service."""

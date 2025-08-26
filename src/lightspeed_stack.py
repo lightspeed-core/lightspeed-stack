@@ -1,4 +1,4 @@
-"""Lightspeed stack.
+"""Entry point to the Lightspeed Core Stack REST API service.
 
 This source file contains entry point to the service. It is implemented in the
 main() function.
@@ -63,17 +63,28 @@ def main() -> None:
     logger.info(
         "Llama stack configuration: %s", configuration.llama_stack_configuration
     )
+
+    # -d or --dump-configuration CLI flags are used to dump the actual configuration
+    # to a JSON file w/o doing any other operation
+    if args.dump_configuration:
+        try:
+            configuration.configuration.dump()
+            logger.info("Configuration dumped to configuration.json")
+        except Exception as e:
+            logger.error("Failed to dump configuration: %s", e)
+            raise SystemExit(1) from e
+        return
+
     logger.info("Creating AsyncLlamaStackClient")
     asyncio.run(
         AsyncLlamaStackClientHolder().load(configuration.configuration.llama_stack)
     )
     client = AsyncLlamaStackClientHolder().get_client()
+
+    # check if the Llama Stack version is supported by the service
     asyncio.run(check_llama_stack_version(client))
 
-    if args.dump_configuration:
-        configuration.configuration.dump()
-    else:
-        start_uvicorn(configuration.service_configuration)
+    start_uvicorn(configuration.service_configuration)
     logger.info("Lightspeed stack finished")
 
 

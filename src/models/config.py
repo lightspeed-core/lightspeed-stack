@@ -1,9 +1,19 @@
 """Model with service configuration."""
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
+from enum import Enum
 
-from pydantic import BaseModel, model_validator, FilePath, AnyHttpUrl, PositiveInt
+import jsonpath_ng
+from jsonpath_ng.exceptions import JSONPathError
+from pydantic import (
+    BaseModel,
+    Field,
+    model_validator,
+    FilePath,
+    AnyHttpUrl,
+    PositiveInt,
+)
 from typing_extensions import Self, Literal
 
 import constants
@@ -210,11 +220,115 @@ class UserDataCollection(BaseModel):
         return self
 
 
+class JsonPathOperator(str, Enum):
+    """Supported operators for JSONPath evaluation."""
+
+    EQUALS = "equals"
+    CONTAINS = "contains"
+    IN = "in"
+
+
+class JwtRoleRule(BaseModel):
+    """Rule for extracting roles from JWT claims."""
+
+    jsonpath: str  # JSONPath expression to evaluate against the JWT payload
+    operator: JsonPathOperator  # Comparison operator
+    negate: bool = False  # If True, negate the rule
+    value: Any  # Value to compare against
+    roles: list[str]  # Roles to assign if rule matches
+
+    @model_validator(mode="after")
+    def check_jsonpath(self) -> Self:
+        """Verify that the JSONPath expression is valid."""
+        try:
+            jsonpath_ng.parse(self.jsonpath)
+            return self
+        except JSONPathError as e:
+            raise ValueError(
+                f"Invalid JSONPath expression: {self.jsonpath}: {e}"
+            ) from e
+
+    @model_validator(mode="after")
+    def check_roles(self) -> Self:
+        """Ensure that at least one role is specified."""
+        if not self.roles:
+            raise ValueError("At least one role must be specified in the rule")
+
+        if len(self.roles) != len(set(self.roles)):
+            raise ValueError("Roles must be unique in the rule")
+
+        if any(role == "*" for role in self.roles):
+            raise ValueError(
+                "The wildcard '*' role is not allowed in role rules, "
+                "everyone automatically gets this role"
+            )
+
+        return self
+
+
+class Action(str, Enum):
+    """Available actions in the system."""
+
+    # Special action to allow unrestricted access to all actions
+    ADMIN = "admin"
+
+    # List the conversations of other users
+    LIST_OTHERS_CONVERSATIONS = "list_other_conversations"
+
+    # Read the contents of conversations of other users
+    READ_OTHERS_CONVERSATIONS = "read_other_conversations"
+
+    # Continue the conversations of other users
+    QUERY_OTHERS_CONVERSATIONS = "query_other_conversations"
+
+    # Delete the conversations of other users
+    DELETE_OTHERS_CONVERSATIONS = "delete_other_conversations"
+
+    # Access the query endpoint
+    QUERY = "query"
+
+    # Access the streaming query endpoint
+    STREAMING_QUERY = "streaming_query"
+
+    # Access the conversation endpoint
+    GET_CONVERSATION = "get_conversation"
+
+    # List own conversations
+    LIST_CONVERSATIONS = "list_conversations"
+
+    # Access the conversation delete endpoint
+    DELETE_CONVERSATION = "delete_conversation"
+    FEEDBACK = "feedback"
+    GET_MODELS = "get_models"
+    GET_METRICS = "get_metrics"
+    GET_CONFIG = "get_config"
+
+    INFO = "info"
+
+
+class AccessRule(BaseModel):
+    """Rule defining what actions a role can perform."""
+
+    role: str  # Role name
+    actions: list[Action]  # Allowed actions for this role
+
+
+class AuthorizationConfiguration(BaseModel):
+    """Authorization configuration."""
+
+    access_rules: list[AccessRule] = Field(
+        default_factory=list
+    )  # Rules for role-based access control
+
+
 class JwtConfiguration(BaseModel):
     """JWT configuration."""
 
     user_id_claim: str = constants.DEFAULT_JWT_UID_CLAIM
     username_claim: str = constants.DEFAULT_JWT_USER_NAME_CLAIM
+    role_rules: list[JwtRoleRule] = Field(
+        default_factory=list
+    )  # Rules for extracting roles from JWT claims
 
 
 class JwkConfiguration(BaseModel):
@@ -310,6 +424,7 @@ class Configuration(BaseModel):
     database: DatabaseConfiguration = DatabaseConfiguration()
     mcp_servers: list[ModelContextProtocolServer] = []
     authentication: AuthenticationConfiguration = AuthenticationConfiguration()
+    authorization: Optional[AuthorizationConfiguration] = None
     customization: Optional[Customization] = None
     inference: InferenceConfiguration = InferenceConfiguration()
 

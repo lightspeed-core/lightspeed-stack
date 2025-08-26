@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/license-Apache-blue)](https://github.com/lightspeed-core/lightspeed-stack/blob/main/LICENSE)
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
 [![Required Python version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Flightspeed-core%2Flightspeed-stack%2Frefs%2Fheads%2Fmain%2Fpyproject.toml)](https://www.python.org/)
-[![Tag](https://img.shields.io/github/v/tag/lightspeed-core/lightspeed-stack)](https://github.com/lightspeed-core/lightspeed-stack/releases/tag/0.1.3)
+[![Tag](https://img.shields.io/github/v/tag/lightspeed-core/lightspeed-stack)](https://github.com/lightspeed-core/lightspeed-stack/releases/tag/0.2.0)
 
 Lightspeed Core Stack (LCS) is an AI-powered assistant that provides answers to product questions using backend LLM services, agents, and RAG databases.
  
@@ -35,10 +35,18 @@ The service includes comprehensive user data collection capabilities for various
         * [K8s based authentication](#k8s-based-authentication)
         * [JSON Web Keyset based authentication](#json-web-keyset-based-authentication)
         * [No-op authentication](#no-op-authentication)
+    * [CORS](#cors)
+        * [Default values](#default-values)
+    * [Allow credentials](#allow-credentials)
 * [RAG Configuration](#rag-configuration)
+    * [Example configurations for inference](#example-configurations-for-inference)
 * [Usage](#usage)
     * [Make targets](#make-targets)
     * [Running Linux container image](#running-linux-container-image)
+    * [Building Container Images](#building-container-images)
+        * [Llama-Stack as Separate Service (Server Mode)](#llama-stack-as-separate-service-server-mode)
+        * [Llama-Stack as Library (Library Mode)](#llama-stack-as-library-library-mode)
+        * [Verify it's running properly](#verify-its-running-properly)
 * [Endpoints](#endpoints)
     * [OpenAPI specification](#openapi-specification)
     * [Readiness Endpoint](#readiness-endpoint)
@@ -54,6 +62,9 @@ The service includes comprehensive user data collection capabilities for various
     * [Utility to generate OpenAPI schema](#utility-to-generate-openapi-schema)
         * [Path](#path)
         * [Usage](#usage-1)
+    * [Utility to generate documentation from source codes](#utility-to-generate-documentation-from-source-codes)
+        * [Path](#path-1)
+        * [Usage](#usage-2)
 * [Data Export Integration](#data-export-integration)
     * [Quick Integration](#quick-integration)
     * [Documentation](#documentation)
@@ -742,6 +753,20 @@ This script re-generated OpenAPI schema for the Lightspeed Service REST API.
 
 ```
 make schema
+```
+
+## Utility to generate documentation from source code
+
+This script re-generate README.md files for all modules defined in the Lightspeed Stack Service.
+
+### Path
+
+[scripts/gen_doc.py](scripts/gen_doc.py)
+
+### Usage
+
+```
+make doc
 ```
 
 # Data Export Integration

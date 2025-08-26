@@ -8,11 +8,14 @@ from llama_stack_client import APIConnectionError
 
 from app.endpoints.models import models_endpoint_handler
 from configuration import AppConfig
+from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
 @pytest.mark.asyncio
 async def test_models_endpoint_handler_configuration_not_loaded(mocker):
     """Test the models endpoint handler if configuration is not loaded."""
+    mock_authorization_resolvers(mocker)
+
     # simulate state when no configuration is loaded
     mocker.patch(
         "app.endpoints.models.configuration",
@@ -26,9 +29,10 @@ async def test_models_endpoint_handler_configuration_not_loaded(mocker):
             "headers": [(b"authorization", b"Bearer invalid-token")],
         }
     )
+    auth = ("user_id", "user_name", "token")
 
     with pytest.raises(HTTPException) as e:
-        await models_endpoint_handler(request)
+        await models_endpoint_handler(request=request, auth=auth)
         assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert e.detail["response"] == "Configuration is not loaded"
 
@@ -36,6 +40,8 @@ async def test_models_endpoint_handler_configuration_not_loaded(mocker):
 @pytest.mark.asyncio
 async def test_models_endpoint_handler_improper_llama_stack_configuration(mocker):
     """Test the models endpoint handler if Llama Stack configuration is not proper."""
+    mock_authorization_resolvers(mocker)
+
     # configuration for tests
     config_dict = {
         "name": "test",
@@ -57,6 +63,8 @@ async def test_models_endpoint_handler_improper_llama_stack_configuration(mocker
         },
         "mcp_servers": [],
         "customization": None,
+        "authorization": {"access_rules": []},
+        "authentication": {"module": "noop"},
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -72,15 +80,18 @@ async def test_models_endpoint_handler_improper_llama_stack_configuration(mocker
             "headers": [(b"authorization", b"Bearer invalid-token")],
         }
     )
+    auth = ("test_user", "token", {})
     with pytest.raises(HTTPException) as e:
-        await models_endpoint_handler(request)
+        await models_endpoint_handler(request=request, auth=auth)
         assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert e.detail["response"] == "LLama stack is not configured"
 
 
 @pytest.mark.asyncio
-async def test_models_endpoint_handler_configuration_loaded():
+async def test_models_endpoint_handler_configuration_loaded(mocker):
     """Test the models endpoint handler if configuration is loaded."""
+    mock_authorization_resolvers(mocker)
+
     # configuration for tests
     config_dict = {
         "name": "foo",
@@ -101,6 +112,8 @@ async def test_models_endpoint_handler_configuration_loaded():
             "feedback_enabled": False,
         },
         "customization": None,
+        "authorization": {"access_rules": []},
+        "authentication": {"module": "noop"},
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -111,9 +124,10 @@ async def test_models_endpoint_handler_configuration_loaded():
             "headers": [(b"authorization", b"Bearer invalid-token")],
         }
     )
+    auth = ("test_user", "token", {})
 
     with pytest.raises(HTTPException) as e:
-        await models_endpoint_handler(request)
+        await models_endpoint_handler(request=request, auth=auth)
         assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert e.detail["response"] == "Unable to connect to Llama Stack"
 
@@ -121,6 +135,8 @@ async def test_models_endpoint_handler_configuration_loaded():
 @pytest.mark.asyncio
 async def test_models_endpoint_handler_unable_to_retrieve_models_list(mocker):
     """Test the models endpoint handler if configuration is loaded."""
+    mock_authorization_resolvers(mocker)
+
     # configuration for tests
     config_dict = {
         "name": "foo",
@@ -141,6 +157,8 @@ async def test_models_endpoint_handler_unable_to_retrieve_models_list(mocker):
             "feedback_enabled": False,
         },
         "customization": None,
+        "authorization": {"access_rules": []},
+        "authentication": {"module": "noop"},
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -159,13 +177,16 @@ async def test_models_endpoint_handler_unable_to_retrieve_models_list(mocker):
             "headers": [(b"authorization", b"Bearer invalid-token")],
         }
     )
-    response = await models_endpoint_handler(request)
+    auth = ("test_user", "token", {})
+    response = await models_endpoint_handler(request=request, auth=auth)
     assert response is not None
 
 
 @pytest.mark.asyncio
 async def test_models_endpoint_llama_stack_connection_error(mocker):
     """Test the model endpoint when LlamaStack connection fails."""
+    mock_authorization_resolvers(mocker)
+
     # configuration for tests
     config_dict = {
         "name": "foo",
@@ -186,6 +207,8 @@ async def test_models_endpoint_llama_stack_connection_error(mocker):
             "feedback_enabled": False,
         },
         "customization": None,
+        "authorization": {"access_rules": []},
+        "authentication": {"module": "noop"},
     }
 
     # mock AsyncLlamaStackClientHolder to raise APIConnectionError
@@ -206,8 +229,9 @@ async def test_models_endpoint_llama_stack_connection_error(mocker):
             "headers": [(b"authorization", b"Bearer invalid-token")],
         }
     )
+    auth = ("test_user", "token", {})
 
     with pytest.raises(HTTPException) as e:
-        await models_endpoint_handler(request)
+        await models_endpoint_handler(request=request, auth=auth)
         assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert e.detail["response"] == "Unable to connect to Llama Stack"

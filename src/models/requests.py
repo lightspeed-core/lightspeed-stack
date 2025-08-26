@@ -1,4 +1,4 @@
-"""Model for service requests."""
+"""Models for REST API requests."""
 
 from typing import Optional, Self
 from enum import Enum
@@ -13,9 +13,9 @@ logger = get_logger(__name__)
 
 
 class Attachment(BaseModel):
-    """Model representing an attachment that can be send from UI as part of query.
+    """Model representing an attachment that can be send from the UI as part of query.
 
-    List of attachments can be optional part of 'query' request.
+    A list of attachments can be an optional part of 'query' request.
 
     Attributes:
         attachment_type: The attachment type, like "log", "configuration" etc.
@@ -23,7 +23,7 @@ class Attachment(BaseModel):
         content: The actual attachment content
 
     YAML attachments with **kind** and **metadata/name** attributes will
-    be handled as resources with specified name:
+    be handled as resources with the specified name:
     ```
     kind: Pod
     metadata:
@@ -40,7 +40,8 @@ class Attachment(BaseModel):
         examples=["text/plain"],
     )
     content: str = Field(
-        description="The actual attachment content", examples=["warning: quota exceed"]
+        description="The actual attachment content",
+        examples=["warning: quota exceeded"],
     )
 
     # provides examples for /docs endpoint
@@ -212,7 +213,7 @@ class QueryRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_media_type(self) -> Self:
-        """Log use of media_type that is unsupported but kept for backwards compatibility."""
+        """Log use of media_type that is unsupported but kept for backward compatibility."""
         if self.media_type:
             logger.warning(
                 "media_type was set in the request but is not supported. The value will be ignored."

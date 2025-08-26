@@ -1,4 +1,9 @@
-"""Abstract base class for authentication methods."""
+"""Abstract base class for all authentication method implementations.
+
+Defines the abstract base class used by all authentication method implementations.
+Contract: subclasses must implement `__call__(request: Request) -> AuthTuple`
+where `AuthTuple = (UserID, UserName, Token)`.
+"""
 
 from abc import ABC, abstractmethod
 

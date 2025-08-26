@@ -1,9 +1,11 @@
+# pylint: disable=redefined-outer-name
+
 """Unit tests for the /query REST API endpoint."""
 
 # pylint: disable=too-many-lines
 
 import json
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Request
 import pytest
 
 from llama_stack_client import APIConnectionError
@@ -24,11 +26,24 @@ from app.endpoints.query import (
 )
 
 from models.requests import QueryRequest, Attachment
-from models.config import ModelContextProtocolServer
+from models.config import Action, ModelContextProtocolServer
 from models.database.conversations import UserConversation
 from utils.types import ToolCallSummary, TurnSummary
 
 MOCK_AUTH = ("mock_user_id", "mock_username", "mock_token")
+
+
+@pytest.fixture
+def dummy_request() -> Request:
+    """Dummy request fixture for testing."""
+    req = Request(
+        scope={
+            "type": "http",
+        }
+    )
+
+    req.state.authorized_actions = set(Action)
+    return req
 
 
 def mock_database_operations(mocker):
@@ -69,7 +84,7 @@ def setup_configuration_fixture():
 
 
 @pytest.mark.asyncio
-async def test_query_endpoint_handler_configuration_not_loaded(mocker):
+async def test_query_endpoint_handler_configuration_not_loaded(mocker, dummy_request):
     """Test the query endpoint handler if configuration is not loaded."""
     # simulate state when no configuration is loaded
     mocker.patch(
@@ -81,7 +96,11 @@ async def test_query_endpoint_handler_configuration_not_loaded(mocker):
     query = "What is OpenStack?"
     query_request = QueryRequest(query=query)
     with pytest.raises(HTTPException) as e:
-        await query_endpoint_handler(query_request, auth=["test-user", "", "token"])
+        await query_endpoint_handler(
+            query_request=query_request,
+            request=dummy_request,
+            auth=["test-user", "", "token"],
+        )
     assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
     assert e.value.detail["response"] == "Configuration is not loaded"
 
@@ -107,7 +126,9 @@ def test_is_transcripts_disabled(setup_configuration, mocker):
     assert is_transcripts_enabled() is False, "Transcripts should be disabled"
 
 
-async def _test_query_endpoint_handler(mocker, store_transcript_to_file=False):
+async def _test_query_endpoint_handler(
+    mocker, dummy_request: Request, store_transcript_to_file=False
+):
     """Test the query endpoint handler."""
     mock_metric = mocker.patch("metrics.llm_calls_total")
     mock_client = mocker.AsyncMock()
@@ -157,7 +178,9 @@ async def _test_query_endpoint_handler(mocker, store_transcript_to_file=False):
 
     query_request = QueryRequest(query=query)
 
-    response = await query_endpoint_handler(query_request, auth=MOCK_AUTH)
+    response = await query_endpoint_handler(
+        request=dummy_request, query_request=query_request, auth=MOCK_AUTH
+    )
 
     # Assert the response is as expected
     assert response.response == summary.llm_response
@@ -186,15 +209,21 @@ async def _test_query_endpoint_handler(mocker, store_transcript_to_file=False):
 
 
 @pytest.mark.asyncio
-async def test_query_endpoint_handler_transcript_storage_disabled(mocker):
+async def test_query_endpoint_handler_transcript_storage_disabled(
+    mocker, dummy_request
+):
     """Test the query endpoint handler with transcript storage disabled."""
-    await _test_query_endpoint_handler(mocker, store_transcript_to_file=False)
+    await _test_query_endpoint_handler(
+        mocker, dummy_request, store_transcript_to_file=False
+    )
 
 
 @pytest.mark.asyncio
-async def test_query_endpoint_handler_store_transcript(mocker):
+async def test_query_endpoint_handler_store_transcript(mocker, dummy_request):
     """Test the query endpoint handler with transcript storage enabled."""
-    await _test_query_endpoint_handler(mocker, store_transcript_to_file=True)
+    await _test_query_endpoint_handler(
+        mocker, dummy_request, store_transcript_to_file=True
+    )
 
 
 def test_select_model_and_provider_id_from_request(mocker):
@@ -1095,7 +1124,7 @@ def test_get_rag_toolgroups():
 
 
 @pytest.mark.asyncio
-async def test_query_endpoint_handler_on_connection_error(mocker):
+async def test_query_endpoint_handler_on_connection_error(mocker, dummy_request):
     """Test the query endpoint handler."""
     mock_metric = mocker.patch("metrics.llm_calls_failures_total")
 
@@ -1111,7 +1140,9 @@ async def test_query_endpoint_handler_on_connection_error(mocker):
     mock_get_client.side_effect = APIConnectionError(request=query_request)
 
     with pytest.raises(HTTPException) as exc_info:
-        await query_endpoint_handler(query_request, auth=MOCK_AUTH)
+        await query_endpoint_handler(
+            query_request=query_request, request=dummy_request, auth=MOCK_AUTH
+        )
 
     assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
     assert "Unable to connect to Llama Stack" in str(exc_info.value.detail)
@@ -1119,7 +1150,7 @@ async def test_query_endpoint_handler_on_connection_error(mocker):
 
 
 @pytest.mark.asyncio
-async def test_auth_tuple_unpacking_in_query_endpoint_handler(mocker):
+async def test_auth_tuple_unpacking_in_query_endpoint_handler(mocker, dummy_request):
     """Test that auth tuple is correctly unpacked in query endpoint handler."""
     # Mock dependencies
     mock_config = mocker.Mock()
@@ -1159,7 +1190,8 @@ async def test_auth_tuple_unpacking_in_query_endpoint_handler(mocker):
     mock_database_operations(mocker)
 
     _ = await query_endpoint_handler(
-        QueryRequest(query="test query"),
+        request=dummy_request,
+        query_request=QueryRequest(query="test query"),
         auth=("user123", "username", "auth_token_123"),
         mcp_headers=None,
     )
@@ -1168,7 +1200,7 @@ async def test_auth_tuple_unpacking_in_query_endpoint_handler(mocker):
 
 
 @pytest.mark.asyncio
-async def test_query_endpoint_handler_no_tools_true(mocker):
+async def test_query_endpoint_handler_no_tools_true(mocker, dummy_request):
     """Test the query endpoint handler with no_tools=True."""
     mock_client = mocker.AsyncMock()
     mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
@@ -1209,7 +1241,9 @@ async def test_query_endpoint_handler_no_tools_true(mocker):
 
     query_request = QueryRequest(query=query, no_tools=True)
 
-    response = await query_endpoint_handler(query_request, auth=MOCK_AUTH)
+    response = await query_endpoint_handler(
+        request=dummy_request, query_request=query_request, auth=MOCK_AUTH
+    )
 
     # Assert the response is as expected
     assert response.response == summary.llm_response
@@ -1217,7 +1251,7 @@ async def test_query_endpoint_handler_no_tools_true(mocker):
 
 
 @pytest.mark.asyncio
-async def test_query_endpoint_handler_no_tools_false(mocker):
+async def test_query_endpoint_handler_no_tools_false(mocker, dummy_request):
     """Test the query endpoint handler with no_tools=False (default behavior)."""
     mock_client = mocker.AsyncMock()
     mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
@@ -1258,7 +1292,9 @@ async def test_query_endpoint_handler_no_tools_false(mocker):
 
     query_request = QueryRequest(query=query, no_tools=False)
 
-    response = await query_endpoint_handler(query_request, auth=MOCK_AUTH)
+    response = await query_endpoint_handler(
+        request=dummy_request, query_request=query_request, auth=MOCK_AUTH
+    )
 
     # Assert the response is as expected
     assert response.response == summary.llm_response

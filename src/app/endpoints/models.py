@@ -1,18 +1,26 @@
 """Handler for REST API call to list available models."""
 
 import logging
-from typing import Any
+from typing import Annotated, Any
 
-from llama_stack_client import APIConnectionError
 from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.params import Depends
+from llama_stack_client import APIConnectionError
 
+from auth import get_auth_dependency
+from auth.interface import AuthTuple
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from authorization.middleware import authorize
+from models.config import Action
 from models.responses import ModelsResponse
 from utils.endpoints import check_configuration_loaded
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["models"])
+
+
+auth_dependency = get_auth_dependency()
 
 
 models_responses: dict[int | str, dict[str, Any]] = {
@@ -43,7 +51,11 @@ models_responses: dict[int | str, dict[str, Any]] = {
 
 
 @router.get("/models", responses=models_responses)
-async def models_endpoint_handler(_request: Request) -> ModelsResponse:
+@authorize(Action.GET_MODELS)
+async def models_endpoint_handler(
+    request: Request,
+    auth: Annotated[AuthTuple, Depends(auth_dependency)],
+) -> ModelsResponse:
     """
     Handle requests to the /models endpoint.
 
@@ -57,6 +69,12 @@ async def models_endpoint_handler(_request: Request) -> ModelsResponse:
     Returns:
         ModelsResponse: An object containing the list of available models.
     """
+    # Used only by the middleware
+    _ = auth
+
+    # Nothing interesting in the request
+    _ = request
+
     check_configuration_loaded(configuration)
 
     llama_stack_configuration = configuration.llama_stack_configuration
