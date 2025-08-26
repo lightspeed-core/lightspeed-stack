@@ -195,20 +195,6 @@ async def query_endpoint_handler(
             ),
         )
 
-        if user_conversation is None:
-            logger.warning(
-                "User %s attempted to query conversation %s they don't own",
-                user_id,
-                query_request.conversation_id,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "response": "Access denied",
-                    "cause": "You do not have permission to access this conversation",
-                },
-            )
-
     try:
         # try to get Llama Stack client
         client = AsyncLlamaStackClientHolder().get_client()
