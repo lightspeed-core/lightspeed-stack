@@ -36,6 +36,7 @@ from utils.endpoints import (
     get_system_prompt,
     validate_conversation_ownership,
 )
+from utils.user_anonymization import get_anonymous_user_id
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
 from utils.transcripts import store_transcript
 from utils.types import TurnSummary
@@ -78,25 +79,30 @@ def is_transcripts_enabled() -> bool:
 def persist_user_conversation_details(
     user_id: str, conversation_id: str, model: str, provider_id: str
 ) -> None:
-    """Associate conversation to user in the database."""
+    """Associate conversation to user in the database using anonymous user ID."""
+    # Get anonymous user ID for database storage
+    anonymous_user_id = get_anonymous_user_id(user_id)
+
     with get_session() as session:
         existing_conversation = (
             session.query(UserConversation)
-            .filter_by(id=conversation_id, user_id=user_id)
+            .filter_by(id=conversation_id, anonymous_user_id=anonymous_user_id)
             .first()
         )
 
         if not existing_conversation:
             conversation = UserConversation(
                 id=conversation_id,
-                user_id=user_id,
+                anonymous_user_id=anonymous_user_id,
                 last_used_model=model,
                 last_used_provider=provider_id,
                 message_count=1,
             )
             session.add(conversation)
             logger.debug(
-                "Associated conversation %s to user %s", conversation_id, user_id
+                "Associated conversation %s to anonymous user %s",
+                conversation_id,
+                anonymous_user_id,
             )
         else:
             existing_conversation.last_used_model = model
@@ -190,20 +196,6 @@ async def query_endpoint_handler(
                 Action.QUERY_OTHERS_CONVERSATIONS in request.state.authorized_actions
             ),
         )
-
-        if user_conversation is None:
-            logger.warning(
-                "User %s attempted to query conversation %s they don't own",
-                user_id,
-                query_request.conversation_id,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "response": "Access denied",
-                    "cause": "You do not have permission to access this conversation",
-                },
-            )
 
     try:
         # try to get Llama Stack client

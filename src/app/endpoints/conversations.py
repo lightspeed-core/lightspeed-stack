@@ -22,6 +22,7 @@ from models.responses import (
 )
 from utils.endpoints import check_configuration_loaded, validate_conversation_ownership
 from utils.suid import check_suid
+from utils.user_anonymization import get_anonymous_user_id
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["conversations"])
@@ -158,7 +159,13 @@ async def get_conversations_list_endpoint_handler(
 
     user_id, _, _ = auth
 
-    logger.info("Retrieving conversations for user %s", user_id)
+    # Get anonymous user ID for database lookup
+    anonymous_user_id = get_anonymous_user_id(user_id)
+
+    logger.info(
+        "Retrieving conversations for anonymous user %s",
+        anonymous_user_id,
+    )
 
     with get_session() as session:
         try:
@@ -167,7 +174,7 @@ async def get_conversations_list_endpoint_handler(
             filtered_query = (
                 query
                 if Action.LIST_OTHERS_CONVERSATIONS in request.state.authorized_actions
-                else query.filter_by(user_id=user_id)
+                else query.filter_by(anonymous_user_id=anonymous_user_id)
             )
 
             user_conversations = filtered_query.all()
@@ -190,20 +197,27 @@ async def get_conversations_list_endpoint_handler(
             ]
 
             logger.info(
-                "Found %d conversations for user %s", len(conversations), user_id
+                "Found %d conversations for anonymous user %s",
+                len(conversations),
+                anonymous_user_id,
             )
 
             return ConversationsListResponse(conversations=conversations)
 
         except Exception as e:
             logger.exception(
-                "Error retrieving conversations for user %s: %s", user_id, e
+                "Error retrieving conversations for anonymous user %s: %s",
+                anonymous_user_id,
+                e,
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={
                     "response": "Unknown error",
-                    "cause": f"Unknown error while getting conversations for user {user_id}",
+                    "cause": (
+                        f"Unknown error while getting conversations for "
+                        f"anonymous user {anonymous_user_id}"
+                    ),
                 },
             ) from e
 

@@ -200,9 +200,9 @@ async def _test_query_endpoint_handler(
             query=query,
             query_request=query_request,
             summary=summary,
-            attachments=[],
             rag_chunks=[],
             truncated=False,
+            attachments=[],
         )
     else:
         mock_transcript.assert_not_called()
@@ -1445,7 +1445,7 @@ def test_no_tools_parameter_backward_compatibility():
         (
             UserConversation(
                 id="conv1",
-                user_id="user1",
+                anonymous_user_id="user1",
                 last_used_provider="foo",
                 last_used_model="bar",
                 message_count=1,
@@ -1464,7 +1464,7 @@ def test_no_tools_parameter_backward_compatibility():
         (
             UserConversation(
                 id="conv1",
-                user_id="user1",
+                anonymous_user_id="user1",
                 last_used_provider="foo",
                 last_used_model="bar",
                 message_count=1,
