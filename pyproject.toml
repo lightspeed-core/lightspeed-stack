@@ -46,7 +46,7 @@ exclude = [
   # TODO(lucasagomes): This module was copied from road-core
   # service/ols/src/auth/k8s.py and currently has 58 Pyright issues. It
   # might need to be rewritten down the line.
-  "src/auth/k8s.py",
+  "src/lightspeed_stack/auth/k8s.py",
 ]
 extraPaths = ["./src"]
 
@@ -55,7 +55,7 @@ distribution = true
 
 [tool.pdm.version]
 source = "file"
-path = "src/version.py"
+path = "src/lightspeed_stack/version.py"
 
 [tool.behave]
 paths = ["tests/e2e/features"]
