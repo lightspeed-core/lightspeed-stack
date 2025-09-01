@@ -13,6 +13,7 @@ from app.database import get_session
 from configuration import AppConfig
 from utils.suid import get_suid
 from utils.types import GraniteToolParser
+from utils.user_anonymization import get_anonymous_user_id
 
 
 logger = logging.getLogger("utils.endpoints")
@@ -21,22 +22,50 @@ logger = logging.getLogger("utils.endpoints")
 def validate_conversation_ownership(
     user_id: str, conversation_id: str, others_allowed: bool = False
 ) -> UserConversation | None:
-    """Validate that the conversation belongs to the user.
+    """
+    Validate that the conversation belongs to the user using anonymous ID lookup.
 
     Validates that the conversation with the given ID belongs to the user with the given ID.
     If `others_allowed` is True, it allows conversations that do not belong to the user,
     which is useful for admin access.
+
+    Returns the conversation object if valid, raises HTTPException if not.
     """
+    # Get anonymous user ID for database lookup
+    anonymous_user_id = get_anonymous_user_id(user_id)
+
     with get_session() as session:
         conversation_query = session.query(UserConversation)
 
-        filtered_conversation_query = (
-            conversation_query.filter_by(id=conversation_id)
-            if others_allowed
-            else conversation_query.filter_by(id=conversation_id, user_id=user_id)
-        )
+        if others_allowed:
+            # If others_allowed is True, we can access any conversation by ID
+            filtered_conversation_query = conversation_query.filter_by(
+                id=conversation_id
+            )
+        else:
+            # If others_allowed is False, we can only access conversations belonging to this user
+            filtered_conversation_query = conversation_query.filter_by(
+                id=conversation_id, anonymous_user_id=anonymous_user_id
+            )
 
         conversation: UserConversation | None = filtered_conversation_query.first()
+
+        if conversation is None:
+            logger.warning(
+                "User %s attempted to access conversation %s they don't own",
+                user_id,
+                conversation_id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "response": "Forbidden: conversation does not belong to user",
+                    "cause": (
+                        f"User {user_id} does not have access to "
+                        f"conversation {conversation_id}"
+                    ),
+                },
+            )
 
         return conversation
 

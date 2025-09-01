@@ -50,10 +50,17 @@ def test_construct_transcripts_path(mocker):
 def test_store_transcript(mocker):
     """Test the store_transcript function."""
 
+    # Mock database initialization to prevent the error
+    mocker.patch("app.database.engine", mocker.Mock())
+    mocker.patch("app.database.SessionLocal", mocker.Mock())
+
     mocker.patch("builtins.open", mocker.mock_open())
     mocker.patch(
         "utils.transcripts.construct_transcripts_path",
         return_value=mocker.MagicMock(),
+    )
+    mocker.patch(
+        "utils.transcripts.get_anonymous_user_id", return_value="anon-user-123"
     )
 
     # Mock the JSON to assert the data is stored correctly
@@ -104,7 +111,7 @@ def test_store_transcript(mocker):
                 "model": "fake-model",
                 "query_provider": query_request.provider,
                 "query_model": query_request.model,
-                "user_id": user_id,
+                "anonymous_user_id": "anon-user-123",
                 "conversation_id": conversation_id,
                 "timestamp": mocker.ANY,
             },
