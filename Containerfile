@@ -17,7 +17,7 @@ USER root
 RUN dnf --disablerepo="*" --enablerepo="ubi-9-appstream-rpms" --enablerepo="ubi-9-baseos-rpms" install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc
 
 # Install uv package manager
-RUN pip3.12 install "uv==0.8.11"
+RUN pip3.12 install "uv==0.8.15"
 
 # Add explicit files and directories
 # (avoid accidental inclusion of local directories or env files or credentials)
@@ -57,7 +57,10 @@ COPY --from=builder /app-root/LICENSE /licenses/
 # Add uv to final image for derived images to add additional dependencies
 # with command:
 # $ uv pip install <dependency>
-RUN pip3.12 install "uv==0.8.11"
+RUN pip3.12 install "uv==0.8.15"
+
+# Additional tools for derived images
+RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch
 
 # Add executables from .venv to system PATH
 ENV PATH="/app-root/.venv/bin:$PATH"
