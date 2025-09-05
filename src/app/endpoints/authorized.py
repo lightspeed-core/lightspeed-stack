@@ -20,7 +20,13 @@ authorized_responses: dict[int | str, dict[str, Any]] = {
         "model": AuthorizedResponse,
     },
     400: {
-        "description": "Missing or invalid credentials provided by client",
+        "description": "Missing or invalid credentials provided by client for the noop and"
+        "noop-with-token authentication modules",
+        "model": UnauthorizedResponse,
+    },
+    401: {
+        "description": "Missing or invalid credentials provided by client for the"
+        "k8s authentication module",
         "model": UnauthorizedResponse,
     },
     403: {
@@ -44,5 +50,7 @@ async def authorized_endpoint_handler(
         AuthorizedResponse: Contains the user ID and username of the authenticated user.
     """
     # Ignore the user token, we should not return it in the response
-    user_id, user_name, _ = auth
-    return AuthorizedResponse(user_id=user_id, username=user_name)
+    user_id, user_name, skip_userid_check, _ = auth
+    return AuthorizedResponse(
+        user_id=user_id, username=user_name, skip_userid_check=skip_userid_check
+    )

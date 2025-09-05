@@ -50,7 +50,7 @@ class TestJwtRolesResolver:
         }
 
         # Mock auth tuple with JWT claims as third element
-        auth = ("user", "token", claims_to_token(jwt_claims))
+        auth = ("user", "token", False, claims_to_token(jwt_claims))
         roles = await jwt_resolver.resolve_roles(auth)
         assert "employee" in roles
 
@@ -74,7 +74,7 @@ class TestJwtRolesResolver:
         }
 
         # Mock auth tuple with JWT claims as third element
-        auth = ("user", "token", claims_to_token(jwt_claims))
+        auth = ("user", "token", False, claims_to_token(jwt_claims))
         roles = await jwt_resolver.resolve_roles(auth)
         assert len(roles) == 0
 
@@ -97,7 +97,7 @@ class TestJwtRolesResolver:
             "email": "employee@redhat.com",
         }
 
-        auth = ("user", "token", claims_to_token(jwt_claims))
+        auth = ("user", "token", False, claims_to_token(jwt_claims))
         roles = await jwt_resolver.resolve_roles(auth)
         assert "redhat_employee" in roles
 
@@ -120,7 +120,7 @@ class TestJwtRolesResolver:
             "email": "user@example.com",
         }
 
-        auth = ("user", "token", claims_to_token(jwt_claims))
+        auth = ("user", "token", False, claims_to_token(jwt_claims))
         roles = await jwt_resolver.resolve_roles(auth)
         assert len(roles) == 0
 
@@ -166,7 +166,7 @@ class TestJwtRolesResolver:
             "user_id": 12345,  # Non-string value
         }
 
-        auth = ("user", "token", claims_to_token(jwt_claims))
+        auth = ("user", "token", False, claims_to_token(jwt_claims))
         roles = await jwt_resolver.resolve_roles(auth)
         assert len(roles) == 0  # Non-string values don't match regex
 

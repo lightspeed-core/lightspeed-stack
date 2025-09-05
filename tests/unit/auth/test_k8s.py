@@ -94,11 +94,12 @@ async def test_auth_dependency_valid_token(mocker):
         }
     )
 
-    user_uid, username, token = await dependency(request)
+    user_uid, username, skip_userid_check, token = await dependency(request)
 
     # Check if the correct user info has been returned
     assert user_uid == "valid-uid"
     assert username == "valid-user"
+    assert skip_userid_check is False
     assert token == "valid-token"
 
 
@@ -165,11 +166,12 @@ async def test_cluster_id_is_used_for_kube_admin(mocker):
         return_value="some-cluster-id",
     )
 
-    user_uid, username, token = await dependency(request)
+    user_uid, username, skip_userid_check, token = await dependency(request)
 
     # check if the correct user info has been returned
     assert user_uid == "some-cluster-id"
     assert username == "kube:admin"
+    assert skip_userid_check is False
     assert token == "valid-token"
 
 

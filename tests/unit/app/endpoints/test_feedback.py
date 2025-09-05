@@ -82,7 +82,7 @@ async def test_feedback_endpoint_handler(mocker, feedback_request_data):
     result = await feedback_endpoint_handler(
         feedback_request=feedback_request,
         _ensure_feedback_enabled=assert_feedback_enabled,
-        auth=("test_user_id", "test_username", "test_token"),
+        auth=("test_user_id", "test_username", False, "test_token"),
     )
 
     # Assert that the expected response is returned
@@ -109,7 +109,7 @@ async def test_feedback_endpoint_handler_error(mocker):
         await feedback_endpoint_handler(
             feedback_request=feedback_request,
             _ensure_feedback_enabled=assert_feedback_enabled,
-            auth=("test_user_id", "test_username", "test_token"),
+            auth=("test_user_id", "test_username", False, "test_token"),
         )
 
     assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -204,7 +204,7 @@ async def test_update_feedback_status_different(mocker):
     req = FeedbackStatusUpdateRequest(status=False)
     resp = await update_feedback_status(
         req,
-        auth=("test_user_id", "test_username", "test_token"),
+        auth=("test_user_id", "test_username", False, "test_token"),
     )
     assert resp.status == {
         "previous_status": True,
@@ -221,7 +221,7 @@ async def test_update_feedback_status_no_change(mocker):
     req = FeedbackStatusUpdateRequest(status=True)
     resp = await update_feedback_status(
         req,
-        auth=("test_user_id", "test_username", "test_token"),
+        auth=("test_user_id", "test_username", False, "test_token"),
     )
     assert resp.status == {
         "previous_status": True,

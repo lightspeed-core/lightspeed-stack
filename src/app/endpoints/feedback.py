@@ -110,7 +110,7 @@ async def feedback_endpoint_handler(
     """
     logger.debug("Feedback received %s", str(feedback_request))
 
-    user_id, _, _ = auth
+    user_id, _, _, _ = auth
     try:
         store_feedback(user_id, feedback_request.model_dump(exclude={"model_config"}))
     except Exception as e:
@@ -195,7 +195,7 @@ async def update_feedback_status(
     Returns:
         FeedbackStatusUpdateResponse: Indicates whether feedback is enabled.
     """
-    user_id, _, _ = auth
+    user_id, _, _, _ = auth
     requested_status = feedback_update_request.get_value()
 
     with feedback_status_lock:

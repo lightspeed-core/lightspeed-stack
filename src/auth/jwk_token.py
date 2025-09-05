@@ -118,6 +118,7 @@ class JwkTokenAuthDependency(AuthInterface):  # pylint: disable=too-few-public-m
         """Initialize the required allowed paths for authorization checks."""
         self.virtual_path: str = virtual_path
         self.config: JwkConfiguration = config
+        self.skip_userid_check = False
 
     async def __call__(self, request: Request) -> AuthTuple:
         """Authenticate the JWT in the headers against the keys from the JWK url."""
@@ -190,4 +191,4 @@ class JwkTokenAuthDependency(AuthInterface):  # pylint: disable=too-few-public-m
 
         logger.info("Successfully authenticated user %s (ID: %s)", username, user_id)
 
-        return user_id, username, user_token
+        return user_id, username, self.skip_userid_check, user_token

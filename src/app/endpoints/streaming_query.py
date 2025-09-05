@@ -556,7 +556,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     # log Llama Stack configuration
     logger.info("Llama stack config: %s", configuration.llama_stack_configuration)
 
-    user_id, _user_name, token = auth
+    user_id, _user_name, _skip_userid_check, token = auth
 
     user_conversation: UserConversation | None = None
     if query_request.conversation_id:

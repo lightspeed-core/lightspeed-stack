@@ -31,6 +31,7 @@ DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant"
 # Authentication constants
 DEFAULT_VIRTUAL_PATH = "/ls-access"
 DEFAULT_USER_NAME = "lightspeed-user"
+DEFAULT_SKIP_USER_ID_CHECK = True
 DEFAULT_USER_UID = "00000000-0000-0000-0000-000"
 # default value for token when no token is provided
 NO_USER_TOKEN = ""

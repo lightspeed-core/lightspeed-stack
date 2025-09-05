@@ -22,11 +22,12 @@ async def test_noop_with_token_auth_dependency():
     )
 
     # Call the dependency
-    user_id, username, user_token = await dependency(request)
+    user_id, username, skip_userid_check, user_token = await dependency(request)
 
     # Assert the expected values
     assert user_id == DEFAULT_USER_UID
     assert username == DEFAULT_USER_NAME
+    assert skip_userid_check is True
     assert user_token == "spongebob-token"
 
 
@@ -46,11 +47,12 @@ async def test_noop_with_token_auth_dependency_custom_user_id():
     )
 
     # Call the dependency
-    user_id, username, user_token = await dependency(request)
+    user_id, username, skip_userid_check, user_token = await dependency(request)
 
     # Assert the expected values
     assert user_id == "test-user"
     assert username == DEFAULT_USER_NAME
+    assert skip_userid_check is True
     assert user_token == "spongebob-token"
 
 

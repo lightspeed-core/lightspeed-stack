@@ -689,7 +689,17 @@
                         }
                     },
                     "400": {
-                        "description": "Missing or invalid credentials provided by client",
+                        "description": "Missing or invalid credentials provided by client for the noop and noop-with-token authentication modules",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid credentials provided by client for the k8s authentication module",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -922,19 +932,27 @@
                             "John Doe",
                             "Adam Smith"
                         ]
+                    },
+                    "skip_userid_check": {
+                        "type": "boolean",
+                        "title": "Skip User Id Check",
+                        "description": "Whether to skip the user ID check",
+                        "examples": [true, false]
                     }
                 },
                 "type": "object",
                 "required": [
                     "user_id",
-                    "username"
+                    "username",
+                    "skip_userid_check"
                 ],
                 "title": "AuthorizedResponse",
                 "description": "Model representing a response to an authorization request.\n\nAttributes:\n    user_id: The ID of the logged in user.\n    username: The name of the logged in user.",
                 "examples": [
                     {
                         "user_id": "123e4567-e89b-12d3-a456-426614174000",
-                        "username": "user1"
+                        "username": "user1",
+                        "skip_userid_check": false
                     }
                 ]
             },

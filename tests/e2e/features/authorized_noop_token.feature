@@ -1,5 +1,5 @@
 @Authorized
-Feature: Authorized endpoint API tests for the noop-with-token
+Feature: Authorized endpoint API tests for the noop-with-token authentication module
 
   Background:
     Given The service is started locally
@@ -26,7 +26,7 @@ Feature: Authorized endpoint API tests for the noop-with-token
      Then The status code of the response is 200
       And The body of the response is the following
           """
-            {"user_id": "00000000-0000-0000-0000-000","username": "lightspeed-user"}
+            {"user_id": "00000000-0000-0000-0000-000","username": "lightspeed-user","skip_userid_check": true}
           """
 
   Scenario: Check if the authorized endpoint works when providing empty user_id
@@ -36,7 +36,7 @@ Feature: Authorized endpoint API tests for the noop-with-token
      Then The status code of the response is 200
       And The body of the response is the following
           """
-            {"user_id": "","username": "lightspeed-user"}
+            {"user_id": "","username": "lightspeed-user","skip_userid_check": true}
           """
 
   Scenario: Check if the authorized endpoint works when providing proper user_id
@@ -46,7 +46,7 @@ Feature: Authorized endpoint API tests for the noop-with-token
      Then The status code of the response is 200
       And The body of the response is the following
           """
-            {"user_id": "test_user","username": "lightspeed-user"}
+            {"user_id": "test_user","username": "lightspeed-user","skip_userid_check": true}
           """
 
    Scenario: Check if the authorized endpoint works with proper user_id but bearer token is not present

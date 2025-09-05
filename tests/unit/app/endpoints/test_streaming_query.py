@@ -47,7 +47,7 @@ from models.config import ModelContextProtocolServer, Action
 from authorization.resolvers import NoopRolesResolver
 from utils.types import ToolCallSummary, TurnSummary
 
-MOCK_AUTH = ("mock_user_id", "mock_username", "mock_token")
+MOCK_AUTH = ("mock_user_id", "mock_username", False, "mock_token")
 
 
 def mock_database_operations(mocker):
@@ -1318,7 +1318,7 @@ async def test_auth_tuple_unpacking_in_streaming_query_endpoint_handler(mocker):
     await streaming_query_endpoint_handler(
         request,
         QueryRequest(query="test query"),
-        auth=("user123", "username", "auth_token_123"),
+        auth=("user123", "username", False, "auth_token_123"),
         mcp_headers=None,
     )
 

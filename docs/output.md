@@ -397,7 +397,8 @@ Returns:
 | Status Code | Description | Component |
 |-------------|-------------|-----------|
 | 200 | The user is logged-in and authorized to access OLS | [AuthorizedResponse](#authorizedresponse) |
-| 400 | Missing or invalid credentials provided by client | [UnauthorizedResponse](#unauthorizedresponse) |
+| 400 | Missing or invalid credentials provided by client for noop and noop-with-token | [UnauthorizedResponse](#unauthorizedresponse) |
+| 401 | Missing or invalid credentials provided by client for k8s | [UnauthorizedResponse](#unauthorizedresponse) |
 | 403 | User is not authorized | [ForbiddenResponse](#forbiddenresponse) |
 ## GET `/metrics`
 
@@ -509,12 +510,14 @@ Model representing a response to an authorization request.
 Attributes:
     user_id: The ID of the logged in user.
     username: The name of the logged in user.
+    skip_userid_check: Whether to skip user_id check
 
 
 | Field | Type | Description |
 |-------|------|-------------|
 | user_id | string | User ID, for example UUID |
 | username | string | User name |
+| skip_userid_check | bool | skip user_id check |
 
 
 ## CORSConfiguration

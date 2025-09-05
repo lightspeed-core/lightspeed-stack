@@ -31,7 +31,7 @@ from models.database.conversations import UserConversation
 from utils.types import ToolCallSummary, TurnSummary
 from authorization.resolvers import NoopRolesResolver
 
-MOCK_AUTH = ("mock_user_id", "mock_username", "mock_token")
+MOCK_AUTH = ("mock_user_id", "mock_username", False, "mock_token")
 
 
 @pytest.fixture
@@ -108,7 +108,7 @@ async def test_query_endpoint_handler_configuration_not_loaded(mocker, dummy_req
         await query_endpoint_handler(
             query_request=query_request,
             request=dummy_request,
-            auth=["test-user", "", "token"],
+            auth=("test-user", "", False, "token"),
         )
     assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
     assert e.value.detail["response"] == "Configuration is not loaded"
@@ -1214,7 +1214,7 @@ async def test_auth_tuple_unpacking_in_query_endpoint_handler(mocker, dummy_requ
     _ = await query_endpoint_handler(
         request=dummy_request,
         query_request=QueryRequest(query="test query"),
-        auth=("user123", "username", "auth_token_123"),
+        auth=("user123", "username", False, "auth_token_123"),
         mcp_headers=None,
     )
 

@@ -11,7 +11,6 @@ from kubernetes.client.rest import ApiException
 from kubernetes.config import ConfigException
 
 from configuration import configuration
-from auth.utils import extract_user_token
 from auth.interface import AuthInterface
 from constants import DEFAULT_VIRTUAL_PATH
 
@@ -227,8 +226,9 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
     def __init__(self, virtual_path: str = DEFAULT_VIRTUAL_PATH) -> None:
         """Initialize the required allowed paths for authorization checks."""
         self.virtual_path = virtual_path
+        self.skip_userid_check = False
 
-    async def __call__(self, request: Request) -> tuple[str, str, str]:
+    async def __call__(self, request: Request) -> tuple[str, str, bool, str]:
         """Validate FastAPI Requests for authentication and authorization.
 
         Args:
@@ -236,9 +236,23 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
 
         Returns:
             The user's UID and username if authentication and authorization succeed
-            user_id check is skipped with noop auth to allow consumers provide user_id
+            user_id check should never be skipped with K8s authentication
+            If user_id check should be skipped - always return False for k8s
+            User's token
         """
-        token = extract_user_token(request.headers)
+        authorization_header = request.headers.get("Authorization")
+        if not authorization_header:
+            raise HTTPException(
+                status_code=401, detail="Unauthorized: No auth header found"
+            )
+
+        token = _extract_bearer_token(authorization_header)
+        if not token:
+            raise HTTPException(
+                status_code=401,
+                detail="Unauthorized: Bearer token not found or invalid",
+            )
+
         user_info = get_user_info(token)
         if user_info is None:
             raise HTTPException(
@@ -267,4 +281,9 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
             logger.error("API exception during SubjectAccessReview: %s", e)
             raise HTTPException(status_code=403, detail="Internal server error") from e
 
-        return user_info.user.uid, user_info.user.username, token
+        return (
+            user_info.user.uid,
+            user_info.user.username,
+            self.skip_userid_check,
+            token,
+        )

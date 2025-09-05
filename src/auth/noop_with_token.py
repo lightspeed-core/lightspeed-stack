@@ -32,8 +32,9 @@ class NoopWithTokenAuthDependency(
     def __init__(self, virtual_path: str = DEFAULT_VIRTUAL_PATH) -> None:
         """Initialize the required allowed paths for authorization checks."""
         self.virtual_path = virtual_path
+        self.skip_userid_check = True
 
-    async def __call__(self, request: Request) -> tuple[str, str, str]:
+    async def __call__(self, request: Request) -> tuple[str, str, bool, str]:
         """Validate FastAPI Requests for authentication and authorization.
 
         Args:
@@ -52,4 +53,4 @@ class NoopWithTokenAuthDependency(
         # try to extract user ID from request
         user_id = request.query_params.get("user_id", DEFAULT_USER_UID)
         logger.debug("Retrieved user ID: %s", user_id)
-        return user_id, DEFAULT_USER_NAME, user_token
+        return user_id, DEFAULT_USER_NAME, self.skip_userid_check, user_token

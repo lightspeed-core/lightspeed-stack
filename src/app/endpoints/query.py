@@ -180,7 +180,7 @@ async def query_endpoint_handler(
     # log Llama Stack configuration
     logger.info("Llama stack config: %s", configuration.llama_stack_configuration)
 
-    user_id, _, token = auth
+    user_id, _, _, token = auth
 
     user_conversation: UserConversation | None = None
     if query_request.conversation_id:

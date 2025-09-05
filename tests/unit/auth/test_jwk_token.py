@@ -174,9 +174,10 @@ def set_auth_header(request: Request, token: str):
 
 def ensure_test_user_id_and_name(auth_tuple, expected_token):
     """Utility to ensure that the values in the auth tuple match the test values."""
-    user_id, username, token = auth_tuple
+    user_id, username, skip_userid_check, token = auth_tuple
     assert user_id == TEST_USER_ID
     assert username == TEST_USER_NAME
+    assert skip_userid_check is False
     assert token == expected_token
 
 
@@ -259,10 +260,13 @@ async def test_no_auth_header(
 
     dependency = JwkTokenAuthDependency(default_jwk_configuration)
 
-    user_id, username, token_claims = await dependency(no_token_request)
+    user_id, username, skip_userid_check, token_claims = await dependency(
+        no_token_request
+    )
 
     assert user_id == DEFAULT_USER_UID
     assert username == DEFAULT_USER_NAME
+    assert skip_userid_check is True
     assert token_claims == NO_USER_TOKEN
 
 

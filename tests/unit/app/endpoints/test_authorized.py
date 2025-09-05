@@ -7,7 +7,7 @@ from starlette.datastructures import Headers
 from app.endpoints.authorized import authorized_endpoint_handler
 from auth.utils import extract_user_token
 
-MOCK_AUTH = ("test-id", "test-user", "token")
+MOCK_AUTH = ("test-id", "test-user", True, "token")
 
 
 @pytest.mark.asyncio
@@ -18,6 +18,7 @@ async def test_authorized_endpoint():
     assert response.model_dump() == {
         "user_id": "test-id",
         "username": "test-user",
+        "skip_userid_check": True,
     }
 
 

@@ -307,6 +307,7 @@ class AuthorizedResponse(BaseModel):
     Attributes:
         user_id: The ID of the logged in user.
         username: The name of the logged in user.
+        skip_userid_check: Whether to skip the user ID check.
     """
 
     user_id: str = Field(
@@ -319,6 +320,11 @@ class AuthorizedResponse(BaseModel):
         description="User name",
         examples=["John Doe", "Adam Smith"],
     )
+    skip_userid_check: bool = Field(
+        ...,
+        description="Whether to skip the user ID check",
+        examples=[True, False],
+    )
 
     # provides examples for /docs endpoint
     model_config = {
@@ -327,6 +333,7 @@ class AuthorizedResponse(BaseModel):
                 {
                     "user_id": "123e4567-e89b-12d3-a456-426614174000",
                     "username": "user1",
+                    "skip_userid_check": False,
                 }
             ]
         }

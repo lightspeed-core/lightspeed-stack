@@ -81,7 +81,7 @@ class JwtRolesResolver(RolesResolver):  # pylint: disable=too-few-public-methods
     @staticmethod
     def _get_claims(auth: AuthTuple) -> dict[str, Any]:
         """Get the JWT claims from the auth tuple."""
-        _, _, token = auth
+        _, _, _, token = auth
         if token == constants.NO_USER_TOKEN:
             # No claims for guests
             return {}

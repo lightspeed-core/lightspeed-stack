@@ -55,9 +55,11 @@ class TestAuthorizedResponse:
         ar = AuthorizedResponse(
             user_id="123e4567-e89b-12d3-a456-426614174000",
             username="testuser",
+            skip_userid_check=True,
         )
         assert ar.user_id == "123e4567-e89b-12d3-a456-426614174000"
         assert ar.username == "testuser"
+        assert ar.skip_userid_check is True
 
     def test_constructor_fields_required(self) -> None:
         """Test the AuthorizedResponse constructor."""
