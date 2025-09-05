@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from types import ModuleType
 from unittest.mock import patch
 
 import pytest
@@ -78,3 +79,45 @@ def test_file_check_not_readable_file(input_file):
     with patch("os.access", return_value=False):
         with pytest.raises(checks.InvalidConfigurationError):
             checks.file_check(input_file, "description")
+
+
+def test_import_python_module_success():
+    """Test importing a Python module."""
+    module_path = "tests/profiles/test/profile.py"
+    module_name = "profile"
+    result = checks.import_python_module(module_name, module_path)
+
+    assert isinstance(result, ModuleType)
+
+
+def test_import_python_module_error():
+    """Test importing a Python module that is a .txt file."""
+    module_path = "tests/profiles/test_two/test.txt"
+    module_name = "profile"
+    result = checks.import_python_module(module_name, module_path)
+
+    assert result is None
+
+
+def test_is_valid_profile():
+    """Test if an imported profile is valid."""
+    module_path = "tests/profiles/test/profile.py"
+    module_name = "profile"
+    fetched_module = checks.import_python_module(module_name, module_path)
+    result = False
+    if fetched_module:
+        result = checks.is_valid_profile(fetched_module)
+
+    assert result is True
+
+
+def test_invalid_profile():
+    """Test if an imported profile is valid (expect invalid)"""
+    module_path = "tests/profiles/test_three/profile.py"
+    module_name = "profile"
+    fetched_module = checks.import_python_module(module_name, module_path)
+    result = False
+    if fetched_module:
+        result = checks.is_valid_profile(fetched_module)
+
+    assert result is False

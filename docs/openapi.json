@@ -1237,8 +1237,41 @@
                     }
                 ]
             },
+            "CustomProfile": {
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "title": "Path"
+                    },
+                    "prompts": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object",
+                        "title": "Prompts",
+                        "default": {}
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "path"
+                ],
+                "title": "CustomProfile",
+                "description": "Custom profile customization for prompts and validation."
+            },
             "Customization": {
                 "properties": {
+                    "profile_path": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Profile Path"
+                    },
                     "disable_query_system_prompt": {
                         "type": "boolean",
                         "title": "Disable Query System Prompt",
@@ -1266,6 +1299,16 @@
                             }
                         ],
                         "title": "System Prompt"
+                    },
+                    "custom_profile": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/CustomProfile"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "additionalProperties": false,
