@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12, <3.14"
 resolution-markers = [
     "python_full_version >= '3.13' and sys_platform != 'darwin'",
@@ -1395,8 +1395,8 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "jsonpath-ng", specifier = ">=1.6.1" },
     { name = "kubernetes", specifier = ">=30.1.0" },
-    { name = "llama-stack", specifier = "==0.2.21" },
-    { name = "llama-stack-client", specifier = "==0.2.21" },
+    { name = "llama-stack", specifier = "==0.2.22" },
+    { name = "llama-stack-client", specifier = "==0.2.22" },
     { name = "openai", specifier = ">=1.99.9" },
     { name = "prometheus-client", specifier = ">=0.22.1" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
@@ -1491,7 +1491,7 @@ wheels = [
 
 [[package]]
 name = "llama-stack"
-version = "0.2.21"
+version = "0.2.22"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1520,14 +1520,14 @@ dependencies = [
     { name = "tiktoken" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3c/00/c73d8c823a7dffcb98526e5752ef873a4685fa4d574c1e9e33e993e678da/llama_stack-0.2.21.tar.gz", hash = "sha256:d0c540a4e0c6a4c3a65c8e39d9410b4295e73da85ad7822c78ddc906f22f796e", size = 3330012, upload-time = "2025-09-08T22:27:07.23Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6b/cf/c4bccdb6e218f3fda1d50aad87bf08376372c56ddc523e35f5a629c725e1/llama_stack-0.2.22.tar.gz", hash = "sha256:576752dedc9e9f0fb9da69f373d677d8b4f2ae4203428f676fa039b6813d8450", size = 3334595, upload-time = "2025-09-16T19:43:41.842Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a4/c5/80cd86e36dc74752cae824a311fb8b3026957955884447898481c9b6f163/llama_stack-0.2.21-py3-none-any.whl", hash = "sha256:831bf9c15ebc40ed31b24c41492d1331b6befccc7795673368a65615915e3cf8", size = 3663001, upload-time = "2025-09-08T22:27:05.406Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/42/5ae8be5371367beb9c8e38966cd941022c072fb2133660bf0eabc7b5d08b/llama_stack-0.2.22-py3-none-any.whl", hash = "sha256:c6bbda6b5a4417b9a73ed36b9d581fd7ec689090ceefd084d9a078e7acbdc670", size = 3669928, upload-time = "2025-09-16T19:43:40.391Z" },
 ]
 
 [[package]]
 name = "llama-stack-client"
-version = "0.2.21"
+version = "0.2.22"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1546,9 +1546,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f1/d3/8c50561d167f1e9b601b8fffe852b44c1ff97aaa6db6cdedd611d9e02a65/llama_stack_client-0.2.21.tar.gz", hash = "sha256:bd931fdcadedec5ccdbaa3c54d0c17761af1c227711ad6150dc0dd33d7b66ce2", size = 318319, upload-time = "2025-09-08T22:26:57.668Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/60/80/4260816bfaaa889d515206c9df4906d08d405bf94c9b4d1be399b1923e46/llama_stack_client-0.2.22.tar.gz", hash = "sha256:9a0bc756b91ebd539858eeaf1f231c5e5c6900e1ea4fcced726c6717f3d27ca7", size = 318309, upload-time = "2025-09-16T19:43:33.212Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/02/77/dadc682046a2c7ad68be8d2d2afac7007bf4d22efb0d3929d85ab9706ffe/llama_stack_client-0.2.21-py3-none-any.whl", hash = "sha256:adba82fdf18ab3b8ac218cedba4927bd5d26c23c2318e75c8763a44bb6b40693", size = 369902, upload-time = "2025-09-08T22:26:56.308Z" },
+    { url = "https://files.pythonhosted.org/packages/d1/8e/1ebf6ac0dbb62b81038e856ed00768e283d927b14fcd614e3018a227092b/llama_stack_client-0.2.22-py3-none-any.whl", hash = "sha256:b260d73aec56fcfd8fa601b3b34c2f83c4fbcfb7261a246b02bbdf6c2da184fe", size = 369901, upload-time = "2025-09-16T19:43:32.089Z" },
 ]
 
 [[package]]

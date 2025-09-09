@@ -164,7 +164,7 @@ class InfoResponse(BaseModel):
         info_response = InfoResponse(
             name="Lightspeed Stack",
             service_version="1.0.0",
-            llama_stack_version="0.2.21",
+            llama_stack_version="0.2.22",
         )
         ```
     """
@@ -181,7 +181,7 @@ class InfoResponse(BaseModel):
 
     llama_stack_version: str = Field(
         description="Llama Stack version",
-        examples=["0.2.1", "0.2.2", "0.2.18"],
+        examples=["0.2.1", "0.2.2", "0.2.22"],
     )
 
     # provides examples for /docs endpoint

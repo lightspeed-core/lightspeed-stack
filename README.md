@@ -245,7 +245,7 @@ version = "0.1.0"
 description = "Llama Stack runner"
 authors = []
 dependencies = [
-    "llama-stack==0.2.21",
+    "llama-stack==0.2.22",
     "fastapi>=0.115.12",
     "opentelemetry-sdk>=1.34.0",
     "opentelemetry-exporter-otlp>=1.34.0",
