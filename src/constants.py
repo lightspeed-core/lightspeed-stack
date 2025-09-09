@@ -2,7 +2,7 @@
 
 # Minimal and maximal supported Llama Stack version
 MINIMAL_SUPPORTED_LLAMA_STACK_VERSION = "0.2.17"
-MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION = "0.2.18"
+MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION = "0.2.19"
 
 UNABLE_TO_PROCESS_RESPONSE = "Unable to process this request"
 
