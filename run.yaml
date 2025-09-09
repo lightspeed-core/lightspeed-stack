@@ -71,7 +71,7 @@ providers:
       distributed_backend: null
       dpo_output_dir: "."
     provider_id: huggingface
-    provider_type: inline::huggingface
+    provider_type: inline::huggingface-gpu
   safety:
   - config:
       excluded_categories: []
