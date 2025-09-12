@@ -51,6 +51,7 @@ The service includes comprehensive user data collection capabilities for various
         * [Llama-Stack as Separate Service (Server Mode)](#llama-stack-as-separate-service-server-mode)
         * [Llama-Stack as Library (Library Mode)](#llama-stack-as-library-library-mode)
         * [Verify it's running properly](#verify-its-running-properly)
+    * [Custom Container Image](#custom-container-image)
 * [Endpoints](#endpoints)
     * [OpenAPI specification](#openapi-specification)
     * [Readiness Endpoint](#readiness-endpoint)
@@ -683,6 +684,82 @@ A simple sanity check:
 curl -H "Accept: application/json" http://localhost:8080/v1/models
 ```
 
+## Custom Container Image
+
+The lightspeed-stack container image bundles many Python dependencies for common
+Llama-Stack providers (when using Llama-Stack in library mode).
+
+Follow these instructons when you need to bundle additional configuration
+files or extra dependencies (e.g. `lightspeed-stack-providers`).
+
+To include more dependencies in the base-image, create upstream pull request to update
+[the pyproject.toml file](https://github.com/lightspeed-core/lightspeed-stack/blob/main/pyproject.toml)
+
+1. Create `pyproject.toml` file in your top-level directory with content like:
+```toml
+[project]
+name = "my-customized-chatbot"
+version = "0.1.0"
+description = "My very Awesome Chatbot"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "lightspeed-stack-providers==TODO",
+]
+```
+
+2. Create `Containerfile` in top-level directory like following. Update it as needed:
+```
+# Latest dev image built from the git main branch (consider pinning a digest for reproducibility)
+FROM quay.io/lightspeed-core/lightspeed-stack:dev-latest
+
+ARG APP_ROOT=/app-root
+WORKDIR /app-root
+
+# Add additional files
+# (avoid accidental inclusion of local directories or env files or credentials)
+COPY pyproject.toml LICENSE.md README.md ./
+
+# Bundle own configuration files
+COPY lightspeed-stack.yaml run.yaml ./
+
+# Add only project-specific dependencies without adding other dependencies
+# to not break the dependencies of the base image.
+ENV UV_COMPILE_BYTECODE=0 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=0 \
+    UV_NO_CACHE=1
+# List of dependencies is first parsed from pyproject.toml and then installed.
+RUN python -c "import tomllib, sys; print(' '.join(tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']))" \
+    | xargs uv pip install --no-deps
+# Install the project itself
+RUN uv pip install . --no-deps && uv clean
+
+USER 0
+
+# Bundle additional rpm packages
+RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs TODO1 TODO2 \
+    && microdnf clean all \
+    && rm -rf /var/cache/dnf
+
+# this directory is checked by ecosystem-cert-preflight-checks task in Konflux
+COPY LICENSE.md /licenses/
+
+# Add executables from .venv to system PATH
+ENV PATH="/app-root/.venv/bin:$PATH"
+
+# Run the application
+EXPOSE 8080
+ENTRYPOINT ["python3.12", "src/lightspeed_stack.py"]
+USER 1001
+```
+
+3. Optionally create customized configuration files `lightspeed-stack.yaml` and `run.yaml`.
+
+4. Now try to build your image
+```
+podman build -t "my-awesome-chatbot:latest" .
+```
 
 # Endpoints
 
