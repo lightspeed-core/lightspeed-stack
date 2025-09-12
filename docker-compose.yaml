@@ -1,23 +1,54 @@
 services:
+  # vLLM service for Red Hat distribution
+  vllm:
+    image: vllm/vllm-openai:latest
+    platform: linux/amd64
+    container_name: vllm
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_NAME=${INFERENCE_MODEL:-microsoft/DialoGPT-small}
+      - HOST=0.0.0.0
+      - PORT=8000
+    volumes:
+      - vllm_models:/root/.cache/huggingface
+    networks:
+      - lightspeednet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Red Hat llama-stack distribution in standalone mode
   llama-stack:
-    build:
-      context: .
-      dockerfile: test.containerfile
+    image: quay.io/opendatahub/llama-stack:odh
+    platform: linux/amd64
     container_name: llama-stack
     ports:
-      - "8321:8321"  # Expose llama-stack on 8321 (adjust if needed)
-    volumes:
-      - ./run.yaml:/app-root/run.yaml:Z
+      - "8321:8321"
     environment:
+      # Standalone mode configuration
+      - STANDALONE=true
+      - VLLM_URL=http://vllm:8000/v1
+      - INFERENCE_MODEL=${INFERENCE_MODEL:-microsoft/DialoGPT-small}
+      
+      # Optional Configuration
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
+      - TAVILY_SEARCH_API_KEY=${TAVILY_SEARCH_API_KEY:-}
+    depends_on:
+      vllm:
+        condition: service_healthy
     networks:
       - lightspeednet
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8321/v1/health"]
-      interval: 10s   # how often to run the check
-      timeout: 5s    # how long to wait before considering it failed
-      retries: 3      # how many times to retry before marking as unhealthy
-      start_period: 15s # time to wait before starting checks
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   lightspeed-stack:
     build:
@@ -41,6 +72,9 @@ services:
       timeout: 5s    # how long to wait before considering it failed
       retries: 3      # how many times to retry before marking as unhealthy
       start_period: 5s # time to wait before starting checks
+
+volumes:
+  vllm_models:
 
 networks:
   lightspeednet:
