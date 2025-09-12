@@ -29,6 +29,7 @@ import metrics
 from metrics.utils import update_llm_token_count_from_turn
 from models.config import Action
 from models.requests import QueryRequest
+from models.responses import StreamedChunk
 from models.database.conversations import UserConversation
 from utils.endpoints import check_configuration_loaded, get_agent, get_system_prompt
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
@@ -47,6 +48,11 @@ from app.endpoints.query import (
     persist_user_conversation_details,
     evaluate_model_hints,
 )
+
+# Constants for OLS-compatible event types
+LLM_TOKEN_EVENT = "token"
+LLM_TOOL_CALL_EVENT = "tool_call"
+LLM_TOOL_RESULT_EVENT = "tool_result"
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query"])
@@ -94,41 +100,73 @@ def stream_start_event(conversation_id: str) -> str:
     )
 
 
-def stream_end_event(metadata_map: dict) -> str:
+def stream_end_event(
+    ref_docs: list[dict],
+    truncated: bool,
+    media_type: str,
+    token_counter: dict | None = None,
+    available_quotas: dict[str, int] | None = None,
+) -> str:
     """
     Yield the end of the data stream.
 
     Format and return the end event for a streaming response,
-    including referenced document metadata and placeholder token
-    counts.
+    including referenced document metadata and token counts.
 
     Parameters:
-        metadata_map (dict): A mapping containing metadata about
-        referenced documents.
+        ref_docs: Referenced documents.
+        truncated: Indicates if the history was truncated.
+        media_type: Media type of the response (e.g. text or JSON).
+        token_counter: Token counter for the whole stream.
+        available_quotas: Quotas available for configured quota limiters.
 
     Returns:
         str: A Server-Sent Events (SSE) formatted string
         representing the end of the data stream.
     """
+    if media_type == "application/json":
+        return format_stream_data(
+            {
+                "event": "end",
+                "data": {
+                    "referenced_documents": ref_docs,
+                    "truncated": truncated,
+                    "input_tokens": token_counter.get("input_tokens", 0) if token_counter else 0,
+                    "output_tokens": token_counter.get("output_tokens", 0) if token_counter else 0,
+                },
+                "available_quotas": available_quotas or {},
+            }
+        )
+    ref_docs_string = "\n".join(
+        f'{item["doc_title"]}: {item["doc_url"]}' for item in ref_docs
+    )
+    return f"\n\n---\n\n{ref_docs_string}" if ref_docs_string else ""
+
+
+def stream_event(data: dict, event_type: str, media_type: str) -> str:
+    """Build an item to yield based on media type.
+
+    Args:
+        data: The data to yield.
+        event_type: The type of event (e.g. token, tool request, tool execution).
+        media_type: Media type of the response (e.g. text or JSON).
+
+    Returns:
+        str: The formatted string or JSON to yield.
+    """
+    if media_type == "text/plain":
+        if event_type == LLM_TOKEN_EVENT:
+            return data["token"]
+        if event_type == LLM_TOOL_CALL_EVENT:
+            return f"\nTool call: {json.dumps(data)}\n"
+        if event_type == LLM_TOOL_RESULT_EVENT:
+            return f"\nTool result: {json.dumps(data)}\n"
+        logger.error("Unknown event type: %s", event_type)
+        return ""
     return format_stream_data(
         {
-            "event": "end",
-            "data": {
-                "referenced_documents": [
-                    {
-                        "doc_url": v["docs_url"],
-                        "doc_title": v["title"],
-                    }
-                    for v in filter(
-                        lambda v: ("docs_url" in v) and ("title" in v),
-                        metadata_map.values(),
-                    )
-                ],
-                "truncated": None,  # TODO(jboos): implement truncated
-                "input_tokens": 0,  # TODO(jboos): implement input tokens
-                "output_tokens": 0,  # TODO(jboos): implement output tokens
-            },
-            "available_quotas": {},  # TODO(jboos): implement available quotas
+            "event": event_type,
+            "data": data,
         }
     )
 
@@ -203,6 +241,35 @@ def _handle_error_event(chunk: Any, chunk_id: int) -> Iterator[str]:
     )
 
 
+def generic_llm_error(error: Exception, media_type: str) -> str:
+    """Return error representation for generic LLM errors.
+
+    Args:
+        error: The exception raised during processing.
+        media_type: Media type of the response (e.g. text or JSON).
+
+    Returns:
+        str: The error message formatted for the media type.
+    """
+    logger.error("Error while obtaining answer for user question")
+    logger.exception(error)
+    
+    response = "Error while obtaining answer for user question"
+    cause = str(error)
+
+    if media_type == "text/plain":
+        return f"{response}: {cause}"
+    return format_stream_data(
+        {
+            "event": "error",
+            "data": {
+                "response": response,
+                "cause": cause,
+            },
+        }
+    )
+
+
 # -----------------------------------
 # Turn handling
 # -----------------------------------
@@ -223,7 +290,7 @@ def _handle_turn_start_event(chunk_id: int) -> Iterator[str]:
     """
     yield format_stream_data(
         {
-            "event": "token",
+            "event": LLM_TOKEN_EVENT,
             "data": {
                 "id": chunk_id,
                 "token": "",
@@ -322,10 +389,9 @@ def _handle_inference_event(chunk: Any, chunk_id: int) -> Iterator[str]:
     if chunk.event.payload.event_type == "step_start":
         yield format_stream_data(
             {
-                "event": "token",
+                "event": LLM_TOKEN_EVENT,
                 "data": {
                     "id": chunk_id,
-                    "role": chunk.event.payload.step_type,
                     "token": "",
                 },
             }
@@ -336,10 +402,9 @@ def _handle_inference_event(chunk: Any, chunk_id: int) -> Iterator[str]:
             if isinstance(chunk.event.payload.delta.tool_call, str):
                 yield format_stream_data(
                     {
-                        "event": "tool_call",
+                        "event": LLM_TOOL_CALL_EVENT,
                         "data": {
                             "id": chunk_id,
-                            "role": chunk.event.payload.step_type,
                             "token": chunk.event.payload.delta.tool_call,
                         },
                     }
@@ -347,10 +412,9 @@ def _handle_inference_event(chunk: Any, chunk_id: int) -> Iterator[str]:
             elif isinstance(chunk.event.payload.delta.tool_call, ToolCall):
                 yield format_stream_data(
                     {
-                        "event": "tool_call",
+                        "event": LLM_TOOL_CALL_EVENT,
                         "data": {
                             "id": chunk_id,
-                            "role": chunk.event.payload.step_type,
                             "token": chunk.event.payload.delta.tool_call.tool_name,
                         },
                     }
@@ -359,10 +423,9 @@ def _handle_inference_event(chunk: Any, chunk_id: int) -> Iterator[str]:
         elif chunk.event.payload.delta.type == "text":
             yield format_stream_data(
                 {
-                    "event": "token",
+                    "event": LLM_TOKEN_EVENT,
                     "data": {
                         "id": chunk_id,
-                        "role": chunk.event.payload.step_type,
                         "token": chunk.event.payload.delta.text,
                     },
                 }
@@ -377,7 +440,7 @@ def _handle_tool_execution_event(
     chunk: Any, chunk_id: int, metadata_map: dict
 ) -> Iterator[str]:
     """
-    Yield tool call event.
+    Yield tool call and tool result events.
 
     Processes tool execution events from a streaming chunk and
     yields formatted Server-Sent Events (SSE) strings.
@@ -399,23 +462,22 @@ def _handle_tool_execution_event(
     if chunk.event.payload.event_type == "step_start":
         yield format_stream_data(
             {
-                "event": "tool_call",
+                "event": LLM_TOOL_CALL_EVENT,
                 "data": {
                     "id": chunk_id,
-                    "role": chunk.event.payload.step_type,
                     "token": "",
                 },
             }
         )
 
     elif chunk.event.payload.event_type == "step_complete":
+        # First yield tool calls
         for t in chunk.event.payload.step_details.tool_calls:
             yield format_stream_data(
                 {
-                    "event": "tool_call",
+                    "event": LLM_TOOL_CALL_EVENT,
                     "data": {
                         "id": chunk_id,
-                        "role": chunk.event.payload.step_type,
                         "token": {
                             "tool_name": t.tool_name,
                             "arguments": t.arguments,
@@ -424,15 +486,15 @@ def _handle_tool_execution_event(
                 }
             )
 
+        # Then yield tool results
         for r in chunk.event.payload.step_details.tool_responses:
             if r.tool_name == "query_from_memory":
                 inserted_context = interleaved_content_as_str(r.content)
                 yield format_stream_data(
                     {
-                        "event": "tool_call",
+                        "event": LLM_TOOL_RESULT_EVENT,
                         "data": {
                             "id": chunk_id,
-                            "role": chunk.event.payload.step_type,
                             "token": {
                                 "tool_name": r.tool_name,
                                 "response": f"Fetched {len(inserted_context)} bytes from memory",
@@ -463,10 +525,9 @@ def _handle_tool_execution_event(
 
                 yield format_stream_data(
                     {
-                        "event": "tool_call",
+                        "event": LLM_TOOL_RESULT_EVENT,
                         "data": {
                             "id": chunk_id,
-                            "role": chunk.event.payload.step_type,
                             "token": {
                                 "tool_name": r.tool_name,
                                 "summary": summary,
@@ -478,10 +539,9 @@ def _handle_tool_execution_event(
             else:
                 yield format_stream_data(
                     {
-                        "event": "tool_call",
+                        "event": LLM_TOOL_RESULT_EVENT,
                         "data": {
                             "id": chunk_id,
-                            "role": chunk.event.payload.step_type,
                             "token": {
                                 "tool_name": r.tool_name,
                                 "response": interleaved_content_as_str(r.content),
@@ -614,32 +674,61 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
             summary = TurnSummary(
                 llm_response="No response from the model", tool_calls=[]
             )
-
+            
+            # Determine media type for OLS compatibility
+            media_type = query_request.media_type or "application/json"
+            
             # Send start event
             yield stream_start_event(conversation_id)
 
-            async for chunk in turn_response:
-                p = chunk.event.payload
-                if p.event_type == "turn_complete":
-                    summary.llm_response = interleaved_content_as_str(
-                        p.turn.output_message.content
-                    )
-                    system_prompt = get_system_prompt(query_request, configuration)
-                    try:
-                        update_llm_token_count_from_turn(
-                            p.turn, model_id, provider_id, system_prompt
+            # Track referenced documents and token counts
+            ref_docs = []
+            token_counter = {"input_tokens": 0, "output_tokens": 0}
+            truncated = False
+
+            try:
+                async for chunk in turn_response:
+                    p = chunk.event.payload
+                    if p.event_type == "turn_complete":
+                        summary.llm_response = interleaved_content_as_str(
+                            p.turn.output_message.content
                         )
-                    except Exception:  # pylint: disable=broad-except
-                        logger.exception("Failed to update token usage metrics")
-                elif p.event_type == "step_complete":
-                    if p.step_details.step_type == "tool_execution":
-                        summary.append_tool_calls_from_llama(p.step_details)
+                        system_prompt = get_system_prompt(query_request, configuration)
+                        try:
+                            update_llm_token_count_from_turn(
+                                p.turn, model_id, provider_id, system_prompt
+                            )
+                            # Extract token counts from the turn if available
+                            if hasattr(p.turn, 'usage') and p.turn.usage:
+                                token_counter["input_tokens"] = getattr(p.turn.usage, 'prompt_tokens', 0)
+                                token_counter["output_tokens"] = getattr(p.turn.usage, 'completion_tokens', 0)
+                        except Exception:  # pylint: disable=broad-except
+                            logger.exception("Failed to update token usage metrics")
+                    elif p.event_type == "step_complete":
+                        if p.step_details.step_type == "tool_execution":
+                            summary.append_tool_calls_from_llama(p.step_details)
 
-                for event in stream_build_event(chunk, chunk_id, metadata_map):
-                    chunk_id += 1
-                    yield event
+                    for event in stream_build_event(chunk, chunk_id, metadata_map):
+                        chunk_id += 1
+                        yield event
+            except Exception as e:
+                # Handle streaming errors
+                yield generic_llm_error(e, media_type)
+                return
 
-            yield stream_end_event(metadata_map)
+            # Build referenced documents from metadata
+            ref_docs = [
+                {
+                    "doc_url": v["docs_url"],
+                    "doc_title": v["title"],
+                }
+                for v in filter(
+                    lambda v: ("docs_url" in v) and ("title" in v),
+                    metadata_map.values(),
+                )
+            ]
+
+            yield stream_end_event(ref_docs, truncated, media_type, token_counter, {})
 
             if not is_transcripts_enabled():
                 logger.debug("Transcript collection is disabled in the configuration")
@@ -669,7 +758,12 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         # Update metrics for the LLM call
         metrics.llm_calls_total.labels(provider_id, model_id).inc()
 
-        return StreamingResponse(response_generator(response))
+        # Determine media type for OLS compatibility
+        media_type = query_request.media_type or "application/json"
+        return StreamingResponse(
+            response_generator(response),
+            media_type=media_type
+        )
     # connection to Llama Stack server
     except APIConnectionError as e:
         # Update metrics for the LLM call failure

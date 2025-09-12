@@ -550,6 +550,31 @@ class ConversationsListResponse(BaseModel):
     }
 
 
+class StreamedChunk(BaseModel):
+    """Model representing a streamed chunk for OLS-compatible streaming responses.
+
+    Attributes:
+        type: The type of chunk (text, tool_call, tool_result, end).
+        text: The text content for text chunks.
+        data: Additional data for non-text chunks.
+    """
+
+    type: str = Field(
+        description="The type of chunk",
+        examples=["text", "tool_call", "tool_result", "end"],
+    )
+    text: Optional[str] = Field(
+        None,
+        description="The text content for text chunks",
+        examples=["Hello", "How can I help you?"],
+    )
+    data: Optional[dict[str, Any]] = Field(
+        None,
+        description="Additional data for non-text chunks",
+        examples=[{"tool_name": "search", "arguments": {"query": "test"}}],
+    )
+
+
 class ErrorResponse(BaseModel):
     """Model representing error response for query endpoint."""
 
