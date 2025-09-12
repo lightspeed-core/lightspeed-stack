@@ -6,12 +6,13 @@ from fastapi import HTTPException
 
 import constants
 from configuration import AppConfig
-from tests.unit import config_dict
-
+from models.config import CustomProfile
 from models.requests import QueryRequest
 from models.config import Action
 from utils import endpoints
 from utils.endpoints import get_agent
+
+from tests.unit import config_dict
 
 CONFIGURED_SYSTEM_PROMPT = "This is a configured system prompt"
 
@@ -61,6 +62,42 @@ def config_with_custom_system_prompt_and_disable_query_system_prompt_fixture():
 
     # system prompt is customized and query system prompt is disabled
     test_config["customization"] = {
+        "system_prompt": CONFIGURED_SYSTEM_PROMPT,
+        "disable_query_system_prompt": True,
+    }
+    cfg = AppConfig()
+    cfg.init_from_dict(test_config)
+
+    return cfg
+
+
+@pytest.fixture(
+    name="config_with_custom_profile_prompt_and_enabled_query_system_prompt"
+)
+def config_with_custom_profile_prompt_and_enabled_query_system_prompt_fixture():
+    """Configuration with custom profile loaded for prompt and disabled query system prompt set."""
+    test_config = config_dict.copy()
+
+    test_config["customization"] = {
+        "profile_path": "tests/profiles/test/profile.py",
+        "system_prompt": CONFIGURED_SYSTEM_PROMPT,
+        "disable_query_system_prompt": False,
+    }
+    cfg = AppConfig()
+    cfg.init_from_dict(test_config)
+
+    return cfg
+
+
+@pytest.fixture(
+    name="config_with_custom_profile_prompt_and_disable_query_system_prompt"
+)
+def config_with_custom_profile_prompt_and_disable_query_system_prompt_fixture():
+    """Configuration with custom profile loaded for prompt and disabled query system prompt set."""
+    test_config = config_dict.copy()
+
+    test_config["customization"] = {
+        "profile_path": "tests/profiles/test/profile.py",
         "system_prompt": CONFIGURED_SYSTEM_PROMPT,
         "disable_query_system_prompt": True,
     }
@@ -173,6 +210,32 @@ def test_get_system_prompt_with_disable_query_system_prompt_and_non_system_promp
         config_with_custom_system_prompt_and_disable_query_system_prompt,
     )
     assert system_prompt == CONFIGURED_SYSTEM_PROMPT
+
+
+def test_get_profile_prompt_with_disable_query_system_prompt(
+    config_with_custom_profile_prompt_and_disable_query_system_prompt,
+    query_request_without_system_prompt,
+):
+    """Test that system prompt is set if profile enabled and query system prompt disabled."""
+    custom_profile = CustomProfile(path="tests/profiles/test/profile.py")
+    prompts = custom_profile.get_prompts()
+    system_prompt = endpoints.get_system_prompt(
+        query_request_without_system_prompt,
+        config_with_custom_profile_prompt_and_disable_query_system_prompt,
+    )
+    assert system_prompt == prompts.get("default")
+
+
+def test_get_profile_prompt_with_enabled_query_system_prompt(
+    config_with_custom_profile_prompt_and_enabled_query_system_prompt,
+    query_request_with_system_prompt,
+):
+    """Test that profile system prompt is overridden by query system prompt enabled."""
+    system_prompt = endpoints.get_system_prompt(
+        query_request_with_system_prompt,
+        config_with_custom_profile_prompt_and_enabled_query_system_prompt,
+    )
+    assert system_prompt == query_request_with_system_prompt.system_prompt
 
 
 @pytest.mark.asyncio

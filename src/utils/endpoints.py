@@ -92,6 +92,15 @@ def get_system_prompt(query_request: QueryRequest, config: AppConfig) -> str:
         # disable query system prompt altogether with disable_system_prompt.
         return query_request.system_prompt
 
+    # profile takes precedence for setting prompt
+    if (
+        config.customization is not None
+        and config.customization.custom_profile is not None
+    ):
+        prompt = config.customization.custom_profile.get_prompts().get("default")
+        if prompt:
+            return prompt
+
     if (
         config.customization is not None
         and config.customization.system_prompt is not None

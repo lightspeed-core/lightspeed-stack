@@ -2,7 +2,7 @@
 
 import pytest
 from configuration import AppConfig, LogicError
-from models.config import ModelContextProtocolServer
+from models.config import CustomProfile, ModelContextProtocolServer
 
 
 # pylint: disable=broad-exception-caught,protected-access
@@ -496,3 +496,87 @@ customization:
         cfg.customization.system_prompt.strip()
         == "this is system prompt in the customization section"
     )
+
+
+def test_configuration_with_profile_customization(tmpdir) -> None:
+    """Test loading configuration from YAML file with a custom profile."""
+    expected_profile = CustomProfile(path="tests/profiles/test/profile.py")
+    expected_prompts = expected_profile.get_prompts()
+    cfg_filename = tmpdir / "config.yaml"
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
+        fout.write(
+            """
+name: test service
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: false
+  url: http://localhost:8321
+  api_key: test-key
+user_data_collection:
+  feedback_enabled: false
+customization:
+  profile_path: tests/profiles/test/profile.py
+            """
+        )
+
+    cfg = AppConfig()
+    cfg.load_configuration(cfg_filename)
+
+    assert (
+        cfg.customization is not None and cfg.customization.custom_profile is not None
+    )
+    fetched_prompts = cfg.customization.custom_profile.get_prompts()
+    assert fetched_prompts is not None and fetched_prompts.get(
+        "default"
+    ) == expected_prompts.get("default")
+
+
+def test_configuration_with_all_customizations(tmpdir) -> None:
+    """Test loading configuration from YAML file with a custom profile, prompt and prompt path."""
+    expected_profile = CustomProfile(path="tests/profiles/test/profile.py")
+    expected_prompts = expected_profile.get_prompts()
+    system_prompt_filename = tmpdir / "system_prompt.txt"
+    with open(system_prompt_filename, "w", encoding="utf-8") as fout:
+        fout.write("this is system prompt")
+
+    cfg_filename = tmpdir / "config.yaml"
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
+        fout.write(
+            f"""
+name: test service
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: false
+  url: http://localhost:8321
+  api_key: test-key
+user_data_collection:
+  feedback_enabled: false
+customization:
+  profile_path: tests/profiles/test/profile.py
+  system_prompt: custom prompt
+  system_prompt_path: {system_prompt_filename}
+            """
+        )
+
+    cfg = AppConfig()
+    cfg.load_configuration(cfg_filename)
+
+    assert (
+        cfg.customization is not None and cfg.customization.custom_profile is not None
+    )
+    fetched_prompts = cfg.customization.custom_profile.get_prompts()
+    assert fetched_prompts is not None and fetched_prompts.get(
+        "default"
+    ) == expected_prompts.get("default")
