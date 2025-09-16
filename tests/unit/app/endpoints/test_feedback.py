@@ -1,5 +1,7 @@
 """Unit tests for the /feedback REST API endpoint."""
 
+from unittest.mock import patch
+
 from fastapi import HTTPException, status
 import pytest
 
@@ -17,14 +19,20 @@ from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 def test_is_feedback_enabled():
     """Test that is_feedback_enabled returns True when feedback is not disabled."""
-    configuration.user_data_collection_configuration.feedback_enabled = True
-    assert is_feedback_enabled() is True, "Feedback should be enabled"
+    with patch(
+        "app.endpoints.feedback.configuration.user_data_collection_configuration.feedback_enabled",
+        True,
+    ):
+        assert is_feedback_enabled() is True, "Feedback should be enabled"
 
 
 def test_is_feedback_disabled():
     """Test that is_feedback_enabled returns False when feedback is disabled."""
-    configuration.user_data_collection_configuration.feedback_enabled = False
-    assert is_feedback_enabled() is False, "Feedback should be disabled"
+    with patch(
+        "app.endpoints.feedback.configuration.user_data_collection_configuration.feedback_enabled",
+        False,
+    ):
+        assert is_feedback_enabled() is False, "Feedback should be disabled"
 
 
 async def test_assert_feedback_enabled_disabled(mocker):
