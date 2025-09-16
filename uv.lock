@@ -976,7 +976,7 @@ wheels = [
 
 [[package]]
 name = "huggingface-hub"
-version = "0.34.5"
+version = "0.34.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "filelock" },
@@ -988,9 +988,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1f/08/306b0d3db3679b3c07cab9ce117a920de77f3ea4dba6ba27646660518619/huggingface_hub-0.34.5.tar.gz", hash = "sha256:f676c6db41bc3fbd4020f520c842a0548f4c9a3f698dbfa6514bd8e41c3ab52a", size = 460006, upload-time = "2025-09-15T14:24:24.734Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/8a/ea019110b644bfd2470fb0c5dd252bd087b5c15c9641dec9be9659ebc4b4/huggingface_hub-0.34.6.tar.gz", hash = "sha256:d0824eb012e37594357bb1790dfbe26c8f45eed7e701c1cdae02539e0c06f3f8", size = 460139, upload-time = "2025-09-16T08:10:51.142Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/79/3d/55ef77a0539b0124efd47d8b3759bf49e880f57729f7123c0311b41a9bb8/huggingface_hub-0.34.5-py3-none-any.whl", hash = "sha256:fea377adc6e9b6c239c1450e41a1409cbf2c6364d289c04c31d7dbaa222842e3", size = 562219, upload-time = "2025-09-15T14:24:22.851Z" },
+    { url = "https://files.pythonhosted.org/packages/92/1e/4157be4835fd0c064ca4c1a2cea577b3b33defa4b677ed7119372244357a/huggingface_hub-0.34.6-py3-none-any.whl", hash = "sha256:3387ec9045f9dc5b5715e4e7392c25b0d23fd539eb925111a1b301e60f2b4883", size = 562617, upload-time = "2025-09-16T08:10:49.372Z" },
 ]
 
 [[package]]
@@ -1366,9 +1366,9 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "jsonpath-ng", specifier = ">=1.6.1" },
     { name = "kubernetes", specifier = ">=30.1.0" },
-    { name = "llama-stack", specifier = "==0.2.19" },
-    { name = "llama-stack-client", specifier = "==0.2.19" },
-    { name = "openai", specifier = "==1.99.9" },
+    { name = "llama-stack", specifier = "==0.2.20" },
+    { name = "llama-stack-client", specifier = "==0.2.20" },
+    { name = "openai", specifier = ">=1.99.9" },
     { name = "prometheus-client", specifier = ">=0.22.1" },
     { name = "rich", specifier = ">=14.0.0" },
     { name = "semver", specifier = "<4.0.0" },
@@ -1478,7 +1478,7 @@ wheels = [
 
 [[package]]
 name = "llama-stack"
-version = "0.2.19"
+version = "0.2.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1508,14 +1508,14 @@ dependencies = [
     { name = "tiktoken" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/0d/d82742e6fffcbc4185c41c779e1fb12af46196cb13183b70e130947a5265/llama_stack-0.2.19.tar.gz", hash = "sha256:7178deb7370c6eb61cb8caa3a95d08be3c93675097ac08e5d9f54c2da3975841", size = 3329882, upload-time = "2025-08-26T21:54:29.909Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/2b/3f08c5fb5795cd7cdb30cc7a216ff768d7f162fd985fb08018db0f5c36b9/llama_stack-0.2.20.tar.gz", hash = "sha256:ae1e5d302f1bebcb17dc61e8e565a787decfbf13a59c8bf6207cc8895708caf5", size = 3322371, upload-time = "2025-08-29T21:10:22.506Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d4/a6/5bf09d508b705e95906cda761a0802f7fa7d4f0dc68636cf93b18a1893e9/llama_stack-0.2.19-py3-none-any.whl", hash = "sha256:6c43d49da532d7481509883e57f88570df0f3e48441a38393ea80f0e3ac4211b", size = 3664931, upload-time = "2025-08-26T21:54:28.412Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/24/abf8c7462f84dc99f838a3dd9e8d9df6b861c2ea4ec1a23c4eccf23723ee/llama_stack-0.2.20-py3-none-any.whl", hash = "sha256:5b3f0b40ef179b34ce5920594951d62519e5c3978fe92986069fbf080d5d0c08", size = 3654721, upload-time = "2025-08-29T21:10:20.597Z" },
 ]
 
 [[package]]
 name = "llama-stack-client"
-version = "0.2.19"
+version = "0.2.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1534,9 +1534,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/14/e4/72683c10188ae93e97551ab6eeac725e46f13ec215618532505a7d91bf2b/llama_stack_client-0.2.19.tar.gz", hash = "sha256:6c857e528b83af7821120002ebe4d3db072fd9f7bf867a152a34c70fe606833f", size = 318325, upload-time = "2025-08-26T21:54:20.592Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/21/91/c5e32219a5192825dd601700e68205c815c5cfee60c64c22172e46a0c83e/llama_stack_client-0.2.20.tar.gz", hash = "sha256:356257f0a4bbb64205f89e113d715925853d5e34ec744e72466da72790ba415b", size = 318311, upload-time = "2025-08-29T21:10:12.854Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/51/51/c8dde9fae58193a539eac700502876d8edde8be354c2784ff7b707a47432/llama_stack_client-0.2.19-py3-none-any.whl", hash = "sha256:478565a54541ca03ca9f8fe2019f4136f93ab6afe9591bdd44bc6dde6ddddbd9", size = 369905, upload-time = "2025-08-26T21:54:18.929Z" },
+    { url = "https://files.pythonhosted.org/packages/b0/ba/84914c4eead2fd9251c149fd6a7da28b78acd620793e3c4506116645cb60/llama_stack_client-0.2.20-py3-none-any.whl", hash = "sha256:6e178981d2ce971da2145c79d5b2b123fa50e063ed431494975c2ba01c5b8016", size = 369899, upload-time = "2025-08-29T21:10:11.113Z" },
 ]
 
 [[package]]
