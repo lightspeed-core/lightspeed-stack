@@ -35,6 +35,10 @@ from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_to
 from utils.transcripts import store_transcript
 from utils.types import TurnSummary
 from utils.endpoints import validate_model_provider_override
+from utils.rag_processing import (
+    process_rag_chunks_for_streaming,
+    build_referenced_documents_list_for_streaming,
+)
 
 from app.endpoints.query import (
     get_rag_toolgroups,
@@ -94,36 +98,35 @@ def stream_start_event(conversation_id: str) -> str:
     )
 
 
-def stream_end_event(metadata_map: dict) -> str:
+def stream_end_event(metadata_map: dict, summary: TurnSummary) -> str:
     """
     Yield the end of the data stream.
 
     Format and return the end event for a streaming response,
-    including referenced document metadata and placeholder token
+    including referenced document metadata, RAG chunks, and placeholder token
     counts.
 
     Parameters:
         metadata_map (dict): A mapping containing metadata about
         referenced documents.
+        summary (TurnSummary): Summary containing RAG chunks and other turn data.
 
     Returns:
         str: A Server-Sent Events (SSE) formatted string
         representing the end of the data stream.
     """
+    # Process RAG chunks for streaming response
+    rag_chunks = process_rag_chunks_for_streaming(summary)
+    
+    # Build complete referenced documents list
+    referenced_docs = build_referenced_documents_list_for_streaming(summary, metadata_map)
+
     return format_stream_data(
         {
             "event": "end",
             "data": {
-                "referenced_documents": [
-                    {
-                        "doc_url": v["docs_url"],
-                        "doc_title": v["title"],
-                    }
-                    for v in filter(
-                        lambda v: ("docs_url" in v) and ("title" in v),
-                        metadata_map.values(),
-                    )
-                ],
+                "rag_chunks": rag_chunks,
+                "referenced_documents": referenced_docs,
                 "truncated": None,  # TODO(jboos): implement truncated
                 "input_tokens": 0,  # TODO(jboos): implement input tokens
                 "output_tokens": 0,  # TODO(jboos): implement output tokens
@@ -639,7 +642,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
                     chunk_id += 1
                     yield event
 
-            yield stream_end_event(metadata_map)
+            yield stream_end_event(metadata_map, summary)
 
             if not is_transcripts_enabled():
                 logger.debug("Transcript collection is disabled in the configuration")
@@ -653,7 +656,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
                     query=query_request.query,
                     query_request=query_request,
                     summary=summary,
-                    rag_chunks=[],  # TODO(lucasagomes): implement rag_chunks
+                    rag_chunks=summary.rag_chunks,
                     truncated=False,  # TODO(lucasagomes): implement truncation as part
                     # of quota work
                     attachments=query_request.attachments or [],
