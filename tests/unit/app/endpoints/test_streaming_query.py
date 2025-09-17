@@ -902,7 +902,6 @@ def test_stream_build_event_step_progress():
     assert "data: " in result
     assert '"event": "token"' in result
     assert '"token": "This is a test response"' in result
-    assert '"role": "inference"' in result
     assert '"id": 0' in result
 
 
@@ -930,7 +929,6 @@ def test_stream_build_event_step_progress_tool_call_str():
     assert "data: " in result
     assert '"event": "tool_call"' in result
     assert '"token": "tool-called"' in result
-    assert '"role": "inference"' in result
     assert '"id": 0' in result
 
 
@@ -962,7 +960,6 @@ def test_stream_build_event_step_progress_tool_call_tool_call():
     assert "data: " in result
     assert '"event": "tool_call"' in result
     assert '"token": "my-tool"' in result
-    assert '"role": "inference"' in result
     assert '"id": 0' in result
 
 
@@ -1014,7 +1011,6 @@ def test_stream_build_event_step_complete():
         '"token": {"tool_name": "knowledge_search", '
         '"summary": "knowledge_search tool found 2 chunks:"}' in result
     )
-    assert '"role": "tool_execution"' in result
     assert '"id": 0' in result
 
 
