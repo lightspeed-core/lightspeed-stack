@@ -9,11 +9,9 @@ from typing import Annotated, Any, AsyncIterator, Iterator, cast
 from llama_stack_client import APIConnectionError
 from llama_stack_client import AsyncLlamaStackClient  # type: ignore
 from llama_stack_client.types import UserMessage  # type: ignore
+from llama_stack_client.types.agents import AgentTurnResponseStreamChunk  # type: ignore
 
 from llama_stack_client.lib.agents.event_logger import interleaved_content_as_str
-from llama_stack_client.types.agents.agent_turn_response_stream_chunk import (
-    AgentTurnResponseStreamChunk,
-)
 from llama_stack_client.types.shared import ToolCall
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 
@@ -26,26 +24,25 @@ from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 import metrics
-from metrics.utils import update_llm_token_count_from_turn
 from models.config import Action
-from models.requests import QueryRequest
 from models.database.conversations import UserConversation
-from utils.endpoints import check_configuration_loaded, get_agent, get_system_prompt
+from models.requests import QueryRequest
+from utils.endpoints import check_configuration_loaded, get_agent, get_system_prompt, validate_conversation_ownership, validate_model_provider_override
 from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
-from utils.transcripts import store_transcript
 from utils.types import TurnSummary
-from utils.endpoints import validate_model_provider_override
+from metrics.utils import update_llm_token_count_from_turn
+from models.responses import RAGChunk, ReferencedDocument
 
 from app.endpoints.query import (
+    evaluate_model_hints,
     get_rag_toolgroups,
     is_input_shield,
     is_output_shield,
     is_transcripts_enabled,
+    store_transcript,
     select_model_and_provider_id,
     validate_attachments_metadata,
-    validate_conversation_ownership,
     persist_user_conversation_details,
-    evaluate_model_hints,
 )
 
 logger = logging.getLogger("app.endpoints.handlers")
@@ -94,7 +91,7 @@ def stream_start_event(conversation_id: str) -> str:
     )
 
 
-def stream_end_event(metadata_map: dict) -> str:
+def stream_end_event(metadata_map: dict, summary: TurnSummary) -> str:
     """
     Yield the end of the data stream.
 
@@ -110,20 +107,44 @@ def stream_end_event(metadata_map: dict) -> str:
         str: A Server-Sent Events (SSE) formatted string
         representing the end of the data stream.
     """
+    # Process RAG chunks
+    rag_chunks = [
+        {
+            "content": chunk.content,
+            "source": chunk.source,
+            "score": chunk.score
+        }
+        for chunk in summary.rag_chunks
+    ]
+
+    # Extract referenced documents from RAG chunks
+    referenced_docs = []
+    doc_sources = set()
+    for chunk in summary.rag_chunks:
+        if chunk.source and chunk.source not in doc_sources:
+            doc_sources.add(chunk.source)
+            referenced_docs.append({
+                "doc_url": chunk.source if chunk.source.startswith("http") else None,
+                "doc_title": chunk.source.split("/")[-1] if chunk.source else None,
+            })
+
+    # Add any additional referenced documents from metadata_map
+    for v in filter(
+        lambda v: ("docs_url" in v) and ("title" in v),
+        metadata_map.values(),
+    ):
+        if v["docs_url"] not in doc_sources:
+            referenced_docs.append({
+                "doc_url": v["docs_url"],
+                "doc_title": v["title"],
+            })
+
     return format_stream_data(
         {
             "event": "end",
             "data": {
-                "referenced_documents": [
-                    {
-                        "doc_url": v["docs_url"],
-                        "doc_title": v["title"],
-                    }
-                    for v in filter(
-                        lambda v: ("docs_url" in v) and ("title" in v),
-                        metadata_map.values(),
-                    )
-                ],
+                "rag_chunks": rag_chunks,
+                "referenced_documents": referenced_docs,
                 "truncated": None,  # TODO(jboos): implement truncated
                 "input_tokens": 0,  # TODO(jboos): implement input tokens
                 "output_tokens": 0,  # TODO(jboos): implement output tokens
@@ -154,28 +175,23 @@ def stream_build_event(chunk: Any, chunk_id: int, metadata_map: dict) -> Iterato
     """
     if hasattr(chunk, "error"):
         yield from _handle_error_event(chunk, chunk_id)
+        return
 
     event_type = chunk.event.payload.event_type
     step_type = getattr(chunk.event.payload, "step_type", None)
 
-    match (event_type, step_type):
-        case (("turn_start" | "turn_awaiting_input"), _):
-            yield from _handle_turn_start_event(chunk_id)
-        case ("turn_complete", _):
-            yield from _handle_turn_complete_event(chunk, chunk_id)
-        case (_, "shield_call"):
-            yield from _handle_shield_event(chunk, chunk_id)
-        case (_, "inference"):
-            yield from _handle_inference_event(chunk, chunk_id)
-        case (_, "tool_execution"):
-            yield from _handle_tool_execution_event(chunk, chunk_id, metadata_map)
-        case _:
-            logger.debug(
-                "Unhandled event combo: event_type=%s, step_type=%s",
-                event_type,
-                step_type,
-            )
-            yield from _handle_heartbeat_event(chunk_id)
+    if event_type in {"turn_start", "turn_awaiting_input"}:
+        yield from _handle_turn_start_event(chunk_id)
+    elif event_type == "turn_complete":
+        yield from _handle_turn_complete_event(chunk, chunk_id)
+    elif step_type == "shield_call":
+        yield from _handle_shield_event(chunk, chunk_id)
+    elif step_type == "inference":
+        yield from _handle_inference_event(chunk, chunk_id)
+    elif step_type == "tool_execution":
+        yield from _handle_tool_execution_event(chunk, chunk_id, metadata_map)
+    else:
+        yield from _handle_heartbeat_event(chunk_id)
 
 
 # -----------------------------------
@@ -611,6 +627,9 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
             complete response for transcript storage if enabled.
             """
             chunk_id = 0
+            complete_response = "No response from the model"
+
+            # Initialize TurnSummary to collect RAG chunks and tool calls
             summary = TurnSummary(
                 llm_response="No response from the model", tool_calls=[]
             )
@@ -623,7 +642,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
                 if p.event_type == "turn_complete":
                     summary.llm_response = interleaved_content_as_str(
                         p.turn.output_message.content
-                    )
+                    ) if hasattr(p.turn, 'output_message') and hasattr(p.turn.output_message, 'content') else complete_response
                     system_prompt = get_system_prompt(query_request, configuration)
                     try:
                         update_llm_token_count_from_turn(
@@ -631,19 +650,45 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
                         )
                     except Exception:  # pylint: disable=broad-except
                         logger.exception("Failed to update token usage metrics")
+                    
+                    # Process steps from the completed turn
+                    steps = p.turn.steps or []
+                    logger.info("Turn complete - processing %d steps", len(steps))
+                    for step in steps:
+                        logger.info("Processing step: %s", step.step_type)
+                        if step.step_type == "tool_execution":
+                            logger.info("Found tool_execution step with %d tool_calls", len(step.tool_calls))
+                            logger.info("Tool calls: %s", [tc.tool_name for tc in step.tool_calls])
+                            logger.info("RAG chunks before: %d", len(summary.rag_chunks))
+                            summary.append_tool_calls_from_llama(step)
+                            logger.info("RAG chunks after: %d", len(summary.rag_chunks))
                 elif p.event_type == "step_complete":
-                    if p.step_details.step_type == "tool_execution":
+                    if hasattr(p, 'step_details') and p.step_details.step_type == "tool_execution":
+                        logger.info("Step complete - tool_execution with %d tool_calls", len(p.step_details.tool_calls))
+                        logger.info("Tool calls: %s", [tc.tool_name for tc in p.step_details.tool_calls])
+                        logger.info("RAG chunks before: %d", len(summary.rag_chunks))
                         summary.append_tool_calls_from_llama(p.step_details)
+                        logger.info("RAG chunks after: %d", len(summary.rag_chunks))
 
                 for event in stream_build_event(chunk, chunk_id, metadata_map):
                     chunk_id += 1
                     yield event
 
-            yield stream_end_event(metadata_map)
+            yield stream_end_event(metadata_map, summary)
 
             if not is_transcripts_enabled():
                 logger.debug("Transcript collection is disabled in the configuration")
             else:
+                # Convert RAG chunks to serializable format for store_transcript
+                rag_chunks_for_transcript = [
+                    {
+                        "content": chunk.content,
+                        "source": chunk.source,
+                        "score": chunk.score
+                    }
+                    for chunk in summary.rag_chunks
+                ]
+                
                 store_transcript(
                     user_id=user_id,
                     conversation_id=conversation_id,
@@ -653,7 +698,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
                     query=query_request.query,
                     query_request=query_request,
                     summary=summary,
-                    rag_chunks=[],  # TODO(lucasagomes): implement rag_chunks
+                    rag_chunks=rag_chunks_for_transcript,
                     truncated=False,  # TODO(lucasagomes): implement truncation as part
                     # of quota work
                     attachments=query_request.attachments or [],
@@ -776,18 +821,59 @@ async def retrieve_response(
             ),
         }
 
-        vector_db_ids = [
-            vector_db.identifier for vector_db in await client.vector_dbs.list()
-        ]
-        toolgroups = (get_rag_toolgroups(vector_db_ids) or []) + [
+        vector_dbs = await client.vector_dbs.list()
+        vector_db_ids = [vector_db.identifier for vector_db in vector_dbs]
+        # Try to get RAG toolgroups, but handle the case where they're not available
+        rag_toolgroups = []
+        if vector_db_ids:
+            try:
+                # Check if builtin::rag tool group is available
+                available_toolgroups = await client.toolgroups.list()
+                # Try different possible attribute names for toolgroup ID
+                available_toolgroup_ids = []
+                for tg in available_toolgroups:
+                    if hasattr(tg, 'toolgroup_id'):
+                        available_toolgroup_ids.append(tg.toolgroup_id)
+                    elif hasattr(tg, 'identifier'):
+                        available_toolgroup_ids.append(tg.identifier)
+                    elif hasattr(tg, 'name'):
+                        available_toolgroup_ids.append(tg.name)
+                    elif hasattr(tg, 'id'):
+                        available_toolgroup_ids.append(tg.id)
+                
+                logger.info("Available toolgroups: %s", available_toolgroup_ids)
+                
+                if "builtin::rag" in available_toolgroup_ids:
+                    rag_toolgroups = get_rag_toolgroups(vector_db_ids) or []
+                else:
+                    logger.warning("builtin::rag tool group not available, skipping RAG functionality")
+                    # Still try to create RAG toolgroups as they might work anyway
+                    rag_toolgroups = get_rag_toolgroups(vector_db_ids) or []
+            except Exception as e:
+                logger.warning("Failed to check available toolgroups, skipping RAG: %s", e)
+                # Still try to create RAG toolgroups as they might work anyway
+                rag_toolgroups = get_rag_toolgroups(vector_db_ids) or []
+        
+        toolgroups = rag_toolgroups + [
             mcp_server.name for mcp_server in configuration.mcp_servers
         ]
         # Convert empty list to None for consistency with existing behavior
         if not toolgroups:
             toolgroups = None
 
+    # Enhance system prompt to encourage tool usage when RAG is available
+    if toolgroups and any("knowledge_search" in str(tg) for tg in toolgroups):
+        system_prompt += "\n\nIMPORTANT: When answering questions, you MUST use the knowledge_search tool to find the most accurate and up-to-date information from the knowledge base. Always search for relevant information before providing your answer."
+        logger.info("Enhanced system prompt to encourage RAG tool usage")
+
+    # Force RAG usage by modifying the query when toolgroups are available
+    user_query = query_request.query
+    if toolgroups and any("knowledge_search" in str(tg) for tg in toolgroups):
+        user_query = f"Please use the knowledge_search tool to find relevant information about: {query_request.query}"
+        logger.info("Modified query to force RAG usage: %s", user_query)
+
     response = await agent.create_turn(
-        messages=[UserMessage(role="user", content=query_request.query)],
+        messages=[UserMessage(role="user", content=user_query)],
         session_id=session_id,
         documents=query_request.get_documents(),
         stream=True,
