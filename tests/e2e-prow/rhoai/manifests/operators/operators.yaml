@@ -1,0 +1,35 @@
+# Service Mesh Operator Subscription
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: servicemeshoperator
+  namespace: openshift-operators
+spec:
+  channel: "stable"
+  name: "servicemeshoperator"
+  source: "redhat-operators"
+  sourceNamespace: "openshift-marketplace"
+---
+# Serverless Operator Subscription
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: serverless-operator
+  namespace: openshift-operators
+spec:
+  channel: "stable"
+  name: "serverless-operator"
+  source: "redhat-operators"
+  sourceNamespace: "openshift-marketplace"
+---
+# RHODS Operator Subscription
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: rhods-operator
+  namespace: openshift-operators
+spec:
+  channel: stable
+  name: rhods-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace

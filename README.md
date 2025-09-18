@@ -124,6 +124,7 @@ Lightspeed Core Stack (LCS) supports the large language models from the provider
 | -------- | ---------------------------------------------- | ------------ | -------------- | -------------------------------------------------------------------------- |
 | OpenAI   | gpt-5, gpt-4o, gpt4-turbo, gpt-4.1, o1, o3, o4 | Yes          | remote::openai | [1](examples/openai-faiss-run.yaml) [2](examples/openai-pgvector-run.yaml) |
 | OpenAI   | gpt-3.5-turbo, gpt-4                           | No           | remote::openai |                                                                            |
+| RHOAI (vLLM)| meta-llama/Llama-3.2-1B-Instruct           | Yes          | remote::vllm   | [1](tests/e2e-prow/rhoai/configs/run.yaml)                                     |
 | RHAIIS (vLLM)| meta-llama/Llama-3.1-8B-Instruct           | Yes          | remote::vllm   | [1](tests/e2e/configs/run-rhaiis.yaml)                                     |
 | Azure    | gpt-5, gpt-5-mini, gpt-5-nano, gpt-5-chat, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, o3-mini, o4-mini | Yes          | remote::azure  | [1](examples/azure-run.yaml)                                               |
 | Azure    |  o1, o1-mini | No          | remote::azure  |  |

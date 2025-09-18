@@ -1,0 +1,120 @@
+version: '2'
+image_name: minimal-viable-llama-stack-configuration
+
+apis:
+  - agents
+  - datasetio
+  - eval
+  - inference
+  - post_training
+  - safety
+  - scoring
+  - telemetry
+  - tool_runtime
+  - vector_io
+benchmarks: []
+container_image: null
+datasets: []
+external_providers_dir: null
+inference_store:
+  db_path: .llama/distributions/ollama/inference_store.db
+  type: sqlite
+logging: null
+metadata_store:
+  db_path: .llama/distributions/ollama/registry.db
+  namespace: null
+  type: sqlite
+providers:
+  agents:
+  - config:
+      persistence_store:
+        db_path: .llama/distributions/ollama/agents_store.db
+        namespace: null
+        type: sqlite
+      responses_store:
+        db_path: .llama/distributions/ollama/responses_store.db
+        type: sqlite
+    provider_id: meta-reference
+    provider_type: inline::meta-reference
+  datasetio:
+  - config:
+      kvstore:
+        db_path: .llama/distributions/ollama/huggingface_datasetio.db
+        namespace: null
+        type: sqlite
+    provider_id: huggingface
+    provider_type: remote::huggingface
+  - config:
+      kvstore:
+        db_path: .llama/distributions/ollama/localfs_datasetio.db
+        namespace: null
+        type: sqlite
+    provider_id: localfs
+    provider_type: inline::localfs
+  eval:
+  - config:
+      kvstore:
+        db_path: .llama/distributions/ollama/meta_reference_eval.db
+        namespace: null
+        type: sqlite
+    provider_id: meta-reference
+    provider_type: inline::meta-reference
+  inference:
+  - provider_id: vllm
+    provider_type: remote::vllm
+    config:
+      url: ${env.KSVC_URL}/v1/
+      api_token: ${env.VLLM_API_KEY}
+      tls_verify: false
+      max_tokens: 1024
+  post_training:
+  - config:
+      checkpoint_format: huggingface
+      device: cpu
+      distributed_backend: null
+      dpo_output_dir: "."
+    provider_id: huggingface
+    provider_type: inline::huggingface-gpu
+  safety:
+  - config:
+      excluded_categories: []
+    provider_id: llama-guard
+    provider_type: inline::llama-guard
+  scoring:
+  - config: {}
+    provider_id: basic
+    provider_type: inline::basic
+  - config: {}
+    provider_id: llm-as-judge
+    provider_type: inline::llm-as-judge
+  - config:
+      openai_api_key: '********'
+    provider_id: braintrust
+    provider_type: inline::braintrust
+  telemetry:
+  - config:
+      service_name: 'lightspeed-stack-telemetry'
+      sinks: sqlite
+      sqlite_db_path: .llama/distributions/ollama/trace_store.db
+    provider_id: meta-reference
+    provider_type: inline::meta-reference
+  tool_runtime: []
+  vector_io: []
+scoring_fns: []
+server:
+  auth: null
+  host: null
+  port: 8321
+  quota: null
+  tls_cafile: null
+  tls_certfile: null
+  tls_keyfile: null
+shields: []
+vector_dbs: []
+
+models:
+- model_id: meta-llama/Llama-3.2-1B-Instruct
+  provider_id: vllm
+  model_type: llm
+  provider_model_id: null
+

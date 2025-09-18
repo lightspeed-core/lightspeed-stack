@@ -1,0 +1,13 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: vllm-model
+  namespace: e2e-rhoai-dsc
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: pytorch
+      runtime: vllm
+      storage:
+        key: localModel
