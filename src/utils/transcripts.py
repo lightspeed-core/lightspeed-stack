@@ -39,7 +39,7 @@ def store_transcript(  # pylint: disable=too-many-arguments,too-many-positional-
     query: str,
     query_request: QueryRequest,
     summary: TurnSummary,
-    rag_chunks: list[str],
+    rag_chunks: list[dict],
     truncated: bool,
     attachments: list[Attachment],
 ) -> None:
@@ -52,7 +52,7 @@ def store_transcript(  # pylint: disable=too-many-arguments,too-many-positional-
         query: The query (without attachments).
         query_request: The request containing a query.
         summary: Summary of the query/response turn.
-        rag_chunks: The list of `RagChunk` objects.
+        rag_chunks: The list of serialized `RAGChunk` dictionaries.
         truncated: The flag indicating if the history was truncated.
         attachments: The list of `Attachment` objects.
     """

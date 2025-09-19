@@ -34,23 +34,45 @@ class ModelsResponse(BaseModel):
     )
 
 
-# TODO(lucasagomes): a lot of fields to add to QueryResponse. For now
-# we are keeping it simple. The missing fields are:
-# - referenced_documents: The optional URLs and titles for the documents used
-#   to generate the response.
-# - truncated: Set to True if conversation history was truncated to be within context window.
-# - input_tokens: Number of tokens sent to LLM
-# - output_tokens: Number of tokens received from LLM
-# - available_quotas: Quota available as measured by all configured quota limiters
-# - tool_calls: List of tool requests.
-# - tool_results: List of tool results.
-# See LLMResponse in ols-service for more details.
+class RAGChunk(BaseModel):
+    """Model representing a RAG chunk used in the response."""
+    
+    content: str = Field(description="The content of the chunk")
+    source: Optional[str] = Field(None, description="Source document or URL")
+    score: Optional[float] = Field(None, description="Relevance score")
+
+
+class ReferencedDocument(BaseModel):
+    """Model representing a document referenced in the response."""
+    
+    url: Optional[str] = Field(None, description="URL of the document")
+    title: Optional[str] = Field(None, description="Title of the document")
+    chunk_count: Optional[int] = Field(None, description="Number of chunks from this document")
+
+
+class ToolCall(BaseModel):
+    """Model representing a tool call made during response generation."""
+    
+    tool_name: str = Field(description="Name of the tool called")
+    arguments: dict[str, Any] = Field(description="Arguments passed to the tool")
+    result: Optional[dict[str, Any]] = Field(None, description="Result from the tool")
+
+
 class QueryResponse(BaseModel):
     """Model representing LLM response to a query.
 
     Attributes:
         conversation_id: The optional conversation ID (UUID).
         response: The response.
+        rag_chunks: List of RAG chunks used to generate the response.
+        referenced_documents: List of documents referenced in the response.
+        tool_calls: List of tool calls made during response generation.
+        TODO: truncated: Whether conversation history was truncated.
+        TODO: input_tokens: Number of tokens sent to LLM.
+        TODO: output_tokens: Number of tokens received from LLM.
+        TODO: available_quotas: Quota available as measured by all configured quota limiters
+        TODO: tool_results: List of tool results.
+
     """
 
     conversation_id: Optional[str] = Field(
@@ -66,6 +88,17 @@ class QueryResponse(BaseModel):
         ],
     )
 
+    rag_chunks: list[RAGChunk] = []
+
+    referenced_documents: Optional[list[ReferencedDocument]] = Field(
+        None,
+        description="List of documents referenced in the response",
+    )
+
+    tool_calls: Optional[list[ToolCall]] = Field(
+        None,
+        description="List of tool calls made during response generation",
+    )
     # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
@@ -73,6 +106,27 @@ class QueryResponse(BaseModel):
                 {
                     "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
                     "response": "Operator Lifecycle Manager (OLM) helps users install...",
+                    "rag_chunks": [
+                        {
+                            "content": "OLM is a component of the Operator Framework toolkit...",
+                            "source": "kubernetes-docs/operators.md",
+                            "score": 0.95
+                        }
+                    ],
+                    "referenced_documents": [
+                        {
+                            "url": "https://kubernetes.io/docs/concepts/extend-kubernetes/operator/",
+                            "title": "Operator Pattern",
+                            "chunk_count": 2
+                        }
+                    ],
+                    "tool_calls": [
+                        {
+                            "tool_name": "knowledge_search",
+                            "arguments": {"query": "operator lifecycle manager"},
+                            "result": {"chunks_found": 5}
+                        }
+                    ],
                 }
             ]
         }

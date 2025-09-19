@@ -60,6 +60,9 @@ providers:
     provider_id: meta-reference
     provider_type: inline::meta-reference
   inference:
+    - provider_id: sentence-transformers # Can be any embedding provider
+      provider_type: inline::sentence-transformers
+      config: {}
     - provider_id: openai
       provider_type: remote::openai
       config:
@@ -99,14 +102,17 @@ providers:
     - provider_id: model-context-protocol
       provider_type: remote::model-context-protocol
       config: {}
+    - provider_id: rag-runtime
+      provider_type: inline::rag-runtime
+      config: {}
   vector_io:
   - config:
       kvstore:
-        db_path: .llama/distributions/ollama/faiss_store.db
+        db_path: .llama/distributions/ollama/faiss_store.db # Location of vector database
         namespace: null
         type: sqlite
     provider_id: faiss
-    provider_type: inline::faiss
+    provider_type: inline::faiss # Or preferred vector DB
 scoring_fns: []
 server:
   auth: null
@@ -117,10 +123,23 @@ server:
   tls_certfile: null
   tls_keyfile: null
 shields: []
-vector_dbs: []
-
+vector_dbs:
+  - vector_db_id: my_knowledge_base
+    embedding_model: sentence-transformers/all-mpnet-base-v2
+    embedding_dimension: 768
+    provider_id: faiss
 models:
+  - metadata:
+      embedding_dimension: 768 # Depends on chosen model
+    model_id: sentence-transformers/all-mpnet-base-v2 # Example embedding model
+    provider_id: sentence-transformers
+    provider_model_id: sentence-transformers/all-mpnet-base-v2 # Location of embedding model
+    model_type: embedding
   - model_id: gpt-4-turbo
     provider_id: openai
     model_type: llm
     provider_model_id: gpt-4-turbo
+
+tool_groups:
+  - toolgroup_id: builtin::rag
+    provider_id: rag-runtime

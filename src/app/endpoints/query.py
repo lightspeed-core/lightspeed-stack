@@ -30,7 +30,7 @@ from authorization.middleware import authorize
 from models.config import Action
 from models.database.conversations import UserConversation
 from models.requests import QueryRequest, Attachment
-from models.responses import QueryResponse, UnauthorizedResponse, ForbiddenResponse
+from models.responses import QueryResponse, UnauthorizedResponse, ForbiddenResponse, RAGChunk, ReferencedDocument, ToolCall
 from utils.endpoints import (
     check_configuration_loaded,
     get_agent,
@@ -231,6 +231,10 @@ async def query_endpoint_handler(
         # Update metrics for the LLM call
         metrics.llm_calls_total.labels(provider_id, model_id).inc()
 
+        # Convert RAG chunks to dictionary format once for reuse
+        logger.info("Processing RAG chunks...")
+        rag_chunks_dict = [chunk.model_dump() for chunk in summary.rag_chunks]
+
         if not is_transcripts_enabled():
             logger.debug("Transcript collection is disabled in the configuration")
         else:
@@ -243,11 +247,12 @@ async def query_endpoint_handler(
                 query=query_request.query,
                 query_request=query_request,
                 summary=summary,
-                rag_chunks=[],  # TODO(lucasagomes): implement rag_chunks
+                rag_chunks=rag_chunks_dict,
                 truncated=False,  # TODO(lucasagomes): implement truncation as part of quota work
                 attachments=query_request.attachments or [],
             )
 
+        logger.info("Persisting conversation details...")
         persist_user_conversation_details(
             user_id=user_id,
             conversation_id=conversation_id,
@@ -255,10 +260,42 @@ async def query_endpoint_handler(
             provider_id=provider_id,
         )
 
-        return QueryResponse(
+        # Convert tool calls to response format
+        logger.info("Processing tool calls...")
+        tool_calls = [
+            ToolCall(
+                tool_name=tc.name,
+                arguments=tc.args if isinstance(tc.args, dict) else {"query": str(tc.args)},
+                result={"response": tc.response} if tc.response and tc.name != constants.DEFAULT_RAG_TOOL else None
+            )
+            for tc in summary.tool_calls
+        ]
+
+        
+        logger.info("Extracting referenced documents...")
+        referenced_docs = []
+        doc_sources = set()
+        for chunk in summary.rag_chunks:
+            if chunk.source and chunk.source not in doc_sources:
+                doc_sources.add(chunk.source)
+                referenced_docs.append(
+                    ReferencedDocument(
+                        url=chunk.source if chunk.source.startswith("http") else None,
+                        title=chunk.source,
+                        chunk_count=sum(1 for c in summary.rag_chunks if c.source == chunk.source)
+                    )
+                )
+
+        logger.info("Building final response...")
+        response = QueryResponse(
             conversation_id=conversation_id,
             response=summary.llm_response,
+            rag_chunks=summary.rag_chunks if summary.rag_chunks else [],
+            referenced_documents=referenced_docs if referenced_docs else None,
+            tool_calls=tool_calls if tool_calls else None,
         )
+        logger.info("Query processing completed successfully!")
+        return response
 
     # connection to Llama Stack server
     except APIConnectionError as e:

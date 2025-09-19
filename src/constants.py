@@ -52,6 +52,8 @@ DEFAULT_AUTHENTICATION_MODULE = AUTH_MOD_NOOP
 DEFAULT_JWT_UID_CLAIM = "user_id"
 DEFAULT_JWT_USER_NAME_CLAIM = "username"
 
+# default RAG tool value
+DEFAULT_RAG_TOOL = "knowledge_search"
 
 # PostgreSQL connection constants
 # See: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLMODE

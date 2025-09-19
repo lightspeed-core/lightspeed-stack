@@ -49,7 +49,7 @@ dependencies = [
     # Used by Llama Stack version checker
     "semver<4.0.0",
     # Used by authorization resolvers
-    "jsonpath-ng>=1.6.1",
+    "jsonpath-ng>=1.6.1"
 ]
 
 
