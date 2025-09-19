@@ -1155,6 +1155,9 @@
                     },
                     "inference": {
                         "$ref": "#/components/schemas/InferenceConfiguration"
+                    },
+                    "conversation_cache": {
+                        "$ref": "#/components/schemas/ConversationCache"
                     }
                 },
                 "additionalProperties": false,
@@ -1167,6 +1170,60 @@
                 ],
                 "title": "Configuration",
                 "description": "Global service configuration."
+            },
+            "ConversationCache": {
+                "properties": {
+                    "type": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "memory",
+                                    "sqlite",
+                                    "postgres"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Type"
+                    },
+                    "memory": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/InMemoryCacheConfig"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "sqlite": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SQLiteDatabaseConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "postgres": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PostgreSQLDatabaseConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "ConversationCache",
+                "description": "Conversation cache configuration."
             },
             "ConversationDeleteResponse": {
                 "properties": {
@@ -1285,6 +1342,21 @@
                             "openai",
                             "gemini"
                         ]
+                    },
+                    "topic_summary": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Topic Summary",
+                        "description": "Topic summary for the conversation",
+                        "examples": [
+                            "Openshift Microservices Deployment Strategies"
+                        ]
                     }
                 },
                 "type": "object",
@@ -1292,7 +1364,7 @@
                     "conversation_id"
                 ],
                 "title": "ConversationDetails",
-                "description": "Model representing the details of a user conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    created_at: When the conversation was created.\n    last_message_at: When the last message was sent.\n    message_count: Number of user messages in the conversation.\n    last_used_model: The last model used for the conversation.\n    last_used_provider: The provider of the last used model.\n\nExample:\n    ```python\n    conversation = ConversationDetails(\n        conversation_id=\"123e4567-e89b-12d3-a456-426614174000\"\n        created_at=\"2024-01-01T00:00:00Z\",\n        last_message_at=\"2024-01-01T00:05:00Z\",\n        message_count=5,\n        last_used_model=\"gemini/gemini-2.0-flash\",\n        last_used_provider=\"gemini\",\n    )\n    ```"
+                "description": "Model representing the details of a user conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    created_at: When the conversation was created.\n    last_message_at: When the last message was sent.\n    message_count: Number of user messages in the conversation.\n    last_used_model: The last model used for the conversation.\n    last_used_provider: The provider of the last used model.\n    topic_summary: The topic summary for the conversation.\n\nExample:\n    ```python\n    conversation = ConversationDetails(\n        conversation_id=\"123e4567-e89b-12d3-a456-426614174000\"\n        created_at=\"2024-01-01T00:00:00Z\",\n        last_message_at=\"2024-01-01T00:05:00Z\",\n        message_count=5,\n        last_used_model=\"gemini/gemini-2.0-flash\",\n        last_used_provider=\"gemini\",\n        topic_summary=\"Openshift Microservices Deployment Strategies\",\n    )\n    ```"
             },
             "ConversationResponse": {
                 "properties": {
@@ -1353,7 +1425,7 @@
                     "conversations"
                 ],
                 "title": "ConversationsListResponse",
-                "description": "Model representing a response for listing conversations of a user.\n\nAttributes:\n    conversations: List of conversation details associated with the user.\n\nExample:\n    ```python\n    conversations_list = ConversationsListResponse(\n        conversations=[\n            ConversationDetails(\n                conversation_id=\"123e4567-e89b-12d3-a456-426614174000\",\n                created_at=\"2024-01-01T00:00:00Z\",\n                last_message_at=\"2024-01-01T00:05:00Z\",\n                message_count=5,\n                last_used_model=\"gemini/gemini-2.0-flash\",\n                last_used_provider=\"gemini\",\n            ),\n            ConversationDetails(\n                conversation_id=\"456e7890-e12b-34d5-a678-901234567890\"\n                created_at=\"2024-01-01T01:00:00Z\",\n                message_count=2,\n                last_used_model=\"gemini/gemini-2.0-flash\",\n                last_used_provider=\"gemini\",\n            )\n        ]\n    )\n    ```",
+                "description": "Model representing a response for listing conversations of a user.\n\nAttributes:\n    conversations: List of conversation details associated with the user.\n\nExample:\n    ```python\n    conversations_list = ConversationsListResponse(\n        conversations=[\n            ConversationDetails(\n                conversation_id=\"123e4567-e89b-12d3-a456-426614174000\",\n                created_at=\"2024-01-01T00:00:00Z\",\n                last_message_at=\"2024-01-01T00:05:00Z\",\n                message_count=5,\n                last_used_model=\"gemini/gemini-2.0-flash\",\n                last_used_provider=\"gemini\",\n                topic_summary=\"Openshift Microservices Deployment Strategies\",\n            ),\n            ConversationDetails(\n                conversation_id=\"456e7890-e12b-34d5-a678-901234567890\"\n                created_at=\"2024-01-01T01:00:00Z\",\n                message_count=2,\n                last_used_model=\"gemini/gemini-2.0-flash\",\n                last_used_provider=\"gemini\",\n                topic_summary=\"RHDH Purpose Summary\",\n            )\n        ]\n    )\n    ```",
                 "examples": [
                     {
                         "conversations": [
@@ -1363,14 +1435,16 @@
                                 "last_message_at": "2024-01-01T00:05:00Z",
                                 "last_used_model": "gemini/gemini-2.0-flash",
                                 "last_used_provider": "gemini",
-                                "message_count": 5
+                                "message_count": 5,
+                                "topic_summary": "Openshift Microservices Deployment Strategies"
                             },
                             {
                                 "conversation_id": "456e7890-e12b-34d5-a678-901234567890",
                                 "created_at": "2024-01-01T01:00:00Z",
                                 "last_used_model": "gemini/gemini-2.5-flash",
                                 "last_used_provider": "gemini",
-                                "message_count": 2
+                                "message_count": 2,
+                                "topic_summary": "RHDH Purpose Summary"
                             }
                         ]
                     }
@@ -1750,6 +1824,22 @@
                 },
                 "type": "object",
                 "title": "HTTPValidationError"
+            },
+            "InMemoryCacheConfig": {
+                "properties": {
+                    "max_entries": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Max Entries"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "max_entries"
+                ],
+                "title": "InMemoryCacheConfig",
+                "description": "In-memory cache configuration."
             },
             "InferenceConfiguration": {
                 "properties": {

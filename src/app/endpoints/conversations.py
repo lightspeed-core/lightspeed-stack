@@ -214,6 +214,7 @@ async def get_conversations_list_endpoint_handler(
                     message_count=conv.message_count,
                     last_used_model=conv.last_used_model,
                     last_used_provider=conv.last_used_provider,
+                    topic_summary=conv.topic_summary,
                 )
                 for conv in user_conversations
             ]

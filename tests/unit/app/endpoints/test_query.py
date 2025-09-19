@@ -23,6 +23,7 @@ from app.endpoints.query import (
     is_transcripts_enabled,
     get_rag_toolgroups,
     evaluate_model_hints,
+    get_topic_summary,
 )
 
 from models.requests import QueryRequest, Attachment
@@ -61,6 +62,13 @@ def mock_database_operations(mocker):
         "app.endpoints.query.validate_conversation_ownership", return_value=True
     )
     mocker.patch("app.endpoints.query.persist_user_conversation_details")
+
+    # Mock the database session and query
+    mock_session = mocker.Mock()
+    mock_session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_session.__enter__ = mocker.Mock(return_value=mock_session)
+    mock_session.__exit__ = mocker.Mock(return_value=None)
+    mocker.patch("app.endpoints.query.get_session", return_value=mock_session)
 
 
 @pytest.fixture(name="setup_configuration")
@@ -181,6 +189,11 @@ async def _test_query_endpoint_handler(
         return_value=store_transcript_to_file,
     )
     mock_transcript = mocker.patch("app.endpoints.query.store_transcript")
+
+    # Mock get_topic_summary function
+    mocker.patch(
+        "app.endpoints.query.get_topic_summary", return_value="Test topic summary"
+    )
 
     # Mock database operations
     mock_database_operations(mocker)
@@ -1208,6 +1221,10 @@ async def test_auth_tuple_unpacking_in_query_endpoint_handler(mocker, dummy_requ
         return_value=("test_model", "test_model", "test_provider"),
     )
     mocker.patch("app.endpoints.query.is_transcripts_enabled", return_value=False)
+    # Mock get_topic_summary function
+    mocker.patch(
+        "app.endpoints.query.get_topic_summary", return_value="Test topic summary"
+    )
     # Mock database operations
     mock_database_operations(mocker)
 
@@ -1258,6 +1275,10 @@ async def test_query_endpoint_handler_no_tools_true(mocker, dummy_request):
         return_value=("fake_model_id", "fake_model_id", "fake_provider_id"),
     )
     mocker.patch("app.endpoints.query.is_transcripts_enabled", return_value=False)
+    # Mock get_topic_summary function
+    mocker.patch(
+        "app.endpoints.query.get_topic_summary", return_value="Test topic summary"
+    )
     # Mock database operations
     mock_database_operations(mocker)
 
@@ -1309,6 +1330,10 @@ async def test_query_endpoint_handler_no_tools_false(mocker, dummy_request):
         return_value=("fake_model_id", "fake_model_id", "fake_provider_id"),
     )
     mocker.patch("app.endpoints.query.is_transcripts_enabled", return_value=False)
+    # Mock get_topic_summary function
+    mocker.patch(
+        "app.endpoints.query.get_topic_summary", return_value="Test topic summary"
+    )
     # Mock database operations
     mock_database_operations(mocker)
 
@@ -1586,3 +1611,323 @@ async def test_query_endpoint_rejects_model_provider_override_without_permission
     )
     assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
     assert exc_info.value.detail["response"] == expected_msg
+
+
+@pytest.mark.asyncio
+async def test_get_topic_summary_successful_response(mocker):
+    """Test get_topic_summary with successful response from agent."""
+    # Mock the dependencies
+    mock_client = mocker.AsyncMock()
+    mock_agent = mocker.AsyncMock()
+    mock_response = mocker.Mock()
+    mock_response.output_message.content = "This is a topic summary about OpenStack"
+
+    # Mock the get_temp_agent function
+    mock_get_temp_agent = mocker.patch(
+        "app.endpoints.query.get_temp_agent",
+        return_value=(mock_agent, "session_123", "conversation_456"),
+    )
+
+    # Mock the agent's create_turn method
+    mock_agent.create_turn.return_value = mock_response
+
+    # Mock the interleaved_content_as_str function
+    mocker.patch(
+        "app.endpoints.query.interleaved_content_as_str",
+        return_value="This is a topic summary about OpenStack",
+    )
+
+    # Mock the get_topic_summary_system_prompt function
+    mocker.patch(
+        "app.endpoints.query.get_topic_summary_system_prompt",
+        return_value="You are a topic summarizer",
+    )
+
+    # Mock the configuration
+    mock_config = mocker.Mock()
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+
+    # Call the function
+    result = await get_topic_summary(
+        question="What is OpenStack?", client=mock_client, model_id="test_model"
+    )
+
+    # Assertions
+    assert result == "This is a topic summary about OpenStack"
+
+    # Verify get_temp_agent was called with correct parameters
+    mock_get_temp_agent.assert_called_once_with(
+        mock_client, "test_model", "You are a topic summarizer"
+    )
+
+    # Verify create_turn was called with correct parameters
+    mock_agent.create_turn.assert_called_once_with(
+        messages=[UserMessage(role="user", content="What is OpenStack?")],
+        session_id="session_123",
+        stream=False,
+        toolgroups=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_topic_summary_empty_response(mocker):
+    """Test get_topic_summary with empty response from agent."""
+    # Mock the dependencies
+    mock_client = mocker.AsyncMock()
+    mock_agent = mocker.AsyncMock()
+    mock_response = mocker.Mock()
+    mock_response.output_message = None
+
+    # Mock the get_temp_agent function
+    mocker.patch(
+        "app.endpoints.query.get_temp_agent",
+        return_value=(mock_agent, "session_123", "conversation_456"),
+    )
+
+    # Mock the agent's create_turn method
+    mock_agent.create_turn.return_value = mock_response
+
+    # Mock the get_topic_summary_system_prompt function
+    mocker.patch(
+        "app.endpoints.query.get_topic_summary_system_prompt",
+        return_value="You are a topic summarizer",
+    )
+
+    # Mock the configuration
+    mock_config = mocker.Mock()
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+
+    # Call the function
+    result = await get_topic_summary(
+        question="What is OpenStack?", client=mock_client, model_id="test_model"
+    )
+
+    # Assertions
+    assert result == ""
+
+
+@pytest.mark.asyncio
+async def test_get_topic_summary_none_content(mocker):
+    """Test get_topic_summary with None content in response."""
+    # Mock the dependencies
+    mock_client = mocker.AsyncMock()
+    mock_agent = mocker.AsyncMock()
+    mock_response = mocker.Mock()
+    mock_response.output_message.content = None
+
+    # Mock the get_temp_agent function
+    mocker.patch(
+        "app.endpoints.query.get_temp_agent",
+        return_value=(mock_agent, "session_123", "conversation_456"),
+    )
+
+    # Mock the agent's create_turn method
+    mock_agent.create_turn.return_value = mock_response
+
+    # Mock the get_topic_summary_system_prompt function
+    mocker.patch(
+        "app.endpoints.query.get_topic_summary_system_prompt",
+        return_value="You are a topic summarizer",
+    )
+
+    # Mock the configuration
+    mock_config = mocker.Mock()
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+
+    # Call the function
+    result = await get_topic_summary(
+        question="What is OpenStack?", client=mock_client, model_id="test_model"
+    )
+
+    # Assertions
+    assert result == ""
+
+
+@pytest.mark.asyncio
+async def test_get_topic_summary_with_interleaved_content(mocker):
+    """Test get_topic_summary with interleaved content response."""
+    # Mock the dependencies
+    mock_client = mocker.AsyncMock()
+    mock_agent = mocker.AsyncMock()
+    mock_response = mocker.Mock()
+    mock_content = [TextContentItem(text="Topic summary", type="text")]
+    mock_response.output_message.content = mock_content
+
+    # Mock the get_temp_agent function
+    mocker.patch(
+        "app.endpoints.query.get_temp_agent",
+        return_value=(mock_agent, "session_123", "conversation_456"),
+    )
+
+    # Mock the agent's create_turn method
+    mock_agent.create_turn.return_value = mock_response
+
+    # Mock the interleaved_content_as_str function
+    mock_interleaved_content_as_str = mocker.patch(
+        "app.endpoints.query.interleaved_content_as_str", return_value="Topic summary"
+    )
+
+    # Mock the get_topic_summary_system_prompt function
+    mocker.patch(
+        "app.endpoints.query.get_topic_summary_system_prompt",
+        return_value="You are a topic summarizer",
+    )
+
+    # Mock the configuration
+    mock_config = mocker.Mock()
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+
+    # Call the function
+    result = await get_topic_summary(
+        question="What is OpenStack?", client=mock_client, model_id="test_model"
+    )
+
+    # Assertions
+    assert result == "Topic summary"
+
+    # Verify interleaved_content_as_str was called with the content
+    mock_interleaved_content_as_str.assert_called_once_with(mock_content)
+
+
+@pytest.mark.asyncio
+async def test_get_topic_summary_system_prompt_retrieval(mocker):
+    """Test that get_topic_summary properly retrieves and uses the system prompt."""
+    # Mock the dependencies
+    mock_client = mocker.AsyncMock()
+    mock_agent = mocker.AsyncMock()
+    mock_response = mocker.Mock()
+    mock_response.output_message.content = "Topic summary"
+
+    # Mock the get_temp_agent function
+    mocker.patch(
+        "app.endpoints.query.get_temp_agent",
+        return_value=(mock_agent, "session_123", "conversation_456"),
+    )
+
+    # Mock the agent's create_turn method
+    mock_agent.create_turn.return_value = mock_response
+
+    # Mock the interleaved_content_as_str function
+    mocker.patch(
+        "app.endpoints.query.interleaved_content_as_str", return_value="Topic summary"
+    )
+
+    # Mock the get_topic_summary_system_prompt function
+    mock_get_topic_summary_system_prompt = mocker.patch(
+        "app.endpoints.query.get_topic_summary_system_prompt",
+        return_value="Custom topic summarizer prompt",
+    )
+
+    # Mock the configuration
+    mock_config = mocker.Mock()
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+
+    # Call the function
+    result = await get_topic_summary(
+        question="What is OpenStack?", client=mock_client, model_id="test_model"
+    )
+
+    # Assertions
+    assert result == "Topic summary"
+
+    # Verify get_topic_summary_system_prompt was called with configuration
+    mock_get_topic_summary_system_prompt.assert_called_once_with(mock_config)
+
+
+@pytest.mark.asyncio
+async def test_get_topic_summary_agent_creation_parameters(mocker):
+    """Test that get_topic_summary creates agent with correct parameters."""
+    # Mock the dependencies
+    mock_client = mocker.AsyncMock()
+    mock_agent = mocker.AsyncMock()
+    mock_response = mocker.Mock()
+    mock_response.output_message.content = "Topic summary"
+
+    # Mock the get_temp_agent function
+    mock_get_temp_agent = mocker.patch(
+        "app.endpoints.query.get_temp_agent",
+        return_value=(mock_agent, "session_123", "conversation_456"),
+    )
+
+    # Mock the agent's create_turn method
+    mock_agent.create_turn.return_value = mock_response
+
+    # Mock the interleaved_content_as_str function
+    mocker.patch(
+        "app.endpoints.query.interleaved_content_as_str", return_value="Topic summary"
+    )
+
+    # Mock the get_topic_summary_system_prompt function
+    mocker.patch(
+        "app.endpoints.query.get_topic_summary_system_prompt",
+        return_value="Custom system prompt",
+    )
+
+    # Mock the configuration
+    mock_config = mocker.Mock()
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+
+    # Call the function
+    result = await get_topic_summary(
+        question="Test question?", client=mock_client, model_id="custom_model"
+    )
+
+    # Assertions
+    assert result == "Topic summary"
+
+    # Verify get_temp_agent was called with correct parameters
+    mock_get_temp_agent.assert_called_once_with(
+        mock_client, "custom_model", "Custom system prompt"
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_topic_summary_create_turn_parameters(mocker):
+    """Test that get_topic_summary calls create_turn with correct parameters."""
+    # Mock the dependencies
+    mock_client = mocker.AsyncMock()
+    mock_agent = mocker.AsyncMock()
+    mock_response = mocker.Mock()
+    mock_response.output_message.content = "Topic summary"
+
+    # Mock the get_temp_agent function
+    mocker.patch(
+        "app.endpoints.query.get_temp_agent",
+        return_value=(mock_agent, "test_session", "test_conversation"),
+    )
+
+    # Mock the agent's create_turn method
+    mock_agent.create_turn.return_value = mock_response
+
+    # Mock the interleaved_content_as_str function
+    mocker.patch(
+        "app.endpoints.query.interleaved_content_as_str", return_value="Topic summary"
+    )
+
+    # Mock the get_topic_summary_system_prompt function
+    mocker.patch(
+        "app.endpoints.query.get_topic_summary_system_prompt",
+        return_value="Custom system prompt",
+    )
+
+    # Mock the configuration
+    mock_config = mocker.Mock()
+    mocker.patch("app.endpoints.query.configuration", mock_config)
+
+    # Call the function
+    result = await get_topic_summary(
+        question="What is the meaning of life?",
+        client=mock_client,
+        model_id="test_model",
+    )
+
+    # Assertions
+    assert result == "Topic summary"
+
+    # Verify create_turn was called with correct parameters
+    mock_agent.create_turn.assert_called_once_with(
+        messages=[UserMessage(role="user", content="What is the meaning of life?")],
+        session_id="test_session",
+        stream=False,
+        toolgroups=None,
+    )

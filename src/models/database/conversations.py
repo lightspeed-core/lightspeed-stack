@@ -34,3 +34,5 @@ class UserConversation(Base):  # pylint: disable=too-few-public-methods
 
     # The number of user messages in the conversation
     message_count: Mapped[int] = mapped_column(default=0)
+
+    topic_summary: Mapped[str] = mapped_column(default="")

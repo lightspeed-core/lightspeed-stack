@@ -28,6 +28,67 @@ ATTACHMENT_CONTENT_TYPES = frozenset(
 # configuration file nor in the query request
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant"
 
+# Default topic summary system prompt used only when no other topic summary system
+# prompt is specified in configuration file
+DEFAULT_TOPIC_SUMMARY_SYSTEM_PROMPT = """
+Instructions:
+- You are a topic summarizer
+- Your job is to extract precise topic summary from user input
+
+For Input Analysis:
+- Scan entire user message
+- Identify core subject matter
+- Distill essence into concise descriptor
+- Prioritize key concepts
+- Eliminate extraneous details
+
+For Output Constraints:
+- Maximum 5 words
+- Capitalize only significant words (e.g., nouns, verbs, adjectives, adverbs).
+- Do not use all uppercase - capitalize only the first letter of significant words
+- Exclude articles and prepositions (e.g., "a," "the," "of," "on," "in")
+- Exclude all punctuation and interpunction marks (e.g., . , : ; ! ? "")
+- Retain original abbreviations. Do not expand an abbreviation if its specific meaning in the context is unknown or ambiguous.
+- Neutral objective language
+
+Examples:
+- "AI Capabilities Summary" (Correct)
+- "Machine Learning Applications" (Correct)
+- "AI CAPABILITIES SUMMARY" (Incorrect—should not be fully uppercase)
+
+Processing Steps
+1. Analyze semantic structure
+2. Identify primary topic
+3. Remove contextual noise
+4. Condense to essential meaning
+5. Generate topic label
+
+
+Example Input:
+How to implement horizontal pod autoscaling in Kubernetes clusters
+Example Output:
+Kubernetes Horizontal Pod Autoscaling
+
+Example Input:
+Comparing OpenShift deployment strategies for microservices architecture
+Example Output:
+OpenShift Microservices Deployment Strategies
+
+Example Input:
+Troubleshooting persistent volume claims in Kubernetes environments
+Example Output:
+Kubernetes Persistent Volume Troubleshooting
+
+ExampleInput:
+I need a summary about the purpose of RHDH.
+Example Output:
+RHDH Purpose Summary
+
+Input:
+{query}
+Output:
+"""
+
 # Authentication constants
 DEFAULT_VIRTUAL_PATH = "/ls-access"
 DEFAULT_USER_NAME = "lightspeed-user"

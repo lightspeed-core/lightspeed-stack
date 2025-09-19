@@ -486,6 +486,7 @@ class ConversationDetails(BaseModel):
         message_count: Number of user messages in the conversation.
         last_used_model: The last model used for the conversation.
         last_used_provider: The provider of the last used model.
+        topic_summary: The topic summary for the conversation.
 
     Example:
         ```python
@@ -496,6 +497,7 @@ class ConversationDetails(BaseModel):
             message_count=5,
             last_used_model="gemini/gemini-2.0-flash",
             last_used_provider="gemini",
+            topic_summary="Openshift Microservices Deployment Strategies",
         )
         ```
     """
@@ -536,6 +538,12 @@ class ConversationDetails(BaseModel):
         examples=["openai", "gemini"],
     )
 
+    topic_summary: Optional[str] = Field(
+        None,
+        description="Topic summary for the conversation",
+        examples=["Openshift Microservices Deployment Strategies"],
+    )
+
 
 class ConversationsListResponse(BaseModel):
     """Model representing a response for listing conversations of a user.
@@ -554,6 +562,7 @@ class ConversationsListResponse(BaseModel):
                     message_count=5,
                     last_used_model="gemini/gemini-2.0-flash",
                     last_used_provider="gemini",
+                    topic_summary="Openshift Microservices Deployment Strategies",
                 ),
                 ConversationDetails(
                     conversation_id="456e7890-e12b-34d5-a678-901234567890"
@@ -561,6 +570,7 @@ class ConversationsListResponse(BaseModel):
                     message_count=2,
                     last_used_model="gemini/gemini-2.0-flash",
                     last_used_provider="gemini",
+                    topic_summary="RHDH Purpose Summary",
                 )
             ]
         )
@@ -582,6 +592,7 @@ class ConversationsListResponse(BaseModel):
                             "message_count": 5,
                             "last_used_model": "gemini/gemini-2.0-flash",
                             "last_used_provider": "gemini",
+                            "topic_summary": "Openshift Microservices Deployment Strategies",
                         },
                         {
                             "conversation_id": "456e7890-e12b-34d5-a678-901234567890",
@@ -589,6 +600,7 @@ class ConversationsListResponse(BaseModel):
                             "message_count": 2,
                             "last_used_model": "gemini/gemini-2.5-flash",
                             "last_used_provider": "gemini",
+                            "topic_summary": "RHDH Purpose Summary",
                         },
                     ]
                 }
