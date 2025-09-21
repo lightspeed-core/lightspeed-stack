@@ -71,7 +71,7 @@ def test_default_configuration() -> None:
 
     with pytest.raises(Exception, match="logic error: configuration is not loaded"):
         # try to read property
-        _ = cfg.conversation_cache  # pylint: disable=pointless-statement
+        _ = cfg.conversation_cache_configuration  # pylint: disable=pointless-statement
 
 
 def test_configuration_is_singleton() -> None:
@@ -149,7 +149,7 @@ def test_init_from_dict() -> None:
     assert cfg.inference is not None
 
     # check conversation cache
-    assert cfg.conversation_cache is not None
+    assert cfg.conversation_cache_configuration is not None
 
 
 def test_init_from_dict_with_mcp_servers() -> None:

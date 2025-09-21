@@ -486,7 +486,7 @@ class InferenceConfiguration(ConfigurationBase):
         return self
 
 
-class ConversationCache(ConfigurationBase):
+class ConversationCacheConfiguration(ConfigurationBase):
     """Conversation cache configuration."""
 
     type: Literal["memory", "sqlite", "postgres"] | None = None
@@ -542,7 +542,9 @@ class Configuration(ConfigurationBase):
     authorization: Optional[AuthorizationConfiguration] = None
     customization: Optional[Customization] = None
     inference: InferenceConfiguration = Field(default_factory=InferenceConfiguration)
-    conversation_cache: ConversationCache = Field(default_factory=ConversationCache)
+    conversation_cache: ConversationCacheConfiguration = Field(
+        default_factory=ConversationCacheConfiguration
+    )
 
     def dump(self, filename: str = "configuration.json") -> None:
         """Dump actual configuration into JSON file."""

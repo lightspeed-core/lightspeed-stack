@@ -29,6 +29,7 @@ class "CORSConfiguration" as src.models.config.CORSConfiguration {
 class "Configuration" as src.models.config.Configuration {
   authentication : Optional[AuthenticationConfiguration]
   authorization : Optional[AuthorizationConfiguration]
+  conversation_cache : Optional[ConversationCache]
   customization : Optional[Customization]
   database : Optional[DatabaseConfiguration]
   inference : Optional[InferenceConfiguration]
@@ -42,8 +43,22 @@ class "Configuration" as src.models.config.Configuration {
 class "ConfigurationBase" as src.models.config.ConfigurationBase {
   model_config
 }
+class "ConversationCache" as src.models.config.ConversationCache {
+  memory : Optional[InMemoryCacheConfig]
+  postgres : Optional[PostgreSQLDatabaseConfiguration]
+  sqlite : Optional[SQLiteDatabaseConfiguration]
+  type : Literal['memory', 'sqlite', 'postgres'] | None
+  check_cache_configuration() -> Self
+}
+class "CustomProfile" as src.models.config.CustomProfile {
+  path : str
+  prompts : Optional[dict[str, str]]
+  get_prompts() -> dict[str, str]
+}
 class "Customization" as src.models.config.Customization {
+  custom_profile : Optional[CustomProfile]
   disable_query_system_prompt : bool
+  profile_path : Optional[str]
   system_prompt : Optional[str]
   system_prompt_path : Optional[FilePath]
   check_customization_model() -> Self
@@ -54,6 +69,9 @@ class "DatabaseConfiguration" as src.models.config.DatabaseConfiguration {
   postgres : Optional[PostgreSQLDatabaseConfiguration]
   sqlite : Optional[SQLiteDatabaseConfiguration]
   check_database_configuration() -> Self
+}
+class "InMemoryCacheConfig" as src.models.config.InMemoryCacheConfig {
+  max_entries : Annotated
 }
 class "InferenceConfiguration" as src.models.config.InferenceConfiguration {
   default_model : Optional[str]
@@ -139,8 +157,10 @@ src.models.config.AuthenticationConfiguration --|> src.models.config.Configurati
 src.models.config.AuthorizationConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.CORSConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.Configuration --|> src.models.config.ConfigurationBase
+src.models.config.ConversationCache --|> src.models.config.ConfigurationBase
 src.models.config.Customization --|> src.models.config.ConfigurationBase
 src.models.config.DatabaseConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.InMemoryCacheConfig --|> src.models.config.ConfigurationBase
 src.models.config.InferenceConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.JwkConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.JwtConfiguration --|> src.models.config.ConfigurationBase
@@ -152,6 +172,7 @@ src.models.config.SQLiteDatabaseConfiguration --|> src.models.config.Configurati
 src.models.config.ServiceConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.TLSConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.UserDataCollection --|> src.models.config.ConfigurationBase
+src.models.config.CustomProfile --* src.models.config.Customization : custom_profile
 src.models.config.JsonPathOperator --* src.models.config.JwtRoleRule : operator
 src.models.config.LlamaStackConfiguration --* src.models.config.Configuration : llama_stack
 src.models.config.SQLiteDatabaseConfiguration --* src.models.config.DatabaseConfiguration : sqlite
