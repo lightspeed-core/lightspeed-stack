@@ -23,6 +23,15 @@ def prepare_agent_mocks_fixture(mocker):
     mock_agent.agent_id = "test_agent_id"
 
     # Set up create_turn mock structure for query endpoints that need it
-    mock_agent.create_turn.return_value.steps = []
+    mock_turn_response = mocker.Mock()
+    mock_turn_response.steps = []
+
+    # Set up output_message mock to avoid "Turn did not complete" errors
+    mock_output_message = mocker.Mock()
+    mock_output_message.content = "Default mock response"
+    mock_turn_response.output_message = mock_output_message
+
+    # Ensure the mock can be cast to Turn without issues
+    mock_agent.create_turn.return_value = mock_turn_response
 
     yield mock_client, mock_agent

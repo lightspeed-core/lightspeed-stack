@@ -76,9 +76,7 @@ def mock_database_session(mocker, query_result=None):
     mock_session_context = mocker.MagicMock()
     mock_session_context.__enter__.return_value = mock_session
     mock_session_context.__exit__.return_value = None
-    mocker.patch(
-        "app.endpoints.conversations.get_session", return_value=mock_session_context
-    )
+    mocker.patch("utils.conversations.get_session", return_value=mock_session_context)
     return mock_session
 
 
@@ -272,7 +270,7 @@ class TestGetConversationEndpoint:
         """Test the endpoint with an invalid conversation ID format."""
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=False)
+        mocker.patch("utils.conversations.check_suid", return_value=False)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(
@@ -292,8 +290,8 @@ class TestGetConversationEndpoint:
         """Test the endpoint when LlamaStack connection fails."""
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.validate_conversation_ownership")
+        mocker.patch("utils.conversations.check_suid", return_value=True)
+        mocker.patch("utils.conversations.validate_conversation_ownership")
 
         # Mock AsyncLlamaStackClientHolder to raise APIConnectionError
         mock_client = mocker.AsyncMock()
@@ -321,8 +319,8 @@ class TestGetConversationEndpoint:
         """Test the endpoint when LlamaStack returns NotFoundError."""
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.validate_conversation_ownership")
+        mocker.patch("utils.conversations.check_suid", return_value=True)
+        mocker.patch("utils.conversations.validate_conversation_ownership")
 
         # Mock AsyncLlamaStackClientHolder to raise NotFoundError
         mock_client = mocker.AsyncMock()
@@ -353,8 +351,8 @@ class TestGetConversationEndpoint:
         """Test the endpoint when session retrieval raises an exception."""
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.validate_conversation_ownership")
+        mocker.patch("utils.conversations.check_suid", return_value=True)
+        mocker.patch("utils.conversations.validate_conversation_ownership")
 
         # Mock AsyncLlamaStackClientHolder to raise a general exception
         mock_client = mocker.AsyncMock()
@@ -389,8 +387,8 @@ class TestGetConversationEndpoint:
         """Test successful conversation retrieval with simplified response structure."""
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.validate_conversation_ownership")
+        mocker.patch("utils.conversations.check_suid", return_value=True)
+        mocker.patch("utils.conversations.validate_conversation_ownership")
 
         # Mock AsyncLlamaStackClientHolder
         mock_client = mocker.AsyncMock()
@@ -427,7 +425,7 @@ class TestDeleteConversationEndpoint:
     async def test_configuration_not_loaded(self, mocker, dummy_request):
         """Test the endpoint when configuration is not loaded."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", None)
+        mocker.patch("utils.conversations.configuration", None)
 
         with pytest.raises(HTTPException) as exc_info:
             await delete_conversation_endpoint_handler(
@@ -446,7 +444,7 @@ class TestDeleteConversationEndpoint:
         """Test the endpoint with an invalid conversation ID format."""
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=False)
+        mocker.patch("utils.conversations.check_suid", return_value=False)
 
         with pytest.raises(HTTPException) as exc_info:
             await delete_conversation_endpoint_handler(
@@ -466,14 +464,17 @@ class TestDeleteConversationEndpoint:
         """Test the endpoint when LlamaStack connection fails."""
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.validate_conversation_ownership")
+        mocker.patch("utils.conversations.check_suid", return_value=True)
+        mocker.patch("utils.conversations.validate_conversation_ownership")
 
         # Mock AsyncLlamaStackClientHolder to raise APIConnectionError
         mock_client = mocker.AsyncMock()
+        mock_client.agents.session.list.return_value = mocker.Mock(
+            data=[{"session_id": VALID_CONVERSATION_ID}]
+        )
         mock_client.agents.session.delete.side_effect = APIConnectionError(request=None)
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "utils.conversations.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -494,16 +495,19 @@ class TestDeleteConversationEndpoint:
         """Test the endpoint when LlamaStack returns NotFoundError."""
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.validate_conversation_ownership")
+        mocker.patch("utils.conversations.check_suid", return_value=True)
+        mocker.patch("utils.conversations.validate_conversation_ownership")
 
         # Mock AsyncLlamaStackClientHolder to raise NotFoundError
         mock_client = mocker.AsyncMock()
+        mock_client.agents.session.list.return_value = mocker.Mock(
+            data=[{"session_id": VALID_CONVERSATION_ID}]
+        )
         mock_client.agents.session.delete.side_effect = NotFoundError(
             message="Session not found", response=mocker.Mock(request=None), body=None
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "utils.conversations.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -526,8 +530,8 @@ class TestDeleteConversationEndpoint:
         """Test the endpoint when session deletion raises an exception."""
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.validate_conversation_ownership")
+        mocker.patch("utils.conversations.check_suid", return_value=True)
+        mocker.patch("utils.conversations.validate_conversation_ownership")
 
         # Mock AsyncLlamaStackClientHolder to raise a general exception
         mock_client = mocker.AsyncMock()
@@ -560,11 +564,11 @@ class TestDeleteConversationEndpoint:
         """Test successful conversation deletion."""
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.validate_conversation_ownership")
+        mocker.patch("utils.conversations.check_suid", return_value=True)
+        mocker.patch("utils.conversations.validate_conversation_ownership")
 
         # Mock the delete_conversation function
-        mocker.patch("app.endpoints.conversations.delete_conversation")
+        mocker.patch("utils.conversations.delete_conversation")
 
         # Mock AsyncLlamaStackClientHolder
         mock_client = mocker.AsyncMock()
@@ -574,7 +578,7 @@ class TestDeleteConversationEndpoint:
         )
         mock_client.agents.session.delete.return_value = None  # Successful deletion
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "utils.conversations.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -599,7 +603,7 @@ class TestGetConversationsListEndpoint:
     async def test_configuration_not_loaded(self, mocker, dummy_request):
         """Test the endpoint when configuration is not loaded."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", None)
+        mocker.patch("utils.conversations.configuration", None)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversations_list_endpoint_handler(

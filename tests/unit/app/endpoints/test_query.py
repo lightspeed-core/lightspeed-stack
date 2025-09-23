@@ -17,10 +17,8 @@ from llama_stack_client.types.shared.interleaved_content import (
 from configuration import AppConfig
 from app.endpoints.query import (
     query_endpoint_handler,
-    select_model_and_provider_id,
     retrieve_response,
     validate_attachments_metadata,
-    is_transcripts_enabled,
     get_rag_toolgroups,
     evaluate_model_hints,
 )
@@ -28,6 +26,10 @@ from app.endpoints.query import (
 from models.requests import QueryRequest, Attachment
 from models.config import Action, ModelContextProtocolServer
 from models.database.conversations import UserConversation
+from utils.query import (
+    is_transcripts_enabled,
+    select_model_and_provider_id,
+)
 from utils.types import ToolCallSummary, TurnSummary
 from authorization.resolvers import NoopRolesResolver
 
@@ -57,10 +59,8 @@ def mock_metrics(mocker):
 
 def mock_database_operations(mocker):
     """Helper function to mock database operations for query endpoints."""
-    mocker.patch(
-        "app.endpoints.query.validate_conversation_ownership", return_value=True
-    )
-    mocker.patch("app.endpoints.query.persist_user_conversation_details")
+    mocker.patch("utils.endpoints.validate_conversation_ownership", return_value=True)
+    mocker.patch("utils.query.persist_user_conversation_details")
 
 
 @pytest.fixture(name="setup_configuration")
@@ -96,11 +96,7 @@ def setup_configuration_fixture():
 async def test_query_endpoint_handler_configuration_not_loaded(mocker, dummy_request):
     """Test the query endpoint handler if configuration is not loaded."""
     # simulate state when no configuration is loaded
-    mocker.patch(
-        "app.endpoints.query.configuration",
-        return_value=mocker.Mock(),
-    )
-    mocker.patch("app.endpoints.query.configuration", None)
+    mocker.patch("utils.query.configuration", None)
 
     query = "What is OpenStack?"
     query_request = QueryRequest(query=query)
@@ -177,10 +173,10 @@ async def _test_query_endpoint_handler(
         return_value=("fake_model_id", "fake_model_id", "fake_provider_id"),
     )
     mocker.patch(
-        "app.endpoints.query.is_transcripts_enabled",
+        "utils.query.is_transcripts_enabled",
         return_value=store_transcript_to_file,
     )
-    mock_transcript = mocker.patch("app.endpoints.query.store_transcript")
+    mock_transcript = mocker.patch("utils.query.store_transcript")
 
     # Mock database operations
     mock_database_operations(mocker)
@@ -1204,10 +1200,10 @@ async def test_auth_tuple_unpacking_in_query_endpoint_handler(mocker, dummy_requ
     )
 
     mocker.patch(
-        "app.endpoints.query.select_model_and_provider_id",
+        "utils.query.select_model_and_provider_id",
         return_value=("test_model", "test_model", "test_provider"),
     )
-    mocker.patch("app.endpoints.query.is_transcripts_enabled", return_value=False)
+    mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
     # Mock database operations
     mock_database_operations(mocker)
 
@@ -1254,10 +1250,10 @@ async def test_query_endpoint_handler_no_tools_true(mocker, dummy_request):
         return_value=(summary, conversation_id),
     )
     mocker.patch(
-        "app.endpoints.query.select_model_and_provider_id",
+        "utils.query.select_model_and_provider_id",
         return_value=("fake_model_id", "fake_model_id", "fake_provider_id"),
     )
-    mocker.patch("app.endpoints.query.is_transcripts_enabled", return_value=False)
+    mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
     # Mock database operations
     mock_database_operations(mocker)
 
@@ -1305,10 +1301,10 @@ async def test_query_endpoint_handler_no_tools_false(mocker, dummy_request):
         return_value=(summary, conversation_id),
     )
     mocker.patch(
-        "app.endpoints.query.select_model_and_provider_id",
+        "utils.query.select_model_and_provider_id",
         return_value=("fake_model_id", "fake_model_id", "fake_provider_id"),
     )
-    mocker.patch("app.endpoints.query.is_transcripts_enabled", return_value=False)
+    mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
     # Mock database operations
     mock_database_operations(mocker)
 

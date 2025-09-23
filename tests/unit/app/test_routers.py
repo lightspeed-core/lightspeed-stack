@@ -18,6 +18,10 @@ from app.endpoints import (
     streaming_query,
     authorized,
     metrics,
+    # V2 endpoints for Response API support
+    conversations_v2,
+    query_v2,
+    streaming_query_v2,
 )  # noqa:E402
 
 
@@ -60,7 +64,7 @@ def test_include_routers() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 11
+    assert len(app.routers) == 14
     assert root.router in app.get_routers()
     assert info.router in app.get_routers()
     assert models.router in app.get_routers()
@@ -72,6 +76,10 @@ def test_include_routers() -> None:
     assert authorized.router in app.get_routers()
     assert conversations.router in app.get_routers()
     assert metrics.router in app.get_routers()
+    # V2 endpoints
+    assert conversations_v2.router in app.get_routers()
+    assert query_v2.router in app.get_routers()
+    assert streaming_query_v2.router in app.get_routers()
 
 
 def test_check_prefixes() -> None:
@@ -80,7 +88,7 @@ def test_check_prefixes() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 11
+    assert len(app.routers) == 14
     assert app.get_router_prefix(root.router) == ""
     assert app.get_router_prefix(info.router) == "/v1"
     assert app.get_router_prefix(models.router) == "/v1"
@@ -92,3 +100,7 @@ def test_check_prefixes() -> None:
     assert app.get_router_prefix(authorized.router) == ""
     assert app.get_router_prefix(conversations.router) == "/v1"
     assert app.get_router_prefix(metrics.router) == ""
+    # V2 endpoints
+    assert app.get_router_prefix(conversations_v2.router) == "/v2"
+    assert app.get_router_prefix(query_v2.router) == "/v2"
+    assert app.get_router_prefix(streaming_query_v2.router) == "/v2"
