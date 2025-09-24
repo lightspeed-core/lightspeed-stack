@@ -20,6 +20,19 @@ from llama_stack_client.types.shared.interleaved_content_item import TextContent
 from fastapi import APIRouter, HTTPException, Request, Depends, status
 from fastapi.responses import StreamingResponse
 
+from app.database import get_session
+from app.endpoints.query import (
+    get_rag_toolgroups,
+    is_input_shield,
+    is_output_shield,
+    is_transcripts_enabled,
+    select_model_and_provider_id,
+    validate_attachments_metadata,
+    validate_conversation_ownership,
+    persist_user_conversation_details,
+    evaluate_model_hints,
+    get_topic_summary,
+)
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
@@ -36,18 +49,6 @@ from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_to
 from utils.transcripts import store_transcript
 from utils.types import TurnSummary
 from utils.endpoints import validate_model_provider_override
-
-from app.endpoints.query import (
-    get_rag_toolgroups,
-    is_input_shield,
-    is_output_shield,
-    is_transcripts_enabled,
-    select_model_and_provider_id,
-    validate_attachments_metadata,
-    validate_conversation_ownership,
-    persist_user_conversation_details,
-    evaluate_model_hints,
-)
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query"])
@@ -700,11 +701,24 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
                     attachments=query_request.attachments or [],
                 )
 
+                # Get the initial topic summary for the conversation
+
+        topic_summary = None
+        with get_session() as session:
+            existing_conversation = (
+                session.query(UserConversation).filter_by(id=conversation_id).first()
+            )
+            if not existing_conversation:
+                topic_summary = await get_topic_summary(
+                    query_request.query, client, model_id
+                )
+
         persist_user_conversation_details(
             user_id=user_id,
             conversation_id=conversation_id,
             model=model_id,
             provider_id=provider_id,
+            topic_summary=topic_summary,
         )
 
         # Update metrics for the LLM call

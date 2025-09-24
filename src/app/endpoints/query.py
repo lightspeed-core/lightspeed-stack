@@ -44,6 +44,8 @@ from models.responses import (
 from utils.endpoints import (
     check_configuration_loaded,
     get_agent,
+    get_topic_summary_system_prompt,
+    get_temp_agent,
     get_system_prompt,
     validate_conversation_ownership,
     validate_model_provider_override,
@@ -95,7 +97,11 @@ def is_transcripts_enabled() -> bool:
 
 
 def persist_user_conversation_details(
-    user_id: str, conversation_id: str, model: str, provider_id: str
+    user_id: str,
+    conversation_id: str,
+    model: str,
+    provider_id: str,
+    topic_summary: Optional[str],
 ) -> None:
     """Associate conversation to user in the database."""
     with get_session() as session:
@@ -109,6 +115,7 @@ def persist_user_conversation_details(
                 user_id=user_id,
                 last_used_model=model,
                 last_used_provider=provider_id,
+                topic_summary=topic_summary,
                 message_count=1,
             )
             session.add(conversation)
@@ -166,9 +173,42 @@ def evaluate_model_hints(
     return model_id, provider_id
 
 
+async def get_topic_summary(
+    question: str, client: AsyncLlamaStackClient, model_id: str
+) -> str:
+    """Get a topic summary for a question.
+
+    Args:
+        question: The question to be validated.
+        client: The AsyncLlamaStackClient to use for the request.
+        model_id: The ID of the model to use.
+    Returns:
+        str: The topic summary for the question.
+    """
+    topic_summary_system_prompt = get_topic_summary_system_prompt(configuration)
+    agent, session_id, _ = await get_temp_agent(
+        client, model_id, topic_summary_system_prompt
+    )
+    response = await agent.create_turn(
+        messages=[UserMessage(role="user", content=question)],
+        session_id=session_id,
+        stream=False,
+        toolgroups=None,
+    )
+    response = cast(Turn, response)
+    return (
+        interleaved_content_as_str(response.output_message.content)
+        if (
+            getattr(response, "output_message", None) is not None
+            and getattr(response.output_message, "content", None) is not None
+        )
+        else ""
+    )
+
+
 @router.post("/query", responses=query_response)
 @authorize(Action.QUERY)
-async def query_endpoint_handler(
+async def query_endpoint_handler(  # pylint: disable=R0914
     request: Request,
     query_request: QueryRequest,
     auth: Annotated[AuthTuple, Depends(auth_dependency)],
@@ -248,6 +288,17 @@ async def query_endpoint_handler(
         # Update metrics for the LLM call
         metrics.llm_calls_total.labels(provider_id, model_id).inc()
 
+        # Get the initial topic summary for the conversation
+        topic_summary = None
+        with get_session() as session:
+            existing_conversation = (
+                session.query(UserConversation).filter_by(id=conversation_id).first()
+            )
+            if not existing_conversation:
+                topic_summary = await get_topic_summary(
+                    query_request.query, client, model_id
+                )
+
         if not is_transcripts_enabled():
             logger.debug("Transcript collection is disabled in the configuration")
         else:
@@ -270,6 +321,7 @@ async def query_endpoint_handler(
             conversation_id=conversation_id,
             model=model_id,
             provider_id=provider_id,
+            topic_summary=topic_summary,
         )
 
         return QueryResponse(

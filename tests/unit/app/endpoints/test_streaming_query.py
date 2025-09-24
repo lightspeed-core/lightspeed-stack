@@ -58,6 +58,13 @@ def mock_database_operations(mocker):
     )
     mocker.patch("app.endpoints.streaming_query.persist_user_conversation_details")
 
+    # Mock the database session and query
+    mock_session = mocker.Mock()
+    mock_session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_session.__enter__ = mocker.Mock(return_value=mock_session)
+    mock_session.__exit__ = mocker.Mock(return_value=None)
+    mocker.patch("app.endpoints.streaming_query.get_session", return_value=mock_session)
+
 
 def mock_metrics(mocker):
     """Helper function to mock metrics operations for streaming query endpoints."""
@@ -282,6 +289,12 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
         return_value=store_transcript,
     )
     mock_transcript = mocker.patch("app.endpoints.streaming_query.store_transcript")
+
+    # Mock get_topic_summary function
+    mocker.patch(
+        "app.endpoints.streaming_query.get_topic_summary",
+        return_value="Test topic summary",
+    )
 
     mock_database_operations(mocker)
 
@@ -1308,6 +1321,11 @@ async def test_auth_tuple_unpacking_in_streaming_query_endpoint_handler(mocker):
     mocker.patch(
         "app.endpoints.streaming_query.is_transcripts_enabled", return_value=False
     )
+    # Mock get_topic_summary function
+    mocker.patch(
+        "app.endpoints.streaming_query.get_topic_summary",
+        return_value="Test topic summary",
+    )
     mock_database_operations(mocker)
 
     request = Request(
@@ -1353,6 +1371,11 @@ async def test_streaming_query_endpoint_handler_no_tools_true(mocker):
     )
     mocker.patch(
         "app.endpoints.streaming_query.is_transcripts_enabled", return_value=False
+    )
+    # Mock get_topic_summary function
+    mocker.patch(
+        "app.endpoints.streaming_query.get_topic_summary",
+        return_value="Test topic summary",
     )
     # Mock database operations
     mock_database_operations(mocker)
@@ -1400,6 +1423,11 @@ async def test_streaming_query_endpoint_handler_no_tools_false(mocker):
     )
     mocker.patch(
         "app.endpoints.streaming_query.is_transcripts_enabled", return_value=False
+    )
+    # Mock get_topic_summary function
+    mocker.patch(
+        "app.endpoints.streaming_query.get_topic_summary",
+        return_value="Test topic summary",
     )
     # Mock database operations
     mock_database_operations(mocker)

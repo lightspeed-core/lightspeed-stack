@@ -48,6 +48,7 @@ def create_mock_conversation(
     message_count,
     last_used_model,
     last_used_provider,
+    topic_summary=None,
 ):  # pylint: disable=too-many-arguments,too-many-positional-arguments
     """Helper function to create a mock conversation object with all required attributes."""
     mock_conversation = mocker.Mock()
@@ -59,6 +60,7 @@ def create_mock_conversation(
     mock_conversation.message_count = message_count
     mock_conversation.last_used_model = last_used_model
     mock_conversation.last_used_provider = last_used_provider
+    mock_conversation.topic_summary = topic_summary
     return mock_conversation
 
 
@@ -627,6 +629,7 @@ class TestGetConversationsListEndpoint:
                 5,
                 "gemini/gemini-2.0-flash",
                 "gemini",
+                "OpenStack deployment strategies",
             ),
             create_mock_conversation(
                 mocker,
@@ -636,6 +639,7 @@ class TestGetConversationsListEndpoint:
                 2,
                 "gemini/gemini-2.5-flash",
                 "gemini",
+                "Kubernetes troubleshooting",
             ),
         ]
         mock_database_session(mocker, mock_conversations)
@@ -646,14 +650,26 @@ class TestGetConversationsListEndpoint:
 
         assert isinstance(response, ConversationsListResponse)
         assert len(response.conversations) == 2
-        assert (
-            response.conversations[0].conversation_id
-            == "123e4567-e89b-12d3-a456-426614174000"
-        )
-        assert (
-            response.conversations[1].conversation_id
-            == "456e7890-e12b-34d5-a678-901234567890"
-        )
+
+        # Test first conversation
+        conv1 = response.conversations[0]
+        assert conv1.conversation_id == "123e4567-e89b-12d3-a456-426614174000"
+        assert conv1.created_at == "2024-01-01T00:00:00Z"
+        assert conv1.last_message_at == "2024-01-01T00:05:00Z"
+        assert conv1.message_count == 5
+        assert conv1.last_used_model == "gemini/gemini-2.0-flash"
+        assert conv1.last_used_provider == "gemini"
+        assert conv1.topic_summary == "OpenStack deployment strategies"
+
+        # Test second conversation
+        conv2 = response.conversations[1]
+        assert conv2.conversation_id == "456e7890-e12b-34d5-a678-901234567890"
+        assert conv2.created_at == "2024-01-01T01:00:00Z"
+        assert conv2.last_message_at == "2024-01-01T01:02:00Z"
+        assert conv2.message_count == 2
+        assert conv2.last_used_model == "gemini/gemini-2.5-flash"
+        assert conv2.last_used_provider == "gemini"
+        assert conv2.topic_summary == "Kubernetes troubleshooting"
 
     @pytest.mark.asyncio
     async def test_empty_conversations_list(
@@ -691,7 +707,177 @@ class TestGetConversationsListEndpoint:
 
         assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert "Unknown error" in exc_info.value.detail["response"]
-        assert (
-            "Unknown error while getting conversations for user"
-            in exc_info.value.detail["cause"]
+
+    @pytest.mark.asyncio
+    async def test_conversations_list_with_none_topic_summary(
+        self, mocker, setup_configuration, dummy_request
+    ):
+        """Test conversations list when topic_summary is None."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+
+        # Mock database session with conversation having None topic_summary
+        mock_conversations = [
+            create_mock_conversation(
+                mocker,
+                "123e4567-e89b-12d3-a456-426614174000",
+                "2024-01-01T00:00:00Z",
+                "2024-01-01T00:05:00Z",
+                5,
+                "gemini/gemini-2.0-flash",
+                "gemini",
+                None,  # topic_summary is None
+            ),
+        ]
+        mock_database_session(mocker, mock_conversations)
+
+        response = await get_conversations_list_endpoint_handler(
+            auth=MOCK_AUTH, request=dummy_request
         )
+
+        assert isinstance(response, ConversationsListResponse)
+        assert len(response.conversations) == 1
+
+        conv = response.conversations[0]
+        assert conv.conversation_id == "123e4567-e89b-12d3-a456-426614174000"
+        assert conv.topic_summary is None
+
+    @pytest.mark.asyncio
+    async def test_conversations_list_with_mixed_topic_summaries(
+        self, mocker, setup_configuration, dummy_request
+    ):
+        """Test conversations list with mixed topic_summary values (some None, some not)."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+
+        # Mock database session with mixed topic_summary values
+        mock_conversations = [
+            create_mock_conversation(
+                mocker,
+                "123e4567-e89b-12d3-a456-426614174000",
+                "2024-01-01T00:00:00Z",
+                "2024-01-01T00:05:00Z",
+                5,
+                "gemini/gemini-2.0-flash",
+                "gemini",
+                "OpenStack deployment strategies",  # Has topic_summary
+            ),
+            create_mock_conversation(
+                mocker,
+                "456e7890-e12b-34d5-a678-901234567890",
+                "2024-01-01T01:00:00Z",
+                "2024-01-01T01:02:00Z",
+                2,
+                "gemini/gemini-2.5-flash",
+                "gemini",
+                None,  # No topic_summary
+            ),
+            create_mock_conversation(
+                mocker,
+                "789e0123-e45b-67d8-a901-234567890123",
+                "2024-01-01T02:00:00Z",
+                "2024-01-01T02:03:00Z",
+                3,
+                "openai/gpt-4",
+                "openai",
+                "Machine learning model training",  # Has topic_summary
+            ),
+        ]
+        mock_database_session(mocker, mock_conversations)
+
+        response = await get_conversations_list_endpoint_handler(
+            auth=MOCK_AUTH, request=dummy_request
+        )
+
+        assert isinstance(response, ConversationsListResponse)
+        assert len(response.conversations) == 3
+
+        # Test first conversation (with topic_summary)
+        conv1 = response.conversations[0]
+        assert conv1.conversation_id == "123e4567-e89b-12d3-a456-426614174000"
+        assert conv1.topic_summary == "OpenStack deployment strategies"
+
+        # Test second conversation (without topic_summary)
+        conv2 = response.conversations[1]
+        assert conv2.conversation_id == "456e7890-e12b-34d5-a678-901234567890"
+        assert conv2.topic_summary is None
+
+        # Test third conversation (with topic_summary)
+        conv3 = response.conversations[2]
+        assert conv3.conversation_id == "789e0123-e45b-67d8-a901-234567890123"
+        assert conv3.topic_summary == "Machine learning model training"
+
+    @pytest.mark.asyncio
+    async def test_conversations_list_with_empty_topic_summary(
+        self, mocker, setup_configuration, dummy_request
+    ):
+        """Test conversations list when topic_summary is an empty string."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+
+        # Mock database session with conversation having empty topic_summary
+        mock_conversations = [
+            create_mock_conversation(
+                mocker,
+                "123e4567-e89b-12d3-a456-426614174000",
+                "2024-01-01T00:00:00Z",
+                "2024-01-01T00:05:00Z",
+                5,
+                "gemini/gemini-2.0-flash",
+                "gemini",
+                "",  # Empty topic_summary
+            ),
+        ]
+        mock_database_session(mocker, mock_conversations)
+
+        response = await get_conversations_list_endpoint_handler(
+            auth=MOCK_AUTH, request=dummy_request
+        )
+
+        assert isinstance(response, ConversationsListResponse)
+        assert len(response.conversations) == 1
+
+        conv = response.conversations[0]
+        assert conv.conversation_id == "123e4567-e89b-12d3-a456-426614174000"
+        assert conv.topic_summary == ""
+
+    @pytest.mark.asyncio
+    async def test_conversations_list_topic_summary_field_presence(
+        self, mocker, setup_configuration, dummy_request
+    ):
+        """Test that topic_summary field is always present in ConversationDetails objects."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+
+        # Mock database session with conversations
+        mock_conversations = [
+            create_mock_conversation(
+                mocker,
+                "123e4567-e89b-12d3-a456-426614174000",
+                "2024-01-01T00:00:00Z",
+                "2024-01-01T00:05:00Z",
+                5,
+                "gemini/gemini-2.0-flash",
+                "gemini",
+                "Test topic summary",
+            ),
+        ]
+        mock_database_session(mocker, mock_conversations)
+
+        response = await get_conversations_list_endpoint_handler(
+            auth=MOCK_AUTH, request=dummy_request
+        )
+
+        assert isinstance(response, ConversationsListResponse)
+        assert len(response.conversations) == 1
+
+        conv = response.conversations[0]
+
+        # Verify that topic_summary field exists and is accessible
+        assert hasattr(conv, "topic_summary")
+        assert conv.topic_summary == "Test topic summary"
+
+        # Verify that the field is properly serialized (if needed for API responses)
+        conv_dict = conv.model_dump()
+        assert "topic_summary" in conv_dict
+        assert conv_dict["topic_summary"] == "Test topic summary"

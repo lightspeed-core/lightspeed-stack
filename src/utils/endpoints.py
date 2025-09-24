@@ -112,6 +112,20 @@ def get_system_prompt(query_request: QueryRequest, config: AppConfig) -> str:
     return constants.DEFAULT_SYSTEM_PROMPT
 
 
+def get_topic_summary_system_prompt(config: AppConfig) -> str:
+    """Get the topic summary system prompt."""
+    # profile takes precedence for setting prompt
+    if (
+        config.customization is not None
+        and config.customization.custom_profile is not None
+    ):
+        prompt = config.customization.custom_profile.get_prompts().get("topic_summary")
+        if prompt:
+            return prompt
+
+    return constants.DEFAULT_TOPIC_SUMMARY_SYSTEM_PROMPT
+
+
 def validate_model_provider_override(
     query_request: QueryRequest, authorized_actions: set[Action] | frozenset[Action]
 ) -> None:
@@ -190,3 +204,36 @@ async def get_agent(
         logger.debug("New session ID: %s", session_id)
 
     return agent, conversation_id, session_id
+
+
+async def get_temp_agent(
+    client: AsyncLlamaStackClient,
+    model_id: str,
+    system_prompt: str,
+) -> tuple[AsyncAgent, str, str]:
+    """Create a temporary agent with new agent_id and session_id.
+
+    This function creates a new agent without persistence, shields, or tools.
+    Useful for temporary operations or one-off queries, such as validating a
+    question or generating a summary.
+    Args:
+        client: The AsyncLlamaStackClient to use for the request.
+        model_id: The ID of the model to use.
+        system_prompt: The system prompt/instructions for the agent.
+    Returns:
+        tuple[AsyncAgent, str]: A tuple containing the agent and session_id.
+    """
+    logger.debug("Creating temporary agent")
+    agent = AsyncAgent(
+        client,  # type: ignore[arg-type]
+        model=model_id,
+        instructions=system_prompt,
+        enable_session_persistence=False,  # Temporary agent doesn't need persistence
+    )
+    await agent.initialize()
+
+    # Generate new IDs for the temporary agent
+    conversation_id = agent.agent_id
+    session_id = await agent.create_session(get_suid())
+
+    return agent, session_id, conversation_id
