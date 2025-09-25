@@ -50,7 +50,7 @@ dependencies = [
     "semver<4.0.0",
     # Used by authorization resolvers
     "jsonpath-ng>=1.6.1",
-    "psycopg2>=2.9.10",
+    "psycopg2-binary>=2.9.10",
 ]
 
 
