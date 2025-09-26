@@ -61,6 +61,10 @@ class AppConfig:
         """Initialize configuration from a dictionary."""
         self._configuration = Configuration(**config_dict)
 
+    def is_loaded(self) -> bool:
+        """Check if configuration has been loaded."""
+        return self._configuration is not None
+
     @property
     def configuration(self) -> Configuration:
         """Return the whole configuration."""

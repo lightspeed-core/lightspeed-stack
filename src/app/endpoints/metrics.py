@@ -15,8 +15,8 @@ from models.config import Action
 from metrics.utils import setup_model_metrics
 
 router = APIRouter(tags=["metrics"])
-
 auth_dependency = get_auth_dependency()
+
 
 
 @router.get("/metrics", response_class=PlainTextResponse)

@@ -49,6 +49,9 @@ def test_default_configuration() -> None:
         # try to read property
         _ = cfg.mcp_servers  # pylint: disable=pointless-statement
 
+    # Test is_loaded method
+    assert cfg.is_loaded() is False
+
     with pytest.raises(Exception, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.authentication_configuration  # pylint: disable=pointless-statement
@@ -542,6 +545,24 @@ customization:
     assert fetched_prompts is not None and fetched_prompts.get(
         "default"
     ) == expected_prompts.get("default")
+
+
+def test_is_loaded_method():
+    """Test the is_loaded method behavior."""
+    cfg = AppConfig()
+    
+    # Initially not loaded
+    assert cfg.is_loaded() is False
+    
+    # Load a valid configuration
+    cfg.load_configuration("tests/configuration/lightspeed-stack.yaml")
+    
+    # Should now be loaded
+    assert cfg.is_loaded() is True
+    
+    # Reset and verify not loaded again
+    cfg._configuration = None  # type: ignore[attr-defined]
+    assert cfg.is_loaded() is False
 
 
 def test_configuration_with_all_customizations(tmpdir) -> None:

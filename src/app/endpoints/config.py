@@ -14,8 +14,8 @@ from utils.endpoints import check_configuration_loaded
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["config"])
-
 auth_dependency = get_auth_dependency()
+
 
 
 get_config_responses: dict[int | str, dict[str, Any]] = {
