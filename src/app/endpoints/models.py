@@ -18,9 +18,8 @@ from utils.endpoints import check_configuration_loaded
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["models"])
-
-
 auth_dependency = get_auth_dependency()
+
 
 
 models_responses: dict[int | str, dict[str, Any]] = {

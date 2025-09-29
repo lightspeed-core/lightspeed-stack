@@ -8,7 +8,7 @@ from starlette.routing import Mount, Route, WebSocketRoute
 
 from app import routers
 from app.database import initialize_database, create_tables
-from configuration import configuration
+from configuration import configuration, LogicError
 from log import get_logger
 import metrics
 from utils.common import register_mcp_servers_async
@@ -18,8 +18,28 @@ logger = get_logger(__name__)
 
 logger.info("Initializing app")
 
-service_name = configuration.configuration.name
 
+def get_service_name():
+    """Get service name with fallback for when configuration is not loaded."""
+    try:
+        return configuration.configuration.name
+    except LogicError:
+        return "lightspeed-stack"  # Fallback on any error
+
+
+def get_cors_config():
+    """Get CORS configuration with fallback defaults."""
+    try:
+        return configuration.service_configuration.cors
+    except LogicError:
+        # Fallback CORS configuration on any error
+        from models.config import CORSConfiguration
+        return CORSConfiguration()
+
+
+# Initialize with safe configuration access
+service_name = get_service_name()
+cors = get_cors_config()
 
 app = FastAPI(
     title=f"{service_name} service - OpenAPI",
@@ -39,8 +59,6 @@ app = FastAPI(
         {"url": "http://localhost:8080/", "description": "Locally running service"}
     ],
 )
-
-cors = configuration.service_configuration.cors
 
 app.add_middleware(
     CORSMiddleware,
@@ -89,10 +107,31 @@ app_routes_paths = [
 @app.on_event("startup")
 async def startup_event() -> None:
     """Perform logger setup on service startup."""
-    logger.info("Registering MCP servers")
-    await register_mcp_servers_async(logger, configuration.configuration)
+    logger.info("App startup event triggered")
+    
+    # Only perform full initialization if configuration is loaded
+    if configuration.is_loaded():
+        logger.info("Configuration loaded - performing full startup")
+        try:
+            logger.info("Registering MCP servers")
+            await register_mcp_servers_async(logger, configuration.configuration)
+            
+            logger.info("Initializing database")
+            initialize_database()
+            create_tables()
+            
+            # Update app state to indicate MCP servers are registered
+            from app.state import app_state
+            app_state.mark_check_complete('mcp_servers_registered', True)
+            
+        except Exception as e:
+            logger.error("Error during full startup: %s", e)
+            # Update app state with error
+            from app.state import app_state
+            app_state.mark_check_complete('mcp_servers_registered', False, str(e))
+    else:
+        logger.warning("Configuration not loaded - running in minimal diagnostic mode")
+        logger.info("Health endpoints will be available for troubleshooting")
+    
     get_logger("app.endpoints.handlers")
     logger.info("App startup complete")
-
-    initialize_database()
-    create_tables()

@@ -18,7 +18,6 @@ from version import __version__
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["info"])
-
 auth_dependency = get_auth_dependency()
 
 

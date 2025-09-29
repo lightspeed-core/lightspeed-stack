@@ -13,7 +13,6 @@ from models.config import Action
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["root"])
-
 auth_dependency = get_auth_dependency()
 
 
