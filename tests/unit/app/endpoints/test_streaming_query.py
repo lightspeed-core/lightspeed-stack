@@ -40,6 +40,13 @@ from app.endpoints.streaming_query import (
     streaming_query_endpoint_handler,
     retrieve_response,
     stream_build_event,
+    stream_event,
+    stream_end_event,
+    prompt_too_long_error,
+    generic_llm_error,
+    LLM_TOKEN_EVENT,
+    LLM_TOOL_CALL_EVENT,
+    LLM_TOOL_RESULT_EVENT,
 )
 
 from authorization.resolvers import NoopRolesResolver
@@ -47,6 +54,7 @@ from models.config import ModelContextProtocolServer, Action
 from models.requests import QueryRequest, Attachment
 from models.responses import RAGChunk
 from utils.types import ToolCallSummary, TurnSummary
+from constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
 
 MOCK_AUTH = (
     "017adfa4-7cc6-46e4-b663-3653e1ae69df",
@@ -190,11 +198,13 @@ async def test_streaming_query_endpoint_on_connection_error(mocker):
             "type": "http",
         }
     )
-    # await the async function
-    with pytest.raises(HTTPException) as e:
-        await streaming_query_endpoint_handler(request, query_request, auth=MOCK_AUTH)
-        assert e.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert e.detail["response"] == "Configuration is not loaded"
+    # await the async function - should return a streaming response with error
+    response = await streaming_query_endpoint_handler(
+        request, query_request, auth=MOCK_AUTH
+    )
+
+    assert isinstance(response, StreamingResponse)
+    assert response.media_type == "application/json"
 
 
 async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False):
@@ -786,9 +796,8 @@ def test_stream_build_event_turn_start():
 
     assert result is not None
     assert "data: " in result
-    assert '"event": "token"' in result
-    assert '"token": ""' in result
-    assert '"id": 0' in result
+    assert '"event": "start"' in result
+    assert '"conversation_id"' in result
 
 
 def test_stream_build_event_turn_awaiting_input():
@@ -820,9 +829,8 @@ def test_stream_build_event_turn_awaiting_input():
 
     assert result is not None
     assert "data: " in result
-    assert '"event": "token"' in result
-    assert '"token": ""' in result
-    assert '"id": 0' in result
+    assert '"event": "start"' in result
+    assert '"conversation_id"' in result
 
 
 def test_stream_build_event_turn_complete():
@@ -856,7 +864,6 @@ def test_stream_build_event_turn_complete():
     assert "data: " in result
     assert '"event": "turn_complete"' in result
     assert '"token": "content"' in result
-    assert '"id": 0' in result
 
 
 def test_stream_build_event_shield_call_step_complete_no_violation(mocker):
@@ -888,7 +895,7 @@ def test_stream_build_event_shield_call_step_complete_no_violation(mocker):
     assert "data: " in result
     assert '"event": "token"' in result
     assert '"token": "No Violation"' in result
-    assert '"role": "shield_call"' in result
+    # Role field removed for OLS compatibility
     assert '"id": 0' in result
     # Assert that the metric for validation errors is NOT incremented
     mock_metric.inc.assert_not_called()
@@ -931,7 +938,7 @@ def test_stream_build_event_shield_call_step_complete_with_violation(mocker):
         '"token": "Violation: I don\'t like the cut of your jib (Metadata: {})"'
         in result
     )
-    assert '"role": "shield_call"' in result
+    # Role field removed for OLS compatibility
     assert '"id": 0' in result
     # Assert that the metric for validation errors is incremented
     mock_metric.inc.assert_called_once()
@@ -959,7 +966,7 @@ def test_stream_build_event_step_progress():
     assert "data: " in result
     assert '"event": "token"' in result
     assert '"token": "This is a test response"' in result
-    assert '"role": "inference"' in result
+    # Role field removed for OLS compatibility
     assert '"id": 0' in result
 
 
@@ -987,7 +994,7 @@ def test_stream_build_event_step_progress_tool_call_str():
     assert "data: " in result
     assert '"event": "tool_call"' in result
     assert '"token": "tool-called"' in result
-    assert '"role": "inference"' in result
+    # Role field removed for OLS compatibility
     assert '"id": 0' in result
 
 
@@ -1019,7 +1026,7 @@ def test_stream_build_event_step_progress_tool_call_tool_call():
     assert "data: " in result
     assert '"event": "tool_call"' in result
     assert '"token": "my-tool"' in result
-    assert '"role": "inference"' in result
+    # Role field removed for OLS compatibility
     assert '"id": 0' in result
 
 
@@ -1071,7 +1078,7 @@ def test_stream_build_event_step_complete():
         '"token": {"tool_name": "knowledge_search", '
         '"summary": "knowledge_search tool found 2 chunks:"}' in result
     )
-    assert '"role": "tool_execution"' in result
+    # Role field removed for OLS compatibility
     assert '"id": 0' in result
 
 
@@ -1111,7 +1118,7 @@ def test_stream_build_event_returns_heartbeat():
 
     assert result is not None
     assert '"id": 0' in result
-    assert '"event": "heartbeat"' in result
+    assert '"event": "token"' in result
     assert '"token": "heartbeat"' in result
 
 
@@ -1668,3 +1675,272 @@ async def test_streaming_query_endpoint_rejects_model_provider_override_without_
     )
     assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
     assert exc_info.value.detail["response"] == expected_msg
+
+
+# ============================================================================
+# OLS Compatibility Tests
+# ============================================================================
+
+
+class TestOLSStreamEventFormatting:
+    """Test the stream_event function for both media types (OLS compatibility)."""
+
+    def test_stream_event_json_token(self):
+        """Test token event formatting for JSON media type."""
+        data = {"id": 0, "token": "Hello"}
+        result = stream_event(data, LLM_TOKEN_EVENT, MEDIA_TYPE_JSON)
+
+        expected = 'data: {"event": "token", "data": {"id": 0, "token": "Hello"}}\n\n'
+        assert result == expected
+
+    def test_stream_event_text_token(self):
+        """Test token event formatting for text media type."""
+
+        data = {"id": 0, "token": "Hello"}
+        result = stream_event(data, LLM_TOKEN_EVENT, MEDIA_TYPE_TEXT)
+
+        assert result == "Hello"
+
+    def test_stream_event_json_tool_call(self):
+        """Test tool call event formatting for JSON media type."""
+
+        data = {
+            "id": 0,
+            "token": {"tool_name": "search", "arguments": {"query": "test"}},
+        }
+        result = stream_event(data, LLM_TOOL_CALL_EVENT, MEDIA_TYPE_JSON)
+
+        expected = (
+            'data: {"event": "tool_call", "data": {"id": 0, "token": '
+            '{"tool_name": "search", "arguments": {"query": "test"}}}}\n\n'
+        )
+        assert result == expected
+
+    def test_stream_event_text_tool_call(self):
+        """Test tool call event formatting for text media type."""
+
+        data = {
+            "id": 0,
+            "token": {"tool_name": "search", "arguments": {"query": "test"}},
+        }
+        result = stream_event(data, LLM_TOOL_CALL_EVENT, MEDIA_TYPE_TEXT)
+
+        expected = (
+            '\nTool call: {"id": 0, "token": '
+            '{"tool_name": "search", "arguments": {"query": "test"}}}\n'
+        )
+        assert result == expected
+
+    def test_stream_event_json_tool_result(self):
+        """Test tool result event formatting for JSON media type."""
+
+        data = {
+            "id": 0,
+            "token": {"tool_name": "search", "response": "Found results"},
+        }
+        result = stream_event(data, LLM_TOOL_RESULT_EVENT, MEDIA_TYPE_JSON)
+
+        expected = (
+            'data: {"event": "tool_result", "data": {"id": 0, "token": '
+            '{"tool_name": "search", "response": "Found results"}}}\n\n'
+        )
+        assert result == expected
+
+    def test_stream_event_text_tool_result(self):
+        """Test tool result event formatting for text media type."""
+
+        data = {
+            "id": 0,
+            "token": {"tool_name": "search", "response": "Found results"},
+        }
+        result = stream_event(data, LLM_TOOL_RESULT_EVENT, MEDIA_TYPE_TEXT)
+
+        expected = (
+            '\nTool result: {"id": 0, "token": '
+            '{"tool_name": "search", "response": "Found results"}}\n'
+        )
+        assert result == expected
+
+    def test_stream_event_unknown_type(self):
+        """Test handling of unknown event types."""
+
+        data = {"id": 0, "token": "test"}
+        result = stream_event(data, "unknown_event", MEDIA_TYPE_TEXT)
+
+        assert result == ""
+
+
+class TestOLSStreamEndEvent:
+    """Test the stream_end_event function for both media types (OLS compatibility)."""
+
+    def test_stream_end_event_json(self):
+        """Test end event formatting for JSON media type."""
+
+        metadata_map = {
+            "doc1": {"title": "Test Doc 1", "docs_url": "https://example.com/doc1"},
+            "doc2": {"title": "Test Doc 2", "docs_url": "https://example.com/doc2"},
+        }
+        result = stream_end_event(metadata_map, MEDIA_TYPE_JSON)
+
+        # Parse the result to verify structure
+        data_part = result.replace("data: ", "").strip()
+        parsed = json.loads(data_part)
+
+        assert parsed["event"] == "end"
+        assert "referenced_documents" in parsed["data"]
+        assert len(parsed["data"]["referenced_documents"]) == 2
+        assert parsed["data"]["referenced_documents"][0]["doc_title"] == "Test Doc 1"
+        assert (
+            parsed["data"]["referenced_documents"][0]["doc_url"]
+            == "https://example.com/doc1"
+        )
+        assert "available_quotas" in parsed
+
+    def test_stream_end_event_text(self):
+        """Test end event formatting for text media type."""
+
+        metadata_map = {
+            "doc1": {"title": "Test Doc 1", "docs_url": "https://example.com/doc1"},
+            "doc2": {"title": "Test Doc 2", "docs_url": "https://example.com/doc2"},
+        }
+        result = stream_end_event(metadata_map, MEDIA_TYPE_TEXT)
+
+        expected = (
+            "\n\n---\n\nTest Doc 1: https://example.com/doc1\n"
+            "Test Doc 2: https://example.com/doc2"
+        )
+        assert result == expected
+
+    def test_stream_end_event_text_no_docs(self):
+        """Test end event formatting for text media type with no documents."""
+
+        metadata_map = {}
+        result = stream_end_event(metadata_map, MEDIA_TYPE_TEXT)
+
+        assert result == ""
+
+
+class TestOLSErrorHandling:
+    """Test error handling functions (OLS compatibility)."""
+
+    def test_prompt_too_long_error_json(self):
+        """Test prompt too long error for JSON media type."""
+
+        error = Exception("Prompt exceeds maximum length")
+        result = prompt_too_long_error(error, MEDIA_TYPE_JSON)
+
+        data_part = result.replace("data: ", "").strip()
+        parsed = json.loads(data_part)
+        assert parsed["event"] == "error"
+        assert parsed["data"]["status_code"] == 413
+        assert parsed["data"]["response"] == "Prompt is too long"
+        assert parsed["data"]["cause"] == "Prompt exceeds maximum length"
+
+    def test_prompt_too_long_error_text(self):
+        """Test prompt too long error for text media type."""
+
+        error = Exception("Prompt exceeds maximum length")
+        result = prompt_too_long_error(error, MEDIA_TYPE_TEXT)
+
+        assert result == "Prompt is too long: Prompt exceeds maximum length"
+
+    def test_generic_llm_error_json(self):
+        """Test generic LLM error for JSON media type."""
+
+        error = Exception("Connection failed")
+        result = generic_llm_error(error, MEDIA_TYPE_JSON)
+
+        data_part = result.replace("data: ", "").strip()
+        parsed = json.loads(data_part)
+        assert parsed["event"] == "error"
+        assert parsed["data"]["response"] == "Internal server error"
+        assert parsed["data"]["cause"] == "Connection failed"
+
+    def test_generic_llm_error_text(self):
+        """Test generic LLM error for text media type."""
+
+        error = Exception("Connection failed")
+        result = generic_llm_error(error, MEDIA_TYPE_TEXT)
+
+        assert result == "Error: Connection failed"
+
+
+class TestOLSCompatibilityIntegration:
+    """Integration tests for OLS compatibility."""
+
+    def test_media_type_validation(self):
+        """Test that media type validation works correctly."""
+
+        # Valid media types
+        valid_request = QueryRequest(query="test", media_type="application/json")
+        assert valid_request.media_type == "application/json"
+
+        valid_request = QueryRequest(query="test", media_type="text/plain")
+        assert valid_request.media_type == "text/plain"
+
+        # Invalid media type should raise error
+        with pytest.raises(ValueError, match="media_type must be either"):
+            QueryRequest(query="test", media_type="invalid/type")
+
+    def test_ols_event_structure(self):
+        """Test that events follow OLS structure."""
+
+        # Test token event structure
+        token_data = {"id": 0, "token": "Hello"}
+        token_event = stream_event(token_data, LLM_TOKEN_EVENT, MEDIA_TYPE_JSON)
+
+        data_part = token_event.replace("data: ", "").strip()
+        parsed = json.loads(data_part)
+
+        assert parsed["event"] == "token"
+        assert "id" in parsed["data"]
+        assert "token" in parsed["data"]
+        assert "role" not in parsed["data"]  # Role field is not included
+
+        # Test tool call event structure
+        tool_data = {
+            "id": 0,
+            "token": {"tool_name": "search", "arguments": {"query": "test"}},
+        }
+        tool_event = stream_event(tool_data, LLM_TOOL_CALL_EVENT, MEDIA_TYPE_JSON)
+
+        data_part = tool_event.replace("data: ", "").strip()
+        parsed = json.loads(data_part)
+
+        assert parsed["event"] == "tool_call"
+        assert "id" in parsed["data"]
+        assert "role" not in parsed["data"]
+        assert "token" in parsed["data"]
+
+        # Test tool result event structure
+        result_data = {
+            "id": 0,
+            "token": {"tool_name": "search", "response": "Found results"},
+        }
+        result_event = stream_event(result_data, LLM_TOOL_RESULT_EVENT, MEDIA_TYPE_JSON)
+
+        data_part = result_event.replace("data: ", "").strip()
+        parsed = json.loads(data_part)
+
+        assert parsed["event"] == "tool_result"
+        assert "id" in parsed["data"]
+        assert "role" not in parsed["data"]
+        assert "token" in parsed["data"]
+
+    def test_ols_end_event_structure(self):
+        """Test that end event follows OLS structure."""
+
+        metadata_map = {
+            "doc1": {"title": "Test Doc", "docs_url": "https://example.com/doc"}
+        }
+
+        end_event = stream_end_event(metadata_map, MEDIA_TYPE_JSON)
+        data_part = end_event.replace("data: ", "").strip()
+        parsed = json.loads(data_part)
+
+        assert parsed["event"] == "end"
+        assert "referenced_documents" in parsed["data"]
+        assert "truncated" in parsed["data"]
+        assert "input_tokens" in parsed["data"]
+        assert "output_tokens" in parsed["data"]
+        assert "available_quotas" in parsed  # At root level, not inside data

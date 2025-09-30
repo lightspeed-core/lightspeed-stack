@@ -116,6 +116,10 @@ DEFAULT_JWT_USER_NAME_CLAIM = "username"
 # default RAG tool value
 DEFAULT_RAG_TOOL = "knowledge_search"
 
+# Media type constants for streaming responses
+MEDIA_TYPE_JSON = "application/json"
+MEDIA_TYPE_TEXT = "text/plain"
+
 # PostgreSQL connection constants
 # See: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLMODE
 POSTGRES_DEFAULT_SSL_MODE = "prefer"
