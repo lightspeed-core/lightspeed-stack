@@ -1,7 +1,7 @@
 """In-memory cache implementation."""
 
 from cache.cache import Cache
-from models.cache_entry import CacheEntry
+from models.cache_entry import CacheEntry, ConversationData
 from models.config import InMemoryCacheConfig
 from log import get_logger
 from utils.connection_decorator import connection
@@ -85,7 +85,9 @@ class InMemoryCache(Cache):
         return True
 
     @connection
-    def list(self, user_id: str, skip_user_id_check: bool = False) -> list[str]:
+    def list(
+        self, user_id: str, skip_user_id_check: bool = False
+    ) -> list[ConversationData]:
         """List all conversations for a given user_id.
 
         Args:
@@ -98,6 +100,25 @@ class InMemoryCache(Cache):
         """
         super()._check_user_id(user_id, skip_user_id_check)
         return []
+
+    @connection
+    def set_topic_summary(
+        self,
+        user_id: str,
+        conversation_id: str,
+        topic_summary: str,
+        skip_user_id_check: bool = False,
+    ) -> None:
+        """Set the topic summary for the given conversation.
+
+        Args:
+            user_id: User identification.
+            conversation_id: Conversation ID unique for given user.
+            topic_summary: The topic summary to store.
+            skip_user_id_check: Skip user_id suid check.
+        """
+        # just check if user_id and conversation_id are UUIDs
+        super().construct_key(user_id, conversation_id, skip_user_id_check)
 
     def ready(self) -> bool:
         """Check if the cache is ready.

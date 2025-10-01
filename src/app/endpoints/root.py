@@ -783,7 +783,14 @@ async def root_endpoint_handler(
     auth: Annotated[AuthTuple, Depends(auth_dependency)],
     request: Request,
 ) -> HTMLResponse:
-    """Handle request to the / endpoint."""
+    """
+    Handle GET requests to the root ("/") endpoint and returns the static HTML index page.
+
+    Returns:
+        HTMLResponse: The HTML content of the index page, including a heading,
+        embedded image with the service icon, and links to the API documentation
+        via Swagger UI and ReDoc.
+    """
     # Used only for authorization
     _ = auth
 

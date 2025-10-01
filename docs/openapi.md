@@ -348,6 +348,69 @@ Returns:
 | 404 | Not Found |  |
 | 503 | Service Unavailable |  |
 | 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+## GET `/v2/conversations`
+
+> **Get Conversations List Endpoint Handler**
+
+Handle request to retrieve all conversations for the authenticated user.
+
+
+
+
+
+### ✅ Responses
+
+| Status Code | Description | Component |
+|-------------|-------------|-----------|
+| 200 | Successful Response | [ConversationsListResponseV2](#conversationslistresponsev2) |
+## GET `/v2/conversations/{conversation_id}`
+
+> **Get Conversation Endpoint Handler**
+
+Handle request to retrieve a conversation by ID.
+
+
+
+### 🔗 Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| conversation_id | string | True |  |
+
+
+### ✅ Responses
+
+| Status Code | Description | Component |
+|-------------|-------------|-----------|
+| 200 | Successful Response | [ConversationResponse](#conversationresponse) |
+| 400 | Missing or invalid credentials provided by client | [UnauthorizedResponse](#unauthorizedresponse) |
+| 401 | Unauthorized: Invalid or missing Bearer token | [UnauthorizedResponse](#unauthorizedresponse) |
+| 404 | Not Found |  |
+| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+## DELETE `/v2/conversations/{conversation_id}`
+
+> **Delete Conversation Endpoint Handler**
+
+Handle request to delete a conversation by ID.
+
+
+
+### 🔗 Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| conversation_id | string | True |  |
+
+
+### ✅ Responses
+
+| Status Code | Description | Component |
+|-------------|-------------|-----------|
+| 200 | Successful Response | [ConversationDeleteResponse](#conversationdeleteresponse) |
+| 400 | Missing or invalid credentials provided by client | [UnauthorizedResponse](#unauthorizedresponse) |
+| 401 | Unauthorized: Invalid or missing Bearer token | [UnauthorizedResponse](#unauthorizedresponse) |
+| 404 | Not Found |  |
+| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
 ## GET `/readiness`
 
 > **Readiness Probe Get Method**
@@ -562,6 +625,21 @@ Global service configuration.
 | authorization |  |  |
 | customization |  |  |
 | inference |  |  |
+| conversation_cache |  |  |
+
+
+## ConversationCacheConfiguration
+
+
+Conversation cache configuration.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type |  |  |
+| memory |  |  |
+| sqlite |  |  |
+| postgres |  |  |
 
 
 ## ConversationDeleteResponse
@@ -690,6 +768,20 @@ Example:
         ]
     )
     ```
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| conversations | array |  |
+
+
+## ConversationsListResponseV2
+
+
+Model representing a response for listing conversations of a user.
+
+Attributes:
+    conversations: List of conversation IDs associated with the user.
 
 
 | Field | Type | Description |
@@ -879,6 +971,17 @@ Model representing response for forbidden access.
 | Field | Type | Description |
 |-------|------|-------------|
 | detail | array |  |
+
+
+## InMemoryCacheConfig
+
+
+In-memory cache configuration.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| max_entries | integer |  |
 
 
 ## InferenceConfiguration
@@ -1102,12 +1205,36 @@ Model representing LLM response to a query.
 Attributes:
     conversation_id: The optional conversation ID (UUID).
     response: The response.
+    rag_chunks: List of RAG chunks used to generate the response.
+    referenced_documents: The URLs and titles for the documents used to generate the response.
+    tool_calls: List of tool calls made during response generation.
+    TODO: truncated: Whether conversation history was truncated.
+    TODO: input_tokens: Number of tokens sent to LLM.
+    TODO: output_tokens: Number of tokens received from LLM.
+    TODO: available_quotas: Quota available as measured by all configured quota limiters
+    TODO: tool_results: List of tool results.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
 | conversation_id |  | The optional conversation ID (UUID) |
 | response | string | Response from LLM |
+| rag_chunks | array |  |
+| tool_calls |  | List of tool calls made during response generation |
+| referenced_documents | array | List of documents referenced in generating the response |
+
+
+## RAGChunk
+
+
+Model representing a RAG chunk used in the response.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| content | string | The content of the chunk |
+| source |  | Source document or URL |
+| score |  | Relevance score |
 
 
 ## ReadinessResponse
@@ -1141,6 +1268,22 @@ Example:
 | ready | boolean | Flag indicating if service is ready |
 | reason | string | The reason for the readiness |
 | providers | array | List of unhealthy providers in case of readiness failure. |
+
+
+## ReferencedDocument
+
+
+Model representing a document referenced in generating a response.
+
+Attributes:
+    doc_url: Url to the referenced doc.
+    doc_title: Title of the referenced doc.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| doc_url |  | URL of the referenced document |
+| doc_title | string | Title of the referenced document |
 
 
 ## SQLiteDatabaseConfiguration
@@ -1207,6 +1350,19 @@ TLS configuration.
 | tls_certificate_path |  |  |
 | tls_key_path |  |  |
 | tls_key_password |  |  |
+
+
+## ToolCall
+
+
+Model representing a tool call made during response generation.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| tool_name | string | Name of the tool called |
+| arguments | object | Arguments passed to the tool |
+| result |  | Result from the tool |
 
 
 ## UnauthorizedResponse

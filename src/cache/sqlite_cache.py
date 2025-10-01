@@ -6,7 +6,7 @@ import sqlite3
 
 from cache.cache import Cache
 from cache.cache_error import CacheError
-from models.cache_entry import CacheEntry
+from models.cache_entry import CacheEntry, ConversationData
 from models.config import SQLiteDatabaseConfiguration
 from log import get_logger
 from utils.connection_decorator import connection
@@ -50,6 +50,16 @@ class SQLiteCache(Cache):
         );
         """
 
+    CREATE_CONVERSATIONS_TABLE = """
+        CREATE TABLE IF NOT EXISTS conversations (
+            user_id                text NOT NULL,
+            conversation_id        text NOT NULL,
+            topic_summary          text,
+            last_message_timestamp int NOT NULL,
+            PRIMARY KEY(user_id, conversation_id)
+        );
+        """
+
     CREATE_INDEX = """
         CREATE INDEX IF NOT EXISTS timestamps
             ON cache (created_at)
@@ -77,11 +87,28 @@ class SQLiteCache(Cache):
         """
 
     LIST_CONVERSATIONS_STATEMENT = """
-        SELECT DISTINCT conversation_id
-          FROM cache
+        SELECT conversation_id, topic_summary, last_message_timestamp
+          FROM conversations
          WHERE user_id=?
-         ORDER BY created_at DESC
+         ORDER BY last_message_timestamp DESC
     """
+
+    INSERT_OR_UPDATE_TOPIC_SUMMARY_STATEMENT = """
+        INSERT OR REPLACE INTO conversations(user_id, conversation_id, topic_summary, last_message_timestamp)
+        VALUES (?, ?, ?, ?)
+        """
+
+    DELETE_CONVERSATION_STATEMENT = """
+        DELETE FROM conversations
+         WHERE user_id=? AND conversation_id=?
+        """
+
+    UPSERT_CONVERSATION_STATEMENT = """
+        INSERT INTO conversations(user_id, conversation_id, topic_summary, last_message_timestamp)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT (user_id, conversation_id)
+        DO UPDATE SET last_message_timestamp = excluded.last_message_timestamp
+        """
 
     def __init__(self, config: SQLiteDatabaseConfiguration) -> None:
         """Create a new instance of SQLite cache."""
@@ -140,6 +167,9 @@ class SQLiteCache(Cache):
 
         logger.info("Initializing table for cache")
         cursor.execute(SQLiteCache.CREATE_CACHE_TABLE)
+
+        logger.info("Initializing table for conversations")
+        cursor.execute(SQLiteCache.CREATE_CONVERSATIONS_TABLE)
 
         logger.info("Initializing index for cache")
         cursor.execute(SQLiteCache.CREATE_INDEX)
@@ -206,18 +236,26 @@ class SQLiteCache(Cache):
             raise CacheError("insert_or_append: cache is disconnected")
 
         cursor = self.connection.cursor()
+        current_time = time()
         cursor.execute(
             self.INSERT_CONVERSATION_HISTORY_STATEMENT,
             (
                 user_id,
                 conversation_id,
-                time(),
+                current_time,
                 cache_entry.query,
                 cache_entry.response,
                 cache_entry.provider,
                 cache_entry.model,
             ),
         )
+
+        # Update or insert conversation record with last_message_timestamp
+        cursor.execute(
+            self.UPSERT_CONVERSATION_STATEMENT,
+            (user_id, conversation_id, None, current_time),
+        )
+
         cursor.close()
         self.connection.commit()
 
@@ -246,12 +284,21 @@ class SQLiteCache(Cache):
             (user_id, conversation_id),
         )
         deleted = cursor.rowcount > 0
+
+        # Also delete conversation record for this conversation
+        cursor.execute(
+            self.DELETE_CONVERSATION_STATEMENT,
+            (user_id, conversation_id),
+        )
+
         cursor.close()
         self.connection.commit()
         return deleted
 
     @connection
-    def list(self, user_id: str, skip_user_id_check: bool = False) -> list[str]:
+    def list(
+        self, user_id: str, skip_user_id_check: bool = False
+    ) -> list[ConversationData]:
         """List all conversations for a given user_id.
 
         Args:
@@ -259,7 +306,8 @@ class SQLiteCache(Cache):
             skip_user_id_check: Skip user_id suid check.
 
         Returns:
-            A list of conversation ids from the cache
+            A list of ConversationData objects containing conversation_id,
+            topic_summary, and last_message_timestamp
 
         """
         if self.connection is None:
@@ -271,7 +319,44 @@ class SQLiteCache(Cache):
         conversations = cursor.fetchall()
         cursor.close()
 
-        return [conversation[0] for conversation in conversations]
+        result = []
+        for conversation in conversations:
+            conversation_data = ConversationData(
+                conversation_id=conversation[0],
+                topic_summary=conversation[1],
+                last_message_timestamp=conversation[2],
+            )
+            result.append(conversation_data)
+
+        return result
+
+    @connection
+    def set_topic_summary(
+        self,
+        user_id: str,
+        conversation_id: str,
+        topic_summary: str,
+        skip_user_id_check: bool = False,
+    ) -> None:
+        """Set the topic summary for the given conversation.
+
+        Args:
+            user_id: User identification.
+            conversation_id: Conversation ID unique for given user.
+            topic_summary: The topic summary to store.
+            skip_user_id_check: Skip user_id suid check.
+        """
+        if self.connection is None:
+            logger.error("Cache is disconnected")
+            raise CacheError("set_topic_summary: cache is disconnected")
+
+        cursor = self.connection.cursor()
+        cursor.execute(
+            self.INSERT_OR_UPDATE_TOPIC_SUMMARY_STATEMENT,
+            (user_id, conversation_id, topic_summary, time()),
+        )
+        cursor.close()
+        self.connection.commit()
 
     def ready(self) -> bool:
         """Check if the cache is ready.

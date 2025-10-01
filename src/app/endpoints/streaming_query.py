@@ -2,41 +2,25 @@
 
 import ast
 import json
-import re
 import logging
+import re
 from typing import Annotated, Any, AsyncIterator, Iterator, cast
 
-from llama_stack_client import APIConnectionError
-from llama_stack_client import AsyncLlamaStackClient  # type: ignore
-from llama_stack_client.types import UserMessage  # type: ignore
-
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
+from llama_stack_client import (
+    APIConnectionError,
+    AsyncLlamaStackClient,  # type: ignore
+)
 from llama_stack_client.lib.agents.event_logger import interleaved_content_as_str
+from llama_stack_client.types import UserMessage  # type: ignore
 from llama_stack_client.types.agents.agent_turn_response_stream_chunk import (
     AgentTurnResponseStreamChunk,
 )
 from llama_stack_client.types.shared import ToolCall
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 
-from fastapi import APIRouter, HTTPException, Request, Depends, status
-from fastapi.responses import StreamingResponse
-
-from authentication import get_auth_dependency
-from authentication.interface import AuthTuple
-from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
-from configuration import configuration
-import metrics
-from metrics.utils import update_llm_token_count_from_turn
-from models.config import Action
-from models.requests import QueryRequest
-from models.responses import UnauthorizedResponse, ForbiddenResponse
-from models.database.conversations import UserConversation
-from utils.endpoints import check_configuration_loaded, get_agent, get_system_prompt
-from utils.mcp_headers import mcp_headers_dependency, handle_mcp_headers_with_toolgroups
-from utils.transcripts import store_transcript
-from utils.types import TurnSummary
-from utils.endpoints import validate_model_provider_override
-
+from app.database import get_session
 from app.endpoints.query import (
     get_rag_toolgroups,
     is_input_shield,
@@ -47,7 +31,32 @@ from app.endpoints.query import (
     validate_conversation_ownership,
     persist_user_conversation_details,
     evaluate_model_hints,
+    get_topic_summary,
 )
+from authentication import get_auth_dependency
+from authentication.interface import AuthTuple
+from authorization.middleware import authorize
+from client import AsyncLlamaStackClientHolder
+from configuration import configuration
+from constants import DEFAULT_RAG_TOOL
+import metrics
+from metrics.utils import update_llm_token_count_from_turn
+from models.config import Action
+from models.database.conversations import UserConversation
+from models.requests import QueryRequest
+from models.responses import ForbiddenResponse, UnauthorizedResponse
+from utils.endpoints import (
+    check_configuration_loaded,
+    create_referenced_documents_with_metadata,
+    create_rag_chunks_dict,
+    get_agent,
+    get_system_prompt,
+    store_conversation_into_cache,
+    validate_model_provider_override,
+)
+from utils.mcp_headers import handle_mcp_headers_with_toolgroups, mcp_headers_dependency
+from utils.transcripts import store_transcript
+from utils.types import TurnSummary
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query"])
@@ -151,60 +160,11 @@ def stream_end_event(metadata_map: dict, summary: TurnSummary) -> str:
         str: A Server-Sent Events (SSE) formatted string
         representing the end of the data stream.
     """
-    # Process RAG chunks
-    rag_chunks = [
-        {
-            "content": chunk.content,
-            "source": chunk.source,
-            "score": chunk.score
-        }
-        for chunk in summary.rag_chunks
-    ]
+    # Process RAG chunks using utility function
+    rag_chunks = create_rag_chunks_dict(summary)
 
-    # Extract referenced documents from RAG chunks, enriching from metadata_map and deduping
-    referenced_docs: list[dict[str, str | None]] = []
-    doc_urls: set[str] = set()
-    doc_ids: set[str] = set()
-    metas_by_id: dict[str, dict[str, Any]] = {
-        k: v for k, v in metadata_map.items() if isinstance(v, dict)
-    }
-
-    for chunk in summary.rag_chunks:
-        src = chunk.source
-        if not src:
-            continue
-        if src.startswith("http"):
-            if src not in doc_urls:
-                doc_urls.add(src)
-                referenced_docs.append(
-                    {"doc_url": src, "doc_title": src.rsplit("/", 1)[-1] or src}
-                )
-        else:
-            # Treat as document_id; enrich from metadata_map when available
-            if src in doc_ids:
-                continue
-            doc_ids.add(src)
-            meta = metas_by_id.get(src, {})
-            doc_url = meta.get("docs_url")
-            title = meta.get("title")
-            if doc_url:
-                if doc_url in doc_urls:
-                    continue
-                doc_urls.add(doc_url)
-            referenced_docs.append(
-                {
-                    "doc_url": doc_url,
-                    "doc_title": title or (doc_url.rsplit("/", 1)[-1] if doc_url else src),
-                }
-            )
-
-    # Add any additional referenced documents from metadata_map not already present
-    for meta in metas_by_id.values():
-        doc_url = meta.get("docs_url")
-        title = meta.get("title")
-        if doc_url and doc_url not in doc_urls:
-            doc_urls.add(doc_url)
-            referenced_docs.append({"doc_url": doc_url, "doc_title": title})
+    # Extract referenced documents using utility function
+    referenced_docs = create_referenced_documents_with_metadata(summary, metadata_map)
 
     return format_stream_data(
         {
@@ -529,7 +489,7 @@ def _handle_tool_execution_event(
                     }
                 )
 
-            elif r.tool_name == "knowledge_search" and r.content:
+            elif r.tool_name == DEFAULT_RAG_TOOL and r.content:
                 summary = ""
                 for i, text_content_item in enumerate(r.content):
                     if isinstance(text_content_item, TextContentItem):
@@ -609,7 +569,7 @@ def _handle_heartbeat_event(chunk_id: int) -> Iterator[str]:
 
 @router.post("/streaming_query", responses=streaming_query_responses)
 @authorize(Action.STREAMING_QUERY)
-async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
+async def streaming_query_endpoint_handler(  # pylint: disable=R0915,R0914
     request: Request,
     query_request: QueryRequest,
     auth: Annotated[AuthTuple, Depends(auth_dependency)],
@@ -732,15 +692,6 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
             if not is_transcripts_enabled():
                 logger.debug("Transcript collection is disabled in the configuration")
             else:
-                # Convert RAG chunks to serializable format for store_transcript
-                rag_chunks_for_transcript = [
-                    {
-                        "content": chunk.content,
-                        "source": chunk.source,
-                        "score": chunk.score
-                    }
-                    for chunk in summary.rag_chunks
-                ]
                 store_transcript(
                     user_id=user_id,
                     conversation_id=conversation_id,
@@ -750,18 +701,44 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
                     query=query_request.query,
                     query_request=query_request,
                     summary=summary,
-                    rag_chunks=rag_chunks_for_transcript,
+                    rag_chunks=[],  # RAG chunks are already in summary
                     truncated=False,  # TODO(lucasagomes): implement truncation as part
                     # of quota work
                     attachments=query_request.attachments or [],
                 )
 
-        persist_user_conversation_details(
-            user_id=user_id,
-            conversation_id=conversation_id,
-            model=model_id,
-            provider_id=provider_id,
-        )
+            # Get the initial topic summary for the conversation
+            topic_summary = None
+            with get_session() as session:
+                existing_conversation = (
+                    session.query(UserConversation)
+                    .filter_by(id=conversation_id)
+                    .first()
+                )
+                if not existing_conversation:
+                    topic_summary = await get_topic_summary(
+                        query_request.query, client, model_id
+                    )
+
+            store_conversation_into_cache(
+                configuration,
+                user_id,
+                conversation_id,
+                provider_id,
+                model_id,
+                query_request.query,
+                summary.llm_response,
+                _skip_userid_check,
+                topic_summary,
+            )
+
+            persist_user_conversation_details(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                model=model_id,
+                provider_id=provider_id,
+                topic_summary=topic_summary,
+            )
 
         # Update metrics for the LLM call
         metrics.llm_calls_total.labels(provider_id, model_id).inc()

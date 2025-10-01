@@ -80,7 +80,11 @@ def store_transcript(  # pylint: disable=too-many-arguments,too-many-positional-
 
     # stores feedback in a file under unique uuid
     transcript_file_path = transcripts_path / f"{get_suid()}.json"
-    with open(transcript_file_path, "w", encoding="utf-8") as transcript_file:
-        json.dump(data_to_store, transcript_file)
+    try:
+        with open(transcript_file_path, "w", encoding="utf-8") as transcript_file:
+            json.dump(data_to_store, transcript_file)
+    except (IOError, OSError) as e:
+        logger.error("Failed to store transcript into %s: %s", transcript_file_path, e)
+        raise
 
     logger.info("Transcript successfully stored at: %s", transcript_file_path)

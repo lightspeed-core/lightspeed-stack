@@ -152,7 +152,13 @@
                             }
                         },
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-                        "response": "LLM answer"
+                        "response": "LLM answer",
+                        "referenced_documents": [
+                            {
+                                "doc_url": "https://docs.openshift.com/container-platform/4.15/operators/olm/index.html",
+                                "doc_title": "Operator Lifecycle Manager (OLM)"
+                            }
+                        ]
                     },
                     "400": {
                         "description": "Missing or invalid credentials provided by client",
@@ -718,6 +724,195 @@
                 }
             }
         },
+        "/v2/conversations": {
+            "get": {
+                "tags": [
+                    "conversations_v2"
+                ],
+                "summary": "Get Conversations List Endpoint Handler",
+                "description": "Handle request to retrieve all conversations for the authenticated user.",
+                "operationId": "get_conversations_list_endpoint_handler_v2_conversations_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConversationsListResponseV2"
+                                }
+                            }
+                        },
+                        "conversations": [
+                            {
+                                "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                "topic_summary": "This is a topic summary",
+                                "last_message_timestamp": "2024-01-01T00:00:00Z"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "/v2/conversations/{conversation_id}": {
+            "get": {
+                "tags": [
+                    "conversations_v2"
+                ],
+                "summary": "Get Conversation Endpoint Handler",
+                "description": "Handle request to retrieve a conversation by ID.",
+                "operationId": "get_conversation_endpoint_handler_v2_conversations__conversation_id__get",
+                "parameters": [
+                    {
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Conversation Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConversationResponse"
+                                }
+                            }
+                        },
+                        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "chat_history": [
+                            {
+                                "messages": [
+                                    {
+                                        "content": "Hi",
+                                        "type": "user"
+                                    },
+                                    {
+                                        "content": "Hello!",
+                                        "type": "assistant"
+                                    }
+                                ],
+                                "started_at": "2024-01-01T00:00:00Z",
+                                "completed_at": "2024-01-01T00:00:05Z",
+                                "provider": "provider ID",
+                                "model": "model ID"
+                            }
+                        ]
+                    },
+                    "400": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized: Invalid or missing Bearer token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "detail": {
+                            "response": "Conversation not found",
+                            "cause": "The specified conversation ID does not exist."
+                        },
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "conversations_v2"
+                ],
+                "summary": "Delete Conversation Endpoint Handler",
+                "description": "Handle request to delete a conversation by ID.",
+                "operationId": "delete_conversation_endpoint_handler_v2_conversations__conversation_id__delete",
+                "parameters": [
+                    {
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Conversation Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConversationDeleteResponse"
+                                }
+                            }
+                        },
+                        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "success": true,
+                        "message": "Conversation deleted successfully"
+                    },
+                    "400": {
+                        "description": "Missing or invalid credentials provided by client",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized: Invalid or missing Bearer token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "detail": {
+                            "response": "Conversation not found",
+                            "cause": "The specified conversation ID does not exist."
+                        },
+                        "description": "Not Found"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/readiness": {
             "get": {
                 "tags": [
@@ -1155,6 +1350,9 @@
                     },
                     "inference": {
                         "$ref": "#/components/schemas/InferenceConfiguration"
+                    },
+                    "conversation_cache": {
+                        "$ref": "#/components/schemas/ConversationCacheConfiguration"
                     }
                 },
                 "additionalProperties": false,
@@ -1167,6 +1365,92 @@
                 ],
                 "title": "Configuration",
                 "description": "Global service configuration."
+            },
+            "ConversationCacheConfiguration": {
+                "properties": {
+                    "type": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "noop",
+                                    "memory",
+                                    "sqlite",
+                                    "postgres"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Type"
+                    },
+                    "memory": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/InMemoryCacheConfig"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "sqlite": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SQLiteDatabaseConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "postgres": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PostgreSQLDatabaseConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "ConversationCacheConfiguration",
+                "description": "Conversation cache configuration."
+            },
+            "ConversationData": {
+                "properties": {
+                    "conversation_id": {
+                        "type": "string",
+                        "title": "Conversation Id"
+                    },
+                    "topic_summary": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Topic Summary"
+                    },
+                    "last_message_timestamp": {
+                        "type": "number",
+                        "title": "Last Message Timestamp"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conversation_id",
+                    "topic_summary",
+                    "last_message_timestamp"
+                ],
+                "title": "ConversationData",
+                "description": "Model representing conversation data returned by cache list operations.\n\nAttributes:\n    conversation_id: The conversation ID\n    topic_summary: The topic summary for the conversation (can be None)\n    last_message_timestamp: The timestamp of the last message in the conversation"
             },
             "ConversationDeleteResponse": {
                 "properties": {
@@ -1285,6 +1569,21 @@
                             "openai",
                             "gemini"
                         ]
+                    },
+                    "topic_summary": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Topic Summary",
+                        "description": "Topic summary for the conversation",
+                        "examples": [
+                            "Openshift Microservices Deployment Strategies"
+                        ]
                     }
                 },
                 "type": "object",
@@ -1292,7 +1591,7 @@
                     "conversation_id"
                 ],
                 "title": "ConversationDetails",
-                "description": "Model representing the details of a user conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    created_at: When the conversation was created.\n    last_message_at: When the last message was sent.\n    message_count: Number of user messages in the conversation.\n    last_used_model: The last model used for the conversation.\n    last_used_provider: The provider of the last used model.\n\nExample:\n    ```python\n    conversation = ConversationDetails(\n        conversation_id=\"123e4567-e89b-12d3-a456-426614174000\"\n        created_at=\"2024-01-01T00:00:00Z\",\n        last_message_at=\"2024-01-01T00:05:00Z\",\n        message_count=5,\n        last_used_model=\"gemini/gemini-2.0-flash\",\n        last_used_provider=\"gemini\",\n    )\n    ```"
+                "description": "Model representing the details of a user conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    created_at: When the conversation was created.\n    last_message_at: When the last message was sent.\n    message_count: Number of user messages in the conversation.\n    last_used_model: The last model used for the conversation.\n    last_used_provider: The provider of the last used model.\n    topic_summary: The topic summary for the conversation.\n\nExample:\n    ```python\n    conversation = ConversationDetails(\n        conversation_id=\"123e4567-e89b-12d3-a456-426614174000\"\n        created_at=\"2024-01-01T00:00:00Z\",\n        last_message_at=\"2024-01-01T00:05:00Z\",\n        message_count=5,\n        last_used_model=\"gemini/gemini-2.0-flash\",\n        last_used_provider=\"gemini\",\n        topic_summary=\"Openshift Microservices Deployment Strategies\",\n    )\n    ```"
             },
             "ConversationResponse": {
                 "properties": {
@@ -1353,7 +1652,7 @@
                     "conversations"
                 ],
                 "title": "ConversationsListResponse",
-                "description": "Model representing a response for listing conversations of a user.\n\nAttributes:\n    conversations: List of conversation details associated with the user.\n\nExample:\n    ```python\n    conversations_list = ConversationsListResponse(\n        conversations=[\n            ConversationDetails(\n                conversation_id=\"123e4567-e89b-12d3-a456-426614174000\",\n                created_at=\"2024-01-01T00:00:00Z\",\n                last_message_at=\"2024-01-01T00:05:00Z\",\n                message_count=5,\n                last_used_model=\"gemini/gemini-2.0-flash\",\n                last_used_provider=\"gemini\",\n            ),\n            ConversationDetails(\n                conversation_id=\"456e7890-e12b-34d5-a678-901234567890\"\n                created_at=\"2024-01-01T01:00:00Z\",\n                message_count=2,\n                last_used_model=\"gemini/gemini-2.0-flash\",\n                last_used_provider=\"gemini\",\n            )\n        ]\n    )\n    ```",
+                "description": "Model representing a response for listing conversations of a user.\n\nAttributes:\n    conversations: List of conversation details associated with the user.\n\nExample:\n    ```python\n    conversations_list = ConversationsListResponse(\n        conversations=[\n            ConversationDetails(\n                conversation_id=\"123e4567-e89b-12d3-a456-426614174000\",\n                created_at=\"2024-01-01T00:00:00Z\",\n                last_message_at=\"2024-01-01T00:05:00Z\",\n                message_count=5,\n                last_used_model=\"gemini/gemini-2.0-flash\",\n                last_used_provider=\"gemini\",\n                topic_summary=\"Openshift Microservices Deployment Strategies\",\n            ),\n            ConversationDetails(\n                conversation_id=\"456e7890-e12b-34d5-a678-901234567890\"\n                created_at=\"2024-01-01T01:00:00Z\",\n                message_count=2,\n                last_used_model=\"gemini/gemini-2.0-flash\",\n                last_used_provider=\"gemini\",\n                topic_summary=\"RHDH Purpose Summary\",\n            )\n        ]\n    )\n    ```",
                 "examples": [
                     {
                         "conversations": [
@@ -1363,18 +1662,37 @@
                                 "last_message_at": "2024-01-01T00:05:00Z",
                                 "last_used_model": "gemini/gemini-2.0-flash",
                                 "last_used_provider": "gemini",
-                                "message_count": 5
+                                "message_count": 5,
+                                "topic_summary": "Openshift Microservices Deployment Strategies"
                             },
                             {
                                 "conversation_id": "456e7890-e12b-34d5-a678-901234567890",
                                 "created_at": "2024-01-01T01:00:00Z",
                                 "last_used_model": "gemini/gemini-2.5-flash",
                                 "last_used_provider": "gemini",
-                                "message_count": 2
+                                "message_count": 2,
+                                "topic_summary": "RHDH Purpose Summary"
                             }
                         ]
                     }
                 ]
+            },
+            "ConversationsListResponseV2": {
+                "properties": {
+                    "conversations": {
+                        "items": {
+                            "$ref": "#/components/schemas/ConversationData"
+                        },
+                        "type": "array",
+                        "title": "Conversations"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conversations"
+                ],
+                "title": "ConversationsListResponseV2",
+                "description": "Model representing a response for listing conversations of a user.\n\nAttributes:\n    conversations: List of conversation data associated with the user."
             },
             "CustomProfile": {
                 "properties": {
@@ -1750,6 +2068,22 @@
                 },
                 "type": "object",
                 "title": "HTTPValidationError"
+            },
+            "InMemoryCacheConfig": {
+                "properties": {
+                    "max_entries": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Max Entries"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "max_entries"
+                ],
+                "title": "InMemoryCacheConfig",
+                "description": "In-memory cache configuration."
             },
             "InferenceConfiguration": {
                 "properties": {
@@ -2372,6 +2706,45 @@
                         "examples": [
                             "Kubernetes is an open-source container orchestration system for automating ..."
                         ]
+                    },
+                    "rag_chunks": {
+                        "items": {
+                            "$ref": "#/components/schemas/RAGChunk"
+                        },
+                        "type": "array",
+                        "title": "Rag Chunks",
+                        "default": []
+                    },
+                    "tool_calls": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ToolCall"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Calls",
+                        "description": "List of tool calls made during response generation"
+                    },
+                    "referenced_documents": {
+                        "items": {
+                            "$ref": "#/components/schemas/ReferencedDocument"
+                        },
+                        "type": "array",
+                        "title": "Referenced Documents",
+                        "description": "List of documents referenced in generating the response",
+                        "examples": [
+                            [
+                                {
+                                    "doc_title": "Operator Lifecycle Manager (OLM)",
+                                    "doc_url": "https://docs.openshift.com/container-platform/4.15/operators/olm/index.html"
+                                }
+                            ]
+                        ]
                     }
                 },
                 "type": "object",
@@ -2379,13 +2752,76 @@
                     "response"
                 ],
                 "title": "QueryResponse",
-                "description": "Model representing LLM response to a query.\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The response.",
+                "description": "Model representing LLM response to a query.\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The response.\n    rag_chunks: List of RAG chunks used to generate the response.\n    referenced_documents: The URLs and titles for the documents used to generate the response.\n    tool_calls: List of tool calls made during response generation.\n    TODO: truncated: Whether conversation history was truncated.\n    TODO: input_tokens: Number of tokens sent to LLM.\n    TODO: output_tokens: Number of tokens received from LLM.\n    TODO: available_quotas: Quota available as measured by all configured quota limiters\n    TODO: tool_results: List of tool results.",
                 "examples": [
                     {
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-                        "response": "Operator Lifecycle Manager (OLM) helps users install..."
+                        "rag_chunks": [
+                            {
+                                "content": "OLM is a component of the Operator Framework toolkit...",
+                                "score": 0.95,
+                                "source": "kubernetes-docs/operators.md"
+                            }
+                        ],
+                        "referenced_documents": [
+                            {
+                                "doc_title": "Operator Lifecycle Manager (OLM)",
+                                "doc_url": "https://docs.openshift.com/container-platform/4.15/operators/olm/index.html"
+                            }
+                        ],
+                        "response": "Operator Lifecycle Manager (OLM) helps users install...",
+                        "tool_calls": [
+                            {
+                                "arguments": {
+                                    "query": "operator lifecycle manager"
+                                },
+                                "result": {
+                                    "chunks_found": 5
+                                },
+                                "tool_name": "knowledge_search"
+                            }
+                        ]
                     }
                 ]
+            },
+            "RAGChunk": {
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "title": "Content",
+                        "description": "The content of the chunk"
+                    },
+                    "source": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Source",
+                        "description": "Source document or URL"
+                    },
+                    "score": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Score",
+                        "description": "Relevance score"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "content"
+                ],
+                "title": "RAGChunk",
+                "description": "Model representing a RAG chunk used in the response."
             },
             "ReadinessResponse": {
                 "properties": {
@@ -2431,6 +2867,35 @@
                         "reason": "Service is ready"
                     }
                 ]
+            },
+            "ReferencedDocument": {
+                "properties": {
+                    "doc_url": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "minLength": 1,
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Doc Url",
+                        "description": "URL of the referenced document"
+                    },
+                    "doc_title": {
+                        "type": "string",
+                        "title": "Doc Title",
+                        "description": "Title of the referenced document"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "doc_title"
+                ],
+                "title": "ReferencedDocument",
+                "description": "Model representing a document referenced in generating a response.\n\nAttributes:\n    doc_url: Url to the referenced doc.\n    doc_title: Title of the referenced doc."
             },
             "SQLiteDatabaseConfiguration": {
                 "properties": {
@@ -2564,6 +3029,41 @@
                 "type": "object",
                 "title": "TLSConfiguration",
                 "description": "TLS configuration."
+            },
+            "ToolCall": {
+                "properties": {
+                    "tool_name": {
+                        "type": "string",
+                        "title": "Tool Name",
+                        "description": "Name of the tool called"
+                    },
+                    "arguments": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Arguments",
+                        "description": "Arguments passed to the tool"
+                    },
+                    "result": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Result",
+                        "description": "Result from the tool"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "tool_name",
+                    "arguments"
+                ],
+                "title": "ToolCall",
+                "description": "Model representing a tool call made during response generation."
             },
             "UnauthorizedResponse": {
                 "properties": {

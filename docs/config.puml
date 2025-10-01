@@ -47,7 +47,7 @@ class "ConversationCacheConfiguration" as src.models.config.ConversationCacheCon
   memory : Optional[InMemoryCacheConfig]
   postgres : Optional[PostgreSQLDatabaseConfiguration]
   sqlite : Optional[SQLiteDatabaseConfiguration]
-  type : Literal['memory', 'sqlite', 'postgres'] | None
+  type : Literal['noop', 'memory', 'sqlite', 'postgres'] | None
   check_cache_configuration() -> Self
 }
 class "CustomProfile" as src.models.config.CustomProfile {

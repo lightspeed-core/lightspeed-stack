@@ -7,7 +7,7 @@ import sqlite3
 import pytest
 
 from models.config import SQLiteDatabaseConfiguration
-from models.cache_entry import CacheEntry
+from models.cache_entry import CacheEntry, ConversationData
 from utils import suid
 
 from cache.cache_error import CacheError
@@ -188,6 +188,7 @@ def test_list_operation_when_connected(tmpdir):
     # should not fail
     lst = cache.list(USER_ID_1, False)
     assert not lst
+    assert isinstance(lst, list)
 
 
 def test_ready_method(tmpdir):
@@ -255,3 +256,94 @@ def test_multiple_ids(tmpdir):
     lst = cache.get(USER_ID_2, CONVERSATION_ID_2, False)
     assert lst[0] == cache_entry_1
     assert lst[1] == cache_entry_2
+
+
+def test_list_with_conversations(tmpdir):
+    """Test the list() method with actual conversations."""
+    cache = create_cache(tmpdir)
+
+    # Add some conversations
+    cache.insert_or_append(USER_ID_1, CONVERSATION_ID_1, cache_entry_1, False)
+    cache.insert_or_append(USER_ID_1, CONVERSATION_ID_2, cache_entry_2, False)
+
+    # Set topic summaries
+    cache.set_topic_summary(USER_ID_1, CONVERSATION_ID_1, "First conversation", False)
+    cache.set_topic_summary(USER_ID_1, CONVERSATION_ID_2, "Second conversation", False)
+
+    # Test list functionality
+    conversations = cache.list(USER_ID_1, False)
+    assert len(conversations) == 2
+    assert all(isinstance(conv, ConversationData) for conv in conversations)
+
+    # Check that conversations are ordered by last_message_timestamp DESC
+    assert (
+        conversations[0].last_message_timestamp
+        >= conversations[1].last_message_timestamp
+    )
+
+    # Check conversation IDs
+    conv_ids = [conv.conversation_id for conv in conversations]
+    assert CONVERSATION_ID_1 in conv_ids
+    assert CONVERSATION_ID_2 in conv_ids
+
+
+def test_topic_summary_operations(tmpdir):
+    """Test topic summary set operations and retrieval via list."""
+    cache = create_cache(tmpdir)
+
+    # Add a conversation
+    cache.insert_or_append(USER_ID_1, CONVERSATION_ID_1, cache_entry_1, False)
+
+    # Set a topic summary
+    test_summary = "This conversation is about machine learning and AI"
+    cache.set_topic_summary(USER_ID_1, CONVERSATION_ID_1, test_summary, False)
+
+    # Retrieve the topic summary via list
+    conversations = cache.list(USER_ID_1, False)
+    assert len(conversations) == 1
+    assert conversations[0].topic_summary == test_summary
+
+    # Update the topic summary
+    updated_summary = "This conversation is about deep learning and neural networks"
+    cache.set_topic_summary(USER_ID_1, CONVERSATION_ID_1, updated_summary, False)
+
+    # Verify the update via list
+    conversations = cache.list(USER_ID_1, False)
+    assert len(conversations) == 1
+    assert conversations[0].topic_summary == updated_summary
+
+
+def test_topic_summary_after_conversation_delete(tmpdir):
+    """Test that topic summary is deleted when conversation is deleted."""
+    cache = create_cache(tmpdir)
+
+    # Add some cache entries and a topic summary
+    cache.insert_or_append(USER_ID_1, CONVERSATION_ID_1, cache_entry_1, False)
+    cache.set_topic_summary(USER_ID_1, CONVERSATION_ID_1, "Test summary", False)
+
+    # Verify both exist
+    entries = cache.get(USER_ID_1, CONVERSATION_ID_1, False)
+    assert len(entries) == 1
+    conversations = cache.list(USER_ID_1, False)
+    assert len(conversations) == 1
+    assert conversations[0].topic_summary == "Test summary"
+
+    # Delete the conversation
+    deleted = cache.delete(USER_ID_1, CONVERSATION_ID_1, False)
+    assert deleted is True
+
+    # Verify both are deleted
+    entries = cache.get(USER_ID_1, CONVERSATION_ID_1, False)
+    assert len(entries) == 0
+    conversations = cache.list(USER_ID_1, False)
+    assert len(conversations) == 0
+
+
+def test_topic_summary_when_disconnected(tmpdir):
+    """Test topic summary operations when cache is disconnected."""
+    cache = create_cache(tmpdir)
+    cache.connection = None
+    cache.connect = lambda: None
+
+    with pytest.raises(CacheError, match="cache is disconnected"):
+        cache.set_topic_summary(USER_ID_1, CONVERSATION_ID_1, "Test", False)

@@ -19,6 +19,14 @@ def input_file_fixture(tmp_path):
     return filename
 
 
+@pytest.fixture(name="input_directory")
+def input_directory_fixture(tmp_path):
+    """Create directory manually using the tmp_path fixture."""
+    dirname = os.path.join(tmp_path, "mydir")
+    os.mkdir(dirname)
+    return dirname
+
+
 def test_get_attribute_from_file_no_record():
     """Test the get_attribute_from_file function when record is not in dictionary."""
     # no data
@@ -79,6 +87,44 @@ def test_file_check_not_readable_file(input_file):
     with patch("os.access", return_value=False):
         with pytest.raises(checks.InvalidConfigurationError):
             checks.file_check(input_file, "description")
+
+
+def test_directory_check_non_existing_directory():
+    """Test the function directory_check skips non-existing directory."""
+    # just call the function, it should not raise an exception
+    checks.directory_check(
+        "/foo/bar/baz", must_exists=False, must_be_writable=False, desc="foobar"
+    )
+    with pytest.raises(checks.InvalidConfigurationError):
+        checks.directory_check(
+            "/foo/bar/baz", must_exists=True, must_be_writable=False, desc="foobar"
+        )
+
+
+def test_directory_check_existing_writable_directory(input_directory):
+    """Test the function directory_check checks directory."""
+    # just call the function, it should not raise an exception
+    checks.directory_check(
+        input_directory, must_exists=True, must_be_writable=True, desc="foobar"
+    )
+
+
+def test_directory_check_non_a_directory(input_file):
+    """Test the function directory_check checks directory."""
+    # pass a filename not a directory name
+    with pytest.raises(checks.InvalidConfigurationError):
+        checks.directory_check(
+            input_file, must_exists=True, must_be_writable=True, desc="foobar"
+        )
+
+
+def test_directory_check_existing_non_writable_directory(input_directory):
+    """Test the function directory_check checks directory."""
+    with patch("os.access", return_value=False):
+        with pytest.raises(checks.InvalidConfigurationError):
+            checks.directory_check(
+                input_directory, must_exists=True, must_be_writable=True, desc="foobar"
+            )
 
 
 def test_import_python_module_success():

@@ -1,7 +1,5 @@
 """Manage authentication flow for FastAPI endpoints with no-op auth."""
 
-import logging
-
 from fastapi import Request
 
 from constants import (
@@ -11,8 +9,9 @@ from constants import (
     DEFAULT_VIRTUAL_PATH,
 )
 from authentication.interface import AuthInterface
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class NoopAuthDependency(AuthInterface):  # pylint: disable=too-few-public-methods

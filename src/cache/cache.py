@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from models.cache_entry import CacheEntry
+from models.cache_entry import CacheEntry, ConversationData
 from utils.suid import check_suid
 
 
@@ -90,7 +90,7 @@ class Cache(ABC):
         """
 
     @abstractmethod
-    def list(self, user_id: str, skip_user_id_check: bool) -> list[str]:
+    def list(self, user_id: str, skip_user_id_check: bool) -> list[ConversationData]:
         """List all conversations for a given user_id.
 
         Args:
@@ -98,7 +98,25 @@ class Cache(ABC):
             skip_user_id_check: Skip user_id suid check.
 
         Returns:
-            A list of conversation ids from the cache
+            A list of ConversationData objects containing conversation_id, topic_summary, and
+            last_message_timestamp
+        """
+
+    @abstractmethod
+    def set_topic_summary(
+        self,
+        user_id: str,
+        conversation_id: str,
+        topic_summary: str,
+        skip_user_id_check: bool,
+    ) -> None:
+        """Abstract method to store topic summary in the cache.
+
+        Args:
+            user_id: User identification.
+            conversation_id: Conversation ID unique for given user.
+            topic_summary: The topic summary to store.
+            skip_user_id_check: Skip user_id suid check.
         """
 
     @abstractmethod

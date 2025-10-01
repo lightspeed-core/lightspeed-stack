@@ -48,7 +48,12 @@ from models.requests import QueryRequest, Attachment
 from models.responses import RAGChunk
 from utils.types import ToolCallSummary, TurnSummary
 
-MOCK_AUTH = ("mock_user_id", "mock_username", False, "mock_token")
+MOCK_AUTH = (
+    "017adfa4-7cc6-46e4-b663-3653e1ae69df",
+    "mock_username",
+    False,
+    "mock_token",
+)
 
 
 def mock_database_operations(mocker):
@@ -58,6 +63,13 @@ def mock_database_operations(mocker):
         return_value=True,
     )
     mocker.patch("app.endpoints.streaming_query.persist_user_conversation_details")
+
+    # Mock the database session and query
+    mock_session = mocker.Mock()
+    mock_session.query.return_value.filter_by.return_value.first.return_value = None
+    mock_session.__enter__ = mocker.Mock(return_value=mock_session)
+    mock_session.__exit__ = mocker.Mock(return_value=None)
+    mocker.patch("app.endpoints.streaming_query.get_session", return_value=mock_session)
 
 
 def mock_metrics(mocker):
@@ -119,6 +131,9 @@ def setup_configuration_fixture():
             "transcripts_enabled": False,
         },
         "mcp_servers": [],
+        "conversation_cache": {
+            "type": "noop",
+        },
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -272,7 +287,7 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
     query = "What is OpenStack?"
     mocker.patch(
         "app.endpoints.streaming_query.retrieve_response",
-        return_value=(mock_streaming_response, "test_conversation_id"),
+        return_value=(mock_streaming_response, "00000000-0000-0000-0000-000000000000"),
     )
     mocker.patch(
         "app.endpoints.streaming_query.select_model_and_provider_id",
@@ -283,6 +298,12 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
         return_value=store_transcript,
     )
     mock_transcript = mocker.patch("app.endpoints.streaming_query.store_transcript")
+
+    # Mock get_topic_summary function
+    mocker.patch(
+        "app.endpoints.streaming_query.get_topic_summary",
+        return_value="Test topic summary",
+    )
 
     mock_database_operations(mocker)
 
@@ -327,8 +348,8 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
     # Assert the store_transcript function is called if transcripts are enabled
     if store_transcript:
         mock_transcript.assert_called_once_with(
-            user_id="mock_user_id",
-            conversation_id="test_conversation_id",
+            user_id="017adfa4-7cc6-46e4-b663-3653e1ae69df",
+            conversation_id="00000000-0000-0000-0000-000000000000",
             model_id="fake_model_id",
             provider_id="fake_provider_id",
             query_is_valid=True,
@@ -389,7 +410,11 @@ async def test_retrieve_response_vector_db_available(prepare_agent_mocks, mocker
     mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
     mocker.patch(
         "app.endpoints.streaming_query.get_agent",
-        return_value=(mock_agent, "test_conversation_id", "test_session_id"),
+        return_value=(
+            mock_agent,
+            "00000000-0000-0000-0000-000000000000",
+            "test_session_id",
+        ),
     )
 
     query_request = QueryRequest(query="What is OpenStack?")
@@ -403,7 +428,7 @@ async def test_retrieve_response_vector_db_available(prepare_agent_mocks, mocker
     # For streaming, the response should be the streaming object and
     # conversation_id should be returned
     assert response is not None
-    assert conversation_id == "test_conversation_id"
+    assert conversation_id == "00000000-0000-0000-0000-000000000000"
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(role="user", content="What is OpenStack?")],
         session_id="test_session_id",
@@ -426,7 +451,11 @@ async def test_retrieve_response_no_available_shields(prepare_agent_mocks, mocke
     mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
     mocker.patch(
         "app.endpoints.streaming_query.get_agent",
-        return_value=(mock_agent, "test_conversation_id", "test_session_id"),
+        return_value=(
+            mock_agent,
+            "00000000-0000-0000-0000-000000000000",
+            "test_session_id",
+        ),
     )
 
     query_request = QueryRequest(query="What is OpenStack?")
@@ -440,7 +469,7 @@ async def test_retrieve_response_no_available_shields(prepare_agent_mocks, mocke
     # For streaming, the response should be the streaming object and
     # conversation_id should be returned
     assert response is not None
-    assert conversation_id == "test_conversation_id"
+    assert conversation_id == "00000000-0000-0000-0000-000000000000"
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(role="user", content="What is OpenStack?")],
         session_id="test_session_id",
@@ -476,7 +505,11 @@ async def test_retrieve_response_one_available_shield(prepare_agent_mocks, mocke
     mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
     mocker.patch(
         "app.endpoints.streaming_query.get_agent",
-        return_value=(mock_agent, "test_conversation_id", "test_session_id"),
+        return_value=(
+            mock_agent,
+            "00000000-0000-0000-0000-000000000000",
+            "test_session_id",
+        ),
     )
 
     query_request = QueryRequest(query="What is OpenStack?")
@@ -488,7 +521,7 @@ async def test_retrieve_response_one_available_shield(prepare_agent_mocks, mocke
     )
 
     assert response is not None
-    assert conversation_id == "test_conversation_id"
+    assert conversation_id == "00000000-0000-0000-0000-000000000000"
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(role="user", content="What is OpenStack?")],
         session_id="test_session_id",
@@ -527,7 +560,11 @@ async def test_retrieve_response_two_available_shields(prepare_agent_mocks, mock
     mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
     mocker.patch(
         "app.endpoints.streaming_query.get_agent",
-        return_value=(mock_agent, "test_conversation_id", "test_session_id"),
+        return_value=(
+            mock_agent,
+            "00000000-0000-0000-0000-000000000000",
+            "test_session_id",
+        ),
     )
 
     query_request = QueryRequest(query="What is OpenStack?")
@@ -539,7 +576,7 @@ async def test_retrieve_response_two_available_shields(prepare_agent_mocks, mock
     )
 
     assert response is not None
-    assert conversation_id == "test_conversation_id"
+    assert conversation_id == "00000000-0000-0000-0000-000000000000"
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(role="user", content="What is OpenStack?")],
         session_id="test_session_id",
@@ -580,7 +617,11 @@ async def test_retrieve_response_four_available_shields(prepare_agent_mocks, moc
     mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
     mock_get_agent = mocker.patch(
         "app.endpoints.streaming_query.get_agent",
-        return_value=(mock_agent, "test_conversation_id", "test_session_id"),
+        return_value=(
+            mock_agent,
+            "00000000-0000-0000-0000-000000000000",
+            "test_session_id",
+        ),
     )
 
     query_request = QueryRequest(query="What is OpenStack?")
@@ -592,7 +633,7 @@ async def test_retrieve_response_four_available_shields(prepare_agent_mocks, moc
     )
 
     assert response is not None
-    assert conversation_id == "test_conversation_id"
+    assert conversation_id == "00000000-0000-0000-0000-000000000000"
 
     # Verify get_agent was called with the correct parameters
     mock_get_agent.assert_called_once_with(
@@ -635,7 +676,11 @@ async def test_retrieve_response_with_one_attachment(prepare_agent_mocks, mocker
     ]
     mocker.patch(
         "app.endpoints.streaming_query.get_agent",
-        return_value=(mock_agent, "test_conversation_id", "test_session_id"),
+        return_value=(
+            mock_agent,
+            "00000000-0000-0000-0000-000000000000",
+            "test_session_id",
+        ),
     )
 
     query_request = QueryRequest(query="What is OpenStack?", attachments=attachments)
@@ -647,7 +692,7 @@ async def test_retrieve_response_with_one_attachment(prepare_agent_mocks, mocker
     )
 
     assert response is not None
-    assert conversation_id == "test_conversation_id"
+    assert conversation_id == "00000000-0000-0000-0000-000000000000"
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(role="user", content="What is OpenStack?")],
         session_id="test_session_id",
@@ -688,7 +733,11 @@ async def test_retrieve_response_with_two_attachments(prepare_agent_mocks, mocke
     ]
     mocker.patch(
         "app.endpoints.streaming_query.get_agent",
-        return_value=(mock_agent, "test_conversation_id", "test_session_id"),
+        return_value=(
+            mock_agent,
+            "00000000-0000-0000-0000-000000000000",
+            "test_session_id",
+        ),
     )
 
     query_request = QueryRequest(query="What is OpenStack?", attachments=attachments)
@@ -700,7 +749,7 @@ async def test_retrieve_response_with_two_attachments(prepare_agent_mocks, mocke
     )
 
     assert response is not None
-    assert conversation_id == "test_conversation_id"
+    assert conversation_id == "00000000-0000-0000-0000-000000000000"
     mock_agent.create_turn.assert_called_once_with(
         messages=[UserMessage(role="user", content="What is OpenStack?")],
         session_id="test_session_id",
@@ -1089,7 +1138,11 @@ async def test_retrieve_response_with_mcp_servers(prepare_agent_mocks, mocker):
     mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
     mock_get_agent = mocker.patch(
         "app.endpoints.streaming_query.get_agent",
-        return_value=(mock_agent, "test_conversation_id", "test_session_id"),
+        return_value=(
+            mock_agent,
+            "00000000-0000-0000-0000-000000000000",
+            "test_session_id",
+        ),
     )
 
     query_request = QueryRequest(query="What is OpenStack?")
@@ -1101,7 +1154,7 @@ async def test_retrieve_response_with_mcp_servers(prepare_agent_mocks, mocker):
     )
 
     assert response is not None
-    assert conversation_id == "test_conversation_id"
+    assert conversation_id == "00000000-0000-0000-0000-000000000000"
 
     # Verify get_agent was called with the correct parameters
     mock_get_agent.assert_called_once_with(
@@ -1157,7 +1210,11 @@ async def test_retrieve_response_with_mcp_servers_empty_token(
     mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
     mock_get_agent = mocker.patch(
         "app.endpoints.streaming_query.get_agent",
-        return_value=(mock_agent, "test_conversation_id", "test_session_id"),
+        return_value=(
+            mock_agent,
+            "00000000-0000-0000-0000-000000000000",
+            "test_session_id",
+        ),
     )
 
     query_request = QueryRequest(query="What is OpenStack?")
@@ -1169,7 +1226,7 @@ async def test_retrieve_response_with_mcp_servers_empty_token(
     )
 
     assert response is not None
-    assert conversation_id == "test_conversation_id"
+    assert conversation_id == "00000000-0000-0000-0000-000000000000"
 
     # Verify get_agent was called with the correct parameters
     mock_get_agent.assert_called_once_with(
@@ -1222,7 +1279,11 @@ async def test_retrieve_response_with_mcp_servers_and_mcp_headers(mocker):
     mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
     mock_get_agent = mocker.patch(
         "app.endpoints.streaming_query.get_agent",
-        return_value=(mock_agent, "test_conversation_id", "test_session_id"),
+        return_value=(
+            mock_agent,
+            "00000000-0000-0000-0000-000000000000",
+            "test_session_id",
+        ),
     )
 
     query_request = QueryRequest(query="What is OpenStack?")
@@ -1248,7 +1309,7 @@ async def test_retrieve_response_with_mcp_servers_and_mcp_headers(mocker):
     )
 
     assert response is not None
-    assert conversation_id == "test_conversation_id"
+    assert conversation_id == "00000000-0000-0000-0000-000000000000"
 
     # Verify get_agent was called with the correct parameters
     mock_get_agent.assert_called_once_with(
@@ -1306,7 +1367,7 @@ async def test_auth_tuple_unpacking_in_streaming_query_endpoint_handler(mocker):
     mock_streaming_response.__aiter__.return_value = iter([])
     mock_retrieve_response = mocker.patch(
         "app.endpoints.streaming_query.retrieve_response",
-        return_value=(mock_streaming_response, "test_conversation_id"),
+        return_value=(mock_streaming_response, "00000000-0000-0000-0000-000000000000"),
     )
 
     mocker.patch(
@@ -1315,6 +1376,11 @@ async def test_auth_tuple_unpacking_in_streaming_query_endpoint_handler(mocker):
     )
     mocker.patch(
         "app.endpoints.streaming_query.is_transcripts_enabled", return_value=False
+    )
+    # Mock get_topic_summary function
+    mocker.patch(
+        "app.endpoints.streaming_query.get_topic_summary",
+        return_value="Test topic summary",
     )
     mock_database_operations(mocker)
 
@@ -1353,7 +1419,7 @@ async def test_streaming_query_endpoint_handler_no_tools_true(mocker):
 
     mocker.patch(
         "app.endpoints.streaming_query.retrieve_response",
-        return_value=(mock_streaming_response, "test_conversation_id"),
+        return_value=(mock_streaming_response, "00000000-0000-0000-0000-000000000000"),
     )
     mocker.patch(
         "app.endpoints.streaming_query.select_model_and_provider_id",
@@ -1361,6 +1427,11 @@ async def test_streaming_query_endpoint_handler_no_tools_true(mocker):
     )
     mocker.patch(
         "app.endpoints.streaming_query.is_transcripts_enabled", return_value=False
+    )
+    # Mock get_topic_summary function
+    mocker.patch(
+        "app.endpoints.streaming_query.get_topic_summary",
+        return_value="Test topic summary",
     )
     # Mock database operations
     mock_database_operations(mocker)
@@ -1400,7 +1471,7 @@ async def test_streaming_query_endpoint_handler_no_tools_false(mocker):
 
     mocker.patch(
         "app.endpoints.streaming_query.retrieve_response",
-        return_value=(mock_streaming_response, "test_conversation_id"),
+        return_value=(mock_streaming_response, "00000000-0000-0000-0000-000000000000"),
     )
     mocker.patch(
         "app.endpoints.streaming_query.select_model_and_provider_id",
@@ -1408,6 +1479,11 @@ async def test_streaming_query_endpoint_handler_no_tools_false(mocker):
     )
     mocker.patch(
         "app.endpoints.streaming_query.is_transcripts_enabled", return_value=False
+    )
+    # Mock get_topic_summary function
+    mocker.patch(
+        "app.endpoints.streaming_query.get_topic_summary",
+        return_value="Test topic summary",
     )
     # Mock database operations
     mock_database_operations(mocker)

@@ -8,6 +8,7 @@ from app.routers import include_routers  # noqa:E402
 
 from app.endpoints import (
     conversations,
+    conversations_v2,
     root,
     info,
     models,
@@ -60,7 +61,7 @@ def test_include_routers() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 11
+    assert len(app.routers) == 12
     assert root.router in app.get_routers()
     assert info.router in app.get_routers()
     assert models.router in app.get_routers()
@@ -80,7 +81,7 @@ def test_check_prefixes() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 11
+    assert len(app.routers) == 12
     assert app.get_router_prefix(root.router) == ""
     assert app.get_router_prefix(info.router) == "/v1"
     assert app.get_router_prefix(models.router) == "/v1"
@@ -92,3 +93,4 @@ def test_check_prefixes() -> None:
     assert app.get_router_prefix(authorized.router) == ""
     assert app.get_router_prefix(conversations.router) == "/v1"
     assert app.get_router_prefix(metrics.router) == ""
+    assert app.get_router_prefix(conversations_v2.router) == "/v2"

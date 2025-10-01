@@ -229,11 +229,27 @@ class UserDataCollection(ConfigurationBase):
     @model_validator(mode="after")
     def check_storage_location_is_set_when_needed(self) -> Self:
         """Check that storage_location is set when enabled."""
-        if self.feedback_enabled and self.feedback_storage is None:
-            raise ValueError("feedback_storage is required when feedback is enabled")
-        if self.transcripts_enabled and self.transcripts_storage is None:
-            raise ValueError(
-                "transcripts_storage is required when transcripts is enabled"
+        if self.feedback_enabled:
+            if self.feedback_storage is None:
+                raise ValueError(
+                    "feedback_storage is required when feedback is enabled"
+                )
+            checks.directory_check(
+                Path(self.feedback_storage),
+                desc="Check directory to store feedback",
+                must_exists=False,
+                must_be_writable=True,
+            )
+        if self.transcripts_enabled:
+            if self.transcripts_storage is None:
+                raise ValueError(
+                    "transcripts_storage is required when transcripts is enabled"
+                )
+            checks.directory_check(
+                Path(self.transcripts_storage),
+                desc="Check directory to store transcripts",
+                must_exists=False,
+                must_be_writable=True,
             )
         return self
 

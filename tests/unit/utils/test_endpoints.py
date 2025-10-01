@@ -10,7 +10,7 @@ from models.config import CustomProfile
 from models.requests import QueryRequest
 from models.config import Action
 from utils import endpoints
-from utils.endpoints import get_agent
+from utils.endpoints import get_agent, get_temp_agent
 
 from tests.unit import config_dict
 
@@ -657,6 +657,108 @@ async def test_get_agent_no_tools_false_preserves_parser(
     )
 
 
+@pytest.mark.asyncio
+async def test_get_temp_agent_basic_functionality(prepare_agent_mocks, mocker):
+    """Test get_temp_agent function creates agent with correct parameters."""
+    mock_client, mock_agent = prepare_agent_mocks
+    mock_agent.create_session.return_value = "temp_session_id"
+
+    # Mock Agent class
+    mock_agent_class = mocker.patch(
+        "utils.endpoints.AsyncAgent", return_value=mock_agent
+    )
+
+    # Mock get_suid
+    mocker.patch("utils.endpoints.get_suid", return_value="temp_session_id")
+
+    # Call function
+    result_agent, result_session_id, result_conversation_id = await get_temp_agent(
+        client=mock_client,
+        model_id="test_model",
+        system_prompt="test_prompt",
+    )
+
+    # Assert agent, session_id, and conversation_id are created and returned
+    assert result_agent == mock_agent
+    assert result_session_id == "temp_session_id"
+    assert result_conversation_id == mock_agent.agent_id
+
+    # Verify Agent was created with correct parameters for temporary agent
+    mock_agent_class.assert_called_once_with(
+        mock_client,
+        model="test_model",
+        instructions="test_prompt",
+        enable_session_persistence=False,  # Key difference: no persistence
+    )
+
+    # Verify agent was initialized and session was created
+    mock_agent.initialize.assert_called_once()
+    mock_agent.create_session.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_get_temp_agent_returns_valid_ids(prepare_agent_mocks, mocker):
+    """Test get_temp_agent function returns valid agent_id and session_id."""
+    mock_client, mock_agent = prepare_agent_mocks
+    mock_agent.agent_id = "generated_agent_id"
+    mock_agent.create_session.return_value = "generated_session_id"
+
+    # Mock Agent class
+    mocker.patch("utils.endpoints.AsyncAgent", return_value=mock_agent)
+
+    # Mock get_suid
+    mocker.patch("utils.endpoints.get_suid", return_value="generated_session_id")
+
+    # Call function
+    result_agent, result_session_id, result_conversation_id = await get_temp_agent(
+        client=mock_client,
+        model_id="test_model",
+        system_prompt="test_prompt",
+    )
+
+    # Assert all three values are returned and are not None/empty
+    assert result_agent is not None
+    assert result_session_id is not None
+    assert result_conversation_id is not None
+
+    # Assert they are strings
+    assert isinstance(result_session_id, str)
+    assert isinstance(result_conversation_id, str)
+
+    # Assert conversation_id matches agent_id
+    assert result_conversation_id == result_agent.agent_id
+
+
+@pytest.mark.asyncio
+async def test_get_temp_agent_no_persistence(prepare_agent_mocks, mocker):
+    """Test get_temp_agent function creates agent without session persistence."""
+    mock_client, mock_agent = prepare_agent_mocks
+    mock_agent.create_session.return_value = "temp_session_id"
+
+    # Mock Agent class
+    mock_agent_class = mocker.patch(
+        "utils.endpoints.AsyncAgent", return_value=mock_agent
+    )
+
+    # Mock get_suid
+    mocker.patch("utils.endpoints.get_suid", return_value="temp_session_id")
+
+    # Call function
+    await get_temp_agent(
+        client=mock_client,
+        model_id="test_model",
+        system_prompt="test_prompt",
+    )
+
+    # Verify Agent was created with session persistence disabled
+    mock_agent_class.assert_called_once_with(
+        mock_client,
+        model="test_model",
+        instructions="test_prompt",
+        enable_session_persistence=False,
+    )
+
+
 def test_validate_model_provider_override_allowed_with_action():
     """Ensure no exception when caller has MODEL_OVERRIDE and request includes model/provider."""
     query_request = QueryRequest(query="q", model="m", provider="p")
@@ -677,3 +779,65 @@ def test_validate_model_provider_override_no_override_without_action():
     """No exception when request does not include model/provider regardless of permission."""
     query_request = QueryRequest(query="q")
     endpoints.validate_model_provider_override(query_request, set())
+
+
+def test_get_topic_summary_system_prompt_default(setup_configuration):
+    """Test that default topic summary system prompt is returned when no custom
+    profile is configured.
+    """
+    topic_summary_prompt = endpoints.get_topic_summary_system_prompt(
+        setup_configuration
+    )
+    assert topic_summary_prompt == constants.DEFAULT_TOPIC_SUMMARY_SYSTEM_PROMPT
+
+
+def test_get_topic_summary_system_prompt_with_custom_profile():
+    """Test that custom profile topic summary prompt is returned when available."""
+    test_config = config_dict.copy()
+    test_config["customization"] = {
+        "profile_path": "tests/profiles/test/profile.py",
+    }
+    cfg = AppConfig()
+    cfg.init_from_dict(test_config)
+
+    # Mock the custom profile to return a topic_summary prompt
+    custom_profile = CustomProfile(path="tests/profiles/test/profile.py")
+    prompts = custom_profile.get_prompts()
+
+    topic_summary_prompt = endpoints.get_topic_summary_system_prompt(cfg)
+    assert topic_summary_prompt == prompts.get("topic_summary")
+
+
+def test_get_topic_summary_system_prompt_with_custom_profile_no_topic_summary(mocker):
+    """Test that default topic summary prompt is returned when custom profile has
+    no topic_summary prompt.
+    """
+    test_config = config_dict.copy()
+    test_config["customization"] = {
+        "profile_path": "tests/profiles/test/profile.py",
+    }
+    cfg = AppConfig()
+    cfg.init_from_dict(test_config)
+
+    # Mock the custom profile to return None for topic_summary prompt
+    mock_profile = mocker.Mock()
+    mock_profile.get_prompts.return_value = {
+        "default": "some prompt"
+    }  # No topic_summary key
+
+    # Patch the custom_profile property to return our mock
+    mocker.patch.object(cfg.customization, "custom_profile", mock_profile)
+
+    topic_summary_prompt = endpoints.get_topic_summary_system_prompt(cfg)
+    assert topic_summary_prompt == constants.DEFAULT_TOPIC_SUMMARY_SYSTEM_PROMPT
+
+
+def test_get_topic_summary_system_prompt_no_customization():
+    """Test that default topic summary prompt is returned when customization is None."""
+    test_config = config_dict.copy()
+    test_config["customization"] = None
+    cfg = AppConfig()
+    cfg.init_from_dict(test_config)
+
+    topic_summary_prompt = endpoints.get_topic_summary_system_prompt(cfg)
+    assert topic_summary_prompt == constants.DEFAULT_TOPIC_SUMMARY_SYSTEM_PROMPT

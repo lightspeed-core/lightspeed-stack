@@ -1,12 +1,12 @@
 """Uvicorn runner."""
 
 import logging
-
 import uvicorn
 
+from log import get_logger
 from models.config import ServiceConfiguration
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def start_uvicorn(configuration: ServiceConfiguration) -> None:

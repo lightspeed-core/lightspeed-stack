@@ -112,8 +112,9 @@ def test_conversation_cache_sqlite_improper_config(tmpdir):
         _ = CacheFactory.conversation_cache(cc)
 
 
-def test_conversation_cache_postgres(postgres_cache_config_fixture):
+def test_conversation_cache_postgres(postgres_cache_config_fixture, mocker):
     """Check if PostgreSQL is returned by factory with proper configuration."""
+    mocker.patch("psycopg2.connect")
     cache = CacheFactory.conversation_cache(postgres_cache_config_fixture)
     assert cache is not None
     # check if the object has the right type

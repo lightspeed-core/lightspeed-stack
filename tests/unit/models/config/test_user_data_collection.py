@@ -3,6 +3,7 @@
 import pytest
 
 from models.config import UserDataCollection
+from utils.checks import InvalidConfigurationError
 
 
 def test_user_data_collection_feedback_enabled() -> None:
@@ -39,3 +40,18 @@ def test_user_data_collection_transcripts_disabled() -> None:
         match="transcripts_storage is required when transcripts is enabled",
     ):
         UserDataCollection(transcripts_enabled=True, transcripts_storage=None)
+
+
+def test_user_data_collection_wrong_directory_path() -> None:
+    """Test the UserDataCollection constructor for wrong directory path."""
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Check directory to store feedback '/root' is not writable",
+    ):
+        _ = UserDataCollection(feedback_enabled=True, feedback_storage="/root")
+
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="Check directory to store transcripts '/root' is not writable",
+    ):
+        _ = UserDataCollection(transcripts_enabled=True, transcripts_storage="/root")

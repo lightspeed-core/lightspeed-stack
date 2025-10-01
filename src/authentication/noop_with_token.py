@@ -9,8 +9,6 @@ Behavior:
 - Returns a tuple: (user_id, DEFAULT_USER_NAME, user_token).
 """
 
-import logging
-
 from fastapi import Request
 
 from constants import (
@@ -20,8 +18,9 @@ from constants import (
 )
 from authentication.interface import AuthInterface
 from authentication.utils import extract_user_token
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class NoopWithTokenAuthDependency(
