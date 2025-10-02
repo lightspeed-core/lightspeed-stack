@@ -6,7 +6,6 @@ apis:
   - datasetio
   - eval
   - inference
-  - post_training
   - safety
   - scoring
   - telemetry
@@ -67,14 +66,6 @@ providers:
       provider_type: remote::openai
       config:
         api_key: ${env.OPENAI_API_KEY}
-  post_training:
-  - config:
-      checkpoint_format: huggingface
-      device: cpu
-      distributed_backend: null
-      dpo_output_dir: "."
-    provider_id: huggingface
-    provider_type: inline::huggingface-gpu
   safety:
   - config:
       excluded_categories: []
@@ -99,12 +90,12 @@ providers:
     provider_id: meta-reference
     provider_type: inline::meta-reference
   tool_runtime:
-    - provider_id: model-context-protocol
-      provider_type: remote::model-context-protocol
-      config: {}
-    - provider_id: rag-runtime
-      provider_type: inline::rag-runtime
-      config: {}
+  - provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
+    config: {}
+  - provider_id: rag-runtime
+    provider_type: inline::rag-runtime
+    config: {}
   vector_io:
   - config:
       kvstore:
@@ -128,17 +119,7 @@ vector_dbs:
     embedding_model: sentence-transformers/all-mpnet-base-v2
     embedding_dimension: 768
     provider_id: faiss
-models:
-  - metadata:
-      embedding_dimension: 768 # Depends on chosen model
-    model_id: sentence-transformers/all-mpnet-base-v2 # Example embedding model
-    provider_id: sentence-transformers
-    provider_model_id: sentence-transformers/all-mpnet-base-v2 # Location of embedding model
-    model_type: embedding
-  - model_id: gpt-4-turbo
-    provider_id: openai
-    model_type: llm
-    provider_model_id: gpt-4-turbo
+models: []
 
 tool_groups:
   - toolgroup_id: builtin::rag

@@ -2142,7 +2142,7 @@
                         "examples": [
                             "0.2.1",
                             "0.2.2",
-                            "0.2.18"
+                            "0.2.22"
                         ]
                     }
                 },
@@ -2153,7 +2153,7 @@
                     "llama_stack_version"
                 ],
                 "title": "InfoResponse",
-                "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    llama_stack_version: Llama Stack version.\n\nExample:\n    ```python\n    info_response = InfoResponse(\n        name=\"Lightspeed Stack\",\n        service_version=\"1.0.0\",\n        llama_stack_version=\"0.2.21\",\n    )\n    ```",
+                "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    llama_stack_version: Llama Stack version.\n\nExample:\n    ```python\n    info_response = InfoResponse(\n        name=\"Lightspeed Stack\",\n        service_version=\"1.0.0\",\n        llama_stack_version=\"0.2.22\",\n    )\n    ```",
                 "examples": [
                     {
                         "llama_stack_version": "1.0.0",

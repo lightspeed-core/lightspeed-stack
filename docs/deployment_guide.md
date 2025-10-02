@@ -390,7 +390,7 @@ cp examples/run.yaml /tmp/llama-stack-server
     The output should be in this form:
     ```json
     {
-      "version": "0.2.21"
+      "version": "0.2.22"
     }
     ```
 
@@ -676,7 +676,7 @@ a4982f43195537b9eb1cec510fe6655f245d6d4b7236a4759808115d5d719972
     description = "Default template for PDM package"
     authors = []
     dependencies = [
-        "llama-stack==0.2.18",
+        "llama-stack==0.2.22",
         "fastapi>=0.115.12",
         "opentelemetry-sdk>=1.34.0",
         "opentelemetry-exporter-otlp>=1.34.0",
@@ -1071,7 +1071,7 @@ models:
     The output should be in this form:
     ```json
     {
-      "version": "0.2.18"
+      "version": "0.2.22"
     }
     ```
 
