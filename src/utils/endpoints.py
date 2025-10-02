@@ -1,18 +1,22 @@
 """Utility functions for endpoint handlers."""
 
 from contextlib import suppress
+from typing import Any
 from fastapi import HTTPException, status
 from llama_stack_client._client import AsyncLlamaStackClient
 from llama_stack_client.lib.agents.agent import AsyncAgent
+from pydantic import AnyUrl, ValidationError
 
 import constants
 from models.cache_entry import CacheEntry
 from models.requests import QueryRequest
+from models.responses import ReferencedDocument
 from models.database.conversations import UserConversation
 from models.config import Action
 from app.database import get_session
 from configuration import AppConfig
 from utils.suid import get_suid
+from utils.types import TurnSummary
 from utils.types import GraniteToolParser
 
 
@@ -340,3 +344,155 @@ async def get_temp_agent(
     session_id = await agent.create_session(get_suid())
 
     return agent, session_id, conversation_id
+
+
+def create_rag_chunks_dict(summary: TurnSummary) -> list[dict[str, Any]]:
+    """
+    Create dictionary representation of RAG chunks for streaming response.
+
+    Args:
+        summary: TurnSummary containing RAG chunks
+
+    Returns:
+        List of dictionaries with content, source, and score
+    """
+    return [
+        {"content": chunk.content, "source": chunk.source, "score": chunk.score}
+        for chunk in summary.rag_chunks
+    ]
+
+
+def create_referenced_documents_with_metadata(  # pylint: disable=too-many-branches
+    summary: TurnSummary, metadata_map: dict[str, Any]
+) -> list[dict[str, str | None]]:
+    """
+    Create referenced documents from RAG chunks with metadata enrichment for streaming.
+
+    This function processes RAG chunks and creates referenced documents with metadata
+    enrichment, deduplication, and proper URL handling for streaming responses.
+
+    Args:
+        summary: TurnSummary containing RAG chunks
+        metadata_map: Mapping containing metadata about referenced documents
+
+    Returns:
+        List of dictionaries with doc_url and doc_title for streaming response
+    """
+    referenced_docs: list[dict[str, str | None]] = []
+    doc_urls: set[str] = set()
+    doc_ids: set[str] = set()
+    metas_by_id: dict[str, dict[str, Any]] = {
+        k: v for k, v in metadata_map.items() if isinstance(v, dict)
+    }
+
+    # Process RAG chunks
+    for chunk in summary.rag_chunks:
+        src = chunk.source
+        if not src:
+            continue
+        # Skip tool names like "knowledge_search"
+        if src == constants.DEFAULT_RAG_TOOL:
+            continue
+        if src.startswith("http"):
+            if src not in doc_urls:
+                doc_urls.add(src)
+                try:
+                    validated_url = str(AnyUrl(src))
+                except ValidationError:
+                    logger.warning("Invalid URL in chunk source: %s", src)
+                    validated_url = None
+                referenced_docs.append(
+                    {
+                        "doc_url": validated_url,
+                        "doc_title": src.rsplit("/", 1)[-1] or src,
+                    }
+                )
+        else:
+            # Treat as document_id; enrich from metadata_map when available
+            if src in doc_ids:
+                continue
+            doc_ids.add(src)
+            meta = metas_by_id.get(src, {})
+            doc_url = meta.get("docs_url")
+            title = meta.get("title")
+            if doc_url:
+                if doc_url in doc_urls:
+                    continue
+                doc_urls.add(doc_url)
+            try:
+                validated_doc_url = (
+                    str(AnyUrl(doc_url))
+                    if doc_url and doc_url.startswith("http")
+                    else None
+                )
+            except ValidationError:
+                logger.warning("Invalid URL in metadata: %s", doc_url)
+                validated_doc_url = None
+            referenced_docs.append(
+                {
+                    "doc_url": validated_doc_url,
+                    "doc_title": (
+                        title or (doc_url.rsplit("/", 1)[-1] if doc_url else src)
+                    ),
+                }
+            )
+
+    # Add any additional referenced documents from metadata_map not already present
+    for meta in metas_by_id.values():
+        doc_url = meta.get("docs_url")
+        title = meta.get("title")  # Note: must be "title", not "Title"
+        if doc_url and doc_url not in doc_urls and title is not None:
+            doc_urls.add(doc_url)
+            try:
+                validated_url = (
+                    str(AnyUrl(doc_url)) if doc_url.startswith("http") else None
+                )
+            except ValidationError:
+                logger.warning("Invalid URL in metadata_map: %s", doc_url)
+                validated_url = None
+            referenced_docs.append(
+                {
+                    "doc_url": validated_url,
+                    "doc_title": title,
+                }
+            )
+
+    return referenced_docs
+
+
+def create_referenced_documents_from_chunks(
+    rag_chunks: list,
+) -> list[ReferencedDocument]:
+    """
+    Create referenced documents from RAG chunks for query endpoint.
+
+    This function processes RAG chunks and creates a list of ReferencedDocument objects,
+    handling both HTTP URLs and document IDs with metadata enrichment.
+
+    Args:
+        rag_chunks: List of RAG chunks with source information
+
+    Returns:
+        List of ReferencedDocument objects with doc_url and doc_title
+    """
+    referenced_docs: list[ReferencedDocument] = []
+    doc_sources: set[str] = set()
+
+    for chunk in rag_chunks:
+        if chunk.source and chunk.source not in doc_sources:
+            doc_sources.add(chunk.source)
+            try:
+                doc_url = (
+                    AnyUrl(chunk.source) if chunk.source.startswith("http") else None
+                )
+            except ValidationError:
+                logger.warning("Invalid URL in chunk source: %s", chunk.source)
+                doc_url = None
+            referenced_docs.append(
+                ReferencedDocument(
+                    doc_url=doc_url,
+                    doc_title=chunk.source,
+                )
+            )
+
+    return referenced_docs

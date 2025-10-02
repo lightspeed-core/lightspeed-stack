@@ -47,6 +47,8 @@ from models.requests import QueryRequest
 from models.responses import ForbiddenResponse, UnauthorizedResponse
 from utils.endpoints import (
     check_configuration_loaded,
+    create_referenced_documents_with_metadata,
+    create_rag_chunks_dict,
     get_agent,
     get_system_prompt,
     store_conversation_into_cache,
@@ -141,7 +143,7 @@ def stream_start_event(conversation_id: str) -> str:
     )
 
 
-def stream_end_event(metadata_map: dict) -> str:
+def stream_end_event(metadata_map: dict, summary: TurnSummary) -> str:
     """
     Yield the end of the data stream.
 
@@ -157,20 +159,18 @@ def stream_end_event(metadata_map: dict) -> str:
         str: A Server-Sent Events (SSE) formatted string
         representing the end of the data stream.
     """
+    # Process RAG chunks using utility function
+    rag_chunks = create_rag_chunks_dict(summary)
+
+    # Extract referenced documents using utility function
+    referenced_docs = create_referenced_documents_with_metadata(summary, metadata_map)
+
     return format_stream_data(
         {
             "event": "end",
             "data": {
-                "referenced_documents": [
-                    {
-                        "doc_url": v["docs_url"],
-                        "doc_title": v["title"],
-                    }
-                    for v in filter(
-                        lambda v: ("docs_url" in v) and ("title" in v),
-                        metadata_map.values(),
-                    )
-                ],
+                "rag_chunks": rag_chunks,
+                "referenced_documents": referenced_docs,
                 "truncated": None,  # TODO(jboos): implement truncated
                 "input_tokens": 0,  # TODO(jboos): implement input tokens
                 "output_tokens": 0,  # TODO(jboos): implement output tokens
@@ -686,7 +686,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=R0915,R0914
                     chunk_id += 1
                     yield event
 
-            yield stream_end_event(metadata_map)
+            yield stream_end_event(metadata_map, summary)
 
             if not is_transcripts_enabled():
                 logger.debug("Transcript collection is disabled in the configuration")
@@ -700,7 +700,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=R0915,R0914
                     query=query_request.query,
                     query_request=query_request,
                     summary=summary,
-                    rag_chunks=[],  # TODO(lucasagomes): implement rag_chunks
+                    rag_chunks=[],  # RAG chunks are already in summary
                     truncated=False,  # TODO(lucasagomes): implement truncation as part
                     # of quota work
                     attachments=query_request.attachments or [],
