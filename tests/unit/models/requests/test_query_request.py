@@ -152,6 +152,5 @@ class TestQueryRequest:
         assert qr.model == "gpt-3.5-turbo"
         assert qr.media_type == "text/plain"
 
-        mock_logger.warning.assert_called_once_with(
-            "media_type was set in the request but is not supported. The value will be ignored."
-        )
+        # Media type is now fully supported, no warning expected
+        mock_logger.warning.assert_not_called()

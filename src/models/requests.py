@@ -144,12 +144,10 @@ class QueryRequest(BaseModel):
         examples=[True, False],
     )
 
-    # media_type is not used in 'lightspeed-stack' that only supports application/json.
-    # the field is kept here to enable compatibility with 'road-core' clients.
     media_type: Optional[str] = Field(
         None,
-        description="Media type (used just to enable compatibility)",
-        examples=["application/json"],
+        description="Media type for the response format",
+        examples=["application/json", "text/plain"],
     )
 
     # provides examples for /docs endpoint
@@ -214,10 +212,13 @@ class QueryRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_media_type(self) -> Self:
-        """Log use of media_type that is unsupported but kept for backward compatibility."""
-        if self.media_type:
-            logger.warning(
-                "media_type was set in the request but is not supported. The value will be ignored."
+        """Validate media_type field."""
+        if self.media_type and self.media_type not in [
+            "application/json",
+            "text/plain",
+        ]:
+            raise ValueError(
+                "media_type must be either 'application/json' or 'text/plain'"
             )
         return self
 

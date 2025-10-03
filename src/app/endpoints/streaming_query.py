@@ -1,10 +1,11 @@
-"""Handler for REST API call to provide answer to streaming query."""
+"""Handler for REST API call to provide answer to streaming query."""  # pylint: disable=too-many-lines
 
 import ast
 import json
 import logging
 import re
-from typing import Annotated, Any, AsyncIterator, Iterator, cast
+import uuid
+from typing import Annotated, Any, AsyncGenerator, AsyncIterator, Iterator, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
@@ -38,7 +39,7 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
-from constants import DEFAULT_RAG_TOOL
+from constants import DEFAULT_RAG_TOOL, MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
 import metrics
 from metrics.utils import update_llm_token_count_from_turn
 from models.config import Action
@@ -63,20 +64,25 @@ streaming_query_responses: dict[int | str, dict[str, Any]] = {
     200: {
         "description": "Streaming response with Server-Sent Events",
         "content": {
-            "text/event-stream": {
+            "application/json": {
                 "schema": {
                     "type": "string",
                     "example": (
                         'data: {"event": "start", '
                         '"data": {"conversation_id": "123e4567-e89b-12d3-a456-426614174000"}}\n\n'
-                        'data: {"event": "token", "data": {"id": 0, "role": "inference", '
-                        '"token": "Hello"}}\n\n'
+                        'data: {"event": "token", "data": {"id": 0, "token": "Hello"}}\n\n'
                         'data: {"event": "end", "data": {"referenced_documents": [], '
                         '"truncated": null, "input_tokens": 0, "output_tokens": 0}, '
                         '"available_quotas": {}}\n\n'
                     ),
                 }
-            }
+            },
+            "text/plain": {
+                "schema": {
+                    "type": "string",
+                    "example": "Hello world!\n\n---\n\nReference: https://example.com/doc",
+                }
+            },
         },
     },
     400: {
@@ -101,6 +107,11 @@ streaming_query_responses: dict[int | str, dict[str, Any]] = {
 
 
 METADATA_PATTERN = re.compile(r"\nMetadata: (\{.+})\n")
+
+# OLS-compatible event types
+LLM_TOKEN_EVENT = "token"
+LLM_TOOL_CALL_EVENT = "tool_call"
+LLM_TOOL_RESULT_EVENT = "tool_result"
 
 
 def format_stream_data(d: dict) -> str:
@@ -141,7 +152,7 @@ def stream_start_event(conversation_id: str) -> str:
     )
 
 
-def stream_end_event(metadata_map: dict) -> str:
+def stream_end_event(metadata_map: dict, media_type: str = MEDIA_TYPE_JSON) -> str:
     """
     Yield the end of the data stream.
 
@@ -152,11 +163,22 @@ def stream_end_event(metadata_map: dict) -> str:
     Parameters:
         metadata_map (dict): A mapping containing metadata about
         referenced documents.
+        media_type (str): The media type for the response format.
 
     Returns:
         str: A Server-Sent Events (SSE) formatted string
         representing the end of the data stream.
     """
+    if media_type == MEDIA_TYPE_TEXT:
+        ref_docs_string = "\n".join(
+            f'{v["title"]}: {v["docs_url"]}'
+            for v in filter(
+                lambda v: ("docs_url" in v) and ("title" in v),
+                metadata_map.values(),
+            )
+        )
+        return f"\n\n---\n\n{ref_docs_string}" if ref_docs_string else ""
+
     return format_stream_data(
         {
             "event": "end",
@@ -180,7 +202,41 @@ def stream_end_event(metadata_map: dict) -> str:
     )
 
 
-def stream_build_event(chunk: Any, chunk_id: int, metadata_map: dict) -> Iterator[str]:
+def stream_event(data: dict, event_type: str, media_type: str) -> str:
+    """Build an item to yield based on media type.
+
+    Args:
+        data: The data to yield.
+        event_type: The type of event (e.g. token, tool request, tool execution).
+        media_type: Media type of the response (e.g. text or JSON).
+
+    Returns:
+        str: The formatted string or JSON to yield.
+    """
+    if media_type == MEDIA_TYPE_TEXT:
+        if event_type == LLM_TOKEN_EVENT:
+            return data["token"]
+        if event_type == LLM_TOOL_CALL_EVENT:
+            return f"\nTool call: {json.dumps(data)}\n"
+        if event_type == LLM_TOOL_RESULT_EVENT:
+            return f"\nTool result: {json.dumps(data)}\n"
+        logger.error("Unknown event type: %s", event_type)
+        return ""
+    return format_stream_data(
+        {
+            "event": event_type,
+            "data": data,
+        }
+    )
+
+
+def stream_build_event(
+    chunk: Any,
+    chunk_id: int,
+    metadata_map: dict,
+    media_type: str = MEDIA_TYPE_JSON,
+    conversation_id: str | None = None,
+) -> Iterator[str]:
     """Build a streaming event from a chunk response.
 
     This function processes chunks from the Llama Stack streaming response and
@@ -200,35 +256,39 @@ def stream_build_event(chunk: Any, chunk_id: int, metadata_map: dict) -> Iterato
         Iterator[str]: An iterable list of formatted SSE data strings with event information
     """
     if hasattr(chunk, "error"):
-        yield from _handle_error_event(chunk, chunk_id)
+        yield from _handle_error_event(chunk, chunk_id, media_type)
 
     event_type = chunk.event.payload.event_type
     step_type = getattr(chunk.event.payload, "step_type", None)
 
     match (event_type, step_type):
         case (("turn_start" | "turn_awaiting_input"), _):
-            yield from _handle_turn_start_event(chunk_id)
+            yield from _handle_turn_start_event(chunk_id, media_type, conversation_id)
         case ("turn_complete", _):
-            yield from _handle_turn_complete_event(chunk, chunk_id)
+            yield from _handle_turn_complete_event(chunk, chunk_id, media_type)
         case (_, "shield_call"):
-            yield from _handle_shield_event(chunk, chunk_id)
+            yield from _handle_shield_event(chunk, chunk_id, media_type)
         case (_, "inference"):
-            yield from _handle_inference_event(chunk, chunk_id)
+            yield from _handle_inference_event(chunk, chunk_id, media_type)
         case (_, "tool_execution"):
-            yield from _handle_tool_execution_event(chunk, chunk_id, metadata_map)
+            yield from _handle_tool_execution_event(
+                chunk, chunk_id, metadata_map, media_type
+            )
         case _:
             logger.debug(
                 "Unhandled event combo: event_type=%s, step_type=%s",
                 event_type,
                 step_type,
             )
-            yield from _handle_heartbeat_event(chunk_id)
+            yield from _handle_heartbeat_event(chunk_id, media_type)
 
 
 # -----------------------------------
 # Error handling
 # -----------------------------------
-def _handle_error_event(chunk: Any, chunk_id: int) -> Iterator[str]:
+def _handle_error_event(
+    chunk: Any, chunk_id: int, media_type: str = MEDIA_TYPE_JSON
+) -> Iterator[str]:
     """
     Yield error event.
 
@@ -238,13 +298,68 @@ def _handle_error_event(chunk: Any, chunk_id: int) -> Iterator[str]:
     Parameters:
         chunk_id (int): The unique identifier for the current
         streaming chunk.
+        media_type (str): The media type for the response format.
     """
-    yield format_stream_data(
+    if media_type == MEDIA_TYPE_TEXT:
+        yield f"Error: {chunk.error['message']}"
+    else:
+        yield format_stream_data(
+            {
+                "event": "error",
+                "data": {
+                    "id": chunk_id,
+                    "token": chunk.error["message"],
+                },
+            }
+        )
+
+
+def prompt_too_long_error(error: Exception, media_type: str) -> str:
+    """Return error representation for long prompts.
+
+    Args:
+        error: The exception raised for long prompts.
+        media_type: Media type of the response (e.g. text or JSON).
+
+    Returns:
+        str: The error message formatted for the media type.
+    """
+    logger.error("Prompt is too long: %s", error)
+    if media_type == MEDIA_TYPE_TEXT:
+        return f"Prompt is too long: {error}"
+    return format_stream_data(
         {
             "event": "error",
             "data": {
-                "id": chunk_id,
-                "token": chunk.error["message"],
+                "status_code": 413,
+                "response": "Prompt is too long",
+                "cause": str(error),
+            },
+        }
+    )
+
+
+def generic_llm_error(error: Exception, media_type: str) -> str:
+    """Return error representation for generic LLM errors.
+
+    Args:
+        error: The exception raised during processing.
+        media_type: Media type of the response (e.g. text or JSON).
+
+    Returns:
+        str: The error message formatted for the media type.
+    """
+    logger.error("Error while obtaining answer for user question")
+    logger.exception(error)
+
+    if media_type == MEDIA_TYPE_TEXT:
+        return f"Error: {str(error)}"
+    return format_stream_data(
+        {
+            "event": "error",
+            "data": {
+                "response": "Internal server error",
+                "cause": str(error),
             },
         }
     )
@@ -253,11 +368,15 @@ def _handle_error_event(chunk: Any, chunk_id: int) -> Iterator[str]:
 # -----------------------------------
 # Turn handling
 # -----------------------------------
-def _handle_turn_start_event(chunk_id: int) -> Iterator[str]:
+def _handle_turn_start_event(
+    _chunk_id: int,
+    media_type: str = MEDIA_TYPE_JSON,
+    conversation_id: str | None = None,
+) -> Iterator[str]:
     """
     Yield turn start event.
 
-    Yield a Server-Sent Event (SSE) token event indicating the
+    Yield a Server-Sent Event (SSE) start event indicating the
     start of a new conversation turn.
 
     Parameters:
@@ -265,21 +384,28 @@ def _handle_turn_start_event(chunk_id: int) -> Iterator[str]:
         chunk.
 
     Yields:
-        str: SSE-formatted token event with an empty token to
-        signal turn start.
+        str: SSE-formatted start event with conversation_id.
     """
-    yield format_stream_data(
-        {
-            "event": "token",
-            "data": {
-                "id": chunk_id,
-                "token": "",
-            },
-        }
-    )
+    # Use provided conversation_id or generate one if not available
+    if conversation_id is None:
+        conversation_id = str(uuid.uuid4())
+
+    if media_type == MEDIA_TYPE_TEXT:
+        yield (
+            f"data: {json.dumps({'event': 'start', 'data': {'conversation_id': conversation_id}})}\n\n"  # pylint: disable=line-too-long
+        )
+    else:
+        yield format_stream_data(
+            {
+                "event": "start",
+                "data": {"conversation_id": conversation_id},
+            }
+        )
 
 
-def _handle_turn_complete_event(chunk: Any, chunk_id: int) -> Iterator[str]:
+def _handle_turn_complete_event(
+    chunk: Any, _chunk_id: int, media_type: str = MEDIA_TYPE_JSON
+) -> Iterator[str]:
     """
     Yield turn complete event.
 
@@ -294,23 +420,29 @@ def _handle_turn_complete_event(chunk: Any, chunk_id: int) -> Iterator[str]:
         str: SSE-formatted string containing the turn completion
         event and output message content.
     """
-    yield format_stream_data(
-        {
-            "event": "turn_complete",
-            "data": {
-                "id": chunk_id,
-                "token": interleaved_content_as_str(
-                    chunk.event.payload.turn.output_message.content
-                ),
-            },
-        }
+    full_response = interleaved_content_as_str(
+        chunk.event.payload.turn.output_message.content
     )
+
+    if media_type == MEDIA_TYPE_TEXT:
+        yield (
+            f"data: {json.dumps({'event': 'turn_complete', 'data': {'token': full_response}})}\n\n"
+        )
+    else:
+        yield format_stream_data(
+            {
+                "event": "turn_complete",
+                "data": {"token": full_response},
+            }
+        )
 
 
 # -----------------------------------
 # Shield handling
 # -----------------------------------
-def _handle_shield_event(chunk: Any, chunk_id: int) -> Iterator[str]:
+def _handle_shield_event(
+    chunk: Any, chunk_id: int, media_type: str = MEDIA_TYPE_JSON
+) -> Iterator[str]:
     """
     Yield shield event.
 
@@ -324,15 +456,13 @@ def _handle_shield_event(chunk: Any, chunk_id: int) -> Iterator[str]:
     if chunk.event.payload.event_type == "step_complete":
         violation = chunk.event.payload.step_details.violation
         if not violation:
-            yield format_stream_data(
-                {
-                    "event": "token",
-                    "data": {
-                        "id": chunk_id,
-                        "role": chunk.event.payload.step_type,
-                        "token": "No Violation",
-                    },
-                }
+            yield stream_event(
+                data={
+                    "id": chunk_id,
+                    "token": "No Violation",
+                },
+                event_type=LLM_TOKEN_EVENT,
+                media_type=media_type,
             )
         else:
             # Metric for LLM validation errors
@@ -340,22 +470,22 @@ def _handle_shield_event(chunk: Any, chunk_id: int) -> Iterator[str]:
             violation = (
                 f"Violation: {violation.user_message} (Metadata: {violation.metadata})"
             )
-            yield format_stream_data(
-                {
-                    "event": "token",
-                    "data": {
-                        "id": chunk_id,
-                        "role": chunk.event.payload.step_type,
-                        "token": violation,
-                    },
-                }
+            yield stream_event(
+                data={
+                    "id": chunk_id,
+                    "token": violation,
+                },
+                event_type=LLM_TOKEN_EVENT,
+                media_type=media_type,
             )
 
 
 # -----------------------------------
 # Inference handling
 # -----------------------------------
-def _handle_inference_event(chunk: Any, chunk_id: int) -> Iterator[str]:
+def _handle_inference_event(
+    chunk: Any, chunk_id: int, media_type: str = MEDIA_TYPE_JSON
+) -> Iterator[str]:
     """
     Yield inference step event.
 
@@ -367,52 +497,44 @@ def _handle_inference_event(chunk: Any, chunk_id: int) -> Iterator[str]:
     Supports both string and ToolCall object tool calls.
     """
     if chunk.event.payload.event_type == "step_start":
-        yield format_stream_data(
-            {
-                "event": "token",
-                "data": {
-                    "id": chunk_id,
-                    "role": chunk.event.payload.step_type,
-                    "token": "",
-                },
-            }
+        yield stream_event(
+            data={
+                "id": chunk_id,
+                "token": "",
+            },
+            event_type=LLM_TOKEN_EVENT,
+            media_type=media_type,
         )
 
     elif chunk.event.payload.event_type == "step_progress":
         if chunk.event.payload.delta.type == "tool_call":
             if isinstance(chunk.event.payload.delta.tool_call, str):
-                yield format_stream_data(
-                    {
-                        "event": "tool_call",
-                        "data": {
-                            "id": chunk_id,
-                            "role": chunk.event.payload.step_type,
-                            "token": chunk.event.payload.delta.tool_call,
-                        },
-                    }
+                yield stream_event(
+                    data={
+                        "id": chunk_id,
+                        "token": chunk.event.payload.delta.tool_call,
+                    },
+                    event_type=LLM_TOOL_CALL_EVENT,
+                    media_type=media_type,
                 )
             elif isinstance(chunk.event.payload.delta.tool_call, ToolCall):
-                yield format_stream_data(
-                    {
-                        "event": "tool_call",
-                        "data": {
-                            "id": chunk_id,
-                            "role": chunk.event.payload.step_type,
-                            "token": chunk.event.payload.delta.tool_call.tool_name,
-                        },
-                    }
+                yield stream_event(
+                    data={
+                        "id": chunk_id,
+                        "token": chunk.event.payload.delta.tool_call.tool_name,
+                    },
+                    event_type=LLM_TOOL_CALL_EVENT,
+                    media_type=media_type,
                 )
 
         elif chunk.event.payload.delta.type == "text":
-            yield format_stream_data(
-                {
-                    "event": "token",
-                    "data": {
-                        "id": chunk_id,
-                        "role": chunk.event.payload.step_type,
-                        "token": chunk.event.payload.delta.text,
-                    },
-                }
+            yield stream_event(
+                data={
+                    "id": chunk_id,
+                    "token": chunk.event.payload.delta.text,
+                },
+                event_type=LLM_TOKEN_EVENT,
+                media_type=media_type,
             )
 
 
@@ -421,7 +543,7 @@ def _handle_inference_event(chunk: Any, chunk_id: int) -> Iterator[str]:
 # -----------------------------------
 # pylint: disable=R1702,R0912
 def _handle_tool_execution_event(
-    chunk: Any, chunk_id: int, metadata_map: dict
+    chunk: Any, chunk_id: int, metadata_map: dict, media_type: str = MEDIA_TYPE_JSON
 ) -> Iterator[str]:
     """
     Yield tool call event.
@@ -444,48 +566,42 @@ def _handle_tool_execution_event(
         events and responses.
     """
     if chunk.event.payload.event_type == "step_start":
-        yield format_stream_data(
-            {
-                "event": "tool_call",
-                "data": {
-                    "id": chunk_id,
-                    "role": chunk.event.payload.step_type,
-                    "token": "",
-                },
-            }
+        yield stream_event(
+            data={
+                "id": chunk_id,
+                "token": "",
+            },
+            event_type=LLM_TOOL_CALL_EVENT,
+            media_type=media_type,
         )
 
     elif chunk.event.payload.event_type == "step_complete":
         for t in chunk.event.payload.step_details.tool_calls:
-            yield format_stream_data(
-                {
-                    "event": "tool_call",
-                    "data": {
-                        "id": chunk_id,
-                        "role": chunk.event.payload.step_type,
-                        "token": {
-                            "tool_name": t.tool_name,
-                            "arguments": t.arguments,
-                        },
+            yield stream_event(
+                data={
+                    "id": chunk_id,
+                    "token": {
+                        "tool_name": t.tool_name,
+                        "arguments": t.arguments,
                     },
-                }
+                },
+                event_type=LLM_TOOL_CALL_EVENT,
+                media_type=media_type,
             )
 
         for r in chunk.event.payload.step_details.tool_responses:
             if r.tool_name == "query_from_memory":
                 inserted_context = interleaved_content_as_str(r.content)
-                yield format_stream_data(
-                    {
-                        "event": "tool_call",
-                        "data": {
-                            "id": chunk_id,
-                            "role": chunk.event.payload.step_type,
-                            "token": {
-                                "tool_name": r.tool_name,
-                                "response": f"Fetched {len(inserted_context)} bytes from memory",
-                            },
+                yield stream_event(
+                    data={
+                        "id": chunk_id,
+                        "token": {
+                            "tool_name": r.tool_name,
+                            "response": f"Fetched {len(inserted_context)} bytes from memory",
                         },
-                    }
+                    },
+                    event_type=LLM_TOOL_RESULT_EVENT,
+                    media_type=media_type,
                 )
 
             elif r.tool_name == DEFAULT_RAG_TOOL and r.content:
@@ -508,40 +624,38 @@ def _handle_tool_execution_event(
                                     match,
                                 )
 
-                yield format_stream_data(
-                    {
-                        "event": "tool_call",
-                        "data": {
-                            "id": chunk_id,
-                            "role": chunk.event.payload.step_type,
-                            "token": {
-                                "tool_name": r.tool_name,
-                                "summary": summary,
-                            },
+                yield stream_event(
+                    data={
+                        "id": chunk_id,
+                        "token": {
+                            "tool_name": r.tool_name,
+                            "summary": summary,
                         },
-                    }
+                    },
+                    event_type=LLM_TOOL_RESULT_EVENT,
+                    media_type=media_type,
                 )
 
             else:
-                yield format_stream_data(
-                    {
-                        "event": "tool_call",
-                        "data": {
-                            "id": chunk_id,
-                            "role": chunk.event.payload.step_type,
-                            "token": {
-                                "tool_name": r.tool_name,
-                                "response": interleaved_content_as_str(r.content),
-                            },
+                yield stream_event(
+                    data={
+                        "id": chunk_id,
+                        "token": {
+                            "tool_name": r.tool_name,
+                            "response": interleaved_content_as_str(r.content),
                         },
-                    }
+                    },
+                    event_type=LLM_TOOL_RESULT_EVENT,
+                    media_type=media_type,
                 )
 
 
 # -----------------------------------
 # Catch-all for everything else
 # -----------------------------------
-def _handle_heartbeat_event(chunk_id: int) -> Iterator[str]:
+def _handle_heartbeat_event(
+    chunk_id: int, media_type: str = MEDIA_TYPE_JSON
+) -> Iterator[str]:
     """
     Yield a heartbeat event.
 
@@ -555,20 +669,19 @@ def _handle_heartbeat_event(chunk_id: int) -> Iterator[str]:
     Yields:
         str: SSE-formatted heartbeat event string.
     """
-    yield format_stream_data(
-        {
-            "event": "heartbeat",
-            "data": {
-                "id": chunk_id,
-                "token": "heartbeat",
-            },
-        }
+    yield stream_event(
+        data={
+            "id": chunk_id,
+            "token": "heartbeat",
+        },
+        event_type=LLM_TOKEN_EVENT,
+        media_type=media_type,
     )
 
 
 @router.post("/streaming_query", responses=streaming_query_responses)
 @authorize(Action.STREAMING_QUERY)
-async def streaming_query_endpoint_handler(  # pylint: disable=R0915,R0914
+async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals,too-many-statements
     request: Request,
     query_request: QueryRequest,
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
@@ -662,7 +775,10 @@ async def streaming_query_endpoint_handler(  # pylint: disable=R0915,R0914
                 llm_response="No response from the model", tool_calls=[]
             )
 
-            # Send start event
+            # Determine media type for response formatting
+            media_type = query_request.media_type or MEDIA_TYPE_JSON
+
+            # Send start event at the beginning of the stream
             yield stream_start_event(conversation_id)
 
             async for chunk in turn_response:
@@ -682,11 +798,13 @@ async def streaming_query_endpoint_handler(  # pylint: disable=R0915,R0914
                     if p.step_details.step_type == "tool_execution":
                         summary.append_tool_calls_from_llama(p.step_details)
 
-                for event in stream_build_event(chunk, chunk_id, metadata_map):
+                for event in stream_build_event(
+                    chunk, chunk_id, metadata_map, media_type, conversation_id
+                ):
                     chunk_id += 1
                     yield event
 
-            yield stream_end_event(metadata_map)
+            yield stream_end_event(metadata_map, media_type)
 
             if not is_transcripts_enabled():
                 logger.debug("Transcript collection is disabled in the configuration")
@@ -742,7 +860,12 @@ async def streaming_query_endpoint_handler(  # pylint: disable=R0915,R0914
         # Update metrics for the LLM call
         metrics.llm_calls_total.labels(provider_id, model_id).inc()
 
-        return StreamingResponse(response_generator(response))
+        # Determine media type for response
+        # Note: The HTTP Content-Type header is always text/event-stream for SSE,
+        # but the media_type parameter controls how the content is formatted
+        return StreamingResponse(
+            response_generator(response), media_type="text/event-stream"
+        )
     # connection to Llama Stack server
     except APIConnectionError as e:
         # Update metrics for the LLM call failure
@@ -755,6 +878,17 @@ async def streaming_query_endpoint_handler(  # pylint: disable=R0915,R0914
                 "cause": str(e),
             },
         ) from e
+    except Exception as e:  # pylint: disable=broad-except
+        # Handle other errors with OLS-compatible error response
+        # This broad exception catch is intentional to ensure all errors
+        # are converted to OLS-compatible streaming responses
+        media_type = query_request.media_type or MEDIA_TYPE_JSON
+        error_response = generic_llm_error(e, media_type)
+
+        async def error_generator() -> AsyncGenerator[str, None]:
+            yield error_response
+
+        return StreamingResponse(error_generator(), media_type=media_type)
 
 
 async def retrieve_response(
