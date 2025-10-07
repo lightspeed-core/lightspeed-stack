@@ -31,7 +31,6 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
-from metrics.utils import update_llm_token_count_from_turn
 from models.config import Action
 from models.database.conversations import UserConversation
 from models.requests import Attachment, QueryRequest
@@ -55,6 +54,7 @@ from utils.endpoints import (
 from utils.mcp_headers import handle_mcp_headers_with_toolgroups, mcp_headers_dependency
 from utils.transcripts import store_transcript
 from utils.types import TurnSummary
+from utils.token_counter import extract_and_update_token_metrics, TokenCounter
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
@@ -279,16 +279,16 @@ async def query_endpoint_handler(  # pylint: disable=R0914
                 user_conversation=user_conversation, query_request=query_request
             ),
         )
-        summary, conversation_id, referenced_documents = await retrieve_response(
-            client,
-            llama_stack_model_id,
-            query_request,
-            token,
-            mcp_headers=mcp_headers,
-            provider_id=provider_id,
+        summary, conversation_id, referenced_documents, token_usage = (
+            await retrieve_response(
+                client,
+                llama_stack_model_id,
+                query_request,
+                token,
+                mcp_headers=mcp_headers,
+                provider_id=provider_id,
+            )
         )
-        # Update metrics for the LLM call
-        metrics.llm_calls_total.labels(provider_id, model_id).inc()
 
         # Get the initial topic summary for the conversation
         topic_summary = None
@@ -371,6 +371,10 @@ async def query_endpoint_handler(  # pylint: disable=R0914
             rag_chunks=summary.rag_chunks if summary.rag_chunks else [],
             tool_calls=tool_calls if tool_calls else None,
             referenced_documents=referenced_documents,
+            truncated=False,  # TODO: implement truncation detection
+            input_tokens=token_usage.input_tokens,
+            output_tokens=token_usage.output_tokens,
+            available_quotas={},  # TODO: implement quota tracking
         )
         logger.info("Query processing completed successfully!")
         return response
@@ -583,7 +587,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     mcp_headers: dict[str, dict[str, str]] | None = None,
     *,
     provider_id: str = "",
-) -> tuple[TurnSummary, str, list[ReferencedDocument]]:
+) -> tuple[TurnSummary, str, list[ReferencedDocument], TokenCounter]:
     """
     Retrieve response from LLMs and agents.
 
@@ -607,9 +611,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         mcp_headers (dict[str, dict[str, str]], optional): Headers for multi-component processing.
 
     Returns:
-        tuple[TurnSummary, str, list[ReferencedDocument]]: A tuple containing
+        tuple[TurnSummary, str, list[ReferencedDocument], TokenCounter]: A tuple containing
         a summary of the LLM or agent's response
-        content, the conversation ID and the list of parsed referenced documents.
+        content, the conversation ID, the list of parsed referenced documents, and token usage information.
     """
     available_input_shields = [
         shield.identifier
@@ -704,9 +708,11 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
 
     referenced_documents = parse_referenced_documents(response)
 
-    # Update token count metrics for the LLM call
+    # Update token count metrics and extract token usage in one call
     model_label = model_id.split("/", 1)[1] if "/" in model_id else model_id
-    update_llm_token_count_from_turn(response, model_label, provider_id, system_prompt)
+    token_usage = extract_and_update_token_metrics(
+        response, model_label, provider_id, system_prompt
+    )
 
     # Check for validation errors in the response
     steps = response.steps or []
@@ -722,7 +728,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
             "Response lacks output_message.content (conversation_id=%s)",
             conversation_id,
         )
-    return (summary, conversation_id, referenced_documents)
+    return (summary, conversation_id, referenced_documents, token_usage)
 
 
 def validate_attachments_metadata(attachments: list[Attachment]) -> None:

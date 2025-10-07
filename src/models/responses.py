@@ -185,11 +185,10 @@ class QueryResponse(BaseModel):
         rag_chunks: List of RAG chunks used to generate the response.
         referenced_documents: The URLs and titles for the documents used to generate the response.
         tool_calls: List of tool calls made during response generation.
-        TODO: truncated: Whether conversation history was truncated.
-        TODO: input_tokens: Number of tokens sent to LLM.
-        TODO: output_tokens: Number of tokens received from LLM.
-        TODO: available_quotas: Quota available as measured by all configured quota limiters
-        TODO: tool_results: List of tool results.
+        truncated: Whether conversation history was truncated.
+        input_tokens: Number of tokens sent to LLM.
+        output_tokens: Number of tokens received from LLM.
+        available_quotas: Quota available as measured by all configured quota limiters.
     """
 
     conversation_id: Optional[str] = Field(
@@ -229,6 +228,30 @@ class QueryResponse(BaseModel):
         ],
     )
 
+    truncated: bool = Field(
+        False,
+        description="Whether conversation history was truncated",
+        examples=[False, True],
+    )
+
+    input_tokens: int = Field(
+        0,
+        description="Number of tokens sent to LLM",
+        examples=[150, 250, 500],
+    )
+
+    output_tokens: int = Field(
+        0,
+        description="Number of tokens received from LLM",
+        examples=[50, 100, 200],
+    )
+
+    available_quotas: dict[str, int] = Field(
+        default_factory=dict,
+        description="Quota available as measured by all configured quota limiters",
+        examples=[{"daily": 1000, "monthly": 50000}],
+    )
+
     # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
@@ -257,6 +280,10 @@ class QueryResponse(BaseModel):
                             "doc_title": "Operator Lifecycle Manager (OLM)",
                         }
                     ],
+                    "truncated": False,
+                    "input_tokens": 150,
+                    "output_tokens": 75,
+                    "available_quotas": {"daily": 1000, "monthly": 50000},
                 }
             ]
         }

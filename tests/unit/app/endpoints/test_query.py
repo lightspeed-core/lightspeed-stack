@@ -38,6 +38,7 @@ from tests.unit.app.endpoints.test_streaming_query import (
     SAMPLE_KNOWLEDGE_SEARCH_RESULTS,
 )
 from utils.types import ToolCallSummary, TurnSummary
+from utils.token_counter import TokenCounter
 
 # User ID must be proper UUID
 MOCK_AUTH = (
@@ -64,9 +65,13 @@ def dummy_request() -> Request:
 def mock_metrics(mocker):
     """Helper function to mock metrics operations for query endpoints."""
     mocker.patch(
-        "app.endpoints.query.update_llm_token_count_from_turn",
-        return_value=None,
+        "app.endpoints.query.extract_and_update_token_metrics",
+        return_value=TokenCounter(),
     )
+    # Mock the metrics that are called inside extract_and_update_token_metrics
+    mocker.patch("metrics.llm_token_sent_total")
+    mocker.patch("metrics.llm_token_received_total")
+    mocker.patch("metrics.llm_calls_total")
 
 
 def mock_database_operations(mocker):
@@ -163,7 +168,6 @@ async def _test_query_endpoint_handler(
     mocker, dummy_request: Request, store_transcript_to_file=False
 ):
     """Test the query endpoint handler."""
-    mock_metric = mocker.patch("metrics.llm_calls_total")
     mock_client = mocker.AsyncMock()
     mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
     mock_lsc.return_value = mock_client
@@ -195,7 +199,7 @@ async def _test_query_endpoint_handler(
 
     mocker.patch(
         "app.endpoints.query.retrieve_response",
-        return_value=(summary, conversation_id, referenced_documents),
+        return_value=(summary, conversation_id, referenced_documents, TokenCounter()),
     )
     mocker.patch(
         "app.endpoints.query.select_model_and_provider_id",
@@ -225,8 +229,7 @@ async def _test_query_endpoint_handler(
     assert response.response == summary.llm_response
     assert response.conversation_id == conversation_id
 
-    # Assert the metric for successful LLM calls is incremented
-    mock_metric.labels("fake_provider_id", "fake_model_id").inc.assert_called_once()
+    # Note: metrics are now handled inside extract_and_update_token_metrics() which is mocked
 
     # Assert the store_transcript function is called if transcripts are enabled
     if store_transcript_to_file:
@@ -492,7 +495,7 @@ async def test_retrieve_response_no_returned_message(prepare_agent_mocks, mocker
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, _, _ = await retrieve_response(
+    response, _, _, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -528,7 +531,7 @@ async def test_retrieve_response_message_without_content(prepare_agent_mocks, mo
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    response, _, _ = await retrieve_response(
+    response, _, _, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -565,7 +568,7 @@ async def test_retrieve_response_vector_db_available(prepare_agent_mocks, mocker
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    summary, conversation_id, _ = await retrieve_response(
+    summary, conversation_id, _, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -608,7 +611,7 @@ async def test_retrieve_response_no_available_shields(prepare_agent_mocks, mocke
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    summary, conversation_id, _ = await retrieve_response(
+    summary, conversation_id, _, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -662,7 +665,7 @@ async def test_retrieve_response_one_available_shield(prepare_agent_mocks, mocke
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    summary, conversation_id, _ = await retrieve_response(
+    summary, conversation_id, _, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -719,7 +722,7 @@ async def test_retrieve_response_two_available_shields(prepare_agent_mocks, mock
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    summary, conversation_id, _ = await retrieve_response(
+    summary, conversation_id, _, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -778,7 +781,7 @@ async def test_retrieve_response_four_available_shields(prepare_agent_mocks, moc
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    summary, conversation_id, _ = await retrieve_response(
+    summary, conversation_id, _, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -839,7 +842,7 @@ async def test_retrieve_response_with_one_attachment(prepare_agent_mocks, mocker
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    summary, conversation_id, _ = await retrieve_response(
+    summary, conversation_id, _, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -898,7 +901,7 @@ async def test_retrieve_response_with_two_attachments(prepare_agent_mocks, mocke
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    summary, conversation_id, _ = await retrieve_response(
+    summary, conversation_id, _, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -1075,7 +1078,7 @@ async def test_retrieve_response_with_mcp_servers(prepare_agent_mocks, mocker):
     model_id = "fake_model_id"
     access_token = "test_token_123"
 
-    summary, conversation_id, _ = await retrieve_response(
+    summary, conversation_id, _, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -1149,7 +1152,7 @@ async def test_retrieve_response_with_mcp_servers_empty_token(
     model_id = "fake_model_id"
     access_token = ""  # Empty token
 
-    summary, conversation_id, _ = await retrieve_response(
+    summary, conversation_id, _, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -1225,7 +1228,7 @@ async def test_retrieve_response_with_mcp_servers_and_mcp_headers(
         },
     }
 
-    summary, conversation_id, _ = await retrieve_response(
+    summary, conversation_id, _, _ = await retrieve_response(
         mock_client,
         model_id,
         query_request,
@@ -1314,7 +1317,7 @@ async def test_retrieve_response_shield_violation(prepare_agent_mocks, mocker):
 
     query_request = QueryRequest(query="What is OpenStack?")
 
-    _, conversation_id, _ = await retrieve_response(
+    _, conversation_id, _, _ = await retrieve_response(
         mock_client, "fake_model_id", query_request, "test_token"
     )
 
@@ -1399,7 +1402,12 @@ async def test_auth_tuple_unpacking_in_query_endpoint_handler(mocker, dummy_requ
     )
     mock_retrieve_response = mocker.patch(
         "app.endpoints.query.retrieve_response",
-        return_value=(summary, "00000000-0000-0000-0000-000000000000", []),
+        return_value=(
+            summary,
+            "00000000-0000-0000-0000-000000000000",
+            [],
+            TokenCounter(),
+        ),
     )
 
     mocker.patch(
@@ -1455,7 +1463,7 @@ async def test_query_endpoint_handler_no_tools_true(mocker, dummy_request):
 
     mocker.patch(
         "app.endpoints.query.retrieve_response",
-        return_value=(summary, conversation_id, referenced_documents),
+        return_value=(summary, conversation_id, referenced_documents, TokenCounter()),
     )
     mocker.patch(
         "app.endpoints.query.select_model_and_provider_id",
@@ -1511,7 +1519,7 @@ async def test_query_endpoint_handler_no_tools_false(mocker, dummy_request):
 
     mocker.patch(
         "app.endpoints.query.retrieve_response",
-        return_value=(summary, conversation_id, referenced_documents),
+        return_value=(summary, conversation_id, referenced_documents, TokenCounter()),
     )
     mocker.patch(
         "app.endpoints.query.select_model_and_provider_id",
@@ -1571,7 +1579,7 @@ async def test_retrieve_response_no_tools_bypasses_mcp_and_rag(
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    summary, conversation_id, _ = await retrieve_response(
+    summary, conversation_id, _, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 
@@ -1626,7 +1634,7 @@ async def test_retrieve_response_no_tools_false_preserves_functionality(
     model_id = "fake_model_id"
     access_token = "test_token"
 
-    summary, conversation_id, _ = await retrieve_response(
+    summary, conversation_id, _, _ = await retrieve_response(
         mock_client, model_id, query_request, access_token
     )
 

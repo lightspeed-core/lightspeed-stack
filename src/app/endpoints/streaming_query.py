@@ -56,6 +56,7 @@ from utils.endpoints import (
     validate_model_provider_override,
 )
 from utils.mcp_headers import handle_mcp_headers_with_toolgroups, mcp_headers_dependency
+from utils.token_counter import TokenCounter, extract_token_usage_from_turn
 from utils.transcripts import store_transcript
 from utils.types import TurnSummary
 
@@ -154,17 +155,23 @@ def stream_start_event(conversation_id: str) -> str:
     )
 
 
-def stream_end_event(metadata_map: dict, media_type: str = MEDIA_TYPE_JSON) -> str:
+def stream_end_event(
+    metadata_map: dict,
+    summary: TurnSummary,  # pylint: disable=unused-argument
+    token_usage: TokenCounter,
+    media_type: str = MEDIA_TYPE_JSON,
+) -> str:
     """
     Yield the end of the data stream.
 
     Format and return the end event for a streaming response,
-    including referenced document metadata and placeholder token
-    counts.
+    including referenced document metadata and token usage information.
 
     Parameters:
         metadata_map (dict): A mapping containing metadata about
         referenced documents.
+        summary (TurnSummary): Summary of the conversation turn.
+        token_usage (TokenCounter): Token usage information.
         media_type (str): The media type for the response format.
 
     Returns:
@@ -199,8 +206,8 @@ def stream_end_event(metadata_map: dict, media_type: str = MEDIA_TYPE_JSON) -> s
                 "rag_chunks": [],  # TODO(jboos): implement RAG chunks when summary is available
                 "referenced_documents": referenced_docs_dict,
                 "truncated": None,  # TODO(jboos): implement truncated
-                "input_tokens": 0,  # TODO(jboos): implement input tokens
-                "output_tokens": 0,  # TODO(jboos): implement output tokens
+                "input_tokens": token_usage.input_tokens,
+                "output_tokens": token_usage.output_tokens,
             },
             "available_quotas": {},  # TODO(jboos): implement available quotas
         }
@@ -787,6 +794,8 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals,t
             # Send start event at the beginning of the stream
             yield stream_start_event(conversation_id)
 
+            latest_turn: Any | None = None
+
             async for chunk in turn_response:
                 if chunk.event is None:
                     continue
@@ -795,6 +804,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals,t
                     summary.llm_response = interleaved_content_as_str(
                         p.turn.output_message.content
                     )
+                    latest_turn = p.turn
                     system_prompt = get_system_prompt(query_request, configuration)
                     try:
                         update_llm_token_count_from_turn(
@@ -812,7 +822,14 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals,t
                     chunk_id += 1
                     yield event
 
-            yield stream_end_event(metadata_map, media_type)
+            # Extract token usage from the turn
+            token_usage = (
+                extract_token_usage_from_turn(latest_turn)
+                if latest_turn is not None
+                else TokenCounter()
+            )
+
+            yield stream_end_event(metadata_map, summary, token_usage, media_type)
 
             if not is_transcripts_enabled():
                 logger.debug("Transcript collection is disabled in the configuration")

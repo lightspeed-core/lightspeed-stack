@@ -50,11 +50,12 @@ from app.endpoints.streaming_query import (
 )
 
 from authorization.resolvers import NoopRolesResolver
+from constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
 from models.config import ModelContextProtocolServer, Action
 from models.requests import QueryRequest, Attachment
 from models.responses import RAGChunk
+from utils.token_counter import TokenCounter
 from utils.types import ToolCallSummary, TurnSummary
-from constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
 
 MOCK_AUTH = (
     "017adfa4-7cc6-46e4-b663-3653e1ae69df",
@@ -82,10 +83,10 @@ def mock_database_operations(mocker):
 
 def mock_metrics(mocker):
     """Helper function to mock metrics operations for streaming query endpoints."""
-    mocker.patch(
-        "app.endpoints.streaming_query.update_llm_token_count_from_turn",
-        return_value=None,
-    )
+    # Mock the metrics that are used in the streaming query endpoints
+    mocker.patch("metrics.llm_token_sent_total")
+    mocker.patch("metrics.llm_token_received_total")
+    mocker.patch("metrics.llm_calls_total")
 
 
 SAMPLE_KNOWLEDGE_SEARCH_RESULTS = [
@@ -1827,7 +1828,12 @@ class TestOLSStreamEndEvent:
             "doc1": {"title": "Test Doc 1", "docs_url": "https://example.com/doc1"},
             "doc2": {"title": "Test Doc 2", "docs_url": "https://example.com/doc2"},
         }
-        result = stream_end_event(metadata_map, MEDIA_TYPE_JSON)
+        # Create mock objects for the test
+        mock_summary = TurnSummary(llm_response="Test response", tool_calls=[])
+        mock_token_usage = TokenCounter(input_tokens=100, output_tokens=50)
+        result = stream_end_event(
+            metadata_map, mock_summary, mock_token_usage, MEDIA_TYPE_JSON
+        )
 
         # Parse the result to verify structure
         data_part = result.replace("data: ", "").strip()
@@ -1850,7 +1856,12 @@ class TestOLSStreamEndEvent:
             "doc1": {"title": "Test Doc 1", "docs_url": "https://example.com/doc1"},
             "doc2": {"title": "Test Doc 2", "docs_url": "https://example.com/doc2"},
         }
-        result = stream_end_event(metadata_map, MEDIA_TYPE_TEXT)
+        # Create mock objects for the test
+        mock_summary = TurnSummary(llm_response="Test response", tool_calls=[])
+        mock_token_usage = TokenCounter(input_tokens=100, output_tokens=50)
+        result = stream_end_event(
+            metadata_map, mock_summary, mock_token_usage, MEDIA_TYPE_TEXT
+        )
 
         expected = (
             "\n\n---\n\nTest Doc 1: https://example.com/doc1\n"
@@ -1862,7 +1873,12 @@ class TestOLSStreamEndEvent:
         """Test end event formatting for text media type with no documents."""
 
         metadata_map = {}
-        result = stream_end_event(metadata_map, MEDIA_TYPE_TEXT)
+        # Create mock objects for the test
+        mock_summary = TurnSummary(llm_response="Test response", tool_calls=[])
+        mock_token_usage = TokenCounter(input_tokens=100, output_tokens=50)
+        result = stream_end_event(
+            metadata_map, mock_summary, mock_token_usage, MEDIA_TYPE_TEXT
+        )
 
         assert result == ""
 
@@ -1980,8 +1996,12 @@ class TestOLSCompatibilityIntegration:
         metadata_map = {
             "doc1": {"title": "Test Doc", "docs_url": "https://example.com/doc"}
         }
-
-        end_event = stream_end_event(metadata_map, MEDIA_TYPE_JSON)
+        # Create mock objects for the test
+        mock_summary = TurnSummary(llm_response="Test response", tool_calls=[])
+        mock_token_usage = TokenCounter(input_tokens=100, output_tokens=50)
+        end_event = stream_end_event(
+            metadata_map, mock_summary, mock_token_usage, MEDIA_TYPE_JSON
+        )
         data_part = end_event.replace("data: ", "").strip()
         parsed = json.loads(data_part)
 
