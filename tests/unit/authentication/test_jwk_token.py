@@ -3,6 +3,7 @@
 """Unit tests for functions defined in authentication/jwk_token.py"""
 
 import time
+from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request
@@ -16,16 +17,22 @@ from models.config import JwkConfiguration, JwtConfiguration
 TEST_USER_ID = "test-user-123"
 TEST_USER_NAME = "testuser"
 
+GeneratedKey = dict[str, Any]
+
+
+def create_token_header(key_id) -> dict[str, str]:
+    """Create a sample token header."""
+    return {"alg": "RS256", "typ": "JWT", "kid": key_id}
+
 
 @pytest.fixture
 def token_header(single_key_set):
     """A sample token header."""
-    return {"alg": "RS256", "typ": "JWT", "kid": single_key_set[0]["kid"]}
+    return create_token_header(single_key_set[0]["kid"])
 
 
-@pytest.fixture
-def token_payload():
-    """A sample token payload with the default user_id and username claims."""
+def create_token_payload() -> dict[str, Any]:
+    """Create a sample token payload with the default user_id and username claims."""
     return {
         "user_id": TEST_USER_ID,
         "username": TEST_USER_NAME,
@@ -34,7 +41,13 @@ def token_payload():
     }
 
 
-def make_key():
+@pytest.fixture
+def token_payload():
+    """A sample token payload with the default user_id and username claims."""
+    return create_token_payload()
+
+
+def make_key() -> GeneratedKey:
     """Generate a key pair for testing purposes."""
     key = JsonWebKey.generate_key("RSA", 2048, is_private=True)
     return {
@@ -45,19 +58,19 @@ def make_key():
 
 
 @pytest.fixture
-def single_key_set():
+def single_key_set() -> list[GeneratedKey]:
     """Default single-key set for signing tokens."""
     return [make_key()]
 
 
 @pytest.fixture
-def another_single_key_set():
+def another_single_key_set() -> list[GeneratedKey]:
     """Same as single_key_set, but generates a different key pair by being its own fixture."""
     return [make_key()]
 
 
 @pytest.fixture
-def valid_token(single_key_set, token_header, token_payload):
+def valid_token(single_key_set, token_header, token_payload) -> str:
     """A token that is valid and signed with the signing keys."""
     jwt_instance = JsonWebToken(algorithms=["RS256"])
     return jwt_instance.encode(
@@ -73,23 +86,29 @@ def clear_jwk_cache():
     _jwk_cache.clear()
 
 
+def create_jwks_keys(
+    key_set: list[GeneratedKey], algorithms: list[str]
+) -> dict[str, Any]:
+    """Create JWK keys dict from key set and algorithms."""
+    return {
+        "keys": [
+            {
+                **key["private_key"].as_dict(private=False),
+                "kid": key["kid"],
+                "alg": alg,
+            }
+            for alg, key in zip(algorithms, key_set)
+        ],
+    }
+
+
 def make_signing_server(mocker, key_set, algorithms):
     """A fake server to serve our signing keys as JWKs."""
     mock_session_class = mocker.patch("aiohttp.ClientSession")
     mock_response = mocker.AsyncMock()
 
     # Create JWK dict from private key as public key
-    keys = [
-        {
-            **key["private_key"].as_dict(private=False),
-            "kid": key["kid"],
-            "alg": alg,
-        }
-        for alg, key in zip(algorithms, key_set)
-    ]
-    mock_response.json.return_value = {
-        "keys": keys,
-    }
+    mock_response.json.return_value = create_jwks_keys(key_set, algorithms)
     mock_response.raise_for_status = mocker.MagicMock(return_value=None)
 
     # Create mock session instance that acts as async context manager
@@ -117,7 +136,7 @@ def mocked_signing_keys_server(mocker, single_key_set):
 
 
 @pytest.fixture
-def default_jwk_configuration():
+def default_jwk_configuration() -> JwkConfiguration:
     """Default JwkConfiguration for testing."""
     return JwkConfiguration(
         url=AnyHttpUrl("https://this#isgonnabemocked.com/jwks.json"),
@@ -128,7 +147,7 @@ def default_jwk_configuration():
     )
 
 
-def dummy_request(token):
+def dummy_request(token: str) -> Request:
     """Generate a dummy request with a given token."""
     return Request(
         scope={
@@ -140,7 +159,7 @@ def dummy_request(token):
 
 
 @pytest.fixture
-def no_token_request():
+def no_token_request() -> Request:
     """Dummy request with no token."""
     return Request(
         scope={
@@ -152,7 +171,7 @@ def no_token_request():
 
 
 @pytest.fixture
-def not_bearer_token_request():
+def not_bearer_token_request() -> Request:
     """Dummy request with no token."""
     return Request(
         scope={
@@ -163,7 +182,7 @@ def not_bearer_token_request():
     )
 
 
-def set_auth_header(request: Request, token: str):
+def set_auth_header(request: Request, token: str) -> None:
     """Helper function to set the Authorization header in a request."""
     new_headers = [
         (k, v) for k, v in request.scope["headers"] if k.lower() != b"authorization"

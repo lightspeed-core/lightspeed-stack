@@ -8,3 +8,4 @@ features/info.feature
 features/query.feature
 features/streaming_query.feature
 features/rest_api.feature
+features/authorization_jwk.feature

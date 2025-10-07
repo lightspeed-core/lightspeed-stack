@@ -37,7 +37,7 @@ def wait_for_container_health(container_name: str, max_attempts: int = 3) -> Non
         try:
             result = subprocess.run(
                 [
-                    "docker",
+                    os.getenv("CONTAINER_CMD", "docker"),
                     "inspect",
                     "--format={{.State.Health.Status}}",
                     container_name,
@@ -130,7 +130,7 @@ def restart_container(container_name: str) -> None:
     """Restart a Docker container by name and wait until it is healthy."""
     try:
         subprocess.run(
-            ["docker", "restart", container_name],
+            [os.getenv("CONTAINER_CMD", "docker"), "restart", container_name],
             capture_output=True,
             text=True,
             check=True,

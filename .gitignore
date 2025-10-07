@@ -188,3 +188,6 @@ dev/
 
 # Database files
 *.sqlite
+
+# A file sometimes leftover by the e2e tests
+lightspeed-stack.yaml.backup
