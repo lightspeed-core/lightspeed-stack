@@ -1,6 +1,12 @@
 """Model for conversation history cache entry."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import List
+from models.responses import ReferencedDocument
+
+class AdditionalKwargs(BaseModel):
+    """A structured model for the 'additional_kwargs' dictionary."""
+    referenced_documents: List[ReferencedDocument] = Field(default_factory=list)
 
 
 class CacheEntry(BaseModel):
@@ -11,6 +17,7 @@ class CacheEntry(BaseModel):
         response: The response string
         provider: Provider identification
         model: Model identification
+        additional_kwargs: additional property to store data like referenced documents
     """
 
     query: str
@@ -19,17 +26,4 @@ class CacheEntry(BaseModel):
     model: str
     started_at: str
     completed_at: str
-
-
-class ConversationData(BaseModel):
-    """Model representing conversation data returned by cache list operations.
-
-    Attributes:
-        conversation_id: The conversation ID
-        topic_summary: The topic summary for the conversation (can be None)
-        last_message_timestamp: The timestamp of the last message in the conversation
-    """
-
-    conversation_id: str
-    topic_summary: str | None
-    last_message_timestamp: float
+    additional_kwargs: AdditionalKwargs | None = None
