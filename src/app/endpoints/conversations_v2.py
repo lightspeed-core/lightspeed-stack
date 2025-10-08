@@ -314,13 +314,23 @@ def check_conversation_existence(user_id: str, conversation_id: str) -> None:
 
 def transform_chat_message(entry: CacheEntry) -> dict[str, Any]:
     """Transform the message read from cache into format used by response payload."""
+    user_message = {
+        "content": entry.query, 
+        "type": "user"
+    }
+    assistant_message: dict[str, Any] = {
+        "content": entry.response,
+        "type": "assistant"
+    }
+
+    # Check for additional_kwargs and add it to the assistant message if it exists
+    if entry.additional_kwargs:
+        assistant_message["additional_kwargs"] = entry.additional_kwargs.model_dump()
+
     return {
         "provider": entry.provider,
         "model": entry.model,
-        "messages": [
-            {"content": entry.query, "type": "user"},
-            {"content": entry.response, "type": "assistant"},
-        ],
+        "messages": [user_message, assistant_message],
         "started_at": entry.started_at,
         "completed_at": entry.completed_at,
     }

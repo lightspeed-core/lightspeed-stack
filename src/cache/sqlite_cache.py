@@ -3,11 +3,13 @@
 from time import time
 
 import sqlite3
+import json
 
 from cache.cache import Cache
 from cache.cache_error import CacheError
-from models.cache_entry import CacheEntry, ConversationData
+from models.cache_entry import CacheEntry, AdditionalKwargs
 from models.config import SQLiteDatabaseConfiguration
+from models.responses import ConversationData
 from log import get_logger
 from utils.connection_decorator import connection
 
@@ -41,15 +43,16 @@ class SQLiteCache(Cache):
 
     CREATE_CACHE_TABLE = """
         CREATE TABLE IF NOT EXISTS cache (
-            user_id         text NOT NULL,
-            conversation_id text NOT NULL,
-            created_at      int NOT NULL,
-            started_at      text,
-            completed_at    text,
-            query           text,
-            response        text,
-            provider        text,
-            model           text,
+            user_id           text NOT NULL,
+            conversation_id   text NOT NULL,
+            created_at        int NOT NULL,
+            started_at        text,
+            completed_at      text,
+            query             text,
+            response          text,
+            provider          text,
+            model             text,
+            additional_kwargs text,
             PRIMARY KEY(user_id, conversation_id, created_at)
         );
         """
@@ -70,7 +73,7 @@ class SQLiteCache(Cache):
         """
 
     SELECT_CONVERSATION_HISTORY_STATEMENT = """
-        SELECT query, response, provider, model, started_at, completed_at
+        SELECT query, response, provider, model, started_at, completed_at, additional_kwargs
           FROM cache
          WHERE user_id=? AND conversation_id=?
          ORDER BY created_at
@@ -78,8 +81,8 @@ class SQLiteCache(Cache):
 
     INSERT_CONVERSATION_HISTORY_STATEMENT = """
         INSERT INTO cache(user_id, conversation_id, created_at, started_at, completed_at,
-                          query, response, provider, model)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          query, response, provider, model, additional_kwargs)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
     QUERY_CACHE_SIZE = """
@@ -209,6 +212,10 @@ class SQLiteCache(Cache):
 
         result = []
         for conversation_entry in conversation_entries:
+            additional_kwargs_json = conversation_entry[6]
+            additional_kwargs_obj = None
+            if additional_kwargs_json:
+                additional_kwargs_obj = AdditionalKwargs.model_validate_json(additional_kwargs_json)
             cache_entry = CacheEntry(
                 query=conversation_entry[0],
                 response=conversation_entry[1],
@@ -216,6 +223,7 @@ class SQLiteCache(Cache):
                 model=conversation_entry[3],
                 started_at=conversation_entry[4],
                 completed_at=conversation_entry[5],
+                additional_kwargs=additional_kwargs_obj,
             )
             result.append(cache_entry)
 
@@ -244,6 +252,11 @@ class SQLiteCache(Cache):
 
         cursor = self.connection.cursor()
         current_time = time()
+
+        additional_kwargs_json = None
+        if cache_entry.additional_kwargs:
+            additional_kwargs_json = cache_entry.additional_kwargs.model_dump_json(exclude_none=True)
+
         cursor.execute(
             self.INSERT_CONVERSATION_HISTORY_STATEMENT,
             (
@@ -256,6 +269,7 @@ class SQLiteCache(Cache):
                 cache_entry.response,
                 cache_entry.provider,
                 cache_entry.model,
+                additional_kwargs_json,
             ),
         )
 
