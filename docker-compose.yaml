@@ -42,6 +42,23 @@ services:
       retries: 3      # how many times to retry before marking as unhealthy
       start_period: 5s # time to wait before starting checks
 
+  # This server is used for the e2e JWK tests
+  test-jwk-server:
+    # Conveniently uses the same Containerfile as lightspeed-stack as it has
+    # Python installed
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: test-jwk-server
+    ports:
+      - "16161:16161"
+    networks:
+      - lightspeednet
+    working_dir: /app-root/test_jwk
+    entrypoint: ["python3", "-m", "http.server", "16161"]
+    volumes:
+      - ./tests/e2e/configuration/test_jwk:/app-root/test_jwk:Z
+
 networks:
   lightspeednet:
     driver: bridge
