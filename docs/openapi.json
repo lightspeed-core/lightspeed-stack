@@ -3691,15 +3691,19 @@
                         "description": "URL of the referenced document"
                     },
                     "doc_title": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Doc Title",
                         "description": "Title of the referenced document"
                     }
                 },
                 "type": "object",
-                "required": [
-                    "doc_title"
-                ],
                 "title": "ReferencedDocument",
                 "description": "Model representing a document referenced in generating a response.\n\nAttributes:\n    doc_url: Url to the referenced doc.\n    doc_title: Title of the referenced doc."
             },
@@ -3931,6 +3935,45 @@
                 "description": "Model representing a tool call made during response generation."
             },
             "ToolsResponse": {
+                "properties": {
+                    "tools": {
+                        "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Tools",
+                        "description": "List of tools available from all configured MCP servers and built-in toolgroups",
+                        "examples": [
+                            [
+                                {
+                                    "description": "Read contents of a file from the filesystem",
+                                    "identifier": "filesystem_read",
+                                    "parameters": [
+                                        {
+                                            "description": "Path to the file to read",
+                                            "name": "path",
+                                            "parameter_type": "string",
+                                            "required": true
+                                        }
+                                    ],
+                                    "provider_id": "model-context-protocol",
+                                    "server_source": "http://localhost:3000",
+                                    "toolgroup_id": "filesystem-tools",
+                                    "type": "tool"
+                                }
+                            ]
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "tools"
+                ],
+                "title": "ToolsResponse",
+                "description": "Model representing a response to tools request."
+            },
+            "UnauthorizedResponse": {
                 "properties": {
                     "tools": {
                         "items": {

@@ -30,6 +30,7 @@ from app.endpoints.query import (
 )
 from authorization.resolvers import NoopRolesResolver
 from configuration import AppConfig
+from models.cache_entry import CacheEntry
 from models.config import Action, ModelContextProtocolServer
 from models.database.conversations import UserConversation
 from models.requests import Attachment, QueryRequest
@@ -183,6 +184,13 @@ async def _test_query_endpoint_handler(
         store_transcript_to_file
     )
     mocker.patch("app.endpoints.query.configuration", mock_config)
+    
+    mock_store_in_cache = mocker.patch("app.endpoints.query.store_conversation_into_cache")
+
+    # Create mock referenced documents to simulate a successful RAG response
+    mock_referenced_documents = [
+        ReferencedDocument(doc_title="Test Doc 1", doc_url=AnyUrl("http://example.com/1"))
+    ]
 
     summary = TurnSummary(
         llm_response="LLM answer",
@@ -197,11 +205,10 @@ async def _test_query_endpoint_handler(
     )
     conversation_id = "00000000-0000-0000-0000-000000000000"
     query = "What is OpenStack?"
-    referenced_documents: list[ReferencedDocument] = []
 
     mocker.patch(
         "app.endpoints.query.retrieve_response",
-        return_value=(summary, conversation_id, referenced_documents, TokenCounter()),
+        return_value=(summary, conversation_id, mock_referenced_documents, TokenCounter()),
     )
     mocker.patch(
         "app.endpoints.query.select_model_and_provider_id",
@@ -230,6 +237,18 @@ async def _test_query_endpoint_handler(
     # Assert the response is as expected
     assert response.response == summary.llm_response
     assert response.conversation_id == conversation_id
+    
+    # Assert that mock was called and get the arguments
+    mock_store_in_cache.assert_called_once()
+    call_args = mock_store_in_cache.call_args[0]
+    # Extract CacheEntry object from the call arguments, it's the 4th argument from the func signature
+    cached_entry = call_args[3]
+
+    assert isinstance(cached_entry, CacheEntry)
+    assert cached_entry.response == "LLM answer"
+    assert cached_entry.additional_kwargs is not None
+    assert len(cached_entry.additional_kwargs.referenced_documents) == 1
+    assert cached_entry.additional_kwargs.referenced_documents[0].doc_title == "Test Doc 1"
 
     # Note: metrics are now handled inside extract_and_update_token_metrics() which is mocked
 
