@@ -1,13 +1,18 @@
 """Unit tests for PostgreSQL cache implementation."""
 
+import json
+
 import pytest
 
 import psycopg2
 
+from pydantic import AnyUrl
+
 from cache.cache_error import CacheError
 from cache.postgres_cache import PostgresCache
 from models.config import PostgreSQLDatabaseConfiguration
-from models.cache_entry import CacheEntry, ConversationData
+from models.cache_entry import AdditionalKwargs, CacheEntry, ReferencedDocument
+from models.responses import ConversationData
 from utils import suid
 
 
@@ -375,3 +380,91 @@ def test_topic_summary_when_disconnected(postgres_cache_config_fixture, mocker):
 
     with pytest.raises(CacheError, match="cache is disconnected"):
         cache.set_topic_summary(USER_ID_1, CONVERSATION_ID_1, "Test", False)
+
+
+def test_insert_and_get_with_additional_kwargs(postgres_cache_config_fixture, mocker):
+    """Test that a CacheEntry with additional_kwargs is stored and retrieved correctly."""
+    # prevent real connection to PG instance
+    mock_connect = mocker.patch("psycopg2.connect")
+    cache = PostgresCache(postgres_cache_config_fixture)
+
+    mock_connection = mock_connect.return_value
+    mock_cursor = mock_connection.cursor.return_value.__enter__.return_value
+
+    # Create a CacheEntry with referenced documents
+    docs = [ReferencedDocument(doc_title="Test Doc", doc_url=AnyUrl("http://example.com"))]
+    kwargs_obj = AdditionalKwargs(referenced_documents=docs)
+    entry_with_kwargs = CacheEntry(
+        query="user message",
+        response="AI message",
+        provider="foo", model="bar",
+        started_at="start_time", completed_at="end_time",
+        additional_kwargs=kwargs_obj
+    )
+
+    # Call the insert method
+    cache.insert_or_append(USER_ID_1, CONVERSATION_ID_1, entry_with_kwargs)
+
+    
+    insert_call = mock_cursor.execute.call_args_list[1]
+    sql_params = insert_call[0][1]
+    inserted_json_str = sql_params[-1]
+    
+    assert json.loads(inserted_json_str) == {
+        "referenced_documents": [{"doc_title": "Test Doc", "doc_url": "http://example.com/"}]
+    }
+
+    # Simulate the database returning that data
+    db_return_value = (
+        "user message", "AI message", "foo", "bar", "start_time", "end_time",
+        {"referenced_documents": [{"doc_title": "Test Doc", "doc_url": "http://example.com/"}]}
+    )
+    mock_cursor.fetchall.return_value = [db_return_value]
+
+    # Call the get method
+    retrieved_entries = cache.get(USER_ID_1, CONVERSATION_ID_1)
+
+    # Assert that the retrieved entry matches the original
+    assert len(retrieved_entries) == 1
+    assert retrieved_entries[0] == entry_with_kwargs
+    assert retrieved_entries[0].additional_kwargs.referenced_documents[0].doc_title == "Test Doc"
+
+
+def test_insert_and_get_without_additional_kwargs(postgres_cache_config_fixture, mocker):
+    """Test that a CacheEntry with no additional_kwargs is handled correctly."""
+    # Arrange
+    mock_connect = mocker.patch("psycopg2.connect")
+    cache = PostgresCache(postgres_cache_config_fixture)
+
+    mock_connection = mock_connect.return_value
+    mock_cursor = mock_connection.cursor.return_value.__enter__.return_value
+
+    # Use CacheEntry without additional_kwargs
+    entry_without_kwargs = cache_entry_2
+
+    # Call the insert method
+    cache.insert_or_append(USER_ID_1, CONVERSATION_ID_1, entry_without_kwargs)
+
+    insert_call = mock_cursor.execute.call_args_list[1]
+    sql_params = insert_call[0][1]
+    assert sql_params[-1] is None
+
+    # 4. Simulate the database returning a row with None
+    db_return_value = (
+        entry_without_kwargs.query,
+        entry_without_kwargs.response,
+        entry_without_kwargs.provider,
+        entry_without_kwargs.model,
+        entry_without_kwargs.started_at,
+        entry_without_kwargs.completed_at,
+        None # additional_kwargs is None in the DB
+    )
+    mock_cursor.fetchall.return_value = [db_return_value]
+
+    # Call the get method
+    retrieved_entries = cache.get(USER_ID_1, CONVERSATION_ID_1)
+
+    # Assert that the retrieved entry matches the original
+    assert len(retrieved_entries) == 1
+    assert retrieved_entries[0] == entry_without_kwargs
+    assert retrieved_entries[0].additional_kwargs is None
