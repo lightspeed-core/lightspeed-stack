@@ -25,7 +25,7 @@ class Singleton(type):
             object: The singleton instance for this class.
         """
         if cls not in cls._instances:
-            cls._instances[cls] = super().__call__(*args, **kwargs)
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
 
 
