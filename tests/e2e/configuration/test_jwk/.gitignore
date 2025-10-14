@@ -1,0 +1,2 @@
+# Ignore JWKs created for e2e tests
+*.json

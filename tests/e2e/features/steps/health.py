@@ -1,5 +1,6 @@
 """Implementation of common test steps."""
 
+import os
 import subprocess
 import time
 from behave import given  # pyright: ignore[reportAttributeAccessIssue]
@@ -14,7 +15,13 @@ def llama_stack_connection_broken(context: Context) -> None:
 
     try:
         result = subprocess.run(
-            ["docker", "inspect", "-f", "{{.State.Running}}", "llama-stack"],
+            [
+                os.getenv("CONTAINER_CMD", "docker"),
+                "inspect",
+                "-f",
+                "{{.State.Running}}",
+                "llama-stack",
+            ],
             capture_output=True,
             text=True,
             check=True,
@@ -23,7 +30,9 @@ def llama_stack_connection_broken(context: Context) -> None:
         if result.stdout.strip():
             context.llama_stack_was_running = True
             subprocess.run(
-                ["docker", "stop", "llama-stack"], check=True, capture_output=True
+                [os.getenv("CONTAINER_CMD", "docker"), "stop", "llama-stack"],
+                check=True,
+                capture_output=True,
             )
 
             # Wait a moment for the connection to be fully disrupted

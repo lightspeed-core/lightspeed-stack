@@ -141,7 +141,40 @@ End to end tests are based on [Behave](https://behave.readthedocs.io/en/stable/)
 
 * Defined in [tests/e2e](https://github.com/lightspeed-core/lightspeed-stack/tree/main/tests/e2e)
 
+### Prerequisites for E2E tests
 
+E2E tests require running services. You may run them using `podman-compose` or `docker-compose`.
+
+Some tests also require an OpenAI API key. You can run specific tests that do not require an OpenAI API key without it.
+
+First you need to build the images:
+
+```bash
+podman-compose build
+```
+
+Then to start the services:
+
+```bash
+OPENAI_API_KEY=your-api-key podman-compose up
+```
+
+And finally to run the actual tests:
+
+```bash
+make test-e2e
+```
+
+If using `podman`, set `CONTAINER_CMD` accordingly:
+
+```bash
+CONTAINER_CMD=podman make test-e2e
+```
+
+**Example of running a particular test with podman and live output:**
+```bash
+CONTAINER_CMD=podman uv run behave tests/e2e/features/authorization_jwk.feature --verbose --no-capture --no-capture-stderr
+```
 
 ## Tips and hints
 

@@ -7,9 +7,11 @@ Currently four events have been registered:
 4. after_scenario
 """
 
+import os
 import requests
 import subprocess
 import time
+import json
 from behave.model import Scenario, Feature
 from behave.runner import Context
 
@@ -24,6 +26,8 @@ try:
     import os  # noqa: F401
 except ImportError as e:
     print("Warning: unable to import module:", e)
+
+from tests.unit.authentication.test_jwk_token import create_jwks_keys, make_key
 
 
 def before_all(context: Context) -> None:
@@ -55,7 +59,7 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
         try:
             # Start the llama-stack container again
             subprocess.run(
-                ["docker", "start", "llama-stack"], check=True, capture_output=True
+                [os.getenv("CONTAINER_CMD", "docker"), "start", "llama-stack"],
             )
 
             # Wait for the service to be healthy
@@ -67,7 +71,7 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
                 try:
                     result = subprocess.run(
                         [
-                            "docker",
+                            os.getenv("CONTAINER_CMD", "docker"),
                             "exec",
                             "llama-stack",
                             "curl",
@@ -108,13 +112,26 @@ def before_feature(context: Context, feature: Feature) -> None:
         switch_config(context.feature_config)
         restart_container("lightspeed-stack")
 
+    elif "JWKAuth" in feature.tags:
+        context.feature_config = (
+            "tests/e2e/configuration/lightspeed-stack-auth-jwk.yaml"
+        )
+        with open("tests/e2e/configuration/test_jwk/jwk.json", "w") as f:
+            context.test_key = make_key()
+            keys = create_jwks_keys([context.test_key], ["RS256"])
+            f.write(json.dumps(keys))
+
+        context.default_config_backup = create_config_backup("lightspeed-stack.yaml")
+        switch_config("tests/e2e/configuration/lightspeed-stack-auth-jwk.yaml")
+        restart_container("lightspeed-stack")
+
     if "Feedback" in feature.tags:
         context.feedback_conversations = []
 
 
 def after_feature(context: Context, feature: Feature) -> None:
     """Run after each feature file is exercised."""
-    if "Authorized" in feature.tags:
+    if "Authorized" in feature.tags or "JWKAuth" in feature.tags:
         switch_config(context.default_config_backup)
         restart_container("lightspeed-stack")
         remove_config_backup(context.default_config_backup)
