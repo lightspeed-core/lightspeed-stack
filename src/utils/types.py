@@ -1,6 +1,6 @@
 """Common types for the project."""
 
-from typing import Any, Optional
+from typing import Any, Optional, Type
 import json
 from llama_stack_client.lib.agents.event_logger import interleaved_content_as_str
 from llama_stack_client.lib.agents.tool_parser import ToolParser
@@ -15,9 +15,9 @@ from constants import DEFAULT_RAG_TOOL
 class Singleton(type):
     """Metaclass for Singleton support."""
 
-    _instances = {}  # type: ignore
+    _instances: dict[Type, Any] = {}
 
-    def __call__(cls, *args, **kwargs):  # type: ignore
+    def __call__(cls: type, *args: Any, **kwargs: Any) -> Type:
         """
         Return the single cached instance of the class, creating and caching it on first call.
 
@@ -25,7 +25,7 @@ class Singleton(type):
             object: The singleton instance for this class.
         """
         if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+            cls._instances[cls] = super().__call__(*args, **kwargs)
         return cls._instances[cls]
 
 
