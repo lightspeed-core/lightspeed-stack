@@ -17,7 +17,7 @@ class Singleton(type):
 
     _instances: dict[Type, object] = {}
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args, **kwargs) -> object:
         """
         Return the single cached instance of the class, creating and caching it on first call.
 
