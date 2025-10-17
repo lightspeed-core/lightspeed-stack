@@ -32,7 +32,7 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
-from models.cache_entry import CacheEntry, AdditionalKwargs
+from models.cache_entry import CacheEntry
 from models.config import Action
 from models.database.conversations import UserConversation
 from models.requests import Attachment, QueryRequest
@@ -334,11 +334,6 @@ async def query_endpoint_handler(  # pylint: disable=R0914
 
         completed_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        additional_kwargs_obj = None
-        if referenced_documents:
-            additional_kwargs_obj = AdditionalKwargs(
-                referenced_documents=referenced_documents
-            )
         cache_entry = CacheEntry(
             query=query_request.query,
             response=summary.llm_response,
@@ -346,7 +341,7 @@ async def query_endpoint_handler(  # pylint: disable=R0914
             model=model_id,
             started_at=started_at,
             completed_at=completed_at,
-            additional_kwargs=additional_kwargs_obj
+            referenced_documents=referenced_documents if referenced_documents else None
         )
             
         store_conversation_into_cache(

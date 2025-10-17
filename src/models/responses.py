@@ -7,7 +7,6 @@ from typing import Any, Optional, Union
 from pydantic import AnyUrl, BaseModel, Field
 
 from llama_stack_client.types import ProviderInfo
-from models.cache_entry import ConversationData
 
 
 class ModelsResponse(BaseModel):

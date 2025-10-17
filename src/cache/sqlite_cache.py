@@ -7,9 +7,9 @@ import json
 
 from cache.cache import Cache
 from cache.cache_error import CacheError
-from models.cache_entry import CacheEntry, AdditionalKwargs
+from models.cache_entry import CacheEntry
 from models.config import SQLiteDatabaseConfiguration
-from models.responses import ConversationData
+from models.responses import ConversationData, ReferencedDocument
 from log import get_logger
 from utils.connection_decorator import connection
 
@@ -22,17 +22,18 @@ class SQLiteCache(Cache):
     The cache itself is stored in following table:
 
     ```
-         Column      |            Type             | Nullable |
-    -----------------+-----------------------------+----------+
-     user_id         | text                        | not null |
-     conversation_id | text                        | not null |
-     created_at      | int                         | not null |
-     started_at      | text                        |          |
-     completed_at    | text                        |          |
-     query           | text                        |          |
-     response        | text                        |          |
-     provider        | text                        |          |
-     model           | text                        |          |
+         Column            |            Type             | Nullable |
+    -----------------------+-----------------------------+----------+
+     user_id               | text                        | not null |
+     conversation_id       | text                        | not null |
+     created_at            | int                         | not null |
+     started_at            | text                        |          |
+     completed_at          | text                        |          |
+     query                 | text                        |          |
+     response              | text                        |          |
+     provider              | text                        |          |
+     model                 | text                        |          |
+     referenced_documents  | text                        |          |
     Indexes:
         "cache_pkey" PRIMARY KEY, btree (user_id, conversation_id, created_at)
         "cache_key_key" UNIQUE CONSTRAINT, btree (key)
@@ -43,16 +44,16 @@ class SQLiteCache(Cache):
 
     CREATE_CACHE_TABLE = """
         CREATE TABLE IF NOT EXISTS cache (
-            user_id           text NOT NULL,
-            conversation_id   text NOT NULL,
-            created_at        int NOT NULL,
-            started_at        text,
-            completed_at      text,
-            query             text,
-            response          text,
-            provider          text,
-            model             text,
-            additional_kwargs text,
+            user_id              text NOT NULL,
+            conversation_id      text NOT NULL,
+            created_at           int NOT NULL,
+            started_at           text,
+            completed_at         text,
+            query                text,
+            response             text,
+            provider             text,
+            model                text,
+            referenced_documents text,
             PRIMARY KEY(user_id, conversation_id, created_at)
         );
         """
@@ -73,7 +74,7 @@ class SQLiteCache(Cache):
         """
 
     SELECT_CONVERSATION_HISTORY_STATEMENT = """
-        SELECT query, response, provider, model, started_at, completed_at, additional_kwargs
+        SELECT query, response, provider, model, started_at, completed_at, referenced_documents
           FROM cache
          WHERE user_id=? AND conversation_id=?
          ORDER BY created_at
@@ -81,7 +82,7 @@ class SQLiteCache(Cache):
 
     INSERT_CONVERSATION_HISTORY_STATEMENT = """
         INSERT INTO cache(user_id, conversation_id, created_at, started_at, completed_at,
-                          query, response, provider, model, additional_kwargs)
+                          query, response, provider, model, referenced_documents)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
@@ -212,10 +213,11 @@ class SQLiteCache(Cache):
 
         result = []
         for conversation_entry in conversation_entries:
-            additional_kwargs_json = conversation_entry[6]
-            additional_kwargs_obj = None
-            if additional_kwargs_json:
-                additional_kwargs_obj = AdditionalKwargs.model_validate_json(additional_kwargs_json)
+            docs_json_str = conversation_entry[6]
+            docs_obj = None
+            if docs_json_str:
+                docs_data = json.loads(docs_json_str)
+                docs_obj = [ReferencedDocument.model_validate(doc) for doc in docs_data]
             cache_entry = CacheEntry(
                 query=conversation_entry[0],
                 response=conversation_entry[1],
@@ -223,7 +225,7 @@ class SQLiteCache(Cache):
                 model=conversation_entry[3],
                 started_at=conversation_entry[4],
                 completed_at=conversation_entry[5],
-                additional_kwargs=additional_kwargs_obj,
+                referenced_documents=docs_obj,
             )
             result.append(cache_entry)
 
@@ -253,9 +255,10 @@ class SQLiteCache(Cache):
         cursor = self.connection.cursor()
         current_time = time()
 
-        additional_kwargs_json = None
-        if cache_entry.additional_kwargs:
-            additional_kwargs_json = cache_entry.additional_kwargs.model_dump_json(exclude_none=True)
+        referenced_documents_json = None
+        if cache_entry.referenced_documents:
+            docs_as_dicts = [doc.model_dump(mode='json') for doc in cache_entry.referenced_documents]
+            referenced_documents_json = json.dumps(docs_as_dicts)
 
         cursor.execute(
             self.INSERT_CONVERSATION_HISTORY_STATEMENT,
@@ -269,7 +272,7 @@ class SQLiteCache(Cache):
                 cache_entry.response,
                 cache_entry.provider,
                 cache_entry.model,
-                additional_kwargs_json,
+                referenced_documents_json,
             ),
         )
 

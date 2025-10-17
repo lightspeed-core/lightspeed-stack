@@ -14,7 +14,7 @@ from app.endpoints.conversations_v2 import (
     check_valid_conversation_id,
     check_conversation_existence,
 )
-from models.cache_entry import AdditionalKwargs, CacheEntry
+from models.cache_entry import CacheEntry
 from models.requests import ConversationUpdateRequest
 from models.responses import ConversationUpdateResponse, ReferencedDocument
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
@@ -61,36 +61,68 @@ def test_transform_message() -> None:
     assert message2["content"] == "response"
 
 
-def test_transform_message_with_additional_kwargs() -> None:
-    """Test the transform_chat_message function when additional_kwargs are present."""
-    # CacheEntry with referenced documents
-    docs = [ReferencedDocument(doc_title="Test Doc", doc_url=AnyUrl("http://example.com"))]
-    kwargs_obj = AdditionalKwargs(referenced_documents=docs)
-    
-    entry = CacheEntry(
-        query="query",
-        response="response",
-        provider="provider",
-        model="model",
-        started_at="2024-01-01T00:00:00Z",
-        completed_at="2024-01-01T00:00:05Z",
-        additional_kwargs=kwargs_obj
-    )
+class TestTransformChatMessage:
+    """Test cases for the transform_chat_message utility function."""
 
-    transformed = transform_chat_message(entry)
-    assert transformed is not None
+    def test_transform_message_without_documents(self) -> None:
+        """Test the transformation when no referenced_documents are present."""
+        entry = CacheEntry(
+            query="query",
+            response="response",
+            provider="provider",
+            model="model",
+            started_at="2024-01-01T00:00:00Z",
+            completed_at="2024-01-01T00:00:05Z",
+            # referenced_documents is None by default
+        )
+        transformed = transform_chat_message(entry)
+        
+        assistant_message = transformed["messages"][1]
 
-    assistant_message = transformed["messages"][1]
-    
-    # Check that the assistant message contains the additional_kwargs field
-    assert "additional_kwargs" in assistant_message
-    
-    # Check the content of the referenced documents
-    kwargs = assistant_message["additional_kwargs"]
-    assert "referenced_documents" in kwargs
-    assert len(kwargs["referenced_documents"]) == 1
-    assert kwargs["referenced_documents"][0]["doc_title"] == "Test Doc"
-    assert str(kwargs["referenced_documents"][0]["doc_url"]) == "http://example.com/"
+        # Assert that the key is NOT present when the list is None
+        assert "referenced_documents" not in assistant_message
+
+    def test_transform_message_with_referenced_documents(self) -> None:
+        """Test the transformation when referenced_documents are present."""
+        docs = [ReferencedDocument(doc_title="Test Doc", doc_url=AnyUrl("http://example.com"))]
+        
+        entry = CacheEntry(
+            query="query",
+            response="response",
+            provider="provider",
+            model="model",
+            started_at="2024-01-01T00:00:00Z",
+            completed_at="2024-01-01T00:00:05Z",
+            referenced_documents=docs
+        )
+
+        transformed = transform_chat_message(entry)
+        assistant_message = transformed["messages"][1]
+        
+        assert "referenced_documents" in assistant_message
+        
+        ref_docs = assistant_message["referenced_documents"]
+        assert len(ref_docs) == 1
+        assert ref_docs[0]["doc_title"] == "Test Doc"
+        assert str(ref_docs[0]["doc_url"]) == "http://example.com/"
+
+    def test_transform_message_with_empty_referenced_documents(self) -> None:
+        """Test the transformation when referenced_documents is an empty list."""
+        entry = CacheEntry(
+            query="query",
+            response="response",
+            provider="provider",
+            model="model",
+            started_at="2024-01-01T00:00:00Z",
+            completed_at="2024-01-01T00:00:05Z",
+            referenced_documents=[] # Explicitly empty
+        )
+
+        transformed = transform_chat_message(entry)
+        assistant_message = transformed["messages"][1]
+
+        assert "referenced_documents" in assistant_message
+        assert assistant_message["referenced_documents"] == []
 
 
 @pytest.fixture

@@ -323,9 +323,11 @@ def transform_chat_message(entry: CacheEntry) -> dict[str, Any]:
         "type": "assistant"
     }
 
-    # Check for additional_kwargs and add it to the assistant message if it exists
-    if entry.additional_kwargs:
-        assistant_message["additional_kwargs"] = entry.additional_kwargs.model_dump()
+    # If referenced_documents exist on the entry, add them to the assistant message
+    if entry.referenced_documents is not None:
+        assistant_message["referenced_documents"] = [
+            doc.model_dump(mode='json') for doc in entry.referenced_documents
+        ]
 
     return {
         "provider": entry.provider,

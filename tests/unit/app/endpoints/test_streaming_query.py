@@ -284,6 +284,7 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
                             role="assistant",
                             content=[TextContentItem(text="LLM answer", type="text")],
                             stop_reason="end_of_turn",
+                            tool_calls=[],
                         ),
                         session_id="test_session_id",
                         started_at=datetime.now(),
@@ -368,10 +369,10 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
     # Assert that the CacheEntry was constructed correctly
     assert isinstance(cached_entry, CacheEntry)
     assert cached_entry.response == "LLM answer"
-    assert cached_entry.additional_kwargs is not None
-    assert len(cached_entry.additional_kwargs.referenced_documents) == 2
-    assert cached_entry.additional_kwargs.referenced_documents[0].doc_title == "Doc1"
-    assert str(cached_entry.additional_kwargs.referenced_documents[1].doc_url) == "https://example.com/doc2"
+    assert cached_entry.referenced_documents is not None
+    assert len(cached_entry.referenced_documents) == 2
+    assert cached_entry.referenced_documents[0].doc_title == "Doc1"
+    assert str(cached_entry.referenced_documents[1].doc_url) == "https://example.com/doc2"
 
     # Assert the store_transcript function is called if transcripts are enabled
     if store_transcript:

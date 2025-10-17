@@ -1,12 +1,13 @@
 """PostgreSQL cache implementation."""
 
+import json
 import psycopg2
 
 from cache.cache import Cache
 from cache.cache_error import CacheError
-from models.cache_entry import CacheEntry, AdditionalKwargs
+from models.cache_entry import CacheEntry
 from models.config import PostgreSQLDatabaseConfiguration
-from models.responses import ConversationData
+from models.responses import ConversationData, ReferencedDocument
 from log import get_logger
 from utils.connection_decorator import connection
 
@@ -19,17 +20,18 @@ class PostgresCache(Cache):
     The cache itself lives stored in following table:
 
     ```
-         Column      |              Type              | Nullable |
-    -----------------+--------------------------------+----------+
-     user_id         | text                           | not null |
-     conversation_id | text                           | not null |
-     created_at      | timestamp without time zone    | not null |
-     started_at      | text                           |          |
-     completed_at    | text                           |          |
-     query           | text                           |          |
-     response        | text                           |          |
-     provider        | text                           |          |
-     model           | text                           |          |
+         Column            |              Type              | Nullable |
+    -----------------------+--------------------------------+----------+
+     user_id               | text                           | not null |
+     conversation_id       | text                           | not null |
+     created_at            | timestamp without time zone    | not null |
+     started_at            | text                           |          |
+     completed_at          | text                           |          |
+     query                 | text                           |          |
+     response              | text                           |          |
+     provider              | text                           |          |
+     model                 | text                           |          |
+     referenced_documents  | jsonb                           |          |
     Indexes:
         "cache_pkey" PRIMARY KEY, btree (user_id, conversation_id, created_at)
         "timestamps" btree (created_at)
@@ -38,16 +40,16 @@ class PostgresCache(Cache):
 
     CREATE_CACHE_TABLE = """
         CREATE TABLE IF NOT EXISTS cache (
-            user_id           text NOT NULL,
-            conversation_id   text NOT NULL,
-            created_at        timestamp NOT NULL,
-            started_at        text,
-            completed_at      text,
-            query             text,
-            response          text,
-            provider          text,
-            model             text,
-            additional_kwargs jsonb,
+            user_id              text NOT NULL,
+            conversation_id      text NOT NULL,
+            created_at           timestamp NOT NULL,
+            started_at           text,
+            completed_at         text,
+            query                text,
+            response             text,
+            provider             text,
+            model                text,
+            referenced_documents jsonb,
             PRIMARY KEY(user_id, conversation_id, created_at)
         );
         """
@@ -68,7 +70,7 @@ class PostgresCache(Cache):
         """
 
     SELECT_CONVERSATION_HISTORY_STATEMENT = """
-        SELECT query, response, provider, model, started_at, completed_at, additional_kwargs
+        SELECT query, response, provider, model, started_at, completed_at, referenced_documents
           FROM cache
          WHERE user_id=%s AND conversation_id=%s
          ORDER BY created_at
@@ -76,7 +78,7 @@ class PostgresCache(Cache):
 
     INSERT_CONVERSATION_HISTORY_STATEMENT = """
         INSERT INTO cache(user_id, conversation_id, created_at, started_at, completed_at,
-                          query, response, provider, model, additional_kwargs)
+                          query, response, provider, model, referenced_documents)
         VALUES (%s, %s, CURRENT_TIMESTAMP, %s, %s, %s, %s, %s, %s, %s)
         """
 
@@ -214,10 +216,10 @@ class PostgresCache(Cache):
             result = []
             for conversation_entry in conversation_entries:
                 # Parse it back into an LLMResponse object
-                additional_kwargs_data = conversation_entry[6]
-                additional_kwargs_obj = None
-                if additional_kwargs_data:
-                    additional_kwargs_obj = AdditionalKwargs.model_validate(additional_kwargs_data)
+                docs_data = conversation_entry[6]
+                docs_obj = None
+                if docs_data:
+                    docs_obj = [ReferencedDocument.model_validate(doc) for doc in docs_data]
                 cache_entry = CacheEntry(
                     query=conversation_entry[0],
                     response=conversation_entry[1],
@@ -225,7 +227,7 @@ class PostgresCache(Cache):
                     model=conversation_entry[3],
                     started_at=conversation_entry[4],
                     completed_at=conversation_entry[5],
-                    additional_kwargs=additional_kwargs_obj,
+                    referenced_documents=docs_obj,
                 )
                 result.append(cache_entry)
 
@@ -253,10 +255,11 @@ class PostgresCache(Cache):
             raise CacheError("insert_or_append: cache is disconnected")
 
         try:
-            additional_kwargs_json = None
-            if cache_entry.additional_kwargs:
-                # Use exclude_none=True to keep JSON clean
-                additional_kwargs_json = cache_entry.additional_kwargs.model_dump_json(exclude_none=True)
+            referenced_documents_json = None
+            if cache_entry.referenced_documents:
+                docs_as_dicts = [doc.model_dump(mode='json') for doc in cache_entry.referenced_documents]
+                referenced_documents_json = json.dumps(docs_as_dicts)
+
             # the whole operation is run in one transaction
             with self.connection.cursor() as cursor:
                 cursor.execute(
@@ -270,7 +273,7 @@ class PostgresCache(Cache):
                         cache_entry.response,
                         cache_entry.provider,
                         cache_entry.model,
-                        additional_kwargs_json,
+                        referenced_documents_json,
                     ),
                 )
 

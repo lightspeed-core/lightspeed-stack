@@ -246,9 +246,9 @@ async def _test_query_endpoint_handler(
 
     assert isinstance(cached_entry, CacheEntry)
     assert cached_entry.response == "LLM answer"
-    assert cached_entry.additional_kwargs is not None
-    assert len(cached_entry.additional_kwargs.referenced_documents) == 1
-    assert cached_entry.additional_kwargs.referenced_documents[0].doc_title == "Test Doc 1"
+    assert cached_entry.referenced_documents is not None
+    assert len(cached_entry.referenced_documents) == 1
+    assert cached_entry.referenced_documents[0].doc_title == "Test Doc 1"
 
     # Note: metrics are now handled inside extract_and_update_token_metrics() which is mocked
 
