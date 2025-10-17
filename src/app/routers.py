@@ -13,11 +13,14 @@ from app.endpoints import (
     config,
     feedback,
     streaming_query,
+    streaming_query_v2,
     authorized,
     conversations,
     conversations_v2,
     metrics,
     tools,
+    # V2 endpoints for Response API support
+    query_v2,
 )
 
 
@@ -28,6 +31,8 @@ def include_routers(app: FastAPI) -> None:
         app: The `FastAPI` app instance.
     """
     app.include_router(root.router)
+
+    # V1 endpoints - Agent API (legacy)
     app.include_router(info.router, prefix="/v1")
     app.include_router(models.router, prefix="/v1")
     app.include_router(tools.router, prefix="/v1")
@@ -39,6 +44,11 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(feedback.router, prefix="/v1")
     app.include_router(conversations.router, prefix="/v1")
     app.include_router(conversations_v2.router, prefix="/v2")
+
+    # V2 endpoints - Response API support
+    app.include_router(query_v2.router, prefix="/v2")
+    app.include_router(streaming_query_v2.router, prefix="/v2")
+    app.include_router(conversations.router, prefix="/v3")
 
     # road-core does not version these endpoints
     app.include_router(health.router)
