@@ -80,7 +80,6 @@ def test_store_transcript(mocker):
             )
         ],
     )
-    query_is_valid = True
     rag_chunks = []
     truncated = False
     attachments = []
@@ -90,7 +89,6 @@ def test_store_transcript(mocker):
         conversation_id,
         model,
         provider,
-        query_is_valid,
         query,
         query_request,
         summary,
@@ -113,7 +111,6 @@ def test_store_transcript(mocker):
                 "timestamp": mocker.ANY,
             },
             "redacted_query": query,
-            "query_is_valid": query_is_valid,
             "llm_response": summary.llm_response,
             "rag_chunks": rag_chunks,
             "truncated": truncated,

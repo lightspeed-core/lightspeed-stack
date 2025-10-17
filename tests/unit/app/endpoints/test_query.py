@@ -240,7 +240,6 @@ async def _test_query_endpoint_handler(
             conversation_id=conversation_id,
             model_id="fake_model_id",
             provider_id="fake_provider_id",
-            query_is_valid=True,
             query=query,
             query_request=query_request,
             summary=summary,
