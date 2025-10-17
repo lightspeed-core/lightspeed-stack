@@ -363,7 +363,6 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
             conversation_id="00000000-0000-0000-0000-000000000000",
             model_id="fake_model_id",
             provider_id="fake_provider_id",
-            query_is_valid=True,
             query=query,
             query_request=query_request,
             summary=TurnSummary(

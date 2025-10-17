@@ -42,7 +42,6 @@ def store_transcript(  # pylint: disable=too-many-arguments,too-many-positional-
     conversation_id: str,
     model_id: str,
     provider_id: str | None,
-    query_is_valid: bool,
     query: str,
     query_request: QueryRequest,
     summary: TurnSummary,
@@ -55,7 +54,6 @@ def store_transcript(  # pylint: disable=too-many-arguments,too-many-positional-
     Args:
         user_id: The user ID (UUID).
         conversation_id: The conversation ID (UUID).
-        query_is_valid: The result of the query validation.
         query: The query (without attachments).
         query_request: The request containing a query.
         summary: Summary of the query/response turn.
@@ -79,7 +77,6 @@ def store_transcript(  # pylint: disable=too-many-arguments,too-many-positional-
             "timestamp": datetime.now(UTC).isoformat(),
         },
         "redacted_query": query,
-        "query_is_valid": query_is_valid,
         "llm_response": summary.llm_response,
         "rag_chunks": rag_chunks,
         "truncated": truncated,
