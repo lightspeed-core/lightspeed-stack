@@ -6,8 +6,11 @@ import sqlite3
 
 import pytest
 
+from pydantic import AnyUrl
+
 from models.config import SQLiteDatabaseConfiguration
-from models.cache_entry import CacheEntry, ConversationData
+from models.cache_entry import CacheEntry, ReferencedDocument
+from models.responses import ConversationData
 from utils import suid
 
 from cache.cache_error import CacheError
@@ -357,3 +360,51 @@ def test_topic_summary_when_disconnected(tmpdir):
 
     with pytest.raises(CacheError, match="cache is disconnected"):
         cache.set_topic_summary(USER_ID_1, CONVERSATION_ID_1, "Test", False)
+
+
+def test_insert_and_get_with_referenced_documents(tmpdir):
+    """
+    Test that a CacheEntry with referenced_documents is correctly
+    serialized, stored, and retrieved.
+    """
+    cache = create_cache(tmpdir)
+
+    # Create a CacheEntry with referenced documents
+    docs = [ReferencedDocument(doc_title="Test Doc", doc_url=AnyUrl("http://example.com"))]
+    entry_with_docs = CacheEntry(
+        query="user message",
+        response="AI message",
+        provider="foo", model="bar",
+        started_at="start_time", completed_at="end_time",
+        referenced_documents=docs
+    )
+
+    # Call the insert method
+    cache.insert_or_append(USER_ID_1, CONVERSATION_ID_1, entry_with_docs)
+    retrieved_entries = cache.get(USER_ID_1, CONVERSATION_ID_1)
+
+    # Assert that the retrieved entry matches the original
+    assert len(retrieved_entries) == 1
+    assert retrieved_entries[0] == entry_with_docs
+    assert retrieved_entries[0].referenced_documents is not None
+    assert retrieved_entries[0].referenced_documents[0].doc_title == "Test Doc"
+
+
+def test_insert_and_get_without_referenced_documents(tmpdir):
+    """
+    Test that a CacheEntry without referenced_documents is correctly
+    stored and retrieved with its referenced_documents attribute as None.
+    """
+    cache = create_cache(tmpdir)
+    
+    # Use CacheEntry without referenced_documents
+    entry_without_docs = cache_entry_1
+
+    # Call the insert method
+    cache.insert_or_append(USER_ID_1, CONVERSATION_ID_1, entry_without_docs)
+    retrieved_entries = cache.get(USER_ID_1, CONVERSATION_ID_1)
+
+    # Assert that the retrieved entry matches the original
+    assert len(retrieved_entries) == 1
+    assert retrieved_entries[0] == entry_without_docs
+    assert retrieved_entries[0].referenced_documents is None

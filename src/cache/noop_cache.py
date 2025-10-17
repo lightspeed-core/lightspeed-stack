@@ -1,7 +1,8 @@
 """No-operation cache implementation."""
 
 from cache.cache import Cache
-from models.cache_entry import CacheEntry, ConversationData
+from models.cache_entry import CacheEntry
+from models.responses import ConversationData
 from log import get_logger
 from utils.connection_decorator import connection
 

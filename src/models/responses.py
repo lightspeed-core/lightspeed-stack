@@ -7,7 +7,6 @@ from typing import Any, Optional, Union
 from pydantic import AnyUrl, BaseModel, Field
 
 from llama_stack_client.types import ProviderInfo
-from models.cache_entry import ConversationData
 
 
 class ModelsResponse(BaseModel):
@@ -162,6 +161,18 @@ class ToolCall(BaseModel):
     arguments: dict[str, Any] = Field(description="Arguments passed to the tool")
     result: Optional[dict[str, Any]] = Field(None, description="Result from the tool")
 
+class ConversationData(BaseModel):
+    """Model representing conversation data returned by cache list operations.
+
+    Attributes:
+        conversation_id: The conversation ID
+        topic_summary: The topic summary for the conversation (can be None)
+        last_message_timestamp: The timestamp of the last message in the conversation
+    """
+
+    conversation_id: str
+    topic_summary: str | None
+    last_message_timestamp: float
 
 class ReferencedDocument(BaseModel):
     """Model representing a document referenced in generating a response.
@@ -175,7 +186,9 @@ class ReferencedDocument(BaseModel):
         None, description="URL of the referenced document"
     )
 
-    doc_title: str = Field(description="Title of the referenced document")
+    doc_title: str | None = Field(
+        None, description="Title of the referenced document"
+    )
 
 
 class QueryResponse(BaseModel):
