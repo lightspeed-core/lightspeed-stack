@@ -161,6 +161,7 @@ class ToolCall(BaseModel):
     arguments: dict[str, Any] = Field(description="Arguments passed to the tool")
     result: Optional[dict[str, Any]] = Field(None, description="Result from the tool")
 
+
 class ConversationData(BaseModel):
     """Model representing conversation data returned by cache list operations.
 
@@ -174,6 +175,7 @@ class ConversationData(BaseModel):
     topic_summary: str | None
     last_message_timestamp: float
 
+
 class ReferencedDocument(BaseModel):
     """Model representing a document referenced in generating a response.
 
@@ -186,9 +188,7 @@ class ReferencedDocument(BaseModel):
         None, description="URL of the referenced document"
     )
 
-    doc_title: str | None = Field(
-        None, description="Title of the referenced document"
-    )
+    doc_title: str | None = Field(None, description="Title of the referenced document")
 
 
 class QueryResponse(BaseModel):

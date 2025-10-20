@@ -216,8 +216,18 @@ class SQLiteCache(Cache):
             docs_json_str = conversation_entry[6]
             docs_obj = None
             if docs_json_str:
-                docs_data = json.loads(docs_json_str)
-                docs_obj = [ReferencedDocument.model_validate(doc) for doc in docs_data]
+                try:
+                    docs_data = json.loads(docs_json_str)
+                    docs_obj = [
+                        ReferencedDocument.model_validate(doc) for doc in docs_data
+                    ]
+                except (json.JSONDecodeError, ValueError) as e:
+                    logger.warning(
+                        "Failed to deserialize referenced_documents for "
+                        "conversation %s: %s",
+                        conversation_id,
+                        e,
+                    )
             cache_entry = CacheEntry(
                 query=conversation_entry[0],
                 response=conversation_entry[1],
@@ -257,8 +267,19 @@ class SQLiteCache(Cache):
 
         referenced_documents_json = None
         if cache_entry.referenced_documents:
-            docs_as_dicts = [doc.model_dump(mode='json') for doc in cache_entry.referenced_documents]
-            referenced_documents_json = json.dumps(docs_as_dicts)
+            try:
+                docs_as_dicts = [
+                    doc.model_dump(mode="json")
+                    for doc in cache_entry.referenced_documents
+                ]
+                referenced_documents_json = json.dumps(docs_as_dicts)
+            except (TypeError, ValueError) as e:
+                logger.warning(
+                    "Failed to serialize referenced_documents for "
+                    "conversation %s: %s",
+                    conversation_id,
+                    e,
+                )
 
         cursor.execute(
             self.INSERT_CONVERSATION_HISTORY_STATEMENT,

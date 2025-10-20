@@ -215,11 +215,21 @@ class PostgresCache(Cache):
 
             result = []
             for conversation_entry in conversation_entries:
-                # Parse it back into an LLMResponse object
+                # Parse referenced_documents back into ReferencedDocument objects
                 docs_data = conversation_entry[6]
                 docs_obj = None
                 if docs_data:
-                    docs_obj = [ReferencedDocument.model_validate(doc) for doc in docs_data]
+                    try:
+                        docs_obj = [
+                            ReferencedDocument.model_validate(doc) for doc in docs_data
+                        ]
+                    except (ValueError, TypeError) as e:
+                        logger.warning(
+                            "Failed to deserialize referenced_documents for "
+                            "conversation %s: %s",
+                            conversation_id,
+                            e,
+                        )
                 cache_entry = CacheEntry(
                     query=conversation_entry[0],
                     response=conversation_entry[1],
@@ -257,8 +267,19 @@ class PostgresCache(Cache):
         try:
             referenced_documents_json = None
             if cache_entry.referenced_documents:
-                docs_as_dicts = [doc.model_dump(mode='json') for doc in cache_entry.referenced_documents]
-                referenced_documents_json = json.dumps(docs_as_dicts)
+                try:
+                    docs_as_dicts = [
+                        doc.model_dump(mode="json")
+                        for doc in cache_entry.referenced_documents
+                    ]
+                    referenced_documents_json = json.dumps(docs_as_dicts)
+                except (TypeError, ValueError) as e:
+                    logger.warning(
+                        "Failed to serialize referenced_documents for "
+                        "conversation %s: %s",
+                        conversation_id,
+                        e,
+                    )
 
             # the whole operation is run in one transaction
             with self.connection.cursor() as cursor:

@@ -22,7 +22,6 @@ from llama_stack_client.types.agents.turn_create_params import (
 from llama_stack_client.types.model_list_response import ModelListResponse
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 from llama_stack_client.types.tool_execution_step import ToolExecutionStep
-from pydantic import AnyUrl
 
 import constants
 import metrics
@@ -341,9 +340,9 @@ async def query_endpoint_handler(  # pylint: disable=R0914
             model=model_id,
             started_at=started_at,
             completed_at=completed_at,
-            referenced_documents=referenced_documents if referenced_documents else None
+            referenced_documents=referenced_documents if referenced_documents else None,
         )
-            
+
         store_conversation_into_cache(
             configuration,
             user_id,

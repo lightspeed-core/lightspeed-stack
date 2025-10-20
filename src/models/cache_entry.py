@@ -1,7 +1,6 @@
 """Model for conversation history cache entry."""
 
-from pydantic import BaseModel, Field
-from typing import List
+from pydantic import BaseModel
 from models.responses import ReferencedDocument
 
 
@@ -13,7 +12,7 @@ class CacheEntry(BaseModel):
         response: The response string
         provider: Provider identification
         model: Model identification
-        additional_kwargs: additional property to store data like referenced documents
+        referenced_documents: List of documents referenced by the response
     """
 
     query: str
@@ -22,4 +21,4 @@ class CacheEntry(BaseModel):
     model: str
     started_at: str
     completed_at: str
-    referenced_documents: List[ReferencedDocument] | None = None
+    referenced_documents: list[ReferencedDocument] | None = None

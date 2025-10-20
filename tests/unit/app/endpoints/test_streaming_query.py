@@ -209,6 +209,7 @@ async def test_streaming_query_endpoint_on_connection_error(mocker):
     assert response.media_type == "text/event-stream"
 
 
+# pylint: disable=too-many-locals
 async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False):
     """Test the streaming query endpoint handler."""
     mock_client = mocker.AsyncMock()
@@ -297,8 +298,9 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
         ),
     ]
 
-    mock_store_in_cache = mocker.patch("app.endpoints.streaming_query.store_conversation_into_cache")
-
+    mock_store_in_cache = mocker.patch(
+        "app.endpoints.streaming_query.store_conversation_into_cache"
+    )
     query = "What is OpenStack?"
     mocker.patch(
         "app.endpoints.streaming_query.retrieve_response",
@@ -359,20 +361,23 @@ async def _test_streaming_query_endpoint_handler(mocker, store_transcript=False)
     referenced_documents = d["data"]["referenced_documents"]
     assert len(referenced_documents) == 2
     assert referenced_documents[1]["doc_title"] == "Doc2"
-    
+
     # Assert that mock was called and get the arguments
     mock_store_in_cache.assert_called_once()
     call_args = mock_store_in_cache.call_args[0]
-    # Extract CacheEntry object from the call arguments, it's the 4th argument from the func signature
+    # Extract CacheEntry object from the call arguments,
+    # it's the 4th argument from the func signature
     cached_entry = call_args[3]
-    
+
     # Assert that the CacheEntry was constructed correctly
     assert isinstance(cached_entry, CacheEntry)
     assert cached_entry.response == "LLM answer"
     assert cached_entry.referenced_documents is not None
     assert len(cached_entry.referenced_documents) == 2
     assert cached_entry.referenced_documents[0].doc_title == "Doc1"
-    assert str(cached_entry.referenced_documents[1].doc_url) == "https://example.com/doc2"
+    assert (
+        str(cached_entry.referenced_documents[1].doc_url) == "https://example.com/doc2"
+    )
 
     # Assert the store_transcript function is called if transcripts are enabled
     if store_transcript:

@@ -167,6 +167,7 @@ def test_is_transcripts_disabled(setup_configuration, mocker) -> None:
     assert is_transcripts_enabled() is False, "Transcripts should be disabled"
 
 
+# pylint: disable=too-many-locals
 async def _test_query_endpoint_handler(
     mocker, dummy_request: Request, store_transcript_to_file=False
 ) -> None:
@@ -184,12 +185,16 @@ async def _test_query_endpoint_handler(
         store_transcript_to_file
     )
     mocker.patch("app.endpoints.query.configuration", mock_config)
-    
-    mock_store_in_cache = mocker.patch("app.endpoints.query.store_conversation_into_cache")
+
+    mock_store_in_cache = mocker.patch(
+        "app.endpoints.query.store_conversation_into_cache"
+    )
 
     # Create mock referenced documents to simulate a successful RAG response
     mock_referenced_documents = [
-        ReferencedDocument(doc_title="Test Doc 1", doc_url=AnyUrl("http://example.com/1"))
+        ReferencedDocument(
+            doc_title="Test Doc 1", doc_url=AnyUrl("http://example.com/1")
+        )
     ]
 
     summary = TurnSummary(
@@ -208,7 +213,12 @@ async def _test_query_endpoint_handler(
 
     mocker.patch(
         "app.endpoints.query.retrieve_response",
-        return_value=(summary, conversation_id, mock_referenced_documents, TokenCounter()),
+        return_value=(
+            summary,
+            conversation_id,
+            mock_referenced_documents,
+            TokenCounter(),
+        ),
     )
     mocker.patch(
         "app.endpoints.query.select_model_and_provider_id",
@@ -237,11 +247,12 @@ async def _test_query_endpoint_handler(
     # Assert the response is as expected
     assert response.response == summary.llm_response
     assert response.conversation_id == conversation_id
-    
+
     # Assert that mock was called and get the arguments
     mock_store_in_cache.assert_called_once()
     call_args = mock_store_in_cache.call_args[0]
-    # Extract CacheEntry object from the call arguments, it's the 4th argument from the func signature
+    # Extract CacheEntry object from the call arguments,
+    # it's the 4th argument from the func signature
     cached_entry = call_args[3]
 
     assert isinstance(cached_entry, CacheEntry)

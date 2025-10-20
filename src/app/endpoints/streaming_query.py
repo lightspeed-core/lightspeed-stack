@@ -21,7 +21,6 @@ from llama_stack_client.types.agents.agent_turn_response_stream_chunk import (
 )
 from llama_stack_client.types.shared import ToolCall
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
-from pydantic import AnyUrl
 
 from app.database import get_session
 from app.endpoints.query import (
@@ -48,7 +47,7 @@ from models.cache_entry import CacheEntry
 from models.config import Action
 from models.database.conversations import UserConversation
 from models.requests import QueryRequest
-from models.responses import ForbiddenResponse, UnauthorizedResponse, ReferencedDocument
+from models.responses import ForbiddenResponse, UnauthorizedResponse
 from utils.endpoints import (
     check_configuration_loaded,
     create_referenced_documents_with_metadata,
@@ -867,7 +866,9 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals,t
 
             completed_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-            referenced_documents = create_referenced_documents_with_metadata(summary, metadata_map)
+            referenced_documents = create_referenced_documents_with_metadata(
+                summary, metadata_map
+            )
 
             cache_entry = CacheEntry(
                 query=query_request.query,
@@ -876,9 +877,11 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals,t
                 model=model_id,
                 started_at=started_at,
                 completed_at=completed_at,
-                referenced_documents=referenced_documents if referenced_documents else None
+                referenced_documents=(
+                    referenced_documents if referenced_documents else None
+                ),
             )
-            
+
             store_conversation_into_cache(
                 configuration,
                 user_id,

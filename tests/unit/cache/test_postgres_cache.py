@@ -7,13 +7,11 @@ from pytest_mock import MockerFixture
 
 import psycopg2
 
-from pydantic import AnyUrl
-
 from cache.cache_error import CacheError
 from cache.postgres_cache import PostgresCache
 from models.config import PostgreSQLDatabaseConfiguration
-from models.cache_entry import CacheEntry, ReferencedDocument
-from models.responses import ConversationData
+from models.cache_entry import CacheEntry
+from models.responses import ConversationData, ReferencedDocument
 from utils import suid
 
 
@@ -413,7 +411,9 @@ def test_topic_summary_when_disconnected(
         cache.set_topic_summary(USER_ID_1, CONVERSATION_ID_1, "Test", False)
 
 
-def test_insert_and_get_with_referenced_documents(postgres_cache_config_fixture, mocker):
+def test_insert_and_get_with_referenced_documents(
+    postgres_cache_config_fixture, mocker
+):
     """Test that a CacheEntry with referenced_documents is stored and retrieved correctly."""
     # prevent real connection to PG instance
     mock_connect = mocker.patch("psycopg2.connect")
@@ -423,31 +423,43 @@ def test_insert_and_get_with_referenced_documents(postgres_cache_config_fixture,
     mock_cursor = mock_connection.cursor.return_value.__enter__.return_value
 
     # Create a CacheEntry with referenced documents
-    docs = [ReferencedDocument(doc_title="Test Doc", doc_url=AnyUrl("http://example.com"))]
+    docs = [ReferencedDocument(doc_title="Test Doc", doc_url="http://example.com/")]
     entry_with_docs = CacheEntry(
         query="user message",
         response="AI message",
-        provider="foo", model="bar",
-        started_at="start_time", completed_at="end_time",
-        referenced_documents=docs 
+        provider="foo",
+        model="bar",
+        started_at="start_time",
+        completed_at="end_time",
+        referenced_documents=docs,
     )
 
     # Call the insert method
     cache.insert_or_append(USER_ID_1, CONVERSATION_ID_1, entry_with_docs)
 
-    
-    insert_call = mock_cursor.execute.call_args_list[1]
-    sql_params = insert_call[0][1]
+    # Find the INSERT INTO cache(...) call
+    insert_calls = [
+        c
+        for c in mock_cursor.execute.call_args_list
+        if isinstance(c[0][0], str) and "INSERT INTO cache(" in c[0][0]
+    ]
+    assert insert_calls, "INSERT call not found"
+    sql_params = insert_calls[-1][0][1]
     inserted_json_str = sql_params[-1]
-    
+
     assert json.loads(inserted_json_str) == [
         {"doc_url": "http://example.com/", "doc_title": "Test Doc"}
     ]
 
     # Simulate the database returning that data
     db_return_value = (
-        "user message", "AI message", "foo", "bar", "start_time", "end_time",
-        [{"doc_url": "http://example.com/", "doc_title": "Test Doc"}]
+        "user message",
+        "AI message",
+        "foo",
+        "bar",
+        "start_time",
+        "end_time",
+        [{"doc_url": "http://example.com/", "doc_title": "Test Doc"}],
     )
     mock_cursor.fetchall.return_value = [db_return_value]
 
@@ -460,7 +472,9 @@ def test_insert_and_get_with_referenced_documents(postgres_cache_config_fixture,
     assert retrieved_entries[0].referenced_documents[0].doc_title == "Test Doc"
 
 
-def test_insert_and_get_without_referenced_documents(postgres_cache_config_fixture, mocker):
+def test_insert_and_get_without_referenced_documents(
+    postgres_cache_config_fixture, mocker
+):
     """Test that a CacheEntry with no referenced_documents is handled correctly."""
     mock_connect = mocker.patch("psycopg2.connect")
     cache = PostgresCache(postgres_cache_config_fixture)
@@ -474,11 +488,16 @@ def test_insert_and_get_without_referenced_documents(postgres_cache_config_fixtu
     # Call the insert method
     cache.insert_or_append(USER_ID_1, CONVERSATION_ID_1, entry_without_docs)
 
-    insert_call = mock_cursor.execute.call_args_list[1]
-    sql_params = insert_call[0][1]
+    insert_calls = [
+        c
+        for c in mock_cursor.execute.call_args_list
+        if isinstance(c[0][0], str) and "INSERT INTO cache(" in c[0][0]
+    ]
+    assert insert_calls, "INSERT call not found"
+    sql_params = insert_calls[-1][0][1]
     assert sql_params[-1] is None
 
-    # 4. Simulate the database returning a row with None
+    # Simulate the database returning a row with None
     db_return_value = (
         entry_without_docs.query,
         entry_without_docs.response,
@@ -486,7 +505,7 @@ def test_insert_and_get_without_referenced_documents(postgres_cache_config_fixtu
         entry_without_docs.model,
         entry_without_docs.started_at,
         entry_without_docs.completed_at,
-        None # referenced_documents is None in the DB
+        None,  # referenced_documents is None in the DB
     )
     mock_cursor.fetchall.return_value = [db_return_value]
 

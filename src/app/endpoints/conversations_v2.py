@@ -314,19 +314,13 @@ def check_conversation_existence(user_id: str, conversation_id: str) -> None:
 
 def transform_chat_message(entry: CacheEntry) -> dict[str, Any]:
     """Transform the message read from cache into format used by response payload."""
-    user_message = {
-        "content": entry.query, 
-        "type": "user"
-    }
-    assistant_message: dict[str, Any] = {
-        "content": entry.response,
-        "type": "assistant"
-    }
+    user_message = {"content": entry.query, "type": "user"}
+    assistant_message: dict[str, Any] = {"content": entry.response, "type": "assistant"}
 
     # If referenced_documents exist on the entry, add them to the assistant message
     if entry.referenced_documents is not None:
         assistant_message["referenced_documents"] = [
-            doc.model_dump(mode='json') for doc in entry.referenced_documents
+            doc.model_dump(mode="json") for doc in entry.referenced_documents
         ]
 
     return {

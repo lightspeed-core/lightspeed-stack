@@ -3,7 +3,6 @@
 """Unit tests for the /conversations REST API endpoints."""
 
 from unittest.mock import Mock
-from pydantic import AnyUrl
 import pytest
 from pytest_mock import MockerFixture
 from fastapi import HTTPException, status
@@ -76,7 +75,7 @@ class TestTransformChatMessage:
             # referenced_documents is None by default
         )
         transformed = transform_chat_message(entry)
-        
+
         assistant_message = transformed["messages"][1]
 
         # Assert that the key is NOT present when the list is None
@@ -84,8 +83,7 @@ class TestTransformChatMessage:
 
     def test_transform_message_with_referenced_documents(self) -> None:
         """Test the transformation when referenced_documents are present."""
-        docs = [ReferencedDocument(doc_title="Test Doc", doc_url=AnyUrl("http://example.com"))]
-        
+        docs = [ReferencedDocument(doc_title="Test Doc", doc_url="http://example.com")]
         entry = CacheEntry(
             query="query",
             response="response",
@@ -93,14 +91,13 @@ class TestTransformChatMessage:
             model="model",
             started_at="2024-01-01T00:00:00Z",
             completed_at="2024-01-01T00:00:05Z",
-            referenced_documents=docs
+            referenced_documents=docs,
         )
 
         transformed = transform_chat_message(entry)
         assistant_message = transformed["messages"][1]
-        
+
         assert "referenced_documents" in assistant_message
-        
         ref_docs = assistant_message["referenced_documents"]
         assert len(ref_docs) == 1
         assert ref_docs[0]["doc_title"] == "Test Doc"
@@ -115,7 +112,7 @@ class TestTransformChatMessage:
             model="model",
             started_at="2024-01-01T00:00:00Z",
             completed_at="2024-01-01T00:00:05Z",
-            referenced_documents=[] # Explicitly empty
+            referenced_documents=[],  # Explicitly empty
         )
 
         transformed = transform_chat_message(entry)

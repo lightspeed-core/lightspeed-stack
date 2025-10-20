@@ -6,11 +6,9 @@ import sqlite3
 
 import pytest
 
-from pydantic import AnyUrl
-
 from models.config import SQLiteDatabaseConfiguration
-from models.cache_entry import CacheEntry, ReferencedDocument
-from models.responses import ConversationData
+from models.cache_entry import CacheEntry
+from models.responses import ConversationData, ReferencedDocument
 from utils import suid
 
 from cache.cache_error import CacheError
@@ -370,13 +368,15 @@ def test_insert_and_get_with_referenced_documents(tmpdir):
     cache = create_cache(tmpdir)
 
     # Create a CacheEntry with referenced documents
-    docs = [ReferencedDocument(doc_title="Test Doc", doc_url=AnyUrl("http://example.com"))]
+    docs = [ReferencedDocument(doc_title="Test Doc", doc_url="http://example.com")]
     entry_with_docs = CacheEntry(
         query="user message",
         response="AI message",
-        provider="foo", model="bar",
-        started_at="start_time", completed_at="end_time",
-        referenced_documents=docs
+        provider="foo",
+        model="bar",
+        started_at="start_time",
+        completed_at="end_time",
+        referenced_documents=docs,
     )
 
     # Call the insert method
@@ -396,7 +396,7 @@ def test_insert_and_get_without_referenced_documents(tmpdir):
     stored and retrieved with its referenced_documents attribute as None.
     """
     cache = create_cache(tmpdir)
-    
+
     # Use CacheEntry without referenced_documents
     entry_without_docs = cache_entry_1
 

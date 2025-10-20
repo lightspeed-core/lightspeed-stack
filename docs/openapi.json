@@ -1787,6 +1787,9 @@
                         },
                         "type": "array",
                         "title": "Byok Rag"
+                    },
+                    "quota_handlers": {
+                        "$ref": "#/components/schemas/QuotaHandlersConfiguration"
                     }
                 },
                 "additionalProperties": false,
@@ -3590,6 +3593,103 @@
                     }
                 ]
             },
+            "QuotaHandlersConfiguration": {
+                "properties": {
+                    "sqlite": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SQLiteDatabaseConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "postgres": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PostgreSQLDatabaseConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "limiters": {
+                        "items": {
+                            "$ref": "#/components/schemas/QuotaLimiterConfiguration"
+                        },
+                        "type": "array",
+                        "title": "Limiters"
+                    },
+                    "scheduler": {
+                        "$ref": "#/components/schemas/QuotaSchedulerConfiguration"
+                    },
+                    "enable_token_history": {
+                        "type": "boolean",
+                        "title": "Enable Token History",
+                        "default": false
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "QuotaHandlersConfiguration",
+                "description": "Quota limiter configuration."
+            },
+            "QuotaLimiterConfiguration": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "user_limiter",
+                            "cluster_limiter"
+                        ],
+                        "title": "Type"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "initial_quota": {
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "title": "Initial Quota"
+                    },
+                    "quota_increase": {
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "title": "Quota Increase"
+                    },
+                    "period": {
+                        "type": "string",
+                        "title": "Period"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "type",
+                    "name",
+                    "initial_quota",
+                    "quota_increase",
+                    "period"
+                ],
+                "title": "QuotaLimiterConfiguration",
+                "description": "Configuration for one quota limiter."
+            },
+            "QuotaSchedulerConfiguration": {
+                "properties": {
+                    "period": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Period",
+                        "default": 1
+                    }
+                },
+                "type": "object",
+                "title": "QuotaSchedulerConfiguration",
+                "description": "Quota scheduler configuration."
+            },
             "RAGChunk": {
                 "properties": {
                     "content": {
@@ -3935,45 +4035,6 @@
                 "description": "Model representing a tool call made during response generation."
             },
             "ToolsResponse": {
-                "properties": {
-                    "tools": {
-                        "items": {
-                            "additionalProperties": true,
-                            "type": "object"
-                        },
-                        "type": "array",
-                        "title": "Tools",
-                        "description": "List of tools available from all configured MCP servers and built-in toolgroups",
-                        "examples": [
-                            [
-                                {
-                                    "description": "Read contents of a file from the filesystem",
-                                    "identifier": "filesystem_read",
-                                    "parameters": [
-                                        {
-                                            "description": "Path to the file to read",
-                                            "name": "path",
-                                            "parameter_type": "string",
-                                            "required": true
-                                        }
-                                    ],
-                                    "provider_id": "model-context-protocol",
-                                    "server_source": "http://localhost:3000",
-                                    "toolgroup_id": "filesystem-tools",
-                                    "type": "tool"
-                                }
-                            ]
-                        ]
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "tools"
-                ],
-                "title": "ToolsResponse",
-                "description": "Model representing a response to tools request."
-            },
-            "UnauthorizedResponse": {
                 "properties": {
                     "tools": {
                         "items": {
