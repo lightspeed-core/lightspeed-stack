@@ -43,3 +43,26 @@ RESET_QUOTA_STATEMENT_SQLITE = """
      WHERE subject=?
        AND revoked_at < datetime('now', ?);
     """
+
+INIT_QUOTA_PG = """
+    INSERT INTO quota_limits (id, subject, quota_limit, available, revoked_at)
+    VALUES (%s, %s, %s, %s, %s)
+    """
+
+SELECT_QUOTA_PG = """
+    SELECT available
+      FROM quota_limits
+     WHERE id=%s and subject=%s LIMIT 1
+    """
+
+SET_AVAILABLE_QUOTA_PG = """
+    UPDATE quota_limits
+       SET available=%s, revoked_at=%s
+     WHERE id=%s and subject=%s
+    """
+
+UPDATE_AVAILABLE_QUOTA_PG = """
+    UPDATE quota_limits
+       SET available=available+%s, updated_at=%s
+     WHERE id=%s and subject=%s
+    """
