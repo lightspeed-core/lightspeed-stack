@@ -98,7 +98,6 @@ Each transcript file contains:
     "timestamp": "2024-01-01T12:00:00Z"
   },
   "redacted_query": "What is Kubernetes?",
-  "query_is_valid": true,
   "llm_response": "Kubernetes is an open-source container orchestration system...",
   "rag_chunks": [],
   "truncated": false,
