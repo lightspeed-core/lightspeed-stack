@@ -1,5 +1,5 @@
-# .github/workflows/e2e_tests_rhaiis.yaml
-name: RHAIIS E2E Tests
+# .github/workflows/e2e_tests_rhelai.yaml
+name: RHEL AI E2E Tests
 
 on:
   schedule:
@@ -12,10 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environment: [ "rhaiis" ]
+        environment: [ "rhelai" ]
     env:
-      RHAIIS_URL: ${{ secrets.RHAIIS_URL }}
-      RHAIIS_API_KEY: ${{ secrets.RHAIIS_API_KEY }}
+      RHEL_AI_URL: ${{ secrets.RHEL_AI_URL }}
+      RHEL_AI_PORT: ${{ secrets.RHEL_AI_PORT }}
+      RHEL_AI_API_KEY: ${{ secrets.RHEL_AI_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +79,7 @@ jobs:
 
       - name: Select and configure run.yaml
         env:
-          CONFIG_ENVIRONMENT: ${{ matrix.environment || 'rhaiis' }}
+          CONFIG_ENVIRONMENT: ${{ matrix.environment || 'rhelai' }}
         run: |
           CONFIGS_DIR="tests/e2e/configs"
           ENVIRONMENT="$CONFIG_ENVIRONMENT"
@@ -116,17 +117,19 @@ jobs:
           echo "Successfully configured for environment: $ENVIRONMENT"
           echo "Using configuration: $(basename "$CONFIG_FILE")"
 
-      - name: Test RHAIIS connectivity
+      - name: Test RHEL_AI connectivity
         env: 
-            RHAIIS_URL: ${{ secrets.RHAIIS_URL }}
-            RHAIIS_API_KEY: ${{ secrets.RHAIIS_API_KEY }}
+            RHEL_AI_URL: ${{ secrets.RHEL_AI_URL }}
+            RHEL_AI_PORT: ${{ secrets.RHEL_AI_PORT }}
+            RHEL_AI_API_KEY: ${{ secrets.RHEL_AI_API_KEY }}
         run: |  
-          curl -f ${RHAIIS_URL}:8000/v1/models   -H "Authorization: Bearer ${RHAIIS_API_KEY}"  
+          curl -f ${RHEL_AI_URL}:${RHEL_AI_PORT}/v1/models   -H "Authorization: Bearer ${RHEL_AI_API_KEY}"  
 
       - name: Run service manually
         env: 
-            RHAIIS_URL: ${{ secrets.RHAIIS_URL }}
-            RHAIIS_API_KEY: ${{ secrets.RHAIIS_API_KEY }}
+            RHEL_AI_URL: ${{ secrets.RHEL_AI_URL }}
+            RHEL_AI_PORT: ${{ secrets.RHEL_AI_PORT }}
+            RHEL_AI_API_KEY: ${{ secrets.RHEL_AI_API_KEY }}
         run: |         
           docker compose version
           docker compose up -d

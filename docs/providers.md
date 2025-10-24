@@ -62,6 +62,7 @@ Red Hat providers:
 | Name | Version Tested | Type | Pip Dependencies | Supported in LCS |
 |---|---|---|---|:---:|
 | RHAIIS (vllm) | 3.2.3 (on RHEL 9.20250429.0.4) | remote | `openai` | ✅ |
+| RHEL AI (vllm) | 1.5.2 | remote | `openai` | ✅ |
 
 
 ---
