@@ -17,6 +17,9 @@ services:
       - TAVILY_SEARCH_API_KEY=${TAVILY_SEARCH_API_KEY:-}
       - RHAIIS_URL=${RHAIIS_URL}
       - RHAIIS_API_KEY=${RHAIIS_API_KEY}
+      - RHEL_AI_URL=${RHEL_AI_URL}
+      - RHEL_AI_PORT=${RHEL_AI_PORT}
+      - RHEL_AI_API_KEY=${RHEL_AI_API_KEY}
     networks:
       - lightspeednet
     healthcheck:
