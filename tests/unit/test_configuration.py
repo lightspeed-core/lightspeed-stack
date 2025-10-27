@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from typing import Any, Generator
+from pydantic import ValidationError
 
 import pytest
 from configuration import AppConfig, LogicError
@@ -806,3 +807,71 @@ quota_handlers:
 
     # check the scheduler configuration
     assert cfg.quota_handlers_configuration.scheduler.period == 1
+
+
+def test_load_configuration_with_azure_entra_id(tmpdir: Path) -> None:
+    """Return Azure Entra ID configuration when provided in configuration."""
+    cfg_filename = tmpdir / "config.yaml"
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
+        fout.write(
+            """
+name: test service
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  api_key: test-key
+  url: http://localhost:8321
+  use_as_library_client: false
+user_data_collection:
+  feedback_enabled: false
+azure_entra_id:
+  tenant_id: tenant
+  client_id: client
+  client_secret: secret
+            """
+        )
+
+    cfg = AppConfig()
+    cfg.load_configuration(str(cfg_filename))
+
+    azure_conf = cfg.azure_entra_id
+    assert azure_conf is not None
+    assert azure_conf.tenant_id.get_secret_value() == "tenant"
+    assert azure_conf.client_id.get_secret_value() == "client"
+    assert azure_conf.client_secret.get_secret_value() == "secret"
+
+
+def test_load_configuration_with_incomplete_azure_entra_id_raises(tmpdir: Path) -> None:
+    """Raise error if Azure Entra ID block is incomplete in configuration."""
+    cfg_filename = tmpdir / "config.yaml"
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
+        fout.write(
+            """
+name: test service
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  api_key: test-key
+  url: http://localhost:8321
+  use_as_library_client: false
+user_data_collection:
+  feedback_enabled: false
+azure_entra_id:
+  tenant_id: tenant
+  client_id: client
+            """
+        )
+
+    cfg = AppConfig()
+    with pytest.raises(ValidationError):
+        cfg.load_configuration(str(cfg_filename))
