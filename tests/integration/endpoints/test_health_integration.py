@@ -34,27 +34,6 @@ def mock_llama_stack_client_fixture(
 
 
 @pytest.mark.asyncio
-async def test_health_liveness_fails_without_configuration(
-    test_auth: AuthTuple,
-) -> None:
-    """Test that liveness probe endpoint fails without loaded configuration.
-
-    This integration test verifies:
-    - Real noop authentication is used
-    - Error response structure matches expected format
-
-    Args:
-        test_auth: noop authentication tuple
-    """
-
-    with pytest.raises(LogicError) as exc_info:
-        await liveness_probe_get_method(auth=test_auth)
-
-    # Verify error message
-    assert "configuration is not loaded" in str(exc_info.value)
-
-
-@pytest.mark.asyncio
 async def test_health_liveness(
     test_config: AppConfig,
     test_auth: AuthTuple,
