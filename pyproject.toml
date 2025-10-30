@@ -29,7 +29,7 @@ dependencies = [
     "kubernetes>=30.1.0",
     # Used to call Llama Stack APIs
     "llama-stack==0.2.22",
-    "llama-stack-client==0.2.22",
+    "llama-stack-client==0.3.0",
     # Used by Logger
     "rich>=14.0.0",
     # Used by JWK token auth handler
