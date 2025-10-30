@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Generator
 
 import pytest
-from fastapi import Request
+from fastapi import Request, Response
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -115,6 +115,12 @@ def test_request_fixture() -> Request:
             "headers": [],
         }
     )
+
+
+@pytest.fixture(name="test_response")
+def test_response_fixture() -> Response:
+    """Create a test FastAPI Response object with proper scope."""
+    return Response(content="", status_code=200, media_type="application/json")
 
 
 @pytest.fixture(name="test_auth")
