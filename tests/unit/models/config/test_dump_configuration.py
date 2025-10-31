@@ -101,6 +101,7 @@ def test_dump_configuration(tmp_path) -> None:
             "service": {
                 "host": "localhost",
                 "port": 8080,
+                "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
                 "color_log": True,
@@ -399,6 +400,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path) -> None:
             "service": {
                 "host": "localhost",
                 "port": 8080,
+                "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
                 "color_log": True,
