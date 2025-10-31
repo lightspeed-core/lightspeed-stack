@@ -150,7 +150,7 @@ llslibdev = [
     # API tool_runtime: remote::model-context-protocol
     "mcp>=1.9.4",
     # API post_training: inline::huggingface
-    "torch==2.7.1",
+    "torch==2.9.0",
     "trl>=0.18.2",
     "peft>=0.15.2",
     # Other
