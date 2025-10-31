@@ -4,7 +4,7 @@
 
 from typing import Any, Optional, Union
 
-from pydantic import AnyUrl, BaseModel, Field
+from pydantic import AnyUrl, BaseModel, Field, field_validator, model_validator
 
 from llama_stack_client.types import ProviderInfo
 
@@ -1166,6 +1166,379 @@ class InvalidFeedbackStoragePathResponse(AbstractErrorResponse):
                         ),
                     }
                 }
+            ]
+        }
+    }
+
+
+# OpenAI Responses API Models
+
+
+class ResponseContent(BaseModel):
+    """Model representing content within a response message.
+
+    Following OpenAI API specification for response content structure.
+    Currently supports text content type for MVP implementation.
+
+    Attributes:
+        type: The type of content (currently only "text" supported).
+        text: The text content (required when type is "text").
+
+    Example:
+        ```python
+        content = ResponseContent(
+            type="text",
+            text="Kubernetes is an open-source container orchestration platform..."
+        )
+        ```
+    """
+
+    type: str = Field(
+        description="The type of content",
+        examples=["text"],
+    )
+
+    text: Optional[str] = Field(
+        None,
+        description="The text content (required when type is 'text')",
+        examples=["Kubernetes is an open-source container orchestration platform..."],
+    )
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, value: str) -> str:
+        """Validate that content type is supported."""
+        if value != "text":
+            raise ValueError("Currently only 'text' content type is supported")
+        return value
+
+    @model_validator(mode="after")
+    def validate_text_content(self) -> "ResponseContent":
+        """Validate text content based on type."""
+        if self.type == "text":
+            if self.text is None:
+                raise ValueError("text field is required when type is 'text'")
+            # pylint: disable=no-member
+            if self.text is not None and not self.text.strip():
+                raise ValueError("text content cannot be empty")
+        return self
+
+
+class ResponseMessage(BaseModel):
+    """Model representing a message within a response output.
+
+    Following OpenAI API specification for response message structure.
+
+    Attributes:
+        role: The role of the message sender (currently only "assistant" supported).
+        content: Array of content objects within the message.
+
+    Example:
+        ```python
+        message = ResponseMessage(
+            role="assistant",
+            content=[
+                ResponseContent(type="text", text="Here's information about Kubernetes...")
+            ]
+        )
+        ```
+    """
+
+    role: str = Field(
+        description="The role of the message sender",
+        examples=["assistant"],
+    )
+
+    content: list[ResponseContent] = Field(
+        description="Array of content objects within the message",
+        examples=[[{"type": "text", "text": "Response content here..."}]],
+    )
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, value: str) -> str:
+        """Validate that role is supported."""
+        if value != "assistant":
+            raise ValueError("Currently only 'assistant' role is supported")
+        return value
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: list[ResponseContent]) -> list[ResponseContent]:
+        """Validate that content array is not empty."""
+        if not value:
+            raise ValueError("content array cannot be empty")
+        return value
+
+
+class ResponseOutput(BaseModel):
+    """Model representing output data within a response.
+
+    Following OpenAI API specification for response output structure.
+
+    Attributes:
+        message: The message containing the response content.
+        finish_reason: The reason the response generation stopped.
+
+    Example:
+        ```python
+        output = ResponseOutput(
+            message=ResponseMessage(...),
+            finish_reason="stop"
+        )
+        ```
+    """
+
+    message: ResponseMessage = Field(
+        description="The message containing the response content",
+    )
+
+    finish_reason: str = Field(
+        description="The reason the response generation stopped",
+        examples=["stop", "length", "content_filter"],
+    )
+
+    @field_validator("finish_reason")
+    @classmethod
+    def validate_finish_reason(cls, value: str) -> str:
+        """Validate that finish_reason is a recognized value."""
+        valid_reasons = ["stop", "length", "content_filter", "tool_calls"]
+        if value not in valid_reasons:
+            raise ValueError(f"finish_reason must be one of: {valid_reasons}")
+        return value
+
+
+class ResponseUsage(BaseModel):
+    """Model representing token usage statistics for a response.
+
+    Following OpenAI API specification for usage tracking.
+
+    Attributes:
+        prompt_tokens: Number of tokens in the prompt.
+        completion_tokens: Number of tokens in the completion.
+        total_tokens: Total number of tokens used.
+
+    Example:
+        ```python
+        usage = ResponseUsage(
+            prompt_tokens=150,
+            completion_tokens=75,
+            total_tokens=225
+        )
+        ```
+    """
+
+    prompt_tokens: int = Field(
+        description="Number of tokens in the prompt",
+        examples=[150, 200],
+        ge=0,
+    )
+
+    completion_tokens: int = Field(
+        description="Number of tokens in the completion",
+        examples=[75, 100],
+        ge=0,
+    )
+
+    total_tokens: int = Field(
+        description="Total number of tokens used",
+        examples=[225, 300],
+        ge=0,
+    )
+
+
+class OpenAIResponse(BaseModel):
+    """Model representing an OpenAI-compatible response from the Responses API.
+
+    This model follows the OpenAI API specification for /v1/responses responses,
+    allowing the Lightspeed Stack to provide OpenAI-compatible responses while
+    maintaining internal RAG and LLM integration functionality.
+
+    Attributes:
+        id: Unique identifier for the response.
+        object: The object type (always "response").
+        created_at: Unix timestamp when the response was created.
+        status: The status of the response generation.
+        model: The model used to generate the response.
+        output: Array of output objects containing the response content.
+        usage: Token usage statistics for the response.
+        metadata: Optional metadata containing additional information like referenced documents.
+
+    Example:
+        ```python
+        response = OpenAIResponse(
+            id="resp_67ccd2bed1ec8190b14f964abc0542670bb6a6b452d3795b",
+            object="response",
+            created_at=1640995200,
+            status="completed",
+            model="gpt-4",
+            output=[
+                ResponseOutput(
+                    message=ResponseMessage(
+                        role="assistant",
+                        content=[ResponseContent(type="text", text="Kubernetes is...")]
+                    ),
+                    finish_reason="stop"
+                )
+            ],
+            usage=ResponseUsage(prompt_tokens=150, completion_tokens=75, total_tokens=225),
+            metadata={
+                "referenced_documents": [
+                    {
+                        "doc_url": "https://docs.openshift.com/...",
+                        "doc_title": "Kubernetes Documentation"
+                    }
+                ]
+            }
+        )
+        ```
+    """
+
+    id: str = Field(
+        description="Unique identifier for the response",
+        examples=["resp_67ccd2bed1ec8190b14f964abc0542670bb6a6b452d3795b"],
+        min_length=1,
+    )
+
+    object: str = Field(
+        description="The object type (always 'response')",
+        examples=["response"],
+    )
+
+    created_at: int = Field(
+        description="Unix timestamp when the response was created",
+        examples=[1640995200, 1641081600],
+    )
+
+    status: str = Field(
+        description="The status of the response generation",
+        examples=["completed", "failed", "in_progress"],
+    )
+
+    model: str = Field(
+        description="The model used to generate the response",
+        examples=["gpt-4", "gpt-3.5-turbo"],
+        min_length=1,
+    )
+
+    output: list[ResponseOutput] = Field(
+        description="Array of output objects containing the response content",
+    )
+
+    usage: ResponseUsage = Field(
+        description="Token usage statistics for the response",
+    )
+
+    metadata: Optional[dict[str, Any]] = Field(
+        None,
+        description="Optional metadata containing additional information like referenced documents",
+        examples=[
+            {
+                "referenced_documents": [
+                    {
+                        "doc_url": "https://docs.openshift.com/container-platform/"
+                        "4.15/operators/olm/index.html",
+                        "doc_title": "Operator Lifecycle Manager (OLM)",
+                    }
+                ]
+            }
+        ],
+    )
+
+    @field_validator("object")
+    @classmethod
+    def validate_object(cls, value: str) -> str:
+        """Validate that object type is 'response'."""
+        if value != "response":
+            raise ValueError("object must be 'response'")
+        return value
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value: str) -> str:
+        """Validate that status is a recognized value."""
+        valid_statuses = ["completed", "failed", "in_progress", "cancelled"]
+        if value not in valid_statuses:
+            raise ValueError(f"status must be one of: {valid_statuses}")
+        return value
+
+    @field_validator("output")
+    @classmethod
+    def validate_output(cls, value: list[ResponseOutput]) -> list[ResponseOutput]:
+        """Validate that output array is not empty."""
+        if not value:
+            raise ValueError("output array cannot be empty")
+        return value
+
+    # provides examples for /docs endpoint
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "id": "resp_67ccd2bed1ec8190b14f964abc0542670bb6a6b452d3795b",
+                    "object": "response",
+                    "created_at": 1640995200,
+                    "status": "completed",
+                    "model": "gpt-4",
+                    "output": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "Kubernetes is an open-source container "
+                                        "orchestration platform that automates the deployment, "
+                                        "scaling, and management of containerized applications...",
+                                    }
+                                ],
+                            },
+                            "finish_reason": "stop",
+                        }
+                    ],
+                    "usage": {
+                        "prompt_tokens": 150,
+                        "completion_tokens": 75,
+                        "total_tokens": 225,
+                    },
+                    "metadata": {
+                        "referenced_documents": [
+                            {
+                                "doc_url": "https://docs.openshift.com/container-platform/"
+                                "4.15/operators/olm/index.html",
+                                "doc_title": "Operator Lifecycle Manager (OLM)",
+                            }
+                        ]
+                    },
+                },
+                {
+                    "id": "resp_abc123def456ghi789jkl012mno345pqr678stu901vwx234",
+                    "object": "response",
+                    "created_at": 1641081600,
+                    "status": "completed",
+                    "model": "gpt-3.5-turbo",
+                    "output": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "Docker containers are lightweight, portable "
+                                        "packages that include everything needed to "
+                                        "run an application...",
+                                    }
+                                ],
+                            },
+                            "finish_reason": "stop",
+                        }
+                    ],
+                    "usage": {
+                        "prompt_tokens": 100,
+                        "completion_tokens": 50,
+                        "total_tokens": 150,
+                    },
+                },
             ]
         }
     }

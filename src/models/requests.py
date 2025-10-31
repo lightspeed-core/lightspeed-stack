@@ -415,6 +415,103 @@ class FeedbackStatusUpdateRequest(BaseModel):
         return self.status
 
 
+class CreateResponseRequest(BaseModel):
+    """Model representing an OpenAI-compatible request for the Responses API.
+
+    This model follows the OpenAI API specification for the /v1/responses endpoint,
+    allowing clients to send requests in OpenAI format while maintaining internal
+    compatibility with Lightspeed's existing RAG and LLM integration.
+
+    Attributes:
+        model: The model to use for the response generation.
+        input: The input text or array of texts to process.
+        instructions: Optional instructions to guide the response generation.
+        temperature: Optional temperature for controlling randomness (0.0 to 2.0).
+        max_output_tokens: Optional maximum number of tokens in the response.
+
+    Example:
+        ```python
+        request = CreateResponseRequest(
+            model="gpt-4",
+            input="What is Kubernetes?"
+        )
+        ```
+    """
+
+    model: str = Field(
+        description="The model to use for response generation",
+        examples=["gpt-4", "gpt-3.5-turbo"],
+        min_length=1,
+    )
+
+    input: str | list[str] = Field(
+        description="The input text or array of texts to process",
+        examples=["What is Kubernetes?", ["Explain containers", "How do they work?"]],
+    )
+
+    instructions: Optional[str] = Field(
+        None,
+        description="Optional instructions to guide the response generation",
+        examples=["You are a helpful DevOps assistant"],
+    )
+
+    temperature: Optional[float] = Field(
+        None,
+        description="Temperature for controlling randomness (0.0 to 2.0)",
+        examples=[0.7, 1.0],
+        ge=0.0,
+        le=2.0,
+    )
+
+    max_output_tokens: Optional[int] = Field(
+        None,
+        description="Maximum number of tokens in the response",
+        examples=[1000, 2000],
+        gt=0,
+    )
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "model": "gpt-4",
+                    "input": "What is Kubernetes?",
+                },
+                {
+                    "model": "gpt-3.5-turbo",
+                    "input": "Explain Docker containers",
+                    "instructions": "You are a helpful DevOps assistant",
+                    "temperature": 0.7,
+                    "max_output_tokens": 1000,
+                },
+                {
+                    "model": "gpt-4",
+                    "input": ["What is Kubernetes?", "How does it work?"],
+                    "temperature": 0.5,
+                },
+            ]
+        },
+    }
+
+    @field_validator("input")
+    @classmethod
+    def validate_input(cls, value: str | list[str]) -> str | list[str]:
+        """Validate that input is not empty."""
+        if isinstance(value, str):
+            if not value.strip():
+                raise ValueError("Input string cannot be empty")
+        elif isinstance(value, list):
+            if not value:
+                raise ValueError("Input array cannot be empty")
+            for item in value:
+                if not isinstance(item, str) or not item.strip():
+                    raise ValueError(
+                        "All items in input array must be non-empty strings"
+                    )
+        return value
+
+
 class ConversationUpdateRequest(BaseModel):
     """Model representing a request to update a conversation topic summary.
 
