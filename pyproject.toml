@@ -146,7 +146,7 @@ llslibdev = [
     "opentelemetry-exporter-otlp>=1.34.1",
     # API tool_runtime: inline::rag-runtime
     "transformers>=4.34.0",
-    "numpy==2.2.6",
+    "numpy==2.3.4",
     # API tool_runtime: remote::model-context-protocol
     "mcp>=1.9.4",
     # API post_training: inline::huggingface
