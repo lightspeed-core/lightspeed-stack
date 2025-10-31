@@ -7,7 +7,7 @@ from pytest_mock import MockerFixture, AsyncMockType
 from fastapi import Response, status
 from authentication.interface import AuthTuple
 
-from configuration import AppConfig, LogicError
+from configuration import AppConfig
 from app.endpoints.health import liveness_probe_get_method, readiness_probe_get_method
 
 
