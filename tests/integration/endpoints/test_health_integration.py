@@ -8,8 +8,8 @@ from fastapi import Response, status
 from authentication.interface import AuthTuple
 
 from configuration import AppConfig
-from app.endpoints.health import liveness_probe_get_method, readiness_probe_get_method
-
+from app.endpoints.health import liveness_probe_get_method, readiness_probe_get_method, get_providers_health_statuses
+from llama_stack.providers.datatypes import HealthStatus
 
 @pytest.fixture(name="mock_llama_stack_client_health")
 def mock_llama_stack_client_fixture(
@@ -58,7 +58,58 @@ async def test_health_liveness(
 
 
 @pytest.mark.asyncio
-async def test_health_readiness_config_error(
+async def test_health_readiness_provider_statuses(
+    mock_llama_stack_client_health: AsyncMockType,
+    mocker
+) -> None:
+    """Test that get_providers_health_statuses correctly retrieves and returns
+       provider health statuses.
+
+    This integration test verifies:
+    - Function correctly retrieves provider list from Llama Stack client
+    - Both healthy and unhealthy providers are properly processed
+    - Provider health status, ID, and error messages are correctly mapped
+    - Multiple providers with different health states are handled correctly
+
+    Args:
+        mock_llama_stack_client_health: Mocked Llama Stack client
+        mocker: pytest-mock fixture for creating mock objects
+    """
+    # Arrange: Set up mock provider list with mixed health statuses
+    mock_llama_stack_client_health.providers.list.return_value = [
+        mocker.Mock(
+            provider_id="unhealthy-provider-1",
+            health={"status": HealthStatus.ERROR.value, "message": "Database connection failed"}
+        ),
+        mocker.Mock(
+            provider_id="unhealthy-provider-2",
+            health={"status": HealthStatus.ERROR.value, "message": "Service unavailable"}
+        ),
+        mocker.Mock(
+            provider_id="healthy-provider",
+            health={"status": "ok", "message": ""}
+        ),
+    ]
+
+    # Call the function to retrieve provider health statuses
+    result = await get_providers_health_statuses()
+
+    # Verify providers
+    assert result[0].provider_id == "unhealthy-provider-1"
+    assert result[0].status == "Error"
+    assert result[0].message == "Database connection failed"
+
+    assert result[1].provider_id == "unhealthy-provider-2"
+    assert result[1].status == "Error"
+    assert result[1].message == "Service unavailable"
+
+    assert result[2].provider_id == "healthy-provider"
+    assert result[2].status == "ok"
+    assert result[2].message == ""
+
+
+@pytest.mark.asyncio
+async def test_health_readiness_client_error(
     test_response: Response,
     test_auth: AuthTuple,
 ) -> None:
