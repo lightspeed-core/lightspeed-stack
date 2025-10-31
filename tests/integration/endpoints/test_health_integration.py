@@ -3,6 +3,7 @@
 from typing import Generator, Any
 import pytest
 from pytest_mock import MockerFixture, AsyncMockType
+from llama_stack.providers.datatypes import HealthStatus
 
 from fastapi import Response, status
 from authentication.interface import AuthTuple
@@ -13,7 +14,6 @@ from app.endpoints.health import (
     readiness_probe_get_method,
     get_providers_health_statuses,
 )
-from llama_stack.providers.datatypes import HealthStatus
 
 
 @pytest.fixture(name="mock_llama_stack_client_health")
