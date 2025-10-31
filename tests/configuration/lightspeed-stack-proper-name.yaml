@@ -1,0 +1,44 @@
+name: Lightspeed Core Service (LCS)
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+  cors:
+    allow_origins:
+      - foo_origin
+      - bar_origin
+      - baz_origin
+    allow_credentials: false
+    allow_methods:
+      - foo_method
+      - bar_method
+      - baz_method
+    allow_headers:
+      - foo_header
+      - bar_header
+      - baz_header
+llama_stack:
+  # Uses a remote llama-stack service
+  # The instance would have already been started with a llama-stack-run.yaml file
+  use_as_library_client: false
+  # Alternative for "as library use"
+  # use_as_library_client: true
+  # library_client_config_path: <path-to-llama-stack-run.yaml-file>
+  url: http://localhost:8321
+  api_key: xyzzy
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+mcp_servers:
+  - name: "server1"
+    provider_id: "provider1"
+    url: "http://url.com:1"
+  - name: "server2"
+    provider_id: "provider2"
+    url: "http://url.com:2"
+  - name: "server3"
+    provider_id: "provider3"
+    url: "http://url.com:3"
