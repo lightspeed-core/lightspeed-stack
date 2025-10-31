@@ -27,9 +27,17 @@ spec:
     value: quay.io/redhat-user-workloads/lightspeed-core-tenant/lightspeed-stack:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
+  # todo: add arm64. refer to https://konflux.pages.redhat.com/docs/users/getting-started/multi-platform-builds.html#arm64-2
   - name: build-platforms
     value:
     - linux/x86_64
+  # todo: change on-push pipeline,too
+  - name: build-source-image
+    value: 'true'
+  - name: prefetch-input
+    value: '[{"type": "rpm", "path": "."}, {"type": "pip", "path": ".", "allow_binary": "true", "requirements_files": ["requirements.txt", "requirements.hermetic.txt"]}]'
+  - name: hermetic
+    value: 'true'
   - name: dockerfile
     value: Containerfile
   pipelineSpec:
