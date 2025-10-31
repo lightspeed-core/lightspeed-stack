@@ -18,7 +18,7 @@ keywords = [
     "LLM",
     "RAG"
 ]
-requires-python = ">=3.12,<3.14"
+requires-python = ">=3.14,<3.15"
 readme = "README.md"
 license = {file = "LICENSE"}
 dependencies = [
