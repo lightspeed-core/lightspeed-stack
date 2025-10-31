@@ -8,8 +8,13 @@ from fastapi import Response, status
 from authentication.interface import AuthTuple
 
 from configuration import AppConfig
-from app.endpoints.health import liveness_probe_get_method, readiness_probe_get_method, get_providers_health_statuses
+from app.endpoints.health import (
+    liveness_probe_get_method,
+    readiness_probe_get_method,
+    get_providers_health_statuses,
+)
 from llama_stack.providers.datatypes import HealthStatus
+
 
 @pytest.fixture(name="mock_llama_stack_client_health")
 def mock_llama_stack_client_fixture(
@@ -60,7 +65,7 @@ async def test_health_liveness(
 @pytest.mark.asyncio
 async def test_health_readiness_provider_statuses(
     mock_llama_stack_client_health: AsyncMockType,
-    mocker
+    mocker: MockerFixture,
 ) -> None:
     """Test that get_providers_health_statuses correctly retrieves and returns
        provider health statuses.
@@ -79,15 +84,20 @@ async def test_health_readiness_provider_statuses(
     mock_llama_stack_client_health.providers.list.return_value = [
         mocker.Mock(
             provider_id="unhealthy-provider-1",
-            health={"status": HealthStatus.ERROR.value, "message": "Database connection failed"}
+            health={
+                "status": HealthStatus.ERROR.value,
+                "message": "Database connection failed",
+            },
         ),
         mocker.Mock(
             provider_id="unhealthy-provider-2",
-            health={"status": HealthStatus.ERROR.value, "message": "Service unavailable"}
+            health={
+                "status": HealthStatus.ERROR.value,
+                "message": "Service unavailable",
+            },
         ),
         mocker.Mock(
-            provider_id="healthy-provider",
-            health={"status": "ok", "message": ""}
+            provider_id="healthy-provider", health={"status": "ok", "message": ""}
         ),
     ]
 
