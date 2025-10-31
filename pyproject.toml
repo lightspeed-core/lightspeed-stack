@@ -87,8 +87,23 @@ Issues = "https://github.com/lightspeed-core/lightspeed-stack/issues"
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
+
+[[tool.uv.index]]
+name = "pypi-default"
+url = "https://pypi.org/simple"
+explicit = true
 [tool.uv.sources]
-torch = [{ index = "pytorch-cpu" }]
+torch = [
+    { index = "pytorch-cpu", group = "llslibdev" },
+    { index = "pypi-default", group = "llslibdev-hermetic" }
+]
+[tool.uv]
+conflicts = [
+    [
+        { group = "llslibdev" },
+        { group = "llslibdev-hermetic" },
+    ],
+]
 
 [dependency-groups]
 dev = [
@@ -158,6 +173,50 @@ llslibdev = [
     "opentelemetry-instrumentation>=0.55b0",
     "blobfile>=3.0.0",
     "psutil>=7.0.0",
+]
+llslibdev-hermetic = [
+   # the same as llslibdev, just using default index.
+   "matplotlib>=3.10.0",
+   "pillow>=11.1.0",
+   "pandas>=2.2.3",
+   "scikit-learn>=1.5.2",
+   "psycopg2-binary>=2.9.10",
+   # API eval: inline::meta-reference
+   "tree_sitter>=0.24.0",
+   "pythainlp>=3.0.10",
+   "langdetect>=1.0.9",
+   "emoji>=2.1.0",
+   "nltk>=3.8.1",
+   # API inference: remote::gemini
+   "litellm>=1.75.5.post1",
+   # API inference: inline::sentence-transformers
+   "sentence-transformers>=5.0.0",
+   # API vector_io: inline::faiss
+   "faiss-cpu>=1.11.0",
+   # API scoring: inline::basic
+   "requests>=2.32.4",
+   # API datasetio: inline::localfs
+   "aiosqlite>=0.21.0",
+   # API datasetio: remote::huggingface
+   "datasets>=3.6.0",
+   # API telemetry: inline::meta-reference
+   "opentelemetry-sdk>=1.34.1",
+   "opentelemetry-exporter-otlp>=1.34.1",
+   # API tool_runtime: inline::rag-runtime
+   "transformers>=4.34.0",
+   "numpy==2.2.6",
+   # API tool_runtime: remote::model-context-protocol
+   "mcp>=1.9.4",
+   # API post_training: inline::huggingface
+   "torch==2.7.1; sys_platform == 'linux'",
+   "trl>=0.18.2",
+   "peft>=0.15.2",
+   # Other
+   "autoevals>=0.0.129",
+   "fire>=0.7.0",
+   "opentelemetry-instrumentation>=0.55b0",
+   "blobfile>=3.0.0",
+   "psutil>=7.0.0",
 ]
 
 build = [
