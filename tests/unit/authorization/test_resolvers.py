@@ -340,3 +340,23 @@ class TestGenericAccessResolver:
         resolver = GenericAccessResolver(multi_role_access_rules)
         actions = resolver.get_actions({"user", "moderator"})
         assert actions == {Action.QUERY, Action.GET_MODELS, Action.FEEDBACK}
+
+    async def test_responses_action_authorization(self):
+        """Test that RESPONSES action can be used in authorization rules."""
+        access_rules = [
+            AccessRule(role="api_user", actions=[Action.RESPONSES, Action.QUERY])
+        ]
+        resolver = GenericAccessResolver(access_rules)
+
+        # Test access granted for RESPONSES action
+        has_access = resolver.check_access(Action.RESPONSES, {"api_user"})
+        assert has_access is True
+
+        # Test access denied for different action
+        has_access = resolver.check_access(Action.FEEDBACK, {"api_user"})
+        assert has_access is False
+
+        # Test RESPONSES action is included in user's actions
+        actions = resolver.get_actions({"api_user"})
+        assert Action.RESPONSES in actions
+        assert Action.QUERY in actions
