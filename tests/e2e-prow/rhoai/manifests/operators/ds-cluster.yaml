@@ -1,0 +1,17 @@
+apiVersion: datasciencecluster.opendatahub.io/v1
+kind: DataScienceCluster
+metadata:
+  name: default-dsc
+  namespace: e2e-rhoai-dsc
+spec:
+  serviceMesh:
+    managementState: Managed
+  components:
+    kserve:
+      managementState: Managed
+    workbenches:
+      managementState: Removed
+    dashboard:
+      managementState: Removed
+    dataSciencePipelines:
+      managementState: Removed

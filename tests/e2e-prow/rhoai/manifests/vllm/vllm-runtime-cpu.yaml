@@ -1,0 +1,62 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+labels:
+  opendatahub.io/dashboard: "true"
+metadata:
+  annotations:
+    openshift.io/display-name: vLLM
+  name: vllm
+  namespace: e2e-rhoai-dsc
+spec:
+  builtInAdapter:
+    modelLoadingTimeoutMillis: 90000
+  containers:
+    - args:
+        - --model
+        # - /mnt/models/
+        - meta-llama/Llama-3.2-1B-Instruct
+        - --enable-auto-tool-choice
+        - --tool-call-parser 
+        - llama3_json
+        - --chat-template 
+        - /mnt/chat-template/tool_chat_template_llama3.2_json.jinja
+        - --download-dir
+        - /tmp/models-cache
+        - --port
+        - "8080"
+        - --max-model-len
+        - "2048"
+      image: quay.io/rh-ee-cpompeia/vllm-cpu:latest
+      name: kserve-container
+      env:
+        - name: HF_HOME
+          value: /mnt/models-cache/hf_home
+        - name: HUGGING_FACE_HUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-token-secret
+              key: token
+        - name: VLLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: vllm-api-key-secret
+              key: key
+      ports:
+        - containerPort: 8080
+          name: http1
+          protocol: TCP
+      volumeMounts:
+        - name: chat-template
+          mountPath: /mnt/chat-template
+        - name: models-cache
+          mountPath: /mnt/models-cache
+  volumes:
+    - name: chat-template
+      configMap:
+        name: vllm-chat-template
+    - name: models-cache
+      emptyDir: {}
+  multiModel: false
+  supportedModelFormats:
+    - autoSelect: true
+      name: pytorch
