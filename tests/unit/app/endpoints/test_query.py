@@ -1414,16 +1414,16 @@ async def test_retrieve_response_shield_violation(
 
 def test_get_rag_toolgroups() -> None:
     """Test get_rag_toolgroups function."""
-    vector_db_ids: list[str] = []
-    result = get_rag_toolgroups(vector_db_ids)
+    vector_store_ids: list[str] = []
+    result = get_rag_toolgroups(vector_store_ids)
     assert result is None
 
-    vector_db_ids = ["Vector-DB-1", "Vector-DB-2"]
-    result = get_rag_toolgroups(vector_db_ids)
+    vector_store_ids = ["Vector-DB-1", "Vector-DB-2"]
+    result = get_rag_toolgroups(vector_store_ids)
     assert result is not None
     assert len(result) == 1
     assert result[0]["name"] == "builtin::rag/knowledge_search"
-    assert result[0]["args"]["vector_db_ids"] == vector_db_ids
+    assert result[0]["args"]["vector_store_ids"] == vector_store_ids
 
 
 @pytest.mark.asyncio
