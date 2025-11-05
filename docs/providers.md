@@ -36,7 +36,7 @@ The tables below summarize each provider category, containing the following atri
 | meta-reference | inline | `accelerate`, `fairscale`, `torch`, `torchvision`, `transformers`, `zmq`, `lm-format-enforcer`, `sentence-transformers`, `torchao==0.8.0`, `fbgemm-gpu-genai==1.1.2` | ❌ |
 | sentence-transformers | inline | `torch torchvision torchao>=0.12.0 --extra-index-url https://download.pytorch.org/whl/cpu`, `sentence-transformers --no-deps` | ❌ |
 | anthropic | remote | `litellm` | ❌ |
-| azure | remote | — | ✅ |
+| azure | remote | `litellm` | ✅ |
 | bedrock | remote | `boto3` | ❌ |
 | cerebras | remote | `cerebras_cloud_sdk` | ❌ |
 | databricks | remote | — | ❌ |
@@ -64,6 +64,47 @@ Red Hat providers:
 | RHAIIS (vllm) | 3.2.3 (on RHEL 9.20250429.0.4) | remote | `openai` | ✅ |
 | RHEL AI (vllm) | 1.5.2 | remote | `openai` | ✅ |
 
+### Azure Provider - Entra ID Authentication Guide
+
+Lightspeed Core supports secure authentication using Microsoft Entra ID (formerly Azure Active Directory) for the Azure Inference Provider. This allows you to connect to Azure OpenAI without using API keys, by authenticating through your organization’s Azure identity.
+
+#### Lightspeed Core configuration requirements
+
+To enable Entra ID authentication, the `azure_entra_id` block must be included in your LCS configuration, and all three attributes — `tenant_id`, `client_id`, and `client_secret` — are required. The authentication will not work if any of them is missing:
+
+```yaml
+azure_entra_id:
+  tenant_id: ${env.AZURE_TENANT_ID}
+  client_id: ${env.AZURE_CLIENT_ID}
+  client_secret: ${env.AZURE_CLIENT_SECRET}
+```
+**Note:** We strongly recommend to load the secrets from environment variables or secrets.
+
+#### Llama Stack Configuration Requirements
+
+Because Lightspeed builds on top of Llama Stack, certain configuration fields are required to satisfy the base Llama Stack schema — even though they are not used when Entra ID authentication is enabled. Specifically, the config block for the Azure provider must include `api_key`, `api_base`, and `api_version`.
+
+While `api_key` is not used in Entra ID mode, it must still be set to a dummy value because Llama Stack validates its presence. The `api_base` and `api_version` fields remain required and are used in Entra ID authentication.
+
+```yaml
+inference:
+  - provider_id: azure
+    provider_type: remote::azure
+    config:
+      api_key: ${AZURE_API_KEY:=}       # Required but not used for Entra ID
+      api_base: ${AZURE_API_BASE}
+      api_version: 2025-01-01-preview
+```
+**Note:** Llama Stack currently supports only static API key authentication through the LiteLLM SDK. Lightspeed extends this behavior by dynamically injecting Entra ID access tokens into each request, enabling full compatibility while maintaining schema compliance with the Llama Stack configuration.
+
+#### Access Token Lifecycle and Managment
+When the service starts or an inference request is made:
+1. The system reads your Entra ID configuration.
+1. It checks whether a valid access token already exists:
+    - If the token does not exist or the current token has expired, the system automatically requests a new token from Microsoft Entra ID using your credentials.
+    - If a valid token is still active, it is reused — no new request is made.
+1. The access token grants access to Azure OpenAI Services.
+1. Tokens are automatically refreshed as needed before they expire. Access tokens are typically valid for 1 hour, and this process happens entirely in the background without any manual action.
 
 ---
 
