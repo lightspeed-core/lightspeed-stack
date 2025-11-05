@@ -51,6 +51,8 @@ dependencies = [
     # Used by authorization resolvers
     "jsonpath-ng>=1.6.1",
     "psycopg2-binary>=2.9.10",
+    "azure-core",
+    "azure-identity",
 ]
 
 
@@ -159,8 +161,6 @@ llslibdev = [
     "opentelemetry-instrumentation>=0.55b0",
     "blobfile>=3.0.0",
     "psutil>=7.0.0",
-    "azure-core",
-    "azure-identity",
 ]
 
 build = [
