@@ -7,8 +7,9 @@ from typing import Optional
 from azure.core.credentials import AccessToken
 from azure.core.exceptions import ClientAuthenticationError
 from azure.identity import ClientSecretCredential
-from utils.types import Singleton
+
 from configuration import AzureEntraIdConfiguration
+from utils.types import Singleton
 
 logger = logging.getLogger(__name__)
 
