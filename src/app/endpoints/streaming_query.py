@@ -39,6 +39,7 @@ from app.endpoints.query import (
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
+from authorization.azure_token_manager import AzureEntraIDTokenManager
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import DEFAULT_RAG_TOOL, MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
@@ -757,13 +758,35 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals,t
 
     try:
         # try to get Llama Stack client
-        client = AsyncLlamaStackClientHolder().get_client()
+        client_holder = AsyncLlamaStackClientHolder()
+        client = client_holder.get_client()
         llama_stack_model_id, model_id, provider_id = select_model_and_provider_id(
             await client.models.list(),
             *evaluate_model_hints(
                 user_conversation=user_conversation, query_request=query_request
             ),
         )
+
+        azure_token_manager = AzureEntraIDTokenManager()
+        if (
+            provider_id == "azure"
+            and azure_token_manager.is_entra_id_configured
+            and azure_token_manager.is_token_expired
+        ):
+            azure_token_manager.refresh_token()
+            azure_config = next(
+                p.config
+                for p in await client.providers.list()
+                if p.provider_type == "remote::azure"
+            )
+
+            client = client_holder.get_client_with_updated_azure_headers(
+                access_token=azure_token_manager.access_token,
+                api_base=str(azure_config.get("api_base")),
+                api_version=str(azure_config.get("api_version")),
+            )
+            client_holder.set_client(client)
+
         response, conversation_id = await retrieve_response(
             client,
             llama_stack_model_id,
