@@ -55,12 +55,12 @@ async def test_authorized_dependency_unauthorized() -> None:
     headers_no_auth = Headers({})
     with pytest.raises(HTTPException) as exc_info:
         extract_user_token(headers_no_auth)
-    assert exc_info.value.status_code == 400
+    assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "No Authorization header found"
 
     # Test case 2: Invalid Authorization header format (400 error from extract_user_token)
     headers_invalid_auth = Headers({"Authorization": "InvalidFormat"})
     with pytest.raises(HTTPException) as exc_info:
         extract_user_token(headers_invalid_auth)
-    assert exc_info.value.status_code == 400
+    assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "No token found in Authorization header"

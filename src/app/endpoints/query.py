@@ -486,6 +486,17 @@ def select_model_and_provider_id(
     Raises:
         HTTPException: If no suitable LLM model is found or the selected model is not available.
     """
+    # If no models are available, raise an exception
+    if not models:
+        message = "No LLM model found in available models"
+        logger.error(message)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "response": constants.UNABLE_TO_PROCESS_RESPONSE,
+                "cause": message,
+            },
+        )
     # If model_id and provider_id are provided in the request, use them
 
     # If model_id is not provided in the request, check the configuration
@@ -519,7 +530,7 @@ def select_model_and_provider_id(
             message = "No LLM model found in available models"
             logger.error(message)
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "response": constants.UNABLE_TO_PROCESS_RESPONSE,
                     "cause": message,
@@ -536,7 +547,7 @@ def select_model_and_provider_id(
         message = f"Model {model_id} from provider {provider_id} not found in available models"
         logger.error(message)
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "response": constants.UNABLE_TO_PROCESS_RESPONSE,
                 "cause": message,
