@@ -1,6 +1,7 @@
 """Llama Stack client retrieval class."""
 
 import logging
+import json
 
 from typing import Optional
 
@@ -53,3 +54,48 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
                 "AsyncLlamaStackClient has not been initialised. Ensure 'load(..)' has been called."
             )
         return self._lsc
+
+    def set_client(self, new_client: AsyncLlamaStackClient) -> None:
+        """
+        Replace the currently stored AsyncLlamaStackClient instance.
+
+        This method allows updating the client reference when
+        configuration or runtime attributes have changed.
+        """
+        self._lsc = new_client
+
+    def get_client_with_updated_azure_headers(
+        self,
+        access_token: str,
+        api_base: str,
+        api_version: str,
+    ) -> AsyncLlamaStackClient:
+        """Return a new client with updated Azure headers, preserving other headers."""
+        if not self._lsc:
+            raise RuntimeError(
+                "AsyncLlamaStackClient has not been initialised. Ensure 'load(..)' has been called."
+            )
+
+        current_headers = self._lsc.default_headers if self._lsc else {}
+        provider_data_json = current_headers.get("X-LlamaStack-Provider-Data")
+
+        try:
+            provider_data = json.loads(provider_data_json) if provider_data_json else {}
+        except (json.JSONDecodeError, TypeError):
+            provider_data = {}
+
+        # Update only Azure-specific fields
+        provider_data.update(
+            {
+                "azure_api_key": access_token,
+                "azure_api_base": api_base,
+                "azure_api_version": api_version,
+                "azure_api_type": None,  # deprecated attribute
+            }
+        )
+
+        updated_headers = {
+            **current_headers,
+            "X-LlamaStack-Provider-Data": json.dumps(provider_data),
+        }
+        return self._lsc.copy(set_default_headers=updated_headers)  # type: ignore

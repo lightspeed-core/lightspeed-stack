@@ -12,6 +12,7 @@ from rich.logging import RichHandler
 
 from log import get_logger
 from configuration import configuration
+from authorization.azure_token_manager import AzureEntraIDTokenManager
 from llama_stack_configuration import generate_configuration
 from runners.uvicorn import start_uvicorn
 from runners.quota_scheduler import start_quota_scheduler
@@ -123,6 +124,8 @@ def main() -> None:
 
     # start the runners
     start_quota_scheduler(configuration.configuration)
+    if configuration.azure_entra_id:
+        AzureEntraIDTokenManager().set_config(configuration.azure_entra_id)
     # if every previous steps don't fail, start the service on specified port
     start_uvicorn(configuration.service_configuration)
     logger.info("Lightspeed Core Stack finished")

@@ -593,6 +593,14 @@ class QuotaHandlersConfiguration(ConfigurationBase):
     enable_token_history: bool = False
 
 
+class AzureEntraIdConfiguration(ConfigurationBase):
+    """Microsoft Entra ID authentication attributes for Azure."""
+
+    tenant_id: SecretStr
+    client_id: SecretStr
+    client_secret: SecretStr
+
+
 class Configuration(ConfigurationBase):
     """Global service configuration."""
 
@@ -615,6 +623,7 @@ class Configuration(ConfigurationBase):
     quota_handlers: QuotaHandlersConfiguration = Field(
         default_factory=QuotaHandlersConfiguration
     )
+    azure_entra_id: Optional[AzureEntraIdConfiguration] = None
 
     def dump(self, filename: str = "configuration.json") -> None:
         """Dump actual configuration into JSON file."""

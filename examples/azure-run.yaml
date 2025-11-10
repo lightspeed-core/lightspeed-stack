@@ -72,10 +72,9 @@ providers:
     - provider_id: azure
       provider_type: remote::azure
       config: 
-        api_key: ${env.AZURE_API_KEY}
+        api_key: ${env.AZURE_API_KEY:=}
         api_base: https://ols-test.openai.azure.com/
-        api_version: 2024-02-15-preview
-        api_type: ${env.AZURE_API_TYPE:=}
+        api_version: 2025-01-01-preview
   post_training:
   - provider_id: huggingface
     provider_type: inline::huggingface-gpu

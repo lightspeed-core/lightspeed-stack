@@ -10,6 +10,7 @@ from llama_stack.core.stack import replace_env_vars
 import yaml
 from models.config import (
     AuthorizationConfiguration,
+    AzureEntraIdConfiguration,
     Configuration,
     Customization,
     LlamaStackConfiguration,
@@ -179,6 +180,13 @@ class AppConfig:
                 self._configuration.quota_handlers
             )
         return self._quota_limiters
+
+    @property
+    def azure_entra_id(self) -> Optional[AzureEntraIdConfiguration]:
+        """Return Azure Entra ID configuration, or None if not provided."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.azure_entra_id
 
 
 configuration: AppConfig = AppConfig()

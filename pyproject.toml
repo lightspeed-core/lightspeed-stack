@@ -51,6 +51,8 @@ dependencies = [
     # Used by authorization resolvers
     "jsonpath-ng>=1.6.1",
     "psycopg2-binary>=2.9.10",
+    "azure-core",
+    "azure-identity",
 ]
 
 
