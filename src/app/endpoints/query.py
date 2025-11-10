@@ -80,13 +80,16 @@ query_response: dict[int | str, dict[str, Any]] = {
             }
         ],
     },
-    400: {
+    401: {
         "description": "Missing or invalid credentials provided by client",
         "model": UnauthorizedResponse,
     },
     403: {
         "description": "Client does not have permission to access conversation",
         "model": ForbiddenResponse,
+    },
+    404: {
+        "description": "Requested model or provider not found",
     },
     429: {
         "description": "The quota has been exceeded",

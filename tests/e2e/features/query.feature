@@ -59,7 +59,9 @@ Feature: Query endpoint API tests
           {"detail": "No Authorization header found"}
           """
 
-  Scenario: Check if LLM responds to sent question with error when not authenticated with invalid token
+  Scenario: Check if LLM responds to sent question with error when authenticated with invalid token
+    Given The service is started locally
+    And REST API service prefix is /v1
     Given The system is in default state
     And I set the Authorization header to Bearer invalid
     When I use "query" to ask question with authorization header
@@ -73,6 +75,8 @@ Feature: Query endpoint API tests
           """
 
   Scenario: Check if LLM responds to sent question with error when model does not exist
+    Given The service is started locally
+    And REST API service prefix is /v1
     Given The system is in default state
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     When I use "query" to ask question with authorization header
@@ -84,6 +88,8 @@ Feature: Query endpoint API tests
 
 
   Scenario: Check if LLM responds to sent question with error when attempting to access conversation
+    Given The service is started locally
+    And REST API service prefix is /v1
     Given The system is in default state
      And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
      When I use "query" to ask question with authorization header
