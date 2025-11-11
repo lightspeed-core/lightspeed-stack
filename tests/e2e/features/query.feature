@@ -168,9 +168,9 @@ Scenario: Check if LLM responds for query request with error for missing query
     }
     """
     Then The status code of the response is 200
-Scenario: Check if LLM responds with an error when no models are configured
-    Given The service is started locally
-    And REST API service prefix is /v1
+
+  @no_models
+  Scenario: Check if LLM responds with an error when no models are configured
     Given The system is in default state
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     When I use "query" to ask question with authorization header

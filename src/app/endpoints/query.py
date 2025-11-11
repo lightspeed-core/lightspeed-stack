@@ -491,7 +491,7 @@ def select_model_and_provider_id(
     """
     # If no models are available, raise an exception
     if not models:
-        message = "No LLM model found in available models"
+        message = "No models available"
         logger.error(message)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -530,7 +530,7 @@ def select_model_and_provider_id(
             model_label = model_id.split("/", 1)[1] if "/" in model_id else model_id
             return model_id, model_label, provider_id
         except (StopIteration, AttributeError) as e:
-            message = "No LLM model found in available models"
+            message = "No models available"
             logger.error(message)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
