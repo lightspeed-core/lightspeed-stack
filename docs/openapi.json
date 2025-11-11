@@ -693,16 +693,6 @@
                             }
                         }
                     },
-                    "400": {
-                        "description": "Missing or invalid credentials provided by client",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnauthorizedResponse"
-                                }
-                            }
-                        }
-                    },
                     "401": {
                         "description": "Missing or invalid credentials provided by client",
                         "content": {
@@ -1280,7 +1270,7 @@
                         }
                     },
                     "403": {
-                        "description": "User is not authorized",
+                        "description": "Client does not have permission to access conversation",
                         "content": {
                             "application/json": {
                                 "schema": {
