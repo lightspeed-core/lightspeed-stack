@@ -256,7 +256,7 @@ Feature: feedback endpoint API tests
             "user_question": "Sample Question"
         }
         """
-     Then The status code of the response is 400
+     Then The status code of the response is 401
      And The body of the response is the following
         """
         {
@@ -271,7 +271,7 @@ Feature: feedback endpoint API tests
     Given The system is in default state
     And I remove the auth header
      When The feedback is enabled
-     Then The status code of the response is 400
+     Then The status code of the response is 401
      And The body of the response is the following
         """
         {

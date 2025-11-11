@@ -34,7 +34,7 @@ Feature: conversations endpoint API tests
     And I store conversation details
     And I remove the auth header
      When I access REST API endpoint "conversations" using HTTP GET method
-     Then The status code of the response is 400
+     Then The status code of the response is 401
      And The body of the response is the following
         """
         {
@@ -100,7 +100,7 @@ Feature: conversations endpoint API tests
     And I store conversation details
     And I remove the auth header
      When I use REST API conversation endpoint with conversation_id from above using HTTP GET method
-     Then The status code of the response is 400
+     Then The status code of the response is 401
      And The body of the response is the following
       """
       {
