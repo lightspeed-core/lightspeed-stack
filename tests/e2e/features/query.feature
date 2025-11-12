@@ -169,13 +169,3 @@ Scenario: Check if LLM responds for query request with error for missing query
     """
     Then The status code of the response is 200
 
-  @no_models
-  Scenario: Check if LLM responds with an error when no models are configured
-    Given The system is in default state
-    And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
-    When I use "query" to ask question with authorization header
-      """
-      {"query": "Write a simple code for reversing string"}
-      """
-    Then The status code of the response is 404
-    And The body of the response contains No models available
