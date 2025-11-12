@@ -957,7 +957,7 @@ def test_stream_build_event_shield_call_step_complete_no_violation(
 
     assert result is not None
     assert "data: " in result
-    assert '"event": "token"' in result
+    assert '"event": "validation"' in result
     assert '"token": "No Violation"' in result
     # Role field removed for OLS compatibility
     assert '"id": 0' in result
@@ -999,7 +999,7 @@ def test_stream_build_event_shield_call_step_complete_with_violation(
 
     assert result is not None
     assert "data: " in result
-    assert '"event": "token"' in result
+    assert '"event": "validation"' in result
     assert (
         '"token": "Violation: I don\'t like the cut of your jib (Metadata: {})"'
         in result

@@ -128,6 +128,7 @@ METADATA_PATTERN = re.compile(r"\nMetadata: (\{.+})\n")
 LLM_TOKEN_EVENT = "token"
 LLM_TOOL_CALL_EVENT = "tool_call"
 LLM_TOOL_RESULT_EVENT = "tool_result"
+LLM_VALIDATION_EVENT = "validation"
 
 
 def format_stream_data(d: dict) -> str:
@@ -486,7 +487,7 @@ def _handle_shield_event(
                     "id": chunk_id,
                     "token": "No Violation",
                 },
-                event_type=LLM_TOKEN_EVENT,
+                event_type=LLM_VALIDATION_EVENT,
                 media_type=media_type,
             )
         else:
@@ -500,7 +501,7 @@ def _handle_shield_event(
                     "id": chunk_id,
                     "token": violation,
                 },
-                event_type=LLM_TOKEN_EVENT,
+                event_type=LLM_VALIDATION_EVENT,
                 media_type=media_type,
             )
 
