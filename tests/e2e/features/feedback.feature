@@ -108,7 +108,7 @@ Feature: feedback endpoint API tests
      And The body of the response is the following
         """
         {
-            "detail": "Forbidden: User is not authorized to access this resource"
+            "detail": "Forbidden: Feedback is disabled"
         }   
         """
 
@@ -246,7 +246,6 @@ Feature: feedback endpoint API tests
   Scenario: Check if feedback endpoint is not working when not authorized
     Given The system is in default state
     And A new conversation is initialized
-    And I remove the auth header
      When I submit the following feedback for the conversation created before
         """
         {
@@ -260,10 +259,7 @@ Feature: feedback endpoint API tests
      And The body of the response is the following
         """
         {
-            "detail": {
-                        "cause": "Missing or invalid credentials provided by client",
-                        "response": "Unauthorized"
-            }
+            "detail": "No Authorization header found"
         }
         """
 
@@ -275,10 +271,7 @@ Feature: feedback endpoint API tests
      And The body of the response is the following
         """
         {
-            "detail": {
-                        "cause": "Missing or invalid credentials provided by client",
-                        "response": "Unauthorized"
-            }
+            "detail": "No Authorization header found"
         }
         """
 
