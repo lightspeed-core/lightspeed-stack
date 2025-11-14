@@ -126,7 +126,7 @@ Feature: streaming_query endpoint API tests
      """
      {"query": "Say hello"}
      """
-      Then The status code of the response is 400
+      Then The status code of the response is 401
       And The body of the response is the following
           """
           {"detail": "No Authorization header found"}

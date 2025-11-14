@@ -459,7 +459,7 @@ def test_select_model_and_provider_id_no_available_models(
             mock_client.models.list(), query_request.model, query_request.provider
         )
 
-    assert "No LLM model found in available models" in str(exc_info.value)
+    assert "No models available" in str(exc_info.value)
 
 
 def test_validate_attachments_metadata() -> None:
