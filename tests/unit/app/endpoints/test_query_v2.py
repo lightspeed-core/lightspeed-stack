@@ -120,6 +120,8 @@ async def test_retrieve_response_no_tools_bypasses_tools(mocker: MockerFixture) 
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+    # Mock shields.list
+    mock_client.shields.list = mocker.AsyncMock(return_value=[])
 
     # Ensure system prompt resolution does not require real config
     mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
@@ -156,6 +158,8 @@ async def test_retrieve_response_builds_rag_and_mcp_tools(
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = [mocker.Mock(id="dbA")]
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+    # Mock shields.list
+    mock_client.shields.list = mocker.AsyncMock(return_value=[])
 
     mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
     mock_cfg = mocker.Mock()
@@ -222,6 +226,8 @@ async def test_retrieve_response_parses_output_and_tool_calls(
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+    # Mock shields.list
+    mock_client.shields.list = mocker.AsyncMock(return_value=[])
 
     mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
     mocker.patch("app.endpoints.query_v2.configuration", mocker.Mock(mcp_servers=[]))
@@ -267,6 +273,8 @@ async def test_retrieve_response_with_usage_info(mocker: MockerFixture) -> None:
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+    # Mock shields.list
+    mock_client.shields.list = mocker.AsyncMock(return_value=[])
 
     mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
     mocker.patch("app.endpoints.query_v2.configuration", mocker.Mock(mcp_servers=[]))
@@ -304,6 +312,8 @@ async def test_retrieve_response_with_usage_dict(mocker: MockerFixture) -> None:
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+    # Mock shields.list
+    mock_client.shields.list = mocker.AsyncMock(return_value=[])
 
     mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
     mocker.patch("app.endpoints.query_v2.configuration", mocker.Mock(mcp_servers=[]))
@@ -341,6 +351,8 @@ async def test_retrieve_response_with_empty_usage_dict(mocker: MockerFixture) ->
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+    # Mock shields.list
+    mock_client.shields.list = mocker.AsyncMock(return_value=[])
 
     mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
     mocker.patch("app.endpoints.query_v2.configuration", mocker.Mock(mcp_servers=[]))
@@ -369,6 +381,8 @@ async def test_retrieve_response_validates_attachments(mocker: MockerFixture) ->
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+    # Mock shields.list
+    mock_client.shields.list = mocker.AsyncMock(return_value=[])
 
     mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
     mocker.patch("app.endpoints.query_v2.configuration", mocker.Mock(mcp_servers=[]))
@@ -515,3 +529,183 @@ async def test_query_endpoint_quota_exceeded(
     assert isinstance(detail, dict)
     assert detail["response"] == "Model quota exceeded"  # type: ignore
     assert "gpt-4-turbo" in detail["cause"]  # type: ignore
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_with_shields_available(mocker: MockerFixture) -> None:
+    """Test that shields are listed and passed to responses API when available."""
+    mock_client = mocker.Mock()
+
+    # Mock shields.list to return available shields
+    shield1 = mocker.Mock()
+    shield1.identifier = "shield-1"
+    shield2 = mocker.Mock()
+    shield2.identifier = "shield-2"
+    mock_client.shields.list = mocker.AsyncMock(return_value=[shield1, shield2])
+
+    output_item = mocker.Mock()
+    output_item.type = "message"
+    output_item.role = "assistant"
+    output_item.content = "Safe response"
+
+    response_obj = mocker.Mock()
+    response_obj.id = "resp-shields"
+    response_obj.output = [output_item]
+    response_obj.usage = None
+
+    mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    mock_vector_stores = mocker.Mock()
+    mock_vector_stores.data = []
+    mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+
+    mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
+    mocker.patch("app.endpoints.query_v2.configuration", mocker.Mock(mcp_servers=[]))
+
+    qr = QueryRequest(query="hello")
+    summary, conv_id, _referenced_docs, _token_usage = await retrieve_response(
+        mock_client, "model-shields", qr, token="tkn", provider_id="test-provider"
+    )
+
+    assert conv_id == "resp-shields"
+    assert summary.llm_response == "Safe response"
+
+    # Verify that shields were passed in extra_body
+    kwargs = mock_client.responses.create.call_args.kwargs
+    assert "extra_body" in kwargs
+    assert "guardrails" in kwargs["extra_body"]
+    assert kwargs["extra_body"]["guardrails"] == ["shield-1", "shield-2"]
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_with_no_shields_available(
+    mocker: MockerFixture,
+) -> None:
+    """Test that no extra_body is added when no shields are available."""
+    mock_client = mocker.Mock()
+
+    # Mock shields.list to return no shields
+    mock_client.shields.list = mocker.AsyncMock(return_value=[])
+
+    output_item = mocker.Mock()
+    output_item.type = "message"
+    output_item.role = "assistant"
+    output_item.content = "Response without shields"
+
+    response_obj = mocker.Mock()
+    response_obj.id = "resp-no-shields"
+    response_obj.output = [output_item]
+    response_obj.usage = None
+
+    mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    mock_vector_stores = mocker.Mock()
+    mock_vector_stores.data = []
+    mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+
+    mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
+    mocker.patch("app.endpoints.query_v2.configuration", mocker.Mock(mcp_servers=[]))
+
+    qr = QueryRequest(query="hello")
+    summary, conv_id, _referenced_docs, _token_usage = await retrieve_response(
+        mock_client, "model-no-shields", qr, token="tkn", provider_id="test-provider"
+    )
+
+    assert conv_id == "resp-no-shields"
+    assert summary.llm_response == "Response without shields"
+
+    # Verify that no extra_body was added
+    kwargs = mock_client.responses.create.call_args.kwargs
+    assert "extra_body" not in kwargs
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_detects_shield_violation(
+    mocker: MockerFixture,
+) -> None:
+    """Test that shield violations are detected and metrics are incremented."""
+    mock_client = mocker.Mock()
+
+    # Mock shields.list to return available shields
+    shield1 = mocker.Mock()
+    shield1.identifier = "safety-shield"
+    mock_client.shields.list = mocker.AsyncMock(return_value=[shield1])
+
+    # Create output with shield violation (refusal)
+    output_item = mocker.Mock()
+    output_item.type = "message"
+    output_item.role = "assistant"
+    output_item.content = "I cannot help with that request"
+    output_item.refusal = "Content violates safety policy"
+
+    response_obj = mocker.Mock()
+    response_obj.id = "resp-violation"
+    response_obj.output = [output_item]
+    response_obj.usage = None
+
+    mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    mock_vector_stores = mocker.Mock()
+    mock_vector_stores.data = []
+    mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+
+    mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
+    mocker.patch("app.endpoints.query_v2.configuration", mocker.Mock(mcp_servers=[]))
+
+    # Mock the validation error metric
+    validation_metric = mocker.patch("metrics.llm_calls_validation_errors_total")
+
+    qr = QueryRequest(query="dangerous query")
+    summary, conv_id, _referenced_docs, _token_usage = await retrieve_response(
+        mock_client, "model-violation", qr, token="tkn", provider_id="test-provider"
+    )
+
+    assert conv_id == "resp-violation"
+    assert summary.llm_response == "I cannot help with that request"
+
+    # Verify that the validation error metric was incremented
+    validation_metric.inc.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_no_violation_with_shields(
+    mocker: MockerFixture,
+) -> None:
+    """Test that no metric is incremented when there's no shield violation."""
+    mock_client = mocker.Mock()
+
+    # Mock shields.list to return available shields
+    shield1 = mocker.Mock()
+    shield1.identifier = "safety-shield"
+    mock_client.shields.list = mocker.AsyncMock(return_value=[shield1])
+
+    # Create output without shield violation
+    output_item = mocker.Mock()
+    output_item.type = "message"
+    output_item.role = "assistant"
+    output_item.content = "Safe response"
+    output_item.refusal = None  # No violation
+
+    response_obj = mocker.Mock()
+    response_obj.id = "resp-safe"
+    response_obj.output = [output_item]
+    response_obj.usage = None
+
+    mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    mock_vector_stores = mocker.Mock()
+    mock_vector_stores.data = []
+    mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+
+    mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
+    mocker.patch("app.endpoints.query_v2.configuration", mocker.Mock(mcp_servers=[]))
+
+    # Mock the validation error metric
+    validation_metric = mocker.patch("metrics.llm_calls_validation_errors_total")
+
+    qr = QueryRequest(query="safe query")
+    summary, conv_id, _referenced_docs, _token_usage = await retrieve_response(
+        mock_client, "model-safe", qr, token="tkn", provider_id="test-provider"
+    )
+
+    assert conv_id == "resp-safe"
+    assert summary.llm_response == "Safe response"
+
+    # Verify that the validation error metric was NOT incremented
+    validation_metric.inc.assert_not_called()

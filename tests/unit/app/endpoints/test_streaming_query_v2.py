@@ -38,6 +38,8 @@ async def test_retrieve_response_builds_rag_and_mcp_tools(
     mock_vector_stores.data = [mocker.Mock(id="db1")]
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
     mock_client.responses.create = mocker.AsyncMock(return_value=mocker.Mock())
+    # Mock shields.list
+    mock_client.shields.list = mocker.AsyncMock(return_value=[])
 
     mocker.patch(
         "app.endpoints.streaming_query_v2.get_system_prompt", return_value="PROMPT"
@@ -68,6 +70,8 @@ async def test_retrieve_response_no_tools_passes_none(mocker: MockerFixture) -> 
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
     mock_client.responses.create = mocker.AsyncMock(return_value=mocker.Mock())
+    # Mock shields.list
+    mock_client.shields.list = mocker.AsyncMock(return_value=[])
 
     mocker.patch(
         "app.endpoints.streaming_query_v2.get_system_prompt", return_value="PROMPT"
@@ -222,3 +226,247 @@ async def test_streaming_query_endpoint_handler_v2_api_connection_error(
     assert exc.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
     assert "Unable to connect to Llama Stack" in str(exc.value.detail)
     fail_metric.inc.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_with_shields_available(mocker: MockerFixture) -> None:
+    """Test that shields are listed and passed to streaming responses API."""
+    mock_client = mocker.Mock()
+
+    # Mock shields.list to return available shields
+    shield1 = mocker.Mock()
+    shield1.identifier = "shield-1"
+    shield2 = mocker.Mock()
+    shield2.identifier = "shield-2"
+    mock_client.shields.list = mocker.AsyncMock(return_value=[shield1, shield2])
+
+    mock_vector_stores = mocker.Mock()
+    mock_vector_stores.data = []
+    mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+    mock_client.responses.create = mocker.AsyncMock(return_value=mocker.Mock())
+
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.get_system_prompt", return_value="PROMPT"
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.configuration", mocker.Mock(mcp_servers=[])
+    )
+
+    qr = QueryRequest(query="hello")
+    await retrieve_response(mock_client, "model-shields", qr, token="tok")
+
+    # Verify that shields were passed in extra_body
+    kwargs = mock_client.responses.create.call_args.kwargs
+    assert "extra_body" in kwargs
+    assert "guardrails" in kwargs["extra_body"]
+    assert kwargs["extra_body"]["guardrails"] == ["shield-1", "shield-2"]
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_with_no_shields_available(
+    mocker: MockerFixture,
+) -> None:
+    """Test that no extra_body is added when no shields are available."""
+    mock_client = mocker.Mock()
+
+    # Mock shields.list to return no shields
+    mock_client.shields.list = mocker.AsyncMock(return_value=[])
+
+    mock_vector_stores = mocker.Mock()
+    mock_vector_stores.data = []
+    mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+    mock_client.responses.create = mocker.AsyncMock(return_value=mocker.Mock())
+
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.get_system_prompt", return_value="PROMPT"
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.configuration", mocker.Mock(mcp_servers=[])
+    )
+
+    qr = QueryRequest(query="hello")
+    await retrieve_response(mock_client, "model-no-shields", qr, token="tok")
+
+    # Verify that no extra_body was added
+    kwargs = mock_client.responses.create.call_args.kwargs
+    assert "extra_body" not in kwargs
+
+
+@pytest.mark.asyncio
+async def test_streaming_response_detects_shield_violation(
+    mocker: MockerFixture, dummy_request: Request
+) -> None:
+    """Test that shield violations in streaming responses are detected and metrics incremented."""
+    # Skip real config checks
+    mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
+
+    # Model selection plumbing
+    mock_client = mocker.Mock()
+    mock_client.models.list = mocker.AsyncMock(return_value=[mocker.Mock()])
+    mocker.patch(
+        "client.AsyncLlamaStackClientHolder.get_client", return_value=mock_client
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query.evaluate_model_hints",
+        return_value=(None, None),
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query.select_model_and_provider_id",
+        return_value=("llama/m", "m", "p"),
+    )
+
+    # SSE helpers
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.stream_start_event",
+        lambda conv_id: f"START:{conv_id}\n",
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.format_stream_data",
+        lambda obj: f"EV:{obj['event']}:{obj['data'].get('token','')}\n",
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.stream_end_event",
+        lambda _m, _s, _t, _media: "END\n",
+    )
+
+    # Mock the cleanup function that handles all post-streaming database/cache work
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.cleanup_after_streaming",
+        mocker.AsyncMock(return_value=None),
+    )
+
+    # Mock the validation error metric
+    validation_metric = mocker.patch("metrics.llm_calls_validation_errors_total")
+
+    # Build a fake async stream with shield violation
+    async def fake_stream_with_violation() -> AsyncIterator[SimpleNamespace]:
+        yield SimpleNamespace(
+            type="response.created", response=SimpleNamespace(id="conv-violation")
+        )
+        yield SimpleNamespace(type="response.output_text.delta", delta="I cannot ")
+        yield SimpleNamespace(type="response.output_text.done", text="I cannot help")
+        # Response completed with refusal in output
+        violation_item = SimpleNamespace(
+            type="message",
+            role="assistant",
+            refusal="Content violates safety policy",
+        )
+        response_with_violation = SimpleNamespace(
+            id="conv-violation", output=[violation_item]
+        )
+        yield SimpleNamespace(
+            type="response.completed", response=response_with_violation
+        )
+
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.retrieve_response",
+        return_value=(fake_stream_with_violation(), ""),
+    )
+
+    mocker.patch("metrics.llm_calls_total")
+
+    resp = await streaming_query_endpoint_handler_v2(
+        request=dummy_request,
+        query_request=QueryRequest(query="dangerous query"),
+        auth=("user123", "", True, "token-abc"),
+        mcp_headers={},
+    )
+
+    assert isinstance(resp, StreamingResponse)
+
+    # Collect emitted events to trigger the generator
+    events: list[str] = []
+    async for chunk in resp.body_iterator:
+        s = chunk.decode() if isinstance(chunk, (bytes, bytearray)) else str(chunk)
+        events.append(s)
+
+    # Verify that the validation error metric was incremented
+    validation_metric.inc.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_streaming_response_no_shield_violation(
+    mocker: MockerFixture, dummy_request: Request
+) -> None:
+    """Test that no metric is incremented when there's no shield violation in streaming."""
+    # Skip real config checks
+    mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
+
+    # Model selection plumbing
+    mock_client = mocker.Mock()
+    mock_client.models.list = mocker.AsyncMock(return_value=[mocker.Mock()])
+    mocker.patch(
+        "client.AsyncLlamaStackClientHolder.get_client", return_value=mock_client
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query.evaluate_model_hints",
+        return_value=(None, None),
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query.select_model_and_provider_id",
+        return_value=("llama/m", "m", "p"),
+    )
+
+    # SSE helpers
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.stream_start_event",
+        lambda conv_id: f"START:{conv_id}\n",
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.format_stream_data",
+        lambda obj: f"EV:{obj['event']}:{obj['data'].get('token','')}\n",
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.stream_end_event",
+        lambda _m, _s, _t, _media: "END\n",
+    )
+
+    # Mock the cleanup function that handles all post-streaming database/cache work
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.cleanup_after_streaming",
+        mocker.AsyncMock(return_value=None),
+    )
+
+    # Mock the validation error metric
+    validation_metric = mocker.patch("metrics.llm_calls_validation_errors_total")
+
+    # Build a fake async stream without violation
+    async def fake_stream_without_violation() -> AsyncIterator[SimpleNamespace]:
+        yield SimpleNamespace(
+            type="response.created", response=SimpleNamespace(id="conv-safe")
+        )
+        yield SimpleNamespace(type="response.output_text.delta", delta="Safe ")
+        yield SimpleNamespace(type="response.output_text.done", text="Safe response")
+        # Response completed without refusal
+        safe_item = SimpleNamespace(
+            type="message",
+            role="assistant",
+            refusal=None,  # No violation
+        )
+        response_safe = SimpleNamespace(id="conv-safe", output=[safe_item])
+        yield SimpleNamespace(type="response.completed", response=response_safe)
+
+    mocker.patch(
+        "app.endpoints.streaming_query_v2.retrieve_response",
+        return_value=(fake_stream_without_violation(), ""),
+    )
+
+    mocker.patch("metrics.llm_calls_total")
+
+    resp = await streaming_query_endpoint_handler_v2(
+        request=dummy_request,
+        query_request=QueryRequest(query="safe query"),
+        auth=("user123", "", True, "token-abc"),
+        mcp_headers={},
+    )
+
+    assert isinstance(resp, StreamingResponse)
+
+    # Collect emitted events to trigger the generator
+    events: list[str] = []
+    async for chunk in resp.body_iterator:
+        s = chunk.decode() if isinstance(chunk, (bytes, bytearray)) else str(chunk)
+        events.append(s)
+
+    # Verify that the validation error metric was NOT incremented
+    validation_metric.inc.assert_not_called()

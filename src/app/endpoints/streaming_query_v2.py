@@ -41,6 +41,7 @@ from utils.endpoints import (
     get_system_prompt,
 )
 from utils.mcp_headers import mcp_headers_dependency
+from utils.shields import detect_shield_violations, get_available_shields
 from utils.token_counter import TokenCounter
 from utils.transcripts import store_transcript
 from utils.types import TurnSummary, ToolCallSummary
@@ -243,6 +244,13 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
             elif event_type == "response.completed":
                 # Capture the response object for token usage extraction
                 latest_response_object = getattr(chunk, "response", None)
+
+                # Check for shield violations in the completed response
+                if latest_response_object:
+                    detect_shield_violations(
+                        getattr(latest_response_object, "output", [])
+                    )
+
                 if not emitted_turn_complete:
                     final_message = summary.llm_response or "".join(text_parts)
                     if not final_message:
@@ -348,11 +356,11 @@ async def retrieve_response(
     Asynchronously retrieves a streaming response and conversation
     ID from the Llama Stack agent for a given user query.
 
-    This function configures input/output shields, system prompt,
-    and tool usage based on the request and environment. It
-    prepares the agent with appropriate headers and toolgroups,
-    validates attachments if present, and initiates a streaming
-    turn with the user's query and any provided documents.
+    This function configures shields, system prompt, and tool usage
+    based on the request and environment. It prepares the agent with
+    appropriate headers and toolgroups, validates attachments if
+    present, and initiates a streaming turn with the user's query
+    and any provided documents.
 
     Parameters:
         model_id (str): Identifier of the model to use for the query.
@@ -365,7 +373,8 @@ async def retrieve_response(
         tuple: A tuple containing the streaming response object
         and the conversation ID.
     """
-    logger.info("Shields are not yet supported in Responses API.")
+    # List available shields for Responses API
+    available_shields = await get_available_shields(client)
 
     # use system prompt from request or default one
     system_prompt = get_system_prompt(query_request, configuration)
@@ -401,6 +410,10 @@ async def retrieve_response(
     }
     if query_request.conversation_id:
         create_params["previous_response_id"] = query_request.conversation_id
+
+    # Add shields to extra_body if available
+    if available_shields:
+        create_params["extra_body"] = {"guardrails": available_shields}
 
     response = await client.responses.create(**create_params)
     response_stream = cast(AsyncIterator[OpenAIResponseObjectStream], response)

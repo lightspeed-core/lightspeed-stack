@@ -34,6 +34,7 @@ from utils.endpoints import (
     get_topic_summary_system_prompt,
 )
 from utils.mcp_headers import mcp_headers_dependency
+from utils.shields import detect_shield_violations, get_available_shields
 from utils.token_counter import TokenCounter
 from utils.types import TurnSummary, ToolCallSummary
 
@@ -322,7 +323,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     given query, handling shield configuration, tool usage, and
     attachment validation.
 
-    This function configures system prompts and toolgroups
+    This function configures system prompts, shields, and toolgroups
     (including RAG and MCP integration) as needed based on
     the query request and system configuration. It
     validates attachments, manages conversation and session
@@ -342,8 +343,8 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         and the conversation ID, the list of parsed referenced documents,
         and token usage information.
     """
-    # TODO(ltomasbo): implement shields support once available in Responses API
-    logger.info("Shields are not yet supported in Responses API. Disabling safety")
+    # List available shields for Responses API
+    available_shields = await get_available_shields(client)
 
     # use system prompt from request or default one
     system_prompt = get_system_prompt(query_request, configuration)
@@ -381,6 +382,10 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     if query_request.conversation_id:
         create_kwargs["previous_response_id"] = query_request.conversation_id
 
+    # Add shields to extra_body if available
+    if available_shields:
+        create_kwargs["extra_body"] = {"guardrails": available_shields}
+
     response = await client.responses.create(**create_kwargs)
     response = cast(OpenAIResponseObject, response)
 
@@ -405,6 +410,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         tool_summary = _build_tool_call_summary(output_item)
         if tool_summary:
             tool_calls.append(tool_summary)
+
+    # Check for shield violations across all output items
+    detect_shield_violations(response.output)
 
     logger.info(
         "Response processing complete - Tool calls: %d, Response length: %d chars",
