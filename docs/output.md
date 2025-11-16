@@ -227,14 +227,10 @@ Returns:
 
 > **Streaming Query Endpoint Handler**
 
-Handle request to the /streaming_query endpoint.
+Handle request to the /streaming_query endpoint using Agent API.
 
-This endpoint receives a query request, authenticates the user,
-selects the appropriate model and provider, and streams
-incremental response events from the Llama Stack backend to the
-client. Events include start, token updates, tool calls, turn
-completions, errors, and end-of-stream metadata. Optionally
-stores the conversation transcript if enabled in configuration.
+This is a wrapper around streaming_query_endpoint_handler_base that provides
+the Agent API specific retrieve_response and response generator functions.
 
 Returns:
     StreamingResponse: An HTTP streaming response yielding
@@ -585,6 +581,42 @@ Returns:
 | 400 | Missing or invalid credentials provided by client | [UnauthorizedResponse](#unauthorizedresponse) |
 | 403 | Client does not have permission to access conversation | [ForbiddenResponse](#forbiddenresponse) |
 | 429 | The quota has been exceeded | [QuotaExceededResponse](#quotaexceededresponse) |
+| 500 | Internal Server Error |  |
+| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+## POST `/v2/streaming_query`
+
+> **Streaming Query Endpoint Handler V2**
+
+Handle request to the /streaming_query endpoint using Responses API.
+
+This is a wrapper around streaming_query_endpoint_handler_base that provides
+the Responses API specific retrieve_response and response generator functions.
+
+Returns:
+    StreamingResponse: An HTTP streaming response yielding
+    SSE-formatted events for the query lifecycle.
+
+Raises:
+    HTTPException: Returns HTTP 500 if unable to connect to the
+    Llama Stack server.
+
+
+
+
+
+### 📦 Request Body 
+
+[QueryRequest](#queryrequest)
+
+### ✅ Responses
+
+| Status Code | Description | Component |
+|-------------|-------------|-----------|
+| 200 | Streaming response with Server-Sent Events | string
+string |
+| 400 | Missing or invalid credentials provided by client | [UnauthorizedResponse](#unauthorizedresponse) |
+| 401 | Unauthorized: Invalid or missing Bearer token for k8s auth | [UnauthorizedResponse](#unauthorizedresponse) |
+| 403 | User is not authorized | [ForbiddenResponse](#forbiddenresponse) |
 | 500 | Internal Server Error |  |
 | 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
 ## GET `/readiness`
