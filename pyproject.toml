@@ -46,6 +46,8 @@ dependencies = [
     "openai>=1.99.9",
     # Used by database interface
     "sqlalchemy>=2.0.42",
+    # Required by SQLAlchemy for async operations
+    "greenlet>=3.0.0",
     # Used by Llama Stack version checker
     "semver<4.0.0",
     # Used by authorization resolvers
