@@ -20,6 +20,8 @@ from app.endpoints import (
     tools,
     # V2 endpoints for Response API support
     query_v2,
+    # RHEL Lightspeed rlsapi v1 compatibility
+    rlsapi_v1_infer,
 )
 
 
@@ -44,6 +46,9 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(feedback.router, prefix="/v1")
     # V1 conversations endpoint now uses V3 implementation (conversations is deprecated)
     app.include_router(conversations_v3.router, prefix="/v1")
+    app.include_router(
+        rlsapi_v1_infer.router, prefix="/v1"
+    )  # RHEL Lightspeed rlsapi v1 compatibility
     app.include_router(conversations_v2.router, prefix="/v2")
 
     # Note: query_v2, streaming_query_v2, and conversations_v3 are now exposed at /v1 above
