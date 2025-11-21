@@ -25,6 +25,7 @@ from app.endpoints import (
     authorized,
     metrics,
     tools,
+    rlsapi_v1_infer,
 )  # noqa:E402
 
 
@@ -67,7 +68,7 @@ def test_include_routers() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 18
+    assert len(app.routers) == 19
     assert root.router in app.get_routers()
     assert info.router in app.get_routers()
     assert models.router in app.get_routers()
@@ -85,6 +86,7 @@ def test_include_routers() -> None:
     assert conversations.router in app.get_routers()
     assert conversations_v2.router in app.get_routers()
     assert metrics.router in app.get_routers()
+    assert rlsapi_v1_infer.router in app.get_routers()
 
 
 def test_check_prefixes() -> None:
@@ -93,7 +95,7 @@ def test_check_prefixes() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 18
+    assert len(app.routers) == 19
     assert app.get_router_prefix(root.router) == ""
     assert app.get_router_prefix(info.router) == "/v1"
     assert app.get_router_prefix(models.router) == "/v1"
@@ -112,3 +114,4 @@ def test_check_prefixes() -> None:
     assert app.get_router_prefix(conversations.router) == "/v1"
     assert app.get_router_prefix(metrics.router) == ""
     assert app.get_router_prefix(conversations_v2.router) == "/v2"
+    assert app.get_router_prefix(rlsapi_v1_infer.router) == "/v1"

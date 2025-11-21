@@ -1294,3 +1294,33 @@ class InvalidFeedbackStoragePathResponse(AbstractErrorResponse):
             ]
         }
     }
+
+
+class RlsapiV1InferResponse(BaseModel):
+    """RHEL Lightspeed rlsapi v1 /infer response - stateless inference.
+
+    Attributes:
+        data: Response data dictionary containing text and request_id
+
+    Example:
+        ```python
+        response = RlsapiV1InferResponse(
+            data={
+                "text": "To list files in Linux, use the `ls` command.",
+                "request_id": "01JDKR8N7QW9ZMXVGK3PB5TQWZ"
+            }
+        )
+        ```
+    """
+
+    data: dict[str, Any] = Field(
+        ...,
+        description="Response data with text and request_id",
+        examples=[
+            {
+                "text": "To list files in Linux, use the `ls` command.",
+                "request_id": "01JDKR8N7QW9ZMXVGK3PB5TQWZ",
+            }
+        ],
+    )
+    model_config = {"extra": "allow"}  # Future compat with rlsapi fields
