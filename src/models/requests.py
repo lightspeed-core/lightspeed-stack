@@ -1,6 +1,6 @@
 """Models for REST API requests."""
 
-from typing import Optional, Self
+from typing import Any, Optional, Self
 from enum import Enum
 
 from pydantic import BaseModel, model_validator, field_validator, Field
@@ -527,4 +527,39 @@ class ConversationUpdateRequest(BaseModel):
     )
 
     # Reject unknown fields
+    model_config = {"extra": "forbid"}
+
+
+class RlsapiV1InferRequest(BaseModel):
+    """RHEL Lightspeed rlsapi v1 /infer request - flexible context as dict.
+
+    Attributes:
+        question: User question string
+        context: Optional context dictionary with flexible fields
+            (system_info, terminal_output, stdin, attachments, etc)
+
+    Example:
+        ```python
+        request = RlsapiV1InferRequest(
+            question="How do I list files?",
+            context={"system_info": "RHEL 9.3", "terminal_output": "bash: command not found"}
+        )
+        ```
+    """
+
+    question: str = Field(..., description="User question")
+    context: Optional[dict[str, Any]] = Field(
+        None,
+        description=(
+            "Optional context "
+            "(system_info, terminal_output, stdin, attachments, etc)"
+        ),
+        examples=[
+            {
+                "system_info": "RHEL 9.3",
+                "terminal_output": "bash: command not found",
+                "stdin": "user input",
+            }
+        ],
+    )
     model_config = {"extra": "forbid"}
