@@ -1,0 +1,59 @@
+# Lightspeed Stack Configuration for Ollama
+#
+# This configuration file sets up Lightspeed Stack to use Ollama for local LLM inference.
+# Works in conjunction with examples/ollama-run.yaml for Llama Stack configuration.
+#
+# Quick Start:
+#   1. Install dependencies: uv sync --group llslibdev
+#   2. Install Ollama: https://ollama.com
+#   3. Pull a model: ollama pull llama3.2:latest
+#   4. Copy configs: cp examples/ollama-run.yaml run.yaml
+#                   cp examples/lightspeed-stack-ollama.yaml lightspeed-stack.yaml
+#   5. Start server: make run
+#
+# Deployment Modes:
+# - Library mode (default): Llama Stack runs embedded in Lightspeed process
+# - Remote mode: Llama Stack runs as separate service (requires manual start)
+#
+
+name: Lightspeed Core Service (LCS) with Ollama
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+
+llama_stack:
+  # Use Llama Stack as embedded library (single process mode)
+  # This starts both Lightspeed Stack and Llama Stack in one process
+  use_as_library_client: true
+  library_client_config_path: ollama-run.yaml
+
+  # Alternative: Use Llama Stack as separate service (uncomment below and comment above)
+  # This requires running "uv run llama stack run examples/ollama-run.yaml" separately
+  # use_as_library_client: false
+  # url: http://localhost:8321
+  # api_key: xyzzy
+
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+
+authentication:
+  module: "noop"
+
+inference:
+  # Default to the fastest local model
+  # Note: Ensure this model is pulled via: ollama pull llama3.2:latest
+  default_model: "llama3.2:latest"
+  default_provider: "ollama"
+
+# Optional: Configure conversation cache for better performance
+# conversation_cache:
+#   type: "sqlite"
+#   sqlite:
+#     db_path: "/tmp/lightspeed-ollama-cache.db"
