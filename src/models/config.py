@@ -804,6 +804,8 @@ class Action(str, Enum):
     INFO = "info"
     # Allow overriding model/provider via request
     MODEL_OVERRIDE = "model_override"
+    # RHEL Lightspeed rlsapi v1 compatibility - stateless inference (no history/RAG)
+    RLSAPI_V1_INFER = "rlsapi_v1_infer"
 
 
 class AccessRule(ConfigurationBase):

@@ -71,7 +71,9 @@ async def test_api_key_with_token_auth_dependency_no_token(
         await dependency(request)
 
     assert exc_info.value.status_code == 401
-    assert exc_info.value.detail["cause"] == "No Authorization header found"
+    detail = exc_info.value.detail
+    assert isinstance(detail, dict)
+    assert detail["cause"] == "No Authorization header found"
 
 
 async def test_api_key_with_token_auth_dependency_no_bearer(
@@ -94,7 +96,9 @@ async def test_api_key_with_token_auth_dependency_no_bearer(
         await dependency(request)
 
     assert exc_info.value.status_code == 401
-    assert exc_info.value.detail["cause"] == "No token found in Authorization header"
+    detail = exc_info.value.detail
+    assert isinstance(detail, dict)
+    assert detail["cause"] == "No token found in Authorization header"
 
 
 async def test_api_key_with_token_auth_dependency_invalid(

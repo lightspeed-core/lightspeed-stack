@@ -1941,6 +1941,33 @@ class InternalServerErrorResponse(AbstractErrorResponse):
         )
 
 
+class RlsapiV1InferResponse(AbstractSuccessfulResponse):
+    """RHEL Lightspeed rlsapi v1 /infer response.
+
+    Attributes:
+        data: Dictionary containing response text and request_id
+    """
+
+    data: dict[str, Any] = Field(
+        ...,
+        description="Response data containing text and request_id",
+    )
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "data": {
+                        "text": "To list files in Linux, use the `ls` command.",
+                        "request_id": "01JDKR8N7QW9ZMXVGK3PB5TQWZ",
+                    }
+                }
+            ]
+        },
+    }
+
+
 class ServiceUnavailableResponse(AbstractErrorResponse):
     """503 Backend Unavailable."""
 
