@@ -13,17 +13,16 @@ from llama_stack_client import (
     APIConnectionError,
     AsyncLlamaStackClient,  # type: ignore
 )
-from llama_stack_client.lib.agents.event_logger import interleaved_content_as_str
 from llama_stack_client.types import Shield, UserMessage  # type: ignore
-from llama_stack_client.types.agents.turn import Turn
-from llama_stack_client.types.agents.turn_create_params import (
+from llama_stack_client.types.alpha.agents.turn import Turn
+from llama_stack_client.types.alpha.agents.turn_create_params import (
     Toolgroup,
     ToolgroupAgentToolGroupWithArgs,
     Document,
 )
 from llama_stack_client.types.model_list_response import ModelListResponse
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
-from llama_stack_client.types.tool_execution_step import ToolExecutionStep
+from llama_stack_client.types.alpha.tool_execution_step import ToolExecutionStep
 
 import constants
 import metrics
@@ -62,7 +61,7 @@ from utils.quota import (
 )
 from utils.mcp_headers import handle_mcp_headers_with_toolgroups, mcp_headers_dependency
 from utils.transcripts import store_transcript
-from utils.types import TurnSummary
+from utils.types import TurnSummary, content_to_str
 from utils.token_counter import extract_and_update_token_metrics, TokenCounter
 
 logger = logging.getLogger("app.endpoints.handlers")
@@ -118,14 +117,25 @@ def persist_user_conversation_details(
     topic_summary: Optional[str],
 ) -> None:
     """Associate conversation to user in the database."""
+    from utils.suid import normalize_conversation_id
+
+    # Normalize the conversation ID (strip 'conv_' prefix if present)
+    normalized_id = normalize_conversation_id(conversation_id)
+    logger.debug(
+        "persist_user_conversation_details - original conv_id: %s, normalized: %s, user: %s",
+        conversation_id,
+        normalized_id,
+        user_id,
+    )
+
     with get_session() as session:
         existing_conversation = (
-            session.query(UserConversation).filter_by(id=conversation_id).first()
+            session.query(UserConversation).filter_by(id=normalized_id).first()
         )
 
         if not existing_conversation:
             conversation = UserConversation(
-                id=conversation_id,
+                id=normalized_id,
                 user_id=user_id,
                 last_used_model=model,
                 last_used_provider=provider_id,
@@ -133,16 +143,27 @@ def persist_user_conversation_details(
                 message_count=1,
             )
             session.add(conversation)
-            logger.debug(
-                "Associated conversation %s to user %s", conversation_id, user_id
+            logger.info(
+                "Creating new conversation in DB - ID: %s, User: %s",
+                normalized_id,
+                user_id,
             )
         else:
             existing_conversation.last_used_model = model
             existing_conversation.last_used_provider = provider_id
             existing_conversation.last_message_at = datetime.now(UTC)
             existing_conversation.message_count += 1
+            logger.debug(
+                "Updating existing conversation in DB - ID: %s, User: %s, Messages: %d",
+                normalized_id,
+                user_id,
+                existing_conversation.message_count,
+            )
 
         session.commit()
+        logger.debug(
+            "Successfully committed conversation %s to database", normalized_id
+        )
 
 
 def evaluate_model_hints(
@@ -211,7 +232,7 @@ async def get_topic_summary(
     )
     response = cast(Turn, response)
     return (
-        interleaved_content_as_str(response.output_message.content)
+        content_to_str(response.output_message.content)
         if (
             getattr(response, "output_message", None) is not None
             and getattr(response.output_message, "content", None) is not None
@@ -788,7 +809,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
 
     summary = TurnSummary(
         llm_response=(
-            interleaved_content_as_str(response.output_message.content)
+            content_to_str(response.output_message.content)
             if (
                 getattr(response, "output_message", None) is not None
                 and getattr(response.output_message, "content", None) is not None

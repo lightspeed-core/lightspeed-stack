@@ -40,6 +40,7 @@ from utils.endpoints import (
     cleanup_after_streaming,
     get_system_prompt,
 )
+from utils.suid import to_llama_stack_conversation_id
 from utils.mcp_headers import mcp_headers_dependency
 from utils.shields import detect_shield_violations, get_available_shields
 from utils.token_counter import TokenCounter
@@ -137,8 +138,9 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
         tool_item_registry: dict[str, dict[str, str]] = {}
         emitted_turn_complete = False
 
-        # Handle conversation id and start event in-band on response.created
+        # Use the conversation_id from context (either provided or newly created)
         conv_id = context.conversation_id
+        start_event_emitted = False
 
         # Track the latest response object from response.completed event
         latest_response_object: Any | None = None
@@ -149,14 +151,26 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
             event_type = getattr(chunk, "type", None)
             logger.debug("Processing chunk %d, type: %s", chunk_id, event_type)
 
-            # Emit start on response.created
-            if event_type == "response.created":
-                try:
-                    conv_id = getattr(chunk, "response").id
-                except Exception:  # pylint: disable=broad-except
-                    logger.warning("Missing response id!")
-                    conv_id = ""
+            # Emit start event on first chunk if we have a conversation_id
+            if not start_event_emitted and conv_id:
                 yield stream_start_event(conv_id)
+                start_event_emitted = True
+
+            # Handle response.created event
+            if event_type == "response.created":
+                # If we don't have a conversation_id yet (fallback case), extract from response
+                if not conv_id:
+                    try:
+                        conv_id = getattr(chunk, "response").id
+                        logger.debug(
+                            "Using response.id as conversation_id: %s", conv_id
+                        )
+                    except Exception:  # pylint: disable=broad-except
+                        logger.warning("Missing response id!")
+                        conv_id = ""
+                    if conv_id and not start_event_emitted:
+                        yield stream_start_event(conv_id)
+                        start_event_emitted = True
                 continue
 
             # Text streaming
@@ -400,6 +414,22 @@ async def retrieve_response(
                 f"{attachment.content}"
             )
 
+    # Create or use existing conversation
+    # If no conversation_id is provided, create a new conversation
+    conversation_id = query_request.conversation_id
+    if not conversation_id:
+        logger.debug("No conversation_id provided, creating new conversation")
+        try:
+            conversation = await client.conversations.create(metadata={})
+            conversation_id = conversation.id
+            logger.info("Created new conversation with ID: %s", conversation_id)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.warning(
+                "Failed to create conversation: %s, proceeding without conversation_id",
+                e,
+            )
+            conversation_id = None
+
     create_params: dict[str, Any] = {
         "input": input_text,
         "model": model_id,
@@ -408,8 +438,8 @@ async def retrieve_response(
         "store": True,
         "tools": toolgroups,
     }
-    if query_request.conversation_id:
-        create_params["previous_response_id"] = query_request.conversation_id
+    if conversation_id:
+        create_params["conversation"] = to_llama_stack_conversation_id(conversation_id)
 
     # Add shields to extra_body if available
     if available_shields:
@@ -418,6 +448,6 @@ async def retrieve_response(
     response = await client.responses.create(**create_params)
     response_stream = cast(AsyncIterator[OpenAIResponseObjectStream], response)
 
-    # For streaming responses, the ID arrives in the first 'response.created' chunk
-    # Return empty conversation_id here; it will be set once the first chunk is received
-    return response_stream, ""
+    # Return the conversation_id (either provided or newly created)
+    # The response_generator will emit it in the start event
+    return response_stream, conversation_id or ""

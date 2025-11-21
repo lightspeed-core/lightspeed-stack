@@ -15,26 +15,26 @@ from fastapi.responses import StreamingResponse
 
 from llama_stack_client import APIConnectionError
 from llama_stack_client.types import UserMessage  # type: ignore
-from llama_stack_client.types.agents import Turn
+from llama_stack_client.types.alpha.agents.turn import Turn
 from llama_stack_client.types.shared.completion_message import CompletionMessage
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 from llama_stack_client.types.shared.safety_violation import SafetyViolation
-from llama_stack_client.types.shield_call_step import ShieldCallStep
+from llama_stack_client.types.alpha.shield_call_step import ShieldCallStep
 from llama_stack_client.types.shared.tool_call import ToolCall
 from llama_stack_client.types.shared.content_delta import TextDelta, ToolCallDelta
-from llama_stack_client.types.agents.turn_response_event import TurnResponseEvent
-from llama_stack_client.types.agents.agent_turn_response_stream_chunk import (
+from llama_stack_client.types.alpha.agents.turn_response_event import TurnResponseEvent
+from llama_stack_client.types.alpha.agents.agent_turn_response_stream_chunk import (
     AgentTurnResponseStreamChunk,
 )
-from llama_stack_client.types.agents.turn_response_event_payload import (
+from llama_stack_client.types.alpha.agents.turn_response_event_payload import (
     AgentTurnResponseStepProgressPayload,
     AgentTurnResponseStepCompletePayload,
     AgentTurnResponseTurnStartPayload,
     AgentTurnResponseTurnAwaitingInputPayload,
     AgentTurnResponseTurnCompletePayload,
 )
-from llama_stack_client.types.tool_execution_step import ToolExecutionStep
-from llama_stack_client.types.tool_response import ToolResponse
+from llama_stack_client.types.alpha.tool_execution_step import ToolExecutionStep
+from llama_stack_client.types.alpha.tool_response import ToolResponse
 
 from configuration import AppConfig
 from app.endpoints.query import get_rag_toolgroups
