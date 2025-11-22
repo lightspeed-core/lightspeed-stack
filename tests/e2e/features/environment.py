@@ -78,6 +78,8 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         context.scenario_config = (
             "tests/e2e/configuration/lightspeed-stack-invalid-feedback-storage.yaml"
         )
+    if "no_models" in scenario.effective_tags:
+        context.scenario_config = "tests/e2e/config/no-models-run.yaml"
 
 
 def after_scenario(context: Context, scenario: Scenario) -> None:

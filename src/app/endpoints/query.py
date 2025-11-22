@@ -80,13 +80,16 @@ query_response: dict[int | str, dict[str, Any]] = {
             }
         ],
     },
-    400: {
+    401: {
         "description": "Missing or invalid credentials provided by client",
         "model": UnauthorizedResponse,
     },
     403: {
         "description": "Client does not have permission to access conversation",
         "model": ForbiddenResponse,
+    },
+    404: {
+        "description": "Requested model or provider not found",
     },
     429: {
         "description": "The quota has been exceeded",
@@ -496,6 +499,17 @@ def select_model_and_provider_id(
     Raises:
         HTTPException: If no suitable LLM model is found or the selected model is not available.
     """
+    # If no models are available, raise an exception
+    if not models:
+        message = "No models available"
+        logger.error(message)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "response": constants.UNABLE_TO_PROCESS_RESPONSE,
+                "cause": message,
+            },
+        )
     # If model_id and provider_id are provided in the request, use them
 
     # If model_id is not provided in the request, check the configuration
@@ -526,10 +540,10 @@ def select_model_and_provider_id(
             model_label = model_id.split("/", 1)[1] if "/" in model_id else model_id
             return model_id, model_label, provider_id
         except (StopIteration, AttributeError) as e:
-            message = "No LLM model found in available models"
+            message = "No models available"
             logger.error(message)
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "response": constants.UNABLE_TO_PROCESS_RESPONSE,
                     "cause": message,
@@ -546,7 +560,7 @@ def select_model_and_provider_id(
         message = f"Model {model_id} from provider {provider_id} not found in available models"
         logger.error(message)
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "response": constants.UNABLE_TO_PROCESS_RESPONSE,
                 "cause": message,

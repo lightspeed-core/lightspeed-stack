@@ -11,7 +11,7 @@ Feature: Authorized endpoint API tests for the noop-with-token authentication mo
      """
      {"placeholder":"abc"}
      """
-     Then The status code of the response is 400
+     Then The status code of the response is 401
       And The body of the response is the following
           """
             {"detail": "No Authorization header found"}

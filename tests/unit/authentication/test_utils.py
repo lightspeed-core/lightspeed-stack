@@ -19,7 +19,7 @@ def test_extract_user_token_no_header() -> None:
     try:
         extract_user_token(headers)
     except HTTPException as exc:
-        assert exc.status_code == 400
+        assert exc.status_code == 401
         assert exc.detail == "No Authorization header found"
 
 
@@ -29,5 +29,5 @@ def test_extract_user_token_invalid_format() -> None:
     try:
         extract_user_token(headers)
     except HTTPException as exc:
-        assert exc.status_code == 400
+        assert exc.status_code == 401
         assert exc.detail == "No token found in Authorization header"

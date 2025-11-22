@@ -1,0 +1,30 @@
+---
+# A run configuration for lightspeed-stack that defines no models.
+# Used for E2E testing.
+llm:
+  mode: "library"
+  model_name: ""
+  model_provider: ""
+  api_key: "EMPTY"
+  parameters:
+    max_new_tokens: 256
+  server:
+    host: "0.0.0.0"
+    port: 8080
+    url: "http://llama-stack:8080"
+lightspeed_stack:
+  server:
+    host: "0.0.0.0"
+    port: 8008
+  logging:
+    level: "INFO"
+    style: "default"
+  model_defaults:
+    provider: "openai"
+    model: "gpt-4-turbo"
+  providers:
+    - name: "openai"
+      api_key: "EMPTY"
+      url: "http://llama-stack:8080"
+      type: "openai"
+      models: []

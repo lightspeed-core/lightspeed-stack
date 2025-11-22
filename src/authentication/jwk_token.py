@@ -142,12 +142,12 @@ class JwkTokenAuthDependency(AuthInterface):  # pylint: disable=too-few-public-m
             ) from exc
         except DecodeError as exc:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token: decode error",
             ) from exc
         except JoseError as exc:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token: unknown error",
             ) from exc
         except Exception as exc:
