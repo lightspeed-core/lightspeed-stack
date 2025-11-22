@@ -141,9 +141,10 @@ To quickly get hands on LCS, we can run it using the default configurations prov
 1. check Llama stack settings in [run.yaml](run.yaml), make sure we can access the provider and the model, the server shoud listen to port 8321.
 2. export the LLM token env var that Llama stack requires. for OpenAI, we set the env var by `export OPENAI_API_KEY=sk-xxxxx`
 3. start Llama stack server `uv run llama stack run run.yaml`
-4. check the LCS settings in [lightspeed-stack.yaml](lightspeed-stack.yaml). `llama_stack.url` should be `url: http://localhost:8321`
-5. start LCS server `make run`
-6. access LCS web UI at [http://localhost:8080/](http://localhost:8080/)
+4. [Optional] If you're new to Llama stack, run through a quick tutorial to learn the basics of what the server is used for, by running the interactive tutorial script `./scripts/llama_stack_tutorial.sh`
+5. check the LCS settings in [lightspeed-stack.yaml](lightspeed-stack.yaml). `llama_stack.url` should be `url: http://localhost:8321`
+6. start LCS server `make run`
+7. access LCS web UI at [http://localhost:8080/](http://localhost:8080/)
 
 
 # Configuration
