@@ -437,7 +437,7 @@
                             }
                         ]
                     },
-                    "400": {
+                    "401": {
                         "description": "Missing or invalid credentials provided by client",
                         "content": {
                             "application/json": {
@@ -456,6 +456,9 @@
                                 }
                             }
                         }
+                    },
+                    "404": {
+                        "description": "Requested model or provider not found"
                     },
                     "429": {
                         "description": "The quota has been exceeded",

@@ -302,7 +302,7 @@ async def test_no_bearer(
     with pytest.raises(HTTPException) as exc_info:
         await dependency(not_bearer_token_request)
 
-    assert exc_info.value.status_code == 400
+    assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "No token found in Authorization header"
 
 

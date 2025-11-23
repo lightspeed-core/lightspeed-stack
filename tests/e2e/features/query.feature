@@ -53,11 +53,35 @@ Feature: Query endpoint API tests
      """
      {"query": "Write a simple code for reversing string"}
      """
-      Then The status code of the response is 400
+      Then The status code of the response is 401
       And The body of the response is the following
           """
           {"detail": "No Authorization header found"}
           """
+
+  Scenario: Check if LLM responds to sent question with error when authenticated with invalid token
+    Given The system is in default state
+    And I set the Authorization header to Bearer invalid
+    When I use "query" to ask question with authorization header
+     """
+     {"query": "Write a simple code for reversing string"}
+     """
+      Then The status code of the response is 401
+      And The body of the response is the following
+          """
+          {"detail":"Invalid token: decode error"}
+          """
+
+  Scenario: Check if LLM responds to sent question with error when model does not exist
+    Given The system is in default state
+    And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+    When I use "query" to ask question with authorization header
+     """
+     {"query": "Write a simple code for reversing string", "model": "does-not-exist", "provider": "does-not-exist"}
+     """
+      Then The status code of the response is 404
+      And The body of the response contains Model does-not-exist from provider does-not-exist not found in available models
+
 
   Scenario: Check if LLM responds to sent question with error when attempting to access conversation
     Given The system is in default state
@@ -138,3 +162,4 @@ Scenario: Check if LLM responds for query request with error for missing query
     }
     """
     Then The status code of the response is 200
+
