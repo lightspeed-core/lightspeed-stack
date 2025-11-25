@@ -1,4 +1,4 @@
-# pylint: disable=unsupported-membership-test,unsubscriptable-object
+# pylint: disable=unsupported-membership-test,unsubscriptable-object, too-many-lines
 
 """Unit tests for all successful response models."""
 
@@ -39,6 +39,7 @@ from models.responses import (
     ReferencedDocument,
     ShieldsResponse,
     StatusResponse,
+    StreamingQueryResponse,
     ToolCall,
     ToolsResponse,
 )
@@ -954,6 +955,35 @@ class TestConfigurationResponse:
 
         # Verify example count matches schema examples count (should be 1)
         assert expected_count == 1
+
+
+class TestStreamingQueryResponse:
+    """Test cases for StreamingQueryResponse."""
+
+    def test_openapi_response_structure(self) -> None:
+        """Test that openapi_response() returns correct structure."""
+        result = StreamingQueryResponse.openapi_response()
+
+        assert "description" in result
+        assert "content" in result
+        assert result["description"] == "Successful response"
+        assert "model" not in result
+
+        assert "text/event-stream" in result["content"]
+        content = result["content"]["text/event-stream"]
+        assert "schema" in content
+        assert "example" in content
+
+        schema = content["schema"]
+        assert schema["type"] == "string"
+        assert schema["format"] == "text/event-stream"
+
+    def test_model_json_schema_has_examples(self) -> None:
+        """Test that model_json_schema() includes examples."""
+        schema = StreamingQueryResponse.model_json_schema()
+        assert "examples" in schema
+        assert len(schema["examples"]) == 1
+        assert isinstance(schema["examples"][0], str)
 
 
 class TestAbstractSuccessfulResponseOpenAPI:
