@@ -22,6 +22,9 @@ from app.endpoints import (
     tools,
     # V2 endpoints for Response API support
     query_v2,
+    # A2A (Agent-to-Agent) protocol support
+    a2a,
+    responses_a2a,
 )
 
 
@@ -54,3 +57,7 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(health.router)
     app.include_router(authorized.router)
     app.include_router(metrics.router)
+
+    # A2A (Agent-to-Agent) protocol endpoints
+    app.include_router(a2a.router)
+    app.include_router(responses_a2a.router)

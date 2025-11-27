@@ -3,6 +3,10 @@
 ## [__init__.py](__init__.py)
 Implementation of all endpoints.
 
+## [a2a.py](a2a.py)
+Handler for A2A (Agent-to-Agent) protocol endpoints using Agent API.
+See [A2A Protocol Documentation](../../../docs/a2a_protocol.md) for details.
+
 ## [authorized.py](authorized.py)
 Handler for REST API call to authorized endpoint.
 
@@ -53,6 +57,10 @@ Handler for REST API call to provide answer to streaming query.
 
 ## [streaming_query_v2.py](streaming_query_v2.py)
 Streaming query handler using Responses API (v2).
+
+## [responses_a2a.py](responses_a2a.py)
+Handler for A2A (Agent-to-Agent) protocol endpoints using Responses API.
+See [A2A Protocol Documentation](../../../docs/a2a_protocol.md) for details.
 
 ## [tools.py](tools.py)
 Handler for REST API call to list available tools from MCP servers.

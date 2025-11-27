@@ -1061,10 +1061,10 @@ async def retrieve_response(
             ),
         }
 
-        vector_db_ids = [
-            vector_db.identifier for vector_db in await client.vector_dbs.list()
+        vector_store_ids = [
+            vector_store.id for vector_store in (await client.vector_stores.list()).data
         ]
-        toolgroups = (get_rag_toolgroups(vector_db_ids) or []) + [
+        toolgroups = (get_rag_toolgroups(vector_store_ids) or []) + [
             mcp_server.name for mcp_server in configuration.mcp_servers
         ]
         # Convert empty list to None for consistency with existing behavior

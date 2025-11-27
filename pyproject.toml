@@ -41,6 +41,8 @@ dependencies = [
     # Used by JWK token auth handler
     "aiohttp>=3.12.14",
     "authlib>=1.6.0",
+    # Used for A2A protocol support
+    "a2a-sdk>=0.3.4,<0.4.0",
     # OpenAPI exporter
     "email-validator>=2.2.0",
     "openai>=1.99.9",
@@ -52,6 +54,8 @@ dependencies = [
     "jsonpath-ng>=1.6.1",
     "psycopg2-binary>=2.9.10",
     "litellm>=1.75.5.post1",
+    # Used for agent card configuration
+    "PyYAML>=6.0.0",
 ]
 
 

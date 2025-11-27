@@ -537,8 +537,8 @@ async def test_retrieve_response_no_returned_message(
     mock_agent.create_turn.return_value.output_message = None
     mock_client.shields.list.return_value = []
     mock_vector_db = mocker.Mock()
-    mock_vector_db.identifier = "VectorDB-1"
-    mock_client.vector_dbs.list.return_value = [mock_vector_db]
+    mock_vector_db.id = "VectorDB-1"
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[mock_vector_db])
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -575,8 +575,8 @@ async def test_retrieve_response_message_without_content(
     mock_agent.create_turn.return_value.output_message.content = None
     mock_client.shields.list.return_value = []
     mock_vector_db = mocker.Mock()
-    mock_vector_db.identifier = "VectorDB-1"
-    mock_client.vector_dbs.list.return_value = [mock_vector_db]
+    mock_vector_db.id = "VectorDB-1"
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[mock_vector_db])
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -614,8 +614,8 @@ async def test_retrieve_response_vector_db_available(
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
     mock_vector_db = mocker.Mock()
-    mock_vector_db.identifier = "VectorDB-1"
-    mock_client.vector_dbs.list.return_value = [mock_vector_db]
+    mock_vector_db.id = "VectorDB-1"
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[mock_vector_db])
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -660,7 +660,7 @@ async def test_retrieve_response_no_available_shields(
     mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
-    mock_client.vector_dbs.list.return_value = []
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[])
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -716,7 +716,7 @@ async def test_retrieve_response_one_available_shield(
     mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = [MockShield("shield1")]
-    mock_client.vector_dbs.list.return_value = []
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[])
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -775,7 +775,7 @@ async def test_retrieve_response_two_available_shields(
         MockShield("shield1"),
         MockShield("shield2"),
     ]
-    mock_client.vector_dbs.list.return_value = []
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[])
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -836,7 +836,7 @@ async def test_retrieve_response_four_available_shields(
         MockShield("output_shield3"),
         MockShield("inout_shield4"),
     ]
-    mock_client.vector_dbs.list.return_value = []
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[])
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -891,7 +891,7 @@ async def test_retrieve_response_with_one_attachment(
     mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
-    mock_client.vector_dbs.list.return_value = []
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[])
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -947,7 +947,7 @@ async def test_retrieve_response_with_two_attachments(
     mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
-    mock_client.vector_dbs.list.return_value = []
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[])
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -1129,7 +1129,7 @@ async def test_retrieve_response_with_mcp_servers(
     mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
-    mock_client.vector_dbs.list.return_value = []
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[])
 
     # Mock configuration with MCP servers
     mcp_servers = [
@@ -1210,7 +1210,7 @@ async def test_retrieve_response_with_mcp_servers_empty_token(
     mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
-    mock_client.vector_dbs.list.return_value = []
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[])
 
     # Mock configuration with MCP servers
     mcp_servers = [
@@ -1269,7 +1269,7 @@ async def test_retrieve_response_with_mcp_servers_and_mcp_headers(
     mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
-    mock_client.vector_dbs.list.return_value = []
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[])
 
     # Mock configuration with MCP servers
     mcp_servers = [
@@ -1381,8 +1381,8 @@ async def test_retrieve_response_shield_violation(
     )
     mock_client.shields.list.return_value = []
     mock_vector_db = mocker.Mock()
-    mock_vector_db.identifier = "VectorDB-1"
-    mock_client.vector_dbs.list.return_value = [mock_vector_db]
+    mock_vector_db.id = "VectorDB-1"
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[mock_vector_db])
 
     # Mock configuration with empty MCP servers
     mock_config = mocker.Mock()
@@ -1428,7 +1428,7 @@ def test_get_rag_toolgroups() -> None:
     assert result is not None
     assert len(result) == 1
     assert result[0]["name"] == "builtin::rag/knowledge_search"
-    assert result[0]["args"]["vector_db_ids"] == vector_db_ids
+    assert result[0]["args"]["vector_store_ids"] == vector_db_ids
 
 
 @pytest.mark.asyncio
@@ -1650,8 +1650,8 @@ async def test_retrieve_response_no_tools_bypasses_mcp_and_rag(
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
     mock_vector_db = mocker.Mock()
-    mock_vector_db.identifier = "VectorDB-1"
-    mock_client.vector_dbs.list.return_value = [mock_vector_db]
+    mock_vector_db.id = "VectorDB-1"
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[mock_vector_db])
 
     # Mock configuration with MCP servers
     mcp_servers = [
@@ -1705,8 +1705,8 @@ async def test_retrieve_response_no_tools_false_preserves_functionality(
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
     mock_vector_db = mocker.Mock()
-    mock_vector_db.identifier = "VectorDB-1"
-    mock_client.vector_dbs.list.return_value = [mock_vector_db]
+    mock_vector_db.id = "VectorDB-1"
+    mock_client.vector_stores.list.return_value = mocker.Mock(data=[mock_vector_db])
 
     # Mock configuration with MCP servers
     mcp_servers = [
