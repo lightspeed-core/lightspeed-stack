@@ -1,7 +1,9 @@
 """Unit tests for functions defined in utils/types.py."""
 
 import json
+import logging
 
+import pytest
 from pytest_mock import MockerFixture
 
 from constants import DEFAULT_RAG_TOOL
@@ -62,6 +64,8 @@ class TestGraniteToolParser:
 
 class TestTurnSummaryExtractRagChunks:
     """Unit tests for TurnSummary._extract_rag_chunks_from_response."""
+
+    # pylint: disable=protected-access
 
     def _create_turn_summary(self) -> TurnSummary:
         """Create a TurnSummary instance for testing."""
@@ -128,7 +132,9 @@ END of knowledge_search tool results.
         summary._extract_rag_chunks_from_response(response)
 
         assert len(summary.rag_chunks) == 1
-        assert summary.rag_chunks[0].content == "This is the content of the first chunk."
+        assert (
+            summary.rag_chunks[0].content == "This is the content of the first chunk."
+        )
         assert summary.rag_chunks[0].source == "https://example.com/doc1"
 
     def test_formatted_text_multiple_results(self) -> None:
@@ -198,16 +204,23 @@ END of knowledge_search tool results.
         assert summary.rag_chunks[0].content == "Content without valid metadata."
         assert summary.rag_chunks[0].source is None
 
-    def test_fallback_to_single_chunk(self) -> None:
-        """Test fallback to treating response as single chunk."""
+    def test_fallback_to_single_chunk(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Test fallback to treating response as single chunk with warning log."""
         summary = self._create_turn_summary()
         response = "This is just plain text without any special formatting."
-        summary._extract_rag_chunks_from_response(response)
+
+        with caplog.at_level(logging.WARNING):
+            summary._extract_rag_chunks_from_response(response)
 
         assert len(summary.rag_chunks) == 1
         assert summary.rag_chunks[0].content == response
         assert summary.rag_chunks[0].source == DEFAULT_RAG_TOOL
         assert summary.rag_chunks[0].score is None
+
+        # Verify warning was logged
+        assert len(caplog.records) == 1
+        assert "Unable to parse individual RAG chunks" in caplog.records[0].message
+        assert "Falling back to single-chunk extraction" in caplog.records[0].message
 
     def test_real_world_response_format(self) -> None:
         """Test with real-world formatted response from knowledge_search."""

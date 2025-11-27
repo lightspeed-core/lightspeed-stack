@@ -156,6 +156,14 @@ class TurnSummary(BaseModel):
             return
 
         # Fallback: treat entire response as single chunk
+        # This may indicate the RAG response format has changed
+        logger.warning(
+            "Unable to parse individual RAG chunks from response. "
+            "Falling back to single-chunk extraction. "
+            "This may indicate a change in the RAG tool response format. "
+            "Response preview: %.200s...",
+            response_content[:200] if len(response_content) > 200 else response_content,
+        )
         self.rag_chunks.append(
             RAGChunk(
                 content=response_content,
