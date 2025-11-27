@@ -31,7 +31,7 @@ spec:
   - name: build-source-image
     value: 'true'
   - name: prefetch-input
-    value: '[{"type": "rpm", "path": "."}, {"type": "pip", "path": ".", "allow_binary": "true", "requirements_files": ["requirements.x86_64.txt", "requirements.aarch64.txt", "requirements.hermetic.txt"]}]'
+    value: '[{"type": "rpm", "path": "."}, {"type": "pip", "path": ".", "allow_binary": "true", "requirements_files": ["requirements.x86_64.txt", "requirements.aarch64.txt", "requirements.hermetic.txt", "requirements.torch.txt"]}]'
   - name: hermetic
     value: 'true'
   - name: dockerfile
