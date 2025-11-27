@@ -18,6 +18,19 @@ from models.responses import RAGChunk
 
 logger = logging.getLogger(__name__)
 
+# RAG Response Format Patterns
+# ============================
+# These patterns match the format produced by llama-stack's knowledge_search tool.
+# Source: llama_stack/providers/inline/tool_runtime/rag/memory.py
+#
+# The format consists of:
+# - Header (hardcoded): "knowledge_search tool found N chunks:\nBEGIN of knowledge_search tool results.\n"
+# - Chunks (configurable template, default): "Result {index}\nContent: {chunk.content}\nMetadata: {metadata}\n"
+# - Footer (hardcoded): "END of knowledge_search tool results.\n"
+#
+# Note: The chunk template is configurable via RAGQueryConfig.chunk_template in llama-stack.
+# If customized, these patterns may not match. A warning is logged when fallback occurs.
+
 # Pattern to match individual RAG result blocks: " Result N\nContent: ..."
 # Captures result number and everything until the next result or end marker
 RAG_RESULT_PATTERN = re.compile(
