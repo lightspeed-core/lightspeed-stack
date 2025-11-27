@@ -699,6 +699,10 @@ class RHIdentityConfiguration(ConfigurationBase):
 
     required_entitlements: Optional[list[str]] = None
 
+class APIKeyTokenConfiguration(ConfigurationBase):
+    """API Key Token configuration."""
+
+    api_key: str = constants.DEFAULT_API_KEY
 
 class AuthenticationConfiguration(ConfigurationBase):
     """Authentication configuration."""
@@ -708,6 +712,7 @@ class AuthenticationConfiguration(ConfigurationBase):
     k8s_cluster_api: Optional[AnyHttpUrl] = None
     k8s_ca_cert_path: Optional[FilePath] = None
     jwk_config: Optional[JwkConfiguration] = None
+    api_key_config: Optional[APIKeyTokenConfiguration] = None
     rh_identity_config: Optional[RHIdentityConfiguration] = None
 
     @model_validator(mode="after")
@@ -733,6 +738,16 @@ class AuthenticationConfiguration(ConfigurationBase):
                     "when using RH Identity authentication"
                 )
 
+        if self.module == constants.AUTH_MOD_APIKEY_TOKEN:
+            if self.api_key_config is None:
+                raise ValueError(
+                    "API_KEY configuration section must be specified when using API_KEY token authentication"
+                )
+            if self.api_key_config.api_key is None:
+                raise ValueError(
+                    "api_key parameter must be specified when using API_KEY token authentication"
+                )
+
         return self
 
     @property
@@ -756,6 +771,17 @@ class AuthenticationConfiguration(ConfigurationBase):
         if self.rh_identity_config is None:
             raise ValueError("RH Identity configuration should not be None")
         return self.rh_identity_config
+
+    @property
+    def api_key_configuration(self) -> APIKeyTokenConfiguration:
+        """Return API_KEY configuration if the module is API_KEY token."""
+        if self.module != constants.AUTH_MOD_APIKEY_TOKEN:
+            raise ValueError(
+                "API_KEY configuration is only available for API_KEY token authentication module"
+            )
+        if self.api_key_config is None:
+            raise ValueError("API_KEY configuration should not be None")
+        return self.api_key_config
 
 
 @dataclass

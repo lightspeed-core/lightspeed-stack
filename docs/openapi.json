@@ -4360,6 +4360,19 @@
     },
     "components": {
         "schemas": {
+            "APIKeyTokenConfiguration": {
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "title": "Api Key",
+                        "default": "some-api-key"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "APIKeyTokenConfiguration",
+                "description": "API Key Token configuration."
+            },
             "AccessRule": {
                 "properties": {
                     "role": {
@@ -4508,6 +4521,16 @@
                         "anyOf": [
                             {
                                 "$ref": "#/components/schemas/JwkConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "api_key_config": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/APIKeyTokenConfiguration"
                             },
                             {
                                 "type": "null"
@@ -4670,14 +4693,16 @@
                             "type": "string"
                         },
                         "type": "array",
-                        "title": "Allow Origins",
+                        "title": "Allow origins",
+                        "description": "A list of origins allowed for cross-origin requests. An origin is the combination of protocol (http, https), domain (myapp.com, localhost, localhost.tiangolo.com), and port (80, 443, 8080). Use ['*'] to allow all origins.",
                         "default": [
                             "*"
                         ]
                     },
                     "allow_credentials": {
                         "type": "boolean",
-                        "title": "Allow Credentials",
+                        "title": "Allow credentials",
+                        "description": "Indicate that cookies should be supported for cross-origin requests",
                         "default": false
                     },
                     "allow_methods": {
@@ -4685,7 +4710,8 @@
                             "type": "string"
                         },
                         "type": "array",
-                        "title": "Allow Methods",
+                        "title": "Allow methods",
+                        "description": "A list of HTTP methods that should be allowed for cross-origin requests. You can use ['*'] to allow all standard methods.",
                         "default": [
                             "*"
                         ]
@@ -4695,7 +4721,8 @@
                             "type": "string"
                         },
                         "type": "array",
-                        "title": "Allow Headers",
+                        "title": "Allow headers",
+                        "description": "A list of HTTP request headers that should be supported for cross-origin requests. You can use ['*'] to allow all headers. The Accept, Accept-Language, Content-Language and Content-Type headers are always allowed for simple CORS requests.",
                         "default": [
                             "*"
                         ]
@@ -4704,35 +4731,47 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "CORSConfiguration",
-                "description": "CORS configuration."
+                "description": "CORS configuration.\n\nCORS or 'Cross-Origin Resource Sharing' refers to the situations when a\nfrontend running in a browser has JavaScript code that communicates with a\nbackend, and the backend is in a different 'origin' than the frontend.\n\nUseful resources:\n\n  - [CORS in FastAPI](https://fastapi.tiangolo.com/tutorial/cors/)\n  - [Wikipedia article](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing)\n  - [What is CORS?](https://dev.to/akshay_chauhan/what-is-cors-explained-8f1)"
             },
             "Configuration": {
                 "properties": {
                     "name": {
                         "type": "string",
-                        "title": "Name"
+                        "title": "Service name",
+                        "description": "Name of the service. That value will be used in REST API endpoints."
                     },
                     "service": {
-                        "$ref": "#/components/schemas/ServiceConfiguration"
+                        "$ref": "#/components/schemas/ServiceConfiguration",
+                        "title": "Service configuration",
+                        "description": "This section contains Lightspeed Core Stack service configuration."
                     },
                     "llama_stack": {
-                        "$ref": "#/components/schemas/LlamaStackConfiguration"
+                        "$ref": "#/components/schemas/LlamaStackConfiguration",
+                        "title": "Llama Stack configuration",
+                        "description": "This section contains Llama Stack configuration. Lightspeed Core Stack service can call Llama Stack in library mode or in server mode."
                     },
                     "user_data_collection": {
-                        "$ref": "#/components/schemas/UserDataCollection"
+                        "$ref": "#/components/schemas/UserDataCollection",
+                        "title": "User data collection configuration",
+                        "description": "This section contains configuration for subsystem that collects user data(transcription history and feedbacks)."
                     },
                     "database": {
-                        "$ref": "#/components/schemas/DatabaseConfiguration"
+                        "$ref": "#/components/schemas/DatabaseConfiguration",
+                        "title": "Database Configuration",
+                        "description": "Configuration for database to store conversation IDs and other runtime data"
                     },
                     "mcp_servers": {
                         "items": {
                             "$ref": "#/components/schemas/ModelContextProtocolServer"
                         },
                         "type": "array",
-                        "title": "Mcp Servers"
+                        "title": "Model Context Protocol Server and tools configuration",
+                        "description": "MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the llama-stack run.yaml are not accessible to lightspeed-core agents."
                     },
                     "authentication": {
-                        "$ref": "#/components/schemas/AuthenticationConfiguration"
+                        "$ref": "#/components/schemas/AuthenticationConfiguration",
+                        "title": "Authentication configuration",
+                        "description": "Authentication configuration"
                     },
                     "authorization": {
                         "anyOf": [
@@ -4742,7 +4781,9 @@
                             {
                                 "type": "null"
                             }
-                        ]
+                        ],
+                        "title": "Authorization configuration",
+                        "description": "Lightspeed Core Stack implements a modular authentication and authorization system with multiple authentication methods. Authorization is configurable through role-based access control. Authentication is handled through selectable modules configured via the module field in the authentication configuration."
                     },
                     "customization": {
                         "anyOf": [
@@ -4752,23 +4793,31 @@
                             {
                                 "type": "null"
                             }
-                        ]
+                        ],
+                        "title": "Custom profile configuration",
+                        "description": "It is possible to customize Lightspeed Core Stack via this section. System prompt can be customized and also different parts of the service can be replaced by custom Python modules."
                     },
                     "inference": {
-                        "$ref": "#/components/schemas/InferenceConfiguration"
+                        "$ref": "#/components/schemas/InferenceConfiguration",
+                        "title": "Inference configuration",
+                        "description": "One LLM provider and one its model might be selected as default ones. When no provider+model pair is specified in REST API calls (query endpoints), the default provider and model are used."
                     },
                     "conversation_cache": {
-                        "$ref": "#/components/schemas/ConversationHistoryConfiguration"
+                        "$ref": "#/components/schemas/ConversationHistoryConfiguration",
+                        "title": "Conversation history configuration"
                     },
                     "byok_rag": {
                         "items": {
                             "$ref": "#/components/schemas/ByokRag"
                         },
                         "type": "array",
-                        "title": "Byok Rag"
+                        "title": "BYOK RAG configuration",
+                        "description": "BYOK RAG configuration. This configuration can be used to reconfigure Llama Stack through its run.yaml configuration file"
                     },
                     "quota_handlers": {
-                        "$ref": "#/components/schemas/QuotaHandlersConfiguration"
+                        "$ref": "#/components/schemas/QuotaHandlersConfiguration",
+                        "title": "Quota handlers",
+                        "description": "Quota handlers configuration"
                     }
                 },
                 "additionalProperties": false,
@@ -5116,7 +5165,7 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "ConversationHistoryConfiguration",
-                "description": "Conversation cache configuration."
+                "description": "Conversation history configuration."
             },
             "ConversationResponse": {
                 "properties": {
@@ -5395,7 +5444,9 @@
                             {
                                 "type": "null"
                             }
-                        ]
+                        ],
+                        "title": "SQLite configuration",
+                        "description": "SQLite database configuration"
                     },
                     "postgres": {
                         "anyOf": [
@@ -5405,7 +5456,9 @@
                             {
                                 "type": "null"
                             }
-                        ]
+                        ],
+                        "title": "PostgreSQL configuration",
+                        "description": "PostgreSQL database configuration"
                     }
                 },
                 "additionalProperties": false,
@@ -5705,7 +5758,8 @@
                     "max_entries": {
                         "type": "integer",
                         "exclusiveMinimum": 0.0,
-                        "title": "Max Entries"
+                        "title": "Max entries",
+                        "description": "Maximum number of entries stored in the in-memory cache"
                     }
                 },
                 "additionalProperties": false,
@@ -5917,25 +5971,31 @@
                 "properties": {
                     "jsonpath": {
                         "type": "string",
-                        "title": "Jsonpath"
+                        "title": "JSON path",
+                        "description": "JSONPath expression to evaluate against the JWT payload"
                     },
                     "operator": {
-                        "$ref": "#/components/schemas/JsonPathOperator"
+                        "$ref": "#/components/schemas/JsonPathOperator",
+                        "title": "Operator",
+                        "description": "JSON path comparison operator"
                     },
                     "negate": {
                         "type": "boolean",
-                        "title": "Negate",
+                        "title": "Negate rule",
+                        "description": "If set to true, the meaning of the rule is negated",
                         "default": false
                     },
                     "value": {
-                        "title": "Value"
+                        "title": "Value",
+                        "description": "Value to compare against"
                     },
                     "roles": {
                         "items": {
                             "type": "string"
                         },
                         "type": "array",
-                        "title": "Roles"
+                        "title": "List of roles",
+                        "description": "Roles to be assigned if the rule matches"
                     }
                 },
                 "additionalProperties": false,
@@ -5984,7 +6044,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Url"
+                        "title": "Llama Stack URL",
+                        "description": "URL to Llama Stack service; used when library mode is disabled"
                     },
                     "api_key": {
                         "anyOf": [
@@ -5997,7 +6058,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Api Key"
+                        "title": "API key",
+                        "description": "API key to access Llama Stack service"
                     },
                     "use_as_library_client": {
                         "anyOf": [
@@ -6008,7 +6070,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Use As Library Client"
+                        "title": "Use as library",
+                        "description": "When set to true Llama Stack will be used in library mode, not in server mode (default)"
                     },
                     "library_client_config_path": {
                         "anyOf": [
@@ -6019,28 +6082,32 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Library Client Config Path"
+                        "title": "Llama Stack configuration path",
+                        "description": "Path to configuration file used when Llama Stack is run in library mode"
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "LlamaStackConfiguration",
-                "description": "Llama stack configuration."
+                "description": "Llama stack configuration.\n\nLlama Stack is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [Llama Stack](https://www.llama.com/products/llama-stack/)\n  - [Python Llama Stack client](https://github.com/llamastack/llama-stack-client-python)\n  - [Build AI Applications with Llama Stack](https://llamastack.github.io/)"
             },
             "ModelContextProtocolServer": {
                 "properties": {
                     "name": {
                         "type": "string",
-                        "title": "Name"
+                        "title": "MCP name",
+                        "description": "MCP server name that must be unique"
                     },
                     "provider_id": {
                         "type": "string",
-                        "title": "Provider Id",
+                        "title": "Provider ID",
+                        "description": "MCP provider identification",
                         "default": "model-context-protocol"
                     },
                     "url": {
                         "type": "string",
-                        "title": "Url"
+                        "title": "MCP server URL",
+                        "description": "URL of the MCP server"
                     }
                 },
                 "additionalProperties": false,
@@ -6050,7 +6117,7 @@
                     "url"
                 ],
                 "title": "ModelContextProtocolServer",
-                "description": "model context protocol server configuration."
+                "description": "Model context protocol server configuration.\n\nMCP (Model Context Protocol) servers provide tools and\ncapabilities to the AI agents. These are configured by this structure.\nOnly MCP servers defined in the lightspeed-stack.yaml configuration are\navailable to the agents. Tools configured in the llama-stack run.yaml\nare not accessible to lightspeed-core agents.\n\nUseful resources:\n\n- [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro)\n- [MCP FAQs](https://modelcontextprotocol.io/faqs)\n- [Wikipedia article](https://en.wikipedia.org/wiki/Model_Context_Protocol)"
             },
             "ModelsResponse": {
                 "properties": {
@@ -6138,27 +6205,32 @@
                 "properties": {
                     "host": {
                         "type": "string",
-                        "title": "Host",
+                        "title": "Hostname",
+                        "description": "Database server host or socket directory",
                         "default": "localhost"
                     },
                     "port": {
                         "type": "integer",
                         "exclusiveMinimum": 0.0,
                         "title": "Port",
+                        "description": "Database server port",
                         "default": 5432
                     },
                     "db": {
                         "type": "string",
-                        "title": "Db"
+                        "title": "Database name",
+                        "description": "Database name to connect to"
                     },
                     "user": {
                         "type": "string",
-                        "title": "User"
+                        "title": "User name",
+                        "description": "Database user name used to authenticate"
                     },
                     "password": {
                         "type": "string",
                         "format": "password",
                         "title": "Password",
+                        "description": "Password used to authenticate",
                         "writeOnly": true
                     },
                     "namespace": {
@@ -6170,17 +6242,20 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Namespace",
+                        "title": "Name space",
+                        "description": "Database namespace",
                         "default": "lightspeed-stack"
                     },
                     "ssl_mode": {
                         "type": "string",
-                        "title": "Ssl Mode",
+                        "title": "SSL mode",
+                        "description": "SSL mode",
                         "default": "prefer"
                     },
                     "gss_encmode": {
                         "type": "string",
-                        "title": "Gss Encmode",
+                        "title": "GSS encmode",
+                        "description": "This option determines whether or with what priority a secure GSS TCP/IP connection will be negotiated with the server.",
                         "default": "prefer"
                     },
                     "ca_cert_path": {
@@ -6193,7 +6268,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Ca Cert Path"
+                        "title": "CA certificate path",
+                        "description": "Path to CA certificate"
                     }
                 },
                 "additionalProperties": false,
@@ -6204,7 +6280,7 @@
                     "password"
                 ],
                 "title": "PostgreSQLDatabaseConfiguration",
-                "description": "PostgreSQL database configuration."
+                "description": "PostgreSQL database configuration.\n\nPostgreSQL database is used by Lightspeed Core Stack service for storing information about\nconversation IDs. It can also be leveraged to store conversation history and information\nabout quota usage.\n\nUseful resources:\n\n- [Psycopg: connection classes](https://www.psycopg.org/psycopg3/docs/api/connections.html)\n- [PostgreSQL connection strings](https://www.connectionstrings.com/postgresql/)\n- [How to Use PostgreSQL in Python](https://www.freecodecamp.org/news/postgresql-in-python/)"
             },
             "ProviderHealthStatus": {
                 "properties": {
@@ -6813,7 +6889,9 @@
                             {
                                 "type": "null"
                             }
-                        ]
+                        ],
+                        "title": "SQLite configuration",
+                        "description": "SQLite database configuration"
                     },
                     "postgres": {
                         "anyOf": [
@@ -6823,28 +6901,34 @@
                             {
                                 "type": "null"
                             }
-                        ]
+                        ],
+                        "title": "PostgreSQL configuration",
+                        "description": "PostgreSQL database configuration"
                     },
                     "limiters": {
                         "items": {
                             "$ref": "#/components/schemas/QuotaLimiterConfiguration"
                         },
                         "type": "array",
-                        "title": "Limiters"
+                        "title": "Quota limiters",
+                        "description": "Quota limiters configuration"
                     },
                     "scheduler": {
-                        "$ref": "#/components/schemas/QuotaSchedulerConfiguration"
+                        "$ref": "#/components/schemas/QuotaSchedulerConfiguration",
+                        "title": "Quota scheduler",
+                        "description": "Quota scheduler configuration"
                     },
                     "enable_token_history": {
                         "type": "boolean",
-                        "title": "Enable Token History",
+                        "title": "Enable token history",
+                        "description": "Enables storing information about token usage history",
                         "default": false
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "QuotaHandlersConfiguration",
-                "description": "Quota limiter configuration."
+                "description": "Quota limiter configuration.\n\nIt is possible to limit quota usage per user or per service or services\n(that typically run in one cluster). Each limit is configured as a separate\n_quota limiter_. It can be of type `user_limiter` or `cluster_limiter`\n(which is name that makes sense in OpenShift deployment)."
             },
             "QuotaLimiterConfiguration": {
                 "properties": {
@@ -6854,25 +6938,30 @@
                             "user_limiter",
                             "cluster_limiter"
                         ],
-                        "title": "Type"
+                        "title": "Quota limiter type",
+                        "description": "Quota limiter type, either user_limiter or cluster_limiter"
                     },
                     "name": {
                         "type": "string",
-                        "title": "Name"
+                        "title": "Quota limiter name",
+                        "description": "Human readable quota limiter name"
                     },
                     "initial_quota": {
                         "type": "integer",
                         "minimum": 0.0,
-                        "title": "Initial Quota"
+                        "title": "Initial quota",
+                        "description": "Quota set at beginning of the period"
                     },
                     "quota_increase": {
                         "type": "integer",
                         "minimum": 0.0,
-                        "title": "Quota Increase"
+                        "title": "Quota increase",
+                        "description": "Delta value used to increase quota when period is reached"
                     },
                     "period": {
                         "type": "string",
-                        "title": "Period"
+                        "title": "Period",
+                        "description": "Period specified in human readable form"
                     }
                 },
                 "additionalProperties": false,
@@ -6885,7 +6974,7 @@
                     "period"
                 ],
                 "title": "QuotaLimiterConfiguration",
-                "description": "Configuration for one quota limiter."
+                "description": "Configuration for one quota limiter.\n\nThere are three configuration options for each limiter:\n\n1. ``period`` is specified in a human-readable form, see\n   https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT\n   for all possible options. When the end of the period is reached, the\n   quota is reset or increased.\n2. ``initial_quota`` is the value set at the beginning of the period.\n3. ``quota_increase`` is the value (if specified) used to increase the\n   quota when the period is reached.\n\nThere are two basic use cases:\n\n1. When the quota needs to be reset to a specific value periodically (for\n   example on a weekly or monthly basis), set ``initial_quota`` to the\n   required value.\n2. When the quota needs to be increased by a specific value periodically\n   (for example on a daily basis), set ``quota_increase``."
             },
             "QuotaSchedulerConfiguration": {
                 "properties": {
@@ -6893,9 +6982,11 @@
                         "type": "integer",
                         "exclusiveMinimum": 0.0,
                         "title": "Period",
+                        "description": "Quota scheduler period specified in seconds",
                         "default": 1
                     }
                 },
+                "additionalProperties": false,
                 "type": "object",
                 "title": "QuotaSchedulerConfiguration",
                 "description": "Quota scheduler configuration."
@@ -7201,46 +7292,56 @@
                     "host": {
                         "type": "string",
                         "title": "Host",
+                        "description": "Service hostname",
                         "default": "localhost"
                     },
                     "port": {
                         "type": "integer",
                         "exclusiveMinimum": 0.0,
                         "title": "Port",
+                        "description": "Service port",
                         "default": 8080
                     },
                     "auth_enabled": {
                         "type": "boolean",
-                        "title": "Auth Enabled",
+                        "title": "Authentication enabled",
+                        "description": "Enables the authentication subsystem",
                         "default": false
                     },
                     "workers": {
                         "type": "integer",
                         "exclusiveMinimum": 0.0,
-                        "title": "Workers",
+                        "title": "Number of workers",
+                        "description": "Number of Uvicorn worker processes to start",
                         "default": 1
                     },
                     "color_log": {
                         "type": "boolean",
-                        "title": "Color Log",
+                        "title": "Color log",
+                        "description": "Enables colorized logging",
                         "default": true
                     },
                     "access_log": {
                         "type": "boolean",
-                        "title": "Access Log",
+                        "title": "Access log",
+                        "description": "Enables logging of all access information",
                         "default": true
                     },
                     "tls_config": {
-                        "$ref": "#/components/schemas/TLSConfiguration"
+                        "$ref": "#/components/schemas/TLSConfiguration",
+                        "title": "TLS configuration",
+                        "description": "Transport Layer Security configuration for HTTPS support"
                     },
                     "cors": {
-                        "$ref": "#/components/schemas/CORSConfiguration"
+                        "$ref": "#/components/schemas/CORSConfiguration",
+                        "title": "CORS configuration",
+                        "description": "Cross-Origin Resource Sharing configuration for cross-domain requests"
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "ServiceConfiguration",
-                "description": "Service configuration."
+                "description": "Service configuration.\n\nLightspeed Core Stack is a REST API service that accepts requests\non a specified hostname and port. It is also possible to enable\nauthentication and specify the number of Uvicorn workers. When more\nworkers are specified, the service can handle requests concurrently."
             },
             "ServiceUnavailableResponse": {
                 "properties": {
@@ -7384,7 +7485,7 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "TLSConfiguration",
-                "description": "TLS configuration.\n\nSee also:\n- https://fastapi.tiangolo.com/deployment/https/\n- https://en.wikipedia.org/wiki/Transport_Layer_Security"
+                "description": "TLS configuration.\n\nTransport Layer Security (TLS) is a cryptographic protocol designed to\nprovide communications security over a computer network, such as the\nInternet. The protocol is widely used in applications such as email,\ninstant messaging, and voice over IP, but its use in securing HTTPS remains\nthe most publicly visible.\n\nUseful resources:\n\n  - [FastAPI HTTPS Deployment](https://fastapi.tiangolo.com/deployment/https/)\n  - [Transport Layer Security Overview](https://en.wikipedia.org/wiki/Transport_Layer_Security)\n  - [What is TLS](https://www.ssltrust.eu/learning/ssl/transport-layer-security-tls)"
             },
             "ToolCall": {
                 "properties": {

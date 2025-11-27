@@ -4,7 +4,7 @@ import logging
 import os
 
 import constants
-from authentication import jwk_token, k8s, noop, noop_with_token, rh_identity
+from authentication import jwk_token, k8s, noop, noop_with_token, rh_identity, api_key_token
 from authentication.interface import AuthInterface
 from configuration import LogicError, configuration
 
@@ -52,6 +52,11 @@ def get_auth_dependency(
             )
             return rh_identity.RHIdentityAuthDependency(
                 required_entitlements=rh_identity_config.required_entitlements,
+                virtual_path=virtual_path,
+            )
+        case constants.AUTH_MOD_APIKEY_TOKEN:
+            return api_key_token.APIKeyTokenAuthDependency(
+                configuration.authentication_configuration.api_key_configuration,
                 virtual_path=virtual_path,
             )
         case _:
