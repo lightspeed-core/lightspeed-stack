@@ -158,6 +158,9 @@ llslibdev = [
     "opentelemetry-instrumentation>=0.55b0",
     "blobfile>=3.0.0",
     "psutil>=7.0.0",
+    # API inference: remote::ollama
+    "ollama>=0.4.7",
+    "h11>=0.16.0",
 ]
 
 build = [
