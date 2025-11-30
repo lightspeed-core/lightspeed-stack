@@ -87,8 +87,11 @@ Issues = "https://github.com/lightspeed-core/lightspeed-stack/issues"
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
+
 [tool.uv.sources]
-torch = [{ index = "pytorch-cpu" }]
+torch = [
+    { index = "pytorch-cpu", group = "llslibdev" },
+]
 
 [dependency-groups]
 dev = [

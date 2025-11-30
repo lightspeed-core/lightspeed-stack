@@ -1490,7 +1490,7 @@ llslibdev = [
     { name = "requests", specifier = ">=2.32.4" },
     { name = "scikit-learn", specifier = ">=1.5.2" },
     { name = "sentence-transformers", specifier = ">=5.0.0" },
-    { name = "torch", specifier = "==2.7.1", index = "https://download.pytorch.org/whl/cpu" },
+    { name = "torch", specifier = "==2.7.1", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "lightspeed-stack", group = "llslibdev" } },
     { name = "transformers", specifier = ">=4.34.0" },
     { name = "tree-sitter", specifier = ">=0.24.0" },
     { name = "trl", specifier = ">=0.18.2" },

@@ -30,6 +30,13 @@ spec:
   - name: build-platforms
     value:
     - linux/x86_64
+    - linux-c6gd2xlarge/arm64
+  - name: build-source-image
+    value: 'true'
+  - name: prefetch-input
+    value: '[{"type": "rpm", "path": "."}, {"type": "pip", "path": ".", "allow_binary": "true", "requirements_files": ["requirements.x86_64.txt", "requirements.aarch64.txt", "requirements.hermetic.txt", "requirements.torch.txt"]}]'
+  - name: hermetic
+    value: 'true'
   - name: dockerfile
     value: Containerfile
   pipelineSpec:
@@ -625,6 +632,9 @@ spec:
       optional: true
     - name: netrc
       optional: true
+  timeouts:
+    pipeline: 4h
+    tasks: 4h
   taskRunTemplate:
     serviceAccountName: build-pipeline-lightspeed-stack
   workspaces:
