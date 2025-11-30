@@ -37,6 +37,7 @@ def get_authorization_resolvers() -> Tuple[RolesResolver, AccessResolver]:
             constants.AUTH_MOD_NOOP
             | constants.AUTH_MOD_K8S
             | constants.AUTH_MOD_NOOP_WITH_TOKEN
+            | constants.AUTH_MOD_APIKEY_TOKEN
         ):
             return (
                 NoopRolesResolver(),

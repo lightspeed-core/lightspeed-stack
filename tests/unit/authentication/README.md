@@ -3,6 +3,9 @@
 ## [__init__.py](__init__.py)
 Authentication unit tests package.
 
+## [test_api_key_token.py](test_api_key_token.py)
+Unit tests for functions defined in authentication/api_key_token.py
+
 ## [test_auth.py](test_auth.py)
 Unit tests for functions defined in authentication/__init__.py
 

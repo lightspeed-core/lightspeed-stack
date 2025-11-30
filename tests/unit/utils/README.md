@@ -24,6 +24,9 @@ Unit tests for utility function to check Llama Stack version.
 ## [test_mcp_headers.py](test_mcp_headers.py)
 Unit tests for MCP headers utility functions.
 
+## [test_responses.py](test_responses.py)
+Unit tests for utils/responses.py functions.
+
 ## [test_suid.py](test_suid.py)
 Unit tests for functions defined in utils.suid module.
 

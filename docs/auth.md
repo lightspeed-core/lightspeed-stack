@@ -142,6 +142,22 @@ authentication:
 - Extracts user ID and username from configurable JWT claims
 - Returns default credentials (guest-like) if no `Authorization` header present (guest access)
 
+### API Key Token (`api-key-token`)
+
+Authentication that checks a given API Key token is present as a Bearer token
+
+**Configuration:**
+```yaml
+  module: "api-key-token"
+  api_key_config:
+    api_key: "some-api-key"
+```
+
+**Behavior:**
+- Extracts bearer token from the `Authorization` header
+- Same user ID and username handling as `noop`
+- Token is passed through and validated against the API Key given from configuration, for downstream use
+
 ## Authorization System
 
 Authorization is controlled through role-based access control using two resolver types.

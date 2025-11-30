@@ -24,6 +24,9 @@ MCP headers handling.
 ## [quota.py](quota.py)
 Quota handling helper functions.
 
+## [responses.py](responses.py)
+Utility functions for processing Responses API output.
+
 ## [shields.py](shields.py)
 Utility functions for working with Llama Stack shields.
 
