@@ -115,6 +115,10 @@ async def test_retrieve_response_no_tools_bypasses_tools(mocker: MockerFixture) 
     response_obj.output = []
     response_obj.usage = None  # No usage info
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     # vector_stores.list should not matter when no_tools=True, but keep it valid
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
@@ -131,7 +135,7 @@ async def test_retrieve_response_no_tools_bypasses_tools(mocker: MockerFixture) 
         mock_client, "model-x", qr, token="tkn"
     )
 
-    assert conv_id == "resp-1"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == ""
     assert referenced_docs == []
     assert token_usage.input_tokens == 0  # No usage info, so 0
@@ -144,7 +148,7 @@ async def test_retrieve_response_no_tools_bypasses_tools(mocker: MockerFixture) 
 
 
 @pytest.mark.asyncio
-async def test_retrieve_response_builds_rag_and_mcp_tools(
+async def test_retrieve_response_builds_rag_and_mcp_tools(  # pylint: disable=too-many-locals
     mocker: MockerFixture,
 ) -> None:
     """Test that retrieve_response correctly builds RAG and MCP tools from configuration."""
@@ -154,6 +158,10 @@ async def test_retrieve_response_builds_rag_and_mcp_tools(
     response_obj.output = []
     response_obj.usage = None
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = [mocker.Mock(id="dbA")]
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -172,7 +180,7 @@ async def test_retrieve_response_builds_rag_and_mcp_tools(
         mock_client, "model-y", qr, token="mytoken"
     )
 
-    assert conv_id == "resp-2"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert referenced_docs == []
     assert token_usage.input_tokens == 0  # No usage info, so 0
     assert token_usage.output_tokens == 0
@@ -222,6 +230,10 @@ async def test_retrieve_response_parses_output_and_tool_calls(
     response_obj.usage = None
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -236,7 +248,7 @@ async def test_retrieve_response_parses_output_and_tool_calls(
         mock_client, "model-z", qr, token="tkn"
     )
 
-    assert conv_id == "resp-3"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Hello world!"
     assert len(summary.tool_calls) == 1
     assert summary.tool_calls[0].id == "tc-1"
@@ -269,6 +281,10 @@ async def test_retrieve_response_with_usage_info(mocker: MockerFixture) -> None:
     response_obj.usage = mock_usage
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -283,7 +299,7 @@ async def test_retrieve_response_with_usage_info(mocker: MockerFixture) -> None:
         mock_client, "model-usage", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-with-usage"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Test response"
     assert token_usage.input_tokens == 150
     assert token_usage.output_tokens == 75
@@ -308,6 +324,10 @@ async def test_retrieve_response_with_usage_dict(mocker: MockerFixture) -> None:
     response_obj.usage = {"input_tokens": 200, "output_tokens": 100}
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -322,7 +342,7 @@ async def test_retrieve_response_with_usage_dict(mocker: MockerFixture) -> None:
         mock_client, "model-usage-dict", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-with-usage-dict"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Test response dict"
     assert token_usage.input_tokens == 200
     assert token_usage.output_tokens == 100
@@ -347,6 +367,10 @@ async def test_retrieve_response_with_empty_usage_dict(mocker: MockerFixture) ->
     response_obj.usage = {}  # Empty dict
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -361,7 +385,7 @@ async def test_retrieve_response_with_empty_usage_dict(mocker: MockerFixture) ->
         mock_client, "model-empty-usage", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-empty-usage"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Test response empty usage"
     assert token_usage.input_tokens == 0
     assert token_usage.output_tokens == 0
@@ -377,6 +401,10 @@ async def test_retrieve_response_validates_attachments(mocker: MockerFixture) ->
     response_obj.output = []
     response_obj.usage = None
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -555,6 +583,10 @@ async def test_retrieve_response_with_shields_available(mocker: MockerFixture) -
     response_obj.usage = None
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -567,7 +599,7 @@ async def test_retrieve_response_with_shields_available(mocker: MockerFixture) -
         mock_client, "model-shields", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-shields"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Safe response"
 
     # Verify that shields were passed in extra_body
@@ -598,6 +630,10 @@ async def test_retrieve_response_with_no_shields_available(
     response_obj.usage = None
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -610,7 +646,7 @@ async def test_retrieve_response_with_no_shields_available(
         mock_client, "model-no-shields", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-no-shields"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Response without shields"
 
     # Verify that no extra_body was added
@@ -643,6 +679,10 @@ async def test_retrieve_response_detects_shield_violation(
     response_obj.usage = None
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -658,7 +698,7 @@ async def test_retrieve_response_detects_shield_violation(
         mock_client, "model-violation", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-violation"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "I cannot help with that request"
 
     # Verify that the validation error metric was incremented
@@ -690,6 +730,10 @@ async def test_retrieve_response_no_violation_with_shields(
     response_obj.usage = None
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -705,7 +749,7 @@ async def test_retrieve_response_no_violation_with_shields(
         mock_client, "model-safe", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-safe"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Safe response"
 
     # Verify that the validation error metric was NOT incremented

@@ -7,7 +7,7 @@ from llama_stack.models.llama.datatypes import RawMessage
 from llama_stack.models.llama.llama3.chat_format import ChatFormat
 from llama_stack.models.llama.llama3.tokenizer import Tokenizer
 from llama_stack_client import APIConnectionError, APIStatusError
-from llama_stack_client.types.agents.turn import Turn
+from llama_stack_client.types.alpha.agents.turn import Turn
 
 import metrics
 from client import AsyncLlamaStackClientHolder

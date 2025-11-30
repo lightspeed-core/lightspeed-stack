@@ -2,14 +2,41 @@
 
 from typing import Any, Optional
 import json
-from llama_stack_client.lib.agents.event_logger import interleaved_content_as_str
 from llama_stack_client.lib.agents.tool_parser import ToolParser
-from llama_stack_client.types.shared.completion_message import CompletionMessage
-from llama_stack_client.types.shared.tool_call import ToolCall
-from llama_stack_client.types.tool_execution_step import ToolExecutionStep
+from llama_stack_client.lib.agents.types import (
+    CompletionMessage as AgentCompletionMessage,
+    ToolCall as AgentToolCall,
+)
+from llama_stack_client.types.shared.interleaved_content_item import (
+    TextContentItem,
+    ImageContentItem,
+)
+from llama_stack_client.types.alpha.tool_execution_step import ToolExecutionStep
 from pydantic import BaseModel
 from models.responses import RAGChunk
 from constants import DEFAULT_RAG_TOOL
+
+
+def content_to_str(content: Any) -> str:
+    """Convert content (str, TextContentItem, ImageContentItem, or list) to string.
+
+    Args:
+        content: Content to convert to string.
+
+    Returns:
+        str: String representation of the content.
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, TextContentItem):
+        return content.text
+    if isinstance(content, ImageContentItem):
+        return "<image>"
+    if isinstance(content, list):
+        return " ".join(content_to_str(item) for item in content)
+    return str(content)
 
 
 class Singleton(type):
@@ -33,16 +60,18 @@ class Singleton(type):
 class GraniteToolParser(ToolParser):
     """Workaround for 'tool_calls' with granite models."""
 
-    def get_tool_calls(self, output_message: CompletionMessage) -> list[ToolCall]:
+    def get_tool_calls(
+        self, output_message: AgentCompletionMessage
+    ) -> list[AgentToolCall]:
         """
         Return the `tool_calls` list from a CompletionMessage, or an empty list if none are present.
 
         Parameters:
-            output_message (CompletionMessage | None): Completion
+            output_message (AgentCompletionMessage | None): Completion
             message potentially containing `tool_calls`.
 
         Returns:
-            list[ToolCall]: The list of tool call entries
+            list[AgentToolCall]: The list of tool call entries
             extracted from `output_message`, or an empty list.
         """
         if output_message and output_message.tool_calls:
@@ -99,9 +128,7 @@ class TurnSummary(BaseModel):
         responses_by_id = {tc.call_id: tc for tc in tec.tool_responses}
         for call_id, tc in calls_by_id.items():
             resp = responses_by_id.get(call_id)
-            response_content = (
-                interleaved_content_as_str(resp.content) if resp else None
-            )
+            response_content = content_to_str(resp.content) if resp else None
 
             self.tool_calls.append(
                 ToolCallSummary(

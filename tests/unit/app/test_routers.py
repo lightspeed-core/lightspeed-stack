@@ -9,6 +9,7 @@ from app.routers import include_routers  # noqa:E402
 from app.endpoints import (
     conversations,
     conversations_v2,
+    conversations_v3,
     root,
     info,
     models,
@@ -67,7 +68,7 @@ def test_include_routers() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 18
+    assert len(app.routers) == 19
     assert root.router in app.get_routers()
     assert info.router in app.get_routers()
     assert models.router in app.get_routers()
@@ -84,6 +85,7 @@ def test_include_routers() -> None:
     assert authorized.router in app.get_routers()
     assert conversations.router in app.get_routers()
     assert conversations_v2.router in app.get_routers()
+    assert conversations_v3.router in app.get_routers()
     assert metrics.router in app.get_routers()
 
 
@@ -93,7 +95,7 @@ def test_check_prefixes() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 18
+    assert len(app.routers) == 19
     assert app.get_router_prefix(root.router) == ""
     assert app.get_router_prefix(info.router) == "/v1"
     assert app.get_router_prefix(models.router) == "/v1"
@@ -110,5 +112,6 @@ def test_check_prefixes() -> None:
     assert app.get_router_prefix(health.router) == ""
     assert app.get_router_prefix(authorized.router) == ""
     assert app.get_router_prefix(conversations.router) == "/v1"
-    assert app.get_router_prefix(metrics.router) == ""
     assert app.get_router_prefix(conversations_v2.router) == "/v2"
+    assert app.get_router_prefix(conversations_v3.router) == "/v3"
+    assert app.get_router_prefix(metrics.router) == ""

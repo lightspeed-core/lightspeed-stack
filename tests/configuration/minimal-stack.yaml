@@ -5,3 +5,26 @@ external_providers_dir: /tmp
 
 apis: []
 providers: {}
+storage:
+  backends:
+    kv_default:
+      type: kv_sqlite
+      db_path: '/tmp/test_llama_stack_kv.db'
+    sql_default:
+      type: sql_sqlite
+      db_path: '/tmp/test_llama_stack_sql.db'
+  stores:
+    metadata:
+      namespace: registry
+      backend: kv_default
+    inference:
+      table_name: inference_store
+      backend: sql_default
+      max_write_queue_size: 10000
+      num_writers: 4
+    conversations:
+      table_name: openai_conversations
+      backend: sql_default
+    prompts:
+      namespace: prompts
+      backend: kv_default

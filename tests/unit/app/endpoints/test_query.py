@@ -11,11 +11,11 @@ import pytest
 from fastapi import HTTPException, Request, status
 from litellm.exceptions import RateLimitError
 from llama_stack_client import APIConnectionError
-from llama_stack_client.types import UserMessage
-from llama_stack_client.types.agents.turn import Turn
+from llama_stack_client.types import UserMessage  # type: ignore
+from llama_stack_client.types.alpha.agents.turn import Turn
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
-from llama_stack_client.types.tool_execution_step import ToolExecutionStep
-from llama_stack_client.types.tool_response import ToolResponse
+from llama_stack_client.types.alpha.tool_execution_step import ToolExecutionStep
+from llama_stack_client.types.alpha.tool_response import ToolResponse
 from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 
@@ -1935,9 +1935,9 @@ async def test_get_topic_summary_successful_response(mocker: MockerFixture) -> N
     # Mock the agent's create_turn method
     mock_agent.create_turn.return_value = mock_response
 
-    # Mock the interleaved_content_as_str function
+    # Mock the content_to_str function
     mocker.patch(
-        "app.endpoints.query.interleaved_content_as_str",
+        "app.endpoints.query.content_to_str",
         return_value="This is a topic summary about OpenStack",
     )
 
@@ -2068,9 +2068,9 @@ async def test_get_topic_summary_with_interleaved_content(
     # Mock the agent's create_turn method
     mock_agent.create_turn.return_value = mock_response
 
-    # Mock the interleaved_content_as_str function
-    mock_interleaved_content_as_str = mocker.patch(
-        "app.endpoints.query.interleaved_content_as_str", return_value="Topic summary"
+    # Mock the content_to_str function
+    mock_content_to_str = mocker.patch(
+        "app.endpoints.query.content_to_str", return_value="Topic summary"
     )
 
     # Mock the get_topic_summary_system_prompt function
@@ -2091,8 +2091,8 @@ async def test_get_topic_summary_with_interleaved_content(
     # Assertions
     assert result == "Topic summary"
 
-    # Verify interleaved_content_as_str was called with the content
-    mock_interleaved_content_as_str.assert_called_once_with(mock_content)
+    # Verify content_to_str was called with the content
+    mock_content_to_str.assert_called_once_with(mock_content)
 
 
 @pytest.mark.asyncio
@@ -2113,10 +2113,8 @@ async def test_get_topic_summary_system_prompt_retrieval(mocker: MockerFixture) 
     # Mock the agent's create_turn method
     mock_agent.create_turn.return_value = mock_response
 
-    # Mock the interleaved_content_as_str function
-    mocker.patch(
-        "app.endpoints.query.interleaved_content_as_str", return_value="Topic summary"
-    )
+    # Mock the content_to_str function
+    mocker.patch("app.endpoints.query.content_to_str", return_value="Topic summary")
 
     # Mock the get_topic_summary_system_prompt function
     mock_get_topic_summary_system_prompt = mocker.patch(
@@ -2189,10 +2187,8 @@ async def test_get_topic_summary_agent_creation_parameters(
     # Mock the agent's create_turn method
     mock_agent.create_turn.return_value = mock_response
 
-    # Mock the interleaved_content_as_str function
-    mocker.patch(
-        "app.endpoints.query.interleaved_content_as_str", return_value="Topic summary"
-    )
+    # Mock the content_to_str function
+    mocker.patch("app.endpoints.query.content_to_str", return_value="Topic summary")
 
     # Mock the get_topic_summary_system_prompt function
     mocker.patch(
@@ -2236,10 +2232,8 @@ async def test_get_topic_summary_create_turn_parameters(mocker: MockerFixture) -
     # Mock the agent's create_turn method
     mock_agent.create_turn.return_value = mock_response
 
-    # Mock the interleaved_content_as_str function
-    mocker.patch(
-        "app.endpoints.query.interleaved_content_as_str", return_value="Topic summary"
-    )
+    # Mock the content_to_str function
+    mocker.patch("app.endpoints.query.content_to_str", return_value="Topic summary")
 
     # Mock the get_topic_summary_system_prompt function
     mocker.patch(

@@ -37,6 +37,10 @@ async def test_retrieve_response_builds_rag_and_mcp_tools(
     mock_vector_stores.data = [mocker.Mock(id="db1")]
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
     mock_client.responses.create = mocker.AsyncMock(return_value=mocker.Mock())
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     # Mock shields.list
     mock_client.shields.list = mocker.AsyncMock(return_value=[])
 
@@ -69,6 +73,10 @@ async def test_retrieve_response_no_tools_passes_none(mocker: MockerFixture) -> 
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
     mock_client.responses.create = mocker.AsyncMock(return_value=mocker.Mock())
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     # Mock shields.list
     mock_client.shields.list = mocker.AsyncMock(return_value=[])
 
@@ -157,7 +165,7 @@ async def test_streaming_query_endpoint_handler_v2_success_yields_events(
 
     mocker.patch(
         "app.endpoints.streaming_query_v2.retrieve_response",
-        return_value=(fake_stream(), ""),
+        return_value=(fake_stream(), "abc123def456"),
     )
 
     metric = mocker.patch("metrics.llm_calls_total")
@@ -179,7 +187,7 @@ async def test_streaming_query_endpoint_handler_v2_success_yields_events(
         events.append(s)
 
     # Validate event sequence and content
-    assert events[0] == "START:conv-xyz\n"
+    assert events[0] == "START:abc123def456\n"
     # content_part.added triggers empty token
     assert events[1] == "EV:token:\n"
     assert events[2] == "EV:token:Hello \n"
@@ -195,7 +203,7 @@ async def test_streaming_query_endpoint_handler_v2_success_yields_events(
     # Verify cleanup was called with correct user_id and conversation_id
     call_args = cleanup_spy.call_args
     assert call_args.kwargs["user_id"] == "user123"
-    assert call_args.kwargs["conversation_id"] == "conv-xyz"
+    assert call_args.kwargs["conversation_id"] == "abc123def456"
     assert call_args.kwargs["model_id"] == "m"
     assert call_args.kwargs["provider_id"] == "p"
 
@@ -243,6 +251,10 @@ async def test_retrieve_response_with_shields_available(mocker: MockerFixture) -
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
     mock_client.responses.create = mocker.AsyncMock(return_value=mocker.Mock())
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
 
     mocker.patch(
         "app.endpoints.streaming_query_v2.get_system_prompt", return_value="PROMPT"
@@ -275,6 +287,10 @@ async def test_retrieve_response_with_no_shields_available(
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
     mock_client.responses.create = mocker.AsyncMock(return_value=mocker.Mock())
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
 
     mocker.patch(
         "app.endpoints.streaming_query_v2.get_system_prompt", return_value="PROMPT"

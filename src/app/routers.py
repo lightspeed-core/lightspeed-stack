@@ -18,6 +18,7 @@ from app.endpoints import (
     authorized,
     conversations,
     conversations_v2,
+    conversations_v3,
     metrics,
     tools,
     # V2 endpoints for Response API support
@@ -45,6 +46,7 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(feedback.router, prefix="/v1")
     app.include_router(conversations.router, prefix="/v1")
     app.include_router(conversations_v2.router, prefix="/v2")
+    app.include_router(conversations_v3.router, prefix="/v3")
 
     # V2 endpoints - Response API support
     app.include_router(query_v2.router, prefix="/v2")

@@ -4,7 +4,7 @@ from typing import Optional, Self
 from enum import Enum
 
 from pydantic import BaseModel, model_validator, field_validator, Field
-from llama_stack_client.types.agents.turn_create_params import Document
+from llama_stack_client.types.alpha.agents.turn_create_params import Document
 
 from log import get_logger
 from utils import suid

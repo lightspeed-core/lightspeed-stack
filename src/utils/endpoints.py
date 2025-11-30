@@ -306,16 +306,19 @@ async def get_agent(
             existing_agent_id = agent_response.agent_id
 
     logger.debug("Creating new agent")
+    # pylint: disable=unexpected-keyword-arg,no-member
     agent = AsyncAgent(
         client,  # type: ignore[arg-type]
         model=model_id,
         instructions=system_prompt,
+        # type: ignore[call-arg]
         input_shields=available_input_shields if available_input_shields else [],
+        # type: ignore[call-arg]
         output_shields=available_output_shields if available_output_shields else [],
         tool_parser=None if no_tools else GraniteToolParser.get_parser(model_id),
-        enable_session_persistence=True,
+        enable_session_persistence=True,  # type: ignore[call-arg]
     )
-    await agent.initialize()
+    await agent.initialize()  # type: ignore[attr-defined]
 
     if existing_agent_id and conversation_id:
         logger.debug("Existing conversation ID: %s", conversation_id)
@@ -335,11 +338,12 @@ async def get_agent(
             raise HTTPException(**response.model_dump()) from e
     else:
         conversation_id = agent.agent_id
+        # pylint: enable=unexpected-keyword-arg,no-member
         logger.debug("New conversation ID: %s", conversation_id)
         session_id = await agent.create_session(get_suid())
         logger.debug("New session ID: %s", session_id)
 
-    return agent, conversation_id, session_id
+    return agent, conversation_id, session_id  # type: ignore[return-value]
 
 
 async def get_temp_agent(
@@ -360,16 +364,19 @@ async def get_temp_agent(
         tuple[AsyncAgent, str]: A tuple containing the agent and session_id.
     """
     logger.debug("Creating temporary agent")
+    # pylint: disable=unexpected-keyword-arg,no-member
     agent = AsyncAgent(
         client,  # type: ignore[arg-type]
         model=model_id,
         instructions=system_prompt,
-        enable_session_persistence=False,  # Temporary agent doesn't need persistence
+        # type: ignore[call-arg]  # Temporary agent doesn't need persistence
+        enable_session_persistence=False,
     )
-    await agent.initialize()
+    await agent.initialize()  # type: ignore[attr-defined]
 
     # Generate new IDs for the temporary agent
     conversation_id = agent.agent_id
+    # pylint: enable=unexpected-keyword-arg,no-member
     session_id = await agent.create_session(get_suid())
 
     return agent, session_id, conversation_id

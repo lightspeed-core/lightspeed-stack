@@ -16,12 +16,11 @@ from llama_stack_client import (
     APIConnectionError,
     AsyncLlamaStackClient,  # type: ignore
 )
-from llama_stack_client.lib.agents.event_logger import interleaved_content_as_str
 from llama_stack_client.types import UserMessage  # type: ignore
-from llama_stack_client.types.agents.agent_turn_response_stream_chunk import (
+from llama_stack_client.types.alpha.agents.agent_turn_response_stream_chunk import (
     AgentTurnResponseStreamChunk,
 )
-from llama_stack_client.types.agents.turn_create_params import Document
+from llama_stack_client.types.alpha.agents.turn_create_params import Document
 from llama_stack_client.types.shared import ToolCall
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 
@@ -69,7 +68,7 @@ from utils.endpoints import (
 from utils.mcp_headers import handle_mcp_headers_with_toolgroups, mcp_headers_dependency
 from utils.token_counter import TokenCounter, extract_token_usage_from_turn
 from utils.transcripts import store_transcript
-from utils.types import TurnSummary
+from utils.types import TurnSummary, content_to_str
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query"])
@@ -431,9 +430,7 @@ def _handle_turn_complete_event(
         str: SSE-formatted string containing the turn completion
         event and output message content.
     """
-    full_response = interleaved_content_as_str(
-        chunk.event.payload.turn.output_message.content
-    )
+    full_response = content_to_str(chunk.event.payload.turn.output_message.content)
 
     if media_type == MEDIA_TYPE_TEXT:
         yield (
@@ -602,7 +599,7 @@ def _handle_tool_execution_event(
 
         for r in chunk.event.payload.step_details.tool_responses:
             if r.tool_name == "query_from_memory":
-                inserted_context = interleaved_content_as_str(r.content)
+                inserted_context = content_to_str(r.content)
                 yield stream_event(
                     data={
                         "id": chunk_id,
@@ -653,7 +650,7 @@ def _handle_tool_execution_event(
                         "id": chunk_id,
                         "token": {
                             "tool_name": r.tool_name,
-                            "response": interleaved_content_as_str(r.content),
+                            "response": content_to_str(r.content),
                         },
                     },
                     event_type=LLM_TOOL_RESULT_EVENT,
@@ -736,9 +733,7 @@ def create_agent_response_generator(  # pylint: disable=too-many-locals
                 continue
             p = chunk.event.payload
             if p.event_type == "turn_complete":
-                summary.llm_response = interleaved_content_as_str(
-                    p.turn.output_message.content
-                )
+                summary.llm_response = content_to_str(p.turn.output_message.content)
                 latest_turn = p.turn
                 system_prompt = get_system_prompt(context.query_request, configuration)
                 try:
