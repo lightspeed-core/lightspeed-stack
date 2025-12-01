@@ -47,8 +47,38 @@ in_torch_section == 0 {
 }
 ' "$INPUT_FILE" > "${INPUT_FILE}.tmp"
 
-# Replace original file with processed version
-mv "${INPUT_FILE}.tmp" "$INPUT_FILE"
+awk '
+BEGIN {
+    in_faiss_section = 0
+}
+
+# If we find a line starting with faiss-cpu==
+/^faiss-cpu==/ {
+    in_faiss_section = 1
+    next  # Skip this line
+}
+
+# If we are in faiss section and line starts with 4 spaces, skip it
+in_faiss_section == 1 && /^    / {
+    next  # Skip this line
+}
+
+# If we are in faiss section and line does NOT start with 4 spaces, exit faiss section
+in_faiss_section == 1 && !/^    / {
+    in_faiss_section = 0
+    # Fall through to print this line
+}
+
+# Print all lines that are not part of faiss section
+in_faiss_section == 0 {
+    print
+}
+' "${INPUT_FILE}.tmp" > "${INPUT_FILE}.tmp2"
+
+
+# Replace original file with processed version and clean up temporary file
+mv "${INPUT_FILE}.tmp2" "$INPUT_FILE"
+rm "${INPUT_FILE}.tmp"
 
 echo "Successfully removed torch dependencies from $INPUT_FILE"
 echo "Original file backed up to $BACKUP_FILE"
