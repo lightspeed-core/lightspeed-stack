@@ -699,10 +699,19 @@ class RHIdentityConfiguration(ConfigurationBase):
 
     required_entitlements: Optional[list[str]] = None
 
+
 class APIKeyTokenConfiguration(ConfigurationBase):
     """API Key Token configuration."""
 
-    api_key: str = constants.DEFAULT_API_KEY
+    api_key: str = Field(
+        min_length=1,
+        title="API key",
+        json_schema_extra={
+            "format": "password",
+            "writeOnly": True,
+            "examples": ["some-api-key"],
+        })
+
 
 class AuthenticationConfiguration(ConfigurationBase):
     """Authentication configuration."""
