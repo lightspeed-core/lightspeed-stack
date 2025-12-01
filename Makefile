@@ -6,7 +6,8 @@ PYTHON_REGISTRY = pypi
 
 # PyTorch version
 TORCH_VERSION := 2.7.1
-
+# Faiss version
+FAISS_VERSION := 1.13.0
 
 run: ## Run the service locally
 	uv run src/lightspeed_stack.py
@@ -113,7 +114,7 @@ konflux-requirements:	## generate hermetic requirements.*.txt file for konflux b
 	uv pip compile pyproject.toml -o requirements.aarch64.txt --generate-hashes --group llslibdev --python-platform aarch64-unknown-linux-gnu --torch-backend cpu --python-version 3.12 --refresh
 	./scripts/remove_torch_deps.sh requirements.x86_64.txt
 	./scripts/remove_torch_deps.sh requirements.aarch64.txt
-	echo "torch==${TORCH_VERSION}" | uv pip compile - -o requirements.torch.txt --generate-hashes --python-version 3.12 --torch-backend cpu --emit-index-url --no-deps --index-url https://download.pytorch.org/whl/cpu --refresh
+	uv run pybuild-deps compile --output-file=requirements-build.txt requirements.aarch64.txt requirements.x86_64.txt requirements.hermetic.txt
 
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'

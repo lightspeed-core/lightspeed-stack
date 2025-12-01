@@ -34,9 +34,41 @@ spec:
   - name: build-source-image
     value: 'true'
   - name: prefetch-input
-    value: '[{"type": "rpm", "path": "."}, {"type": "pip", "path": ".", "allow_binary": "true", "requirements_files": ["requirements.x86_64.txt", "requirements.aarch64.txt", "requirements.hermetic.txt", "requirements.torch.txt"]}]'
+    value: |
+      [
+        {
+            "type": "rpm",
+            "path": "."
+        },
+        {
+            "type": "pip",
+            "path": ".",
+            "requirements_files": [
+                "requirements.x86_64.txt",
+                "requirements.aarch64.txt",
+                "requirements.hermetic.txt",
+                "requirements.torch.txt",
+                "requirements.binary.txt"
+            ],
+            "requirements_build_files": [
+                "requirements-build.txt"
+            ],
+            "binary": {
+                "os": "linux",
+                "arch": "x86_64,aarch64",
+                "py_version": "312",
+                "packages": "torch,faiss-cpu,uv,jiter,tiktoken"
+            }
+        },
+        {
+            "type": "generic",
+            "path": "."
+        }
+      ]
   - name: hermetic
     value: 'true'
+  - name: hermeto-mode
+    value: 'permissive'
   - name: dockerfile
     value: Containerfile
   pipelineSpec:
@@ -195,6 +227,8 @@ spec:
         value: $(params.output-image).prefetch
       - name: ociArtifactExpiresAfter
         value: $(params.image-expires-after)
+      - name: mode
+        value: $(params.hermeto-mode)
       runAfter:
       - clone-repository
       taskRef:

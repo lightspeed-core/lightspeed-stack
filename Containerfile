@@ -5,9 +5,12 @@ ARG APP_ROOT=/app-root
 ARG LSC_SOURCE_DIR=.
 
 # UV_PYTHON_DOWNLOADS=0 : Disable Python interpreter downloads and use the system interpreter.
+# MPLSETUPCFG=/tmp/mplsetup.cfg : matplotlib build configuration file
 ENV UV_COMPILE_BYTECODE=0 \
     UV_LINK_MODE=copy \
-    UV_PYTHON_DOWNLOADS=0
+    UV_PYTHON_DOWNLOADS=0 \
+    UV_LOCK_TIMEOUT=900 \
+    MPLSETUPCFG=/tmp/mplsetup.cfg
 
 WORKDIR /app-root
 
@@ -15,15 +18,30 @@ USER root
 
 # Install gcc - required by polyleven python package on aarch64
 # (dependency of autoevals, no pre-built binary wheels for linux on aarch64)
-RUN dnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc
+# cargo is required by maturin
+# freetype-devel is required by matplotlib
+RUN dnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc cmake cargo freetype-devel
 
 # Install uv package manager
 RUN pip3.12 install "uv>=0.8.15"
+
+# Generate matplotlib setup.cfg file, use the system freetype library
+RUN echo "[libs]" > ${MPLSETUPCFG} && \
+    echo "system_freetype = True" >> ${MPLSETUPCFG}
 
 # Add explicit files and directories
 # (avoid accidental inclusion of local directories or env files or credentials)
 COPY ${LSC_SOURCE_DIR}/src ./src
 COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR}/README.md ${LSC_SOURCE_DIR}/uv.lock ${LSC_SOURCE_DIR}/requirements.*.txt ./
+
+# Extract generic dependencies from artifacts.lock.yaml and install them
+RUN if [ -f /cachi2/cachi2.env ]; then \
+    tar -xzf /cachi2/output/deps/generic/googletest-release-1.12.1.tar.gz -C /tmp && \
+    cd /tmp/googletest-release-1.12.1 && \
+    cmake . && \
+    make && \
+    make install; \
+    fi
 
 # Bundle additional dependencies for library mode.
 # Source cachi2 environment for hermetic builds if available, otherwise use normal installation
@@ -31,7 +49,12 @@ COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR
 # PIP_FIND_LINKS=/cachi2/output/deps/pip
 # PIP_NO_INDEX=true
 RUN if [ -f /cachi2/cachi2.env ]; then \
-    . /cachi2/cachi2.env && uv venv --seed --no-index --find-links ${PIP_FIND_LINKS} && . .venv/bin/activate && pip install --no-index --find-links ${PIP_FIND_LINKS} -r requirements.$(uname -m).txt -r requirements.torch.txt; \
+    . /cachi2/cachi2.env && \
+    uv venv --no-index --find-links ${PIP_FIND_LINKS} && \
+    echo "Installing requirements.binary.txt and requirements.torch.txt" && \
+    uv pip install --no-index --find-links ${PIP_FIND_LINKS} --no-build --no-deps -r requirements.binary.txt -r requirements.torch.txt && \
+    echo "Installing requirements.$(uname -m).txt" && \
+    uv pip install --no-index --find-links ${PIP_FIND_LINKS} --no-binary :all: --no-deps -r requirements.$(uname -m).txt ; \
     else \
     uv sync --locked --no-dev --group llslibdev; \
     fi

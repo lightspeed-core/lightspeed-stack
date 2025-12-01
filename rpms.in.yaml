@@ -1,4 +1,4 @@
-packages: [gcc, jq, patch]
+packages: [gcc, cmake, jq, patch, cargo, freetype-devel]
 contentOrigin:
   repofiles: ["./ubi.repo"]
 arches: [x86_64, aarch64]
