@@ -703,7 +703,8 @@ class RHIdentityConfiguration(ConfigurationBase):
 class APIKeyTokenConfiguration(ConfigurationBase):
     """API Key Token configuration."""
 
-    api_key: str = Field(
+    # Use SecretStr to prevent accidental exposure in logs or error messages.
+    api_key: SecretStr = Field(
         min_length=1,
         title="API key",
         json_schema_extra={
@@ -752,7 +753,7 @@ class AuthenticationConfiguration(ConfigurationBase):
                 raise ValueError(
                     "API_KEY configuration section must be specified when using API_KEY token authentication"
                 )
-            if self.api_key_config.api_key is None:
+            if self.api_key_config.api_key.get_secret_value() is None:
                 raise ValueError(
                     "api_key parameter must be specified when using API_KEY token authentication"
                 )

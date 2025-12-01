@@ -58,7 +58,7 @@ class APIKeyTokenAuthDependency(
         user_token = extract_user_token(request.headers)
 
         # API Key validation. Use secrets.compare_digest for constant-time comparison
-        if not secrets.compare_digest(user_token, self.config.api_key):
+        if not secrets.compare_digest(user_token, self.config.api_key.get_secret_value()):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid API Key",

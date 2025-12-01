@@ -2,6 +2,7 @@
 
 from fastapi import Request, HTTPException
 import pytest
+from pydantic import SecretStr
 
 from authentication.api_key_token import APIKeyTokenAuthDependency
 from constants import DEFAULT_USER_NAME, DEFAULT_USER_UID
@@ -12,7 +13,7 @@ from models.config import APIKeyTokenConfiguration
 def default_api_key_token_configuration() -> APIKeyTokenConfiguration:
     """Default APIKeyTokenConfiguration for testing."""
     return APIKeyTokenConfiguration(
-        api_key="some-test-api-key"
+        api_key=SecretStr("some-test-api-key")
     )
 
 
@@ -39,7 +40,7 @@ async def test_api_key_with_token_auth_dependency(
     assert user_id == DEFAULT_USER_UID
     assert username == DEFAULT_USER_NAME
     assert skip_userid_check is True
-    assert user_token == default_api_key_token_configuration.api_key
+    assert user_token == default_api_key_token_configuration.api_key.get_secret_value()
 
 
 
@@ -52,7 +53,7 @@ async def test_api_key_with_token_auth_dependency_no_token(
     Test that APIKeyTokenConfiguration raises an HTTPException when no
     Authorization header is present in the request.
 
-    Asserts that the exception has a status code of 400 and the detail message
+    Asserts that the exception has a status code of 401 and the detail message
     "No Authorization header found".
     """
     dependency = APIKeyTokenAuthDependency(default_api_key_token_configuration)
@@ -70,8 +71,8 @@ async def test_api_key_with_token_auth_dependency_no_token(
     with pytest.raises(HTTPException) as exc_info:
         await dependency(request)
 
-    assert exc_info.value.status_code == 400
-    assert exc_info.value.detail == "No Authorization header found"
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["cause"] == "No Authorization header found"
 
 
 async def test_api_key_with_token_auth_dependency_no_bearer(
@@ -93,8 +94,8 @@ async def test_api_key_with_token_auth_dependency_no_bearer(
     with pytest.raises(HTTPException) as exc_info:
         await dependency(request)
 
-    assert exc_info.value.status_code == 400
-    assert exc_info.value.detail == "No token found in Authorization header"
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["cause"] == "No token found in Authorization header"
 
 
 async def test_api_key_with_token_auth_dependency_invalid(
