@@ -3,7 +3,7 @@
 Behavior:
 - Reads a user token from request headers via `authentication.utils.extract_user_token` and verifies
 the value equals to the API Key, given from configuration parameter.
-- Returns a tuple: (DEFAULT_USER_NAME, DEFAULT_USER_NAME, user_token).
+- Returns a tuple: (DEFAULT_USER_NAME, DEFAULT_USER_NAME, skip_userid_check, user_token).
 """
 
 from fastapi import Request, HTTPException, status

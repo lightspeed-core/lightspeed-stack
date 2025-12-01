@@ -56,7 +56,7 @@ def get_auth_dependency(
             )
         case constants.AUTH_MOD_APIKEY_TOKEN:
             return api_key_token.APIKeyTokenAuthDependency(
-                configuration.authentication_configuration.api_key_configuration,
+                config=configuration.authentication_configuration.api_key_configuration,
                 virtual_path=virtual_path,
             )
         case _:

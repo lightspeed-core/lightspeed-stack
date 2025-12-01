@@ -1,4 +1,4 @@
-name: Red Hat Identity Authentication Example
+name: API Key Token Authentication Example
 service:
   host: localhost
   port: 8080
