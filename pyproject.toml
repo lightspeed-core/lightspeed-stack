@@ -122,6 +122,8 @@ dev = [
     "openapi-to-md>=0.1.0b2",
     "pytest-subtests>=0.14.2",
     "bandit>=1.8.6",
+    "pybuild-deps==0.5.0",
+    "pip==24.3.1",
 ]
 llslibdev = [
     # To check llama-stack API provider dependecies:

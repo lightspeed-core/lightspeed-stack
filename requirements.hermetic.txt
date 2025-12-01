@@ -1,2 +1,9 @@
-uv==0.9.16
+# List the build tools required for hermetic builds.
+# Manually edited, hashes are not required.
+uv==0.9.21
 pip==25.3
+patchelf==0.17.2.4
+cmake==4.2.0
+ninja==1.13.0
+puccinialin==0.1.8
+platformdirs==4.5.1
