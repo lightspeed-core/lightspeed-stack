@@ -5,13 +5,15 @@ Behavior:
 the value equals to the API Key, given from configuration parameter.
 - Returns a tuple: (DEFAULT_USER_NAME, DEFAULT_USER_NAME, skip_userid_check, user_token).
 """
+
 import secrets
 
 from fastapi import Request, HTTPException, status
 
 from constants import (
     DEFAULT_USER_NAME,
-    DEFAULT_VIRTUAL_PATH, DEFAULT_USER_UID,
+    DEFAULT_VIRTUAL_PATH,
+    DEFAULT_USER_UID,
 )
 from authentication.interface import AuthInterface
 from authentication.utils import extract_user_token
@@ -29,6 +31,7 @@ class APIKeyTokenAuthDependency(
     Validates bearer tokens against a configured API key and returns
     user authentication information for authorized requests.
     """
+
     def __init__(
         self, config: APIKeyTokenConfiguration, virtual_path: str = DEFAULT_VIRTUAL_PATH
     ) -> None:
@@ -58,7 +61,9 @@ class APIKeyTokenAuthDependency(
         user_token = extract_user_token(request.headers)
 
         # API Key validation. Use secrets.compare_digest for constant-time comparison
-        if not secrets.compare_digest(user_token, self.config.api_key.get_secret_value()):
+        if not secrets.compare_digest(
+            user_token, self.config.api_key.get_secret_value()
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid API Key",

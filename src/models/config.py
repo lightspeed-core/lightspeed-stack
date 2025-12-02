@@ -711,7 +711,8 @@ class APIKeyTokenConfiguration(ConfigurationBase):
             "format": "password",
             "writeOnly": True,
             "examples": ["some-api-key"],
-        })
+        },
+    )
 
 
 class AuthenticationConfiguration(ConfigurationBase):

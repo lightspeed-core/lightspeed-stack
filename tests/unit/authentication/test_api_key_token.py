@@ -12,13 +12,11 @@ from models.config import APIKeyTokenConfiguration
 @pytest.fixture
 def default_api_key_token_configuration() -> APIKeyTokenConfiguration:
     """Default APIKeyTokenConfiguration for testing."""
-    return APIKeyTokenConfiguration(
-        api_key=SecretStr("some-test-api-key")
-    )
+    return APIKeyTokenConfiguration(api_key=SecretStr("some-test-api-key"))
 
 
 async def test_api_key_with_token_auth_dependency(
-        default_api_key_token_configuration: APIKeyTokenConfiguration,
+    default_api_key_token_configuration: APIKeyTokenConfiguration,
 ) -> None:
     """Test the APIKeyTokenAuthDependency class with default user ID."""
     dependency = APIKeyTokenAuthDependency(default_api_key_token_configuration)
@@ -43,9 +41,8 @@ async def test_api_key_with_token_auth_dependency(
     assert user_token == default_api_key_token_configuration.api_key.get_secret_value()
 
 
-
 async def test_api_key_with_token_auth_dependency_no_token(
-        default_api_key_token_configuration: APIKeyTokenConfiguration,
+    default_api_key_token_configuration: APIKeyTokenConfiguration,
 ) -> None:
     """
     Test if checks for Authorization header is in place.
@@ -76,7 +73,7 @@ async def test_api_key_with_token_auth_dependency_no_token(
 
 
 async def test_api_key_with_token_auth_dependency_no_bearer(
-        default_api_key_token_configuration: APIKeyTokenConfiguration,
+    default_api_key_token_configuration: APIKeyTokenConfiguration,
 ) -> None:
     """Test the APIKeyTokenConfiguration class with no token."""
     dependency = APIKeyTokenAuthDependency(default_api_key_token_configuration)
@@ -99,7 +96,7 @@ async def test_api_key_with_token_auth_dependency_no_bearer(
 
 
 async def test_api_key_with_token_auth_dependency_invalid(
-        default_api_key_token_configuration: APIKeyTokenConfiguration,
+    default_api_key_token_configuration: APIKeyTokenConfiguration,
 ) -> None:
     """Test the APIKeyTokenAuthDependency class with default user ID,
     where token's value is not the one from configuration."""

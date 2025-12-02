@@ -13,14 +13,16 @@ from models.config import (
     RHIdentityConfiguration,
     LlamaStackConfiguration,
     ServiceConfiguration,
-    UserDataCollection, APIKeyTokenConfiguration,
+    UserDataCollection,
+    APIKeyTokenConfiguration,
 )
 
 from constants import (
     AUTH_MOD_NOOP,
     AUTH_MOD_K8S,
     AUTH_MOD_JWK_TOKEN,
-    AUTH_MOD_RH_IDENTITY, AUTH_MOD_APIKEY_TOKEN,
+    AUTH_MOD_RH_IDENTITY,
+    AUTH_MOD_APIKEY_TOKEN,
 )
 
 
@@ -370,14 +372,17 @@ def test_authentication_configuration_api_token() -> None:
     assert auth_config.api_key_config is not None
     assert auth_config.api_key_configuration is auth_config.api_key_config
     assert auth_config.api_key_configuration.api_key is not None
-    assert auth_config.api_key_configuration.api_key is auth_config.api_key_config.api_key
+    assert (
+        auth_config.api_key_configuration.api_key is auth_config.api_key_config.api_key
+    )
 
 
 def test_authentication_configuration_api_key_but_insufficient_config() -> None:
     """Test the AuthenticationConfiguration with API Token."""
 
     with pytest.raises(
-        ValidationError, match="API Key configuration section must be specified when using API Key token authentication"
+        ValidationError,
+        match="API Key configuration section must be specified when using API Key token authentication",
     ):
         AuthenticationConfiguration(
             module=AUTH_MOD_APIKEY_TOKEN,
