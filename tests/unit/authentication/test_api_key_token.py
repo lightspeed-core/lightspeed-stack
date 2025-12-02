@@ -115,7 +115,7 @@ async def test_api_key_with_token_auth_dependency_invalid(
         },
     )
 
-    # Assert that an HTTPException is raised when no Authorization header is found
+    # Assert that an HTTPException is raised when the API key is invalid.
     with pytest.raises(HTTPException) as exc_info:
         await dependency(request)
 

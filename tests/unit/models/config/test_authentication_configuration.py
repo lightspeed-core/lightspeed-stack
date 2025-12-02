@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from pydantic import ValidationError
+from pydantic import ValidationError, SecretStr
 
 from models.config import (
     AuthenticationConfiguration,
@@ -13,14 +13,14 @@ from models.config import (
     RHIdentityConfiguration,
     LlamaStackConfiguration,
     ServiceConfiguration,
-    UserDataCollection,
+    UserDataCollection, APIKeyTokenConfiguration,
 )
 
 from constants import (
     AUTH_MOD_NOOP,
     AUTH_MOD_K8S,
     AUTH_MOD_JWK_TOKEN,
-    AUTH_MOD_RH_IDENTITY,
+    AUTH_MOD_RH_IDENTITY, AUTH_MOD_APIKEY_TOKEN,
 )
 
 
@@ -349,3 +349,39 @@ def test_authentication_configuration_in_config_jwktoken() -> None:
     assert cfg.authentication.skip_tls_verification is True
     assert cfg.authentication.k8s_ca_cert_path == Path("tests/configuration/server.crt")
     assert cfg.authentication.k8s_cluster_api is None
+
+
+def test_authentication_configuration_api_token() -> None:
+    """Test the AuthenticationConfiguration with API Token."""
+
+    auth_config = AuthenticationConfiguration(
+        module=AUTH_MOD_APIKEY_TOKEN,
+        skip_tls_verification=False,
+        k8s_ca_cert_path=None,
+        k8s_cluster_api=None,
+        api_key_config=APIKeyTokenConfiguration(api_key=SecretStr("my-api-key")),
+    )
+    assert auth_config is not None
+    assert auth_config.module == AUTH_MOD_APIKEY_TOKEN
+    assert auth_config.skip_tls_verification is False
+    assert auth_config.k8s_ca_cert_path is None
+    assert auth_config.k8s_cluster_api is None
+
+    assert auth_config.api_key_config is not None
+    assert auth_config.api_key_configuration is auth_config.api_key_config
+    assert auth_config.api_key_configuration.api_key is not None
+    assert auth_config.api_key_configuration.api_key is auth_config.api_key_config.api_key
+
+
+def test_authentication_configuration_api_key_but_insufficient_config() -> None:
+    """Test the AuthenticationConfiguration with API Token."""
+
+    with pytest.raises(
+        ValidationError, match="API Key configuration section must be specified when using API Key token authentication"
+    ):
+        AuthenticationConfiguration(
+            module=AUTH_MOD_APIKEY_TOKEN,
+            skip_tls_verification=False,
+            k8s_ca_cert_path=None,
+            k8s_cluster_api=None,
+        )
