@@ -752,7 +752,8 @@ class AuthenticationConfiguration(ConfigurationBase):
         if self.module == constants.AUTH_MOD_APIKEY_TOKEN:
             if self.api_key_config is None:
                 raise ValueError(
-                    "API Key configuration section must be specified when using API Key token authentication"
+                    "API Key configuration section must be specified "
+                    "when using API Key token authentication"
                 )
             if self.api_key_config.api_key.get_secret_value() is None:
                 raise ValueError(

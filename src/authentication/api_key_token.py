@@ -52,10 +52,12 @@ class APIKeyTokenAuthDependency(
             request: The FastAPI request object.
 
         Returns:
-            A tuple containing (user_uid, username, skip_userid_check, user_token) if authentication succeeds.
+            A tuple containing (user_uid, username, skip_userid_check, user_token)
+            if authentication succeeds.
 
         Raises:
-            HTTPException: If the bearer token is missing or doesn't match the configured API key (HTTP 401).
+            HTTPException: If the bearer token is missing or
+            doesn't match the configured API key (HTTP 401).
         """
         # try to extract user token from request
         user_token = extract_user_token(request.headers)

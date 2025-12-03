@@ -1,3 +1,5 @@
+# pylint: disable=redefined-outer-name
+
 """Unit tests for functions defined in authentication/api_key_token.py"""
 
 from fastapi import Request, HTTPException

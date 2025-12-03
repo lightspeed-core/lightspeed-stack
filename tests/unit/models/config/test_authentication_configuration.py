@@ -382,7 +382,8 @@ def test_authentication_configuration_api_key_but_insufficient_config() -> None:
 
     with pytest.raises(
         ValidationError,
-        match="API Key configuration section must be specified when using API Key token authentication",
+        match="API Key configuration section must be "
+        "specified when using API Key token authentication",
     ):
         AuthenticationConfiguration(
             module=AUTH_MOD_APIKEY_TOKEN,
