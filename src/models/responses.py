@@ -11,6 +11,7 @@ from pydantic_core import SchemaError
 from quota.quota_exceed_error import QuotaExceedError
 from models.config import Action, Configuration
 
+SUCCESSFUL_RESPONSE_DESCRIPTION = "Successful response"
 BAD_REQUEST_DESCRIPTION = "Invalid request format"
 UNAUTHORIZED_DESCRIPTION = "Unauthorized"
 FORBIDDEN_DESCRIPTION = "Permission denied"
@@ -52,7 +53,7 @@ class AbstractSuccessfulResponse(BaseModel):
         content = {"application/json": {"example": example_value}}
 
         return {
-            "description": "Successful response",
+            "description": SUCCESSFUL_RESPONSE_DESCRIPTION,
             "model": cls,
             "content": content,
         }
@@ -449,6 +450,74 @@ class QueryResponse(AbstractSuccessfulResponse):
     }
 
 
+class StreamingQueryResponse(AbstractSuccessfulResponse):
+    """Documentation-only model for streaming query responses using Server-Sent Events (SSE)."""
+
+    @classmethod
+    def openapi_response(cls) -> dict[str, Any]:
+        """Generate FastAPI response dict for SSE streaming with examples.
+
+        Note: This is used for OpenAPI documentation only. The actual endpoint
+        returns a StreamingResponse object, not this Pydantic model.
+        """
+        schema = cls.model_json_schema()
+        model_examples = schema.get("examples")
+        if not model_examples:
+            raise SchemaError(f"Examples not found in {cls.__name__}")
+        example_value = model_examples[0]
+        content = {
+            "text/event-stream": {
+                "schema": {"type": "string", "format": "text/event-stream"},
+                "example": example_value,
+            }
+        }
+
+        return {
+            "description": SUCCESSFUL_RESPONSE_DESCRIPTION,
+            "content": content,
+            # Note: No "model" key since we're not actually serializing this model
+        }
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                (
+                    'data: {"event": "start", "data": {'
+                    '"conversation_id": "123e4567-e89b-12d3-a456-426614174000"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 0, "token": "No Violation"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 1, "token": ""}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 2, "token": "Hello"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 3, "token": "!"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 4, "token": " How"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 5, "token": " can"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 6, "token": " I"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 7, "token": " assist"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 8, "token": " you"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 9, "token": " today"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 10, "token": "?"}}\n\n'
+                    'data: {"event": "turn_complete", "data": {'
+                    '"token": "Hello! How can I assist you today?"}}\n\n'
+                    'data: {"event": "end", "data": {'
+                    '"rag_chunks": [], "referenced_documents": [], '
+                    '"truncated": null, "input_tokens": 11, "output_tokens": 19, '
+                    '"available_quotas": {}}}\n\n'
+                ),
+            ]
+        }
+    }
+
+
 class InfoResponse(AbstractSuccessfulResponse):
     """Model representing a response to an info request.
 
@@ -806,7 +875,7 @@ class ConversationDeleteResponse(AbstractSuccessfulResponse):
         content = {"application/json": {"examples": named_examples or None}}
 
         return {
-            "description": "Successful response",
+            "description": SUCCESSFUL_RESPONSE_DESCRIPTION,
             "model": cls,
             "content": content,
         }

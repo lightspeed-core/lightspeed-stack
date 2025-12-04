@@ -40,6 +40,7 @@ from models.responses import (
     NotFoundResponse,
     QuotaExceededResponse,
     ServiceUnavailableResponse,
+    StreamingQueryResponse,
     UnauthorizedResponse,
     UnprocessableEntityResponse,
 )
@@ -58,30 +59,7 @@ router = APIRouter(tags=["streaming_query_v2"])
 auth_dependency = get_auth_dependency()
 
 streaming_query_v2_responses: dict[int | str, dict[str, Any]] = {
-    200: {
-        "description": "Streaming response with Server-Sent Events",
-        "content": {
-            "application/json": {
-                "schema": {
-                    "type": "string",
-                    "example": (
-                        'data: {"event": "start", '
-                        '"data": {"conversation_id": "123e4567-e89b-12d3-a456-426614174000"}}\n\n'
-                        'data: {"event": "token", "data": {"id": 0, "token": "Hello"}}\n\n'
-                        'data: {"event": "end", "data": {"referenced_documents": [], '
-                        '"truncated": null, "input_tokens": 0, "output_tokens": 0}, '
-                        '"available_quotas": {}}\n\n'
-                    ),
-                }
-            },
-            "text/plain": {
-                "schema": {
-                    "type": "string",
-                    "example": "Hello world!\n\n---\n\nReference: https://example.com/doc",
-                }
-            },
-        },
-    },
+    200: StreamingQueryResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(
         examples=["missing header", "missing token"]
     ),
@@ -313,7 +291,11 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
     return response_generator
 
 
-@router.post("/streaming_query", responses=streaming_query_v2_responses)
+@router.post(
+    "/streaming_query",
+    response_class=StreamingResponse,
+    responses=streaming_query_v2_responses,
+)
 @authorize(Action.STREAMING_QUERY)
 async def streaming_query_endpoint_handler_v2(  # pylint: disable=too-many-locals
     request: Request,
@@ -324,16 +306,23 @@ async def streaming_query_endpoint_handler_v2(  # pylint: disable=too-many-local
     """
     Handle request to the /streaming_query endpoint using Responses API.
 
-    This is a wrapper around streaming_query_endpoint_handler_base that provides
-    the Responses API specific retrieve_response and response generator functions.
+    Returns a streaming response using Server-Sent Events (SSE) format with
+    content type text/event-stream.
 
     Returns:
         StreamingResponse: An HTTP streaming response yielding
-        SSE-formatted events for the query lifecycle.
+        SSE-formatted events for the query lifecycle with content type
+        text/event-stream.
 
     Raises:
-        HTTPException: Returns HTTP 500 if unable to connect to the
-        Llama Stack server.
+        HTTPException:
+            - 401: Unauthorized - Missing or invalid credentials
+            - 403: Forbidden - Insufficient permissions or model override not allowed
+            - 404: Not Found - Conversation, model, or provider not found
+            - 422: Unprocessable Entity - Request validation failed
+            - 429: Too Many Requests - Quota limit exceeded
+            - 500: Internal Server Error - Configuration not loaded or other server errors
+            - 503: Service Unavailable - Unable to connect to Llama Stack backend
     """
     return await streaming_query_endpoint_handler_base(
         request=request,

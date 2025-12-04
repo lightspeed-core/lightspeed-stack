@@ -1500,7 +1500,7 @@
                     "streaming_query"
                 ],
                 "summary": "Streaming Query Endpoint Handler",
-                "description": "Handle request to the /streaming_query endpoint using Agent API.\n\nThis is a wrapper around streaming_query_endpoint_handler_base that provides\nthe Agent API specific retrieve_response and response generator functions.\n\nReturns:\n    StreamingResponse: An HTTP streaming response yielding\n    SSE-formatted events for the query lifecycle.\n\nRaises:\n    HTTPException: Returns HTTP 500 if unable to connect to the\n    Llama Stack server.",
+                "description": "Handle request to the /streaming_query endpoint using Agent API.\n\nReturns a streaming response using Server-Sent Events (SSE) format with\ncontent type text/event-stream.\n\nReturns:\n    StreamingResponse: An HTTP streaming response yielding\n    SSE-formatted events for the query lifecycle with content type\n    text/event-stream.\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Too Many Requests - Quota limit exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to Llama Stack backend",
                 "operationId": "streaming_query_endpoint_handler_v1_streaming_query_post",
                 "requestBody": {
                     "content": {
@@ -1514,16 +1514,14 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Streaming response (Server-Sent Events)",
+                        "description": "Successful response",
                         "content": {
-                            "application/json": {
-                                "schema": {}
-                            },
                             "text/event-stream": {
                                 "schema": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "format": "text/event-stream"
                                 },
-                                "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 0, \"output_tokens\": 0}, \"available_quotas\": {}}\n\n"
+                                "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"rag_chunks\": [], \"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 11, \"output_tokens\": 19, \"available_quotas\": {}}}\n\n"
                             }
                         }
                     },
@@ -3719,7 +3717,7 @@
                     "streaming_query_v2"
                 ],
                 "summary": "Streaming Query Endpoint Handler V2",
-                "description": "Handle request to the /streaming_query endpoint using Responses API.\n\nThis is a wrapper around streaming_query_endpoint_handler_base that provides\nthe Responses API specific retrieve_response and response generator functions.\n\nReturns:\n    StreamingResponse: An HTTP streaming response yielding\n    SSE-formatted events for the query lifecycle.\n\nRaises:\n    HTTPException: Returns HTTP 500 if unable to connect to the\n    Llama Stack server.",
+                "description": "Handle request to the /streaming_query endpoint using Responses API.\n\nReturns a streaming response using Server-Sent Events (SSE) format with\ncontent type text/event-stream.\n\nReturns:\n    StreamingResponse: An HTTP streaming response yielding\n    SSE-formatted events for the query lifecycle with content type\n    text/event-stream.\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Too Many Requests - Quota limit exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to Llama Stack backend",
                 "operationId": "streaming_query_endpoint_handler_v2_v2_streaming_query_post",
                 "requestBody": {
                     "content": {
@@ -3733,19 +3731,14 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Streaming response with Server-Sent Events",
+                        "description": "Successful response",
                         "content": {
-                            "application/json": {
+                            "text/event-stream": {
                                 "schema": {
                                     "type": "string",
-                                    "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 0, \"output_tokens\": 0}, \"available_quotas\": {}}\n\n"
-                                }
-                            },
-                            "text/plain": {
-                                "schema": {
-                                    "type": "string",
-                                    "example": "Hello world!\n\n---\n\nReference: https://example.com/doc"
-                                }
+                                    "format": "text/event-stream"
+                                },
+                                "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"rag_chunks\": [], \"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 11, \"output_tokens\": 19, \"available_quotas\": {}}}\n\n"
                             }
                         }
                     },
