@@ -158,6 +158,93 @@ Authentication that checks a given API Key token is present as a Bearer token
 - Same user ID and username handling as `noop`
 - Token is passed through and validated against the API Key given from configuration, for downstream use
 
+### Red Hat Identity (`rh-identity`)
+
+Red Hat Identity header authentication is suitable for deployments behind Red Hat
+Hybrid Cloud Console infrastructure (e.g., console.redhat.com, Insights). This
+method validates the `x-rh-identity` header provided by Red Hat's authentication
+proxy, supporting both User (console users) and System (RHEL systems) identity types.
+
+**Configuration:**
+```yaml
+authentication:
+  module: rh-identity
+  rh_identity_config:
+    required_entitlements: ["rhel"]  # optional, validates service entitlements
+```
+
+The `required_entitlements` field accepts a list of service names. When configured,
+ALL listed entitlements must be present in the identity header. Omit this field
+to disable entitlement validation entirely.
+
+**Identity Types:**
+
+- **User**: Console users authenticated via SSO. Identified by `user_id` and `username`
+  from the `identity.user` object.
+- **System**: Certificate-authenticated RHEL systems. Identified by `cn` (Common Name)
+  from the `identity.system` object, with `account_number` used as username.
+
+**Header Format:**
+
+The `x-rh-identity` header contains a base64-encoded JSON payload. Below are
+examples of the decoded JSON structure for each identity type.
+
+User identity:
+```json
+{
+  "identity": {
+    "account_number": "123456",
+    "org_id": "654321",
+    "type": "User",
+    "user": {
+      "user_id": "abc123",
+      "username": "user@example.com",
+      "is_org_admin": false
+    }
+  },
+  "entitlements": {
+    "rhel": {"is_entitled": true, "is_trial": false}
+  }
+}
+```
+
+System identity:
+```json
+{
+  "identity": {
+    "account_number": "123456",
+    "org_id": "654321",
+    "type": "System",
+    "system": {
+      "cn": "c87dcb4c-8af1-40dd-878e-60c744edddd0"
+    }
+  },
+  "entitlements": {
+    "rhel": {"is_entitled": true, "is_trial": false}
+  }
+}
+```
+
+**Behavior:**
+- Extracts `x-rh-identity` header from request
+- Base64 decodes and parses as JSON
+- Validates structure based on identity type (User or System)
+- Validates service entitlements if `required_entitlements` is configured
+- Extracts user_id (or cn for System) and username (or account_number for System)
+
+**Requirements:**
+- Valid `x-rh-identity` header with base64-encoded JSON
+- Proper JSON structure for the identity type
+- Required service entitlements (if configured)
+
+**Error Responses:**
+
+| Status | Condition |
+|--------|-----------|
+| 401 | Missing `x-rh-identity` header |
+| 400 | Invalid base64 encoding, invalid JSON, or missing required fields |
+| 403 | Missing required service entitlements |
+
 ## Authorization System
 
 Authorization is controlled through role-based access control using two resolver types.
