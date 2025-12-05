@@ -37,6 +37,7 @@ from utils.endpoints import (
     get_system_prompt,
     get_topic_summary_system_prompt,
 )
+from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
 from utils.mcp_headers import mcp_headers_dependency
 from utils.responses import extract_text_from_response_output_item
 from utils.shields import detect_shield_violations, get_available_shields
@@ -261,7 +262,7 @@ async def query_endpoint_handler_v2(
     )
 
 
-async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branches,too-many-arguments
+async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branches,too-many-arguments,too-many-statements
     client: AsyncLlamaStackClient,
     model_id: str,
     query_request: QueryRequest,
@@ -324,6 +325,30 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
                 f"\n\n[Attachment: {attachment.attachment_type}]\n{attachment.content}"
             )
 
+    # Handle conversation ID for Responses API
+    # Create conversation upfront if not provided
+    conversation_id = query_request.conversation_id
+    if conversation_id:
+        # Conversation ID was provided - convert to llama-stack format
+        logger.debug("Using existing conversation ID: %s", conversation_id)
+        llama_stack_conv_id = to_llama_stack_conversation_id(conversation_id)
+    else:
+        # No conversation_id provided - create a new conversation first
+        logger.debug("No conversation_id provided, creating new conversation")
+        try:
+            conversation = await client.conversations.create(metadata={})
+            llama_stack_conv_id = conversation.id
+            # Use the normalized version
+            conversation_id = normalize_conversation_id(llama_stack_conv_id)
+            logger.info(
+                "Created new conversation with ID: %s (normalized: %s)",
+                llama_stack_conv_id,
+                conversation_id,
+            )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to create conversation: %s", e)
+            raise
+
     # Create OpenAI response using responses API
     create_kwargs: dict[str, Any] = {
         "input": input_text,
@@ -332,9 +357,8 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         "tools": cast(Any, toolgroups),
         "stream": False,
         "store": True,
+        "conversation": llama_stack_conv_id,
     }
-    if query_request.conversation_id:
-        create_kwargs["previous_response_id"] = query_request.conversation_id
 
     # Add shields to extra_body if available
     if available_shields:
@@ -344,13 +368,11 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     response = cast(OpenAIResponseObject, response)
 
     logger.debug(
-        "Received response with ID: %s, output items: %d",
+        "Received response with ID: %s, conversation ID: %s, output items: %d",
         response.id,
+        conversation_id,
         len(response.output),
     )
-
-    # Return the response ID - client can use it for chaining if desired
-    conversation_id = response.id
 
     # Process OpenAI response format
     llm_response = ""
@@ -391,7 +413,13 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
             "Response lacks content (conversation_id=%s)",
             conversation_id,
         )
-    return (summary, conversation_id, referenced_documents, token_usage)
+
+    return (
+        summary,
+        normalize_conversation_id(conversation_id),
+        referenced_documents,
+        token_usage,
+    )
 
 
 def parse_referenced_documents_from_responses_api(

@@ -81,6 +81,12 @@ def mock_llama_stack_client_fixture(
     mock_vector_stores_response.data = []
     mock_client.vector_stores.list.return_value = mock_vector_stores_response
 
+    # Mock conversations.create for new conversation creation
+    # Returns ID in llama-stack format (conv_ prefix + 48 hex chars)
+    mock_conversation = mocker.MagicMock()
+    mock_conversation.id = "conv_" + "a" * 48  # conv_aaa...aaa (proper format)
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
+
     # Mock version info
     mock_client.inspect.version.return_value = VersionInfo(version="0.2.22")
 
@@ -159,7 +165,8 @@ async def test_query_v2_endpoint_successful_response(
 
     # Verify response structure
     assert response.conversation_id is not None
-    assert response.conversation_id == "response-123"
+    # Conversation ID is normalized (without conv_ prefix) from conversations.create()
+    assert response.conversation_id == "a" * 48
     assert "Ansible" in response.response
     assert response.response == "This is a test response about Ansible."
     assert response.input_tokens >= 0

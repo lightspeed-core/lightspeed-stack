@@ -3,6 +3,7 @@
 # pylint: disable=too-many-lines
 import json
 from datetime import datetime
+from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
@@ -10,26 +11,12 @@ from fastapi.responses import StreamingResponse
 from litellm.exceptions import RateLimitError
 from llama_stack_client import APIConnectionError
 from llama_stack_client.types import UserMessage  # type: ignore
-from llama_stack_client.types.agents import Turn
-from llama_stack_client.types.agents.agent_turn_response_stream_chunk import (
-    AgentTurnResponseStreamChunk,
-)
-from llama_stack_client.types.agents.turn_response_event import TurnResponseEvent
-from llama_stack_client.types.agents.turn_response_event_payload import (
-    AgentTurnResponseStepCompletePayload,
-    AgentTurnResponseStepProgressPayload,
-    AgentTurnResponseTurnAwaitingInputPayload,
-    AgentTurnResponseTurnCompletePayload,
-    AgentTurnResponseTurnStartPayload,
-)
+from llama_stack_client.types.alpha import ShieldCallStep
+from llama_stack_client.types.alpha.agents import Turn
 from llama_stack_client.types.shared.completion_message import CompletionMessage
-from llama_stack_client.types.shared.content_delta import TextDelta, ToolCallDelta
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 from llama_stack_client.types.shared.safety_violation import SafetyViolation
 from llama_stack_client.types.shared.tool_call import ToolCall
-from llama_stack_client.types.shield_call_step import ShieldCallStep
-from llama_stack_client.types.tool_execution_step import ToolExecutionStep
-from llama_stack_client.types.tool_response import ToolResponse
 from pytest_mock import MockerFixture
 
 from app.endpoints.query import get_rag_toolgroups
@@ -54,6 +41,106 @@ from tests.unit.conftest import AgentFixtures
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 from utils.token_counter import TokenCounter
 from utils.types import TurnSummary
+
+
+# Note: content_delta module doesn't exist in llama-stack-client 0.3.x
+# These are mock classes for backward compatibility with Agent API tests
+# pylint: disable=too-few-public-methods,redefined-builtin
+
+
+class TextDelta:
+    """Mock TextDelta for Agent API tests."""
+
+    def __init__(self, text: str, type: str = "text"):  # noqa: A002
+        self.text = text
+        self.type = type
+
+
+class ToolCallDelta:
+    """Mock ToolCallDelta for Agent API tests."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+# Note: Agent API types don't exist in llama-stack-client 0.3.x
+# These are mock classes for backward compatibility with Agent API tests
+
+
+class TurnResponseEvent:
+    """Mock TurnResponseEvent for Agent API tests."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class AgentTurnResponseStreamChunk:
+    """Mock AgentTurnResponseStreamChunk for Agent API tests."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class AgentTurnResponseStepCompletePayload:
+    """Mock AgentTurnResponseStepCompletePayload for Agent API tests."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class AgentTurnResponseStepProgressPayload:
+    """Mock AgentTurnResponseStepProgressPayload for Agent API tests."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class AgentTurnResponseTurnAwaitingInputPayload:
+    """Mock AgentTurnResponseTurnAwaitingInputPayload for Agent API tests."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class AgentTurnResponseTurnCompletePayload:
+    """Mock AgentTurnResponseTurnCompletePayload for Agent API tests."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class AgentTurnResponseTurnStartPayload:
+    """Mock AgentTurnResponseTurnStartPayload for Agent API tests."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class ToolExecutionStep:
+    """Mock ToolExecutionStep for Agent API tests."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class ToolResponse:
+    """Mock ToolResponse for Agent API tests."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+# pylint: enable=too-few-public-methods,redefined-builtin
 
 MOCK_AUTH = (
     "017adfa4-7cc6-46e4-b663-3653e1ae69df",
@@ -268,7 +355,7 @@ async def _test_streaming_query_endpoint_handler(mocker: MockerFixture) -> None:
                                 ToolCall(
                                     call_id="t1",
                                     tool_name="knowledge_search",
-                                    arguments={},
+                                    arguments="{}",
                                 )
                             ],
                         ),
@@ -993,7 +1080,7 @@ def test_stream_build_event_step_progress_tool_call_tool_call() -> None:
                 delta=ToolCallDelta(
                     parse_status="succeeded",
                     tool_call=ToolCall(
-                        arguments={}, call_id="tc1", tool_name="my-tool"
+                        arguments="{}", call_id="tc1", tool_name="my-tool"
                     ),
                     type="tool_call",
                 ),
@@ -1039,7 +1126,7 @@ def test_stream_build_event_step_complete() -> None:
                     ],
                     tool_calls=[
                         ToolCall(
-                            call_id="t1", tool_name="knowledge_search", arguments={}
+                            call_id="t1", tool_name="knowledge_search", arguments="{}"
                         )
                     ],
                 ),
@@ -1053,7 +1140,7 @@ def test_stream_build_event_step_complete() -> None:
     assert result is not None
     assert "data: " in result
     assert '"event": "tool_call"' in result
-    assert '"token": {"tool_name": "knowledge_search", "arguments": {}}' in result
+    assert '"token": {"tool_name": "knowledge_search", "arguments": "{}"}' in result
 
     result = next(itr)
     assert (
