@@ -124,10 +124,7 @@ providers:
 scoring_fns: []
 server:
   port: 8321
-shields: 
-  - shield_id: llama-guard-shield
-    provider_id: llama-guard
-    provider_shield_id: "gpt-4-turbo"
+shields: []
 tool_groups:
 - provider_id: rag-runtime
   toolgroup_id: builtin::rag
