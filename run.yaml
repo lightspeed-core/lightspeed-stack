@@ -16,7 +16,7 @@ apis:
 benchmarks: []
 container_image: null
 datasets: []
-external_providers_dir: /opt/app-root/src/.llama/providers.d
+external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR}
 inference_store:
   db_path: .llama/distributions/ollama/inference_store.db
   type: sqlite
@@ -115,13 +115,19 @@ providers:
       provider_type: inline::rag-runtime
       config: {}
   vector_io:
-  - provider_id: faiss
-    provider_type: inline::faiss # Or preferred vector DB
-    config:
-      kvstore:
-        db_path: .llama/distributions/ollama/faiss_store.db # Location of vector database
-        namespace: null
-        type: sqlite
+    - provider_id: solr-vector
+      provider_type: remote::solr_vector_io
+      config:
+        solr_url: "http://localhost:8983/solr"
+        collection_name: "portal-rag"
+        vector_field: "chunk_vector"
+        content_field: "chunk"
+        embedding_dimension: 384
+        inference_provider_id: sentence-transformers
+        persistence:
+          type: sqlite
+          db_path: .llama/distributions/ollama/portal_rag_kvstore.db
+          namespace: portal-rag
 scoring_fns: []
 server:
   auth: null
@@ -136,21 +142,22 @@ shields:
     provider_id: llama-guard
     provider_shield_id: "gpt-3.5-turbo"  # Model to use for safety checks
 vector_dbs:
-  - vector_db_id: my_knowledge_base
-    embedding_model: sentence-transformers/all-mpnet-base-v2
-    embedding_dimension: 768
-    provider_id: faiss
+  - vector_db_id: portal-rag
+    provider_id: solr-vector
+    provider_vector_db_id: portal-rag
+    embedding_model: granite-embedding
+    embedding_dimension: 384
 models:
-  - model_id: sentence-transformers/all-mpnet-base-v2 # Example embedding model
-    model_type: embedding
-    provider_id: sentence-transformers
-    provider_model_id: sentence-transformers/all-mpnet-base-v2 # Location of embedding model
-    metadata:
-      embedding_dimension: 768 # Depends on chosen model
   - model_id: gpt-4-turbo
     model_type: llm
     provider_id: openai
     provider_model_id: gpt-4-turbo
+  - model_id: granite-embedding
+    model_type: embedding
+    provider_id: sentence-transformers
+    provider_model_id: ibm-granite/granite-embedding-30m-english
+    metadata:
+      embedding_dimension: 384
 
 tool_groups:
   - toolgroup_id: builtin::rag

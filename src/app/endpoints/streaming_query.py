@@ -4,10 +4,12 @@ import ast
 import json
 import logging
 import re
+import traceback
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Annotated, Any, AsyncGenerator, AsyncIterator, Iterator, cast
+from urllib.parse import urljoin
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -54,6 +56,8 @@ from models.responses import (
     InternalServerErrorResponse,
     NotFoundResponse,
     QuotaExceededResponse,
+    RAGChunk,
+    ReferencedDocument,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
     UnprocessableEntityResponse,
@@ -74,6 +78,10 @@ from utils.types import TurnSummary
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query"])
 
+# When OFFLINE is False, use reference_url for chunk source
+# When OFFLINE is True, use parent_id for chunk source
+# TODO: move this setting to a higher level configuration
+OFFLINE = True
 
 streaming_query_responses: dict[int | str, dict[str, Any]] = {
     200: {
@@ -156,9 +164,10 @@ def stream_start_event(conversation_id: str) -> str:
 
 def stream_end_event(
     metadata_map: dict,
-    summary: TurnSummary,  # pylint: disable=unused-argument
+    summary: TurnSummary,
     token_usage: TokenCounter,
     media_type: str = MEDIA_TYPE_JSON,
+    vector_io_referenced_docs: list[ReferencedDocument] | None = None,
 ) -> str:
     """
     Yield the end of the data stream.
@@ -188,7 +197,7 @@ def stream_end_event(
         return f"\n\n---\n\n{ref_docs_string}" if ref_docs_string else ""
 
     # For JSON media type, we need to create a proper structure
-    # Since we don't have access to summary here, we'll create a basic structure
+    # Combine metadata_map documents with vector_io referenced documents
     referenced_docs_dict = [
         {
             "doc_url": v.get("docs_url"),
@@ -198,11 +207,26 @@ def stream_end_event(
         if "docs_url" in v and "title" in v
     ]
 
+    # Add vector_io referenced documents
+    if vector_io_referenced_docs:
+        for doc in vector_io_referenced_docs:
+            referenced_docs_dict.append(
+                {
+                    "doc_url": doc.doc_url,
+                    "doc_title": doc.doc_title,
+                }
+            )
+
+    # Convert RAG chunks to dict format
+    rag_chunks_dict = []
+    if summary.rag_chunks:
+        rag_chunks_dict = [chunk.model_dump() for chunk in summary.rag_chunks]
+
     return format_stream_data(
         {
             "event": "end",
             "data": {
-                "rag_chunks": [],  # TODO(jboos): implement RAG chunks when summary is available
+                "rag_chunks": rag_chunks_dict,
                 "referenced_documents": referenced_docs_dict,
                 "truncated": None,  # TODO(jboos): implement truncated
                 "input_tokens": token_usage.input_tokens,
@@ -460,35 +484,26 @@ def _handle_shield_event(
     Processes a shield event chunk and yields a formatted SSE token
     event indicating shield validation results.
 
-    Yields a "No Violation" token if no violation is detected, or a
-    violation message if a shield violation occurs. Increments
-    validation error metrics when violations are present.
+    Only yields events when violations are detected. Successful
+    shield validations (no violations) are silently ignored.
     """
     if chunk.event.payload.event_type == "step_complete":
         violation = chunk.event.payload.step_details.violation
-        if not violation:
-            yield stream_event(
-                data={
-                    "id": chunk_id,
-                    "token": "No Violation",
-                },
-                event_type=LLM_TOKEN_EVENT,
-                media_type=media_type,
-            )
-        else:
+        if violation:
             # Metric for LLM validation errors
             metrics.llm_calls_validation_errors_total.inc()
-            violation = (
+            violation_msg = (
                 f"Violation: {violation.user_message} (Metadata: {violation.metadata})"
             )
             yield stream_event(
                 data={
                     "id": chunk_id,
-                    "token": violation,
+                    "token": violation_msg,
                 },
                 event_type=LLM_TOKEN_EVENT,
                 media_type=media_type,
             )
+        # Skip yielding anything for sucessful shield validations
 
 
 # -----------------------------------
@@ -721,7 +736,11 @@ def create_agent_response_generator(  # pylint: disable=too-many-locals
         complete response for transcript storage if enabled.
         """
         chunk_id = 0
-        summary = TurnSummary(llm_response="No response from the model", tool_calls=[])
+        summary = TurnSummary(
+            llm_response="No response from the model",
+            tool_calls=[],
+            rag_chunks=context.vector_io_rag_chunks or [],
+        )
 
         # Determine media type for response formatting
         media_type = context.query_request.media_type or MEDIA_TYPE_JSON
@@ -768,7 +787,13 @@ def create_agent_response_generator(  # pylint: disable=too-many-locals
             else TokenCounter()
         )
 
-        yield stream_end_event(context.metadata_map, summary, token_usage, media_type)
+        yield stream_end_event(
+            context.metadata_map,
+            summary,
+            token_usage,
+            media_type,
+            context.vector_io_referenced_docs,
+        )
 
         # Perform cleanup tasks (database and cache operations)
         await cleanup_after_streaming(
@@ -871,6 +896,12 @@ async def streaming_query_endpoint_handler_base(  # pylint: disable=too-many-loc
             token,
             mcp_headers=mcp_headers,
         )
+
+        # Query vector_io for RAG chunks and referenced documents
+        vector_io_rag_chunks, vector_io_referenced_docs = (
+            await query_vector_io_for_chunks(client, query_request)
+        )
+
         metadata_map: dict[str, dict[str, Any]] = {}
 
         # Create context object for response generator
@@ -885,6 +916,8 @@ async def streaming_query_endpoint_handler_base(  # pylint: disable=too-many-loc
             started_at=started_at,
             client=client,
             metadata_map=metadata_map,
+            vector_io_rag_chunks=vector_io_rag_chunks,
+            vector_io_referenced_docs=vector_io_referenced_docs,
         )
 
         # Create the response generator using the provided factory function
@@ -935,6 +968,118 @@ async def streaming_query_endpoint_handler_base(  # pylint: disable=too-many-loc
             "text/event-stream" if media_type == MEDIA_TYPE_JSON else "text/plain"
         )
         return StreamingResponse(error_generator(), media_type=content_type)
+
+
+async def query_vector_io_for_chunks(
+    client: AsyncLlamaStackClient,
+    query_request: QueryRequest,
+) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
+    """
+    Query vector_io database for RAG chunks and referenced documents.
+
+    Args:
+        client: AsyncLlamaStackClient for vector database access
+        query_request: The user's query request containing query text and Solr filters
+
+    Returns:
+        tuple: A tuple containing RAG chunks and referenced documents
+    """
+    rag_chunks = []
+    doc_ids_from_chunks = []
+
+    try:
+        # Use the first available vector database if any exist
+        vector_dbs = await client.vector_dbs.list()
+        vector_db_ids = [vdb.identifier for vdb in vector_dbs]
+
+        if vector_db_ids:
+            vector_db_id = vector_db_ids[0]  # Use first available vector DB
+
+            params = {"k": 5, "score_threshold": 0.0}
+            logger.info("Initial params: %s", params)
+            logger.info("query_request.solr: %s", query_request.solr)
+            if query_request.solr:
+                # Pass the entire solr dict under the 'solr' key
+                params["solr"] = query_request.solr
+                logger.info("Final params with solr filters: %s", params)
+            else:
+                logger.info("No solr filters provided")
+            logger.info("Final params being sent to vector_io.query: %s", params)
+
+            query_response = await client.vector_io.query(
+                vector_db_id=vector_db_id, query=query_request.query, params=params
+            )
+
+            logger.info("The query response total payload: %s", query_response)
+
+            if query_response.chunks:
+                rag_chunks = [
+                    RAGChunk(
+                        content=str(chunk.content),  # Convert to string if needed
+                        source=getattr(chunk, "doc_id", None)
+                        or getattr(chunk, "source", None),
+                        score=getattr(chunk, "score", None),
+                    )
+                    for chunk in query_response.chunks[:5]  # Limit to top 5 chunks
+                ]
+                logger.info("Retrieved %d chunks from vector DB", len(rag_chunks))
+
+                # Extract doc_ids from chunks for referenced_documents
+                metadata_doc_ids = set()
+                for chunk in query_response.chunks:
+                    metadata = getattr(chunk, "metadata", None)
+                    if metadata and "doc_id" in metadata:
+                        reference_doc = metadata["doc_id"]
+                        logger.info(reference_doc)
+                        if reference_doc and reference_doc not in metadata_doc_ids:
+                            metadata_doc_ids.add(reference_doc)
+                            doc_ids_from_chunks.append(
+                                ReferencedDocument(
+                                    doc_title=metadata.get("title", None),
+                                    doc_url="https://mimir.corp.redhat.com"
+                                    + reference_doc,
+                                )
+                            )
+
+                logger.info(
+                    "Extracted %d unique document IDs from chunks",
+                    len(doc_ids_from_chunks),
+                )
+
+                # Convert retrieved chunks to RAGChunk format with proper source handling
+                final_rag_chunks = []
+                for chunk in query_response.chunks[:5]:
+                    # Extract source from chunk metadata based on OFFLINE flag
+                    source = None
+                    if chunk.metadata:
+                        if OFFLINE:
+                            parent_id = chunk.metadata.get("parent_id")
+                            if parent_id:
+                                source = urljoin(
+                                    "https://mimir.corp.redhat.com", parent_id
+                                )
+                        else:
+                            source = chunk.metadata.get("reference_url")
+
+                    # Get score from chunk if available
+                    score = getattr(chunk, "score", None)
+
+                    final_rag_chunks.append(
+                        RAGChunk(
+                            content=chunk.content,
+                            source=source,
+                            score=score,
+                        )
+                    )
+
+                return final_rag_chunks, doc_ids_from_chunks
+
+    except Exception as e:  # pylint: disable=broad-except
+        logger.warning("Failed to query vector database for chunks: %s", e)
+        logger.debug("Vector DB query error details: %s", traceback.format_exc())
+        # Continue without RAG chunks
+
+    return rag_chunks, doc_ids_from_chunks
 
 
 @router.post("/streaming_query", responses=streaming_query_responses)
@@ -1061,14 +1206,19 @@ async def retrieve_response(
             ),
         }
 
-        vector_db_ids = [
-            vector_db.identifier for vector_db in await client.vector_dbs.list()
-        ]
-        toolgroups = (get_rag_toolgroups(vector_db_ids) or []) + [
-            mcp_server.name for mcp_server in configuration.mcp_servers
-        ]
+        # Include RAG toolgroups when vector DBs are available
+        vector_dbs = await client.vector_dbs.list()
+        vector_db_ids = [vdb.identifier for vdb in vector_dbs]
+        mcp_toolgroups = [mcp_server.name for mcp_server in configuration.mcp_servers]
+
+        toolgroups = None
+        if vector_db_ids:
+            toolgroups = get_rag_toolgroups(vector_db_ids) + mcp_toolgroups
+        elif mcp_toolgroups:
+            toolgroups = mcp_toolgroups
+
         # Convert empty list to None for consistency with existing behavior
-        if not toolgroups:
+        if toolgroups == []:
             toolgroups = None
 
     # TODO: LCORE-881 - Remove if Llama Stack starts to support these mime types
@@ -1081,8 +1231,80 @@ async def retrieve_response(
         for doc in query_request.get_documents()
     ]
 
+    # Get RAG chunks before sending to LLM (reuse logic from query_vector_io_for_chunks)
+    rag_chunks = []
+    try:
+        if vector_db_ids:
+            vector_db_id = vector_db_ids[0]  # Use first available vector DB
+
+            params = {"k": 5, "score_threshold": 0.0}
+            logger.info("Initial params: %s", params)
+            logger.info("query_request.solr: %s", query_request.solr)
+            if query_request.solr:
+                # Pass the entire solr dict under the 'solr' key
+                params["solr"] = query_request.solr
+                logger.info("Final params with solr filters: %s", params)
+            else:
+                logger.info("No solr filters provided")
+            logger.info("Final params being sent to vector_io.query: %s", params)
+
+            query_response = await client.vector_io.query(
+                vector_db_id=vector_db_id, query=query_request.query, params=params
+            )
+
+            logger.info("The query response total payload: %s", query_response)
+
+            if query_response.chunks:
+                # Convert retrieved chunks to RAGChunk format with proper source handling
+                for chunk in query_response.chunks[:5]:
+                    # Extract source from chunk metadata based on OFFLINE flag
+                    source = None
+                    if chunk.metadata:
+                        if OFFLINE:
+                            parent_id = chunk.metadata.get("parent_id")
+                            if parent_id:
+                                source = urljoin(
+                                    "https://mimir.corp.redhat.com", parent_id
+                                )
+                        else:
+                            source = chunk.metadata.get("reference_url")
+
+                    # Get score from chunk if available
+                    score = getattr(chunk, "score", None)
+
+                    rag_chunks.append(
+                        RAGChunk(
+                            content=chunk.content,
+                            source=source,
+                            score=score,
+                        )
+                    )
+
+                logger.info(
+                    "Retrieved %d chunks from vector DB for streaming", len(rag_chunks)
+                )
+
+    except Exception as e:
+        logger.warning("Failed to query vector database for chunks: %s", e)
+        logger.debug("Vector DB query error details: %s", traceback.format_exc())
+
+    # Format RAG context for injection into user message
+    rag_context = ""
+    if rag_chunks:
+        context_chunks = []
+        for chunk in rag_chunks[:5]:  # Limit to top 5 chunks
+            chunk_text = f"Source: {chunk.source or 'Unknown'}\n{chunk.content}"
+            context_chunks.append(chunk_text)
+        rag_context = "\n\nRelevant documentation:\n" + "\n\n".join(context_chunks)
+        logger.info(
+            "Injecting %d RAG chunks into streaming user message", len(context_chunks)
+        )
+
+    # Inject RAG context into user message
+    user_content = query_request.query + rag_context
+
     response = await agent.create_turn(
-        messages=[UserMessage(role="user", content=query_request.query)],
+        messages=[UserMessage(role="user", content=user_content)],
         session_id=session_id,
         documents=documents,
         stream=True,

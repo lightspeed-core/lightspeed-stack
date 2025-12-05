@@ -6,6 +6,7 @@ from typing import Any
 from llama_stack_client import AsyncLlamaStackClient
 
 from models.requests import QueryRequest
+from models.responses import RAGChunk, ReferencedDocument
 
 
 @dataclass
@@ -46,3 +47,5 @@ class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
     # Dependencies & State
     client: AsyncLlamaStackClient
     metadata_map: dict[str, dict[str, Any]]
+    vector_io_rag_chunks: list[RAGChunk] | None = None
+    vector_io_referenced_docs: list[ReferencedDocument] | None = None

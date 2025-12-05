@@ -112,7 +112,7 @@ class TestTransformChatMessage:
         ref_docs = assistant_message["referenced_documents"]
         assert len(ref_docs) == 1
         assert ref_docs[0]["doc_title"] == "Test Doc"
-        assert str(ref_docs[0]["doc_url"]) == "http://example.com/"
+        assert str(ref_docs[0]["doc_url"]) == "http://example.com"
 
     def test_transform_message_with_empty_referenced_documents(self) -> None:
         """Test the transformation when referenced_documents is an empty list."""
