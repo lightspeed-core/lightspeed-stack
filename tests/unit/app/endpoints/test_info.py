@@ -1,15 +1,15 @@
 """Unit tests for the /info REST API endpoint."""
 
 from typing import Any
-import pytest
-from fastapi import Request, HTTPException, status
-from pytest_mock import MockerFixture
 
+import pytest
+from fastapi import HTTPException, Request, status
 from llama_stack_client import APIConnectionError
 from llama_stack_client.types import VersionInfo
+from pytest_mock import MockerFixture
 
-from authentication.interface import AuthTuple
 from app.endpoints.info import info_endpoint_handler
+from authentication.interface import AuthTuple
 from configuration import AppConfig
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
@@ -131,5 +131,6 @@ async def test_info_endpoint_connection_error(mocker: MockerFixture) -> None:
 
     with pytest.raises(HTTPException) as e:
         await info_endpoint_handler(auth=auth, request=request)
-        assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert e.detail["response"] == "Unable to connect to Llama Stack"
+        assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert e.value.detail["response"] == "Service unavailable"  # type: ignore
+        assert "Unable to connect to Llama Stack" in e.value.detail["cause"]  # type: ignore

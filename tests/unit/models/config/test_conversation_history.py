@@ -1,4 +1,4 @@
-"""Unit tests for ConversationCacheConfiguration model."""
+"""Unit tests for ConversationHistoryConfiguration model."""
 
 from pathlib import Path
 
@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 import constants
 from models.config import (
-    ConversationCacheConfiguration,
+    ConversationHistoryConfiguration,
     InMemoryCacheConfig,
     SQLiteDatabaseConfiguration,
     PostgreSQLDatabaseConfiguration,
@@ -18,7 +18,7 @@ from models.config import (
 
 def test_conversation_cache_no_type_specified() -> None:
     """Check the test for type as optional attribute."""
-    c = ConversationCacheConfiguration()
+    c = ConversationHistoryConfiguration()
     assert c.type is None
 
 
@@ -28,7 +28,7 @@ def test_conversation_cache_unknown_type() -> None:
         ValidationError,
         match="Input should be 'noop', 'memory', 'sqlite' or 'postgres'",
     ):
-        _ = ConversationCacheConfiguration(type="foo")
+        _ = ConversationHistoryConfiguration(type="foo")
 
 
 def test_conversation_cache_correct_type_but_not_configured(subtests: SubTests) -> None:
@@ -37,19 +37,19 @@ def test_conversation_cache_correct_type_but_not_configured(subtests: SubTests) 
         with pytest.raises(
             ValidationError, match="Memory cache is selected, but not configured"
         ):
-            _ = ConversationCacheConfiguration(type=constants.CACHE_TYPE_MEMORY)
+            _ = ConversationHistoryConfiguration(type=constants.CACHE_TYPE_MEMORY)
 
     with subtests.test(msg="SQLite cache"):
         with pytest.raises(
             ValidationError, match="SQLite cache is selected, but not configured"
         ):
-            _ = ConversationCacheConfiguration(type=constants.CACHE_TYPE_SQLITE)
+            _ = ConversationHistoryConfiguration(type=constants.CACHE_TYPE_SQLITE)
 
     with subtests.test(msg="SQLite cache"):
         with pytest.raises(
             ValidationError, match="PostgreSQL cache is selected, but not configured"
         ):
-            _ = ConversationCacheConfiguration(type=constants.CACHE_TYPE_POSTGRES)
+            _ = ConversationHistoryConfiguration(type=constants.CACHE_TYPE_POSTGRES)
 
 
 def test_conversation_cache_no_type_but_configured(subtests: SubTests) -> None:
@@ -58,13 +58,13 @@ def test_conversation_cache_no_type_but_configured(subtests: SubTests) -> None:
 
     with subtests.test(msg="Memory cache"):
         with pytest.raises(ValidationError, match=m):
-            _ = ConversationCacheConfiguration(
+            _ = ConversationHistoryConfiguration(
                 memory=InMemoryCacheConfig(max_entries=100)
             )
 
     with subtests.test(msg="SQLite cache"):
         with pytest.raises(ValidationError, match=m):
-            _ = ConversationCacheConfiguration(
+            _ = ConversationHistoryConfiguration(
                 sqlite=SQLiteDatabaseConfiguration(db_path="path")
             )
 
@@ -77,7 +77,7 @@ def test_conversation_cache_no_type_but_configured(subtests: SubTests) -> None:
             ca_cert_path=Path("tests/configuration/server.crt"),
         )
         with pytest.raises(ValidationError, match=m):
-            _ = ConversationCacheConfiguration(postgres=d)
+            _ = ConversationHistoryConfiguration(postgres=d)
 
 
 def test_conversation_cache_multiple_configurations(subtests: SubTests) -> None:
@@ -94,7 +94,7 @@ def test_conversation_cache_multiple_configurations(subtests: SubTests) -> None:
         with pytest.raises(
             ValidationError, match="Only memory cache config must be provided"
         ):
-            _ = ConversationCacheConfiguration(
+            _ = ConversationHistoryConfiguration(
                 type=constants.CACHE_TYPE_MEMORY,
                 memory=InMemoryCacheConfig(max_entries=100),
                 sqlite=SQLiteDatabaseConfiguration(db_path="path"),
@@ -105,7 +105,7 @@ def test_conversation_cache_multiple_configurations(subtests: SubTests) -> None:
         with pytest.raises(
             ValidationError, match="Only SQLite cache config must be provided"
         ):
-            _ = ConversationCacheConfiguration(
+            _ = ConversationHistoryConfiguration(
                 type=constants.CACHE_TYPE_SQLITE,
                 memory=InMemoryCacheConfig(max_entries=100),
                 sqlite=SQLiteDatabaseConfiguration(db_path="path"),
@@ -116,7 +116,7 @@ def test_conversation_cache_multiple_configurations(subtests: SubTests) -> None:
         with pytest.raises(
             ValidationError, match="Only PostgreSQL cache config must be provided"
         ):
-            _ = ConversationCacheConfiguration(
+            _ = ConversationHistoryConfiguration(
                 type=constants.CACHE_TYPE_POSTGRES,
                 memory=InMemoryCacheConfig(max_entries=100),
                 sqlite=SQLiteDatabaseConfiguration(db_path="path"),
@@ -126,7 +126,7 @@ def test_conversation_cache_multiple_configurations(subtests: SubTests) -> None:
 
 def test_conversation_type_memory() -> None:
     """Test the memory conversation cache configuration."""
-    c = ConversationCacheConfiguration(
+    c = ConversationHistoryConfiguration(
         type=constants.CACHE_TYPE_MEMORY, memory=InMemoryCacheConfig(max_entries=100)
     )
     assert c.type == constants.CACHE_TYPE_MEMORY
@@ -139,13 +139,13 @@ def test_conversation_type_memory() -> None:
 def test_conversation_type_memory_wrong_config() -> None:
     """Test the memory conversation cache configuration."""
     with pytest.raises(ValidationError, match="Field required"):
-        _ = ConversationCacheConfiguration(
+        _ = ConversationHistoryConfiguration(
             type=constants.CACHE_TYPE_MEMORY,
             memory=InMemoryCacheConfig(),
         )
 
     with pytest.raises(ValidationError, match="Input should be greater than 0"):
-        _ = ConversationCacheConfiguration(
+        _ = ConversationHistoryConfiguration(
             type=constants.CACHE_TYPE_MEMORY,
             memory=InMemoryCacheConfig(max_entries=-100),
         )
@@ -153,7 +153,7 @@ def test_conversation_type_memory_wrong_config() -> None:
 
 def test_conversation_type_sqlite() -> None:
     """Test the SQLite conversation cache configuration."""
-    c = ConversationCacheConfiguration(
+    c = ConversationHistoryConfiguration(
         type=constants.CACHE_TYPE_SQLITE,
         sqlite=SQLiteDatabaseConfiguration(db_path="path"),
     )
@@ -167,7 +167,7 @@ def test_conversation_type_sqlite() -> None:
 def test_conversation_type_sqlite_wrong_config() -> None:
     """Test the SQLite conversation cache configuration."""
     with pytest.raises(ValidationError, match="Field required"):
-        _ = ConversationCacheConfiguration(
+        _ = ConversationHistoryConfiguration(
             type=constants.CACHE_TYPE_SQLITE,
             memory=SQLiteDatabaseConfiguration(),
         )
@@ -183,7 +183,7 @@ def test_conversation_type_postgres() -> None:
         ca_cert_path=Path("tests/configuration/server.crt"),
     )
 
-    c = ConversationCacheConfiguration(
+    c = ConversationHistoryConfiguration(
         type=constants.CACHE_TYPE_POSTGRES,
         postgres=d,
     )
@@ -200,7 +200,7 @@ def test_conversation_type_postgres() -> None:
 def test_conversation_type_postgres_wrong_config() -> None:
     """Test the SQLite conversation cache configuration."""
     with pytest.raises(ValidationError, match="Field required"):
-        _ = ConversationCacheConfiguration(
+        _ = ConversationHistoryConfiguration(
             type=constants.CACHE_TYPE_POSTGRES,
             postgres=PostgreSQLDatabaseConfiguration(),
         )

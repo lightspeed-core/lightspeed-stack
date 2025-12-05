@@ -3,20 +3,19 @@
 # pylint: disable=too-many-arguments,too-many-positional-arguments,too-few-public-methods,protected-access
 
 import os
+from typing import Optional, cast
 
-from typing import Optional
 import pytest
-from pytest_mock import MockerFixture
-
 from fastapi import HTTPException, Request
 from kubernetes.client import AuthenticationV1Api, AuthorizationV1Api
 from kubernetes.client.rest import ApiException
+from pytest_mock import MockerFixture
 
 from authentication.k8s import (
-    K8sClientSingleton,
-    K8SAuthDependency,
-    ClusterIDUnavailableError,
     CLUSTER_ID_LOCAL,
+    ClusterIDUnavailableError,
+    K8SAuthDependency,
+    K8sClientSingleton,
 )
 
 
@@ -153,7 +152,10 @@ async def test_auth_dependency_invalid_token(mocker: MockerFixture) -> None:
         await dependency(request)
 
     # Check if the correct status code is returned for unauthorized access
-    assert exc_info.value.status_code == 403
+    assert exc_info.value.status_code == 401
+    detail = cast(dict[str, str], exc_info.value.detail)
+    assert detail["response"] == ("Missing or invalid credentials provided by client")
+    assert detail["cause"] == "Invalid or expired Kubernetes token"
 
 
 async def test_cluster_id_is_used_for_kube_admin(mocker: MockerFixture) -> None:

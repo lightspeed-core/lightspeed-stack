@@ -3,13 +3,12 @@
 """Unit tests for functions defined in authentication/jwk_token.py"""
 
 import time
-
-from typing import Any, Generator
-from pytest_mock import MockerFixture
+from typing import Any, Generator, cast
 
 import pytest
 from fastapi import HTTPException, Request
 from pydantic import AnyHttpUrl
+from pytest_mock import MockerFixture
 from authlib.jose import JsonWebKey, JsonWebToken
 
 from authentication.jwk_token import JwkTokenAuthDependency, _jwk_cache
@@ -302,8 +301,10 @@ async def test_no_bearer(
     with pytest.raises(HTTPException) as exc_info:
         await dependency(not_bearer_token_request)
 
-    assert exc_info.value.status_code == 400
-    assert exc_info.value.detail == "No token found in Authorization header"
+    assert exc_info.value.status_code == 401
+    detail = cast(dict[str, str], exc_info.value.detail)
+    assert detail["response"] == ("Missing or invalid credentials provided by client")
+    assert detail["cause"] == "No token found in Authorization header"
 
 
 @pytest.fixture

@@ -1,22 +1,26 @@
+# pylint: disable=protected-access
+
 """Unit tests for the /feedback REST API endpoint."""
 
 from typing import Any
-from fastapi import HTTPException, status
+
 import pytest
+from fastapi import HTTPException, status
 from pytest_mock import MockerFixture
 
-from configuration import configuration
 from app.endpoints.feedback import (
-    is_feedback_enabled,
     assert_feedback_enabled,
     feedback_endpoint_handler,
+    feedback_status,
+    is_feedback_enabled,
     store_feedback,
     update_feedback_status,
 )
 from authentication.interface import AuthTuple
-from models.requests import FeedbackStatusUpdateRequest, FeedbackRequest
+from configuration import AppConfig, configuration
+from models.config import UserDataCollection
+from models.requests import FeedbackRequest, FeedbackStatusUpdateRequest
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
-
 
 MOCK_AUTH = ("mock_user_id", "mock_username", False, "mock_token")
 VALID_BASE = {
@@ -26,15 +30,25 @@ VALID_BASE = {
 }
 
 
-def test_is_feedback_enabled() -> None:
+def test_is_feedback_enabled(mocker: MockerFixture) -> None:
     """Test that is_feedback_enabled returns True when feedback is not disabled."""
-    configuration.user_data_collection_configuration.feedback_enabled = True
+    mock_config = AppConfig()
+    mock_config._configuration = mocker.Mock()
+    mock_config._configuration.user_data_collection = UserDataCollection(
+        feedback_enabled=True, feedback_storage="/tmp"
+    )
+    mocker.patch("app.endpoints.feedback.configuration", mock_config)
     assert is_feedback_enabled() is True, "Feedback should be enabled"
 
 
-def test_is_feedback_disabled() -> None:
+def test_is_feedback_disabled(mocker: MockerFixture) -> None:
     """Test that is_feedback_enabled returns False when feedback is disabled."""
-    configuration.user_data_collection_configuration.feedback_enabled = False
+    mock_config = AppConfig()
+    mock_config._configuration = mocker.Mock()
+    mock_config._configuration.user_data_collection = UserDataCollection(
+        feedback_enabled=False, feedback_storage=None
+    )
+    mocker.patch("app.endpoints.feedback.configuration", mock_config)
     assert is_feedback_enabled() is False, "Feedback should be disabled"
 
 
@@ -48,7 +62,8 @@ async def test_assert_feedback_enabled_disabled(mocker: MockerFixture) -> None:
         await assert_feedback_enabled(mocker.Mock())
 
     assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
-    assert exc_info.value.detail == "Forbidden: Feedback is disabled"
+    assert exc_info.value.detail["response"] == "Storing feedback is disabled"  # type: ignore
+    assert exc_info.value.detail["cause"] == "Storing feedback is disabled."  # type: ignore
 
 
 async def test_assert_feedback_enabled(mocker: MockerFixture) -> None:
@@ -107,35 +122,36 @@ async def test_feedback_endpoint_handler(
 
 @pytest.mark.asyncio
 async def test_feedback_endpoint_handler_error(mocker: MockerFixture) -> None:
-    """Test that feedback_endpoint_handler raises an HTTPException on error."""
+    """Test feedback_endpoint_handler raises HTTPException when store_feedback raises OSError."""
     mock_authorization_resolvers(mocker)
-
-    # Mock the dependencies
     mocker.patch("app.endpoints.feedback.assert_feedback_enabled", return_value=None)
+    mocker.patch("app.endpoints.feedback.check_configuration_loaded", return_value=None)
+    # Mock Path.mkdir to raise OSError so the try block in store_feedback catches it
     mocker.patch(
-        "app.endpoints.feedback.store_feedback",
-        side_effect=Exception("Error storing feedback"),
+        "app.endpoints.feedback.Path.mkdir", side_effect=OSError("Permission denied")
     )
-
-    # Mock the feedback request
-    feedback_request = mocker.Mock()
+    feedback_request = FeedbackRequest(
+        conversation_id="123e4567-e89b-12d3-a456-426614174000",
+        user_question="test question",
+        llm_response="test response",
+        user_feedback="test feedback",
+        sentiment=1,
+    )
 
     # Authorization tuple required by URL endpoint handler
     auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
 
-    # Call the endpoint handler and assert it raises an exception
     with pytest.raises(HTTPException) as exc_info:
         await feedback_endpoint_handler(
             feedback_request=feedback_request,
             _ensure_feedback_enabled=assert_feedback_enabled,
             auth=auth,
         )
-
     assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-
     detail = exc_info.value.detail
     assert isinstance(detail, dict)
-    assert detail["response"] == "Error storing user feedback"
+    assert detail["response"] == "Failed to store feedback"  # type: ignore
+    assert "Failed to store feedback at directory" in detail["cause"]  # type: ignore
 
 
 @pytest.mark.parametrize(
@@ -219,8 +235,13 @@ def test_store_feedback_on_io_error(
 
     user_id = "test_user_id"
 
-    with pytest.raises(OSError, match="EACCES"):
+    with pytest.raises(HTTPException) as exc_info:
         store_feedback(user_id, feedback_request_data)
+    assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    detail = exc_info.value.detail
+    assert isinstance(detail, dict)
+    assert detail["response"] == "Failed to store feedback"  # type: ignore
+    assert "Failed to store feedback at directory" in detail["cause"]  # type: ignore
 
 
 async def test_update_feedback_status_different(mocker: MockerFixture) -> None:
@@ -286,3 +307,33 @@ async def test_feedback_endpoint_valid_requests(
         _ensure_feedback_enabled=None,
     )
     assert response.response == "feedback received"
+
+
+def test_feedback_status_enabled(mocker: MockerFixture) -> None:
+    """Test that feedback_status returns enabled status when feedback is enabled."""
+    mock_config = AppConfig()
+    mock_config._configuration = mocker.Mock()
+    mock_config._configuration.user_data_collection = UserDataCollection(
+        feedback_enabled=True, feedback_storage="/tmp"
+    )
+    mocker.patch("app.endpoints.feedback.configuration", mock_config)
+
+    response = feedback_status()
+
+    assert response.functionality == "feedback"
+    assert response.status == {"enabled": True}
+
+
+def test_feedback_status_disabled(mocker: MockerFixture) -> None:
+    """Test that feedback_status returns disabled status when feedback is disabled."""
+    mock_config = AppConfig()
+    mock_config._configuration = mocker.Mock()
+    mock_config._configuration.user_data_collection = UserDataCollection(
+        feedback_enabled=False, feedback_storage=None
+    )
+    mocker.patch("app.endpoints.feedback.configuration", mock_config)
+
+    response = feedback_status()
+
+    assert response.functionality == "feedback"
+    assert response.status == {"enabled": False}

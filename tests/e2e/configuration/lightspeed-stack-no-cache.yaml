@@ -21,5 +21,8 @@ user_data_collection:
   transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
 
+# NO conversation_cache configured - for testing error handling
+
 authentication:
   module: "noop-with-token"
+

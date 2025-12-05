@@ -3,7 +3,7 @@
 import logging
 from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.params import Depends
 from llama_stack_client import APIConnectionError
 
@@ -13,7 +13,13 @@ from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from models.config import Action
-from models.responses import ShieldsResponse
+from models.responses import (
+    ForbiddenResponse,
+    InternalServerErrorResponse,
+    ServiceUnavailableResponse,
+    ShieldsResponse,
+    UnauthorizedResponse,
+)
 from utils.endpoints import check_configuration_loaded
 
 logger = logging.getLogger(__name__)
@@ -21,18 +27,13 @@ router = APIRouter(tags=["shields"])
 
 
 shields_responses: dict[int | str, dict[str, Any]] = {
-    200: {
-        "shields": [
-            {
-                "identifier": "lightspeed_question_validity-shield",
-                "provider_resource_id": "lightspeed_question_validity-shield",
-                "provider_id": "lightspeed_question_validity",
-                "type": "shield",
-                "params": {},
-            }
-        ]
-    },
-    500: {"description": "Connection to Llama Stack is broken"},
+    200: ShieldsResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
+    503: ServiceUnavailableResponse.openapi_response(),
 }
 
 
@@ -77,20 +78,5 @@ async def shields_endpoint_handler(
     # connection to Llama Stack server
     except APIConnectionError as e:
         logger.error("Unable to connect to Llama Stack: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "response": "Unable to connect to Llama Stack",
-                "cause": str(e),
-            },
-        ) from e
-    # any other exception that can occur during shield listing
-    except Exception as e:
-        logger.error("Unable to retrieve list of shields: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "response": "Unable to retrieve list of shields",
-                "cause": str(e),
-            },
-        ) from e
+        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
+        raise HTTPException(**response.model_dump()) from e

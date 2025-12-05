@@ -11,10 +11,15 @@ Feature: Authorized endpoint API tests for the noop-with-token authentication mo
      """
      {"placeholder":"abc"}
      """
-     Then The status code of the response is 400
+     Then The status code of the response is 401
       And The body of the response is the following
           """
-            {"detail": "No Authorization header found"}
+          {
+            "detail": {
+                        "response": "Missing or invalid credentials provided by client",
+                        "cause": "No Authorization header found"
+                    }
+          }
           """
 
   Scenario: Check if the authorized endpoint works when user_id is not provided 
@@ -50,18 +55,28 @@ Feature: Authorized endpoint API tests for the noop-with-token authentication mo
    Scenario: Check if the authorized endpoint works with proper user_id but bearer token is not present
     Given The system is in default state
      When I access endpoint "authorized" using HTTP POST method with user_id "test_user"
-     Then The status code of the response is 400
+     Then The status code of the response is 401
       And The body of the response is the following
           """
-            {"detail": "No Authorization header found"}
+            {
+              "detail": {
+                "response": "Missing or invalid credentials provided by client",
+                "cause": "No Authorization header found"
+              }
+            }
           """
 
   Scenario: Check if the authorized endpoint works when auth token is malformed
     Given The system is in default state
     And I set the Authorization header to BearereyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
      When I access endpoint "authorized" using HTTP POST method with user_id "test_user"
-     Then The status code of the response is 400
+     Then The status code of the response is 401
       And The body of the response is the following
           """
-            {"detail": "No token found in Authorization header"}
+            {
+              "detail": {
+                "response": "Missing or invalid credentials provided by client",
+                "cause": "No token found in Authorization header"
+              }
+            }
           """

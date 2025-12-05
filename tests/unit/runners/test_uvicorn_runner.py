@@ -1,4 +1,4 @@
-"""Unit tests for runners."""
+"""Unit tests for the Uvicorn runner implementation."""
 
 from pathlib import Path
 from pytest_mock import MockerFixture

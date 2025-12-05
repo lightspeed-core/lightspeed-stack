@@ -12,6 +12,7 @@ services:
       - ./run.yaml:/opt/app-root/run.yaml:Z
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - E2E_OPENAI_MODEL=${E2E_OPENAI_MODEL}
       - AZURE_API_KEY=${AZURE_API_KEY}
       - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
       - TAVILY_SEARCH_API_KEY=${TAVILY_SEARCH_API_KEY:-}

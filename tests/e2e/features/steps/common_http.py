@@ -1,4 +1,4 @@
-"""Common steps for HTTP related operations."""
+"""Common steps for HTTP-related operations."""
 
 import json
 
@@ -120,9 +120,16 @@ def request_endpoint(context: Context, endpoint: str, hostname: str, port: int) 
 def check_status_code(context: Context, status: int) -> None:
     """Check the HTTP status code for latest response from tested service."""
     assert context.response is not None, "Request needs to be performed first"
-    assert (
-        context.response.status_code == status
-    ), f"Status code is {context.response.status_code}"
+    if context.response.status_code != status:
+        # Include response body in error message for debugging
+        try:
+            error_body = context.response.json()
+        except Exception:
+            error_body = context.response.text
+        assert False, (
+            f"Status code is {context.response.status_code}, expected {status}. "
+            f"Response: {error_body}"
+        )
 
 
 @then('Content type of response should be set to "{content_type}"')

@@ -106,9 +106,9 @@ async def test_info_endpoint_handles_connection_error(
         await info_endpoint_handler(auth=test_auth, request=test_request)
 
     # Verify error details
-    assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     assert isinstance(exc_info.value.detail, dict)
-    assert exc_info.value.detail["response"] == "Unable to connect to Llama Stack"
+    assert exc_info.value.detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
     assert "cause" in exc_info.value.detail
 
 

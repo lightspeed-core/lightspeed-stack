@@ -1,0 +1,23 @@
+name: Red Hat Identity Authentication Example
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: true
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: false
+  url: http://localhost:8321
+authentication:
+  module: "rh-identity"
+  rh_identity_config:
+    # Option 1: Single entitlement validation
+    required_entitlements: ["rhel"]
+
+    # Option 2: Multiple entitlements validation - ALL required (uncomment to use, comment out option 1)
+    # required_entitlements:
+    #   - "rhel"
+    #   - "ansible"
+
+    # Option 3: No validation - omit required_entitlements field (comment out both options above)

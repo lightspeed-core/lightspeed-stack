@@ -51,6 +51,7 @@ dependencies = [
     # Used by authorization resolvers
     "jsonpath-ng>=1.6.1",
     "psycopg2-binary>=2.9.10",
+    "litellm>=1.75.5.post1",
 ]
 
 
@@ -86,8 +87,11 @@ Issues = "https://github.com/lightspeed-core/lightspeed-stack/issues"
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
+
 [tool.uv.sources]
-torch = [{ index = "pytorch-cpu" }]
+torch = [
+    { index = "pytorch-cpu", group = "llslibdev" },
+]
 
 [dependency-groups]
 dev = [
@@ -129,8 +133,6 @@ llslibdev = [
     "langdetect>=1.0.9",
     "emoji>=2.1.0",
     "nltk>=3.8.1",
-    # API inference: remote::gemini
-    "litellm>=1.75.5.post1",
     # API inference: inline::sentence-transformers
     "sentence-transformers>=5.0.0",
     # API vector_io: inline::faiss

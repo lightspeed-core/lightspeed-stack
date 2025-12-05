@@ -108,8 +108,11 @@ Feature: feedback endpoint API tests
      And The body of the response is the following
         """
         {
-            "detail": "Forbidden: User is not authorized to access this resource"
-        }   
+            "detail": {
+                "response": "Storing feedback is disabled",
+                "cause": "Storing feedback is disabled."
+            }
+        }  
         """
 
   Scenario: Check if feedback endpoint fails when required fields are not specified
@@ -256,13 +259,13 @@ Feature: feedback endpoint API tests
             "user_question": "Sample Question"
         }
         """
-     Then The status code of the response is 400
+     Then The status code of the response is 401
      And The body of the response is the following
         """
         {
             "detail": {
-                        "cause": "Missing or invalid credentials provided by client",
-                        "response": "Unauthorized"
+                        "response": "Missing or invalid credentials provided by client",
+                        "cause": "No Authorization header found"
             }
         }
         """
@@ -271,13 +274,13 @@ Feature: feedback endpoint API tests
     Given The system is in default state
     And I remove the auth header
      When The feedback is enabled
-     Then The status code of the response is 400
+     Then The status code of the response is 401
      And The body of the response is the following
         """
         {
             "detail": {
-                        "cause": "Missing or invalid credentials provided by client",
-                        "response": "Unauthorized"
+                        "response": "Missing or invalid credentials provided by client",
+                        "cause": "No Authorization header found"
             }
         }
         """
@@ -302,8 +305,8 @@ Feature: feedback endpoint API tests
         """
         {
             "detail": {
-                        "response": "Error storing user feedback", 
-                        "cause": "[Errno 13] Permission denied: '/invalid'"
+                        "response": "Failed to store feedback",
+                        "cause": "Failed to store feedback at directory: /invalid"
                     }
         }
         """

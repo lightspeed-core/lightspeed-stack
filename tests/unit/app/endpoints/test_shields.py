@@ -1,16 +1,16 @@
 """Unit tests for the /shields REST API endpoint."""
 
 from typing import Any
+
 import pytest
-from pytest_mock import MockerFixture
 from fastapi import HTTPException, Request, status
-
 from llama_stack_client import APIConnectionError
-
-from authentication.interface import AuthTuple
+from pytest_mock import MockerFixture
 
 from app.endpoints.shields import shields_endpoint_handler
+from authentication.interface import AuthTuple
 from configuration import AppConfig
+from models.responses import ShieldsResponse
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
@@ -22,11 +22,9 @@ async def test_shields_endpoint_handler_configuration_not_loaded(
     mock_authorization_resolvers(mocker)
 
     # simulate state when no configuration is loaded
-    mocker.patch(
-        "app.endpoints.shields.configuration",
-        return_value=mocker.Mock(),
-    )
-    mocker.patch("app.endpoints.shields.configuration", None)
+    mock_config = AppConfig()
+    mock_config._configuration = None  # pylint: disable=protected-access
+    mocker.patch("app.endpoints.shields.configuration", mock_config)
 
     request = Request(
         scope={
@@ -41,7 +39,7 @@ async def test_shields_endpoint_handler_configuration_not_loaded(
     with pytest.raises(HTTPException) as e:
         await shields_endpoint_handler(request=request, auth=auth)
         assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert e.detail["response"] == "Configuration is not loaded"
+        assert e.value.detail["response"] == "Configuration is not loaded"  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -78,10 +76,13 @@ async def test_shields_endpoint_handler_improper_llama_stack_configuration(
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
-    mocker.patch(
-        "app.endpoints.shields.configuration",
-        return_value=None,
+    mocker.patch("app.endpoints.shields.configuration", cfg)
+    # Mock client to avoid initialization
+    mock_client_holder = mocker.patch(
+        "app.endpoints.shields.AsyncLlamaStackClientHolder"
     )
+    mock_client = mocker.AsyncMock()
+    mock_client_holder.return_value.get_client.return_value = mock_client
 
     request = Request(
         scope={
@@ -93,10 +94,12 @@ async def test_shields_endpoint_handler_improper_llama_stack_configuration(
     # Authorization tuple required by URL endpoint handler
     auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
 
-    with pytest.raises(HTTPException) as e:
-        await shields_endpoint_handler(request=request, auth=auth)
-        assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert e.detail["response"] == "Llama stack is not configured"
+    # Mock shields.list to return empty list
+    mock_client.shields.list.return_value = []
+
+    response = await shields_endpoint_handler(request=request, auth=auth)
+    assert isinstance(response, ShieldsResponse)
+    assert response.shields == []
 
 
 @pytest.mark.asyncio
@@ -132,6 +135,15 @@ async def test_shields_endpoint_handler_configuration_loaded(
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
+    mocker.patch("app.endpoints.shields.configuration", cfg)
+    # Mock client to raise APIConnectionError
+    mock_client_holder = mocker.patch(
+        "app.endpoints.shields.AsyncLlamaStackClientHolder"
+    )
+    mock_client = mocker.AsyncMock()
+    mock_client.shields.list.side_effect = APIConnectionError(request=None)  # type: ignore
+    mock_client_holder.return_value.get_client.return_value = mock_client
+
     request = Request(
         scope={
             "type": "http",
@@ -144,8 +156,8 @@ async def test_shields_endpoint_handler_configuration_loaded(
 
     with pytest.raises(HTTPException) as e:
         await shields_endpoint_handler(request=request, auth=auth)
-        assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert e.detail["response"] == "Unable to connect to Llama Stack"
+    assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert e.value.detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -258,8 +270,9 @@ async def test_shields_endpoint_llama_stack_connection_error(
 
     with pytest.raises(HTTPException) as e:
         await shields_endpoint_handler(request=request, auth=auth)
-        assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert e.detail["response"] == "Unable to connect to Llama Stack"
+        assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert e.value.detail["response"] == "Service unavailable"  # type: ignore
+        assert "Unable to connect to Llama Stack" in e.value.detail["cause"]  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -337,63 +350,3 @@ async def test_shields_endpoint_handler_success_with_shields_data(
     assert len(response.shields) == 2
     assert response.shields[0]["identifier"] == "lightspeed_question_validity-shield"
     assert response.shields[1]["identifier"] == "content_filter-shield"
-
-
-@pytest.mark.asyncio
-async def test_shields_endpoint_handler_general_exception(
-    mocker: MockerFixture,
-) -> None:
-    """Test the shields endpoint handler when a general exception occurs."""
-    mock_authorization_resolvers(mocker)
-
-    # configuration for tests
-    config_dict: dict[str, Any] = {
-        "name": "foo",
-        "service": {
-            "host": "localhost",
-            "port": 8080,
-            "auth_enabled": False,
-            "workers": 1,
-            "color_log": True,
-            "access_log": True,
-        },
-        "llama_stack": {
-            "api_key": "xyzzy",
-            "url": "http://x.y.com:1234",
-            "use_as_library_client": False,
-        },
-        "user_data_collection": {
-            "feedback_enabled": False,
-        },
-        "customization": None,
-        "authorization": {"access_rules": []},
-        "authentication": {"module": "noop"},
-    }
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
-
-    # Mock the LlamaStack client to raise a general exception
-    mock_client = mocker.AsyncMock()
-    mock_client.shields.list.side_effect = Exception("General error")
-    mock_client_holder = mocker.patch(
-        "app.endpoints.shields.AsyncLlamaStackClientHolder"
-    )
-    mock_client_holder.return_value.get_client.return_value = mock_client
-    mock_config = mocker.Mock()
-    mocker.patch("app.endpoints.shields.configuration", mock_config)
-
-    request = Request(
-        scope={
-            "type": "http",
-            "headers": [(b"authorization", b"Bearer invalid-token")],
-        }
-    )
-
-    # Authorization tuple required by URL endpoint handler
-    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
-
-    with pytest.raises(HTTPException) as e:
-        await shields_endpoint_handler(request=request, auth=auth)
-        assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert e.detail["response"] == "Unable to retrieve list of shields"
-        assert e.detail["cause"] == "General error"

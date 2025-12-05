@@ -1,0 +1,17 @@
+name: RH Identity Test Configuration
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: true
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: false
+  url: http://localhost:8321
+user_data_collection:
+  feedback_enabled: false
+authentication:
+  module: "rh-identity"
+  rh_identity_config:
+    required_entitlements: ["rhel"]

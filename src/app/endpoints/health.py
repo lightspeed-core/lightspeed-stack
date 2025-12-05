@@ -10,6 +10,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Response, status
 from llama_stack.providers.datatypes import HealthStatus
+from llama_stack_client import APIConnectionError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -17,13 +18,34 @@ from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from models.config import Action
 from models.responses import (
+    ForbiddenResponse,
     LivenessResponse,
     ProviderHealthStatus,
     ReadinessResponse,
+    ServiceUnavailableResponse,
+    UnauthorizedResponse,
 )
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["health"])
+
+
+get_readiness_responses: dict[int | str, dict[str, Any]] = {
+    200: ReadinessResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    503: ServiceUnavailableResponse.openapi_response(),
+}
+
+get_liveness_responses: dict[int | str, dict[str, Any]] = {
+    200: LivenessResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+}
 
 
 async def get_providers_health_statuses() -> list[ProviderHealthStatus]:
@@ -51,8 +73,7 @@ async def get_providers_health_statuses() -> list[ProviderHealthStatus]:
         ]
         return health_results
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        # eg. no providers defined
+    except APIConnectionError as e:
         logger.error("Failed to check providers health: %s", e)
         return [
             ProviderHealthStatus(
@@ -61,18 +82,6 @@ async def get_providers_health_statuses() -> list[ProviderHealthStatus]:
                 message=f"Failed to initialize health check: {str(e)}",
             )
         ]
-
-
-get_readiness_responses: dict[int | str, dict[str, Any]] = {
-    200: {
-        "description": "Service is ready",
-        "model": ReadinessResponse,
-    },
-    503: {
-        "description": "Service is not ready",
-        "model": ReadinessResponse,
-    },
-}
 
 
 @router.get("/readiness", responses=get_readiness_responses)
@@ -110,15 +119,6 @@ async def readiness_probe_get_method(
         reason = "All providers are healthy"
 
     return ReadinessResponse(ready=ready, reason=reason, providers=unhealthy_providers)
-
-
-get_liveness_responses: dict[int | str, dict[str, Any]] = {
-    200: {
-        "description": "Service is alive",
-        "model": LivenessResponse,
-    },
-    # HTTP_503_SERVICE_UNAVAILABLE will never be returned when unreachable
-}
 
 
 @router.get("/liveness", responses=get_liveness_responses)

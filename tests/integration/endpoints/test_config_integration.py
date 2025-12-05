@@ -1,13 +1,11 @@
 """Integration tests for the /config endpoint."""
 
 import pytest
+from fastapi import HTTPException, Request, status
 
-from fastapi import Request
-
-from authentication.interface import AuthTuple
-
-from configuration import AppConfig, LogicError
 from app.endpoints.config import config_endpoint_handler
+from authentication.interface import AuthTuple
+from configuration import AppConfig
 
 
 @pytest.mark.asyncio
@@ -32,7 +30,7 @@ async def test_config_endpoint_returns_config(
     response = await config_endpoint_handler(auth=test_auth, request=test_request)
 
     # Verify that response matches the real configuration
-    assert response == test_config.configuration
+    assert response.configuration == test_config.configuration
 
 
 @pytest.mark.asyncio
@@ -57,7 +55,7 @@ async def test_config_endpoint_returns_current_config(
     response = await config_endpoint_handler(auth=test_auth, request=test_request)
 
     # Verify that response matches the root configuration
-    assert response == current_config.configuration
+    assert response.configuration == current_config.configuration
 
 
 @pytest.mark.asyncio
@@ -68,7 +66,7 @@ async def test_config_endpoint_fails_without_configuration(
     """Test that authorization fails when configuration is not loaded.
 
     This integration test verifies:
-    - LogicError is raised when configuration is not loaded
+    - HTTPException is raised when configuration is not loaded
     - Error message indicates configuration is not loaded
 
     Args:
@@ -76,9 +74,13 @@ async def test_config_endpoint_fails_without_configuration(
         test_auth: noop authentication tuple
     """
 
-    # Verify that LogicError is raised when authorization tries to access config
-    with pytest.raises(LogicError) as exc_info:
+    # Verify that HTTPException is raised when configuration is not loaded
+    with pytest.raises(HTTPException) as exc_info:
         await config_endpoint_handler(auth=test_auth, request=test_request)
 
-    # Verify error message
-    assert "configuration is not loaded" in str(exc_info.value)
+    # Verify error details
+    assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert isinstance(exc_info.value.detail, dict)
+    assert (
+        "configuration is not loaded" in exc_info.value.detail["response"].lower()
+    )  # type: ignore

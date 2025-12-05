@@ -1,11 +1,12 @@
 """Manage authentication flow for FastAPI endpoints with JWK based JWT auth."""
 
+import json
 import logging
 from asyncio import Lock
 from typing import Any, Callable
 
-from fastapi import Request, HTTPException, status
-from authlib.jose import JsonWebKey, KeySet, jwt, Key
+import aiohttp
+from authlib.jose import JsonWebKey, Key, KeySet, jwt
 from authlib.jose.errors import (
     BadSignatureError,
     DecodeError,
@@ -13,14 +14,15 @@ from authlib.jose.errors import (
     JoseError,
 )
 from cachetools import TTLCache
-import aiohttp
+from fastapi import HTTPException, Request
 
+from authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
+from authentication.utils import extract_user_token
 from constants import (
     DEFAULT_VIRTUAL_PATH,
 )
-from authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
-from authentication.utils import extract_user_token
 from models.config import JwkConfiguration
+from models.responses import UnauthorizedResponse
 
 logger = logging.getLogger(__name__)
 
@@ -126,68 +128,67 @@ class JwkTokenAuthDependency(AuthInterface):  # pylint: disable=too-few-public-m
             return NO_AUTH_TUPLE
 
         user_token = extract_user_token(request.headers)
-        jwk_set = await get_jwk_set(str(self.config.url))
+
+        try:
+            jwk_set = await get_jwk_set(str(self.config.url))
+        except aiohttp.ClientError as exc:
+            logger.error("Failed to fetch JWK set: %s", exc)
+            response = UnauthorizedResponse(
+                cause="Unable to reach authentication key server"
+            )
+            raise HTTPException(**response.model_dump()) from exc
+        except json.JSONDecodeError as exc:
+            logger.error("Invalid JSON in JWK set response: %s", exc)
+            response = UnauthorizedResponse(
+                cause="Authentication key server returned invalid data"
+            )
+            raise HTTPException(**response.model_dump()) from exc
+        except JoseError as exc:
+            logger.error("Invalid JWK set format: %s", exc)
+            response = UnauthorizedResponse(cause="Authentication keys are malformed")
+            raise HTTPException(**response.model_dump()) from exc
 
         try:
             claims = jwt.decode(user_token, key=key_resolver_func(jwk_set))
-        except KeyNotFoundError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token: signed by unknown key or algorithm mismatch",
-            ) from exc
-        except BadSignatureError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token: bad signature",
-            ) from exc
-        except DecodeError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid token: decode error",
-            ) from exc
-        except JoseError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid token: unknown error",
-            ) from exc
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal server error",
-            ) from exc
+        except (KeyNotFoundError, BadSignatureError, DecodeError, JoseError) as exc:
+            logger.warning("Token decode error: %s", exc)
+            cause_map = {
+                KeyNotFoundError: "Token signed by unknown key",
+                BadSignatureError: "Invalid token signature",
+                DecodeError: "Token could not be decoded",
+                JoseError: "Token format error",
+            }
+            response = UnauthorizedResponse(
+                cause=cause_map.get(type(exc), "Unknown token error")
+            )
+            raise HTTPException(**response.model_dump()) from exc
 
         try:
             claims.validate()
         except ExpiredTokenError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
-            ) from exc
+            response = UnauthorizedResponse(cause="Token has expired")
+            raise HTTPException(**response.model_dump()) from exc
         except JoseError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Error validating token",
-            ) from exc
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal server error during token validation",
-            ) from exc
+            response = UnauthorizedResponse(cause="Token validation failed")
+            raise HTTPException(**response.model_dump()) from exc
 
         try:
             user_id: str = claims[self.config.jwt_configuration.user_id_claim]
         except KeyError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Token missing claim: {self.config.jwt_configuration.user_id_claim}",
-            ) from exc
+            missing_claim = self.config.jwt_configuration.user_id_claim
+            response = UnauthorizedResponse(
+                cause=f"Token missing claim: {missing_claim}"
+            )
+            raise HTTPException(**response.model_dump()) from exc
 
         try:
             username: str = claims[self.config.jwt_configuration.username_claim]
         except KeyError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Token missing claim: {self.config.jwt_configuration.username_claim}",
-            ) from exc
+            missing_claim = self.config.jwt_configuration.username_claim
+            response = UnauthorizedResponse(
+                cause=f"Token missing claim: {missing_claim}"
+            )
+            raise HTTPException(**response.model_dump()) from exc
 
         logger.info("Successfully authenticated user %s (ID: %s)", username, user_id)
 

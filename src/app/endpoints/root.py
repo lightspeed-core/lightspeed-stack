@@ -1,7 +1,7 @@
 """Handler for the / endpoint."""
 
 import logging
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -10,6 +10,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from models.config import Action
+from models.responses import ForbiddenResponse, UnauthorizedResponse
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["root"])
@@ -775,7 +776,15 @@ Rz1JGaaTn29/SlPX2oA//9k=">
 """
 
 
-@router.get("/", response_class=HTMLResponse)
+root_responses: dict[int | str, dict[str, Any]] = {
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+}
+
+
+@router.get("/", response_class=HTMLResponse, responses=root_responses)
 @authorize(Action.INFO)
 async def root_endpoint_handler(
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],

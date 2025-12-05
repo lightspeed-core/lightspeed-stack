@@ -13,19 +13,21 @@ class "AuthenticationConfiguration" as src.models.config.AuthenticationConfigura
   k8s_ca_cert_path : Optional[FilePath]
   k8s_cluster_api : Optional[AnyHttpUrl]
   module : str
+  rh_identity_config : Optional[RHIdentityConfiguration]
+  rh_identity_configuration
   skip_tls_verification : bool
   check_authentication_model() -> Self
 }
 class "AuthorizationConfiguration" as src.models.config.AuthorizationConfiguration {
-  access_rules : Optional[list[AccessRule]]
+  access_rules : list[AccessRule]
 }
 class "ByokRag" as src.models.config.ByokRag {
-  db_path : Annotated
-  embedding_dimension : Annotated
-  embedding_model : Annotated
-  rag_id : Annotated
-  rag_type : Annotated
-  vector_db_id : Annotated
+  db_path
+  embedding_dimension
+  embedding_model : str
+  rag_id : str
+  rag_type : str
+  vector_db_id : str
 }
 class "CORSConfiguration" as src.models.config.CORSConfiguration {
   allow_credentials : bool
@@ -35,17 +37,17 @@ class "CORSConfiguration" as src.models.config.CORSConfiguration {
   check_cors_configuration() -> Self
 }
 class "Configuration" as src.models.config.Configuration {
-  authentication : Optional[AuthenticationConfiguration]
+  authentication
   authorization : Optional[AuthorizationConfiguration]
-  byok_rag : Optional[list[ByokRag]]
-  conversation_cache : Optional[ConversationCacheConfiguration]
+  byok_rag : list[ByokRag]
+  conversation_cache
   customization : Optional[Customization]
-  database : Optional[DatabaseConfiguration]
-  inference : Optional[InferenceConfiguration]
+  database
+  inference
   llama_stack
-  mcp_servers : Optional[list[ModelContextProtocolServer]]
+  mcp_servers : list[ModelContextProtocolServer]
   name : str
-  quota_handlers : Optional[QuotaHandlersConfiguration]
+  quota_handlers
   service
   user_data_collection
   dump(filename: str) -> None
@@ -53,7 +55,7 @@ class "Configuration" as src.models.config.Configuration {
 class "ConfigurationBase" as src.models.config.ConfigurationBase {
   model_config
 }
-class "ConversationCacheConfiguration" as src.models.config.ConversationCacheConfiguration {
+class "ConversationHistoryConfiguration" as src.models.config.ConversationHistoryConfiguration {
   memory : Optional[InMemoryCacheConfig]
   postgres : Optional[PostgreSQLDatabaseConfiguration]
   sqlite : Optional[SQLiteDatabaseConfiguration]
@@ -62,7 +64,7 @@ class "ConversationCacheConfiguration" as src.models.config.ConversationCacheCon
 }
 class "CustomProfile" as src.models.config.CustomProfile {
   path : str
-  prompts : Optional[dict[str, str]]
+  prompts : dict[str, str]
   get_prompts() -> dict[str, str]
 }
 class "Customization" as src.models.config.Customization {
@@ -81,7 +83,7 @@ class "DatabaseConfiguration" as src.models.config.DatabaseConfiguration {
   check_database_configuration() -> Self
 }
 class "InMemoryCacheConfig" as src.models.config.InMemoryCacheConfig {
-  max_entries : Annotated
+  max_entries
 }
 class "InferenceConfiguration" as src.models.config.InferenceConfiguration {
   default_model : Optional[str]
@@ -92,11 +94,11 @@ class "JsonPathOperator" as src.models.config.JsonPathOperator {
   name
 }
 class "JwkConfiguration" as src.models.config.JwkConfiguration {
-  jwt_configuration : Optional[JwtConfiguration]
-  url : AnyHttpUrl
+  jwt_configuration
+  url
 }
 class "JwtConfiguration" as src.models.config.JwtConfiguration {
-  role_rules : Optional[list[JwtRoleRule]]
+  role_rules : list[JwtRoleRule]
   user_id_claim : str
   username_claim : str
 }
@@ -129,28 +131,31 @@ class "PostgreSQLDatabaseConfiguration" as src.models.config.PostgreSQLDatabaseC
   gss_encmode : str
   host : str
   namespace : Optional[str]
-  password : SecretStr
-  port : Annotated
+  password
+  port
   ssl_mode : str
   user : str
   check_postgres_configuration() -> Self
 }
 class "QuotaHandlersConfiguration" as src.models.config.QuotaHandlersConfiguration {
   enable_token_history : bool
-  limiters : Optional[list[QuotaLimiterConfiguration]]
+  limiters : list[QuotaLimiterConfiguration]
   postgres : Optional[PostgreSQLDatabaseConfiguration]
-  scheduler : Optional[QuotaSchedulerConfiguration]
+  scheduler
   sqlite : Optional[SQLiteDatabaseConfiguration]
 }
 class "QuotaLimiterConfiguration" as src.models.config.QuotaLimiterConfiguration {
-  initial_quota : Annotated
+  initial_quota
   name : str
   period : str
-  quota_increase : Annotated
+  quota_increase
   type : Literal['user_limiter', 'cluster_limiter']
 }
 class "QuotaSchedulerConfiguration" as src.models.config.QuotaSchedulerConfiguration {
-  period : Annotated
+  period
+}
+class "RHIdentityConfiguration" as src.models.config.RHIdentityConfiguration {
+  required_entitlements : Optional[list[str]]
 }
 class "SQLiteDatabaseConfiguration" as src.models.config.SQLiteDatabaseConfiguration {
   db_path : str
@@ -159,11 +164,11 @@ class "ServiceConfiguration" as src.models.config.ServiceConfiguration {
   access_log : bool
   auth_enabled : bool
   color_log : bool
-  cors : Optional[CORSConfiguration]
+  cors
   host : str
-  port : Annotated
-  tls_config : Optional[TLSConfiguration]
-  workers : Annotated
+  port
+  tls_config
+  workers
   check_service_configuration() -> Self
 }
 class "TLSConfiguration" as src.models.config.TLSConfiguration {
@@ -185,7 +190,7 @@ src.models.config.AuthorizationConfiguration --|> src.models.config.Configuratio
 src.models.config.ByokRag --|> src.models.config.ConfigurationBase
 src.models.config.CORSConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.Configuration --|> src.models.config.ConfigurationBase
-src.models.config.ConversationCacheConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.ConversationHistoryConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.Customization --|> src.models.config.ConfigurationBase
 src.models.config.DatabaseConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.InMemoryCacheConfig --|> src.models.config.ConfigurationBase
@@ -198,14 +203,25 @@ src.models.config.ModelContextProtocolServer --|> src.models.config.Configuratio
 src.models.config.PostgreSQLDatabaseConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.QuotaHandlersConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.QuotaLimiterConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.QuotaSchedulerConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.RHIdentityConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.SQLiteDatabaseConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.ServiceConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.TLSConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.UserDataCollection --|> src.models.config.ConfigurationBase
+src.models.config.AuthenticationConfiguration --* src.models.config.Configuration : authentication
+src.models.config.CORSConfiguration --* src.models.config.ServiceConfiguration : cors
+src.models.config.ConversationHistoryConfiguration --* src.models.config.Configuration : conversation_cache
 src.models.config.CustomProfile --* src.models.config.Customization : custom_profile
+src.models.config.DatabaseConfiguration --* src.models.config.Configuration : database
+src.models.config.InferenceConfiguration --* src.models.config.Configuration : inference
 src.models.config.JsonPathOperator --* src.models.config.JwtRoleRule : operator
+src.models.config.JwtConfiguration --* src.models.config.JwkConfiguration : jwt_configuration
 src.models.config.LlamaStackConfiguration --* src.models.config.Configuration : llama_stack
+src.models.config.QuotaHandlersConfiguration --* src.models.config.Configuration : quota_handlers
+src.models.config.QuotaSchedulerConfiguration --* src.models.config.QuotaHandlersConfiguration : scheduler
 src.models.config.SQLiteDatabaseConfiguration --* src.models.config.DatabaseConfiguration : sqlite
 src.models.config.ServiceConfiguration --* src.models.config.Configuration : service
+src.models.config.TLSConfiguration --* src.models.config.ServiceConfiguration : tls_config
 src.models.config.UserDataCollection --* src.models.config.Configuration : user_data_collection
 @enduml

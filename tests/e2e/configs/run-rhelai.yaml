@@ -16,7 +16,7 @@ apis:
 benchmarks: []
 container_image: null
 datasets: []
-external_providers_dir: null
+external_providers_dir: /opt/app-root/src/.llama/providers.d
 inference_store:
   db_path: .llama/distributions/ollama/inference_store.db
   type: sqlite

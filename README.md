@@ -9,12 +9,14 @@
 [![Tag](https://img.shields.io/github/v/tag/lightspeed-core/lightspeed-stack)](https://github.com/lightspeed-core/lightspeed-stack/releases/tag/0.3.0)
 
 Lightspeed Core Stack (LCS) is an AI-powered assistant that provides answers to product questions using backend LLM services, agents, and RAG databases.
- 
+
 The service includes comprehensive user data collection capabilities for various types of user interaction data, which can be exported to Red Hat's Dataverse for analysis using the companion [lightspeed-to-dataverse-exporter](https://github.com/lightspeed-core/lightspeed-to-dataverse-exporter) service.
 
 
 <!-- vim-markdown-toc GFM -->
 
+* [lightspeed-stack](#lightspeed-stack)
+    * [About The Project](#about-the-project)
 * [Architecture](#architecture)
 * [Prerequisites](#prerequisites)
 * [Installation](#installation)
@@ -22,6 +24,9 @@ The service includes comprehensive user data collection capabilities for various
 * [Configuration](#configuration)
     * [LLM Compatibility](#llm-compatibility)
     * [Set LLM provider and model](#set-llm-provider-and-model)
+    * [Selecting provider and model](#selecting-provider-and-model)
+        * [Provider and model selection in REST API request](#provider-and-model-selection-in-rest-api-request)
+        * [Default provider and model](#default-provider-and-model)
     * [Supported providers](#supported-providers)
     * [Integration with Llama Stack](#integration-with-llama-stack)
     * [Llama Stack as separate server](#llama-stack-as-separate-server)
@@ -34,6 +39,9 @@ The service includes comprehensive user data collection capabilities for various
     * [Llama Stack version check](#llama-stack-version-check)
     * [User data collection](#user-data-collection)
     * [System prompt](#system-prompt)
+        * [System Prompt Path](#system-prompt-path)
+        * [System Prompt Literal](#system-prompt-literal)
+        * [Custom Profile](#custom-profile)
         * [Control model/provider overrides via authorization](#control-modelprovider-overrides-via-authorization)
     * [Safety Shields](#safety-shields)
     * [Authentication](#authentication)
@@ -47,7 +55,9 @@ The service includes comprehensive user data collection capabilities for various
     * [Running Linux container image](#running-linux-container-image)
     * [Building Container Images](#building-container-images)
         * [Llama-Stack as Separate Service (Server Mode)](#llama-stack-as-separate-service-server-mode)
+            * [macOS (arm64)](#macos-arm64)
         * [Llama-Stack as Library (Library Mode)](#llama-stack-as-library-library-mode)
+            * [macOS](#macos)
         * [Verify it's running properly](#verify-its-running-properly)
     * [Custom Container Image](#custom-container-image)
 * [Endpoints](#endpoints)
@@ -75,6 +85,15 @@ The service includes comprehensive user data collection capabilities for various
 * [Project structure](#project-structure)
     * [Configuration classes](#configuration-classes)
     * [REST API](#rest-api)
+    * [Sequence diagrams](#sequence-diagrams)
+        * [Query endpoint REST API handler](#query-endpoint-rest-api-handler)
+    * [Streaming query endpoint REST API handler](#streaming-query-endpoint-rest-api-handler)
+    * [Versioning](#versioning)
+* [Konflux](#konflux)
+    * [Updating Dependencies for Hermetic Builds](#updating-dependencies-for-hermetic-builds)
+        * [When to Update Dependency Files](#when-to-update-dependency-files)
+        * [Updating Python Dependencies](#updating-python-dependencies)
+        * [Updating RPM Dependencies](#updating-rpm-dependencies)
 
 <!-- vim-markdown-toc -->
 
@@ -94,6 +113,31 @@ Lightspeed Core Stack is based on the FastAPI framework (Uvicorn). The service i
     - please note that currently Python 3.14 is not officially supported
     - all sources are made (backward) compatible with Python 3.12; it is checked on CI
 
+* OpenAI API Key (Recommended for Getting Started)
+
+  Lightspeed Stack supports multiple LLM providers.
+
+  | Provider       | Setup Documentation                                                   |
+  |----------------|-----------------------------------------------------------------------|
+  | OpenAI         | https://platform.openai.com                                           |
+  | Azure OpenAI   | https://azure.microsoft.com/en-us/products/ai-services/openai-service |
+  | RHOAI (vLLM)   | See tests/e2e-prow/rhoai/configs/run.yaml                             |
+  | RHEL AI (vLLM) | See tests/e2e/configs/run-rhelai.yaml                                 |
+
+  See `docs/providers.md` for configuration details.
+
+  You will need an API key from one of these providers to run LightSpeed Stack.
+
+  For example, if you choose to use OpenAI:
+
+  1. **Create an account** at [platform.openai.com](https://platform.openai.com)
+  2. **Add payment information** (new accounts receive free trial credits)
+  3. **Generate an API key** from your dashboard at [API Keys](https://platform.openai.com/api-keys)
+  4. **Export the key** in your environment:
+     ```bash
+     export OPENAI_API_KEY="sk-your-api-key-here"
+    ```
+
 # Installation
 
 Installation steps depends on operation system. Please look at instructions for your system:
@@ -104,21 +148,22 @@ Installation steps depends on operation system. Please look at instructions for 
 
 # Run LCS locally
 
-To quickly get hands on LCS, we can run it using the default configurations provided in this repository: 
+To quickly get hands on LCS, we can run it using the default configurations provided in this repository:
 0. install dependencies using [uv](https://docs.astral.sh/uv/getting-started/installation/) `uv sync --group dev --group llslibdev`
 1. check Llama stack settings in [run.yaml](run.yaml), make sure we can access the provider and the model, the server shoud listen to port 8321.
 2. export the LLM token env var that Llama stack requires. for OpenAI, we set the env var by `export OPENAI_API_KEY=sk-xxxxx`
 3. start Llama stack server `uv run llama stack run run.yaml`
-4. check the LCS settings in [lightspeed-stack.yaml](lightspeed-stack.yaml). `llama_stack.url` should be `url: http://localhost:8321`
-5. start LCS server `make run`
-6. access LCS web UI at [http://localhost:8080/](http://localhost:8080/)
+4. [Optional] If you're new to Llama stack, run through a quick tutorial to learn the basics of what the server is used for, by running the interactive tutorial script `./scripts/llama_stack_tutorial.sh`
+5. check the LCS settings in [lightspeed-stack.yaml](lightspeed-stack.yaml). `llama_stack.url` should be `url: http://localhost:8321`
+6. start LCS server `make run`
+7. access LCS web UI at [http://localhost:8080/](http://localhost:8080/)
 
 
 # Configuration
 
 ## LLM Compatibility
 
-Lightspeed Core Stack (LCS) supports the large language models from the providers listed below. 
+Lightspeed Core Stack (LCS) supports the large language models from the providers listed below.
 
 | Provider | Model                                          | Tool Calling | provider_type  | Example                                                                    |
 | -------- | ---------------------------------------------- | ------------ | -------------- | -------------------------------------------------------------------------- |
@@ -139,7 +184,7 @@ For details of OpenAI model capabilities, please refer to https://platform.opena
 
 The LLM provider and model are set in the configuration file for Llama Stack. This repository has a Llama stack configuration file [run.yaml](examples/run.yaml) that can serve as a good example.
 
-The LLM providers are set in the section `providers.inference`. This example adds a inference provider "openai" to the llama stack. To use environment variables as configuration values, we can use the syntax `${env.ENV_VAR_NAME}`. 
+The LLM providers are set in the section `providers.inference`. This example adds a inference provider "openai" to the llama stack. To use environment variables as configuration values, we can use the syntax `${env.ENV_VAR_NAME}`.
 
 For more details, please refer to [llama stack documentation](https://llama-stack.readthedocs.io/en/latest/distributions/configuration.html#providers). Here is a list of llamastack supported providers and their configuration details: [llama stack providers](https://llama-stack.readthedocs.io/en/latest/providers/inference/index.html#providers)
 
@@ -161,6 +206,43 @@ models:
     model_type: llm
     provider_model_id: gpt-4-turbo
 ```
+
+## Selecting provider and model
+
+It is possible to configure multiple LLM providers and models are configured. In this case it is needed to:
+
+- select the provider + model in query request
+- specify default model and provider in Lightspeed Core Stack configuration file
+
+### Provider and model selection in REST API request
+
+Provider and model can be specified in `/v1/query` and `/v1/streaming-query` REST API requests:
+
+```json
+{
+  "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+  "generate_topic_summary": true,
+  "provider": "openai",
+  "model": "gpt-5",
+  "no_tools": false,
+  "query": "write a deployment yaml for the mongodb image",
+  "system_prompt": "You are a helpful assistant"
+}
+```
+
+### Default provider and model
+
+It is possible to configure default provider and model in Lightspeed Core Stack configuration file, under the `inference` node:
+
+```yaml
+inference:
+    - default_provider: SELECTED PROVIDER
+      default_model: SELECTED MODEL
+```
+
+These settings will be used when no provider or model are specified in REST API request.
+
+
 
 ## Supported providers
 
@@ -563,6 +645,17 @@ podman compose up --build
 # Access llama-stack at http://localhost:8321
 ```
 
+#### macOS (arm64)
+
+Emulation of platform amd64 will not work with `podman compose up --build` command.
+
+Instead run the docker command:
+
+```bash
+# Start both services
+docker compose up --build
+```
+
 ### Llama-Stack as Library (Library Mode)
 
 When embedding llama-stack directly in the container, use the existing `Containerfile` directly (this will not build the llama stack service in a separate container). First modify the `lightspeed-stack.yaml` config to use llama stack in library mode.
@@ -588,7 +681,7 @@ podman run \
   my-lightspeed-core:latest
 ```
 
-For macosx users:
+#### macOS
 ```bash
 podman run \
   -p 8080:8080 \
@@ -761,7 +854,7 @@ the following form:
 [testpypi]
   username = __token__
   password = pypi-{your-API-token}
- 
+
 [pypi]
   username = __token__
   password = pypi-{your-API-token}
@@ -864,3 +957,70 @@ For complete integration setup, deployment options, and configuration details, s
 ## REST API
 
 ![REST API](docs/rest_api.png)
+
+## Sequence diagrams
+
+### Query endpoint REST API handler
+
+![Query endpoint](docs/query_endpoint.svg)
+
+## Streaming query endpoint REST API handler
+
+![Streaming query endpoint](docs/streaming_query_endpoint.svg)
+
+## Versioning
+
+We follow [Semantic Versioning](http://semver.org/spec/v1.0.0.html).
+The version X.Y.Z indicates:
+
+* X is the major version (backward-incompatible),
+* Y is the minor version (backward-compatible), and
+* Z is the patch version (backward-compatible bug fix).
+
+# Konflux
+
+The official image of Lightspeed Core Stack is built on [Konflux](https://konflux-ui.apps.kflux-prd-rh02.0fk9.p1.openshiftapps.com/ns/lightspeed-core-tenant/applications/lightspeed-stack).
+We have both x86_64 and ARM64 images.
+
+## Updating Dependencies for Hermetic Builds
+
+Konflux builds run in **hermetic mode** (air-gapped from the internet), so all dependencies must be prefetched and locked. When you add or update dependencies, you need to regenerate the lock files.
+
+### When to Update Dependency Files
+
+Update these files when you:
+- Add/remove/update Python packages in the project
+- Add/remove/update RPM packages in the Containerfile
+- Change the base image version
+
+### Updating Python Dependencies
+
+**Quick command:**
+```shell
+make konflux-requirements
+```
+
+This generates three platform-specific requirements files:
+- `requirements.x86_64.txt` - x86_64 packages (excludes torch)
+- `requirements.aarch64.txt` - ARM64 packages (excludes torch)
+- `requirements.torch.txt` - CPU variant of torch (shared by both platforms)
+
+### Updating RPM Dependencies
+
+**Prerequisites:** Install [rpm-lockfile-prototype](https://github.com/konflux-ci/rpm-lockfile-prototype?tab=readme-ov-file#installation)
+
+**Steps:**
+
+1. **List your RPM packages** in `rpms.in.yaml` under the `packages` field
+
+2. **If you changed the base image**, extract its repo file:
+```shell
+podman run -it $BASE_IMAGE cat /etc/yum.repos.d/ubi.repo > ubi.repo
+```
+
+3. **Generate the lock file**:
+```shell
+rpm-lockfile-prototype --image $BASE_IMAGE rpms.in.yaml
+```
+
+This creates `rpms.lock.yaml` with pinned RPM versions.

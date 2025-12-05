@@ -1,29 +1,27 @@
 """Unit tests for the authorization middleware."""
 
-from typing import Any
+from typing import Any, cast
+
 import pytest
 from fastapi import HTTPException, status
+from pytest_mock import MockerFixture, MockType
 from starlette.requests import Request
 
-from pytest_mock import MockerFixture, MockType
-
-from authentication.interface import AuthTuple
-
-from models.config import Action, JwtRoleRule, AccessRule, JsonPathOperator
 import constants
-
+from authentication.interface import AuthTuple
 from authorization.middleware import (
-    get_authorization_resolvers,
     _perform_authorization_check,
     authorize,
+    get_authorization_resolvers,
 )
 from authorization.resolvers import (
     AccessResolver,
-    NoopRolesResolver,
-    NoopAccessResolver,
-    JwtRolesResolver,
     GenericAccessResolver,
+    JwtRolesResolver,
+    NoopAccessResolver,
+    NoopRolesResolver,
 )
+from models.config import AccessRule, Action, JsonPathOperator, JwtRoleRule
 
 
 @pytest.fixture(name="dummy_auth_tuple")
@@ -84,8 +82,8 @@ class TestGetAuthorizationResolvers:
 
         roles_resolver, access_resolver = get_authorization_resolvers()
 
-        assert isinstance(roles_resolver, expected_types[0])
-        assert isinstance(access_resolver, expected_types[1])
+        assert isinstance(roles_resolver, expected_types[0])  # type: ignore
+        assert isinstance(access_resolver, expected_types[1])  # type: ignore
 
     @pytest.mark.parametrize(
         "empty_rules", ["role_rules", "access_rules", "both_rules"]
@@ -208,9 +206,12 @@ class TestPerformAuthorizationCheck:
             )
 
         assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
-        assert (
-            "Insufficient permissions for action: Action.ADMIN" in exc_info.value.detail
+        assert exc_info.value.status_code == 403
+        detail = cast(dict[str, str], exc_info.value.detail)
+        assert detail["response"] == (
+            "User does not have permission to access this endpoint"
         )
+        assert "not authorized to access this endpoint" in detail["cause"]
 
     @pytest.mark.parametrize("request_location", ["kwargs", "args", "none"])
     async def test_request_state_handling(
@@ -239,7 +240,7 @@ class TestPerformAuthorizationCheck:
                 mock_request,
             ]
 
-        await _perform_authorization_check(Action.QUERY, args, kwargs)
+        await _perform_authorization_check(Action.QUERY, args, kwargs)  # type: ignore
 
         if request_location != "none":
             assert mock_request.state.authorized_actions == {Action.QUERY}

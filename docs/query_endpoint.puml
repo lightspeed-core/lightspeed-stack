@@ -1,0 +1,43 @@
+@startuml
+
+participant Client
+participant Endpoint as "Query Endpoint handler"
+participant Auth
+participant LlamaStack as "Llama Stack Client"
+participant Cache as Cache
+
+Client->>Endpoint: POST /query + attachments
+Endpoint->>Auth: Validate auth & permissions
+Auth-->>Endpoint: Authorized ✓
+Endpoint->>Auth: Check config & token quota
+Auth-->>Endpoint: Config valid, tokens available
+Endpoint->>DB: Retrieve user conversation (optional)
+DB-->>Endpoint: UserConversation or None
+Endpoint->>Endpoint: Select model/provider from hints/config
+Endpoint->>LlamaStack: Get model capabilities
+LlamaStack-->>Endpoint: Capabilities response
+Endpoint->>Endpoint: Build system prompt, toolgroups, MCP headers
+Endpoint->>LlamaStack: Create turn (agent interaction)
+LlamaStack-->>Endpoint: Turn response + tool calls + RAG chunks
+Endpoint->>Endpoint: Parse metadata & referenced documents
+Endpoint->>Endpoint: Transform to QueryResponse
+Endpoint->>DB: Persist conversation metadata (model, topic, count)
+Endpoint->>Cache: Store conversation with timing metadata
+Endpoint-->>Client: Return QueryResponse + token metrics
+
+alt Connection Error
+    LlamaStack-->>Endpoint: APIConnectionError
+    Endpoint-->>Client: HTTP 500
+end
+
+alt Quota Exceeded
+    Auth-->>Endpoint: Rate limit violation
+    Endpoint-->>Client: HTTP 429
+end
+
+alt Invalid Request
+    Endpoint-->>Client: Missing/invalid conversation or attachments
+    Endpoint-->>Client: HTTP 400/403/404
+end
+
+@enduml

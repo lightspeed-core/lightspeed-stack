@@ -11,10 +11,11 @@ ENV UV_COMPILE_BYTECODE=0 \
 
 WORKDIR /app-root
 
+USER root
+
 # Install gcc - required by polyleven python package on aarch64
 # (dependency of autoevals, no pre-built binary wheels for linux on aarch64)
-USER root
-RUN dnf --disablerepo="*" --enablerepo="ubi-9-appstream-rpms" --enablerepo="ubi-9-baseos-rpms" install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc
+RUN dnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc
 
 # Install uv package manager
 RUN pip3.12 install "uv==0.8.15"
@@ -22,10 +23,18 @@ RUN pip3.12 install "uv==0.8.15"
 # Add explicit files and directories
 # (avoid accidental inclusion of local directories or env files or credentials)
 COPY ${LSC_SOURCE_DIR}/src ./src
-COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR}/README.md ${LSC_SOURCE_DIR}/uv.lock ./
+COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR}/README.md ${LSC_SOURCE_DIR}/uv.lock ${LSC_SOURCE_DIR}/requirements.*.txt ./
 
 # Bundle additional dependencies for library mode.
-RUN uv sync --locked --no-dev --group llslibdev
+# Source cachi2 environment for hermetic builds if available, otherwise use normal installation
+# cachi2.env has these env vars:
+# PIP_FIND_LINKS=/cachi2/output/deps/pip
+# PIP_NO_INDEX=true
+RUN if [ -f /cachi2/cachi2.env ]; then \
+    . /cachi2/cachi2.env && uv venv --seed --no-index --find-links ${PIP_FIND_LINKS} && . .venv/bin/activate && pip install --no-index --find-links ${PIP_FIND_LINKS} -r requirements.$(uname -m).txt -r requirements.torch.txt; \
+    else \
+    uv sync --locked --no-dev --group llslibdev; \
+    fi
 
 # Explicitly remove some packages to mitigate some CVEs
 # - GHSA-wj6h-64fc-37mp: python-ecdsa package won't fix it upstream.
@@ -64,6 +73,10 @@ USER root
 
 # Additional tools for derived images
 RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch
+
+# Create llama-stack directories for library mode
+RUN mkdir -p /opt/app-root/src/.llama/distributions/ollama /opt/app-root/src/.llama/providers.d && \
+    chown -R 1001:1001 /opt/app-root/src/.llama
 
 # Add executables from .venv to system PATH
 ENV PATH="/app-root/.venv/bin:$PATH"

@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title> </title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title"> </h1>
+</header>
+<h1 id="lightspeed-core-stack">Lightspeed Core Stack</h1>
+<hr />
+<h1 id="configuration-schema">📋 Configuration schema</h1>
+<h2 id="accessrule">AccessRule</h2>
+<p>Rule defining what actions a role can perform.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>role</td>
+<td>string</td>
+<td>Name of the role</td>
+</tr>
+<tr class="even">
+<td>actions</td>
+<td>array</td>
+<td>Allowed actions for this role</td>
+</tr>
+</tbody>
+</table>
+<h2 id="action">Action</h2>
+<p>Available actions in the system.</p>
+<p>Note: this is not a real model, just an enumeration of all action
+names.</p>
+<h2 id="authenticationconfiguration">AuthenticationConfiguration</h2>
+<p>Authentication configuration.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>module</td>
+<td>string</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>skip_tls_verification</td>
+<td>boolean</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>k8s_cluster_api</td>
+<td>string</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>k8s_ca_cert_path</td>
+<td>string</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>jwk_config</td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td>rh_identity_config</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="authorizationconfiguration">AuthorizationConfiguration</h2>
+<p>Authorization configuration.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>access_rules</td>
+<td>array</td>
+<td>Rules for role-based access control</td>
+</tr>
+</tbody>
+</table>
+<h2 id="byokrag">ByokRag</h2>
+<p>BYOK (Bring Your Own Knowledge) RAG configuration.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>rag_id</td>
+<td>string</td>
+<td>Unique RAG ID</td>
+</tr>
+<tr class="even">
+<td>rag_type</td>
+<td>string</td>
+<td>Type of RAG database.</td>
+</tr>
+<tr class="odd">
+<td>embedding_model</td>
+<td>string</td>
+<td>Embedding model identification</td>
+</tr>
+<tr class="even">
+<td>embedding_dimension</td>
+<td>integer</td>
+<td>Dimensionality of embedding vectors.</td>
+</tr>
+<tr class="odd">
+<td>vector_db_id</td>
+<td>string</td>
+<td>Vector DB identification.</td>
+</tr>
+<tr class="even">
+<td>db_path</td>
+<td>string</td>
+<td>Path to RAG database.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="corsconfiguration">CORSConfiguration</h2>
+<p>CORS configuration.</p>
+<p>CORS or ‘Cross-Origin Resource Sharing’ refers to the situations when
+a frontend running in a browser has JavaScript code that communicates
+with a backend, and the backend is in a different ‘origin’ than the
+frontend.</p>
+<p>Useful resources:</p>
+<ul>
+<li><a href="https://fastapi.tiangolo.com/tutorial/cors/">CORS in
+FastAPI</a></li>
+<li><a
+href="https://en.wikipedia.org/wiki/Cross-origin_resource_sharing">Wikipedia
+article</a></li>
+<li><a
+href="https://dev.to/akshay_chauhan/what-is-cors-explained-8f1">What is
+CORS?</a></li>
+</ul>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>allow_origins</td>
+<td>array</td>
+<td>A list of origins allowed for cross-origin requests. An origin is
+the combination of protocol (http, https), domain (myapp.com, localhost,
+localhost.tiangolo.com), and port (80, 443, 8080). Use [’*’] to allow
+all origins.</td>
+</tr>
+<tr class="even">
+<td>allow_credentials</td>
+<td>boolean</td>
+<td>Indicate that cookies should be supported for cross-origin
+requests</td>
+</tr>
+<tr class="odd">
+<td>allow_methods</td>
+<td>array</td>
+<td>A list of HTTP methods that should be allowed for cross-origin
+requests. You can use [’*’] to allow all standard methods.</td>
+</tr>
+<tr class="even">
+<td>allow_headers</td>
+<td>array</td>
+<td>A list of HTTP request headers that should be supported for
+cross-origin requests. You can use [’*’] to allow all headers. The
+Accept, Accept-Language, Content-Language and Content-Type headers are
+always allowed for simple CORS requests.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration">Configuration</h2>
+<p>Global service configuration.</p>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>name</td>
+<td>string</td>
+<td>Name of the service. That value will be used in REST API
+endpoints.</td>
+</tr>
+<tr class="even">
+<td>service</td>
+<td></td>
+<td>This section contains Lightspeed Core Stack service
+configuration.</td>
+</tr>
+<tr class="odd">
+<td>llama_stack</td>
+<td></td>
+<td>This section contains Llama Stack configuration. Lightspeed Core
+Stack service can call Llama Stack in library mode or in server
+mode.</td>
+</tr>
+<tr class="even">
+<td>user_data_collection</td>
+<td></td>
+<td>This section contains configuration for subsystem that collects user
+data(transcription history and feedbacks).</td>
+</tr>
+<tr class="odd">
+<td>database</td>
+<td></td>
+<td>Configuration for database to store conversation IDs and other
+runtime data</td>
+</tr>
+<tr class="even">
+<td>mcp_servers</td>
+<td>array</td>
+<td>MCP (Model Context Protocol) servers provide tools and capabilities
+to the AI agents. These are configured in this section. Only MCP servers
+defined in the lightspeed-stack.yaml configuration are available to the
+agents. Tools configured in the llama-stack run.yaml are not accessible
+to lightspeed-core agents.</td>
+</tr>
+<tr class="odd">
+<td>authentication</td>
+<td></td>
+<td>Authentication configuration</td>
+</tr>
+<tr class="even">
+<td>authorization</td>
+<td></td>
+<td>Lightspeed Core Stack implements a modular authentication and
+authorization system with multiple authentication methods. Authorization
+is configurable through role-based access control. Authentication is
+handled through selectable modules configured via the module field in
+the authentication configuration.</td>
+</tr>
+<tr class="odd">
+<td>customization</td>
+<td></td>
+<td>It is possible to customize Lightspeed Core Stack via this section.
+System prompt can be customized and also different parts of the service
+can be replaced by custom Python modules.</td>
+</tr>
+<tr class="even">
+<td>inference</td>
+<td></td>
+<td>One LLM provider and one its model might be selected as default
+ones. When no provider+model pair is specified in REST API calls (query
+endpoints), the default provider and model are used.</td>
+</tr>
+<tr class="odd">
+<td>conversation_cache</td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td>byok_rag</td>
+<td>array</td>
+<td>BYOK RAG configuration. This configuration can be used to
+reconfigure Llama Stack through its run.yaml configuration file</td>
+</tr>
+<tr class="odd">
+<td>quota_handlers</td>
+<td></td>
+<td>Quota handlers configuration</td>
+</tr>
+</tbody>
+</table>
+<h2
+id="conversationhistoryconfiguration">ConversationHistoryConfiguration</h2>
+<p>Conversation history configuration.</p>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>type</td>
+<td>string</td>
+<td>Type of database where the conversation history is to be
+stored.</td>
+</tr>
+<tr class="even">
+<td>memory</td>
+<td></td>
+<td>In-memory cache configuration</td>
+</tr>
+<tr class="odd">
+<td>sqlite</td>
+<td></td>
+<td>SQLite database configuration</td>
+</tr>
+<tr class="even">
+<td>postgres</td>
+<td></td>
+<td>PostgreSQL database configuration</td>
+</tr>
+</tbody>
+</table>
+<h2 id="customprofile">CustomProfile</h2>
+<p>Custom profile customization for prompts and validation.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>path</td>
+<td>string</td>
+<td>Path to Python modules containing custom profile.</td>
+</tr>
+<tr class="even">
+<td>prompts</td>
+<td>object</td>
+<td>Dictionary containing map of system prompts</td>
+</tr>
+</tbody>
+</table>
+<h2 id="customization">Customization</h2>
+<p>Service customization.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>profile_path</td>
+<td>string</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>disable_query_system_prompt</td>
+<td>boolean</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>system_prompt_path</td>
+<td>string</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>system_prompt</td>
+<td>string</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>custom_profile</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="databaseconfiguration">DatabaseConfiguration</h2>
+<p>Database configuration.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>sqlite</td>
+<td></td>
+<td>SQLite database configuration</td>
+</tr>
+<tr class="even">
+<td>postgres</td>
+<td></td>
+<td>PostgreSQL database configuration</td>
+</tr>
+</tbody>
+</table>
+<h2 id="inmemorycacheconfig">InMemoryCacheConfig</h2>
+<p>In-memory cache configuration.</p>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>max_entries</td>
+<td>integer</td>
+<td>Maximum number of entries stored in the in-memory cache</td>
+</tr>
+</tbody>
+</table>
+<h2 id="inferenceconfiguration">InferenceConfiguration</h2>
+<p>Inference configuration.</p>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>default_model</td>
+<td>string</td>
+<td>Identification of default model used when no other model is
+specified.</td>
+</tr>
+<tr class="even">
+<td>default_provider</td>
+<td>string</td>
+<td>Identification of default provider used when no other model is
+specified.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="jsonpathoperator">JsonPathOperator</h2>
+<p>Supported operators for JSONPath evaluation.</p>
+<p>Note: this is not a real model, just an enumeration of all supported
+JSONPath operators.</p>
+<h2 id="jwkconfiguration">JwkConfiguration</h2>
+<p>JWK (JSON Web Key) configuration.</p>
+<p>A JSON Web Key (JWK) is a JavaScript Object Notation (JSON) data
+structure that represents a cryptographic key.</p>
+<p>Useful resources:</p>
+<ul>
+<li><a
+href="https://openid.net/specs/draft-jones-json-web-key-03.html">JSON
+Web Key</a></li>
+<li><a href="https://www.rfc-editor.org/rfc/rfc7517">RFC 7517</a></li>
+</ul>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>url</td>
+<td>string</td>
+<td>HTTPS URL of the JWK (JSON Web Key) set used to validate JWTs.</td>
+</tr>
+<tr class="even">
+<td>jwt_configuration</td>
+<td></td>
+<td>JWT (JSON Web Token) configuration</td>
+</tr>
+</tbody>
+</table>
+<h2 id="jwtconfiguration">JwtConfiguration</h2>
+<p>JWT (JSON Web Token) configuration.</p>
+<p>JSON Web Token (JWT) is a compact, URL-safe means of representing
+claims to be transferred between two parties. The claims in a JWT are
+encoded as a JSON object that is used as the payload of a JSON Web
+Signature (JWS) structure or as the plaintext of a JSON Web Encryption
+(JWE) structure, enabling the claims to be digitally signed or integrity
+protected with a Message Authentication Code (MAC) and/or encrypted.</p>
+<p>Useful resources:</p>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/JSON_Web_Token">JSON Web
+Token</a></li>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc7519">RFC
+7519</a></li>
+<li><a href="https://auth0.com/docs/secure/tokens/json-web-tokens">JSON
+Web Tokens</a></li>
+</ul>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>user_id_claim</td>
+<td>string</td>
+<td>JWT claim name that uniquely identifies the user (subject ID).</td>
+</tr>
+<tr class="even">
+<td>username_claim</td>
+<td>string</td>
+<td>JWT claim name that provides the human-readable username.</td>
+</tr>
+<tr class="odd">
+<td>role_rules</td>
+<td>array</td>
+<td>Rules for extracting roles from JWT claims</td>
+</tr>
+</tbody>
+</table>
+<h2 id="jwtrolerule">JwtRoleRule</h2>
+<p>Rule for extracting roles from JWT claims.</p>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>jsonpath</td>
+<td>string</td>
+<td>JSONPath expression to evaluate against the JWT payload</td>
+</tr>
+<tr class="even">
+<td>operator</td>
+<td></td>
+<td>JSON path comparison operator</td>
+</tr>
+<tr class="odd">
+<td>negate</td>
+<td>boolean</td>
+<td>If set to true, the meaning of the rule is negated</td>
+</tr>
+<tr class="even">
+<td>value</td>
+<td></td>
+<td>Value to compare against</td>
+</tr>
+<tr class="odd">
+<td>roles</td>
+<td>array</td>
+<td>Roles to be assigned if the rule matches</td>
+</tr>
+</tbody>
+</table>
+<h2 id="llamastackconfiguration">LlamaStackConfiguration</h2>
+<p>Llama stack configuration.</p>
+<p>Llama Stack is a comprehensive system that provides a uniform set of
+tools for building, scaling, and deploying generative AI applications,
+enabling developers to create, integrate, and orchestrate multiple AI
+services and capabilities into an adaptable setup.</p>
+<p>Useful resources:</p>
+<ul>
+<li><a href="https://www.llama.com/products/llama-stack/">Llama
+Stack</a></li>
+<li><a
+href="https://github.com/llamastack/llama-stack-client-python">Python
+Llama Stack client</a></li>
+<li><a href="https://llamastack.github.io/">Build AI Applications with
+Llama Stack</a></li>
+</ul>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>url</td>
+<td>string</td>
+<td>URL to Llama Stack service; used when library mode is disabled</td>
+</tr>
+<tr class="even">
+<td>api_key</td>
+<td>string</td>
+<td>API key to access Llama Stack service</td>
+</tr>
+<tr class="odd">
+<td>use_as_library_client</td>
+<td>boolean</td>
+<td>When set to true Llama Stack will be used in library mode, not in
+server mode (default)</td>
+</tr>
+<tr class="even">
+<td>library_client_config_path</td>
+<td>string</td>
+<td>Path to configuration file used when Llama Stack is run in library
+mode</td>
+</tr>
+</tbody>
+</table>
+<h2 id="modelcontextprotocolserver">ModelContextProtocolServer</h2>
+<p>Model context protocol server configuration.</p>
+<p>MCP (Model Context Protocol) servers provide tools and capabilities
+to the AI agents. These are configured by this structure. Only MCP
+servers defined in the lightspeed-stack.yaml configuration are available
+to the agents. Tools configured in the llama-stack run.yaml are not
+accessible to lightspeed-core agents.</p>
+<p>Useful resources:</p>
+<ul>
+<li><a
+href="https://modelcontextprotocol.io/docs/getting-started/intro">Model
+Context Protocol</a></li>
+<li><a href="https://modelcontextprotocol.io/faqs">MCP FAQs</a></li>
+<li><a
+href="https://en.wikipedia.org/wiki/Model_Context_Protocol">Wikipedia
+article</a></li>
+</ul>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>name</td>
+<td>string</td>
+<td>MCP server name that must be unique</td>
+</tr>
+<tr class="even">
+<td>provider_id</td>
+<td>string</td>
+<td>MCP provider identification</td>
+</tr>
+<tr class="odd">
+<td>url</td>
+<td>string</td>
+<td>URL of the MCP server</td>
+</tr>
+</tbody>
+</table>
+<h2
+id="postgresqldatabaseconfiguration">PostgreSQLDatabaseConfiguration</h2>
+<p>PostgreSQL database configuration.</p>
+<p>PostgreSQL database is used by Lightspeed Core Stack service for
+storing information about conversation IDs. It can also be leveraged to
+store conversation history and information about quota usage.</p>
+<p>Useful resources:</p>
+<ul>
+<li><a
+href="https://www.psycopg.org/psycopg3/docs/api/connections.html">Psycopg:
+connection classes</a></li>
+<li><a href="https://www.connectionstrings.com/postgresql/">PostgreSQL
+connection strings</a></li>
+<li><a
+href="https://www.freecodecamp.org/news/postgresql-in-python/">How to
+Use PostgreSQL in Python</a></li>
+</ul>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>host</td>
+<td>string</td>
+<td>Database server host or socket directory</td>
+</tr>
+<tr class="even">
+<td>port</td>
+<td>integer</td>
+<td>Database server port</td>
+</tr>
+<tr class="odd">
+<td>db</td>
+<td>string</td>
+<td>Database name to connect to</td>
+</tr>
+<tr class="even">
+<td>user</td>
+<td>string</td>
+<td>Database user name used to authenticate</td>
+</tr>
+<tr class="odd">
+<td>password</td>
+<td>string</td>
+<td>Password used to authenticate</td>
+</tr>
+<tr class="even">
+<td>namespace</td>
+<td>string</td>
+<td>Database namespace</td>
+</tr>
+<tr class="odd">
+<td>ssl_mode</td>
+<td>string</td>
+<td>SSL mode</td>
+</tr>
+<tr class="even">
+<td>gss_encmode</td>
+<td>string</td>
+<td>This option determines whether or with what priority a secure GSS
+TCP/IP connection will be negotiated with the server.</td>
+</tr>
+<tr class="odd">
+<td>ca_cert_path</td>
+<td>string</td>
+<td>Path to CA certificate</td>
+</tr>
+</tbody>
+</table>
+<h2 id="quotahandlersconfiguration">QuotaHandlersConfiguration</h2>
+<p>Quota limiter configuration.</p>
+<p>It is possible to limit quota usage per user or per service or
+services (that typically run in one cluster). Each limit is configured
+as a separate <em>quota limiter</em>. It can be of type
+<code>user_limiter</code> or <code>cluster_limiter</code> (which is name
+that makes sense in OpenShift deployment).</p>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>sqlite</td>
+<td></td>
+<td>SQLite database configuration</td>
+</tr>
+<tr class="even">
+<td>postgres</td>
+<td></td>
+<td>PostgreSQL database configuration</td>
+</tr>
+<tr class="odd">
+<td>limiters</td>
+<td>array</td>
+<td>Quota limiters configuration</td>
+</tr>
+<tr class="even">
+<td>scheduler</td>
+<td></td>
+<td>Quota scheduler configuration</td>
+</tr>
+<tr class="odd">
+<td>enable_token_history</td>
+<td>boolean</td>
+<td>Enables storing information about token usage history</td>
+</tr>
+</tbody>
+</table>
+<h2 id="quotalimiterconfiguration">QuotaLimiterConfiguration</h2>
+<p>Configuration for one quota limiter.</p>
+<p>There are three configuration options for each limiter:</p>
+<ol type="1">
+<li><code>period</code> is specified in a human-readable form, see
+https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT
+for all possible options. When the end of the period is reached, the
+quota is reset or increased.</li>
+<li><code>initial_quota</code> is the value set at the beginning of the
+period.</li>
+<li><code>quota_increase</code> is the value (if specified) used to
+increase the quota when the period is reached.</li>
+</ol>
+<p>There are two basic use cases:</p>
+<ol type="1">
+<li>When the quota needs to be reset to a specific value periodically
+(for example on a weekly or monthly basis), set
+<code>initial_quota</code> to the required value.</li>
+<li>When the quota needs to be increased by a specific value
+periodically (for example on a daily basis), set
+<code>quota_increase</code>.</li>
+</ol>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>type</td>
+<td>string</td>
+<td>Quota limiter type, either user_limiter or cluster_limiter</td>
+</tr>
+<tr class="even">
+<td>name</td>
+<td>string</td>
+<td>Human readable quota limiter name</td>
+</tr>
+<tr class="odd">
+<td>initial_quota</td>
+<td>integer</td>
+<td>Quota set at beginning of the period</td>
+</tr>
+<tr class="even">
+<td>quota_increase</td>
+<td>integer</td>
+<td>Delta value used to increase quota when period is reached</td>
+</tr>
+<tr class="odd">
+<td>period</td>
+<td>string</td>
+<td>Period specified in human readable form</td>
+</tr>
+</tbody>
+</table>
+<h2 id="quotaschedulerconfiguration">QuotaSchedulerConfiguration</h2>
+<p>Quota scheduler configuration.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>period</td>
+<td>integer</td>
+<td>Quota scheduler period specified in seconds</td>
+</tr>
+</tbody>
+</table>
+<h2 id="rhidentityconfiguration">RHIdentityConfiguration</h2>
+<p>Red Hat Identity authentication configuration.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>required_entitlements</td>
+<td>array</td>
+<td>List of all required entitlements.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sqlitedatabaseconfiguration">SQLiteDatabaseConfiguration</h2>
+<p>SQLite database configuration.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>db_path</td>
+<td>string</td>
+<td>Path to file where SQLite database is stored</td>
+</tr>
+</tbody>
+</table>
+<h2 id="serviceconfiguration">ServiceConfiguration</h2>
+<p>Service configuration.</p>
+<p>Lightspeed Core Stack is a REST API service that accepts requests on
+a specified hostname and port. It is also possible to enable
+authentication and specify the number of Uvicorn workers. When more
+workers are specified, the service can handle requests concurrently.</p>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>host</td>
+<td>string</td>
+<td>Service hostname</td>
+</tr>
+<tr class="even">
+<td>port</td>
+<td>integer</td>
+<td>Service port</td>
+</tr>
+<tr class="odd">
+<td>auth_enabled</td>
+<td>boolean</td>
+<td>Enables the authentication subsystem</td>
+</tr>
+<tr class="even">
+<td>workers</td>
+<td>integer</td>
+<td>Number of Uvicorn worker processes to start</td>
+</tr>
+<tr class="odd">
+<td>color_log</td>
+<td>boolean</td>
+<td>Enables colorized logging</td>
+</tr>
+<tr class="even">
+<td>access_log</td>
+<td>boolean</td>
+<td>Enables logging of all access information</td>
+</tr>
+<tr class="odd">
+<td>tls_config</td>
+<td></td>
+<td>Transport Layer Security configuration for HTTPS support</td>
+</tr>
+<tr class="even">
+<td>cors</td>
+<td></td>
+<td>Cross-Origin Resource Sharing configuration for cross-domain
+requests</td>
+</tr>
+</tbody>
+</table>
+<h2 id="tlsconfiguration">TLSConfiguration</h2>
+<p>TLS configuration.</p>
+<p>Transport Layer Security (TLS) is a cryptographic protocol designed
+to provide communications security over a computer network, such as the
+Internet. The protocol is widely used in applications such as email,
+instant messaging, and voice over IP, but its use in securing HTTPS
+remains the most publicly visible.</p>
+<p>Useful resources:</p>
+<ul>
+<li><a href="https://fastapi.tiangolo.com/deployment/https/">FastAPI
+HTTPS Deployment</a></li>
+<li><a
+href="https://en.wikipedia.org/wiki/Transport_Layer_Security">Transport
+Layer Security Overview</a></li>
+<li><a
+href="https://www.ssltrust.eu/learning/ssl/transport-layer-security-tls">What
+is TLS</a></li>
+</ul>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>tls_certificate_path</td>
+<td>string</td>
+<td>SSL/TLS certificate file path for HTTPS support.</td>
+</tr>
+<tr class="even">
+<td>tls_key_path</td>
+<td>string</td>
+<td>SSL/TLS private key file path for HTTPS support.</td>
+</tr>
+<tr class="odd">
+<td>tls_key_password</td>
+<td>string</td>
+<td>Path to file containing the password to decrypt the SSL/TLS private
+key.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="userdatacollection">UserDataCollection</h2>
+<p>User data collection configuration.</p>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 23%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>feedback_enabled</td>
+<td>boolean</td>
+<td>When set to true the user feedback is stored and later sent for
+analysis.</td>
+</tr>
+<tr class="even">
+<td>feedback_storage</td>
+<td>string</td>
+<td>Path to directory where feedback will be saved for further
+processing.</td>
+</tr>
+<tr class="odd">
+<td>transcripts_enabled</td>
+<td>boolean</td>
+<td>When set to true the conversation history is stored and later sent
+for analysis.</td>
+</tr>
+<tr class="even">
+<td>transcripts_storage</td>
+<td>string</td>
+<td>Path to directory where conversation history will be saved for
+further processing.</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>

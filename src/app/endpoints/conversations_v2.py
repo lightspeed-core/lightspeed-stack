@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from authentication import get_auth_dependency
 from authorization.middleware import authorize
@@ -12,10 +12,14 @@ from models.cache_entry import CacheEntry
 from models.config import Action
 from models.requests import ConversationUpdateRequest
 from models.responses import (
+    BadRequestResponse,
     ConversationDeleteResponse,
     ConversationResponse,
-    ConversationUpdateResponse,
     ConversationsListResponseV2,
+    ConversationUpdateResponse,
+    ForbiddenResponse,
+    InternalServerErrorResponse,
+    NotFoundResponse,
     UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
@@ -25,92 +29,54 @@ logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["conversations_v2"])
 
 
-conversation_responses: dict[int | str, dict[str, Any]] = {
-    200: {
-        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-        "chat_history": [
-            {
-                "messages": [
-                    {"content": "Hi", "type": "user"},
-                    {"content": "Hello!", "type": "assistant"},
-                ],
-                "started_at": "2024-01-01T00:00:00Z",
-                "completed_at": "2024-01-01T00:00:05Z",
-                "provider": "provider ID",
-                "model": "model ID",
-            }
-        ],
-    },
-    400: {
-        "description": "Missing or invalid credentials provided by client",
-        "model": UnauthorizedResponse,
-    },
-    401: {
-        "description": "Unauthorized: Invalid or missing Bearer token",
-        "model": UnauthorizedResponse,
-    },
-    404: {
-        "detail": {
-            "response": "Conversation not found",
-            "cause": "The specified conversation ID does not exist.",
-        }
-    },
+conversation_get_responses: dict[int | str, dict[str, Any]] = {
+    200: ConversationResponse.openapi_response(),
+    400: BadRequestResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    404: NotFoundResponse.openapi_response(examples=["conversation"]),
+    500: InternalServerErrorResponse.openapi_response(
+        examples=["conversation cache", "configuration"]
+    ),
 }
 
 conversation_delete_responses: dict[int | str, dict[str, Any]] = {
-    200: {
-        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-        "success": True,
-        "message": "Conversation deleted successfully",
-    },
-    400: {
-        "description": "Missing or invalid credentials provided by client",
-        "model": UnauthorizedResponse,
-    },
-    401: {
-        "description": "Unauthorized: Invalid or missing Bearer token",
-        "model": UnauthorizedResponse,
-    },
-    404: {
-        "detail": {
-            "response": "Conversation not found",
-            "cause": "The specified conversation ID does not exist.",
-        }
-    },
+    200: ConversationDeleteResponse.openapi_response(),
+    400: BadRequestResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    404: NotFoundResponse.openapi_response(examples=["conversation"]),
+    500: InternalServerErrorResponse.openapi_response(
+        examples=["conversation cache", "configuration"]
+    ),
 }
 
 conversations_list_responses: dict[int | str, dict[str, Any]] = {
-    200: {
-        "conversations": [
-            {
-                "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-                "topic_summary": "This is a topic summary",
-                "last_message_timestamp": "2024-01-01T00:00:00Z",
-            }
-        ]
-    }
+    200: ConversationsListResponseV2.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    500: InternalServerErrorResponse.openapi_response(
+        examples=["conversation cache", "configuration"]
+    ),
 }
 
 conversation_update_responses: dict[int | str, dict[str, Any]] = {
-    200: {
-        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-        "success": True,
-        "message": "Topic summary updated successfully",
-    },
-    400: {
-        "description": "Missing or invalid credentials provided by client",
-        "model": UnauthorizedResponse,
-    },
-    401: {
-        "description": "Unauthorized: Invalid or missing Bearer token",
-        "model": UnauthorizedResponse,
-    },
-    404: {
-        "detail": {
-            "response": "Conversation not found",
-            "cause": "The specified conversation ID does not exist.",
-        }
-    },
+    200: ConversationUpdateResponse.openapi_response(),
+    400: BadRequestResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    404: NotFoundResponse.openapi_response(examples=["conversation"]),
+    500: InternalServerErrorResponse.openapi_response(
+        examples=["conversation cache", "configuration"]
+    ),
 }
 
 
@@ -129,15 +95,10 @@ async def get_conversations_list_endpoint_handler(
 
     skip_userid_check = auth[2]
 
-    if configuration.conversation_cache is None:
+    if configuration.conversation_cache_configuration.type is None:
         logger.warning("Converastion cache is not configured")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "response": "Conversation cache is not configured",
-                "cause": "Conversation cache is not configured",
-            },
-        )
+        response = InternalServerErrorResponse.cache_unavailable()
+        raise HTTPException(**response.model_dump())
 
     conversations = configuration.conversation_cache.list(user_id, skip_userid_check)
     logger.info("Conversations for user %s: %s", user_id, len(conversations))
@@ -145,7 +106,7 @@ async def get_conversations_list_endpoint_handler(
     return ConversationsListResponseV2(conversations=conversations)
 
 
-@router.get("/conversations/{conversation_id}", responses=conversation_responses)
+@router.get("/conversations/{conversation_id}", responses=conversation_get_responses)
 @authorize(Action.GET_CONVERSATION)
 async def get_conversation_endpoint_handler(
     request: Request,  # pylint: disable=unused-argument
@@ -161,15 +122,10 @@ async def get_conversation_endpoint_handler(
 
     skip_userid_check = auth[2]
 
-    if configuration.conversation_cache is None:
+    if configuration.conversation_cache_configuration.type is None:
         logger.warning("Converastion cache is not configured")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "response": "Conversation cache is not configured",
-                "cause": "Conversation cache is not configured",
-            },
-        )
+        response = InternalServerErrorResponse.cache_unavailable()
+        raise HTTPException(**response.model_dump())
 
     check_conversation_existence(user_id, conversation_id)
 
@@ -201,15 +157,10 @@ async def delete_conversation_endpoint_handler(
 
     skip_userid_check = auth[2]
 
-    if configuration.conversation_cache is None:
+    if configuration.conversation_cache_configuration.type is None:
         logger.warning("Converastion cache is not configured")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "response": "Conversation cache is not configured",
-                "cause": "Conversation cache is not configured",
-            },
-        )
+        response = InternalServerErrorResponse.cache_unavailable()
+        raise HTTPException(**response.model_dump())
 
     check_conversation_existence(user_id, conversation_id)
 
@@ -217,18 +168,7 @@ async def delete_conversation_endpoint_handler(
     deleted = configuration.conversation_cache.delete(
         user_id, conversation_id, skip_userid_check
     )
-
-    if deleted:
-        return ConversationDeleteResponse(
-            conversation_id=conversation_id,
-            success=True,
-            response="Conversation deleted successfully",
-        )
-    return ConversationDeleteResponse(
-        conversation_id=conversation_id,
-        success=True,
-        response="Conversation can not be deleted",
-    )
+    return ConversationDeleteResponse(deleted=deleted, conversation_id=conversation_id)
 
 
 @router.put("/conversations/{conversation_id}", responses=conversation_update_responses)
@@ -251,15 +191,10 @@ async def update_conversation_endpoint_handler(
 
     skip_userid_check = auth[2]
 
-    if configuration.conversation_cache is None:
+    if configuration.conversation_cache_configuration.type is None:
         logger.warning("Conversation cache is not configured")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "response": "Conversation cache is not configured",
-                "cause": "Conversation cache is not configured",
-            },
-        )
+        response = InternalServerErrorResponse.cache_unavailable()
+        raise HTTPException(**response.model_dump())
 
     check_conversation_existence(user_id, conversation_id)
 
@@ -285,31 +220,25 @@ def check_valid_conversation_id(conversation_id: str) -> None:
     """Check validity of conversation ID format."""
     if not check_suid(conversation_id):
         logger.error("Invalid conversation ID format: %s", conversation_id)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "response": "Invalid conversation ID format",
-                "cause": f"Conversation ID {conversation_id} is not a valid UUID",
-            },
+        response = BadRequestResponse(
+            resource="conversation", resource_id=conversation_id
         )
+        raise HTTPException(**response.model_dump())
 
 
 def check_conversation_existence(user_id: str, conversation_id: str) -> None:
     """Check if conversation exists."""
     # checked already, but we need to make pyright happy
-    if configuration.conversation_cache is None:
+    if configuration.conversation_cache_configuration.type is None:
         return
     conversations = configuration.conversation_cache.list(user_id, False)
     conversation_ids = [conv.conversation_id for conv in conversations]
     if conversation_id not in conversation_ids:
         logger.error("No conversation found for conversation ID %s", conversation_id)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "response": "Conversation not found",
-                "cause": f"Conversation {conversation_id} could not be retrieved.",
-            },
+        response = NotFoundResponse(
+            resource="conversation", resource_id=conversation_id
         )
+        raise HTTPException(**response.model_dump())
 
 
 def transform_chat_message(entry: CacheEntry) -> dict[str, Any]:

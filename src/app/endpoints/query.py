@@ -9,7 +9,8 @@ from datetime import UTC, datetime
 from typing import Annotated, Any, Optional, cast
 from urllib.parse import urljoin
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
+from litellm.exceptions import RateLimitError
 from llama_stack_client import (
     APIConnectionError,
     AsyncLlamaStackClient,  # type: ignore
@@ -25,6 +26,7 @@ from llama_stack_client.types.agents.turn_create_params import (
 from llama_stack_client.types.model_list_response import ModelListResponse
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 from llama_stack_client.types.tool_execution_step import ToolExecutionStep
+from sqlalchemy.exc import SQLAlchemyError
 
 import constants
 import metrics
@@ -40,10 +42,15 @@ from models.database.conversations import UserConversation
 from models.requests import Attachment, QueryRequest
 from models.responses import (
     ForbiddenResponse,
+    InternalServerErrorResponse,
+    NotFoundResponse,
     QueryResponse,
+    QuotaExceededResponse,
     ReferencedDocument,
+    ServiceUnavailableResponse,
     ToolCall,
     UnauthorizedResponse,
+    UnprocessableEntityResponse,
 )
 from utils.endpoints import (
     check_configuration_loaded,
@@ -74,31 +81,20 @@ router = APIRouter(tags=["query"])
 OFFLINE = True
 
 query_response: dict[int | str, dict[str, Any]] = {
-    200: {
-        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-        "response": "LLM answer",
-        "referenced_documents": [
-            {
-                "doc_url": "https://docs.openshift.com/"
-                "container-platform/4.15/operators/olm/index.html",
-                "doc_title": "Operator Lifecycle Manager (OLM)",
-            }
-        ],
-    },
-    400: {
-        "description": "Missing or invalid credentials provided by client",
-        "model": UnauthorizedResponse,
-    },
-    403: {
-        "description": "User is not authorized",
-        "model": ForbiddenResponse,
-    },
-    500: {
-        "detail": {
-            "response": "Unable to connect to Llama Stack",
-            "cause": "Connection error.",
-        }
-    },
+    200: QueryResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(
+        examples=["endpoint", "conversation read", "model override"]
+    ),
+    404: NotFoundResponse.openapi_response(
+        examples=["model", "conversation", "provider"]
+    ),
+    422: UnprocessableEntityResponse.openapi_response(),
+    429: QuotaExceededResponse.openapi_response(),
+    500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
+    503: ServiceUnavailableResponse.openapi_response(),
 }
 
 
@@ -281,13 +277,11 @@ async def query_endpoint_handler_base(  # pylint: disable=R0914
                 query_request.conversation_id,
                 user_id,
             )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "response": "Conversation not found",
-                    "cause": "The requested conversation does not exist.",
-                },
+            response = NotFoundResponse(
+                resource="conversation", resource_id=query_request.conversation_id
             )
+            raise HTTPException(**response.model_dump())
+
     else:
         logger.debug("Query does not contain conversation ID")
 
@@ -322,9 +316,19 @@ async def query_endpoint_handler_base(  # pylint: disable=R0914
                 session.query(UserConversation).filter_by(id=conversation_id).first()
             )
             if not existing_conversation:
-                topic_summary = await get_topic_summary_func(
-                    query_request.query, client, llama_stack_model_id
-                )
+                # Check if topic summary should be generated (default: True)
+                should_generate = query_request.generate_topic_summary
+
+                if should_generate:
+                    logger.debug("Generating topic summary for new conversation")
+                    topic_summary = await get_topic_summary_func(
+                        query_request.query, client, llama_stack_model_id
+                    )
+                else:
+                    logger.debug(
+                        "Topic summary generation disabled by request parameter"
+                    )
+                    topic_summary = None
         # Convert RAG chunks to dictionary format once for reuse
         logger.info("Processing RAG chunks...")
         rag_chunks_dict = [chunk.model_dump() for chunk in summary.rag_chunks]
@@ -424,13 +428,19 @@ async def query_endpoint_handler_base(  # pylint: disable=R0914
         # Update metrics for the LLM call failure
         metrics.llm_calls_failures_total.inc()
         logger.error("Unable to connect to Llama Stack: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "response": "Unable to connect to Llama Stack",
-                "cause": str(e),
-            },
-        ) from e
+        response = ServiceUnavailableResponse(
+            backend_name="Llama Stack",
+            cause=str(e),
+        )
+        raise HTTPException(**response.model_dump()) from e
+    except SQLAlchemyError as e:
+        logger.exception("Error persisting conversation details: %s", e)
+        response = InternalServerErrorResponse.database_error()
+        raise HTTPException(**response.model_dump()) from e
+    except RateLimitError as e:
+        used_model = getattr(e, "model", "")
+        response = QuotaExceededResponse.model(used_model)
+        raise HTTPException(**response.model_dump()) from e
 
 
 @router.post("/query", responses=query_response)
@@ -513,31 +523,21 @@ def select_model_and_provider_id(
         except (StopIteration, AttributeError) as e:
             message = "No LLM model found in available models"
             logger.error(message)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "response": constants.UNABLE_TO_PROCESS_RESPONSE,
-                    "cause": message,
-                },
-            ) from e
+            response = NotFoundResponse(resource="model", resource_id=model_id or "")
+            raise HTTPException(**response.model_dump()) from e
 
     llama_stack_model_id = f"{provider_id}/{model_id}"
     # Validate that the model_id and provider_id are in the available models
     logger.debug("Searching for model: %s, provider: %s", model_id, provider_id)
+    # TODO: Create sepparate validation of provider
     if not any(
         m.identifier == llama_stack_model_id and m.provider_id == provider_id
         for m in models
     ):
         message = f"Model {model_id} from provider {provider_id} not found in available models"
         logger.error(message)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "response": constants.UNABLE_TO_PROCESS_RESPONSE,
-                "cause": message,
-            },
-        )
-
+        response = NotFoundResponse(resource="model", resource_id=model_id)
+        raise HTTPException(**response.model_dump())
     return llama_stack_model_id, model_id, provider_id
 
 
@@ -926,26 +926,24 @@ def validate_attachments_metadata(attachments: list[Attachment]) -> None:
     for attachment in attachments:
         if attachment.attachment_type not in constants.ATTACHMENT_TYPES:
             message = (
-                f"Attachment with improper type {attachment.attachment_type} detected"
+                f"Invalid attatchment type {attachment.attachment_type}: "
+                f"must be one of {constants.ATTACHMENT_TYPES}"
             )
             logger.error(message)
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "response": constants.UNABLE_TO_PROCESS_RESPONSE,
-                    "cause": message,
-                },
+            response = UnprocessableEntityResponse(
+                response="Invalid attribute value", cause=message
             )
+            raise HTTPException(**response.model_dump())
         if attachment.content_type not in constants.ATTACHMENT_CONTENT_TYPES:
-            message = f"Attachment with improper content type {attachment.content_type} detected"
-            logger.error(message)
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "response": constants.UNABLE_TO_PROCESS_RESPONSE,
-                    "cause": message,
-                },
+            message = (
+                f"Invalid attatchment content type {attachment.content_type}: "
+                f"must be one of {constants.ATTACHMENT_CONTENT_TYPES}"
             )
+            logger.error(message)
+            response = UnprocessableEntityResponse(
+                response="Invalid attribute value", cause=message
+            )
+            raise HTTPException(**response.model_dump())
 
 
 def get_rag_toolgroups(

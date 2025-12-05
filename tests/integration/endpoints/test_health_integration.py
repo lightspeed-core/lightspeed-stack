@@ -5,7 +5,7 @@ import pytest
 from pytest_mock import MockerFixture, AsyncMockType
 from llama_stack.providers.datatypes import HealthStatus
 
-from fastapi import Response, status
+from fastapi import Response
 from authentication.interface import AuthTuple
 
 from configuration import AppConfig
@@ -126,32 +126,21 @@ async def test_health_readiness_client_error(
     """Test that readiness probe endpoint handles uninitialized client gracefully.
 
     This integration test verifies:
-    - Endpoint handles missing client initialization gracefully
-    - Error is caught and returned as proper health status
-    - Service returns 503 status code for unhealthy state
-    - Error message includes details about initialization failure
+    - RuntimeError from uninitialized client is NOT caught by the endpoint
+    - Error propagates from the endpoint handler (desired behavior)
+    - The endpoint does not catch RuntimeError, only APIConnectionError
 
     Args:
         test_response: FastAPI response object
         test_auth: noop authentication tuple
     """
-    result = await readiness_probe_get_method(auth=test_auth, response=test_response)
 
-    # Verify HTTP status code is 503 (Service Unavailable)
-    assert test_response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    # Verify that RuntimeError propagates from the endpoint (not caught)
+    with pytest.raises(RuntimeError) as exc_info:
+        await readiness_probe_get_method(auth=test_auth, response=test_response)
 
-    # Verify that service returns error response when client not initialized
-    assert result.ready is False
-    assert "Providers not healthy" in result.reason
-    assert "unknown" in result.reason
-
-    # Verify the response includes provider error details
-    assert len(result.providers) == 1
-    assert result.providers[0].provider_id == "unknown"
-    assert result.providers[0].status == "Error"
-    assert (
-        "AsyncLlamaStackClient has not been initialised" in result.providers[0].message
-    )
+    assert "AsyncLlamaStackClient has not been initialised" in str(exc_info.value)
+    assert "Ensure 'load(..)' has been called" in str(exc_info.value)
 
 
 @pytest.mark.asyncio

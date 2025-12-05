@@ -20,13 +20,19 @@ ptisnovs@redhat.com
 
 ---
 
+## Llama Stack
+
+![LCORE](images/llama_stack_logo.png)
+
+---
+
 ## What is Llama Stack?
 
 * Framework to create applications with AI
     - chat bots
     - generative AI
     - training and evaluation tools
-* Real framework independent on programming language
+* It's a real framework independent on programming language
     - providers
     - RAG, quota control, guardrails, metrics
 
@@ -46,6 +52,12 @@ ptisnovs@redhat.com
 
 ### In reality, the requirements are larger
 
+![confusion](images/notation_traffic.jpg)
+
+---
+
+### In reality, the requirements are larger
+
 * RAG
 * Conversation history
 * Conversation forking
@@ -57,6 +69,37 @@ ptisnovs@redhat.com
 * Responses validation
 * Multiple LLM calls
 * Responses evaluation
+
+---
+
+### 🤖 LLM Inference
+* Generates AI responses (streaming and non-streaming)
+* Handles complex streaming with tool calls and content interleaving
+
+---
+
+### 🛡️  Safety & Content Filtering
+* Retrieves input/output shields for content filtering
+* Provides safety mechanisms for AI responses
+
+---
+
+## 🔧 Tools & Agents
+
+* Manages agent sessions (create, retrieve, delete)
+* Supports tool-augmented AI interactions
+* Enables agents to call external tools/functions
+
+---
+
+### 📚 RAG Support
+* Integration with vector databases
+* Enables Retrieval-Augmented Generation for better context
+
+---
+### 🎯 Model & Provider Management
+* Lists available models and providers
+* Allows runtime switching between different LLM providers (OpenAI, Azure, etc.)
 
 ---
 
@@ -272,17 +315,26 @@ uv run llama stack list-providers
 
 ---
 
-Lightspeed Core
+## Lightspeed Core
 
 ![LCORE](images/lcore.jpg)
 
 ---
 
-### Based on Llama Stack
+## Why Lightspeed core?
 
-* REST API
-* Supports Llama Stack in service mode
-* Supports Llama Stack in library mode
+---
+![LCORE](images/journey.png)
+
+---
+
+### Lightspeed Core
+
+* It's own REST API (stable, standard)
+* Llama Stack as backed
+    - more modules as LC plugins
+    - supports Llama Stack in service mode
+    - supports Llama Stack in library mode
 * Implemented as async Python code
 
 ---
@@ -295,18 +347,108 @@ Lightspeed Core
 
 ---
 
-## Evaluation
-
-* Motivation
-* Evaluation tool
-    - Ragas
-    - Deep Eval
-* Statistical significance
-
+* Authentication + authorization
+* RBAC
+* Quota management
+* MCP/Agents
+* Question validators
+* Answers redactors
+* System prompt
+* Summarization
+* Storage
+* Metrics
+* Plugins
+* UI specification
+* User data collection (feedback + history)
 
 ---
 
 ## Summary
+
+* AI world is similar to JS world 10 years ago
+    - every week new framework is created
+    - Llama Stack is a nice fit to this world
+    - Lightspeed Core as stable layer to keep developers sane
+
+---
+
+## Evaluation
+
+---
+
+## Why Evaluate an LLM System?
+
+* Measure performance
+* Ensure good user experience
+* Detect bias & harm
+* Comply with ethical & legal standards
+
+---
+
+## Benefits of Evaluation
+
+* Improvement:
+  - Pinpoints weaknesses (e.g., hallucinations)
+  - Enables data-driven model tuning
+
+* Benchmarking:
+  - Compare models (GPT, Gemini, Granite, etc.)
+  - Ensures reliability over time
+
+---
+### Lightspeed Evaluation Framework
+
+<font size="10">[https://github.com/lightspeed-core/lightspeed-evaluation/](https://github.com/lightspeed-core/lightspeed-evaluation)</font>
+---
+
+### Lightspeed Evaluation Framework
+
+* Multi-Framework LLM as a Judge
+  - Ragas, DeepEval and custom implementations
+* Turn & Conversation-Level
+  - Individual queries and multi-turn conversations
+* Tools/Agents Support
+* LLM Providers
+  - OpenAI, Watsonx, Gemini, vLLM and others
+* Setup/Cleanup Scripts
+* Statistical Analysis
+
+---
+```yaml
+- conversation_group_id: "test_conversation"
+  description: "Sample evaluation"
+  
+  # Optional: Environment setup/cleanup scripts, when API is enabled
+  setup_script: "scripts/setup_env.sh"      # Run before conversation
+  cleanup_script: "scripts/cleanup_env.sh"  # Run after conversation
+  
+  # Conversation-level metrics   
+  conversation_metrics:
+    - "deepeval:conversation_completeness"
+  
+  conversation_metrics_metadata:
+    "deepeval:conversation_completeness":
+      threshold: 0.8
+  
+  turns:
+    - turn_id: id1
+      query: What is OpenShift Virtualization?
+      response: null                    # Populated by API if enabled, otherwise provide
+      contexts:
+        - OpenShift Virtualization is an extension of the OpenShift ...
+      attachments: []                   # Attachments (Optional)
+      expected_response: OpenShift Virtualization is an extension of the OpenShift Container Platform that allows running virtual machines alongside containers
+      expected_intent: "explain a concept"  # Expected intent for intent evaluation
+      
+      # Per-turn metrics (overrides system defaults)
+      turn_metrics:
+        - "ragas:faithfulness"
+        - "custom:answer_correctness"
+        - "custom:intent_eval"
+```
+---
+
+## Demo
 
 ---
 

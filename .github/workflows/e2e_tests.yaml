@@ -1,4 +1,4 @@
-# .github/workflows/e2e_test.yml
+# .github/workflows/e2e_tests.yml
 name: E2E Tests
 
 on: [push, pull_request_target]
@@ -9,12 +9,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        environment: [ "ci", "azure"]
+        mode: ["server", "library"]
+        environment: ["ci", "azure"]
+    
+    name: "E2E: ${{ matrix.mode }} mode / ${{ matrix.environment }}"
+    
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      E2E_OPENAI_MODEL: ${{ vars.E2E_OPENAI_MODEL }}
       CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
       CLIENT_ID: ${{ secrets.CLIENT_ID }}
       TENANT_ID: ${{ secrets.TENANT_ID }}
+      E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
 
     steps:
       - uses: actions/checkout@v4
@@ -40,42 +46,24 @@ jobs:
           echo "Current commit: $(git rev-parse HEAD)"
           echo "Current commit message: $(git log -1 --oneline)"
           echo ""
-          echo "=== Recent commits (should show setup-metrics commits) ==="
+          echo "=== Recent commits ==="
           git log --oneline -5
 
-      - uses: 1arp/create-a-file-action@0.4.5
-        env: 
-            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        with:
-          path: '.'
-          isAbsolutePath: false
-          file: 'lightspeed-stack.yaml'
-          content: |
-            name: Lightspeed Core Service (LCS)
-            service:
-              host: 0.0.0.0
-              port: 8080
-              auth_enabled: false
-              workers: 1
-              color_log: true
-              access_log: true
-            llama_stack:
-              # Uses a remote llama-stack service
-              # The instance would have already been started with a llama-stack-run.yaml file
-              use_as_library_client: false
-              # Alternative for "as library use"
-              # use_as_library_client: true
-              # library_client_config_path: <path-to-llama-stack-run.yaml-file>
-              url: http://llama-stack:8321
-              api_key: xyzzy
-            user_data_collection:
-              feedback_enabled: true
-              feedback_storage: "/tmp/data/feedback"
-              transcripts_enabled: true
-              transcripts_storage: "/tmp/data/transcripts"
-
-            authentication:
-              module: "noop"
+      - name: Load lightspeed-stack.yaml configuration
+        run: |
+          MODE="${{ matrix.mode }}"
+          CONFIG_FILE="tests/e2e/configuration/lightspeed-stack-${MODE}-mode.yaml"
+          
+          echo "Loading configuration for ${MODE} mode"
+          echo "Source: ${CONFIG_FILE}"
+          
+          if [ ! -f "${CONFIG_FILE}" ]; then
+            echo "❌ Configuration file not found: ${CONFIG_FILE}"
+            exit 1
+          fi
+          
+          cp "${CONFIG_FILE}" lightspeed-stack.yaml
+          echo "✅ Configuration loaded successfully"
         
       - name: Get Azure API key (access token)
         if: matrix.environment == 'azure'
@@ -105,7 +93,7 @@ jobs:
 
       - name: Select and configure run.yaml
         env:
-          CONFIG_ENVIRONMENT: ${{ matrix.environment || 'ci' }}
+          CONFIG_ENVIRONMENT: ${{ matrix.environment }}
         run: |
           CONFIGS_DIR="tests/e2e/configs"
           ENVIRONMENT="$CONFIG_ENVIRONMENT"
@@ -127,40 +115,42 @@ jobs:
           echo "Looking for: $CONFIG_FILE"
           
           if [ -f "$CONFIG_FILE" ]; then
-            echo "Found config for environment: $ENVIRONMENT"
+            echo "Found config for $ENVIRONMENT environment"
             cp "$CONFIG_FILE" run.yaml
           else
             echo "Configuration file not found: $CONFIG_FILE"
-            echo "Available files in $CONFIGS_DIR:"
-            ls -la "$CONFIGS_DIR/"
+            echo "Available files:"
+            find "$CONFIGS_DIR" -name "*.yaml"
             exit 1
           fi
           
           # Update paths for container environment (relative -> absolute)
           sed -i 's|db_path: \.llama/distributions|db_path: /app-root/.llama/distributions|g' run.yaml
           sed -i 's|db_path: tmp/|db_path: /app-root/.llama/distributions/|g' run.yaml
-          
-          # Set OpenAI API key for container
-          sed -i "s|api_key: \${env\.OPENAI_API_KEY}|api_key: $OPENAI_API_KEY|g" run.yaml
-          
-          echo "Successfully configured for environment: $ENVIRONMENT"
+                    
+          echo "Successfully configured for $ENVIRONMENT environment"
           echo "Using configuration: $(basename "$CONFIG_FILE")"
 
       - name: Show final configuration
         run: |
           echo "=== Configuration Summary ==="
-          echo "Source config: tests/e2e/configs/run-ci.yaml"
+          echo "Deployment mode: ${{ matrix.mode }}"
+          echo "Environment: ${{ matrix.environment }}"
+          echo "Source config: tests/e2e/configs/run-${{ matrix.environment }}.yaml"
           echo "Final file: run.yaml"
-          echo "Container mount: /app-root/run.yaml"
           echo ""
-          echo "=== Final Configuration Preview ==="
+          echo "=== Configuration Preview ==="
           echo "Providers: $(grep -c "provider_id:" run.yaml)"
           echo "Models: $(grep -c "model_id:" run.yaml)"
           echo ""
+          echo "=== lightspeed-stack.yaml ==="
+          grep -A 3 "llama_stack:" lightspeed-stack.yaml
 
-      - name: Run service manually
+      - name: Run services (Server Mode)
+        if: matrix.mode == 'server'
         env: 
-            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AZURE_API_KEY: ${{ env.AZURE_API_KEY }}
         run: |
           # Debug: Check if environment variable is available for docker-compose
           echo "OPENAI_API_KEY is set: $([ -n "$OPENAI_API_KEY" ] && echo 'YES' || echo 'NO')"
@@ -178,17 +168,38 @@ jobs:
             echo "All services started successfully"
           fi
 
+      - name: Run services (Library Mode)
+        if: matrix.mode == 'library'
+        env: 
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AZURE_API_KEY: ${{ env.AZURE_API_KEY }}
+        run: |
+          echo "Starting service in library mode (1 container)"
+          docker compose -f docker-compose-library.yaml up -d
+          
+          if docker compose -f docker-compose-library.yaml ps | grep -E 'Exit|exited|stopped'; then
+            echo "Service failed to start - showing logs:"
+            docker compose -f docker-compose-library.yaml logs
+            exit 1
+          else
+            echo "Service started successfully"
+          fi
+
       - name: Wait for services
         run: |
           echo "Waiting for services to be healthy..."
-          sleep 20  # adjust depending on boot time
+          sleep 20
 
       - name: Quick connectivity test
         run: |
           echo "Testing basic connectivity before full test suite..."
           curl -f http://localhost:8080/v1/models || {
-            echo "❌ Basic connectivity failed - showing logs before running full tests"
-            docker compose logs --tail=30
+            echo "❌ Basic connectivity failed - showing logs"
+            if [ "${{ matrix.mode }}" == "server" ]; then
+              docker compose logs --tail=30
+            else
+              docker compose -f docker-compose-library.yaml logs --tail=30
+            fi
             exit 1
           }
 
@@ -196,6 +207,7 @@ jobs:
         env:
           TERM: xterm-256color
           FORCE_COLOR: 1
+          E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
         run: |
           echo "Installing test dependencies..."
           pip install uv
@@ -208,9 +220,14 @@ jobs:
         if: failure()
         run: |
           echo "=== Test failure logs ==="
-          echo "=== llama-stack logs ==="
-          docker compose logs llama-stack
           
-          echo ""
-          echo "=== lightspeed-stack logs ==="
-          docker compose logs lightspeed-stack
+          if [ "${{ matrix.mode }}" == "server" ]; then
+            echo "=== llama-stack logs ==="
+            docker compose logs llama-stack
+            echo ""
+            echo "=== lightspeed-stack logs ==="
+            docker compose logs lightspeed-stack
+          else
+            echo "=== lightspeed-stack (library mode) logs ==="
+            docker compose -f docker-compose-library.yaml logs lightspeed-stack
+          fi

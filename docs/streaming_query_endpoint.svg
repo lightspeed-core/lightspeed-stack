@@ -1,0 +1,135 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" height="864px" preserveAspectRatio="none" style="width:1073px;height:864px;background:#FFFFFF;" version="1.1" viewBox="0 0 1073 864" width="1073px" zoomAndPan="magnify">
+  <defs/>
+  <g>
+    <rect fill="none" height="391.9696" style="stroke:#000000;stroke-width:1.5;" width="1057.1544" x="10" y="278.01"/>
+    <rect fill="none" height="294.8516" style="stroke:#000000;stroke-width:1.5;" width="393.9547" x="663.1998" y="336.4221"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="45" x2="45" y1="39.0679" y2="826.8037"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="229.0465" x2="229.0465" y1="39.0679" y2="826.8037"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="496.4063" x2="496.4063" y1="39.0679" y2="826.8037"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="595.7102" x2="595.7102" y1="39.0679" y2="826.8037"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="742.1998" x2="742.1998" y1="39.0679" y2="826.8037"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="968.713" x2="968.713" y1="39.0679" y2="826.8037"/>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="51.6738" x="20" y="5"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="37.6738" x="27" y="26.9659">Client</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="51.6738" x="20" y="825.8037"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="37.6738" x="27" y="847.7696">Client</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="241.8491" x="109.0465" y="5"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="227.8491" x="116.0465" y="26.9659">Streaming query endpoint handler</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="241.8491" x="109.0465" y="825.8037"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="227.8491" x="116.0465" y="847.7696">Streaming query endpoint handler</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="45.3039" x="474.4063" y="5"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="31.3039" x="481.4063" y="26.9659">Auth</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="45.3039" x="474.4063" y="825.8037"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="31.3039" x="481.4063" y="847.7696">Auth</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="133.4895" x="529.7102" y="5"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="119.4895" x="536.7102" y="26.9659">Llama Stack Client</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="133.4895" x="529.7102" y="825.8037"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="119.4895" x="536.7102" y="847.7696">Llama Stack Client</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="138.3475" x="673.1998" y="5"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="124.3475" x="680.1998" y="26.9659">Stream build event</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="138.3475" x="673.1998" y="825.8037"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="124.3475" x="680.1998" y="847.7696">Stream build event</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="155.4415" x="891.713" y="5"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="141.4415" x="898.713" y="26.9659">SSE Response Stream</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="155.4415" x="891.713" y="825.8037"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="141.4415" x="898.713" y="847.7696">SSE Response Stream</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="227.9711" x2="217.9711" y1="72.7739" y2="68.7739"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="227.9711" x2="217.9711" y1="72.7739" y2="76.7739"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="45.8369" x2="228.9711" y1="72.7739" y2="72.7739"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="160.1342" x="52.8369" y="66.9649">HTTP POST /stream_query</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="495.0583" x2="485.0583" y1="104.4799" y2="100.4799"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="495.0583" x2="485.0583" y1="104.4799" y2="108.4799"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="229.9711" x2="496.0583" y1="104.4799" y2="104.4799"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="243.0872" x="236.9711" y="98.6709">Validate auth, user, conversation access</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="230.9711" x2="240.9711" y1="136.186" y2="132.186"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="230.9711" x2="240.9711" y1="136.186" y2="140.186"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="229.9711" x2="496.0583" y1="136.186" y2="136.186"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="92.6641" x="246.9711" y="130.377">Access granted</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="594.455" x2="584.455" y1="167.892" y2="163.892"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="594.455" x2="584.455" y1="167.892" y2="171.892"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="229.9711" x2="595.455" y1="167.892" y2="167.892"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="223.8602" x="236.9711" y="162.083">Call retrieve_response(model, query)</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="230.9711" x2="240.9711" y1="199.598" y2="195.598"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="230.9711" x2="240.9711" y1="199.598" y2="203.598"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="229.9711" x2="595.455" y1="199.598" y2="199.598"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="298.3763" x="246.9711" y="193.789">AsyncIterator[AgentTurnResponseStreamChunk]</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="231.304" y2="227.304"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="231.304" y2="235.304"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="229.9711" x2="968.4337" y1="231.304" y2="231.304"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="220.7142" x="236.9711" y="225.495">stream_start_event(conversation_id)</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="263.01" y2="259.01"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="263.01" y2="267.01"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="45.8369" x2="968.4337" y1="263.01" y2="263.01"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="56.6411" x="62.8369" y="257.201">SSE: start</text>
+    <path d="M10,278.01 L83.704,278.01 L83.704,287.716 L73.704,297.716 L10,297.716 L10,278.01 " fill="#EEEEEE" style="stroke:#000000;stroke-width:1.5;"/>
+    <rect fill="none" height="391.9696" style="stroke:#000000;stroke-width:1.5;" width="1057.1544" x="10" y="278.01"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="28.704" x="25" y="292.907">loop</text>
+    <text fill="#000000" font-family="sans-serif" font-size="11" font-weight="bold" lengthAdjust="spacing" textLength="185.0408" x="98.704" y="291.7689">[For each chunk from LlamaStack]</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="740.3735" x2="730.3735" y1="321.4221" y2="317.4221"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="740.3735" x2="730.3735" y1="321.4221" y2="325.4221"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="229.9711" x2="741.3735" y1="321.4221" y2="321.4221"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="291.3043" x="236.9711" y="315.6131">stream_build_event(chunk, chunk_id, metadata)</text>
+    <path d="M663.1998,336.4221 L724.7585,336.4221 L724.7585,346.1281 L714.7585,356.1281 L663.1998,356.1281 L663.1998,336.4221 " fill="#EEEEEE" style="stroke:#000000;stroke-width:1.5;"/>
+    <rect fill="none" height="294.8516" style="stroke:#000000;stroke-width:1.5;" width="393.9547" x="663.1998" y="336.4221"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="16.5588" x="678.1998" y="351.3191">alt</text>
+    <text fill="#000000" font-family="sans-serif" font-size="11" font-weight="bold" lengthAdjust="spacing" textLength="132.3016" x="739.7585" y="350.181">[Chunk Type: turn_start]</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="379.8341" y2="375.8341"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="379.8341" y2="383.8341"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="742.3735" x2="968.4337" y1="379.8341" y2="379.8341"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="128.4661" x="749.3735" y="374.0251">emit turn_start event</text>
+    <line style="stroke:#000000;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="663.1998" x2="1057.1544" y1="388.8341" y2="388.8341"/>
+    <text fill="#000000" font-family="sans-serif" font-size="11" font-weight="bold" lengthAdjust="spacing" textLength="129.6918" x="668.1998" y="400.593">[Chunk Type: inference]</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="428.522" y2="424.522"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="428.522" y2="432.522"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="742.3735" x2="968.4337" y1="428.522" y2="428.522"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="171.8342" x="749.3735" y="422.713">emit inference (token) event</text>
+    <line style="stroke:#000000;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="663.1998" x2="1057.1544" y1="437.522" y2="437.522"/>
+    <text fill="#000000" font-family="sans-serif" font-size="11" font-weight="bold" lengthAdjust="spacing" textLength="158.3274" x="668.1998" y="449.2809">[Chunk Type: tool_execution]</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="477.2099" y2="473.2099"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="477.2099" y2="481.2099"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="742.3735" x2="968.4337" y1="477.2099" y2="477.2099"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="203.0602" x="749.3735" y="471.4009">emit tool_call + tool_result events</text>
+    <line style="stroke:#000000;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="663.1998" x2="1057.1544" y1="486.2099" y2="486.2099"/>
+    <text fill="#000000" font-family="sans-serif" font-size="11" font-weight="bold" lengthAdjust="spacing" textLength="110.7197" x="668.1998" y="497.9688">[Chunk Type: shield]</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="525.8978" y2="521.8978"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="525.8978" y2="529.8978"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="742.3735" x2="968.4337" y1="525.8978" y2="525.8978"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="167.8042" x="749.3735" y="520.0888">emit shield validation event</text>
+    <line style="stroke:#000000;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="663.1998" x2="1057.1544" y1="534.8978" y2="534.8978"/>
+    <text fill="#000000" font-family="sans-serif" font-size="11" font-weight="bold" lengthAdjust="spacing" textLength="157.6096" x="668.1998" y="546.6567">[Chunk Type: turn_complete]</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="574.5857" y2="570.5857"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="574.5857" y2="578.5857"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="742.3735" x2="968.4337" y1="574.5857" y2="574.5857"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="157.1572" x="749.3735" y="568.7767">emit turn_complete event</text>
+    <line style="stroke:#000000;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="663.1998" x2="1057.1544" y1="583.5857" y2="583.5857"/>
+    <text fill="#000000" font-family="sans-serif" font-size="11" font-weight="bold" lengthAdjust="spacing" textLength="36.044" x="668.1998" y="595.3446">[Error]</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="623.2736" y2="619.2736"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="623.2736" y2="627.2736"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="742.3735" x2="968.4337" y1="623.2736" y2="623.2736"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="99.5931" x="749.3735" y="617.4646">emit error event</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="661.9796" y2="657.9796"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="661.9796" y2="665.9796"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="45.8369" x2="968.4337" y1="661.9796" y2="661.9796"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="72.9041" x="62.8369" y="656.1706">SSE event(s)</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="700.6857" y2="696.6857"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="967.4337" x2="957.4337" y1="700.6857" y2="704.6857"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="229.9711" x2="968.4337" y1="700.6857" y2="700.6857"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="327.6263" x="236.9711" y="694.8767">stream_end_event(metadata, summary, token_usage)</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="732.3917" y2="728.3917"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="732.3917" y2="736.3917"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="45.8369" x2="968.4337" y1="732.3917" y2="732.3917"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="151.3332" x="62.8369" y="726.5827">SSE: end (with metadata)</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="229.9711" x2="271.9711" y1="764.0977" y2="764.0977"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="271.9711" x2="271.9711" y1="764.0977" y2="777.0977"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="229.9711" x2="271.9711" y1="777.0977" y2="777.0977"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="230.9711" x2="240.9711" y1="777.0977" y2="773.0977"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="230.9711" x2="240.9711" y1="777.0977" y2="781.0977"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="238.6802" x="236.9711" y="758.2887">Conditionally persist transcript &amp; cache</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="808.8037" y2="804.8037"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="808.8037" y2="812.8037"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="45.8369" x2="228.9711" y1="808.8037" y2="808.8037"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="79.4431" x="62.8369" y="802.9947">Close stream</text>
+    <!--SRC=[ZLDDYzim4BthLmmvb8HwwTs7XH1Ijb3eqeHUIZ6gF1kBo98xajFcttSanHjblxAvn9BUl3Vpz3H82bhfGTe0AwFH1Z4KMslR3axpX_GmsmH2sMkxWpyZqX5mEkoaRGtIxA9qEORkOkEhaRtS1AdsYIqj8Q-pycNz-i1RTvcva8VVepOjuE5PmMQppZZ-_uv-SDOZvAAP45dYvlPs6gc6k-ts7kw_RRRmoITOa-OI4uB1SOWQVaYZMnaG92yh63rI1ShP0vANGJiBKYdqNaJupON6CXt0ZhX3R4lginqrhAGnG1X8yrmDdPgVzwv5KsMt5-9Sy4J27wtw4f1aSFHpkUCnjoFPoOBimAeRxVwNA1jWdseu3Uu36zaaK-VbO8rk5uA1KJ4xMCEfZWk4CCuDyDaHe5GTg2W23-Jwuh85yA-GBU_rKJzTwgGVMQfCnleLz1WasoyNYKeQJceIsXu7h27mhBd_T9pK2ebfKEnrAB0vGAa23UUaPDJs0Gcjmkk4Zr2O1xT7ktYBDpXd6lo7QepMlgFRY5Sn6X_pDmTZDAVM_SiQljDesklS6GU7dEmOuRSQZxOfrmy60xxJvGd-b7TDvEWw1qPOMMlpKC-pc45pln0Hyrh0-UmKhobD5VYnxoKTAqXNrunUxl3bj7CrpF_gq1LPB9NEZt7bRAkZdtnjHnZu7MdFZl3pzuhq4E03A7ugUAukj5R6iKEvO_4V]-->
+  </g>
+</svg>

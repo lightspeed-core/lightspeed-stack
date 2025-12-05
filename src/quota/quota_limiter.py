@@ -1,4 +1,34 @@
-"""Abstract class that is the parent for all quota limiter implementations."""
+"""Abstract class that is the parent for all quota limiter implementations.
+
+It is possible to limit quota usage per user or per service or services (that
+typically run in one cluster). Each limit is configured as a separate _quota
+limiter_. It can be of type `user_limiter` or `cluster_limiter` (which is name
+that makes sense in OpenShift deployment). There are three configuration
+options for each limiter:
+
+1. `period` specified in a human-readable form, see
+https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT
+for all possible options. When the end of the period is reached, quota is reset
+or increased
+1. `initial_quota` is set at beginning of the period
+1. `quota_increase` this value (if specified) is used to increase quota when period is reached
+
+There are two basic use cases:
+
+1. When quota needs to be reset specific value periodically (for example on
+weekly on monthly basis), specify `initial_quota` to the required value
+1. When quota needs to be increased by specific value periodically (for example
+on daily basis), specify `quota_increase`
+
+Technically it is possible to specify both `initial_quota` and
+`quota_increase`. It means that at the end of time period the quota will be
+*reset* to `initial_quota + quota_increase`.
+
+Please note that any number of quota limiters can be configured. For example,
+two user quota limiters can be set to:
+- increase quota by 100,000 tokens each day
+- reset quota to 10,000,000 tokens each month
+"""
 
 from abc import ABC, abstractmethod
 
@@ -66,7 +96,7 @@ class QuotaLimiter(ABC):
             self._initialize_tables()
         except Exception as e:
             self.connection.close()
-            logger.exception("Error initializing Postgres database:\n%s", e)
+            logger.exception("Error initializing quota limiter database:\n%s", e)
             raise
 
         self.connection.autocommit = True

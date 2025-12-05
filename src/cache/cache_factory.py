@@ -1,7 +1,7 @@
 """Cache factory class."""
 
 import constants
-from models.config import ConversationCacheConfiguration
+from models.config import ConversationHistoryConfiguration
 from cache.cache import Cache
 from cache.noop_cache import NoopCache
 from cache.in_memory_cache import InMemoryCache
@@ -17,7 +17,7 @@ class CacheFactory:
     """Cache factory class."""
 
     @staticmethod
-    def conversation_cache(config: ConversationCacheConfiguration) -> Cache:
+    def conversation_cache(config: ConversationHistoryConfiguration) -> Cache:
         """Create an instance of Cache based on loaded configuration.
 
         Returns:
@@ -45,5 +45,5 @@ class CacheFactory:
                 raise ValueError(
                     f"Invalid cache type: {config.type}. "
                     f"Use '{constants.CACHE_TYPE_POSTGRES}' '{constants.CACHE_TYPE_SQLITE}' "
-                    f"'{constants.CACHE_TYPE_MEMORY} or {constants.CACHE_TYPE_NOOP}' options."
+                    f"'{constants.CACHE_TYPE_MEMORY}' or '{constants.CACHE_TYPE_NOOP}' options."
                 )

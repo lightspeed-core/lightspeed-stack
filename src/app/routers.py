@@ -7,12 +7,14 @@ from app.endpoints import (
     models,
     shields,
     providers,
+    rags,
     root,
     query,
     health,
     config,
     feedback,
     streaming_query,
+    streaming_query_v2,
     authorized,
     conversations,
     conversations_v2,
@@ -36,6 +38,7 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(tools.router, prefix="/v1")
     app.include_router(shields.router, prefix="/v1")
     app.include_router(providers.router, prefix="/v1")
+    app.include_router(rags.router, prefix="/v1")
     app.include_router(query.router, prefix="/v1")
     app.include_router(streaming_query.router, prefix="/v1")
     app.include_router(config.router, prefix="/v1")
@@ -45,6 +48,7 @@ def include_routers(app: FastAPI) -> None:
 
     # V2 endpoints - Response API support
     app.include_router(query_v2.router, prefix="/v2")
+    app.include_router(streaming_query_v2.router, prefix="/v2")
 
     # road-core does not version these endpoints
     app.include_router(health.router)

@@ -17,6 +17,7 @@ from models.config import PostgreSQLDatabaseConfiguration
 
 def test_postgresql_database_configuration() -> None:
     """Test the PostgreSQLDatabaseConfiguration model."""
+    # pylint: disable=no-member
     c = PostgreSQLDatabaseConfiguration(db="db", user="user", password="password")
     assert c is not None
     assert c.host == "localhost"

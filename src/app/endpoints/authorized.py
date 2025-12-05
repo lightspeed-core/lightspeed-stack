@@ -12,26 +12,12 @@ from models.responses import AuthorizedResponse, ForbiddenResponse, Unauthorized
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["authorized"])
 
-
 authorized_responses: dict[int | str, dict[str, Any]] = {
-    200: {
-        "description": "The user is logged-in and authorized to access OLS",
-        "model": AuthorizedResponse,
-    },
-    400: {
-        "description": "Missing or invalid credentials provided by client for the noop and "
-        "noop-with-token authentication modules",
-        "model": UnauthorizedResponse,
-    },
-    401: {
-        "description": "Missing or invalid credentials provided by client for the "
-        "k8s authentication module",
-        "model": UnauthorizedResponse,
-    },
-    403: {
-        "description": "User is not authorized",
-        "model": ForbiddenResponse,
-    },
+    200: AuthorizedResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
 }
 
 

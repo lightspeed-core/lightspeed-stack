@@ -64,8 +64,8 @@ def test_cors_improper_configuration() -> None:
     """Test the CORS configuration."""
     expected = (
         "Value error, Invalid CORS configuration: "
-        + "allow_credentials can not be set to true when allow origins contains '\\*' wildcard."
-        + "Use explicit origins or disable credential."
+        + "allow_credentials can not be set to true when allow origins contains the '\\*' wildcard."
+        + "Use explicit origins or disable credentials."
     )
 
     with pytest.raises(ValueError, match=expected):

@@ -51,16 +51,24 @@ async def test_authorized_dependency_unauthorized() -> None:
     # Test the auth utility function that would be called by auth dependencies
     # This simulates the unauthorized scenario that would prevent the handler from being called
 
-    # Test case 1: No Authorization header (400 error from extract_user_token)
     headers_no_auth = Headers({})
     with pytest.raises(HTTPException) as exc_info:
         extract_user_token(headers_no_auth)
-    assert exc_info.value.status_code == 400
-    assert exc_info.value.detail == "No Authorization header found"
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["response"] == (  # type: ignore
+        "Missing or invalid credentials provided by client"
+    )
+    assert exc_info.value.detail["cause"] == (  # type: ignore
+        "No Authorization header found"
+    )
 
-    # Test case 2: Invalid Authorization header format (400 error from extract_user_token)
     headers_invalid_auth = Headers({"Authorization": "InvalidFormat"})
     with pytest.raises(HTTPException) as exc_info:
         extract_user_token(headers_invalid_auth)
-    assert exc_info.value.status_code == 400
-    assert exc_info.value.detail == "No token found in Authorization header"
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["response"] == (  # type: ignore
+        "Missing or invalid credentials provided by client"
+    )
+    assert exc_info.value.detail["cause"] == (  # type: ignore
+        "No token found in Authorization header"
+    )

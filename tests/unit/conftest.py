@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from typing import Generator
+
 import pytest
-from pytest_mock import MockerFixture, AsyncMockType
+from pytest_mock import AsyncMockType, MockerFixture
+
+from configuration import AppConfig
 
 type AgentFixtures = Generator[
     tuple[
@@ -39,3 +42,32 @@ def prepare_agent_mocks_fixture(
     mock_agent.create_turn.return_value.steps = []
 
     yield mock_client, mock_agent
+
+
+@pytest.fixture(name="minimal_config")
+def minimal_config_fixture() -> AppConfig:
+    """Create a minimal AppConfig with only required fields.
+
+    This fixture provides a minimal valid configuration that can be used
+    in tests that don't need specific configuration values. It includes
+    only the required fields to avoid unnecessary instantiation.
+
+    Returns:
+        AppConfig: A minimal AppConfig instance with required fields only.
+    """
+    cfg = AppConfig()
+    cfg.init_from_dict(
+        {
+            "name": "test",
+            "service": {"host": "localhost", "port": 8080},
+            "llama_stack": {
+                "api_key": "test-key",
+                "url": "http://test.com:1234",
+                "use_as_library_client": False,
+            },
+            "user_data_collection": {},
+            "authentication": {"module": "noop"},
+            "authorization": {"access_rules": []},
+        }
+    )
+    return cfg

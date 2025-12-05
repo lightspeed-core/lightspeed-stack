@@ -1,1 +1,1 @@
-"""Integration tests for basic REST API endpoints."""
+"""End-to-end tests for basic REST API endpoints."""

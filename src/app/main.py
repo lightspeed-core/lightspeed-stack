@@ -4,8 +4,9 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Awaitable, Callable
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.routing import Mount, Route, WebSocketRoute
 
 import metrics
@@ -15,6 +16,7 @@ from app.database import create_tables, initialize_database
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from log import get_logger
+from models.responses import InternalServerErrorResponse
 from utils.common import register_mcp_servers_async
 from utils.llama_stack_version import check_llama_stack_version
 
@@ -106,6 +108,25 @@ async def rest_api_metrics(
         # just update metrics
         metrics.rest_api_calls_total.labels(path, response.status_code).inc()
     return response
+
+
+@app.middleware("http")
+async def global_exception_middleware(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    """Middleware to handle uncaught exceptions from all endpoints."""
+    try:
+        response = await call_next(request)
+        return response
+    except HTTPException:
+        raise
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.exception("Uncaught exception in endpoint: %s", exc)
+        error_response = InternalServerErrorResponse.generic()
+        return JSONResponse(
+            status_code=error_response.status_code,
+            content={"detail": error_response.detail.model_dump()},
+        )
 
 
 logger.info("Including routers")

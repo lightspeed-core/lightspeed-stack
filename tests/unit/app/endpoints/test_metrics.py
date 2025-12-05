@@ -1,11 +1,11 @@
 """Unit tests for the /metrics REST API endpoint."""
 
 import pytest
-from pytest_mock import MockerFixture
 from fastapi import Request
+from pytest_mock import MockerFixture
 
-from authentication.interface import AuthTuple
 from app.endpoints.metrics import metrics_endpoint_handler
+from authentication.interface import AuthTuple
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
@@ -32,7 +32,7 @@ async def test_metrics_endpoint(mocker: MockerFixture) -> None:
     assert response.status_code == 200
     assert "text/plain" in response.headers["Content-Type"]
 
-    response_body = response.body.decode()
+    response_body = response.body.decode()  # type: ignore
 
     # Assert metrics were set up
     mock_setup_metrics.assert_called_once()

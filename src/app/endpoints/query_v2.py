@@ -3,102 +3,65 @@
 import logging
 from typing import Annotated, Any, cast
 
-from llama_stack_client import AsyncLlamaStackClient  # type: ignore
+from fastapi import APIRouter, Depends, Request
 from llama_stack.apis.agents.openai_responses import (
     OpenAIResponseObject,
 )
+from llama_stack_client import AsyncLlamaStackClient  # type: ignore
 
-from fastapi import APIRouter, Request, Depends
-
+import metrics
 from app.endpoints.query import (
     query_endpoint_handler_base,
     validate_attachments_metadata,
 )
-from constants import DEFAULT_RAG_TOOL
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from configuration import configuration
-import metrics
+from configuration import AppConfig, configuration
+from constants import DEFAULT_RAG_TOOL
 from models.config import Action
 from models.requests import QueryRequest
 from models.responses import (
     ForbiddenResponse,
+    InternalServerErrorResponse,
+    NotFoundResponse,
     QueryResponse,
+    QuotaExceededResponse,
     ReferencedDocument,
+    ServiceUnavailableResponse,
     UnauthorizedResponse,
+    UnprocessableEntityResponse,
 )
 from utils.endpoints import (
+    check_configuration_loaded,
     get_system_prompt,
     get_topic_summary_system_prompt,
 )
 from utils.mcp_headers import mcp_headers_dependency
+from utils.responses import extract_text_from_response_output_item
+from utils.shields import detect_shield_violations, get_available_shields
 from utils.token_counter import TokenCounter
-from utils.types import TurnSummary, ToolCallSummary
+from utils.types import ToolCallSummary, TurnSummary
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query_v2"])
 
 query_v2_response: dict[int | str, dict[str, Any]] = {
-    200: {
-        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-        "response": "LLM answer",
-        "referenced_documents": [
-            {
-                "doc_url": "https://docs.openshift.com/"
-                "container-platform/4.15/operators/olm/index.html",
-                "doc_title": "Operator Lifecycle Manager (OLM)",
-            }
-        ],
-    },
-    400: {
-        "description": "Missing or invalid credentials provided by client",
-        "model": UnauthorizedResponse,
-    },
-    403: {
-        "description": "User is not authorized",
-        "model": ForbiddenResponse,
-    },
-    500: {
-        "detail": {
-            "response": "Unable to connect to Llama Stack",
-            "cause": "Connection error.",
-        }
-    },
+    200: QueryResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(
+        examples=["endpoint", "conversation read", "model override"]
+    ),
+    404: NotFoundResponse.openapi_response(
+        examples=["conversation", "model", "provider"]
+    ),
+    422: UnprocessableEntityResponse.openapi_response(),
+    429: QuotaExceededResponse.openapi_response(),
+    500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
+    503: ServiceUnavailableResponse.openapi_response(),
 }
-
-
-def _extract_text_from_response_output_item(output_item: Any) -> str:
-    """Extract assistant message text from a Responses API output item."""
-    if getattr(output_item, "type", None) != "message":
-        return ""
-    if getattr(output_item, "role", None) != "assistant":
-        return ""
-
-    content = getattr(output_item, "content", None)
-    if isinstance(content, str):
-        return content
-
-    text_fragments: list[str] = []
-    if isinstance(content, list):
-        for part in content:
-            if isinstance(part, str):
-                text_fragments.append(part)
-                continue
-            text_value = getattr(part, "text", None)
-            if text_value:
-                text_fragments.append(text_value)
-                continue
-            refusal = getattr(part, "refusal", None)
-            if refusal:
-                text_fragments.append(refusal)
-                continue
-            if isinstance(part, dict):
-                dict_text = part.get("text") or part.get("refusal")
-                if dict_text:
-                    text_fragments.append(str(dict_text))
-
-    return "".join(text_fragments)
 
 
 def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-many-branches
@@ -251,27 +214,23 @@ async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
     """
     topic_summary_system_prompt = get_topic_summary_system_prompt(configuration)
 
-    try:
-        # Use Responses API to generate topic summary
-        response = await client.responses.create(
-            input=question,
-            model=model_id,
-            instructions=topic_summary_system_prompt,
-            stream=False,
-            store=False,  # Don't store topic summary requests
-        )
-        response = cast(OpenAIResponseObject, response)
+    # Use Responses API to generate topic summary
+    response = await client.responses.create(
+        input=question,
+        model=model_id,
+        instructions=topic_summary_system_prompt,
+        stream=False,
+        store=False,  # Don't store topic summary requests
+    )
+    response = cast(OpenAIResponseObject, response)
 
-        # Extract text from response output
-        summary_text = "".join(
-            _extract_text_from_response_output_item(output_item)
-            for output_item in response.output
-        )
+    # Extract text from response output
+    summary_text = "".join(
+        extract_text_from_response_output_item(output_item)
+        for output_item in response.output
+    )
 
-        return summary_text.strip() if summary_text else ""
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.warning("Failed to generate topic summary: %s", e)
-        return ""  # Return empty string on failure
+    return summary_text.strip() if summary_text else ""
 
 
 @router.post("/query", responses=query_v2_response)
@@ -291,6 +250,7 @@ async def query_endpoint_handler_v2(
     Returns:
         QueryResponse: Contains the conversation ID and the LLM-generated response.
     """
+    check_configuration_loaded(configuration)
     return await query_endpoint_handler_base(
         request=request,
         query_request=query_request,
@@ -317,7 +277,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     given query, handling shield configuration, tool usage, and
     attachment validation.
 
-    This function configures system prompts and toolgroups
+    This function configures system prompts, shields, and toolgroups
     (including RAG and MCP integration) as needed based on
     the query request and system configuration. It
     validates attachments, manages conversation and session
@@ -337,8 +297,8 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         and the conversation ID, the list of parsed referenced documents,
         and token usage information.
     """
-    # TODO(ltomasbo): implement shields support once available in Responses API
-    logger.info("Shields are not yet supported in Responses API. Disabling safety")
+    # List available shields for Responses API
+    available_shields = await get_available_shields(client)
 
     # use system prompt from request or default one
     system_prompt = get_system_prompt(query_request, configuration)
@@ -350,31 +310,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         validate_attachments_metadata(query_request.attachments)
 
     # Prepare tools for responses API
-    toolgroups: list[dict[str, Any]] | None = None
-    if not query_request.no_tools:
-        toolgroups = []
-        # Get vector stores for RAG tools
-        vector_store_ids = [
-            vector_store.id for vector_store in (await client.vector_stores.list()).data
-        ]
-
-        # Add RAG tools if vector stores are available
-        rag_tools = get_rag_tools(vector_store_ids)
-        if rag_tools:
-            toolgroups.extend(rag_tools)
-
-        # Add MCP server tools
-        mcp_tools = get_mcp_tools(configuration.mcp_servers, token, mcp_headers)
-        if mcp_tools:
-            toolgroups.extend(mcp_tools)
-            logger.debug(
-                "Configured %d MCP tools: %s",
-                len(mcp_tools),
-                [tool.get("server_label", "unknown") for tool in mcp_tools],
-            )
-        # Convert empty list to None for consistency with existing behavior
-        if not toolgroups:
-            toolgroups = None
+    toolgroups = await prepare_tools_for_responses_api(
+        client, query_request, token, configuration, mcp_headers
+    )
 
     # Prepare input for Responses API
     # Convert attachments to text and concatenate with query
@@ -398,6 +336,10 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     if query_request.conversation_id:
         create_kwargs["previous_response_id"] = query_request.conversation_id
 
+    # Add shields to extra_body if available
+    if available_shields:
+        create_kwargs["extra_body"] = {"guardrails": available_shields}
+
     response = await client.responses.create(**create_kwargs)
     response = cast(OpenAIResponseObject, response)
 
@@ -415,13 +357,16 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     tool_calls: list[ToolCallSummary] = []
 
     for output_item in response.output:
-        message_text = _extract_text_from_response_output_item(output_item)
+        message_text = extract_text_from_response_output_item(output_item)
         if message_text:
             llm_response += message_text
 
         tool_summary = _build_tool_call_summary(output_item)
         if tool_summary:
             tool_calls.append(tool_summary)
+
+    # Check for shield violations across all output items
+    detect_shield_violations(response.output)
 
     logger.info(
         "Response processing complete - Tool calls: %d, Response length: %d chars",
@@ -620,11 +565,71 @@ def get_mcp_tools(
             "require_approval": "never",
         }
 
-        # Add authentication if headers or token provided (Response API format)
-        headers = (mcp_headers or {}).get(mcp_server.url)
-        if headers:
+        # Build headers: start with token auth, then merge in per-server headers
+        if token or mcp_headers:
+            headers = {}
+            # Add token-based auth if available
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+            # Merge in per-server headers (can override Authorization if needed)
+            server_headers = (mcp_headers or {}).get(mcp_server.url)
+            if server_headers:
+                headers.update(server_headers)
             tool_def["headers"] = headers
-        elif token:
-            tool_def["headers"] = {"Authorization": f"Bearer {token}"}
+
         tools.append(tool_def)
     return tools
+
+
+async def prepare_tools_for_responses_api(
+    client: AsyncLlamaStackClient,
+    query_request: QueryRequest,
+    token: str,
+    config: AppConfig,
+    mcp_headers: dict[str, dict[str, str]] | None = None,
+) -> list[dict[str, Any]] | None:
+    """
+    Prepare tools for Responses API including RAG and MCP tools.
+
+    This function retrieves vector stores and combines them with MCP
+    server tools to create a unified toolgroups list for the Responses API.
+
+    Args:
+        client: The Llama Stack client instance
+        query_request: The user's query request
+        token: Authentication token for MCP tools
+        config: Configuration object containing MCP server settings
+        mcp_headers: Per-request headers for MCP servers
+
+    Returns:
+        list[dict[str, Any]] | None: List of tool configurations for the
+        Responses API, or None if no_tools is True or no tools are available
+    """
+    if query_request.no_tools:
+        return None
+
+    toolgroups = []
+    # Get vector stores for RAG tools
+    vector_store_ids = [
+        vector_store.id for vector_store in (await client.vector_stores.list()).data
+    ]
+
+    # Add RAG tools if vector stores are available
+    rag_tools = get_rag_tools(vector_store_ids)
+    if rag_tools:
+        toolgroups.extend(rag_tools)
+
+    # Add MCP server tools
+    mcp_tools = get_mcp_tools(config.mcp_servers, token, mcp_headers)
+    if mcp_tools:
+        toolgroups.extend(mcp_tools)
+        logger.debug(
+            "Configured %d MCP tools: %s",
+            len(mcp_tools),
+            [tool.get("server_label", "unknown") for tool in mcp_tools],
+        )
+    # Convert empty list to None for consistency with existing behavior
+    if not toolgroups:
+        return None
+
+    return toolgroups

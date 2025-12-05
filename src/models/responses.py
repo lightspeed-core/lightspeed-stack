@@ -2,156 +2,32 @@
 
 """Models for REST API responses."""
 
-from typing import Any, Optional, Union
+from typing import Any, ClassVar, Optional, Union
 
+from fastapi import status
 from pydantic import AnyUrl, BaseModel, Field
+from pydantic_core import SchemaError
 
-from llama_stack_client.types import ProviderInfo
+from quota.quota_exceed_error import QuotaExceedError
+from models.config import Action, Configuration
 
-
-class ModelsResponse(BaseModel):
-    """Model representing a response to models request."""
-
-    models: list[dict[str, Any]] = Field(
-        ...,
-        description="List of models available",
-        examples=[
-            {
-                "identifier": "openai/gpt-4-turbo",
-                "metadata": {},
-                "api_model_type": "llm",
-                "provider_id": "openai",
-                "type": "model",
-                "provider_resource_id": "gpt-4-turbo",
-                "model_type": "llm",
-            },
-            {
-                "identifier": "openai/gpt-3.5-turbo-0125",
-                "metadata": {},
-                "api_model_type": "llm",
-                "provider_id": "openai",
-                "type": "model",
-                "provider_resource_id": "gpt-3.5-turbo-0125",
-                "model_type": "llm",
-            },
-        ],
-    )
-
-
-class ToolsResponse(BaseModel):
-    """Model representing a response to tools request."""
-
-    tools: list[dict[str, Any]] = Field(
-        description=(
-            "List of tools available from all configured MCP servers and built-in toolgroups"
-        ),
-        examples=[
-            [
-                {
-                    "identifier": "filesystem_read",
-                    "description": "Read contents of a file from the filesystem",
-                    "parameters": [
-                        {
-                            "name": "path",
-                            "description": "Path to the file to read",
-                            "parameter_type": "string",
-                            "required": True,
-                            "default": None,
-                        }
-                    ],
-                    "provider_id": "model-context-protocol",
-                    "toolgroup_id": "filesystem-tools",
-                    "server_source": "http://localhost:3000",
-                    "type": "tool",
-                }
-            ]
-        ],
-    )
-
-
-class ShieldsResponse(BaseModel):
-    """Model representing a response to shields request."""
-
-    shields: list[dict[str, Any]] = Field(
-        ...,
-        description="List of shields available",
-        examples=[
-            {
-                "identifier": "lightspeed_question_validity-shield",
-                "provider_resource_id": "lightspeed_question_validity-shield",
-                "provider_id": "lightspeed_question_validity",
-                "type": "shield",
-                "params": {},
-            }
-        ],
-    )
-
-
-class ProvidersListResponse(BaseModel):
-    """Model representing a response to providers request."""
-
-    providers: dict[str, list[dict[str, Any]]] = Field(
-        ...,
-        description="List of available API types and their corresponding providers",
-        examples=[
-            {
-                "inference": [
-                    {
-                        "provider_id": "sentence-transformers",
-                        "provider_type": "inline::sentence-transformers",
-                    },
-                    {"provider_id": "openai", "provider_type": "remote::openai"},
-                ],
-                "agents": [
-                    {
-                        "provider_id": "meta-reference",
-                        "provider_type": "inline::meta-reference",
-                    },
-                ],
-                "datasetio": [
-                    {
-                        "provider_id": "huggingface",
-                        "provider_type": "remote::huggingface",
-                    },
-                    {"provider_id": "localfs", "provider_type": "inline::localfs"},
-                ],
-            },
-        ],
-    )
-
-
-class ProviderResponse(ProviderInfo):
-    """Model representing a response to get specific provider request."""
-
-    api: str = Field(
-        ...,
-        description="The API this provider implements",
-        example="inference",
-    )  # type: ignore
-    config: dict[str, Union[bool, float, str, list[Any], object, None]] = Field(
-        ...,
-        description="Provider configuration parameters",
-        example={"api_key": "********"},
-    )  # type: ignore
-    health: dict[str, Union[bool, float, str, list[Any], object, None]] = Field(
-        ...,
-        description="Current health status of the provider",
-        example={"status": "OK", "message": "Healthy"},
-    )  # type: ignore
-    provider_id: str = Field(
-        ..., description="Unique provider identifier", example="openai"
-    )  # type: ignore
-    provider_type: str = Field(
-        ..., description="Provider implementation type", example="remote::openai"
-    )  # type: ignore
+BAD_REQUEST_DESCRIPTION = "Invalid request format"
+UNAUTHORIZED_DESCRIPTION = "Unauthorized"
+FORBIDDEN_DESCRIPTION = "Permission denied"
+NOT_FOUND_DESCRIPTION = "Resource not found"
+UNPROCESSABLE_CONTENT_DESCRIPTION = "Request validation failed"
+INVALID_FEEDBACK_PATH_DESCRIPTION = "Invalid feedback storage path"
+SERVICE_UNAVAILABLE_DESCRIPTION = "Service unavailable"
+QUOTA_EXCEEDED_DESCRIPTION = "Quota limit exceeded"
+INTERNAL_SERVER_ERROR_DESCRIPTION = "Internal server error"
 
 
 class RAGChunk(BaseModel):
     """Model representing a RAG chunk used in the response."""
 
     content: str = Field(description="The content of the chunk")
-    source: Optional[str] = Field(None, description="Source document or URL")
-    score: Optional[float] = Field(None, description="Relevance score")
+    source: str | None = Field(None, description="Source document or URL")
+    score: float | None = Field(None, description="Relevance score")
 
 
 class ToolCall(BaseModel):
@@ -159,7 +35,278 @@ class ToolCall(BaseModel):
 
     tool_name: str = Field(description="Name of the tool called")
     arguments: dict[str, Any] = Field(description="Arguments passed to the tool")
-    result: Optional[dict[str, Any]] = Field(None, description="Result from the tool")
+    result: dict[str, Any] | None = Field(None, description="Result from the tool")
+
+
+class AbstractSuccessfulResponse(BaseModel):
+    """Base class for all successful response models."""
+
+    @classmethod
+    def openapi_response(cls) -> dict[str, Any]:
+        """Generate FastAPI response dict with a single example from model_config."""
+        schema = cls.model_json_schema()
+        model_examples = schema.get("examples")
+        if not model_examples:
+            raise SchemaError(f"Examples not found in {cls.__name__}")
+        example_value = model_examples[0]
+        content = {"application/json": {"example": example_value}}
+
+        return {
+            "description": "Successful response",
+            "model": cls,
+            "content": content,
+        }
+
+
+class ModelsResponse(AbstractSuccessfulResponse):
+    """Model representing a response to models request."""
+
+    models: list[dict[str, Any]] = Field(
+        ...,
+        description="List of models available",
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "models": [
+                        {
+                            "identifier": "openai/gpt-4-turbo",
+                            "metadata": {},
+                            "api_model_type": "llm",
+                            "provider_id": "openai",
+                            "type": "model",
+                            "provider_resource_id": "gpt-4-turbo",
+                            "model_type": "llm",
+                        },
+                    ],
+                }
+            ]
+        }
+    }
+
+
+class ToolsResponse(AbstractSuccessfulResponse):
+    """Model representing a response to tools request."""
+
+    tools: list[dict[str, Any]] = Field(
+        description=(
+            "List of tools available from all configured MCP servers and built-in toolgroups"
+        ),
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "tools": [
+                        {
+                            "identifier": "filesystem_read",
+                            "description": "Read contents of a file from the filesystem",
+                            "parameters": [
+                                {
+                                    "name": "path",
+                                    "description": "Path to the file to read",
+                                    "parameter_type": "string",
+                                    "required": True,
+                                    "default": None,
+                                }
+                            ],
+                            "provider_id": "model-context-protocol",
+                            "toolgroup_id": "filesystem-tools",
+                            "server_source": "http://localhost:3000",
+                            "type": "tool",
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+
+class ShieldsResponse(AbstractSuccessfulResponse):
+    """Model representing a response to shields request."""
+
+    shields: list[dict[str, Any]] = Field(
+        ...,
+        description="List of shields available",
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "shields": [
+                        {
+                            "identifier": "lightspeed_question_validity-shield",
+                            "provider_resource_id": "lightspeed_question_validity-shield",
+                            "provider_id": "lightspeed_question_validity",
+                            "type": "shield",
+                            "params": {},
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+
+
+class RAGInfoResponse(AbstractSuccessfulResponse):
+    """Model representing a response with information about RAG DB."""
+
+    id: str = Field(
+        ..., description="Vector DB unique ID", examples=["vs_00000000_0000_0000"]
+    )
+    name: Optional[str] = Field(
+        None,
+        description="Human readable vector DB name",
+        examples=["Faiss Store with Knowledge base"],
+    )
+    created_at: int = Field(
+        ...,
+        description="When the vector store was created, represented as Unix time",
+        examples=[1763391371],
+    )
+    last_active_at: Optional[int] = Field(
+        None,
+        description="When the vector store was last active, represented as Unix time",
+        examples=[1763391371],
+    )
+    usage_bytes: int = Field(
+        ...,
+        description="Storage byte(s) used by this vector DB",
+        examples=[0],
+    )
+    expires_at: Optional[int] = Field(
+        None,
+        description="When the vector store expires, represented as Unix time",
+        examples=[1763391371],
+    )
+    object: str = Field(
+        ...,
+        description="Object type",
+        examples=["vector_store"],
+    )
+    status: str = Field(
+        ...,
+        description="Vector DB status",
+        examples=["completed"],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "id": "vs_7b52a8cf-0fa3-489c-beab-27e061d102f3",
+                    "name": "Faiss Store with Knowledge base",
+                    "created_at": 1763391371,
+                    "last_active_at": 1763391371,
+                    "usage_bytes": 1024000,
+                    "expires_at": None,
+                    "object": "vector_store",
+                    "status": "completed",
+                }
+            ]
+        }
+    }
+
+
+class RAGListResponse(AbstractSuccessfulResponse):
+    """Model representing a response to list RAGs request."""
+
+    rags: list[str] = Field(
+        ...,
+        title="RAG list response",
+        description="List of RAG identifiers",
+        examples=[
+            "vs_7b52a8cf-0fa3-489c-beab-27e061d102f3",
+            "vs_7b52a8cf-0fa3-489c-cafe-27e061d102f3",
+        ],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "rags": [
+                        "vs_00000000-cafe-babe-0000-000000000000",
+                        "vs_7b52a8cf-0fa3-489c-beab-27e061d102f3",
+                        "vs_7b52a8cf-0fa3-489c-cafe-27e061d102f3",
+                    ]
+                }
+            ]
+        }
+    }
+
+
+class ProvidersListResponse(AbstractSuccessfulResponse):
+    """Model representing a response to providers request."""
+
+    providers: dict[str, list[dict[str, Any]]] = Field(
+        ...,
+        description="List of available API types and their corresponding providers",
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "providers": {
+                        "inference": [
+                            {
+                                "provider_id": "sentence-transformers",
+                                "provider_type": "inline::sentence-transformers",
+                            },
+                            {
+                                "provider_id": "openai",
+                                "provider_type": "remote::openai",
+                            },
+                        ],
+                        "agents": [
+                            {
+                                "provider_id": "meta-reference",
+                                "provider_type": "inline::meta-reference",
+                            },
+                        ],
+                    },
+                }
+            ]
+        }
+    }
+
+
+class ProviderResponse(AbstractSuccessfulResponse):
+    """Model representing a response to get specific provider request."""
+
+    api: str = Field(
+        ...,
+        description="The API this provider implements",
+    )
+    config: dict[str, Union[bool, float, str, list[Any], object, None]] = Field(
+        ...,
+        description="Provider configuration parameters",
+    )
+    health: dict[str, Union[bool, float, str, list[Any], object, None]] = Field(
+        ...,
+        description="Current health status of the provider",
+    )
+    provider_id: str = Field(..., description="Unique provider identifier")
+    provider_type: str = Field(..., description="Provider implementation type")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "api": "inference",
+                    "config": {"api_key": "********"},
+                    "health": {"status": "OK", "message": "Healthy"},
+                    "provider_id": "openai",
+                    "provider_type": "remote::openai",
+                }
+            ]
+        }
+    }
 
 
 class ConversationData(BaseModel):
@@ -184,14 +331,12 @@ class ReferencedDocument(BaseModel):
         doc_title: Title of the referenced doc.
     """
 
-    doc_url: str | Optional[AnyUrl] = Field(
-        None, description="URL of the referenced document"
-    )
+    doc_url: AnyUrl | None = Field(None, description="URL of the referenced document")
 
     doc_title: str | None = Field(None, description="Title of the referenced document")
 
 
-class QueryResponse(BaseModel):
+class QueryResponse(AbstractSuccessfulResponse):
     """Model representing LLM response to a query.
 
     Attributes:
@@ -206,7 +351,7 @@ class QueryResponse(BaseModel):
         available_quotas: Quota available as measured by all configured quota limiters.
     """
 
-    conversation_id: Optional[str] = Field(
+    conversation_id: str | None = Field(
         None,
         description="The optional conversation ID (UUID)",
         examples=["c5260aec-4d82-4370-9fdf-05cf908b3f16"],
@@ -224,7 +369,7 @@ class QueryResponse(BaseModel):
         description="List of RAG chunks used to generate the response",
     )
 
-    tool_calls: Optional[list[ToolCall]] = Field(
+    tool_calls: list[ToolCall] | None = Field(
         None,
         description="List of tool calls made during response generation",
     )
@@ -267,7 +412,6 @@ class QueryResponse(BaseModel):
         examples=[{"daily": 1000, "monthly": 50000}],
     )
 
-    # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -305,22 +449,13 @@ class QueryResponse(BaseModel):
     }
 
 
-class InfoResponse(BaseModel):
+class InfoResponse(AbstractSuccessfulResponse):
     """Model representing a response to an info request.
 
     Attributes:
         name: Service name.
         service_version: Service version.
         llama_stack_version: Llama Stack version.
-
-    Example:
-        ```python
-        info_response = InfoResponse(
-            name="Lightspeed Stack",
-            service_version="1.0.0",
-            llama_stack_version="0.2.22",
-        )
-        ```
     """
 
     name: str = Field(
@@ -338,7 +473,6 @@ class InfoResponse(BaseModel):
         examples=["0.2.1", "0.2.2", "0.2.18", "0.2.21", "0.2.22"],
     )
 
-    # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -368,35 +502,20 @@ class ProviderHealthStatus(BaseModel):
         description="The health status",
         examples=["ok", "unhealthy", "not_implemented"],
     )
-    message: Optional[str] = Field(
+    message: str | None = Field(
         None,
         description="Optional message about the health status",
         examples=["All systems operational", "Llama Stack is unavailable"],
     )
 
 
-class ReadinessResponse(BaseModel):
+class ReadinessResponse(AbstractSuccessfulResponse):
     """Model representing response to a readiness request.
 
     Attributes:
         ready: If service is ready.
         reason: The reason for the readiness.
         providers: List of unhealthy providers in case of readiness failure.
-
-    Example:
-        ```python
-        readiness_response = ReadinessResponse(
-            ready=False,
-            reason="Service is not ready",
-            providers=[
-                ProviderHealthStatus(
-                    provider_id="ollama",
-                    status="unhealthy",
-                    message="Server is unavailable"
-                )
-            ]
-        )
-        ```
     """
 
     ready: bool = Field(
@@ -417,7 +536,6 @@ class ReadinessResponse(BaseModel):
         examples=[],
     )
 
-    # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -431,16 +549,11 @@ class ReadinessResponse(BaseModel):
     }
 
 
-class LivenessResponse(BaseModel):
+class LivenessResponse(AbstractSuccessfulResponse):
     """Model representing a response to a liveness request.
 
     Attributes:
         alive: If app is alive.
-
-    Example:
-        ```python
-        liveness_response = LivenessResponse(alive=True)
-        ```
     """
 
     alive: bool = Field(
@@ -449,7 +562,6 @@ class LivenessResponse(BaseModel):
         examples=[True, False],
     )
 
-    # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -461,55 +573,11 @@ class LivenessResponse(BaseModel):
     }
 
 
-class NotAvailableResponse(BaseModel):
-    """Model representing error response for readiness endpoint."""
-
-    detail: dict[str, str] = Field(
-        ...,
-        description="Detailed information about readiness state",
-        examples=[
-            {
-                "response": "Service is not ready",
-                "cause": "Index is not ready",
-            },
-            {
-                "response": "Service is not ready",
-                "cause": "LLM is not ready",
-            },
-        ],
-    )
-
-    # provides examples for /docs endpoint
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "detail": {
-                        "response": "Service is not ready",
-                        "cause": "Index is not ready",
-                    }
-                },
-                {
-                    "detail": {
-                        "response": "Service is not ready",
-                        "cause": "LLM is not ready",
-                    },
-                },
-            ]
-        }
-    }
-
-
-class FeedbackResponse(BaseModel):
+class FeedbackResponse(AbstractSuccessfulResponse):
     """Model representing a response to a feedback request.
 
     Attributes:
         response: The response of the feedback request.
-
-    Example:
-        ```python
-        feedback_response = FeedbackResponse(response="feedback received")
-        ```
     """
 
     response: str = Field(
@@ -518,7 +586,6 @@ class FeedbackResponse(BaseModel):
         examples=["feedback received"],
     )
 
-    # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -530,20 +597,12 @@ class FeedbackResponse(BaseModel):
     }
 
 
-class StatusResponse(BaseModel):
+class StatusResponse(AbstractSuccessfulResponse):
     """Model representing a response to a status request.
 
     Attributes:
         functionality: The functionality of the service.
         status: The status of the service.
-
-    Example:
-        ```python
-        status_response = StatusResponse(
-            functionality="feedback",
-            status={"enabled": True},
-        )
-        ```
     """
 
     functionality: str = Field(
@@ -558,7 +617,6 @@ class StatusResponse(BaseModel):
         examples=[{"enabled": True}],
     )
 
-    # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -571,7 +629,7 @@ class StatusResponse(BaseModel):
     }
 
 
-class AuthorizedResponse(BaseModel):
+class AuthorizedResponse(AbstractSuccessfulResponse):
     """Model representing a response to an authorization request.
 
     Attributes:
@@ -596,7 +654,6 @@ class AuthorizedResponse(BaseModel):
         examples=[True, False],
     )
 
-    # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -610,29 +667,12 @@ class AuthorizedResponse(BaseModel):
     }
 
 
-class ConversationResponse(BaseModel):
+class ConversationResponse(AbstractSuccessfulResponse):
     """Model representing a response for retrieving a conversation.
 
     Attributes:
         conversation_id: The conversation ID (UUID).
         chat_history: The simplified chat history as a list of conversation turns.
-
-    Example:
-        ```python
-        conversation_response = ConversationResponse(
-            conversation_id="123e4567-e89b-12d3-a456-426614174000",
-            chat_history=[
-                {
-                    "messages": [
-                        {"content": "Hello", "type": "user"},
-                        {"content": "Hi there!", "type": "assistant"}
-                    ],
-                    "started_at": "2024-01-01T00:01:00Z",
-                    "completed_at": "2024-01-01T00:01:05Z"
-                }
-            ]
-        )
-        ```
     """
 
     conversation_id: str = Field(
@@ -656,7 +696,6 @@ class ConversationResponse(BaseModel):
         ],
     )
 
-    # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -678,40 +717,99 @@ class ConversationResponse(BaseModel):
     }
 
 
-class ConversationDeleteResponse(BaseModel):
+class ConversationDeleteResponse(AbstractSuccessfulResponse):
     """Model representing a response for deleting a conversation.
 
     Attributes:
         conversation_id: The conversation ID (UUID) that was deleted.
         success: Whether the deletion was successful.
         response: A message about the deletion result.
-
-    Example:
-        ```python
-        delete_response = ConversationDeleteResponse(
-            conversation_id="123e4567-e89b-12d3-a456-426614174000",
-            success=True,
-            response="Conversation deleted successfully"
-        )
-        ```
     """
 
-    conversation_id: str
-    success: bool
-    response: str
+    conversation_id: str = Field(
+        ...,
+        description="The conversation ID (UUID) that was deleted.",
+        examples=["123e4567-e89b-12d3-a456-426614174000"],
+    )
+    success: bool = Field(
+        ..., description="Whether the deletion was successful.", examples=[True, False]
+    )
+    response: str = Field(
+        ...,
+        description="A message about the deletion result.",
+        examples=[
+            "Conversation deleted successfully",
+            "Conversation cannot be deleted",
+        ],
+    )
 
-    # provides examples for /docs endpoint
+    def __init__(self, *, deleted: bool, conversation_id: str) -> None:
+        """Initialize a ConversationDeleteResponse.
+
+        Args:
+            deleted: Whether the conversation was successfully deleted.
+            conversation_id: The ID of the conversation that was deleted.
+        """
+        response_msg = (
+            "Conversation deleted successfully"
+            if deleted
+            else "Conversation cannot be deleted"
+        )
+        super().__init__(
+            conversation_id=conversation_id,  # type: ignore[call-arg]
+            success=True,  # type: ignore[call-arg]
+            response=response_msg,  # type: ignore[call-arg]
+        )
+
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-                    "success": True,
-                    "response": "Conversation deleted successfully",
-                }
+                    "label": "deleted",
+                    "value": {
+                        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "success": True,
+                        "response": "Conversation deleted successfully",
+                    },
+                },
+                {
+                    "label": "not found",
+                    "value": {
+                        "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                        "success": True,
+                        "response": "Conversation can not be deleted",
+                    },
+                },
             ]
         }
     }
+
+    @classmethod
+    def openapi_response(cls) -> dict[str, Any]:
+        """Generate FastAPI response dict, using examples from model_config."""
+        schema = cls.model_json_schema()
+        model_examples = schema.get("examples", [])
+
+        named_examples: dict[str, Any] = {}
+
+        for ex in model_examples:
+            label = ex.get("label")
+            if label is None:
+                raise SchemaError(f"Example {ex} in {cls.__name__} has no label")
+
+            value = ex.get("value")
+            if value is None:
+                raise SchemaError(f"Example '{label}' in {cls.__name__} has no value")
+
+            named_examples[label] = {"value": value}
+
+        content = {"application/json": {"examples": named_examples or None}}
+
+        return {
+            "description": "Successful response",
+            "model": cls,
+            "content": content,
+        }
 
 
 class ConversationDetails(BaseModel):
@@ -725,19 +823,6 @@ class ConversationDetails(BaseModel):
         last_used_model: The last model used for the conversation.
         last_used_provider: The provider of the last used model.
         topic_summary: The topic summary for the conversation.
-
-    Example:
-        ```python
-        conversation = ConversationDetails(
-            conversation_id="123e4567-e89b-12d3-a456-426614174000"
-            created_at="2024-01-01T00:00:00Z",
-            last_message_at="2024-01-01T00:05:00Z",
-            message_count=5,
-            last_used_model="gemini/gemini-2.0-flash",
-            last_used_provider="gemini",
-            topic_summary="Openshift Microservices Deployment Strategies",
-        )
-        ```
     """
 
     conversation_id: str = Field(
@@ -746,78 +831,52 @@ class ConversationDetails(BaseModel):
         examples=["c5260aec-4d82-4370-9fdf-05cf908b3f16"],
     )
 
-    created_at: Optional[str] = Field(
+    created_at: str | None = Field(
         None,
         description="When the conversation was created",
         examples=["2024-01-01T01:00:00Z"],
     )
 
-    last_message_at: Optional[str] = Field(
+    last_message_at: str | None = Field(
         None,
         description="When the last message was sent",
         examples=["2024-01-01T01:00:00Z"],
     )
 
-    message_count: Optional[int] = Field(
+    message_count: int | None = Field(
         None,
         description="Number of user messages in the conversation",
         examples=[42],
     )
 
-    last_used_model: Optional[str] = Field(
+    last_used_model: str | None = Field(
         None,
         description="Identification of the last model used for the conversation",
         examples=["gpt-4-turbo", "gpt-3.5-turbo-0125"],
     )
 
-    last_used_provider: Optional[str] = Field(
+    last_used_provider: str | None = Field(
         None,
         description="Identification of the last provider used for the conversation",
         examples=["openai", "gemini"],
     )
 
-    topic_summary: Optional[str] = Field(
+    topic_summary: str | None = Field(
         None,
         description="Topic summary for the conversation",
         examples=["Openshift Microservices Deployment Strategies"],
     )
 
 
-class ConversationsListResponse(BaseModel):
+class ConversationsListResponse(AbstractSuccessfulResponse):
     """Model representing a response for listing conversations of a user.
 
     Attributes:
         conversations: List of conversation details associated with the user.
-
-    Example:
-        ```python
-        conversations_list = ConversationsListResponse(
-            conversations=[
-                ConversationDetails(
-                    conversation_id="123e4567-e89b-12d3-a456-426614174000",
-                    created_at="2024-01-01T00:00:00Z",
-                    last_message_at="2024-01-01T00:05:00Z",
-                    message_count=5,
-                    last_used_model="gemini/gemini-2.0-flash",
-                    last_used_provider="gemini",
-                    topic_summary="Openshift Microservices Deployment Strategies",
-                ),
-                ConversationDetails(
-                    conversation_id="456e7890-e12b-34d5-a678-901234567890"
-                    created_at="2024-01-01T01:00:00Z",
-                    message_count=2,
-                    last_used_model="gemini/gemini-2.0-flash",
-                    last_used_provider="gemini",
-                    topic_summary="RHDH Purpose Summary",
-                )
-            ]
-        )
-        ```
     """
 
     conversations: list[ConversationDetails]
 
-    # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -847,7 +906,7 @@ class ConversationsListResponse(BaseModel):
     }
 
 
-class ConversationsListResponseV2(BaseModel):
+class ConversationsListResponseV2(AbstractSuccessfulResponse):
     """Model representing a response for listing conversations of a user.
 
     Attributes:
@@ -856,67 +915,33 @@ class ConversationsListResponseV2(BaseModel):
 
     conversations: list[ConversationData]
 
-
-class ErrorResponse(BaseModel):
-    """Model representing error response for query endpoint."""
-
-    detail: dict[str, str] = Field(
-        description="Error details",
-        examples=[
-            {
-                "response": "Error while validation question",
-                "cause": "Failed to handle request to https://bam-api.res.ibm.com/v2/text",
-            },
-            {
-                "response": "Error retrieving conversation history",
-                "cause": "Invalid conversation ID 1237-e89b-12d3-a456-426614174000",
-            },
-        ],
-    )
-
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "detail": {
-                        "response": "Error while validation question",
-                        "cause": "Failed to handle request to https://bam-api.res.ibm.com/v2/text",
-                    },
-                },
-                {
-                    "detail": {
-                        "response": "Error retrieving conversation history",
-                        "cause": "Invalid conversation ID 1237-e89b-12d3-a456-426614174000",
-                    },
-                },
+                    "conversations": [
+                        {
+                            "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                            "topic_summary": "Openshift Microservices Deployment Strategies",
+                            "last_message_timestamp": 1704067200.0,
+                        }
+                    ],
+                }
             ]
         }
     }
 
 
-class FeedbackStatusUpdateResponse(BaseModel):
+class FeedbackStatusUpdateResponse(AbstractSuccessfulResponse):
     """
     Model representing a response to a feedback status update request.
 
     Attributes:
         status: The previous and current status of the service and who updated it.
-
-    Example:
-        ```python
-        status_response = StatusResponse(
-            status={
-                "previous_status": true,
-                "updated_status": false,
-                "updated_by": "user/test",
-                "timestamp": "2023-03-15 12:34:56"
-            },
-        )
-        ```
     """
 
     status: dict
 
-    # provides examples for /docs endpoint
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -933,39 +958,123 @@ class FeedbackStatusUpdateResponse(BaseModel):
     }
 
 
-class ConversationUpdateResponse(BaseModel):
+class ConversationUpdateResponse(AbstractSuccessfulResponse):
     """Model representing a response for updating a conversation topic summary.
 
     Attributes:
         conversation_id: The conversation ID (UUID) that was updated.
         success: Whether the update was successful.
         message: A message about the update result.
-
-    Example:
-        ```python
-        update_response = ConversationUpdateResponse(
-            conversation_id="123e4567-e89b-12d3-a456-426614174000",
-            success=True,
-            message="Topic summary updated successfully",
-        )
-        ```
     """
 
     conversation_id: str = Field(
         ...,
         description="The conversation ID (UUID) that was updated",
-        examples=["123e4567-e89b-12d3-a456-426614174000"],
     )
     success: bool = Field(
         ...,
         description="Whether the update was successful",
-        examples=[True],
     )
     message: str = Field(
         ...,
         description="A message about the update result",
-        examples=["Topic summary updated successfully"],
     )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "success": True,
+                    "message": "Topic summary updated successfully",
+                }
+            ]
+        }
+    }
+
+
+class ConfigurationResponse(AbstractSuccessfulResponse):
+    """Success response model for the config endpoint."""
+
+    configuration: Configuration
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "configuration": {
+                        "name": "lightspeed-stack",
+                        "service": {
+                            "host": "localhost",
+                            "port": 8080,
+                            "auth_enabled": False,
+                            "workers": 1,
+                            "color_log": True,
+                            "access_log": True,
+                            "tls_config": {
+                                "tls_certificate_path": None,
+                                "tls_key_path": None,
+                                "tls_key_password": None,
+                            },
+                            "cors": {
+                                "allow_origins": ["*"],
+                                "allow_credentials": False,
+                                "allow_methods": ["*"],
+                                "allow_headers": ["*"],
+                            },
+                        },
+                        "llama_stack": {
+                            "url": "http://localhost:8321",
+                            "api_key": "*****",
+                            "use_as_library_client": False,
+                            "library_client_config_path": None,
+                        },
+                        "user_data_collection": {
+                            "feedback_enabled": True,
+                            "feedback_storage": "/tmp/data/feedback",
+                            "transcripts_enabled": False,
+                            "transcripts_storage": "/tmp/data/transcripts",
+                        },
+                        "database": {
+                            "sqlite": {"db_path": "/tmp/lightspeed-stack.db"},
+                            "postgres": None,
+                        },
+                        "mcp_servers": [
+                            {
+                                "name": "server1",
+                                "provider_id": "provider1",
+                                "url": "http://url.com:1",
+                            },
+                        ],
+                        "authentication": {
+                            "module": "noop",
+                            "skip_tls_verification": False,
+                        },
+                        "authorization": {"access_rules": []},
+                        "customization": None,
+                        "inference": {
+                            "default_model": "gpt-4-turbo",
+                            "default_provider": "openai",
+                        },
+                        "conversation_cache": {
+                            "type": None,
+                            "memory": None,
+                            "sqlite": None,
+                            "postgres": None,
+                        },
+                        "byok_rag": [],
+                        "quota_handlers": {
+                            "sqlite": None,
+                            "postgres": None,
+                            "limiters": [],
+                            "scheduler": {"period": 1},
+                            "enable_token_history": False,
+                        },
+                    }
+                }
+            ]
+        }
+    }
 
 
 class DetailModel(BaseModel):
@@ -976,196 +1085,601 @@ class DetailModel(BaseModel):
 
 
 class AbstractErrorResponse(BaseModel):
-    """Base class for all error responses.
+    """
+    Base class for error responses.
 
-    Contains a nested `detail` field.
+    Attributes:
+        status_code (int): HTTP status code for the error response.
+        detail (DetailModel): The detail model containing error summary and cause.
     """
 
+    status_code: int
     detail: DetailModel
 
-    def dump_detail(self) -> dict:
-        """Return dict in FastAPI HTTPException format."""
-        return self.detail.model_dump()
+    def __init__(self, *, response: str, cause: str, status_code: int):
+        """Initialize an AbstractErrorResponse.
+
+        Args:
+            response: Short summary of the error.
+            cause: Detailed explanation of what caused the error.
+            status_code: HTTP status code for the error response.
+        """
+        super().__init__(
+            status_code=status_code, detail=DetailModel(response=response, cause=cause)
+        )
+
+    @classmethod
+    def get_description(cls) -> str:
+        """Get the description from the class attribute or docstring."""
+        return getattr(cls, "description", cls.__doc__ or "")
+
+    @classmethod
+    def openapi_response(cls, examples: Optional[list[str]] = None) -> dict[str, Any]:
+        """Generate FastAPI response dict with examples from model_config."""
+        schema = cls.model_json_schema()
+        model_examples = schema.get("examples", [])
+
+        named_examples: dict[str, Any] = {}
+        for ex in model_examples:
+            label = ex.get("label", None)
+            if label is None:
+                raise SchemaError(f"Example {ex} in {cls.__name__} has no label")
+            if examples is None or label in examples:
+                detail = ex.get("detail")
+                if detail is not None:
+                    named_examples[label] = {"value": {"detail": detail}}
+
+        content: dict[str, Any] = {
+            "application/json": {"examples": named_examples or None}
+        }
+
+        return {
+            "description": cls.get_description(),
+            "model": cls,
+            "content": content,
+        }
 
 
 class BadRequestResponse(AbstractErrorResponse):
-    """400 Bad Request - Invalid resource identifier."""
+    """400 Bad Request. Invalid resource identifier."""
 
-    def __init__(self, resource: str, resource_id: str):
-        """Initialize a BadRequestResponse for invalid resource identifiers."""
-        super().__init__(
-            detail=DetailModel(
-                response="Invalid conversation ID format",
-                cause=f"{resource.title()} ID {resource_id} has invalid format",
-            )
-        )
-
+    description: ClassVar[str] = BAD_REQUEST_DESCRIPTION
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
+                    "label": "conversation_id",
                     "detail": {
                         "response": "Invalid conversation ID format",
-                        "cause": "Conversation ID 123e4567-e89b-12d3-a456-426614174000 has invalid format",  # pylint: disable=line-too-long
-                    }
+                        "cause": (
+                            "The conversation ID "
+                            "123e4567-e89b-12d3-a456-426614174000 has invalid format."
+                        ),
+                    },
                 }
             ]
         }
     }
 
+    def __init__(self, *, resource: str, resource_id: str):
+        """Initialize a BadRequestResponse for invalid resource ID format.
 
-class AccessDeniedResponse(AbstractErrorResponse):
-    """403 Access Denied - User does not have permission to perform the action."""
-
-    def __init__(self, user_id: str, resource: str, resource_id: str, action: str):
-        """Initialize an AccessDeniedResponse when user lacks permission for an action."""
+        Args:
+            resource: The type of resource (e.g., "conversation", "provider").
+            resource_id: The invalid resource ID.
+        """
+        response = f"Invalid {resource} ID format"
+        cause = f"The {resource} ID {resource_id} has invalid format."
         super().__init__(
-            detail=DetailModel(
-                response="Access denied",
-                cause=f"User {user_id} does not have permission to {action} {resource} with ID {resource_id}.",  # pylint: disable=line-too-long
-            )
+            response=response, cause=cause, status_code=status.HTTP_400_BAD_REQUEST
         )
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "detail": {
-                        "response": "Access denied",
-                        "cause": "User 6789 does not have permission to access conversation with ID 123e4567-e89b-12d3-a456-426614174000.",  # pylint: disable=line-too-long
-                    }
-                }
-            ]
-        }
-    }
-
-
-class NotFoundResponse(AbstractErrorResponse):
-    """404 Not Found - Resource does not exist."""
-
-    def __init__(self, resource: str, resource_id: str):
-        """Initialize a NotFoundResponse when a resource cannot be located."""
-        super().__init__(
-            detail=DetailModel(
-                response=f"{resource.title()} not found",
-                cause=f"{resource.title()} with ID {resource_id} does not exist.",
-            )
-        )
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "detail": {
-                        "response": "Conversation not found",
-                        "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist.",  # pylint: disable=line-too-long
-                    }
-                }
-            ]
-        }
-    }
-
-
-class ServiceUnavailableResponse(AbstractErrorResponse):
-    """503 Backend Unavailable - Unable to reach backend service."""
-
-    def __init__(self, backend_name: str, cause: str):
-        """Initialize a ServiceUnavailableResponse when a backend service is unreachable."""
-        super().__init__(
-            detail=DetailModel(
-                response=f"Unable to connect to {backend_name}", cause=cause
-            )
-        )
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "detail": {
-                        "response": "Unable to connect to Llama Stack",
-                        "cause": "Connection error while trying to reach Llama Stack API.",
-                    }
-                }
-            ]
-        }
-    }
 
 
 class UnauthorizedResponse(AbstractErrorResponse):
     """401 Unauthorized - Missing or invalid credentials."""
 
-    def __init__(self, user_id: str | None = None):
-        """Initialize an UnauthorizedResponse when authentication fails."""
-        cause_msg = (
-            f"User {user_id} is unauthorized"
-            if user_id
-            else "Missing or invalid credentials provided by client"
-        )
-        super().__init__(detail=DetailModel(response="Unauthorized", cause=cause_msg))
-
+    description: ClassVar[str] = UNAUTHORIZED_DESCRIPTION
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
+                    "label": "missing header",
                     "detail": {
-                        "response": "Unauthorized",
-                        "cause": "Missing or invalid credentials provided by client",
-                    }
-                }
-            ]
-        }
-    }
-
-
-class ForbiddenResponse(UnauthorizedResponse):
-    """403 Forbidden - User does not have access to this resource."""
-
-    def __init__(self, user_id: str, resource: str, resource_id: str):
-        """Initialize a ForbiddenResponse when user is authenticated but lacks resource access."""
-        super().__init__(user_id=user_id)
-        self.detail = DetailModel(
-            response="Access denied",
-            cause=f"User {user_id} is not allowed to access {resource} with ID {resource_id}.",
-        )
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
+                        "response": "Missing or invalid credentials provided by client",
+                        "cause": "No Authorization header found",
+                    },
+                },
                 {
+                    "label": "missing token",
                     "detail": {
-                        "response": "Access denied",
-                        "cause": "User 42 is not allowed to access conversation with ID 123e4567-e89b-12d3-a456-426614174000.",  # pylint: disable=line-too-long
-                    }
-                }
+                        "response": "Missing or invalid credentials provided by client",
+                        "cause": "No token found in Authorization header",
+                    },
+                },
+                {
+                    "label": "expired token",
+                    "detail": {
+                        "response": "Missing or invalid credentials provided by client",
+                        "cause": "Token has expired",
+                    },
+                },
+                {
+                    "label": "invalid signature",
+                    "detail": {
+                        "response": "Missing or invalid credentials provided by client",
+                        "cause": "Invalid token signature",
+                    },
+                },
+                {
+                    "label": "invalid key",
+                    "detail": {
+                        "response": "Missing or invalid credentials provided by client",
+                        "cause": "Token signed by unknown key",
+                    },
+                },
+                {
+                    "label": "missing claim",
+                    "detail": {
+                        "response": "Missing or invalid credentials provided by client",
+                        "cause": "Token missing claim: user_id",
+                    },
+                },
+                {
+                    "label": "invalid k8s token",
+                    "detail": {
+                        "response": "Missing or invalid credentials provided by client",
+                        "cause": "Invalid or expired Kubernetes token",
+                    },
+                },
+                {
+                    "label": "invalid jwk token",
+                    "detail": {
+                        "response": "Missing or invalid credentials provided by client",
+                        "cause": "Authentication key server returned invalid data",
+                    },
+                },
             ]
         }
     }
 
-
-class InvalidFeedbackStoragePathResponse(AbstractErrorResponse):
-    """500 Internal Error - Invalid feedback storage path."""
-
-    def __init__(self, storage_path: str):
-        """Initialize an InvalidFeedbackStoragePathResponse for feedback storage failures."""
+    def __init__(self, *, cause: str):
+        """Initialize UnauthorizedResponse."""
+        response_msg = "Missing or invalid credentials provided by client"
         super().__init__(
-            detail=DetailModel(
-                response="Failed to store feedback",
-                cause=f"Invalid feedback storage path: {storage_path}",
-            )
+            response=response_msg, cause=cause, status_code=status.HTTP_401_UNAUTHORIZED
         )
+
+
+class ForbiddenResponse(AbstractErrorResponse):
+    """403 Forbidden. Access denied."""
+
+    description: ClassVar[str] = FORBIDDEN_DESCRIPTION
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "label": "conversation read",
+                    "detail": {
+                        "response": "User does not have permission to perform this action",
+                        "cause": (
+                            "User 6789 does not have permission to read conversation "
+                            "with ID 123e4567-e89b-12d3-a456-426614174000"
+                        ),
+                    },
+                },
+                {
+                    "label": "conversation delete",
+                    "detail": {
+                        "response": "User does not have permission to perform this action",
+                        "cause": (
+                            "User 6789 does not have permission to delete conversation "
+                            "with ID 123e4567-e89b-12d3-a456-426614174000"
+                        ),
+                    },
+                },
+                {
+                    "label": "endpoint",
+                    "detail": {
+                        "response": "User does not have permission to access this endpoint",
+                        "cause": "User 6789 is not authorized to access this endpoint.",
+                    },
+                },
+                {
+                    "label": "feedback",
+                    "detail": {
+                        "response": "Storing feedback is disabled",
+                        "cause": "Storing feedback is disabled.",
+                    },
+                },
+                {
+                    "label": "model override",
+                    "detail": {
+                        "response": (
+                            "This instance does not permit overriding model/provider in the "
+                            "query request (missing permission: MODEL_OVERRIDE). Please remove "
+                            "the model and provider fields from your request."
+                        ),
+                        "cause": (
+                            "User lacks model_override permission required "
+                            "to override model/provider."
+                        ),
+                    },
+                },
+            ]
+        }
+    }
+
+    @classmethod
+    def conversation(
+        cls, action: str, resource_id: str, user_id: str
+    ) -> "ForbiddenResponse":
+        """Create a ForbiddenResponse for conversation access denied."""
+        response = "User does not have permission to perform this action"
+        cause = (
+            f"User {user_id} does not have permission to "
+            f"{action} conversation with ID {resource_id}"
+        )
+        return cls(response=response, cause=cause)
+
+    @classmethod
+    def endpoint(cls, user_id: str) -> "ForbiddenResponse":
+        """Create a ForbiddenResponse for endpoint access denied."""
+        response = "User does not have permission to access this endpoint"
+        cause = f"User {user_id} is not authorized to access this endpoint."
+        return cls(response=response, cause=cause)
+
+    @classmethod
+    def feedback_disabled(cls) -> "ForbiddenResponse":
+        """Create a ForbiddenResponse for disabled feedback."""
+        return cls(
+            response="Storing feedback is disabled",
+            cause="Storing feedback is disabled.",
+        )
+
+    @classmethod
+    def model_override(cls) -> "ForbiddenResponse":
+        """Create a ForbiddenResponse for model/provider override denied."""
+        return cls(
+            response=(
+                "This instance does not permit overriding model/provider in the "
+                "query request (missing permission: MODEL_OVERRIDE). Please remove "
+                "the model and provider fields from your request."
+            ),
+            cause=(
+                f"User lacks {Action.MODEL_OVERRIDE.value} permission required "
+                "to override model/provider."
+            ),
+        )
+
+    def __init__(self, *, response: str, cause: str):
+        """Initialize a ForbiddenResponse."""
+        super().__init__(
+            response=response, cause=cause, status_code=status.HTTP_403_FORBIDDEN
+        )
+
+
+class NotFoundResponse(AbstractErrorResponse):
+    """404 Not Found - Resource does not exist."""
+
+    description: ClassVar[str] = NOT_FOUND_DESCRIPTION
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "label": "conversation",
+                    "detail": {
+                        "response": "Conversation not found",
+                        "cause": (
+                            "Conversation with ID "
+                            "123e4567-e89b-12d3-a456-426614174000 does not exist"
+                        ),
+                    },
+                },
+                {
+                    "label": "provider",
+                    "detail": {
+                        "response": "Provider not found",
+                        "cause": "Provider with ID openai does not exist",
+                    },
+                },
+                {
+                    "label": "model",
+                    "detail": {
+                        "response": "Model not found",
+                        "cause": "Model with ID gpt-4-turbo is not configured",
+                    },
+                },
+                {
+                    "label": "rag",
+                    "detail": {
+                        "response": "Rag not found",
+                        "cause": (
+                            "Rag with ID vs_7b52a8cf-0fa3-489c-beab-27e061d102f3 does not exist"
+                        ),
+                    },
+                },
+            ]
+        }
+    }
+
+    def __init__(self, *, resource: str, resource_id: str):
+        """Initialize a NotFoundResponse for a missing resource.
+
+        Args:
+            resource: The type of resource that was not found (e.g., "conversation", "model").
+            resource_id: The ID of the resource that was not found.
+        """
+        response = f"{resource.title()} not found"
+        cause = f"{resource.title()} with ID {resource_id} does not exist"
+        super().__init__(
+            response=response, cause=cause, status_code=status.HTTP_404_NOT_FOUND
+        )
+
+
+class UnprocessableEntityResponse(AbstractErrorResponse):
+    """422 Unprocessable Entity - Request validation failed."""
+
+    description: ClassVar[str] = UNPROCESSABLE_CONTENT_DESCRIPTION
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "label": "invalid format",
+                    "detail": {
+                        "response": "Invalid request format",
+                        "cause": "Invalid request format. The request body could not be parsed.",
+                    },
+                },
+                {
+                    "label": "missing attributes",
+                    "detail": {
+                        "response": "Missing required attributes",
+                        "cause": "Missing required attributes: ['query', 'model', 'provider']",
+                    },
+                },
+                {
+                    "label": "invalid value",
+                    "detail": {
+                        "response": "Invalid attribute value",
+                        "cause": "Invalid attatchment type: must be one of ['text/plain', "
+                        "'application/json', 'application/yaml', 'application/xml']",
+                    },
+                },
+            ]
+        }
+    }
+
+    def __init__(self, *, response: str, cause: str):
+        """Initialize UnprocessableEntityResponse."""
+        super().__init__(
+            response=response,
+            cause=cause,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        )
+
+
+class QuotaExceededResponse(AbstractErrorResponse):
+    """429 Too Many Requests - Quota limit exceeded."""
+
+    description: ClassVar[str] = QUOTA_EXCEEDED_DESCRIPTION
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "label": "model",
+                    "detail": {
+                        "response": "The model quota has been exceeded",
+                        "cause": "The token quota for model gpt-4-turbo has been exceeded.",
+                    },
+                },
+                {
+                    "label": "user none",
+                    "detail": {
+                        "response": "The quota has been exceeded",
+                        "cause": "User 123 has no available tokens.",
+                    },
+                },
+                {
+                    "label": "cluster none",
+                    "detail": {
+                        "response": "The quota has been exceeded",
+                        "cause": "Cluster has no available tokens.",
+                    },
+                },
+                {
+                    "label": "subject none",
+                    "detail": {
+                        "response": "The quota has been exceeded",
+                        "cause": "Unknown subject 999 has no available tokens.",
+                    },
+                },
+                {
+                    "label": "user insufficient",
+                    "detail": {
+                        "response": "The quota has been exceeded",
+                        "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
+                    },
+                },
+                {
+                    "label": "cluster insufficient",
+                    "detail": {
+                        "response": "The quota has been exceeded",
+                        "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
+                    },
+                },
+                {
+                    "label": "subject insufficient",
+                    "detail": {
+                        "response": "The quota has been exceeded",
+                        "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
+                    },
+                },
+            ]
+        }
+    }
+
+    @classmethod
+    def model(cls, model_name: str) -> "QuotaExceededResponse":
+        """Create a QuotaExceededResponse for model quota exceeded."""
+        response = "The model quota has been exceeded"
+        cause = f"The token quota for model {model_name} has been exceeded."
+        return cls(response=response, cause=cause)
+
+    @classmethod
+    def from_exception(cls, exc: QuotaExceedError) -> "QuotaExceededResponse":
+        """Create a QuotaExceededResponse from a QuotaExceedError exception."""
+        response = "The quota has been exceeded"
+        cause = str(exc)
+        return cls(response=response, cause=cause)
+
+    def __init__(self, *, response: str, cause: str) -> None:
+        """Initialize a QuotaExceededResponse."""
+        super().__init__(
+            response=response,
+            cause=cause,
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+
+class InternalServerErrorResponse(AbstractErrorResponse):
+    """500 Internal Server Error."""
+
+    description: ClassVar[str] = INTERNAL_SERVER_ERROR_DESCRIPTION
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
+                    "label": "internal",
+                    "detail": {
+                        "response": "Internal server error",
+                        "cause": "An unexpected error occurred while processing the request.",
+                    },
+                },
+                {
+                    "label": "configuration",
+                    "detail": {
+                        "response": "Configuration is not loaded",
+                        "cause": "Lightspeed Stack configuration has not been initialized.",
+                    },
+                },
+                {
+                    "label": "feedback storage",
                     "detail": {
                         "response": "Failed to store feedback",
-                        "cause": (
-                            "Invalid feedback storage path: "
-                            "/var/app/data/feedbacks/invalid_path"
-                        ),
-                    }
+                        "cause": "Failed to store feedback at directory: /path/example",
+                    },
+                },
+                {
+                    "label": "query",
+                    "detail": {
+                        "response": "Error while processing query",
+                        "cause": "Failed to call backend API",
+                    },
+                },
+                {
+                    "label": "conversation cache",
+                    "detail": {
+                        "response": "Conversation cache not configured",
+                        "cause": "Conversation cache is not configured or unavailable.",
+                    },
+                },
+                {
+                    "label": "database",
+                    "detail": {
+                        "response": "Database query failed",
+                        "cause": "Failed to query the database",
+                    },
+                },
+            ]
+        }
+    }
+
+    @classmethod
+    def generic(cls) -> "InternalServerErrorResponse":
+        """Create a generic InternalServerErrorResponse."""
+        return cls(
+            response="Internal server error",
+            cause="An unexpected error occurred while processing the request.",
+        )
+
+    @classmethod
+    def configuration_not_loaded(cls) -> "InternalServerErrorResponse":
+        """Create an InternalServerErrorResponse for configuration not loaded."""
+        return cls(
+            response="Configuration is not loaded",
+            cause="Lightspeed Stack configuration has not been initialized.",
+        )
+
+    @classmethod
+    def feedback_path_invalid(cls, path: str) -> "InternalServerErrorResponse":
+        """Create an InternalServerErrorResponse for invalid feedback path."""
+        return cls(
+            response="Failed to store feedback",
+            cause=f"Failed to store feedback at directory: {path}",
+        )
+
+    @classmethod
+    def query_failed(cls, backend_url: str) -> "InternalServerErrorResponse":
+        """Create an InternalServerErrorResponse for query failure."""
+        return cls(
+            response="Error while processing query",
+            cause=f"Failed to call backend: {backend_url}",
+        )
+
+    @classmethod
+    def cache_unavailable(cls) -> "InternalServerErrorResponse":
+        """Create an InternalServerErrorResponse for cache unavailable."""
+        return cls(
+            response="Conversation cache not configured",
+            cause="Conversation cache is not configured or unavailable.",
+        )
+
+    @classmethod
+    def database_error(cls) -> "InternalServerErrorResponse":
+        """Create an InternalServerErrorResponse for database error."""
+        return cls(
+            response="Database query failed",
+            cause="Failed to query the database",
+        )
+
+    def __init__(self, *, response: str, cause: str) -> None:
+        """Initialize an InternalServerErrorResponse."""
+        super().__init__(
+            response=response,
+            cause=cause,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+class ServiceUnavailableResponse(AbstractErrorResponse):
+    """503 Backend Unavailable."""
+
+    description: ClassVar[str] = SERVICE_UNAVAILABLE_DESCRIPTION
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "label": "llama stack",
+                    "detail": {
+                        "response": "Unable to connect to Llama Stack",
+                        "cause": "Connection error while trying to reach backend service.",
+                    },
                 }
             ]
         }
     }
+
+    def __init__(self, *, backend_name: str, cause: str):
+        """Initialize a ServiceUnavailableResponse.
+
+        Args:
+            backend_name: The name of the backend service that is unavailable.
+            cause: Detailed explanation of why the service is unavailable.
+        """
+        response = f"Unable to connect to {backend_name}"
+        super().__init__(
+            response=response,
+            cause=cause,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )

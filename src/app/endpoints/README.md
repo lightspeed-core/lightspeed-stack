@@ -39,6 +39,9 @@ Handler for REST API call to provide answer to query.
 ## [query_v2.py](query_v2.py)
 Handler for REST API call to provide answer to query using Response API.
 
+## [rags.py](rags.py)
+Handler for REST API calls to list and retrieve available RAGs.
+
 ## [root.py](root.py)
 Handler for the / endpoint.
 
@@ -47,6 +50,9 @@ Handler for REST API call to list available shields.
 
 ## [streaming_query.py](streaming_query.py)
 Handler for REST API call to provide answer to streaming query.
+
+## [streaming_query_v2.py](streaming_query_v2.py)
+Streaming query handler using Responses API (v2).
 
 ## [tools.py](tools.py)
 Handler for REST API call to list available tools from MCP servers.

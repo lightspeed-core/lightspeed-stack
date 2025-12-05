@@ -34,11 +34,14 @@ Feature: conversations endpoint API tests
     And I store conversation details
     And I remove the auth header
      When I access REST API endpoint "conversations" using HTTP GET method
-     Then The status code of the response is 400
+     Then The status code of the response is 401
      And The body of the response is the following
         """
         {
-            "detail": "No Authorization header found"            
+              "detail": {
+                  "response": "Missing or invalid credentials provided by client",
+                  "cause": "No Authorization header found"
+                }     
         }
         """
 
@@ -100,11 +103,14 @@ Feature: conversations endpoint API tests
     And I store conversation details
     And I remove the auth header
      When I use REST API conversation endpoint with conversation_id from above using HTTP GET method
-     Then The status code of the response is 400
+     Then The status code of the response is 401
      And The body of the response is the following
       """
       {
-          "detail": "No Authorization header found"            
+          "detail": {
+              "response": "Missing or invalid credentials provided by client",
+              "cause": "No Authorization header found"
+            }           
       }
       """
 
@@ -113,7 +119,17 @@ Feature: conversations endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
      When I use REST API conversation endpoint with conversation_id "abcdef" using HTTP GET method
      Then The status code of the response is 400
+     And The body of the response is the following
+     """
+     {
+        "detail": {
+          "response": "Invalid conversation ID format",
+          "cause": "The conversation ID abcdef has invalid format."
+        }
+     }
+     """
 
+  @skip-in-library-mode
   Scenario: Check if conversations/{conversation_id} GET endpoint fails when llama-stack is unavailable
     Given The system is in default state
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
@@ -145,20 +161,24 @@ Feature: conversations endpoint API tests
       {"success": true, "response": "Conversation deleted successfully"}
       """
      And I use REST API conversation endpoint with conversation_id from above using HTTP GET method
-     And The status code of the response is 404
+     Then The status code of the response is 404
+     And The body of the response contains Conversation not found
 
   Scenario: Check if conversations/{conversation_id} DELETE endpoint fails when conversation_id is malformed
     Given The system is in default state
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
      When I use REST API conversation endpoint with conversation_id "abcdef" using HTTP DELETE method
      Then The status code of the response is 400
+     And The body of the response contains Invalid conversation ID format
 
   Scenario: Check if conversations DELETE endpoint fails when the conversation does not exist
     Given The system is in default state
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
      When I use REST API conversation endpoint with conversation_id "12345678-abcd-0000-0123-456789abcdef" using HTTP DELETE method
      Then The status code of the response is 404
+     And The body of the response contains Conversation not found
 
+  @skip-in-library-mode
   Scenario: Check if conversations/{conversation_id} DELETE endpoint fails when llama-stack is unavailable
     Given The system is in default state
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
@@ -169,6 +189,6 @@ Feature: conversations endpoint API tests
     And The status code of the response is 200
     And I store conversation details
     And The llama-stack connection is disrupted
-     When I use REST API conversation endpoint with conversation_id from above using HTTP GET method
+     When I use REST API conversation endpoint with conversation_id from above using HTTP DELETE method
      Then The status code of the response is 503
      And The body of the response contains Unable to connect to Llama Stack

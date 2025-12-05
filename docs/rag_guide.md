@@ -18,6 +18,7 @@ This document explains how to configure and customize your RAG pipeline using th
 * [Configure Vector Store and Embedding Model](#configure-vector-store-and-embedding-model)
 * [Add an Inference Model (LLM)](#add-an-inference-model-llm)
 * [Complete Configuration Reference](#complete-configuration-reference)
+* [System Prompt Guidance for RAG (as a tool)](#system-prompt-guidance-for-rag-as-a-tool)
 * [References](#references)
 
 
@@ -349,6 +350,18 @@ vector_dbs:
   provider_id: ocp-docs # This ID is a reference to 'providers.vector_io'
   vector_db_id: openshift-index  # This ID was defined during index generation
 ```
+
+---
+
+# System Prompt Guidance for RAG (as a tool)
+
+When using RAG, the `knowledge_search` tool must be explicitly referenced in your system prompt. Without clear instructions, models may inconsistently use the tool.
+
+**Tool-Aware sample instruction**:
+```text
+You are a helpful assistant with access to a 'knowledge_search' tool. When users ask questions, ALWAYS use the knowledge_search tool first to find accurate information from the documentation before answering.
+```
+---
 
 # References
 

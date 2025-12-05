@@ -2,16 +2,20 @@
 
 from typing import cast
 
+from fastapi import HTTPException
 from llama_stack.models.llama.datatypes import RawMessage
 from llama_stack.models.llama.llama3.chat_format import ChatFormat
 from llama_stack.models.llama.llama3.tokenizer import Tokenizer
+from llama_stack_client import APIConnectionError, APIStatusError
 from llama_stack_client.types.agents.turn import Turn
 
 import metrics
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from log import get_logger
+from models.responses import ServiceUnavailableResponse
 from utils.common import run_once_async
+from utils.endpoints import check_configuration_loaded
 
 logger = get_logger(__name__)
 
@@ -20,7 +24,12 @@ logger = get_logger(__name__)
 async def setup_model_metrics() -> None:
     """Perform setup of all metrics related to LLM model and provider."""
     logger.info("Setting up model metrics")
-    model_list = await AsyncLlamaStackClientHolder().get_client().models.list()
+    check_configuration_loaded(configuration)
+    try:
+        model_list = await AsyncLlamaStackClientHolder().get_client().models.list()
+    except (APIConnectionError, APIStatusError) as e:
+        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
+        raise HTTPException(**response.model_dump()) from e
 
     models = [
         model

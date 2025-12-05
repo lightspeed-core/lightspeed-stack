@@ -1,0 +1,43 @@
+@startuml
+
+participant Client
+participant Endpoint as "Streaming query endpoint handler"
+participant Auth
+participant LlamaStack as "Llama Stack Client"
+participant EventHandler as "Stream build event"
+participant SSE as "SSE Response Stream"
+
+Client->>Endpoint: HTTP POST /stream_query
+Endpoint->>Auth: Validate auth, user, conversation access
+Auth-->>Endpoint: Access granted
+Endpoint->>LlamaStack: Call retrieve_response(model, query)
+LlamaStack-->>Endpoint: AsyncIterator[AgentTurnResponseStreamChunk]
+
+Endpoint->>SSE: stream_start_event(conversation_id)
+SSE-->>Client: SSE: start
+
+loop For each chunk from LlamaStack
+    Endpoint->>EventHandler: stream_build_event(chunk, chunk_id, metadata)
+    alt Chunk Type: turn_start
+        EventHandler->>SSE: emit turn_start event
+    else Chunk Type: inference
+        EventHandler->>SSE: emit inference (token) event
+    else Chunk Type: tool_execution
+        EventHandler->>SSE: emit tool_call + tool_result events
+    else Chunk Type: shield
+        EventHandler->>SSE: emit shield validation event
+    else Chunk Type: turn_complete
+        EventHandler->>SSE: emit turn_complete event
+    else Error
+        EventHandler->>SSE: emit error event
+    end
+    SSE-->>Client: SSE event(s)
+end
+
+Endpoint->>SSE: stream_end_event(metadata, summary, token_usage)
+SSE-->>Client: SSE: end (with metadata)
+
+Endpoint->>Endpoint: Conditionally persist transcript & cache
+Endpoint-->>Client: Close stream
+
+@enduml

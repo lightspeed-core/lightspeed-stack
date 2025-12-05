@@ -1,13 +1,12 @@
 """Quota handling helper functions."""
 
 import psycopg2
-
-from fastapi import HTTPException, status
-
-from quota.quota_limiter import QuotaLimiter
-from quota.quota_exceed_error import QuotaExceedError
+from fastapi import HTTPException
 
 from log import get_logger
+from models.responses import InternalServerErrorResponse, QuotaExceededResponse
+from quota.quota_exceed_error import QuotaExceedError
+from quota.quota_limiter import QuotaLimiter
 
 logger = get_logger(__name__)
 
@@ -59,23 +58,12 @@ def check_tokens_available(quota_limiters: list[QuotaLimiter], user_id: str) -> 
     except psycopg2.Error as pg_error:
         message = "Error communicating with quota database backend"
         logger.error(message)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "response": message,
-                "cause": str(pg_error),
-            },
-        ) from pg_error
-    except QuotaExceedError as quota_exceed_error:
-        message = "The quota has been exceeded"
-        logger.error(message)
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={
-                "response": message,
-                "cause": str(quota_exceed_error),
-            },
-        ) from quota_exceed_error
+        response = InternalServerErrorResponse.database_error()
+        raise HTTPException(**response.model_dump()) from pg_error
+    except QuotaExceedError as e:
+        logger.error("The quota has been exceeded")
+        response = QuotaExceededResponse.from_exception(e)
+        raise HTTPException(**response.model_dump()) from e
 
 
 def get_available_quotas(

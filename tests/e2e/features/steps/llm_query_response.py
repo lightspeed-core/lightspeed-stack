@@ -143,7 +143,7 @@ def check_streamed_fragments_in_response(context: Context) -> None:
 
 @then("The streamed response is equal to the full response")
 def compare_streamed_responses(context: Context) -> None:
-    """Check that streamed reponse is equal to complete response.
+    """Check that streamed response is equal to complete response.
 
     First checks that the HTTP response exists and contains a
     "response" field. Do this check also for the complete response

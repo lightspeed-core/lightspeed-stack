@@ -13,6 +13,7 @@ from models.config import SQLiteDatabaseConfiguration, PostgreSQLDatabaseConfigu
 
 logger = get_logger(__name__)
 
+# pylint: disable=invalid-name
 engine: Engine | None = None
 session_local: sessionmaker | None = None
 
@@ -117,13 +118,19 @@ def initialize_database() -> None:
             logger.info("Initialize SQLite database")
             sqlite_config = db_config.config
             logger.debug("Configuration: %s", sqlite_config)
-            assert isinstance(sqlite_config, SQLiteDatabaseConfiguration)
+            if not isinstance(sqlite_config, SQLiteDatabaseConfiguration):
+                raise TypeError(
+                    f"Expected SQLiteDatabaseConfiguration, got {type(sqlite_config)}"
+                )
             engine = _create_sqlite_engine(sqlite_config, **create_engine_kwargs)
         case "postgres":
             logger.info("Initialize PostgreSQL database")
             postgres_config = db_config.config
             logger.debug("Configuration: %s", postgres_config)
-            assert isinstance(postgres_config, PostgreSQLDatabaseConfiguration)
+            if not isinstance(postgres_config, PostgreSQLDatabaseConfiguration):
+                raise TypeError(
+                    f"Expected PostgreSQLDatabaseConfiguration, got {type(postgres_config)}"
+                )
             engine = _create_postgres_engine(postgres_config, **create_engine_kwargs)
 
     session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)

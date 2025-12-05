@@ -154,3 +154,15 @@ class TestQueryRequest:
 
         # Media type is now fully supported, no warning expected
         mock_logger.warning.assert_not_called()
+
+    def test_generate_topic_summary_explicit_false(self) -> None:
+        """Test that generate_topic_summary can be explicitly set to False."""
+        qr = QueryRequest(
+            query="Tell me about Kubernetes", generate_topic_summary=False
+        )
+        assert qr.generate_topic_summary is False
+
+    def test_generate_topic_summary_explicit_true(self) -> None:
+        """Test that generate_topic_summary can be explicitly set to True."""
+        qr = QueryRequest(query="Tell me about Kubernetes", generate_topic_summary=True)
+        assert qr.generate_topic_summary is True

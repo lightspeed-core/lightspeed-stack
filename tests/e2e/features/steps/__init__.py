@@ -1,1 +1,1 @@
-"""Implementation of end to end tests steps."""
+"""Implementation of end-to-end tests steps."""

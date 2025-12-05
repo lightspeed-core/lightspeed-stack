@@ -1,13 +1,13 @@
 """Tests the OpenAPI specification that is to be stored in docs/openapi.json."""
 
-from typing import Any
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 import requests
-
 from fastapi.testclient import TestClient
+
 from configuration import configuration
 
 # Strategy:
@@ -123,49 +123,63 @@ def test_servers_section_present_from_url(spec_from_url: dict[str, Any]) -> None
     "path,method,expected_codes",
     [
         ("/", "get", {"200"}),
-        ("/v1/info", "get", {"200", "500"}),
-        ("/v1/models", "get", {"200", "500"}),
-        ("/v1/tools", "get", {"200", "500"}),
-        ("/v1/shields", "get", {"200", "500"}),
-        ("/v1/providers", "get", {"200", "500"}),
-        ("/v1/providers/{provider_id}", "get", {"200", "404", "422", "500"}),
-        ("/v1/query", "post", {"200", "400", "403", "500", "422"}),
-        ("/v1/streaming_query", "post", {"200", "400", "401", "403", "422", "500"}),
-        ("/v1/config", "get", {"200", "503"}),
-        ("/v1/feedback", "post", {"200", "401", "403", "500", "422"}),
+        ("/v1/info", "get", {"200", "401", "403", "503"}),
+        ("/v1/models", "get", {"200", "401", "403", "500", "503"}),
+        ("/v1/tools", "get", {"200", "401", "403", "500", "503"}),
+        ("/v1/shields", "get", {"200", "401", "403", "500", "503"}),
+        ("/v1/providers", "get", {"200", "401", "403", "500", "503"}),
+        (
+            "/v1/providers/{provider_id}",
+            "get",
+            {"200", "401", "403", "404", "500", "503"},
+        ),
+        ("/v1/rags", "get", {"200", "401", "403", "500", "503"}),
+        (
+            "/v1/rags/{rag_id}",
+            "get",
+            {"200", "401", "403", "404", "500", "503"},
+        ),
+        ("/v1/query", "post", {"200", "401", "403", "404", "422", "429", "500", "503"}),
+        (
+            "/v1/streaming_query",
+            "post",
+            {"200", "401", "403", "404", "422", "429", "500", "503"},
+        ),
+        ("/v1/config", "get", {"200", "401", "403", "500"}),
+        ("/v1/feedback", "post", {"200", "401", "403", "404", "500"}),
         ("/v1/feedback/status", "get", {"200"}),
-        ("/v1/feedback/status", "put", {"200", "422"}),
-        ("/v1/conversations", "get", {"200", "401", "503"}),
+        ("/v1/feedback/status", "put", {"200", "401", "403", "500"}),
+        ("/v1/conversations", "get", {"200", "401", "403", "500", "503"}),
         (
             "/v1/conversations/{conversation_id}",
             "get",
-            {"200", "400", "401", "404", "503", "422"},
+            {"200", "400", "401", "403", "404", "500", "503"},
         ),
         (
             "/v1/conversations/{conversation_id}",
             "delete",
-            {"200", "400", "401", "404", "503", "422"},
+            {"200", "400", "401", "403", "404", "500", "503"},
         ),
-        ("/v2/conversations", "get", {"200"}),
+        ("/v2/conversations", "get", {"200", "401", "403", "500"}),
         (
             "/v2/conversations/{conversation_id}",
             "get",
-            {"200", "400", "401", "404", "422"},
+            {"200", "400", "401", "403", "404", "500"},
         ),
         (
             "/v2/conversations/{conversation_id}",
             "delete",
-            {"200", "400", "401", "404", "422"},
+            {"200", "400", "401", "403", "404", "500"},
         ),
         (
             "/v2/conversations/{conversation_id}",
             "put",
-            {"200", "400", "401", "404", "422"},
+            {"200", "400", "401", "403", "404", "500"},
         ),
-        ("/readiness", "get", {"200", "503"}),
-        ("/liveness", "get", {"200"}),
-        ("/authorized", "post", {"200", "400", "401", "403"}),
-        ("/metrics", "get", {"200"}),
+        ("/readiness", "get", {"200", "401", "403", "503"}),
+        ("/liveness", "get", {"200", "401", "403"}),
+        ("/authorized", "post", {"200", "401", "403"}),
+        ("/metrics", "get", {"200", "401", "403", "500", "503"}),
     ],
 )
 def test_paths_and_responses_exist_from_file(
@@ -178,50 +192,64 @@ def test_paths_and_responses_exist_from_file(
 @pytest.mark.parametrize(
     "path,method,expected_codes",
     [
-        ("/", "get", {"200"}),
-        ("/v1/info", "get", {"200", "500"}),
-        ("/v1/models", "get", {"200", "500"}),
-        ("/v1/tools", "get", {"200", "500"}),
-        ("/v1/shields", "get", {"200", "500"}),
-        ("/v1/providers", "get", {"200", "500"}),
-        ("/v1/providers/{provider_id}", "get", {"200", "404", "422", "500"}),
-        ("/v1/query", "post", {"200", "400", "403", "500", "422"}),
-        ("/v1/streaming_query", "post", {"200", "400", "401", "403", "422", "500"}),
-        ("/v1/config", "get", {"200", "503"}),
-        ("/v1/feedback", "post", {"200", "401", "403", "500", "422"}),
+        ("/", "get", {"200", "401", "403"}),
+        ("/v1/info", "get", {"200", "401", "403", "503"}),
+        ("/v1/models", "get", {"200", "401", "403", "500", "503"}),
+        ("/v1/tools", "get", {"200", "401", "403", "500", "503"}),
+        ("/v1/shields", "get", {"200", "401", "403", "500", "503"}),
+        ("/v1/providers", "get", {"200", "401", "403", "500", "503"}),
+        (
+            "/v1/providers/{provider_id}",
+            "get",
+            {"200", "401", "403", "404", "500", "503"},
+        ),
+        ("/v1/rags", "get", {"200", "401", "403", "500", "503"}),
+        (
+            "/v1/rags/{rag_id}",
+            "get",
+            {"200", "401", "403", "404", "500", "503"},
+        ),
+        ("/v1/query", "post", {"200", "401", "403", "404", "422", "429", "500", "503"}),
+        (
+            "/v1/streaming_query",
+            "post",
+            {"200", "401", "403", "404", "422", "429", "500", "503"},
+        ),
+        ("/v1/config", "get", {"200", "401", "403", "500"}),
+        ("/v1/feedback", "post", {"200", "401", "403", "404", "500"}),
         ("/v1/feedback/status", "get", {"200"}),
-        ("/v1/feedback/status", "put", {"200", "422"}),
-        ("/v1/conversations", "get", {"200", "401", "503"}),
+        ("/v1/feedback/status", "put", {"200", "401", "403", "500"}),
+        ("/v1/conversations", "get", {"200", "401", "403", "500", "503"}),
         (
             "/v1/conversations/{conversation_id}",
             "get",
-            {"200", "400", "401", "404", "503", "422"},
+            {"200", "400", "401", "403", "404", "500", "503"},
         ),
         (
             "/v1/conversations/{conversation_id}",
             "delete",
-            {"200", "400", "401", "404", "503", "422"},
+            {"200", "400", "401", "403", "404", "500", "503"},
         ),
-        ("/v2/conversations", "get", {"200"}),
+        ("/v2/conversations", "get", {"200", "401", "403", "500"}),
         (
             "/v2/conversations/{conversation_id}",
             "get",
-            {"200", "400", "401", "404", "422"},
+            {"200", "400", "401", "403", "404", "500"},
         ),
         (
             "/v2/conversations/{conversation_id}",
             "delete",
-            {"200", "400", "401", "404", "422"},
+            {"200", "400", "401", "403", "404", "500"},
         ),
         (
             "/v2/conversations/{conversation_id}",
             "put",
-            {"200", "400", "401", "404", "422"},
+            {"200", "400", "401", "403", "404", "500"},
         ),
-        ("/readiness", "get", {"200", "503"}),
-        ("/liveness", "get", {"200"}),
-        ("/authorized", "post", {"200", "400", "401", "403"}),
-        ("/metrics", "get", {"200"}),
+        ("/readiness", "get", {"200", "401", "403", "503"}),
+        ("/liveness", "get", {"200", "401", "403"}),
+        ("/authorized", "post", {"200", "401", "403"}),
+        ("/metrics", "get", {"200", "401", "403", "500", "503"}),
     ],
 )
 def test_paths_and_responses_exist_from_url(

@@ -16,7 +16,7 @@ apis:
 benchmarks: []
 container_image: null
 datasets: []
-external_providers_dir: null
+external_providers_dir: /opt/app-root/src/.llama/providers.d
 inference_store:
   db_path: .llama/distributions/ollama/inference_store.db
   type: sqlite
@@ -134,7 +134,7 @@ server:
 shields: 
   - shield_id: llama-guard-shield
     provider_id: llama-guard
-    provider_shield_id: "gpt-4-turbo"
+    provider_shield_id: ${env.E2E_OPENAI_MODEL}
 vector_dbs:
   - vector_db_id: my_knowledge_base
     embedding_model: sentence-transformers/all-mpnet-base-v2
@@ -147,10 +147,10 @@ models:
     provider_id: sentence-transformers
     provider_model_id: sentence-transformers/all-mpnet-base-v2 # Location of embedding model
     model_type: embedding
-  - model_id: gpt-4-turbo
+  - model_id: ${env.E2E_OPENAI_MODEL}
     provider_id: openai
     model_type: llm
-    provider_model_id: gpt-4-turbo
+    provider_model_id: ${env.E2E_OPENAI_MODEL}
 
 tool_groups:
   - toolgroup_id: builtin::rag

@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -16,63 +16,45 @@ from configuration import configuration
 from models.config import Action
 from models.requests import FeedbackRequest, FeedbackStatusUpdateRequest
 from models.responses import (
-    ErrorResponse,
     FeedbackResponse,
     FeedbackStatusUpdateResponse,
     ForbiddenResponse,
+    InternalServerErrorResponse,
+    NotFoundResponse,
     StatusResponse,
     UnauthorizedResponse,
 )
+from utils.endpoints import check_configuration_loaded
 from utils.suid import get_suid
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 feedback_status_lock = threading.Lock()
 
-# Response for the feedback endpoint
+
 feedback_post_response: dict[int | str, dict[str, Any]] = {
-    200: {
-        "description": "Feedback received and stored",
-        "model": FeedbackResponse,
-    },
-    401: {
-        "description": "Missing or invalid credentials provided by client",
-        "model": UnauthorizedResponse,
-    },
-    403: {
-        "description": "Client does not have permission to access resource",
-        "model": ForbiddenResponse,
-    },
-    500: {
-        "description": "User feedback can not be stored",
-        "model": ErrorResponse,
-    },
+    200: FeedbackResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint", "feedback"]),
+    404: NotFoundResponse.openapi_response(examples=["conversation"]),
+    500: InternalServerErrorResponse.openapi_response(
+        examples=["feedback storage", "configuration"]
+    ),
 }
 
 feedback_put_response: dict[int | str, dict[str, Any]] = {
-    200: {
-        "description": "Feedback status successfully updated",
-        "model": FeedbackStatusUpdateResponse,
-    },
-    400: {
-        "description": "Missing or invalid credentials provided by client",
-        "model": UnauthorizedResponse,
-    },
-    401: {
-        "description": "Missing or invalid credentials provided by client",
-        "model": UnauthorizedResponse,
-    },
-    403: {
-        "description": "Client does not have permission to access resource",
-        "model": ForbiddenResponse,
-    },
+    200: FeedbackStatusUpdateResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
 }
 
 feedback_get_response: dict[int | str, dict[str, Any]] = {
-    200: {
-        "description": "Feedback status successfully retrieved",
-        "model": StatusResponse,
-    }
+    200: StatusResponse.openapi_response(),
 }
 
 
@@ -103,10 +85,8 @@ async def assert_feedback_enabled(_request: Request) -> None:
     """
     feedback_enabled = is_feedback_enabled()
     if not feedback_enabled:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden: Feedback is disabled",
-        )
+        response = ForbiddenResponse.feedback_disabled()
+        raise HTTPException(**response.model_dump())
 
 
 @router.post("", responses=feedback_post_response)
@@ -137,17 +117,8 @@ async def feedback_endpoint_handler(
     logger.debug("Feedback received %s", str(feedback_request))
 
     user_id, _, _, _ = auth
-    try:
-        store_feedback(user_id, feedback_request.model_dump(exclude={"model_config"}))
-    except Exception as e:
-        logger.error("Error storing user feedback: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "response": "Error storing user feedback",
-                "cause": str(e),
-            },
-        ) from e
+    check_configuration_loaded(configuration)
+    store_feedback(user_id, feedback_request.model_dump(exclude={"model_config"}))
 
     return FeedbackResponse(response="feedback received")
 
@@ -170,21 +141,18 @@ def store_feedback(user_id: str, feedback: dict) -> None:
     storage_path = Path(
         configuration.user_data_collection_configuration.feedback_storage or ""
     )
-    storage_path.mkdir(parents=True, exist_ok=True)
-
     current_time = str(datetime.now(UTC))
     data_to_store = {"user_id": user_id, "timestamp": current_time, **feedback}
-
-    # stores feedback in a file under unique uuid
+    # Stores feedback in a file under unique uuid
     feedback_file_path = storage_path / f"{get_suid()}.json"
     try:
+        storage_path.mkdir(parents=True, exist_ok=True)
         with open(feedback_file_path, "w", encoding="utf-8") as feedback_file:
             json.dump(data_to_store, feedback_file)
-    except (OSError, IOError) as e:
+    except OSError as e:
         logger.error("Failed to store feedback at %s: %s", feedback_file_path, e)
-        raise
-
-    logger.info("Feedback stored successfully at %s", feedback_file_path)
+        response = InternalServerErrorResponse.feedback_path_invalid(str(storage_path))
+        raise HTTPException(**response.model_dump()) from e
 
 
 @router.get("/status", responses=feedback_get_response)
@@ -222,6 +190,7 @@ async def update_feedback_status(
         FeedbackStatusUpdateResponse: Indicates whether feedback is enabled.
     """
     user_id, _, _, _ = auth
+    check_configuration_loaded(configuration)
     requested_status = feedback_update_request.get_value()
 
     with feedback_status_lock:

@@ -9,7 +9,13 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from configuration import configuration
-from models.config import Action, Configuration
+from models.config import Action
+from models.responses import (
+    ConfigurationResponse,
+    ForbiddenResponse,
+    InternalServerErrorResponse,
+    UnauthorizedResponse,
+)
 from utils.endpoints import check_configuration_loaded
 
 logger = logging.getLogger(__name__)
@@ -17,44 +23,12 @@ router = APIRouter(tags=["config"])
 
 
 get_config_responses: dict[int | str, dict[str, Any]] = {
-    200: {
-        "name": "foo bar baz",
-        "service": {
-            "host": "localhost",
-            "port": 8080,
-            "auth_enabled": False,
-            "workers": 1,
-            "color_log": True,
-            "access_log": True,
-            "tls_config": {
-                "tls_certificate_path": "config/certificate.crt",
-                "tls_key_path": "config/private.key",
-                "tls_key_password": None,
-            },
-        },
-        "llama_stack": {
-            "url": "http://localhost:8321",
-            "api_key": "*****",
-            "use_as_library_client": False,
-            "library_client_config_path": None,
-        },
-        "user_data_collection": {
-            "feedback_enabled": True,
-            "feedback_storage": "/tmp/data/feedback",
-            "transcripts_enabled": False,
-            "transcripts_storage": None,
-        },
-        "mcp_servers": [
-            {"name": "server1", "provider_id": "provider1", "url": "http://url.com:1"},
-            {"name": "server2", "provider_id": "provider2", "url": "http://url.com:2"},
-            {"name": "server3", "provider_id": "provider3", "url": "http://url.com:3"},
-        ],
-    },
-    503: {
-        "detail": {
-            "response": "Configuration is not loaded",
-        }
-    },
+    200: ConfigurationResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(
+        examples=["missing header", "missing token"]
+    ),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
 }
 
 
@@ -63,7 +37,7 @@ get_config_responses: dict[int | str, dict[str, Any]] = {
 async def config_endpoint_handler(
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
     request: Request,
-) -> Configuration:
+) -> ConfigurationResponse:
     """
     Handle requests to the /config endpoint.
 
@@ -71,7 +45,7 @@ async def config_endpoint_handler(
     current service configuration.
 
     Returns:
-        Configuration: The loaded service configuration object.
+        ConfigurationResponse: The loaded service configuration response.
     """
     # Used only for authorization
     _ = auth
@@ -82,4 +56,4 @@ async def config_endpoint_handler(
     # ensure that configuration is loaded
     check_configuration_loaded(configuration)
 
-    return configuration.configuration
+    return ConfigurationResponse(configuration=configuration.configuration)

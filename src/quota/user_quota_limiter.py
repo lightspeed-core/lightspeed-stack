@@ -8,7 +8,7 @@ logger = get_logger(__name__)
 
 
 class UserQuotaLimiter(RevokableQuotaLimiter):
-    """Simple user quota limiter where each user have fixed quota."""
+    """Simple user quota limiter where each user has a fixed quota."""
 
     def __init__(
         self,

@@ -7,6 +7,8 @@ import os
 import ast
 from pathlib import Path
 
+DIRECTORIES = ["src", "tests/unit", "tests/integration", "tests/e2e"]
+
 
 def generate_docfile(directory):
     """Generate README.md in the CWD."""
@@ -48,10 +50,17 @@ def generate_documentation_on_path(path):
 
 def main():
     """Entry point to this script, regenerates documentation in all directories."""
-    generate_documentation_on_path("src/")
-    for path in Path("src").rglob("*"):
-        if path.is_dir():
-            generate_documentation_on_path(path)
+    for directory in DIRECTORIES:
+        generate_documentation_on_path(f"{directory}/")
+        for path in Path(directory).rglob("*"):
+            if path.is_dir():
+                if (
+                    path.name == "lightspeed_stack.egg-info"
+                    or path.name == "__pycache__"
+                    or ".ruff_cache" in str(path)
+                ):
+                    continue
+                generate_documentation_on_path(path)
 
 
 if __name__ == "__main__":

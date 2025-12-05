@@ -19,7 +19,7 @@ from models.config import (
     AuthenticationConfiguration,
     InferenceConfiguration,
     DatabaseConfiguration,
-    ConversationCacheConfiguration,
+    ConversationHistoryConfiguration,
     QuotaHandlersConfiguration,
 )
 
@@ -138,7 +138,7 @@ class AppConfig:
         return self._configuration.inference
 
     @property
-    def conversation_cache_configuration(self) -> ConversationCacheConfiguration:
+    def conversation_cache_configuration(self) -> ConversationHistoryConfiguration:
         """Return conversation cache configuration."""
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")

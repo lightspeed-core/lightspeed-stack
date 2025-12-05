@@ -40,6 +40,7 @@ Feature: REST API tests
           """
 
 
+  @skip-in-library-mode
   Scenario: Check if service report proper readiness state when llama stack is not available
     Given The system is in default state
       And The llama-stack connection is disrupted
@@ -51,6 +52,7 @@ Feature: REST API tests
           """
 
 
+  @skip-in-library-mode
   Scenario: Check if service report proper liveness state even when llama stack is not available
     Given The system is in default state
       And The llama-stack connection is disrupted

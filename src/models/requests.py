@@ -81,6 +81,7 @@ class QueryRequest(BaseModel):
         system_prompt: The optional system prompt.
         attachments: The optional attachments.
         no_tools: Whether to bypass all tools and MCP servers (default: False).
+        generate_topic_summary: Whether to generate topic summary for new conversations.
         media_type: The optional media type for response format (application/json or text/plain).
 
     Example:
@@ -146,6 +147,12 @@ class QueryRequest(BaseModel):
         examples=[True, False],
     )
 
+    generate_topic_summary: Optional[bool] = Field(
+        True,
+        description="Whether to generate topic summary for new conversations",
+        examples=[True, False],
+    )
+
     media_type: Optional[str] = Field(
         None,
         description="Media type for the response format",
@@ -172,6 +179,7 @@ class QueryRequest(BaseModel):
                     "model": "model-name",
                     "system_prompt": "You are a helpful assistant",
                     "no_tools": False,
+                    "generate_topic_summary": True,
                     "attachments": [
                         {
                             "attachment_type": "log",

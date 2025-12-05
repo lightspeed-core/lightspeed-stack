@@ -1,0 +1,156 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" height="1011px" preserveAspectRatio="none" style="width:923px;height:1011px;background:#FFFFFF;" version="1.1" viewBox="0 0 923 1011" width="923px" zoomAndPan="magnify">
+  <defs/>
+  <g>
+    <rect fill="none" height="83.118" style="stroke:#000000;stroke-width:1.5;" width="809.8629" x="10" y="678.7762"/>
+    <rect fill="none" height="83.118" style="stroke:#000000;stroke-width:1.5;" width="666.3733" x="10" y="775.8943"/>
+    <rect fill="none" height="83.118" style="stroke:#000000;stroke-width:1.5;" width="426.7068" x="10" y="873.0123"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="45" x2="45" y1="39.0679" y2="973.1304"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="340.5215" x2="340.5215" y1="39.0679" y2="973.1304"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="643.0694" x2="643.0694" y1="39.0679" y2="973.1304"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="742.3733" x2="742.3733" y1="39.0679" y2="973.1304"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="845.8629" x2="845.8629" y1="39.0679" y2="973.1304"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="899.8327" x2="899.8327" y1="39.0679" y2="973.1304"/>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="51.6738" x="20" y="5"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="37.6738" x="27" y="26.9659">Client</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="51.6738" x="20" y="972.1304"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="37.6738" x="27" y="994.0963">Client</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="172.1854" x="254.5215" y="5"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="158.1854" x="261.5215" y="26.9659">Query Endpoint handler</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="172.1854" x="254.5215" y="972.1304"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="158.1854" x="261.5215" y="994.0963">Query Endpoint handler</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="45.3039" x="621.0694" y="5"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="31.3039" x="628.0694" y="26.9659">Auth</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="45.3039" x="621.0694" y="972.1304"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="31.3039" x="628.0694" y="994.0963">Auth</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="133.4895" x="676.3733" y="5"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="119.4895" x="683.3733" y="26.9659">Llama Stack Client</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="133.4895" x="676.3733" y="972.1304"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="119.4895" x="683.3733" y="994.0963">Llama Stack Client</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="53.9698" x="819.8629" y="5"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="39.9698" x="826.8629" y="26.9659">Cache</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="53.9698" x="819.8629" y="972.1304"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="39.9698" x="826.8629" y="994.0963">Cache</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="33.3199" x="883.8327" y="5"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="19.3199" x="890.8327" y="26.9659">DB</text>
+    <rect fill="#E2E2F0" height="33.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="33.3199" x="883.8327" y="972.1304"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="19.3199" x="890.8327" y="994.0963">DB</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="338.6141" x2="328.6141" y1="72.7739" y2="68.7739"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="338.6141" x2="328.6141" y1="72.7739" y2="76.7739"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="45.8369" x2="339.6141" y1="72.7739" y2="72.7739"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="166.8422" x="52.8369" y="66.9649">POST /query + attachments</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="641.7214" x2="631.7214" y1="104.4799" y2="100.4799"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="641.7214" x2="631.7214" y1="104.4799" y2="108.4799"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="642.7214" y1="104.4799" y2="104.4799"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="170.9632" x="347.6141" y="98.6709">Validate auth &amp; permissions</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="136.186" y2="132.186"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="136.186" y2="140.186"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="340.6141" x2="642.7214" y1="136.186" y2="136.186"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="80.6131" x="357.6141" y="130.377">Authorized &#x2713;</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="641.7214" x2="631.7214" y1="167.892" y2="163.892"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="641.7214" x2="631.7214" y1="167.892" y2="171.892"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="642.7214" y1="167.892" y2="167.892"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="168.5061" x="347.6141" y="162.083">Check config &amp; token quota</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="199.598" y2="195.598"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="199.598" y2="203.598"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="340.6141" x2="642.7214" y1="199.598" y2="199.598"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="177.1251" x="357.6141" y="193.789">Config valid, tokens available</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="898.4926" x2="888.4926" y1="231.304" y2="227.304"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="898.4926" x2="888.4926" y1="231.304" y2="235.304"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="899.4926" y1="231.304" y2="231.304"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="224.3672" x="347.6141" y="225.495">Retrieve user conversation (optional)</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="263.01" y2="259.01"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="263.01" y2="267.01"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="340.6141" x2="899.4926" y1="263.01" y2="263.01"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="162.4221" x="357.6141" y="257.201">UserConversation or None</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="382.6141" y1="294.716" y2="294.716"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="382.6141" x2="382.6141" y1="294.716" y2="307.716"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="382.6141" y1="307.716" y2="307.716"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="307.716" y2="303.716"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="307.716" y2="311.716"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="244.6472" x="347.6141" y="288.907">Select model/provider from hints/config</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="741.1181" x2="731.1181" y1="339.4221" y2="335.4221"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="741.1181" x2="731.1181" y1="339.4221" y2="343.4221"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="742.1181" y1="339.4221" y2="339.4221"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="135.4341" x="347.6141" y="333.6131">Get model capabilities</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="371.1281" y2="367.1281"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="371.1281" y2="375.1281"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="340.6141" x2="742.1181" y1="371.1281" y2="371.1281"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="130.2211" x="357.6141" y="365.3191">Capabilities response</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="382.6141" y1="402.8341" y2="402.8341"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="382.6141" x2="382.6141" y1="402.8341" y2="415.8341"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="382.6141" y1="415.8341" y2="415.8341"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="415.8341" y2="411.8341"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="415.8341" y2="419.8341"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="289.1072" x="347.6141" y="397.0251">Build system prompt, toolgroups, MCP headers</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="741.1181" x2="731.1181" y1="447.5401" y2="443.5401"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="741.1181" x2="731.1181" y1="447.5401" y2="451.5401"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="742.1181" y1="447.5401" y2="447.5401"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="185.9132" x="347.6141" y="441.7311">Create turn (agent interaction)</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="479.2461" y2="475.2461"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="479.2461" y2="483.2461"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="340.6141" x2="742.1181" y1="479.2461" y2="479.2461"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="243.1912" x="357.6141" y="473.4371">Turn response + tool calls + RAG chunks</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="382.6141" y1="510.9521" y2="510.9521"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="382.6141" x2="382.6141" y1="510.9521" y2="523.9521"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="382.6141" y1="523.9521" y2="523.9521"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="523.9521" y2="519.9521"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="523.9521" y2="527.9521"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="251.2512" x="347.6141" y="505.1431">Parse metadata &amp; referenced documents</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="382.6141" y1="555.6582" y2="555.6582"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="382.6141" x2="382.6141" y1="555.6582" y2="568.6582"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="382.6141" y1="568.6582" y2="568.6582"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="568.6582" y2="564.6582"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="568.6582" y2="572.6582"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="179.9462" x="347.6141" y="549.8492">Transform to QueryResponse</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="898.4926" x2="888.4926" y1="600.3642" y2="596.3642"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="898.4926" x2="888.4926" y1="600.3642" y2="604.3642"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="899.4926" y1="600.3642" y2="600.3642"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="314.1063" x="347.6141" y="594.5552">Persist conversation metadata (model, topic, count)</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="844.8478" x2="834.8478" y1="632.0702" y2="628.0702"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="844.8478" x2="834.8478" y1="632.0702" y2="636.0702"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="340.6141" x2="845.8478" y1="632.0702" y2="632.0702"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="249.4572" x="347.6141" y="626.2612">Store conversation with timing metadata</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="663.7762" y2="659.7762"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="663.7762" y2="667.7762"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="45.8369" x2="339.6141" y1="663.7762" y2="663.7762"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="239.3562" x="62.8369" y="657.9672">Return QueryResponse + token metrics</text>
+    <path d="M10,678.7762 L71.5588,678.7762 L71.5588,688.4822 L61.5588,698.4822 L10,698.4822 L10,678.7762 " fill="#EEEEEE" style="stroke:#000000;stroke-width:1.5;"/>
+    <rect fill="none" height="83.118" style="stroke:#000000;stroke-width:1.5;" width="809.8629" x="10" y="678.7762"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="16.5588" x="25" y="693.6732">alt</text>
+    <text fill="#000000" font-family="sans-serif" font-size="11" font-weight="bold" lengthAdjust="spacing" textLength="101.2901" x="86.5588" y="692.5351">[Connection Error]</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="722.1882" y2="718.1882"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="722.1882" y2="726.1882"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="340.6141" x2="742.1181" y1="722.1882" y2="722.1882"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="121.4461" x="357.6141" y="716.3792">APIConnectionError</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="753.8943" y2="749.8943"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="753.8943" y2="757.8943"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="45.8369" x2="339.6141" y1="753.8943" y2="753.8943"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="57.6421" x="62.8369" y="748.0853">HTTP 500</text>
+    <path d="M10,775.8943 L71.5588,775.8943 L71.5588,785.6003 L61.5588,795.6003 L10,795.6003 L10,775.8943 " fill="#EEEEEE" style="stroke:#000000;stroke-width:1.5;"/>
+    <rect fill="none" height="83.118" style="stroke:#000000;stroke-width:1.5;" width="666.3733" x="10" y="775.8943"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="16.5588" x="25" y="790.7913">alt</text>
+    <text fill="#000000" font-family="sans-serif" font-size="11" font-weight="bold" lengthAdjust="spacing" textLength="96.7966" x="86.5588" y="789.6532">[Quota Exceeded]</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="819.3063" y2="815.3063"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="341.6141" x2="351.6141" y1="819.3063" y2="823.3063"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="340.6141" x2="642.7214" y1="819.3063" y2="819.3063"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="113.4901" x="357.6141" y="813.4973">Rate limit violation</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="851.0123" y2="847.0123"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="851.0123" y2="855.0123"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="45.8369" x2="339.6141" y1="851.0123" y2="851.0123"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="57.6421" x="62.8369" y="845.2033">HTTP 429</text>
+    <path d="M10,873.0123 L71.5588,873.0123 L71.5588,882.7183 L61.5588,892.7183 L10,892.7183 L10,873.0123 " fill="#EEEEEE" style="stroke:#000000;stroke-width:1.5;"/>
+    <rect fill="none" height="83.118" style="stroke:#000000;stroke-width:1.5;" width="426.7068" x="10" y="873.0123"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="16.5588" x="25" y="887.9093">alt</text>
+    <text fill="#000000" font-family="sans-serif" font-size="11" font-weight="bold" lengthAdjust="spacing" textLength="92.3774" x="86.5588" y="886.7712">[Invalid Request]</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="916.4243" y2="912.4243"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="916.4243" y2="920.4243"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="45.8369" x2="339.6141" y1="916.4243" y2="916.4243"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="270.7772" x="62.8369" y="910.6153">Missing/invalid conversation or attachments</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="948.1304" y2="944.1304"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="46.8369" x2="56.8369" y1="948.1304" y2="952.1304"/>
+    <line style="stroke:#181818;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="45.8369" x2="339.6141" y1="948.1304" y2="948.1304"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="111.9301" x="62.8369" y="942.3214">HTTP 400/403/404</text>
+    <!--SRC=[VLJ1Jjmm4BtdAqOSAb11kshfeNj0Wh2YIALTbctlWpExiTQnmzZPblv6htnTlwHZ1qW2kqIA4bjlvhqPlt6D7BJIDTe0kT5aGrRtjgQsg9sM7_ImTzqGttTR9Th24EyD0awRK0uslXgiy2QWMgSSQGdjkkKRnkUeIeh8z9DbBURevEI9TWApxpSB6DqbCUy1W-GgAm7vx0aZyAXZ0Z_Hw0A399Gbl8EQkDBUQsTz5X57WyHnnx7-GmNyU_ZxEbjUagXMpYxrIf85joOBTuqBk2LPti8sKS5XY_M06zG6Rmtrav-VJM1EWJLj21fF72asn1w328LzLySlceFi_6p8yKF0UH_h6BuvEyZUeM_8a0fGkOBCg6QtqOLmBTbLK0h0ZzhA-i7TuKtWWXvZGM6DjzheeCbd7UH5_JqGCFbQUhv3s5cZJG7-tWUgG8HLTOWTSsR5hgdz8LpbCoW9HQxVfIvdYkSS6fQEuKhi008YHXKRSx1JvY86FCaJEqLQAT0OBulvwGMeih5hlrtu35c2AWee9aEn1DEIcAmI1nLEDQzSsUDbj7xfk196I8CrtzAZQ8sPLArz69hYcNC_7KbiLwtLeO0Q6mxwAT8SoU47npJCyKlBJ0HTQRjwpjT5nj0qUycSiKi3bQbLqVzLTAxoMOOcHDDRIXs7ARFZ3EJPrVhJsMM7x-3R57nPB6RmQJpEo1OjqtKSEvZ-LaG55IdmzGpEeoMCL1XWevr9PR_DSVpXSyTnQTFqIlrosVYmC_8gNYbsDTAFUFLY9FjNrDliu_7eUFnHtkEauZy0]-->
+  </g>
+</svg>

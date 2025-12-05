@@ -1,0 +1,37 @@
+services:
+  # Lightspeed Stack with embedded llama-stack (library mode)
+  lightspeed-stack:
+    build:
+      context: .
+      dockerfile: Containerfile
+    platform: linux/amd64
+    container_name: lightspeed-stack
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount both config files - lightspeed-stack.yaml should have library mode enabled
+      - ./lightspeed-stack.yaml:/app-root/lightspeed-stack.yaml:Z
+      - ./run.yaml:/app-root/run.yaml:Z
+    environment:
+      # LLM Provider API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - E2E_OPENAI_MODEL=${E2E_OPENAI_MODEL:-gpt-4-turbo}
+      - AZURE_API_KEY=${AZURE_API_KEY:-}
+      - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
+      - TAVILY_SEARCH_API_KEY=${TAVILY_SEARCH_API_KEY:-}
+      - RHAIIS_URL=${RHAIIS_URL:-}
+      - RHAIIS_API_KEY=${RHAIIS_API_KEY:-}
+      - RHAIIS_MODEL=${RHAIIS_MODEL:-}
+      - RHEL_AI_URL=${RHEL_AI_URL:-}
+      - RHEL_AI_PORT=${RHEL_AI_PORT:-}
+      - RHEL_AI_API_KEY=${RHEL_AI_API_KEY:-}
+      - RHEL_AI_MODEL=${RHEL_AI_MODEL:-}
+      # Enable debug logging if needed
+      - LLAMA_STACK_LOGGING=${LLAMA_STACK_LOGGING:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/liveness"]
+      interval: 10s   # how often to run the check
+      timeout: 5s    # how long to wait before considering it failed
+      retries: 3      # how many times to retry before marking as unhealthy
+      start_period: 15s # time to wait before starting checks (increased for library initialization)
+

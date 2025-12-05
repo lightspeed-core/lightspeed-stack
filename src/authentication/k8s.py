@@ -4,15 +4,22 @@ import logging
 import os
 from pathlib import Path
 from typing import Optional, Self
-from fastapi import Request, HTTPException
 
 import kubernetes.client
+from fastapi import HTTPException, Request
 from kubernetes.client.rest import ApiException
 from kubernetes.config import ConfigException
 
-from configuration import configuration
 from authentication.interface import AuthInterface
+from authentication.utils import extract_user_token
+from configuration import configuration
 from constants import DEFAULT_VIRTUAL_PATH
+from models.responses import (
+    ForbiddenResponse,
+    InternalServerErrorResponse,
+    ServiceUnavailableResponse,
+    UnauthorizedResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -172,8 +179,20 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
 
     Returns:
         The user information if the token is valid, None otherwise.
+
+    Raises:
+        HTTPException: If unable to connect to Kubernetes API or unexpected error occurs.
     """
-    auth_api = K8sClientSingleton.get_authn_api()
+    try:
+        auth_api = K8sClientSingleton.get_authn_api()
+    except Exception as e:
+        logger.error("Failed to get Kubernetes authentication API: %s", e)
+        response = ServiceUnavailableResponse(
+            backend_name="Kubernetes API",
+            cause="Unable to initialize Kubernetes client",
+        )
+        raise HTTPException(**response.model_dump()) from e
+
     token_review = kubernetes.client.V1TokenReview(
         spec=kubernetes.client.V1TokenReviewSpec(token=token)
     )
@@ -182,31 +201,9 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
         if response.status.authenticated:
             return response.status
         return None
-    except ApiException as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("API exception during TokenReview: %s", e)
         return None
-    except Exception as e:
-        logger.error("Unexpected error during TokenReview - Unauthorized: %s", e)
-        raise HTTPException(
-            status_code=500,
-            detail={"response": "Forbidden: Unable to Review Token", "cause": str(e)},
-        ) from e
-
-
-def _extract_bearer_token(header: str) -> str:
-    """Extract the bearer token from an HTTP authorization header.
-
-    Args:
-        header: The authorization header containing the token.
-
-    Returns:
-        The extracted token if present, else an empty string.
-    """
-    try:
-        scheme, token = header.split(" ", 1)
-        return token if scheme.lower() == "bearer" else ""
-    except ValueError:
-        return ""
 
 
 class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-methods
@@ -239,47 +236,52 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
             user_id check should never be skipped with K8s authentication
             If user_id check should be skipped - always return False for k8s
             User's token
+
+        Raises:
+            HTTPException: If authentication or authorization fails.
         """
-        authorization_header = request.headers.get("Authorization")
-        if not authorization_header:
-            raise HTTPException(
-                status_code=401, detail="Unauthorized: No auth header found"
-            )
-
-        token = _extract_bearer_token(authorization_header)
-        if not token:
-            raise HTTPException(
-                status_code=401,
-                detail="Unauthorized: Bearer token not found or invalid",
-            )
-
+        token = extract_user_token(request.headers)
         user_info = get_user_info(token)
-        if user_info is None:
-            raise HTTPException(
-                status_code=403, detail="Forbidden: Invalid or expired token"
-            )
-        if user_info.user.username == "kube:admin":
-            user_info.user.uid = K8sClientSingleton.get_cluster_id()
-        authorization_api = K8sClientSingleton.get_authz_api()
 
-        sar = kubernetes.client.V1SubjectAccessReview(
-            spec=kubernetes.client.V1SubjectAccessReviewSpec(
-                user=user_info.user.username,
-                groups=user_info.user.groups,
-                non_resource_attributes=kubernetes.client.V1NonResourceAttributes(
-                    path=self.virtual_path, verb="get"
-                ),
-            )
-        )
-        try:
-            response = authorization_api.create_subject_access_review(sar)
-            if not response.status.allowed:
-                raise HTTPException(
-                    status_code=403, detail="Forbidden: User does not have access"
+        if user_info is None:
+            response = UnauthorizedResponse(cause="Invalid or expired Kubernetes token")
+            raise HTTPException(**response.model_dump())
+
+        if user_info.user.username == "kube:admin":
+            try:
+                user_info.user.uid = K8sClientSingleton.get_cluster_id()
+            except ClusterIDUnavailableError as e:
+                logger.error("Failed to get cluster ID: %s", e)
+                response = InternalServerErrorResponse(
+                    response="Internal server error",
+                    cause="Unable to retrieve cluster ID",
                 )
-        except ApiException as e:
+                raise HTTPException(**response.model_dump()) from e
+
+        try:
+            authorization_api = K8sClientSingleton.get_authz_api()
+            sar = kubernetes.client.V1SubjectAccessReview(
+                spec=kubernetes.client.V1SubjectAccessReviewSpec(
+                    user=user_info.user.username,
+                    groups=user_info.user.groups,
+                    non_resource_attributes=kubernetes.client.V1NonResourceAttributes(
+                        path=self.virtual_path, verb="get"
+                    ),
+                )
+            )
+            response = authorization_api.create_subject_access_review(sar)
+
+        except Exception as e:
             logger.error("API exception during SubjectAccessReview: %s", e)
-            raise HTTPException(status_code=403, detail="Internal server error") from e
+            response = ServiceUnavailableResponse(
+                backend_name="Kubernetes API",
+                cause="Unable to perform authorization check",
+            )
+            raise HTTPException(**response.model_dump()) from e
+
+        if not response.status.allowed:
+            response = ForbiddenResponse.endpoint(user_id=user_info.user.uid)
+            raise HTTPException(**response.model_dump())
 
         return (
             user_info.user.uid,

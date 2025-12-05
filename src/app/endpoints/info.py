@@ -3,7 +3,7 @@
 import logging
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from llama_stack_client import APIConnectionError
 
 from authentication import get_auth_dependency
@@ -12,7 +12,12 @@ from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from models.config import Action
-from models.responses import InfoResponse
+from models.responses import (
+    ForbiddenResponse,
+    InfoResponse,
+    ServiceUnavailableResponse,
+    UnauthorizedResponse,
+)
 from version import __version__
 
 logger = logging.getLogger("app.endpoints.handlers")
@@ -20,17 +25,10 @@ router = APIRouter(tags=["info"])
 
 
 get_info_responses: dict[int | str, dict[str, Any]] = {
-    200: {
-        "name": "Service name",
-        "service_version": "Service version",
-        "llama_stack_version": "Llama Stack version",
-    },
-    500: {
-        "detail": {
-            "response": "Unable to connect to Llama Stack",
-            "cause": "Connection error.",
-        }
-    },
+    200: InfoResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    503: ServiceUnavailableResponse.openapi_response(),
 }
 
 
@@ -65,7 +63,7 @@ async def info_endpoint_handler(
         llama_stack_version = llama_stack_version_object.version
         logger.debug("Service name: %s", configuration.configuration.name)
         logger.debug("Service version: %s", __version__)
-        logger.debug("LLama Stack version: %s", llama_stack_version)
+        logger.debug("Llama Stack version: %s", llama_stack_version)
         return InfoResponse(
             name=configuration.configuration.name,
             service_version=__version__,
@@ -74,10 +72,5 @@ async def info_endpoint_handler(
     # connection to Llama Stack server
     except APIConnectionError as e:
         logger.error("Unable to connect to Llama Stack: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "response": "Unable to connect to Llama Stack",
-                "cause": str(e),
-            },
-        ) from e
+        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
+        raise HTTPException(**response.model_dump()) from e

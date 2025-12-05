@@ -1,15 +1,14 @@
 """Unit tests for the /models REST API endpoint."""
 
 from typing import Any
-import pytest
 
+import pytest
 from fastapi import HTTPException, Request, status
+from llama_stack_client import APIConnectionError
 from pytest_mock import MockerFixture
 
-from llama_stack_client import APIConnectionError
-
-from authentication.interface import AuthTuple
 from app.endpoints.models import models_endpoint_handler
+from authentication.interface import AuthTuple
 from configuration import AppConfig
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
@@ -22,11 +21,8 @@ async def test_models_endpoint_handler_configuration_not_loaded(
     mock_authorization_resolvers(mocker)
 
     # simulate state when no configuration is loaded
-    mocker.patch(
-        "app.endpoints.models.configuration",
-        return_value=mocker.Mock(),
-    )
-    mocker.patch("app.endpoints.models.configuration", None)
+    mock_config = AppConfig()
+    mocker.patch("app.endpoints.models.configuration", mock_config)
 
     request = Request(
         scope={
@@ -41,62 +37,7 @@ async def test_models_endpoint_handler_configuration_not_loaded(
     with pytest.raises(HTTPException) as e:
         await models_endpoint_handler(request=request, auth=auth)
         assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert e.detail["response"] == "Configuration is not loaded"
-
-
-@pytest.mark.asyncio
-async def test_models_endpoint_handler_improper_llama_stack_configuration(
-    mocker: MockerFixture,
-) -> None:
-    """Test the models endpoint handler if Llama Stack configuration is not proper."""
-    mock_authorization_resolvers(mocker)
-
-    # configuration for tests
-    config_dict: dict[str, Any] = {
-        "name": "test",
-        "service": {
-            "host": "localhost",
-            "port": 8080,
-            "auth_enabled": False,
-            "workers": 1,
-            "color_log": True,
-            "access_log": True,
-        },
-        "llama_stack": {
-            "api_key": "test-key",
-            "url": "http://test.com:1234",
-            "use_as_library_client": False,
-        },
-        "user_data_collection": {
-            "transcripts_enabled": False,
-        },
-        "mcp_servers": [],
-        "customization": None,
-        "authorization": {"access_rules": []},
-        "authentication": {"module": "noop"},
-    }
-    cfg = AppConfig()
-    cfg.init_from_dict(config_dict)
-
-    mocker.patch(
-        "app.endpoints.models.configuration",
-        return_value=None,
-    )
-
-    request = Request(
-        scope={
-            "type": "http",
-            "headers": [(b"authorization", b"Bearer invalid-token")],
-        }
-    )
-
-    # Authorization tuple required by URL endpoint handler
-    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
-
-    with pytest.raises(HTTPException) as e:
-        await models_endpoint_handler(request=request, auth=auth)
-        assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert e.detail["response"] == "Llama stack is not configured"
+        assert e.value.detail["response"] == "Configuration is not loaded"  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -132,6 +73,14 @@ async def test_models_endpoint_handler_configuration_loaded(
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
+    mocker.patch("app.endpoints.models.configuration", cfg)
+    mock_client_holder = mocker.patch(
+        "app.endpoints.models.AsyncLlamaStackClientHolder"
+    )
+    mock_client_holder.return_value.get_client.side_effect = APIConnectionError(
+        request=mocker.Mock()
+    )
+
     request = Request(
         scope={
             "type": "http",
@@ -144,8 +93,8 @@ async def test_models_endpoint_handler_configuration_loaded(
 
     with pytest.raises(HTTPException) as e:
         await models_endpoint_handler(request=request, auth=auth)
-        assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert e.detail["response"] == "Unable to connect to Llama Stack"
+    assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert e.value.detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -260,5 +209,6 @@ async def test_models_endpoint_llama_stack_connection_error(
 
     with pytest.raises(HTTPException) as e:
         await models_endpoint_handler(request=request, auth=auth)
-        assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert e.detail["response"] == "Unable to connect to Llama Stack"
+        assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert e.value.detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
+        assert "Unable to connect to Llama Stack" in e.value.detail["cause"]  # type: ignore

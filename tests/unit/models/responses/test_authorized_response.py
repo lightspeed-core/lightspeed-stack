@@ -1,7 +1,6 @@
 """Unit tests for AuthorizedResponse model."""
 
 import pytest
-
 from pydantic import ValidationError
 
 from models.responses import AuthorizedResponse
