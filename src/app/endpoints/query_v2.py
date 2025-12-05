@@ -1,5 +1,6 @@
 """Handler for REST API call to provide answer to query using Response API."""
 
+import json
 import logging
 from typing import Annotated, Any, cast
 
@@ -38,7 +39,10 @@ from utils.endpoints import (
     get_topic_summary_system_prompt,
 )
 from utils.mcp_headers import mcp_headers_dependency
-from utils.responses import extract_text_from_response_output_item
+from utils.responses import (
+    extract_text_from_response_output_item,
+    parse_referenced_documents_from_responses_api,
+)
 from utils.shields import detect_shield_violations, get_available_shields
 from utils.token_counter import TokenCounter
 from utils.types import ToolCallSummary, TurnSummary
@@ -132,7 +136,7 @@ def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-
             id=str(getattr(output_item, "id")),
             name=DEFAULT_RAG_TOOL,
             args=args,
-            response=response_payload,
+            response=json.dumps(response_payload) if response_payload else None,
         )
 
     if item_type == "web_search_call":
@@ -392,27 +396,6 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
             conversation_id,
         )
     return (summary, conversation_id, referenced_documents, token_usage)
-
-
-def parse_referenced_documents_from_responses_api(
-    response: OpenAIResponseObject,  # pylint: disable=unused-argument
-) -> list[ReferencedDocument]:
-    """
-    Parse referenced documents from OpenAI Responses API response.
-
-    Args:
-        response: The OpenAI Response API response object
-
-    Returns:
-        list[ReferencedDocument]: List of referenced documents with doc_url and doc_title
-    """
-    # TODO(ltomasbo): need to parse source documents from Responses API response.
-    # The Responses API has a different structure than Agent API for referenced documents.
-    # Need to extract from:
-    # - OpenAIResponseOutputMessageFileSearchToolCall.results
-    # - OpenAIResponseAnnotationCitation in message content
-    # - OpenAIResponseAnnotationFileCitation in message content
-    return []
 
 
 def extract_token_usage_from_responses_api(

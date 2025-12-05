@@ -198,10 +198,15 @@ async def test_retrieve_response_parses_output_and_tool_calls(
     mock_client = mocker.Mock()
 
     # Build output with content variants and tool calls
+    part1 = mocker.Mock(text="Hello ")
+    part1.annotations = []  # Ensure annotations is a list to avoid iteration error
+    part2 = mocker.Mock(text="world")
+    part2.annotations = []
+
     output_item_1 = mocker.Mock()
     output_item_1.type = "message"
     output_item_1.role = "assistant"
-    output_item_1.content = [mocker.Mock(text="Hello "), mocker.Mock(text="world")]
+    output_item_1.content = [part1, part2]
 
     output_item_2 = mocker.Mock()
     output_item_2.type = "message"
@@ -710,3 +715,93 @@ async def test_retrieve_response_no_violation_with_shields(
 
     # Verify that the validation error metric was NOT incremented
     validation_metric.inc.assert_not_called()
+
+
+def _create_message_output_with_annotations(mocker: MockerFixture) -> Any:
+    """Create a message output item with url and file citations."""
+    content_part = mocker.Mock()
+    content_part.type = "output_text"
+    content_part.text = "Here is a citation."
+
+    annotation1 = mocker.Mock()
+    annotation1.type = "url_citation"
+    annotation1.url = "http://example.com/doc1"
+    annotation1.title = "Doc 1"
+
+    annotation2 = mocker.Mock()
+    annotation2.type = "file_citation"
+    annotation2.filename = "file1.txt"
+    annotation2.url = None
+    annotation2.title = None
+
+    content_part.annotations = [annotation1, annotation2]
+
+    output_item = mocker.Mock()
+    output_item.type = "message"
+    output_item.role = "assistant"
+    output_item.content = [content_part]
+    return output_item
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_parses_referenced_documents(
+    mocker: MockerFixture,
+) -> None:
+    """Test that retrieve_response correctly parses referenced documents from response."""
+    mock_client = mocker.Mock()
+
+    # 1. Output item with message content annotations (citations)
+    output_item_1 = _create_message_output_with_annotations(mocker)
+
+    # 2. Output item with file search tool call results
+    output_item_2 = mocker.Mock()
+    output_item_2.type = "file_search_call"
+    output_item_2.queries = (
+        []
+    )  # Ensure queries is a list to avoid iteration error in tool summary
+    output_item_2.status = "completed"
+    output_item_2.results = [
+        {"filename": "file2.pdf", "attributes": {"url": "http://example.com/doc2"}},
+        {"filename": "file3.docx", "attributes": {}},  # No URL
+    ]
+
+    response_obj = mocker.Mock()
+    response_obj.id = "resp-docs"
+    response_obj.output = [output_item_1, output_item_2]
+    response_obj.usage = None
+
+    mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    mock_vector_stores = mocker.Mock()
+    mock_vector_stores.data = []
+    mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+    mock_client.shields.list = mocker.AsyncMock(return_value=[])
+
+    mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
+    mocker.patch("app.endpoints.query_v2.configuration", mocker.Mock(mcp_servers=[]))
+
+    qr = QueryRequest(query="query with docs")
+    _summary, _conv_id, referenced_docs, _token_usage = await retrieve_response(
+        mock_client, "model-docs", qr, token="tkn", provider_id="test-provider"
+    )
+
+    assert len(referenced_docs) == 4
+
+    # Verify Doc 1 (URL citation)
+    doc1 = next((d for d in referenced_docs if d.doc_title == "Doc 1"), None)
+    assert doc1
+    assert str(doc1.doc_url) == "http://example.com/doc1"
+
+    # Verify file1.txt (File citation)
+    doc2 = next((d for d in referenced_docs if d.doc_title == "file1.txt"), None)
+    assert doc2
+    assert doc2.doc_url is None
+
+    # Verify file2.pdf (File search result with URL)
+    doc3 = next((d for d in referenced_docs if d.doc_title == "file2.pdf"), None)
+    assert doc3
+    assert str(doc3.doc_url) == "http://example.com/doc2"
+
+    # Verify file3.docx (File search result without URL)
+    doc4 = next((d for d in referenced_docs if d.doc_title == "file3.docx"), None)
+    assert doc4
+    assert doc4.doc_url is None
