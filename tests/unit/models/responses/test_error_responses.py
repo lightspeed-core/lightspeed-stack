@@ -11,6 +11,7 @@ from models.responses import (
     FORBIDDEN_DESCRIPTION,
     INTERNAL_SERVER_ERROR_DESCRIPTION,
     NOT_FOUND_DESCRIPTION,
+    PROMPT_TOO_LONG_DESCRIPTION,
     QUOTA_EXCEEDED_DESCRIPTION,
     SERVICE_UNAVAILABLE_DESCRIPTION,
     UNAUTHORIZED_DESCRIPTION,
@@ -21,6 +22,7 @@ from models.responses import (
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
+    PromptTooLongResponse,
     QuotaExceededResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
@@ -653,6 +655,57 @@ class TestServiceUnavailableResponse:
         # Verify only 1 example is returned when explicitly specified
         assert len(examples) == 1
         assert "llama stack" in examples
+
+
+class TestPromptTooLongResponse:
+    """Test cases for PromptTooLongResponse."""
+
+    def test_constructor_with_default_response(self) -> None:
+        """Test PromptTooLongResponse with default response."""
+        response = PromptTooLongResponse(
+            cause="The prompt exceeds the maximum allowed length."
+        )
+        assert isinstance(response, AbstractErrorResponse)
+        assert response.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+        assert isinstance(response.detail, DetailModel)
+        assert response.detail.response == "Prompt is too long"
+        assert response.detail.cause == "The prompt exceeds the maximum allowed length."
+
+    def test_openapi_response(self) -> None:
+        """Test PromptTooLongResponse.openapi_response() method."""
+        schema = PromptTooLongResponse.model_json_schema()
+        model_examples = schema.get("examples", [])
+        expected_count = len(model_examples)
+
+        result = PromptTooLongResponse.openapi_response()
+        assert result["description"] == PROMPT_TOO_LONG_DESCRIPTION
+        assert result["model"] == PromptTooLongResponse
+        assert "examples" in result["content"]["application/json"]
+        examples = result["content"]["application/json"]["examples"]
+
+        # Verify example count matches schema examples count
+        assert len(examples) == expected_count
+        assert expected_count == 1
+
+        # Verify example structure
+        assert "prompt too long" in examples
+        prompt_example = examples["prompt too long"]
+        assert "value" in prompt_example
+        assert "detail" in prompt_example["value"]
+        assert prompt_example["value"]["detail"]["response"] == "Prompt is too long"
+        assert (
+            prompt_example["value"]["detail"]["cause"]
+            == "The prompt exceeds the maximum allowed length."
+        )
+
+    def test_openapi_response_with_explicit_examples(self) -> None:
+        """Test PromptTooLongResponse.openapi_response() with explicit examples."""
+        result = PromptTooLongResponse.openapi_response(examples=["prompt too long"])
+        examples = result["content"]["application/json"]["examples"]
+
+        # Verify only 1 example is returned when explicitly specified
+        assert len(examples) == 1
+        assert "prompt too long" in examples
 
 
 class TestAbstractErrorResponse:  # pylint: disable=too-few-public-methods

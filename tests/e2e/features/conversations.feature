@@ -175,8 +175,11 @@ Feature: conversations endpoint API tests
     Given The system is in default state
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
      When I use REST API conversation endpoint with conversation_id "12345678-abcd-0000-0123-456789abcdef" using HTTP DELETE method
-     Then The status code of the response is 404
-     And The body of the response contains Conversation not found
+     Then The status code of the response is 200
+     And The body of the response, ignoring the "conversation_id" field, is the following
+      """
+      {"success": true, "response": "Conversation cannot be deleted"}
+      """
 
   @skip-in-library-mode
   Scenario: Check if conversations/{conversation_id} DELETE endpoint fails when llama-stack is unavailable

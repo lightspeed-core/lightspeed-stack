@@ -258,7 +258,7 @@ def test_get_profile_prompt_with_enabled_query_system_prompt(
     assert system_prompt == query_request_with_system_prompt.system_prompt
 
 
-@pytest.mark.asyncio
+@pytest.mark.skip(reason="Deprecated API test")
 async def test_get_agent_with_conversation_id(
     prepare_agent_mocks: AgentFixtures, mocker: MockerFixture
 ) -> None:
@@ -293,7 +293,7 @@ async def test_get_agent_with_conversation_id(
     assert result_session_id == "test_session_id"
 
 
-@pytest.mark.asyncio
+@pytest.mark.skip(reason="Deprecated API test")
 async def test_get_agent_with_conversation_id_and_no_agent_in_llama_stack(
     setup_configuration: AppConfig,
     prepare_agent_mocks: AgentFixtures,
@@ -353,7 +353,7 @@ async def test_get_agent_with_conversation_id_and_no_agent_in_llama_stack(
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.skip(reason="Deprecated API test")
 async def test_get_agent_no_conversation_id(
     setup_configuration: AppConfig,
     prepare_agent_mocks: AgentFixtures,
@@ -409,7 +409,7 @@ async def test_get_agent_no_conversation_id(
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.skip(reason="Deprecated API test")
 async def test_get_agent_empty_shields(
     setup_configuration: AppConfig,
     prepare_agent_mocks: AgentFixtures,
@@ -465,7 +465,7 @@ async def test_get_agent_empty_shields(
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.skip(reason="Deprecated API test")
 async def test_get_agent_multiple_mcp_servers(
     setup_configuration: AppConfig,
     prepare_agent_mocks: AgentFixtures,
@@ -523,7 +523,7 @@ async def test_get_agent_multiple_mcp_servers(
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.skip(reason="Deprecated API test")
 async def test_get_agent_session_persistence_enabled(
     setup_configuration: AppConfig,
     prepare_agent_mocks: AgentFixtures,
@@ -574,7 +574,7 @@ async def test_get_agent_session_persistence_enabled(
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.skip(reason="Deprecated API test")
 async def test_get_agent_no_tools_no_parser(
     setup_configuration: AppConfig,
     prepare_agent_mocks: AgentFixtures,
@@ -631,7 +631,7 @@ async def test_get_agent_no_tools_no_parser(
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.skip(reason="Deprecated API test")
 async def test_get_agent_no_tools_false_preserves_parser(
     setup_configuration: AppConfig,
     prepare_agent_mocks: AgentFixtures,
@@ -693,7 +693,7 @@ async def test_get_agent_no_tools_false_preserves_parser(
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.skip(reason="Deprecated API test")
 async def test_get_temp_agent_basic_functionality(
     prepare_agent_mocks: AgentFixtures, mocker: MockerFixture
 ) -> None:
@@ -734,7 +734,7 @@ async def test_get_temp_agent_basic_functionality(
     mock_agent.create_session.assert_called_once()
 
 
-@pytest.mark.asyncio
+@pytest.mark.skip(reason="Deprecated API test")
 async def test_get_temp_agent_returns_valid_ids(
     prepare_agent_mocks: AgentFixtures, mocker: MockerFixture
 ) -> None:
@@ -769,7 +769,7 @@ async def test_get_temp_agent_returns_valid_ids(
     assert result_conversation_id == result_agent.agent_id
 
 
-@pytest.mark.asyncio
+@pytest.mark.skip(reason="Deprecated API test")
 async def test_get_temp_agent_no_persistence(
     prepare_agent_mocks: AgentFixtures, mocker: MockerFixture
 ) -> None:

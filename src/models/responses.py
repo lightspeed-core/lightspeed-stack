@@ -10,7 +10,9 @@ from pydantic_core import SchemaError
 
 from quota.quota_exceed_error import QuotaExceedError
 from models.config import Action, Configuration
+from utils.types import ToolCallSummary, ToolResultSummary
 
+SUCCESSFUL_RESPONSE_DESCRIPTION = "Successful response"
 BAD_REQUEST_DESCRIPTION = "Invalid request format"
 UNAUTHORIZED_DESCRIPTION = "Unauthorized"
 FORBIDDEN_DESCRIPTION = "Permission denied"
@@ -19,23 +21,23 @@ UNPROCESSABLE_CONTENT_DESCRIPTION = "Request validation failed"
 INVALID_FEEDBACK_PATH_DESCRIPTION = "Invalid feedback storage path"
 SERVICE_UNAVAILABLE_DESCRIPTION = "Service unavailable"
 QUOTA_EXCEEDED_DESCRIPTION = "Quota limit exceeded"
+PROMPT_TOO_LONG_DESCRIPTION = "Prompt is too long"
 INTERNAL_SERVER_ERROR_DESCRIPTION = "Internal server error"
 
 
-class RAGChunk(BaseModel):
-    """Model representing a RAG chunk used in the response."""
+# class ToolCall(BaseModel):
+#     """Model representing a tool call made during response generation."""
 
-    content: str = Field(description="The content of the chunk")
-    source: str | None = Field(None, description="Source document or URL")
-    score: float | None = Field(None, description="Relevance score")
+#     tool_name: str = Field(description="Name of the tool called")
+#     arguments: dict[str, Any] = Field(description="Arguments passed to the tool")
+#     result: dict[str, Any] | None = Field(None, description="Result from the tool")
 
 
-class ToolCall(BaseModel):
-    """Model representing a tool call made during response generation."""
+# class ToolResult(BaseModel):
+#     """Model representing a tool result."""
 
-    tool_name: str = Field(description="Name of the tool called")
-    arguments: dict[str, Any] = Field(description="Arguments passed to the tool")
-    result: dict[str, Any] | None = Field(None, description="Result from the tool")
+#     tool_name: str = Field(description="Name of the tool")
+#     result: dict[str, Any] = Field(description="Result from the tool")
 
 
 class AbstractSuccessfulResponse(BaseModel):
@@ -52,7 +54,7 @@ class AbstractSuccessfulResponse(BaseModel):
         content = {"application/json": {"example": example_value}}
 
         return {
-            "description": "Successful response",
+            "description": SUCCESSFUL_RESPONSE_DESCRIPTION,
             "model": cls,
             "content": content,
         }
@@ -364,16 +366,6 @@ class QueryResponse(AbstractSuccessfulResponse):
         ],
     )
 
-    rag_chunks: list[RAGChunk] = Field(
-        [],
-        description="List of RAG chunks used to generate the response",
-    )
-
-    tool_calls: list[ToolCall] | None = Field(
-        None,
-        description="List of tool calls made during response generation",
-    )
-
     referenced_documents: list[ReferencedDocument] = Field(
         default_factory=list,
         description="List of documents referenced in generating the response",
@@ -412,6 +404,16 @@ class QueryResponse(AbstractSuccessfulResponse):
         examples=[{"daily": 1000, "monthly": 50000}],
     )
 
+    tool_calls: list[ToolCallSummary] | None = Field(
+        None,
+        description="List of tool calls made during response generation",
+    )
+
+    tool_results: list[ToolResultSummary] | None = Field(
+        None,
+        description="List of tool results",
+    )
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -444,6 +446,74 @@ class QueryResponse(AbstractSuccessfulResponse):
                     "output_tokens": 75,
                     "available_quotas": {"daily": 1000, "monthly": 50000},
                 }
+            ]
+        }
+    }
+
+
+class StreamingQueryResponse(AbstractSuccessfulResponse):
+    """Documentation-only model for streaming query responses using Server-Sent Events (SSE)."""
+
+    @classmethod
+    def openapi_response(cls) -> dict[str, Any]:
+        """Generate FastAPI response dict for SSE streaming with examples.
+
+        Note: This is used for OpenAPI documentation only. The actual endpoint
+        returns a StreamingResponse object, not this Pydantic model.
+        """
+        schema = cls.model_json_schema()
+        model_examples = schema.get("examples")
+        if not model_examples:
+            raise SchemaError(f"Examples not found in {cls.__name__}")
+        example_value = model_examples[0]
+        content = {
+            "text/event-stream": {
+                "schema": {"type": "string", "format": "text/event-stream"},
+                "example": example_value,
+            }
+        }
+
+        return {
+            "description": SUCCESSFUL_RESPONSE_DESCRIPTION,
+            "content": content,
+            # Note: No "model" key since we're not actually serializing this model
+        }
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                (
+                    'data: {"event": "start", "data": {'
+                    '"conversation_id": "123e4567-e89b-12d3-a456-426614174000"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 0, "token": "No Violation"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 1, "token": ""}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 2, "token": "Hello"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 3, "token": "!"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 4, "token": " How"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 5, "token": " can"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 6, "token": " I"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 7, "token": " assist"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 8, "token": " you"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 9, "token": " today"}}\n\n'
+                    'data: {"event": "token", "data": {'
+                    '"id": 10, "token": "?"}}\n\n'
+                    'data: {"event": "turn_complete", "data": {'
+                    '"token": "Hello! How can I assist you today?"}}\n\n'
+                    'data: {"event": "end", "data": {'
+                    '"rag_chunks": [], "referenced_documents": [], '
+                    '"truncated": null, "input_tokens": 11, "output_tokens": 19, '
+                    '"available_quotas": {}}}\n\n'
+                ),
             ]
         }
     }
@@ -806,7 +876,7 @@ class ConversationDeleteResponse(AbstractSuccessfulResponse):
         content = {"application/json": {"examples": named_examples or None}}
 
         return {
-            "description": "Successful response",
+            "description": SUCCESSFUL_RESPONSE_DESCRIPTION,
             "model": cls,
             "content": content,
         }
@@ -1413,6 +1483,38 @@ class NotFoundResponse(AbstractErrorResponse):
         cause = f"{resource.title()} with ID {resource_id} does not exist"
         super().__init__(
             response=response, cause=cause, status_code=status.HTTP_404_NOT_FOUND
+        )
+
+
+class PromptTooLongResponse(AbstractErrorResponse):
+    """413 Payload Too Large - Prompt is too long."""
+
+    description: ClassVar[str] = PROMPT_TOO_LONG_DESCRIPTION
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "label": "prompt too long",
+                    "detail": {
+                        "response": "Prompt is too long",
+                        "cause": "The prompt exceeds the maximum allowed length.",
+                    },
+                },
+            ]
+        }
+    }
+
+    def __init__(self, *, response: str = "Prompt is too long", cause: str):
+        """Initialize a PromptTooLongResponse.
+
+        Args:
+            response: Short summary of the error. Defaults to "Prompt is too long".
+            cause: Detailed explanation of what caused the error.
+        """
+        super().__init__(
+            response=response,
+            cause=cause,
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
         )
 
 

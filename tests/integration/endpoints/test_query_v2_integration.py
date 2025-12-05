@@ -81,6 +81,12 @@ def mock_llama_stack_client_fixture(
     mock_vector_stores_response.data = []
     mock_client.vector_stores.list.return_value = mock_vector_stores_response
 
+    # Mock conversations.create for new conversation creation
+    # Returns ID in llama-stack format (conv_ prefix + 48 hex chars)
+    mock_conversation = mocker.MagicMock()
+    mock_conversation.id = "conv_" + "a" * 48  # conv_aaa...aaa (proper format)
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
+
     # Mock version info
     mock_client.inspect.version.return_value = VersionInfo(version="0.2.22")
 
@@ -159,7 +165,8 @@ async def test_query_v2_endpoint_successful_response(
 
     # Verify response structure
     assert response.conversation_id is not None
-    assert response.conversation_id == "response-123"
+    # Conversation ID is normalized (without conv_ prefix) from conversations.create()
+    assert response.conversation_id == "a" * 48
     assert "Ansible" in response.response
     assert response.response == "This is a test response about Ansible."
     assert response.input_tokens >= 0
@@ -304,7 +311,6 @@ async def test_query_v2_endpoint_with_attachments(
 # ==========================================
 
 
-@pytest.mark.skip(reason="LCORE-1025: ToolCallSummary.response type mismatch")
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_with_tool_calls(
     test_config: AppConfig,
@@ -337,13 +343,15 @@ async def test_query_v2_endpoint_with_tool_calls(
     mock_tool_output.id = "call-1"
     mock_tool_output.queries = ["What is Ansible"]
     mock_tool_output.status = "completed"
-    mock_tool_output.results = [
-        mocker.MagicMock(
-            file_id="doc-1",
-            filename="ansible-docs.txt",
-            score=0.95,
-        )
-    ]
+    mock_result = mocker.MagicMock()
+    mock_result.file_id = "doc-1"
+    mock_result.filename = "ansible-docs.txt"
+    mock_result.score = 0.95
+    mock_result.attributes = {
+        "doc_url": "https://example.com/ansible-docs.txt",
+        "link": "https://example.com/ansible-docs.txt",
+    }
+    mock_tool_output.results = [mock_result]
 
     mock_message_output = mocker.MagicMock()
     mock_message_output.type = "message"
@@ -366,10 +374,7 @@ async def test_query_v2_endpoint_with_tool_calls(
 
     assert response.tool_calls is not None
     assert len(response.tool_calls) > 0
-    assert response.tool_calls[0].tool_name == "knowledge_search"
-
-    if response.rag_chunks:
-        assert len(response.rag_chunks) > 0
+    assert response.tool_calls[0].name == "knowledge_search"
 
 
 @pytest.mark.asyncio
@@ -433,10 +438,9 @@ async def test_query_v2_endpoint_with_mcp_list_tools(
 
     assert response.tool_calls is not None
     assert len(response.tool_calls) == 1
-    assert response.tool_calls[0].tool_name == "mcp_list_tools"
+    assert response.tool_calls[0].name == "mcp_list_tools"
 
 
-@pytest.mark.skip(reason="LCORE-1025: ToolCallSummary.response type mismatch")
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_with_multiple_tool_types(
     test_config: AppConfig,
@@ -501,7 +505,7 @@ async def test_query_v2_endpoint_with_multiple_tool_types(
     # Verify response includes multiple tool calls
     assert response.tool_calls is not None
     assert len(response.tool_calls) == 2
-    tool_names = [tc.tool_name for tc in response.tool_calls]
+    tool_names = [tc.name for tc in response.tool_calls]
     assert "knowledge_search" in tool_names or "file_search" in tool_names
     assert "calculate" in tool_names
 
@@ -1198,6 +1202,7 @@ async def test_query_v2_endpoint_transcript_behavior(
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
+    mocker: MockerFixture,
 ) -> None:
     """Test transcript storage behavior based on configuration.
 
@@ -1213,8 +1218,12 @@ async def test_query_v2_endpoint_transcript_behavior(
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
+        mocker: pytest-mock fixture
     """
     _ = mock_llama_stack_client
+
+    # Mock store_transcript to prevent file creation
+    mocker.patch("app.endpoints.query.store_transcript")
 
     test_config.user_data_collection_configuration.transcripts_enabled = True
 

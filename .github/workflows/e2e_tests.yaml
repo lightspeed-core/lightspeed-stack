@@ -93,51 +93,44 @@ jobs:
 
       - name: Select and configure run.yaml
         env:
-          CONFIG_ENVIRONMENT: ${{ matrix.environment }}
+          CONFIG_MODE: ${{ matrix.mode }}
         run: |
           CONFIGS_DIR="tests/e2e/configs"
-          ENVIRONMENT="$CONFIG_ENVIRONMENT"
+          MODE="$CONFIG_MODE"
           
-          echo "Looking for configurations in $CONFIGS_DIR/"
+          echo "Deployment mode: $MODE"
           
-          # List available configurations
-          if [ -d "$CONFIGS_DIR" ]; then
-            echo "Available configurations:"
-            ls -la "$CONFIGS_DIR"/*.yaml 2>/dev/null || echo "No YAML files found in $CONFIGS_DIR/"
+          # Select config based on mode:
+          # - library mode: run-library.yaml (llama-stack 0.3.0 format)
+          # - server mode: run-ci.yaml (original format)
+          if [ "$MODE" == "library" ]; then
+            CONFIG_FILE="$CONFIGS_DIR/run-library.yaml"
           else
-            echo "Configs directory '$CONFIGS_DIR' not found!"
+            CONFIG_FILE="$CONFIGS_DIR/run-ci.yaml"
+          fi
+          
+          echo "Using configuration: $CONFIG_FILE"
+          
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "❌ Configuration not found: $CONFIG_FILE"
+            echo "Available configs:"
+            ls -la "$CONFIGS_DIR"/*.yaml
             exit 1
           fi
           
-          # Determine which config file to use
-          CONFIG_FILE="$CONFIGS_DIR/run-$ENVIRONMENT.yaml"
-          
-          echo "Looking for: $CONFIG_FILE"
-          
-          if [ -f "$CONFIG_FILE" ]; then
-            echo "Found config for $ENVIRONMENT environment"
-            cp "$CONFIG_FILE" run.yaml
-          else
-            echo "Configuration file not found: $CONFIG_FILE"
-            echo "Available files:"
-            find "$CONFIGS_DIR" -name "*.yaml"
-            exit 1
-          fi
-          
-          # Update paths for container environment (relative -> absolute)
-          sed -i 's|db_path: \.llama/distributions|db_path: /app-root/.llama/distributions|g' run.yaml
-          sed -i 's|db_path: tmp/|db_path: /app-root/.llama/distributions/|g' run.yaml
-                    
-          echo "Successfully configured for $ENVIRONMENT environment"
-          echo "Using configuration: $(basename "$CONFIG_FILE")"
+          cp "$CONFIG_FILE" run.yaml
+          echo "✅ Configuration copied to run.yaml"
 
       - name: Show final configuration
         run: |
           echo "=== Configuration Summary ==="
           echo "Deployment mode: ${{ matrix.mode }}"
           echo "Environment: ${{ matrix.environment }}"
-          echo "Source config: tests/e2e/configs/run-${{ matrix.environment }}.yaml"
-          echo "Final file: run.yaml"
+          if [ "${{ matrix.mode }}" == "library" ]; then
+            echo "Source config: tests/e2e/configs/run-library.yaml"
+          else
+            echo "Source config: tests/e2e/configs/run-ci.yaml"
+          fi
           echo ""
           echo "=== Configuration Preview ==="
           echo "Providers: $(grep -c "provider_id:" run.yaml)"

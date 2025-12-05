@@ -1,89 +1,98 @@
-version: '2'
-image_name: minimal-viable-llama-stack-configuration
+version: 2
 
 apis:
-  - agents
-  - datasetio
-  - eval
-  - files
-  - inference
-  - post_training
-  - safety
-  - scoring
-  - telemetry
-  - tool_runtime
-  - vector_io
+- agents
+- batches
+- datasetio
+- eval
+- files
+- inference
+- safety
+- scoring
+- telemetry
+- tool_runtime
+- vector_io
+      
 benchmarks: []
-container_image: null
+conversations_store:
+  db_path: /tmp/conversations.db
+  type: sqlite
 datasets: []
+image_name: starter
 external_providers_dir: /opt/app-root/src/.llama/providers.d
 inference_store:
-  db_path: .llama/distributions/ollama/inference_store.db
+  db_path: /tmp/inference_store.db
   type: sqlite
-logging: null
 metadata_store:
-  db_path: .llama/distributions/ollama/registry.db
-  namespace: null
+  db_path: /tmp/registry.db
   type: sqlite
+
+models: 
+- model_id: sentence-transformers/all-mpnet-base-v2
+  model_type: embedding
+  provider_id: sentence-transformers
+  provider_model_id: sentence-transformers/all-mpnet-base-v2
+  metadata:
+    embedding_dimension: 768
+- model_id: gpt-4o-mini
+  provider_id: openai
+  model_type: llm
+  provider_model_id: gpt-4o-mini
+
 providers:
-  files:
-  - config:
-      storage_dir: /tmp/llama-stack-files
-      metadata_store:
-        type: sqlite
-        db_path: .llama/distributions/ollama/files_metadata.db
-    provider_id: localfs
-    provider_type: inline::localfs
   agents:
   - config:
       persistence_store:
-        db_path: .llama/distributions/ollama/agents_store.db
-        namespace: null
+        db_path: /tmp/agents_store.db
         type: sqlite
       responses_store:
-        db_path: .llama/distributions/ollama/responses_store.db
+        db_path: /tmp/responses_store.db
         type: sqlite
     provider_id: meta-reference
     provider_type: inline::meta-reference
+  batches:
+  - config:
+      kvstore:
+        db_path: /tmp/batches.db
+        type: sqlite
+    provider_id: reference
+    provider_type: inline::reference
   datasetio:
   - config:
       kvstore:
-        db_path: .llama/distributions/ollama/huggingface_datasetio.db
-        namespace: null
+        db_path: /tmp/huggingface_datasetio.db
         type: sqlite
     provider_id: huggingface
     provider_type: remote::huggingface
   - config:
       kvstore:
-        db_path: .llama/distributions/ollama/localfs_datasetio.db
-        namespace: null
+        db_path: /tmp/localfs_datasetio.db
         type: sqlite
     provider_id: localfs
     provider_type: inline::localfs
   eval:
   - config:
       kvstore:
-        db_path: .llama/distributions/ollama/meta_reference_eval.db
-        namespace: null
+        db_path: /tmp/meta_reference_eval.db
         type: sqlite
     provider_id: meta-reference
     provider_type: inline::meta-reference
-  inference:
-    - provider_id: sentence-transformers # Can be any embedding provider
-      provider_type: inline::sentence-transformers
-      config: {}
-    - provider_id: openai
-      provider_type: remote::openai
-      config:
-        api_key: ${env.OPENAI_API_KEY}
-  post_training:
+  files:
   - config:
-      checkpoint_format: huggingface
-      device: cpu
-      distributed_backend: null
-      dpo_output_dir: "."
-    provider_id: huggingface
-    provider_type: inline::huggingface-gpu
+      metadata_store:
+        db_path: /tmp/files_metadata.db
+        type: sqlite
+      storage_dir: /tmp/files
+    provider_id: meta-reference-files
+    provider_type: inline::localfs
+  inference:
+  - provider_id: openai
+    provider_type: remote::openai
+    config:
+      api_key: ${env.OPENAI_API_KEY}
+  - config: {}
+    provider_id: sentence-transformers
+    provider_type: inline::sentence-transformers
   safety:
   - config:
       excluded_categories: []
@@ -96,62 +105,27 @@ providers:
   - config: {}
     provider_id: llm-as-judge
     provider_type: inline::llm-as-judge
-  - config:
-      openai_api_key: '********'
-    provider_id: braintrust
-    provider_type: inline::braintrust
   telemetry:
   - config:
-      service_name: 'lightspeed-stack-telemetry'
-      sinks: sqlite
-      sqlite_db_path: .llama/distributions/ollama/trace_store.db
+      service_name: "\u200B"
     provider_id: meta-reference
     provider_type: inline::meta-reference
   tool_runtime:
-    - provider_id: model-context-protocol
-      provider_type: remote::model-context-protocol
-      config: {}
-    - provider_id: rag-runtime
-      provider_type: inline::rag-runtime
-      config: {}
+  - config: {}
+    provider_id: rag-runtime
+    provider_type: inline::rag-runtime
   vector_io:
   - config:
       kvstore:
-        db_path: .llama/distributions/ollama/faiss_store.db # Location of vector database
-        namespace: null
+        db_path: /tmp/faiss_store.db
         type: sqlite
     provider_id: faiss
-    provider_type: inline::faiss # Or preferred vector DB
+    provider_type: inline::faiss
 scoring_fns: []
 server:
-  auth: null
-  host: null
   port: 8321
-  quota: null
-  tls_cafile: null
-  tls_certfile: null
-  tls_keyfile: null
-shields: 
-  - shield_id: llama-guard-shield
-    provider_id: llama-guard
-    provider_shield_id: ${env.E2E_OPENAI_MODEL}
-vector_dbs:
-  - vector_db_id: my_knowledge_base
-    embedding_model: sentence-transformers/all-mpnet-base-v2
-    embedding_dimension: 768
-    provider_id: faiss
-models:
-  - metadata:
-      embedding_dimension: 768 # Depends on chosen model
-    model_id: sentence-transformers/all-mpnet-base-v2 # Example embedding model
-    provider_id: sentence-transformers
-    provider_model_id: sentence-transformers/all-mpnet-base-v2 # Location of embedding model
-    model_type: embedding
-  - model_id: ${env.E2E_OPENAI_MODEL}
-    provider_id: openai
-    model_type: llm
-    provider_model_id: ${env.E2E_OPENAI_MODEL}
-
+shields: []
 tool_groups:
-  - toolgroup_id: builtin::rag
-    provider_id: rag-runtime
+- provider_id: rag-runtime
+  toolgroup_id: builtin::rag
+vector_dbs: []

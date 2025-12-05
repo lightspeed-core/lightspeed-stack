@@ -1,4 +1,4 @@
-# pylint: disable=redefined-outer-name, import-error
+# pylint: disable=redefined-outer-name, import-error,too-many-locals
 """Unit tests for the /query (v2) REST API endpoint using Responses API."""
 
 from typing import Any
@@ -115,6 +115,10 @@ async def test_retrieve_response_no_tools_bypasses_tools(mocker: MockerFixture) 
     response_obj.output = []
     response_obj.usage = None  # No usage info
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     # vector_stores.list should not matter when no_tools=True, but keep it valid
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
@@ -131,7 +135,7 @@ async def test_retrieve_response_no_tools_bypasses_tools(mocker: MockerFixture) 
         mock_client, "model-x", qr, token="tkn"
     )
 
-    assert conv_id == "resp-1"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == ""
     assert referenced_docs == []
     assert token_usage.input_tokens == 0  # No usage info, so 0
@@ -144,7 +148,7 @@ async def test_retrieve_response_no_tools_bypasses_tools(mocker: MockerFixture) 
 
 
 @pytest.mark.asyncio
-async def test_retrieve_response_builds_rag_and_mcp_tools(
+async def test_retrieve_response_builds_rag_and_mcp_tools(  # pylint: disable=too-many-locals
     mocker: MockerFixture,
 ) -> None:
     """Test that retrieve_response correctly builds RAG and MCP tools from configuration."""
@@ -154,6 +158,10 @@ async def test_retrieve_response_builds_rag_and_mcp_tools(
     response_obj.output = []
     response_obj.usage = None
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = [mocker.Mock(id="dbA")]
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -172,7 +180,7 @@ async def test_retrieve_response_builds_rag_and_mcp_tools(
         mock_client, "model-y", qr, token="mytoken"
     )
 
-    assert conv_id == "resp-2"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert referenced_docs == []
     assert token_usage.input_tokens == 0  # No usage info, so 0
     assert token_usage.output_tokens == 0
@@ -198,10 +206,15 @@ async def test_retrieve_response_parses_output_and_tool_calls(
     mock_client = mocker.Mock()
 
     # Build output with content variants and tool calls
+    part1 = mocker.Mock(text="Hello ")
+    part1.annotations = []  # Ensure annotations is a list to avoid iteration error
+    part2 = mocker.Mock(text="world")
+    part2.annotations = []
+
     output_item_1 = mocker.Mock()
     output_item_1.type = "message"
     output_item_1.role = "assistant"
-    output_item_1.content = [mocker.Mock(text="Hello "), mocker.Mock(text="world")]
+    output_item_1.content = [part1, part2]
 
     output_item_2 = mocker.Mock()
     output_item_2.type = "message"
@@ -222,6 +235,10 @@ async def test_retrieve_response_parses_output_and_tool_calls(
     response_obj.usage = None
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -236,7 +253,7 @@ async def test_retrieve_response_parses_output_and_tool_calls(
         mock_client, "model-z", qr, token="tkn"
     )
 
-    assert conv_id == "resp-3"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Hello world!"
     assert len(summary.tool_calls) == 1
     assert summary.tool_calls[0].id == "tc-1"
@@ -269,6 +286,10 @@ async def test_retrieve_response_with_usage_info(mocker: MockerFixture) -> None:
     response_obj.usage = mock_usage
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -283,7 +304,7 @@ async def test_retrieve_response_with_usage_info(mocker: MockerFixture) -> None:
         mock_client, "model-usage", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-with-usage"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Test response"
     assert token_usage.input_tokens == 150
     assert token_usage.output_tokens == 75
@@ -308,6 +329,10 @@ async def test_retrieve_response_with_usage_dict(mocker: MockerFixture) -> None:
     response_obj.usage = {"input_tokens": 200, "output_tokens": 100}
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -322,7 +347,7 @@ async def test_retrieve_response_with_usage_dict(mocker: MockerFixture) -> None:
         mock_client, "model-usage-dict", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-with-usage-dict"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Test response dict"
     assert token_usage.input_tokens == 200
     assert token_usage.output_tokens == 100
@@ -347,6 +372,10 @@ async def test_retrieve_response_with_empty_usage_dict(mocker: MockerFixture) ->
     response_obj.usage = {}  # Empty dict
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -361,7 +390,7 @@ async def test_retrieve_response_with_empty_usage_dict(mocker: MockerFixture) ->
         mock_client, "model-empty-usage", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-empty-usage"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Test response empty usage"
     assert token_usage.input_tokens == 0
     assert token_usage.output_tokens == 0
@@ -377,6 +406,10 @@ async def test_retrieve_response_validates_attachments(mocker: MockerFixture) ->
     response_obj.output = []
     response_obj.usage = None
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -432,7 +465,9 @@ async def test_query_endpoint_handler_v2_success(
         return_value=("llama/m", "m", "p"),
     )
 
-    summary = mocker.Mock(llm_response="ANSWER", tool_calls=[], rag_chunks=[])
+    summary = mocker.Mock(
+        llm_response="ANSWER", tool_calls=[], tool_results=[], rag_chunks=[]
+    )
     token_usage = mocker.Mock(input_tokens=10, output_tokens=20)
     mocker.patch(
         "app.endpoints.query_v2.retrieve_response",
@@ -508,9 +543,14 @@ async def test_query_endpoint_quota_exceeded(
         attachments=[],
     )  # type: ignore
     mock_client = mocker.AsyncMock()
+    mock_client.models.list = mocker.AsyncMock(return_value=[])
     mock_client.responses.create.side_effect = RateLimitError(
         model="gpt-4-turbo", llm_provider="openai", message=""
     )
+    # Mock conversation creation (needed for query_v2)
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mocker.patch(
         "app.endpoints.query.select_model_and_provider_id",
         return_value=("openai/gpt-4-turbo", "gpt-4-turbo", "openai"),
@@ -519,6 +559,13 @@ async def test_query_endpoint_quota_exceeded(
     mocker.patch(
         "client.AsyncLlamaStackClientHolder.get_client",
         return_value=mock_client,
+    )
+    mocker.patch("app.endpoints.query.check_tokens_available")
+    mocker.patch("app.endpoints.query.get_session")
+    mocker.patch("app.endpoints.query.is_transcripts_enabled", return_value=False)
+    mocker.patch("app.endpoints.query_v2.get_available_shields", return_value=[])
+    mocker.patch(
+        "app.endpoints.query_v2.prepare_tools_for_responses_api", return_value=None
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -555,6 +602,10 @@ async def test_retrieve_response_with_shields_available(mocker: MockerFixture) -
     response_obj.usage = None
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -567,7 +618,7 @@ async def test_retrieve_response_with_shields_available(mocker: MockerFixture) -
         mock_client, "model-shields", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-shields"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Safe response"
 
     # Verify that shields were passed in extra_body
@@ -598,6 +649,10 @@ async def test_retrieve_response_with_no_shields_available(
     response_obj.usage = None
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -610,7 +665,7 @@ async def test_retrieve_response_with_no_shields_available(
         mock_client, "model-no-shields", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-no-shields"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Response without shields"
 
     # Verify that no extra_body was added
@@ -643,6 +698,10 @@ async def test_retrieve_response_detects_shield_violation(
     response_obj.usage = None
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -658,7 +717,7 @@ async def test_retrieve_response_detects_shield_violation(
         mock_client, "model-violation", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-violation"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "I cannot help with that request"
 
     # Verify that the validation error metric was incremented
@@ -690,6 +749,10 @@ async def test_retrieve_response_no_violation_with_shields(
     response_obj.usage = None
 
     mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    # Mock conversations.create for new conversation creation
+    mock_conversation = mocker.Mock()
+    mock_conversation.id = "conv_abc123def456"
+    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
     mock_vector_stores = mocker.Mock()
     mock_vector_stores.data = []
     mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
@@ -705,8 +768,93 @@ async def test_retrieve_response_no_violation_with_shields(
         mock_client, "model-safe", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert conv_id == "resp-safe"
+    assert conv_id == "abc123def456"  # Normalized (without conv_ prefix)
     assert summary.llm_response == "Safe response"
 
     # Verify that the validation error metric was NOT incremented
     validation_metric.inc.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_parses_referenced_documents(
+    mocker: MockerFixture,
+) -> None:
+    """Test that retrieve_response correctly parses referenced documents from response."""
+    mock_client = mocker.AsyncMock()
+
+    # 1. Output item with message content annotations (citations)
+    output_item_1 = mocker.Mock()
+    output_item_1.type = "message"
+    output_item_1.role = "assistant"
+
+    # Mock content with annotations
+    content_part = mocker.Mock()
+    content_part.type = "output_text"
+    content_part.text = "Here is a citation."
+
+    annotation1 = mocker.Mock()
+    annotation1.type = "url_citation"
+    annotation1.url = "http://example.com/doc1"
+    annotation1.title = "Doc 1"
+
+    annotation2 = mocker.Mock()
+    annotation2.type = "file_citation"
+    annotation2.filename = "file1.txt"
+    annotation2.url = None
+    annotation2.title = None
+
+    content_part.annotations = [annotation1, annotation2]
+    output_item_1.content = [content_part]
+
+    # 2. Output item with file search tool call results
+    output_item_2 = mocker.Mock()
+    output_item_2.type = "file_search_call"
+    output_item_2.queries = (
+        []
+    )  # Ensure queries is a list to avoid iteration error in tool summary
+    output_item_2.status = "completed"
+    output_item_2.results = [
+        {"filename": "file2.pdf", "attributes": {"url": "http://example.com/doc2"}},
+        {"filename": "file3.docx", "attributes": {}},  # No URL
+    ]
+
+    response_obj = mocker.Mock()
+    response_obj.id = "resp-docs"
+    response_obj.output = [output_item_1, output_item_2]
+    response_obj.usage = None
+
+    mock_client.responses.create = mocker.AsyncMock(return_value=response_obj)
+    mock_vector_stores = mocker.Mock()
+    mock_vector_stores.data = []
+    mock_client.vector_stores.list = mocker.AsyncMock(return_value=mock_vector_stores)
+    mock_client.shields.list = mocker.AsyncMock(return_value=[])
+
+    mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
+    mocker.patch("app.endpoints.query_v2.configuration", mocker.Mock(mcp_servers=[]))
+
+    qr = QueryRequest(query="query with docs")
+    _summary, _conv_id, referenced_docs, _token_usage = await retrieve_response(
+        mock_client, "model-docs", qr, token="tkn", provider_id="test-provider"
+    )
+
+    assert len(referenced_docs) == 4
+
+    # Verify Doc 1 (URL citation)
+    doc1 = next((d for d in referenced_docs if d.doc_title == "Doc 1"), None)
+    assert doc1
+    assert str(doc1.doc_url) == "http://example.com/doc1"
+
+    # Verify file1.txt (File citation)
+    doc2 = next((d for d in referenced_docs if d.doc_title == "file1.txt"), None)
+    assert doc2
+    assert doc2.doc_url is None
+
+    # Verify file2.pdf (File search result with URL)
+    doc3 = next((d for d in referenced_docs if d.doc_title == "file2.pdf"), None)
+    assert doc3
+    assert str(doc3.doc_url) == "http://example.com/doc2"
+
+    # Verify file3.docx (File search result without URL)
+    doc4 = next((d for d in referenced_docs if d.doc_title == "file3.docx"), None)
+    assert doc4
+    assert doc4.doc_url is None

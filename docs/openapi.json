@@ -1186,11 +1186,11 @@
         "/v1/query": {
             "post": {
                 "tags": [
-                    "query"
+                    "query_v1"
                 ],
-                "summary": "Query Endpoint Handler",
-                "description": "Handle request to the /query endpoint using Agent API.\n\nThis is a wrapper around query_endpoint_handler_base that provides\nthe Agent API specific retrieve_response and get_topic_summary functions.\n\nReturns:\n    QueryResponse: Contains the conversation ID and the LLM-generated response.",
-                "operationId": "query_endpoint_handler_v1_query_post",
+                "summary": "Query Endpoint Handler V1",
+                "description": "Handle request to the /query endpoint using Responses API.\n\nThis is a wrapper around query_endpoint_handler_base that provides\nthe Responses API specific retrieve_response and get_topic_summary functions.\n\nReturns:\n    QueryResponse: Contains the conversation ID and the LLM-generated response.",
+                "operationId": "query_endpoint_handler_v2_v1_query_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1497,11 +1497,11 @@
         "/v1/streaming_query": {
             "post": {
                 "tags": [
-                    "streaming_query"
+                    "streaming_query_v1"
                 ],
-                "summary": "Streaming Query Endpoint Handler",
-                "description": "Handle request to the /streaming_query endpoint using Agent API.\n\nThis is a wrapper around streaming_query_endpoint_handler_base that provides\nthe Agent API specific retrieve_response and response generator functions.\n\nReturns:\n    StreamingResponse: An HTTP streaming response yielding\n    SSE-formatted events for the query lifecycle.\n\nRaises:\n    HTTPException: Returns HTTP 500 if unable to connect to the\n    Llama Stack server.",
-                "operationId": "streaming_query_endpoint_handler_v1_streaming_query_post",
+                "summary": "Streaming Query Endpoint Handler V1",
+                "description": "Handle request to the /streaming_query endpoint using Responses API.\n\nReturns a streaming response using Server-Sent Events (SSE) format with\ncontent type text/event-stream.\n\nReturns:\n    StreamingResponse: An HTTP streaming response yielding\n    SSE-formatted events for the query lifecycle with content type\n    text/event-stream.\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Too Many Requests - Quota limit exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to Llama Stack backend",
+                "operationId": "streaming_query_endpoint_handler_v2_v1_streaming_query_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1514,16 +1514,14 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Streaming response (Server-Sent Events)",
+                        "description": "Successful response",
                         "content": {
-                            "application/json": {
-                                "schema": {}
-                            },
                             "text/event-stream": {
                                 "schema": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "format": "text/event-stream"
                                 },
-                                "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 0, \"output_tokens\": 0}, \"available_quotas\": {}}\n\n"
+                                "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"rag_chunks\": [], \"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 11, \"output_tokens\": 19, \"available_quotas\": {}}}\n\n"
                             }
                         }
                     },
@@ -2229,9 +2227,9 @@
         "/v1/conversations": {
             "get": {
                 "tags": [
-                    "conversations"
+                    "conversations_v1"
                 ],
-                "summary": "Get Conversations List Endpoint Handler",
+                "summary": "Conversations List Endpoint Handler V1",
                 "description": "Handle request to retrieve all conversations for the authenticated user.",
                 "operationId": "get_conversations_list_endpoint_handler_v1_conversations_get",
                 "responses": {
@@ -2368,10 +2366,10 @@
         "/v1/conversations/{conversation_id}": {
             "get": {
                 "tags": [
-                    "conversations"
+                    "conversations_v1"
                 ],
-                "summary": "Get Conversation Endpoint Handler",
-                "description": "Handle request to retrieve a conversation by ID.\n\nRetrieve a conversation's chat history by its ID. Then fetches\nthe conversation session from the Llama Stack backend,\nsimplifies the session data to essential chat history, and\nreturns it in a structured response. Raises HTTP 400 for\ninvalid IDs, 404 if not found, 503 if the backend is\nunavailable, and 500 for unexpected errors.\n\nParameters:\n    conversation_id (str): Unique identifier of the conversation to retrieve.\n\nReturns:\n    ConversationResponse: Structured response containing the conversation\n    ID and simplified chat history.",
+                "summary": "Conversation Get Endpoint Handler V1",
+                "description": "Handle request to retrieve a conversation by ID using Conversations API.\n\nRetrieve a conversation's chat history by its ID using the LlamaStack\nConversations API. This endpoint fetches the conversation items from\nthe backend, simplifies them to essential chat history, and returns\nthem in a structured response. Raises HTTP 400 for invalid IDs, 404\nif not found, 503 if the backend is unavailable, and 500 for\nunexpected errors.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to retrieve\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationResponse: Structured response containing the conversation\n    ID and simplified chat history",
                 "operationId": "get_conversation_endpoint_handler_v1_conversations__conversation_id__get",
                 "parameters": [
                     {
@@ -2572,10 +2570,10 @@
             },
             "delete": {
                 "tags": [
-                    "conversations"
+                    "conversations_v1"
                 ],
-                "summary": "Delete Conversation Endpoint Handler",
-                "description": "Handle request to delete a conversation by ID.\n\nValidates the conversation ID format and attempts to delete the\ncorresponding session from the Llama Stack backend. Raises HTTP\nerrors for invalid IDs, not found conversations, connection\nissues, or unexpected failures.\n\nReturns:\n    ConversationDeleteResponse: Response indicating the result of the deletion operation.",
+                "summary": "Conversation Delete Endpoint Handler V1",
+                "description": "Handle request to delete a conversation by ID using Conversations API.\n\nValidates the conversation ID format and attempts to delete the\nconversation from the Llama Stack backend using the Conversations API.\nRaises HTTP errors for invalid IDs, not found conversations, connection\nissues, or unexpected failures.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to delete\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationDeleteResponse: Response indicating the result of the deletion operation",
                 "operationId": "delete_conversation_endpoint_handler_v1_conversations__conversation_id__delete",
                 "parameters": [
                     {
@@ -2676,6 +2674,178 @@
                                             }
                                         }
                                     },
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    },
+                                    "database": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to query the database",
+                                                "response": "Database query failed"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "llama stack": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Connection error while trying to reach backend service.",
+                                                "response": "Unable to connect to Llama Stack"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "conversations_v1"
+                ],
+                "summary": "Conversation Update Endpoint Handler V1",
+                "description": "Handle request to update a conversation metadata using Conversations API.\n\nUpdates the conversation metadata (including topic summary) in both the\nLlamaStack backend using the Conversations API and the local database.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to update\n    update_request: Request containing the topic summary to update\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationUpdateResponse: Response indicating the result of the update operation",
+                "operationId": "update_conversation_endpoint_handler_v1_conversations__conversation_id__put",
+                "parameters": [
+                    {
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Conversation Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConversationUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConversationUpdateResponse"
+                                },
+                                "example": {
+                                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                    "message": "Topic summary updated successfully",
+                                    "success": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "conversation_id": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The conversation ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+                                                "response": "Invalid conversation ID format"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/BadRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "examples": {
                                     "endpoint": {
                                         "value": {
                                             "detail": {
@@ -3169,26 +3339,6 @@
                             }
                         }
                     },
-                    "404": {
-                        "description": "Resource not found",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "conversation": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
-                                                "response": "Conversation not found"
-                                            }
-                                        }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotFoundResponse"
-                                }
-                            }
-                        }
-                    },
                     "500": {
                         "description": "Internal server error",
                         "content": {
@@ -3395,600 +3545,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v2/query": {
-            "post": {
-                "tags": [
-                    "query_v2"
-                ],
-                "summary": "Query Endpoint Handler V2",
-                "description": "Handle request to the /query endpoint using Responses API.\n\nThis is a wrapper around query_endpoint_handler_base that provides\nthe Responses API specific retrieve_response and get_topic_summary functions.\n\nReturns:\n    QueryResponse: Contains the conversation ID and the LLM-generated response.",
-                "operationId": "query_endpoint_handler_v2_v2_query_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/QueryRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/QueryResponse"
-                                },
-                                "example": {
-                                    "available_quotas": {
-                                        "daily": 1000,
-                                        "monthly": 50000
-                                    },
-                                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
-                                    "input_tokens": 150,
-                                    "output_tokens": 75,
-                                    "rag_chunks": [
-                                        {
-                                            "content": "OLM is a component of the Operator Framework toolkit...",
-                                            "score": 0.95,
-                                            "source": "kubernetes-docs/operators.md"
-                                        }
-                                    ],
-                                    "referenced_documents": [
-                                        {
-                                            "doc_title": "Operator Lifecycle Manager (OLM)",
-                                            "doc_url": "https://docs.openshift.com/container-platform/4.15/operators/olm/index.html"
-                                        }
-                                    ],
-                                    "response": "Operator Lifecycle Manager (OLM) helps users install...",
-                                    "tool_calls": [
-                                        {
-                                            "arguments": {
-                                                "query": "operator lifecycle manager"
-                                            },
-                                            "result": {
-                                                "chunks_found": 5
-                                            },
-                                            "tool_name": "knowledge_search"
-                                        }
-                                    ],
-                                    "truncated": false
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnauthorizedResponse"
-                                },
-                                "examples": {
-                                    "missing header": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No Authorization header found",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "missing token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No token found in Authorization header",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Permission denied",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ForbiddenResponse"
-                                },
-                                "examples": {
-                                    "conversation read": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 6789 does not have permission to read conversation with ID 123e4567-e89b-12d3-a456-426614174000",
-                                                "response": "User does not have permission to perform this action"
-                                            }
-                                        }
-                                    },
-                                    "endpoint": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 6789 is not authorized to access this endpoint.",
-                                                "response": "User does not have permission to access this endpoint"
-                                            }
-                                        }
-                                    },
-                                    "model override": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User lacks model_override permission required to override model/provider.",
-                                                "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Resource not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotFoundResponse"
-                                },
-                                "examples": {
-                                    "conversation": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
-                                                "response": "Conversation not found"
-                                            }
-                                        }
-                                    },
-                                    "provider": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Provider with ID openai does not exist",
-                                                "response": "Provider not found"
-                                            }
-                                        }
-                                    },
-                                    "model": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Model with ID gpt-4-turbo is not configured",
-                                                "response": "Model not found"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Request validation failed",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnprocessableEntityResponse"
-                                },
-                                "examples": {
-                                    "invalid format": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid request format. The request body could not be parsed.",
-                                                "response": "Invalid request format"
-                                            }
-                                        }
-                                    },
-                                    "missing attributes": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Missing required attributes: ['query', 'model', 'provider']",
-                                                "response": "Missing required attributes"
-                                            }
-                                        }
-                                    },
-                                    "invalid value": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
-                                                "response": "Invalid attribute value"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "429": {
-                        "description": "Quota limit exceeded",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/QuotaExceededResponse"
-                                },
-                                "examples": {
-                                    "model": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "The token quota for model gpt-4-turbo has been exceeded.",
-                                                "response": "The model quota has been exceeded"
-                                            }
-                                        }
-                                    },
-                                    "user none": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 123 has no available tokens.",
-                                                "response": "The quota has been exceeded"
-                                            }
-                                        }
-                                    },
-                                    "cluster none": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Cluster has no available tokens.",
-                                                "response": "The quota has been exceeded"
-                                            }
-                                        }
-                                    },
-                                    "subject none": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Unknown subject 999 has no available tokens.",
-                                                "response": "The quota has been exceeded"
-                                            }
-                                        }
-                                    },
-                                    "user insufficient": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
-                                                "response": "The quota has been exceeded"
-                                            }
-                                        }
-                                    },
-                                    "cluster insufficient": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
-                                                "response": "The quota has been exceeded"
-                                            }
-                                        }
-                                    },
-                                    "subject insufficient": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
-                                                "response": "The quota has been exceeded"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
-                                },
-                                "examples": {
-                                    "configuration": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Lightspeed Stack configuration has not been initialized.",
-                                                "response": "Configuration is not loaded"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                },
-                                "examples": {
-                                    "llama stack": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v2/streaming_query": {
-            "post": {
-                "tags": [
-                    "streaming_query_v2"
-                ],
-                "summary": "Streaming Query Endpoint Handler V2",
-                "description": "Handle request to the /streaming_query endpoint using Responses API.\n\nThis is a wrapper around streaming_query_endpoint_handler_base that provides\nthe Responses API specific retrieve_response and response generator functions.\n\nReturns:\n    StreamingResponse: An HTTP streaming response yielding\n    SSE-formatted events for the query lifecycle.\n\nRaises:\n    HTTPException: Returns HTTP 500 if unable to connect to the\n    Llama Stack server.",
-                "operationId": "streaming_query_endpoint_handler_v2_v2_streaming_query_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/QueryRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Streaming response with Server-Sent Events",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string",
-                                    "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 0, \"output_tokens\": 0}, \"available_quotas\": {}}\n\n"
-                                }
-                            },
-                            "text/plain": {
-                                "schema": {
-                                    "type": "string",
-                                    "example": "Hello world!\n\n---\n\nReference: https://example.com/doc"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnauthorizedResponse"
-                                },
-                                "examples": {
-                                    "missing header": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No Authorization header found",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    },
-                                    "missing token": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "No token found in Authorization header",
-                                                "response": "Missing or invalid credentials provided by client"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Permission denied",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ForbiddenResponse"
-                                },
-                                "examples": {
-                                    "conversation read": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 6789 does not have permission to read conversation with ID 123e4567-e89b-12d3-a456-426614174000",
-                                                "response": "User does not have permission to perform this action"
-                                            }
-                                        }
-                                    },
-                                    "endpoint": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 6789 is not authorized to access this endpoint.",
-                                                "response": "User does not have permission to access this endpoint"
-                                            }
-                                        }
-                                    },
-                                    "model override": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User lacks model_override permission required to override model/provider.",
-                                                "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Resource not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/NotFoundResponse"
-                                },
-                                "examples": {
-                                    "conversation": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
-                                                "response": "Conversation not found"
-                                            }
-                                        }
-                                    },
-                                    "provider": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Provider with ID openai does not exist",
-                                                "response": "Provider not found"
-                                            }
-                                        }
-                                    },
-                                    "model": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Model with ID gpt-4-turbo is not configured",
-                                                "response": "Model not found"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Request validation failed",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnprocessableEntityResponse"
-                                },
-                                "examples": {
-                                    "invalid format": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid request format. The request body could not be parsed.",
-                                                "response": "Invalid request format"
-                                            }
-                                        }
-                                    },
-                                    "missing attributes": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Missing required attributes: ['query', 'model', 'provider']",
-                                                "response": "Missing required attributes"
-                                            }
-                                        }
-                                    },
-                                    "invalid value": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
-                                                "response": "Invalid attribute value"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "429": {
-                        "description": "Quota limit exceeded",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/QuotaExceededResponse"
-                                },
-                                "examples": {
-                                    "model": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "The token quota for model gpt-4-turbo has been exceeded.",
-                                                "response": "The model quota has been exceeded"
-                                            }
-                                        }
-                                    },
-                                    "user none": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 123 has no available tokens.",
-                                                "response": "The quota has been exceeded"
-                                            }
-                                        }
-                                    },
-                                    "cluster none": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Cluster has no available tokens.",
-                                                "response": "The quota has been exceeded"
-                                            }
-                                        }
-                                    },
-                                    "subject none": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Unknown subject 999 has no available tokens.",
-                                                "response": "The quota has been exceeded"
-                                            }
-                                        }
-                                    },
-                                    "user insufficient": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
-                                                "response": "The quota has been exceeded"
-                                            }
-                                        }
-                                    },
-                                    "cluster insufficient": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
-                                                "response": "The quota has been exceeded"
-                                            }
-                                        }
-                                    },
-                                    "subject insufficient": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
-                                                "response": "The quota has been exceeded"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
-                                },
-                                "examples": {
-                                    "configuration": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Lightspeed Stack configuration has not been initialized.",
-                                                "response": "Configuration is not loaded"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                },
-                                "examples": {
-                                    "llama stack": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
-                                            }
-                                        }
-                                    }
                                 }
                             }
                         }
@@ -6705,30 +6261,6 @@
                             "Kubernetes is an open-source container orchestration system for automating ..."
                         ]
                     },
-                    "rag_chunks": {
-                        "items": {
-                            "$ref": "#/components/schemas/RAGChunk"
-                        },
-                        "type": "array",
-                        "title": "Rag Chunks",
-                        "description": "List of RAG chunks used to generate the response",
-                        "default": []
-                    },
-                    "tool_calls": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/ToolCall"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Tool Calls",
-                        "description": "List of tool calls made during response generation"
-                    },
                     "referenced_documents": {
                         "items": {
                             "$ref": "#/components/schemas/ReferencedDocument"
@@ -6790,6 +6322,36 @@
                                 "monthly": 50000
                             }
                         ]
+                    },
+                    "tool_calls": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ToolCallSummary"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Calls",
+                        "description": "List of tool calls made during response generation"
+                    },
+                    "tool_results": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ToolResultSummary"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Results",
+                        "description": "List of tool results"
                     }
                 },
                 "type": "object",
@@ -7016,45 +6578,6 @@
                 "type": "object",
                 "title": "QuotaSchedulerConfiguration",
                 "description": "Quota scheduler configuration."
-            },
-            "RAGChunk": {
-                "properties": {
-                    "content": {
-                        "type": "string",
-                        "title": "Content",
-                        "description": "The content of the chunk"
-                    },
-                    "source": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Source",
-                        "description": "Source document or URL"
-                    },
-                    "score": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Score",
-                        "description": "Relevance score"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "content"
-                ],
-                "title": "RAGChunk",
-                "description": "Model representing a RAG chunk used in the response."
             },
             "RAGInfoResponse": {
                 "properties": {
@@ -7514,40 +7037,76 @@
                 "title": "TLSConfiguration",
                 "description": "TLS configuration.\n\nTransport Layer Security (TLS) is a cryptographic protocol designed to\nprovide communications security over a computer network, such as the\nInternet. The protocol is widely used in applications such as email,\ninstant messaging, and voice over IP, but its use in securing HTTPS remains\nthe most publicly visible.\n\nUseful resources:\n\n  - [FastAPI HTTPS Deployment](https://fastapi.tiangolo.com/deployment/https/)\n  - [Transport Layer Security Overview](https://en.wikipedia.org/wiki/Transport_Layer_Security)\n  - [What is TLS](https://www.ssltrust.eu/learning/ssl/transport-layer-security-tls)"
             },
-            "ToolCall": {
+            "ToolCallSummary": {
                 "properties": {
-                    "tool_name": {
+                    "id": {
                         "type": "string",
-                        "title": "Tool Name",
+                        "title": "Id",
+                        "description": "ID of the tool call"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
                         "description": "Name of the tool called"
                     },
-                    "arguments": {
+                    "args": {
                         "additionalProperties": true,
                         "type": "object",
-                        "title": "Arguments",
+                        "title": "Args",
                         "description": "Arguments passed to the tool"
                     },
-                    "result": {
-                        "anyOf": [
-                            {
-                                "additionalProperties": true,
-                                "type": "object"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Result",
-                        "description": "Result from the tool"
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "Type indicator for tool call",
+                        "default": "tool_call"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "tool_name",
-                    "arguments"
+                    "id",
+                    "name"
                 ],
-                "title": "ToolCall",
-                "description": "Model representing a tool call made during response generation."
+                "title": "ToolCallSummary",
+                "description": "Model representing a tool call made during response generation (for tool_calls list)."
+            },
+            "ToolResultSummary": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "ID of the tool call/result, matches the corresponding tool call 'id'"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status",
+                        "description": "Status of the tool execution (e.g., 'success')"
+                    },
+                    "content": {
+                        "title": "Content",
+                        "description": "Content/result returned from the tool"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "Type indicator for tool result",
+                        "default": "tool_result"
+                    },
+                    "round": {
+                        "type": "integer",
+                        "title": "Round",
+                        "description": "Round number or step of tool execution"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "status",
+                    "content",
+                    "round"
+                ],
+                "title": "ToolResultSummary",
+                "description": "Model representing a result from a tool call (for tool_results list)."
             },
             "ToolsResponse": {
                 "properties": {

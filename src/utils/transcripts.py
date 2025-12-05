@@ -85,6 +85,7 @@ def store_transcript(  # pylint: disable=too-many-arguments,too-many-positional-
         "truncated": truncated,
         "attachments": [attachment.model_dump() for attachment in attachments],
         "tool_calls": [tc.model_dump() for tc in summary.tool_calls],
+        "tool_results": [tr.model_dump() for tr in summary.tool_results],
     }
 
     # stores feedback in a file under unique uuid

@@ -1,6 +1,7 @@
 """Implementation of common test steps."""
 
 import json
+import re
 from behave import then  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
@@ -23,9 +24,15 @@ def check_llama_version(context: Context, llama_version: str) -> None:
     response_json = context.response.json()
     assert response_json is not None, "Response is not valid JSON"
 
+    version_pattern = r"\d+\.\d+\.\d+"
+    llama_stack_version = response_json["llama_stack_version"]
+    match = re.search(version_pattern, llama_stack_version)
+    assert match is not None, f"Could not extract version from {llama_stack_version}"
+    extracted_version = match.group(0)
+
     assert (
-        response_json["llama_stack_version"] == llama_version
-    ), f"llama-stack version is {response_json["llama_stack_version"]}"
+        extracted_version == llama_version
+    ), f"llama-stack version is {extracted_version}, expected {llama_version}"
 
 
 @then("The body of the response has proper model structure")

@@ -1,6 +1,6 @@
 """Unit tests for RAGChunk model."""
 
-from models.responses import RAGChunk
+from utils.types import RAGChunk
 
 
 class TestRAGChunk:

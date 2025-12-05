@@ -95,11 +95,6 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         context.scenario_config = (
             f"tests/e2e/configuration/{mode_dir}/lightspeed-stack-no-cache.yaml"
         )
-        # Switch config and restart immediately
-        switch_config(
-            context.scenario_config
-        )  # Copies to default lightspeed-stack.yaml
-        restart_container("lightspeed-stack")
 
 
 def after_scenario(context: Context, scenario: Scenario) -> None:
@@ -125,7 +120,7 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
 
             # Wait for the service to be healthy
             print("Restoring Llama Stack connection...")
-            time.sleep(5)
+            time.sleep(20)
 
             # Check if it's healthy
             for attempt in range(6):  # Try for 30 seconds

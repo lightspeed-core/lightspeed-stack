@@ -41,46 +41,47 @@ models:
 providers:
   agents:
   - config:
-      persistence_store:
-        db_path: /tmp/agents_store.db
-        type: sqlite
-      responses_store:
-        db_path: /tmp/responses_store.db
-        type: sqlite
+      persistence:
+        agent_state:
+          namespace: agents_state
+          backend: kv_default
+        responses:
+          table_name: agents_responses
+          backend: sql_default
     provider_id: meta-reference
     provider_type: inline::meta-reference
   batches:
   - config:
       kvstore:
-        db_path: /tmp/batches.db
-        type: sqlite
+        namespace: batches_store
+        backend: kv_default
     provider_id: reference
     provider_type: inline::reference
   datasetio:
   - config:
       kvstore:
-        db_path: /tmp/huggingface_datasetio.db
-        type: sqlite
+        namespace: huggingface_datasetio
+        backend: kv_default
     provider_id: huggingface
     provider_type: remote::huggingface
   - config:
       kvstore:
-        db_path: /tmp/localfs_datasetio.db
-        type: sqlite
+        namespace: localfs_datasetio
+        backend: kv_default
     provider_id: localfs
     provider_type: inline::localfs
   eval:
   - config:
       kvstore:
-        db_path: /tmp/meta_reference_eval.db
-        type: sqlite
+        namespace: eval_store
+        backend: kv_default
     provider_id: meta-reference
     provider_type: inline::meta-reference
   files:
   - config:
       metadata_store:
-        db_path: /tmp/files_metadata.db
-        type: sqlite
+        table_name: files_metadata
+        backend: sql_default
       storage_dir: /tmp/files
     provider_id: meta-reference-files
     provider_type: inline::localfs
@@ -106,7 +107,7 @@ providers:
     provider_type: inline::llm-as-judge
   # telemetry:
   # - config:
-  #     service_name: "\u200B"
+  #     service_name: "​"
   #   provider_id: meta-reference
   #   provider_type: inline::meta-reference
   tool_runtime:
@@ -115,9 +116,9 @@ providers:
     provider_type: inline::rag-runtime
   vector_io:
   - config:
-      kvstore:
-        db_path: /tmp/faiss_store.db
-        type: sqlite
+      persistence:
+        namespace: faiss_store
+        backend: kv_default
     provider_id: faiss
     provider_type: inline::faiss
 scoring_fns: []
@@ -151,3 +152,4 @@ storage:
     prompts:
       namespace: prompts
       backend: kv_default
+

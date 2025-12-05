@@ -23,7 +23,6 @@ services:
       - RHEL_AI_PORT=${RHEL_AI_PORT}
       - RHEL_AI_API_KEY=${RHEL_AI_API_KEY}
       - RHEL_AI_MODEL=${RHEL_AI_MODEL}
-      - LLAMA_STACK_LOGGING=all=debug # enable llama-stack debug log
     networks:
       - lightspeednet
     healthcheck:

@@ -1,5 +1,8 @@
+# pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks
+
 """Handler for REST API call to provide answer to query using Response API."""
 
+import json
 import logging
 from typing import Annotated, Any, cast
 
@@ -37,14 +40,15 @@ from utils.endpoints import (
     get_system_prompt,
     get_topic_summary_system_prompt,
 )
+from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
 from utils.mcp_headers import mcp_headers_dependency
 from utils.responses import extract_text_from_response_output_item
 from utils.shields import detect_shield_violations, get_available_shields
 from utils.token_counter import TokenCounter
-from utils.types import ToolCallSummary, TurnSummary
+from utils.types import ToolCallSummary, ToolResultSummary, TurnSummary
 
 logger = logging.getLogger("app.endpoints.handlers")
-router = APIRouter(tags=["query_v2"])
+router = APIRouter(tags=["query_v1"])
 
 query_v2_response: dict[int | str, dict[str, Any]] = {
     200: QueryResponse.openapi_response(),
@@ -57,6 +61,7 @@ query_v2_response: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(
         examples=["conversation", "model", "provider"]
     ),
+    # 413: PromptTooLongResponse.openapi_response(),
     422: UnprocessableEntityResponse.openapi_response(),
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
@@ -66,7 +71,7 @@ query_v2_response: dict[int | str, dict[str, Any]] = {
 
 def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-many-branches
     output_item: Any,
-) -> ToolCallSummary | None:
+) -> tuple[ToolCallSummary | None, ToolResultSummary | None]:
     """Translate applicable Responses API tool outputs into ``ToolCallSummary`` records.
 
     The OpenAI ``response.output`` array may contain any ``OpenAIResponseOutput`` variant:
@@ -78,23 +83,22 @@ def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-
 
     if item_type == "function_call":
         parsed_arguments = getattr(output_item, "arguments", "")
-        status = getattr(output_item, "status", None)
-        if status:
-            if isinstance(parsed_arguments, dict):
-                args: Any = {**parsed_arguments, "status": status}
-            else:
-                args = {"arguments": parsed_arguments, "status": status}
-        else:
+        if isinstance(parsed_arguments, dict):
             args = parsed_arguments
+        else:
+            args = {"arguments": parsed_arguments}
 
         call_id = getattr(output_item, "id", None) or getattr(
             output_item, "call_id", None
         )
-        return ToolCallSummary(
-            id=str(call_id),
-            name=getattr(output_item, "name", "function_call"),
-            args=args,
-            response=None,
+        return (
+            ToolCallSummary(
+                id=str(call_id),
+                name=getattr(output_item, "name", "function_call"),
+                args=args,
+                type="function_call",
+            ),
+            None,
         )
 
     if item_type == "file_search_call":
@@ -132,16 +136,25 @@ def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-
             id=str(getattr(output_item, "id")),
             name=DEFAULT_RAG_TOOL,
             args=args,
-            response=response_payload,
+            type="file_search_call",
+        ), ToolResultSummary(
+            id=str(getattr(output_item, "id")),
+            status=str(getattr(output_item, "status", None)),
+            content=json.dumps(response_payload) if response_payload else None,
+            type="file_search_call",
+            round=1,
         )
 
     if item_type == "web_search_call":
         args = {"status": getattr(output_item, "status", None)}
-        return ToolCallSummary(
-            id=str(getattr(output_item, "id")),
-            name="web_search",
-            args=args,
-            response=None,
+        return (
+            ToolCallSummary(
+                id=str(getattr(output_item, "id")),
+                name="web_search",
+                args=args,
+                type="web_search_call",
+            ),
+            None,
         )
 
     if item_type == "mcp_call":
@@ -158,7 +171,13 @@ def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-
             id=str(getattr(output_item, "id")),
             name=getattr(output_item, "name", "mcp_call"),
             args=args,
-            response=getattr(output_item, "output", None),
+            type="mcp_call",
+        ), ToolResultSummary(
+            id=str(getattr(output_item, "id")),
+            status=str(getattr(output_item, "status", None)),
+            content=getattr(output_item, "output", ""),
+            type="mcp_call",
+            round=1,
         )
 
     if item_type == "mcp_list_tools":
@@ -172,11 +191,14 @@ def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-
             "server_label": getattr(output_item, "server_label", None),
             "tools": tool_names,
         }
-        return ToolCallSummary(
-            id=str(getattr(output_item, "id")),
-            name="mcp_list_tools",
-            args=args,
-            response=None,
+        return (
+            ToolCallSummary(
+                id=str(getattr(output_item, "id")),
+                name="mcp_list_tools",
+                args=args,
+                type="mcp_list_tools",
+            ),
+            None,
         )
 
     if item_type == "mcp_approval_request":
@@ -185,14 +207,17 @@ def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-
         server_label = getattr(output_item, "server_label", None)
         if server_label:
             args["server_label"] = server_label
-        return ToolCallSummary(
-            id=str(getattr(output_item, "id")),
-            name=getattr(output_item, "name", "mcp_approval_request"),
-            args=args,
-            response=None,
+        return (
+            ToolCallSummary(
+                id=str(getattr(output_item, "id")),
+                name=getattr(output_item, "name", "mcp_approval_request"),
+                args=args,
+                type="tool_call",
+            ),
+            None,
         )
 
-    return None
+    return None, None
 
 
 async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
@@ -233,7 +258,7 @@ async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
     return summary_text.strip() if summary_text else ""
 
 
-@router.post("/query", responses=query_v2_response)
+@router.post("/query", responses=query_v2_response, summary="Query Endpoint Handler V1")
 @authorize(Action.QUERY)
 async def query_endpoint_handler_v2(
     request: Request,
@@ -261,7 +286,7 @@ async def query_endpoint_handler_v2(
     )
 
 
-async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branches,too-many-arguments
+async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branches,too-many-arguments,too-many-statements
     client: AsyncLlamaStackClient,
     model_id: str,
     query_request: QueryRequest,
@@ -324,6 +349,27 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
                 f"\n\n[Attachment: {attachment.attachment_type}]\n{attachment.content}"
             )
 
+    # Handle conversation ID for Responses API
+    # Create conversation upfront if not provided
+    conversation_id = query_request.conversation_id
+    if conversation_id:
+        # Conversation ID was provided - convert to llama-stack format
+        logger.debug("Using existing conversation ID: %s", conversation_id)
+        llama_stack_conv_id = to_llama_stack_conversation_id(conversation_id)
+    else:
+        # No conversation_id provided - create a new conversation first
+        logger.debug("No conversation_id provided, creating new conversation")
+
+        conversation = await client.conversations.create(metadata={})
+        llama_stack_conv_id = conversation.id
+        # Store the normalized version for later use
+        conversation_id = normalize_conversation_id(llama_stack_conv_id)
+        logger.info(
+            "Created new conversation with ID: %s (normalized: %s)",
+            llama_stack_conv_id,
+            conversation_id,
+        )
+
     # Create OpenAI response using responses API
     create_kwargs: dict[str, Any] = {
         "input": input_text,
@@ -332,9 +378,8 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         "tools": cast(Any, toolgroups),
         "stream": False,
         "store": True,
+        "conversation": llama_stack_conv_id,
     }
-    if query_request.conversation_id:
-        create_kwargs["previous_response_id"] = query_request.conversation_id
 
     # Add shields to extra_body if available
     if available_shields:
@@ -342,28 +387,28 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
 
     response = await client.responses.create(**create_kwargs)
     response = cast(OpenAIResponseObject, response)
-
+    logger.info("Response: %s", response)
     logger.debug(
-        "Received response with ID: %s, output items: %d",
+        "Received response with ID: %s, conversation ID: %s, output items: %d",
         response.id,
+        conversation_id,
         len(response.output),
     )
-
-    # Return the response ID - client can use it for chaining if desired
-    conversation_id = response.id
 
     # Process OpenAI response format
     llm_response = ""
     tool_calls: list[ToolCallSummary] = []
-
+    tool_results: list[ToolResultSummary] = []
     for output_item in response.output:
         message_text = extract_text_from_response_output_item(output_item)
         if message_text:
             llm_response += message_text
 
-        tool_summary = _build_tool_call_summary(output_item)
-        if tool_summary:
-            tool_calls.append(tool_summary)
+        tool_call, tool_result = _build_tool_call_summary(output_item)
+        if tool_call:
+            tool_calls.append(tool_call)
+        if tool_result:
+            tool_results.append(tool_result)
 
     # Check for shield violations across all output items
     detect_shield_violations(response.output)
@@ -377,6 +422,8 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     summary = TurnSummary(
         llm_response=llm_response,
         tool_calls=tool_calls,
+        tool_results=tool_results,
+        rag_chunks=[],
     )
 
     # Extract referenced documents and token usage from Responses API response
@@ -391,7 +438,15 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
             "Response lacks content (conversation_id=%s)",
             conversation_id,
         )
-    return (summary, conversation_id, referenced_documents, token_usage)
+
+    # Normalize conversation ID before returning (remove conv_ prefix for consistency)
+    normalized_conversation_id = (
+        normalize_conversation_id(conversation_id)
+        if conversation_id
+        else conversation_id
+    )
+
+    return (summary, normalized_conversation_id, referenced_documents, token_usage)
 
 
 def parse_referenced_documents_from_responses_api(
@@ -406,13 +461,92 @@ def parse_referenced_documents_from_responses_api(
     Returns:
         list[ReferencedDocument]: List of referenced documents with doc_url and doc_title
     """
-    # TODO(ltomasbo): need to parse source documents from Responses API response.
-    # The Responses API has a different structure than Agent API for referenced documents.
-    # Need to extract from:
-    # - OpenAIResponseOutputMessageFileSearchToolCall.results
-    # - OpenAIResponseAnnotationCitation in message content
-    # - OpenAIResponseAnnotationFileCitation in message content
-    return []
+    documents: list[ReferencedDocument] = []
+    # Use a set to track unique documents by (doc_url, doc_title) tuple
+    seen_docs: set[tuple[str | None, str | None]] = set()
+
+    if not response.output:
+        return documents
+
+    for output_item in response.output:
+        item_type = getattr(output_item, "type", None)
+
+        # 1. Parse from file_search_call results
+        if item_type == "file_search_call":
+            results = getattr(output_item, "results", []) or []
+            for result in results:
+                # Handle both object and dict access
+                if isinstance(result, dict):
+                    filename = result.get("filename")
+                    attributes = result.get("attributes", {})
+                else:
+                    filename = getattr(result, "filename", None)
+                    attributes = getattr(result, "attributes", {})
+
+                # Try to get URL from attributes
+                # Look for common URL fields in attributes
+                doc_url = (
+                    attributes.get("link")
+                    or attributes.get("url")
+                    or attributes.get("doc_url")
+                )
+
+                # If we have at least a filename or url
+                if filename or doc_url:
+                    # Treat empty string as None for URL to satisfy AnyUrl | None
+                    final_url = doc_url if doc_url else None
+                    if (final_url, filename) not in seen_docs:
+                        documents.append(
+                            ReferencedDocument(doc_url=final_url, doc_title=filename)
+                        )
+                        seen_docs.add((final_url, filename))
+
+        # 2. Parse from message content annotations
+        elif item_type == "message":
+            content = getattr(output_item, "content", None)
+            if isinstance(content, list):
+                for part in content:
+                    # Skip if part is a string or doesn't have annotations
+                    if isinstance(part, str):
+                        continue
+
+                    annotations = getattr(part, "annotations", []) or []
+                    for annotation in annotations:
+                        # Handle both object and dict access for annotations
+                        if isinstance(annotation, dict):
+                            anno_type = annotation.get("type")
+                            anno_url = annotation.get("url")
+                            anno_title = annotation.get("title") or annotation.get(
+                                "filename"
+                            )
+                        else:
+                            anno_type = getattr(annotation, "type", None)
+                            anno_url = getattr(annotation, "url", None)
+                            anno_title = getattr(annotation, "title", None) or getattr(
+                                annotation, "filename", None
+                            )
+
+                        if anno_type == "url_citation":
+                            # Treat empty string as None
+                            final_url = anno_url if anno_url else None
+                            if (final_url, anno_title) not in seen_docs:
+                                documents.append(
+                                    ReferencedDocument(
+                                        doc_url=final_url, doc_title=anno_title
+                                    )
+                                )
+                                seen_docs.add((final_url, anno_title))
+
+                        elif anno_type == "file_citation":
+                            if (None, anno_title) not in seen_docs:
+                                documents.append(
+                                    ReferencedDocument(
+                                        doc_url=None, doc_title=anno_title
+                                    )
+                                )
+                                seen_docs.add((None, anno_title))
+
+    return documents
 
 
 def extract_token_usage_from_responses_api(

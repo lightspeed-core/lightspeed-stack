@@ -10,7 +10,7 @@ from utils.transcripts import (
     construct_transcripts_path,
     store_transcript,
 )
-from utils.types import ToolCallSummary, TurnSummary
+from utils.types import ToolCallSummary, ToolResultSummary, TurnSummary
 
 
 def test_construct_transcripts_path(mocker: MockerFixture) -> None:
@@ -70,17 +70,29 @@ def test_store_transcript(mocker: MockerFixture) -> None:
     query = "What is OpenStack?"
     model = "fake-model"
     provider = "fake-provider"
-    query_request = QueryRequest(query=query, model=model, provider=provider)
+    query_request = QueryRequest(  # type: ignore[call-arg]
+        query=query, model=model, provider=provider
+    )
     summary = TurnSummary(
         llm_response="LLM answer",
         tool_calls=[
             ToolCallSummary(
                 id="123",
                 name="test-tool",
-                args="testing",
-                response="tool response",
+                args={"testing": "testing"},
+                type="tool_call",
             )
         ],
+        tool_results=[
+            ToolResultSummary(
+                id="123",
+                status="success",
+                content="tool response",
+                type="tool_result",
+                round=1,
+            )
+        ],
+        rag_chunks=[],
     )
     query_is_valid = True
     rag_chunks: list[dict] = []
@@ -124,8 +136,17 @@ def test_store_transcript(mocker: MockerFixture) -> None:
                 {
                     "id": "123",
                     "name": "test-tool",
-                    "args": "testing",
-                    "response": "tool response",
+                    "args": {"testing": "testing"},
+                    "type": "tool_call",
+                }
+            ],
+            "tool_results": [
+                {
+                    "id": "123",
+                    "status": "success",
+                    "content": "tool response",
+                    "type": "tool_result",
+                    "round": 1,
                 }
             ],
         },

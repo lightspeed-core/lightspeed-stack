@@ -567,16 +567,18 @@ class TestDeleteConversationEndpoint:
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
         mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
-        mock_configuration.conversation_cache.list.return_value = []
+        mock_configuration.conversation_cache.delete.return_value = False
 
-        with pytest.raises(HTTPException) as exc_info:
-            await delete_conversation_endpoint_handler(
-                request=mocker.Mock(),
-                conversation_id=VALID_CONVERSATION_ID,
-                auth=MOCK_AUTH,
-            )
+        response = await delete_conversation_endpoint_handler(
+            request=mocker.Mock(),
+            conversation_id=VALID_CONVERSATION_ID,
+            auth=MOCK_AUTH,
+        )
 
-        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
+        assert response is not None
+        assert response.conversation_id == VALID_CONVERSATION_ID
+        assert response.success is True
+        assert response.response == "Conversation cannot be deleted"
 
     @pytest.mark.asyncio
     async def test_successful_deletion(

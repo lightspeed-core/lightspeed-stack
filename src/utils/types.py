@@ -2,14 +2,41 @@
 
 from typing import Any, Optional
 import json
-from llama_stack_client.lib.agents.event_logger import interleaved_content_as_str
 from llama_stack_client.lib.agents.tool_parser import ToolParser
-from llama_stack_client.types.shared.completion_message import CompletionMessage
-from llama_stack_client.types.shared.tool_call import ToolCall
-from llama_stack_client.types.tool_execution_step import ToolExecutionStep
+from llama_stack_client.lib.agents.types import (
+    CompletionMessage as AgentCompletionMessage,
+    ToolCall as AgentToolCall,
+)
+from llama_stack_client.types.shared.interleaved_content_item import (
+    TextContentItem,
+    ImageContentItem,
+)
+from llama_stack_client.types.alpha.tool_execution_step import ToolExecutionStep
 from pydantic import BaseModel
-from models.responses import RAGChunk
+from pydantic import Field
 from constants import DEFAULT_RAG_TOOL
+
+
+def content_to_str(content: Any) -> str:
+    """Convert content (str, TextContentItem, ImageContentItem, or list) to string.
+
+    Args:
+        content: Content to convert to string.
+
+    Returns:
+        str: String representation of the content.
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, TextContentItem):
+        return content.text
+    if isinstance(content, ImageContentItem):
+        return "<image>"
+    if isinstance(content, list):
+        return " ".join(content_to_str(item) for item in content)
+    return str(content)
 
 
 class Singleton(type):
@@ -33,16 +60,18 @@ class Singleton(type):
 class GraniteToolParser(ToolParser):
     """Workaround for 'tool_calls' with granite models."""
 
-    def get_tool_calls(self, output_message: CompletionMessage) -> list[ToolCall]:
+    def get_tool_calls(
+        self, output_message: AgentCompletionMessage
+    ) -> list[AgentToolCall]:
         """
         Return the `tool_calls` list from a CompletionMessage, or an empty list if none are present.
 
         Parameters:
-            output_message (CompletionMessage | None): Completion
+            output_message (AgentCompletionMessage | None): Completion
             message potentially containing `tool_calls`.
 
         Returns:
-            list[ToolCall]: The list of tool call entries
+            list[AgentToolCall]: The list of tool call entries
             extracted from `output_message`, or an empty list.
         """
         if output_message and output_message.tool_calls:
@@ -71,19 +100,36 @@ class GraniteToolParser(ToolParser):
 
 
 class ToolCallSummary(BaseModel):
-    """Represents a tool call for data collection.
+    """Model representing a tool call made during response generation (for tool_calls list)."""
 
-    Use our own tool call model to keep things consistent across llama
-    upgrades or if we used something besides llama in the future.
-    """
+    id: str = Field(description="ID of the tool call")
+    name: str = Field(description="Name of the tool called")
+    args: dict[str, Any] = Field(
+        default_factory=dict, description="Arguments passed to the tool"
+    )
+    type: str = Field("tool_call", description="Type indicator for tool call")
 
-    # ID of the call itself
-    id: str
-    # Name of the tool used
-    name: str
-    # Arguments to the tool call
-    args: str | dict[Any, Any]
-    response: str | None
+
+class ToolResultSummary(BaseModel):
+    """Model representing a result from a tool call (for tool_results list)."""
+
+    id: str = Field(
+        description="ID of the tool call/result, matches the corresponding tool call 'id'"
+    )
+    status: str = Field(
+        ..., description="Status of the tool execution (e.g., 'success')"
+    )
+    content: Any = Field(..., description="Content/result returned from the tool")
+    type: str = Field("tool_result", description="Type indicator for tool result")
+    round: int = Field(..., description="Round number or step of tool execution")
+
+
+class RAGChunk(BaseModel):
+    """Model representing a RAG chunk used in the response."""
+
+    content: str = Field(description="The content of the chunk")
+    source: str | None = Field(None, description="Source document or URL")
+    score: float | None = Field(None, description="Relevance score")
 
 
 class TurnSummary(BaseModel):
@@ -91,7 +137,8 @@ class TurnSummary(BaseModel):
 
     llm_response: str
     tool_calls: list[ToolCallSummary]
-    rag_chunks: list[RAGChunk] = []
+    tool_results: list[ToolResultSummary]
+    rag_chunks: list[RAGChunk]
 
     def append_tool_calls_from_llama(self, tec: ToolExecutionStep) -> None:
         """Append the tool calls from a llama tool execution step."""
@@ -99,19 +146,29 @@ class TurnSummary(BaseModel):
         responses_by_id = {tc.call_id: tc for tc in tec.tool_responses}
         for call_id, tc in calls_by_id.items():
             resp = responses_by_id.get(call_id)
-            response_content = (
-                interleaved_content_as_str(resp.content) if resp else None
-            )
+            response_content = content_to_str(resp.content) if resp else None
 
             self.tool_calls.append(
                 ToolCallSummary(
                     id=call_id,
                     name=tc.tool_name,
-                    args=tc.arguments,
-                    response=response_content,
+                    args=(
+                        tc.arguments
+                        if isinstance(tc.arguments, dict)
+                        else {"args": str(tc.arguments)}
+                    ),
+                    type="tool_call",
                 )
             )
-
+            self.tool_results.append(
+                ToolResultSummary(
+                    id=call_id,
+                    status="success" if resp else "failure",
+                    content=response_content,
+                    type="tool_result",
+                    round=1,  # clarify meaning of this attribute
+                )
+            )
             # Extract RAG chunks from knowledge_search tool responses
             if tc.tool_name == DEFAULT_RAG_TOOL and resp and response_content:
                 self._extract_rag_chunks_from_response(response_content)

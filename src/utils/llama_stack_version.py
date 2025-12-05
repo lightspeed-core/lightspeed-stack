@@ -1,6 +1,7 @@
 """Check if the Llama Stack version is supported by the LCS."""
 
 import logging
+import re
 
 from semver import Version
 
@@ -57,7 +58,27 @@ def compare_versions(version_info: str, minimal: str, maximal: str) -> None:
         InvalidLlamaStackVersionException: If `version_info` is outside the
         inclusive range defined by `minimal` and `maximal`.
     """
-    current_version = Version.parse(version_info)
+    version_pattern = r"\d+\.\d+\.\d+"
+    match = re.search(version_pattern, version_info)
+    if not match:
+        logger.warning(
+            "Failed to extract version pattern from '%s'. Skipping version check.",
+            version_info,
+        )
+        raise InvalidLlamaStackVersionException(
+            f"Failed to extract version pattern from '{version_info}'. Skipping version check."
+        )
+
+    normalized_version = match.group(0)
+
+    try:
+        current_version = Version.parse(normalized_version)
+    except ValueError as e:
+        logger.warning("Failed to parse Llama Stack version '%s'.", version_info)
+        raise InvalidLlamaStackVersionException(
+            f"Failed to parse Llama Stack version '{version_info}'."
+        ) from e
+
     minimal_version = Version.parse(minimal)
     maximal_version = Version.parse(maximal)
     logger.debug("Current version: %s", current_version)

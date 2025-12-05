@@ -1,5 +1,5 @@
 # Custom Red Hat llama-stack image with missing dependencies
-FROM quay.io/opendatahub/llama-stack:rhoai-v2.25-latest
+FROM quay.io/opendatahub/llama-stack:rhoai-v3.0-latest
 
 # Install missing dependencies and create required directories
 USER root
