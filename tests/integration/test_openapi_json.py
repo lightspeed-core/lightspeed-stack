@@ -87,6 +87,17 @@ def _check_server_section_present(spec: dict[str, Any]) -> None:
 def _check_paths_and_responses_exist(
     spec: dict, path: str, method: str, expected_codes: set[str]
 ) -> None:
+    """Checks if the specified paths and responses exist in the API specification.
+
+    Args:
+        spec (dict): The API specification.
+        path (str): The API endpoint path to check.
+        method (str): The HTTP method to check.
+        expected_codes (set[str]): The set of expected HTTP status codes.
+
+    Raises:
+        AssertionError: If the path, method, or any of the expected response codes are missing.
+    """
     paths = spec.get("paths") or {}
     assert path in paths, f"Missing path: {path}"
     op = (paths[path] or {}).get(method)
