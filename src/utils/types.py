@@ -1,15 +1,45 @@
 """Common types for the project."""
 
-from typing import Any, Optional
+import ast
 import json
+import logging
+import re
+from typing import Any, Optional
+
 from llama_stack_client.lib.agents.event_logger import interleaved_content_as_str
 from llama_stack_client.lib.agents.tool_parser import ToolParser
 from llama_stack_client.types.shared.completion_message import CompletionMessage
 from llama_stack_client.types.shared.tool_call import ToolCall
 from llama_stack_client.types.tool_execution_step import ToolExecutionStep
 from pydantic import BaseModel
-from models.responses import RAGChunk
+
 from constants import DEFAULT_RAG_TOOL
+from models.responses import RAGChunk
+
+logger = logging.getLogger(__name__)
+
+# RAG Response Format Patterns
+# ============================
+# These patterns match the format produced by llama-stack's knowledge_search tool.
+# Source: llama_stack/providers/inline/tool_runtime/rag/memory.py
+#
+# The format consists of:
+# - Header (hardcoded): "knowledge_search tool found N chunks:\nBEGIN of knowledge_search tool results.\n"
+# - Chunks (configurable template, default): "Result {index}\nContent: {chunk.content}\nMetadata: {metadata}\n"
+# - Footer (hardcoded): "END of knowledge_search tool results.\n"
+#
+# Note: The chunk template is configurable via RAGQueryConfig.chunk_template in llama-stack.
+# If customized, these patterns may not match. A warning is logged when fallback occurs.
+
+# Pattern to match individual RAG result blocks: " Result N\nContent: ..."
+# Captures result number and everything until the next result or end marker
+RAG_RESULT_PATTERN = re.compile(
+    r"\s*Result\s+(\d+)\s*\nContent:\s*(.*?)(?=\s*Result\s+\d+\s*\n|END of knowledge_search)",
+    re.DOTALL,
+)
+
+# Pattern to extract metadata dict from a result block
+RAG_METADATA_PATTERN = re.compile(r"Metadata:\s*(\{[^}]+\})", re.DOTALL)
 
 
 class Singleton(type):
@@ -117,47 +147,135 @@ class TurnSummary(BaseModel):
                 self._extract_rag_chunks_from_response(response_content)
 
     def _extract_rag_chunks_from_response(self, response_content: str) -> None:
-        """Extract RAG chunks from tool response content."""
+        """Extract RAG chunks from tool response content.
+
+        Parses RAG tool responses in multiple formats:
+        1. JSON format with "chunks" array or list of chunk objects
+        2. Formatted text with "Result N" blocks containing Content and Metadata
+
+        For formatted text responses, extracts:
+        - Content text for each result
+        - Metadata including docs_url, title, chunk_id, document_id
+        """
+        if not response_content or not response_content.strip():
+            return
+
+        # Try JSON format first
+        if self._try_parse_json_chunks(response_content):
+            return
+
+        # Try formatted text with "Result N" blocks
+        if self._try_parse_formatted_chunks(response_content):
+            return
+
+        # Fallback: treat entire response as single chunk
+        # This may indicate the RAG response format has changed
+        logger.warning(
+            "Unable to parse individual RAG chunks from response. "
+            "Falling back to single-chunk extraction. "
+            "This may indicate a change in the RAG tool response format. "
+            "Response preview: %.200s...",
+            response_content[:200] if len(response_content) > 200 else response_content,
+        )
+        self.rag_chunks.append(
+            RAGChunk(
+                content=response_content,
+                source=DEFAULT_RAG_TOOL,
+                score=None,
+            )
+        )
+
+    def _try_parse_json_chunks(self, response_content: str) -> bool:
+        """Try to parse response as JSON chunks.
+
+        Returns True if successfully parsed, False otherwise.
+        """
         try:
-            # Parse the response to get chunks
-            # Try JSON first
-            try:
-                data = json.loads(response_content)
-                if isinstance(data, dict) and "chunks" in data:
-                    for chunk in data["chunks"]:
+            data = json.loads(response_content)
+            if isinstance(data, dict) and "chunks" in data:
+                for chunk in data["chunks"]:
+                    self.rag_chunks.append(
+                        RAGChunk(
+                            content=chunk.get("content", ""),
+                            source=chunk.get("source"),
+                            score=chunk.get("score"),
+                        )
+                    )
+                return True
+            if isinstance(data, list):
+                for chunk in data:
+                    if isinstance(chunk, dict):
                         self.rag_chunks.append(
                             RAGChunk(
-                                content=chunk.get("content", ""),
+                                content=chunk.get("content", str(chunk)),
                                 source=chunk.get("source"),
                                 score=chunk.get("score"),
                             )
                         )
-                elif isinstance(data, list):
-                    # Handle list of chunks
-                    for chunk in data:
-                        if isinstance(chunk, dict):
-                            self.rag_chunks.append(
-                                RAGChunk(
-                                    content=chunk.get("content", str(chunk)),
-                                    source=chunk.get("source"),
-                                    score=chunk.get("score"),
-                                )
-                            )
-            except json.JSONDecodeError:
-                # If not JSON, treat the entire response as a single chunk
-                if response_content.strip():
-                    self.rag_chunks.append(
-                        RAGChunk(
-                            content=response_content,
-                            source=DEFAULT_RAG_TOOL,
-                            score=None,
-                        )
-                    )
-        except (KeyError, AttributeError, TypeError, ValueError):
-            # Treat response as single chunk on data access/structure errors
-            if response_content.strip():
-                self.rag_chunks.append(
-                    RAGChunk(
-                        content=response_content, source=DEFAULT_RAG_TOOL, score=None
-                    )
-                )
+                return bool(data)
+        except (json.JSONDecodeError, KeyError, AttributeError, TypeError, ValueError):
+            pass
+        return False
+
+    def _try_parse_formatted_chunks(self, response_content: str) -> bool:
+        """Try to parse formatted text response with 'Result N' blocks.
+
+        Parses responses in format:
+            knowledge_search tool found N chunks:
+            BEGIN of knowledge_search tool results.
+             Result 1
+            Content: <text>
+            Metadata: {'chunk_id': '...', 'docs_url': '...', 'title': '...', ...}
+             Result 2
+            ...
+            END of knowledge_search tool results.
+
+        Returns True if at least one chunk was parsed, False otherwise.
+        """
+        # Check if this looks like a formatted RAG response
+        if "Result" not in response_content or "Content:" not in response_content:
+            return False
+
+        matches = RAG_RESULT_PATTERN.findall(response_content)
+        if not matches:
+            return False
+
+        for _result_num, content_block in matches:
+            chunk = self._parse_single_chunk(content_block)
+            if chunk:
+                self.rag_chunks.append(chunk)
+
+        return bool(self.rag_chunks)
+
+    def _parse_single_chunk(self, content_block: str) -> RAGChunk | None:
+        """Parse a single chunk from a content block.
+
+        Args:
+            content_block: Text containing content and optionally metadata
+
+        Returns:
+            RAGChunk if successfully parsed, None otherwise
+        """
+        # Extract metadata if present
+        metadata: dict[str, Any] = {}
+        metadata_match = RAG_METADATA_PATTERN.search(content_block)
+        if metadata_match:
+            try:
+                metadata = ast.literal_eval(metadata_match.group(1))
+            except (ValueError, SyntaxError) as e:
+                logger.debug("Failed to parse chunk metadata: %s", e)
+
+        # Extract content (everything before "Metadata:" if present)
+        if metadata_match:
+            content = content_block[: metadata_match.start()].strip()
+        else:
+            content = content_block.strip()
+
+        if not content:
+            return None
+
+        return RAGChunk(
+            content=content,
+            source=metadata.get("docs_url") or metadata.get("source"),
+            score=metadata.get("score"),
+        )
