@@ -42,15 +42,12 @@ schema:	## Generate OpenAPI schema file
 	uv run scripts/generate_openapi_schema.py docs/openapi.json
 
 openapi-doc:	docs/openapi.json scripts/fix_openapi_doc.py	## Generate OpenAPI documentation
-	openapi-to-markdown --input_file docs/openapi.json --output_file output.md
-	python3 scripts/fix_openapi_doc.py <  output.md > docs/output.md
+	uv run openapi-to-markdown --input_file docs/openapi.json --output_file output.md
+	uv run python3 scripts/fix_openapi_doc.py < output.md > docs/openapi.md
 	rm output.md
 
 generate-documentation:	## Generate documentation
 	scripts/gen_doc.py
-
-openapi-doc:	docs/openapi.json	## Generate OpenAPI documentation
-	openapi-to-markdown --input_file docs/openapi.json --output_file docs/output.md
 
 # TODO uv migration
 requirements.txt:	pyproject.toml pdm.lock ## Generate requirements.txt file containing hashes for all non-devel packages

@@ -21,10 +21,10 @@ This document explains how the Conversations API works with the Responses API in
    * [Continuing Existing Conversations](#continuing-existing-conversations)
    * [Conversation Storage](#conversation-storage)
 * [API Endpoints](#api-endpoints)
-   * [Query Endpoint (v2)](#query-endpoint-v2)
-   * [Streaming Query Endpoint (v2)](#streaming-query-endpoint-v2)
-   * [Conversations List Endpoint (v3)](#conversations-list-endpoint-v3)
-   * [Conversation Detail Endpoint (v3)](#conversation-detail-endpoint-v3)
+   * [Query Endpoint (v1)](#query-endpoint-v1)
+   * [Streaming Query Endpoint (v1)](#streaming-query-endpoint-v1)
+   * [Conversations List Endpoint (v1)](#conversations-list-endpoint-v1)
+   * [Conversation Detail Endpoint (v1)](#conversation-detail-endpoint-v1)
 * [Testing with curl](#testing-with-curl)
 * [Database Schema](#database-schema)
 * [Troubleshooting](#troubleshooting)
@@ -191,9 +191,9 @@ Stores user-specific metadata:
 
 ## API Endpoints
 
-### Query Endpoint (v2)
+### Query Endpoint (v1)
 
-**Endpoint:** `POST /v2/query`
+**Endpoint:** `POST /v1/query`
 
 **Request:**
 ```json
@@ -223,11 +223,11 @@ Stores user-specific metadata:
 > [!NOTE]
 > If `conversation_id` is omitted, a new conversation is automatically created and the new ID is returned in the response.
 
-### Streaming Query Endpoint (v2)
+### Streaming Query Endpoint (v1)
 
-**Endpoint:** `POST /v2/streaming_query`
+**Endpoint:** `POST /v1/streaming_query`
 
-**Request:** Same as `/v2/query`
+**Request:** Same as `/v1/query`
 
 **Response:** Server-Sent Events (SSE) stream
 
@@ -243,9 +243,9 @@ data: {"event": "turn_complete", "data": {"id": 10, "token": "The OpenShift Assi
 data: {"event": "end", "data": {"referenced_documents": [], "input_tokens": 150, "output_tokens": 200}}
 ```
 
-### Conversations List Endpoint (v3)
+### Conversations List Endpoint (v1)
 
-**Endpoint:** `GET /v3/conversations`
+**Endpoint:** `GET /v1/conversations`
 
 **Response:**
 ```json
@@ -264,9 +264,9 @@ data: {"event": "end", "data": {"referenced_documents": [], "input_tokens": 150,
 }
 ```
 
-### Conversation Detail Endpoint (v3)
+### Conversation Detail Endpoint (v1)
 
-**Endpoint:** `GET /v3/conversations/{conversation_id}`
+**Endpoint:** `GET /v1/conversations/{conversation_id}`
 
 **Response:**
 ```json
@@ -308,7 +308,7 @@ export TOKEN="<your-token>"
 To start a new conversation, omit the `conversation_id` field:
 
 ```bash
-curl -X POST http://localhost:8090/v2/query \
+curl -X POST http://localhost:8090/v1/query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -338,7 +338,7 @@ curl -X POST http://localhost:8090/v2/query \
 To continue an existing conversation, include the `conversation_id` from a previous response:
 
 ```bash
-curl -X POST http://localhost:8090/v2/query \
+curl -X POST http://localhost:8090/v1/query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -351,10 +351,10 @@ curl -X POST http://localhost:8090/v2/query \
 
 ### Streaming Query (New Conversation)
 
-For streaming responses, use the `/v2/streaming_query` endpoint. The response is returned as Server-Sent Events (SSE):
+For streaming responses, use the `/v1/streaming_query` endpoint. The response is returned as Server-Sent Events (SSE):
 
 ```bash
-curl -X POST http://localhost:8090/v2/streaming_query \
+curl -X POST http://localhost:8090/v1/streaming_query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Accept: text/event-stream" \
@@ -381,7 +381,7 @@ data: {"event": "end", "data": {"referenced_documents": [], "input_tokens": 150,
 ### Streaming Query (Continue Conversation)
 
 ```bash
-curl -X POST http://localhost:8090/v2/streaming_query \
+curl -X POST http://localhost:8090/v1/streaming_query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Accept: text/event-stream" \
@@ -396,7 +396,7 @@ curl -X POST http://localhost:8090/v2/streaming_query \
 ### List Conversations
 
 ```bash
-curl -X GET http://localhost:8090/v3/conversations \
+curl -X GET http://localhost:8090/v1/conversations \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN"
 ```
@@ -404,7 +404,7 @@ curl -X GET http://localhost:8090/v3/conversations \
 ### Get Conversation Details
 
 ```bash
-curl -X GET http://localhost:8090/v3/conversations/0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e \
+curl -X GET http://localhost:8090/v1/conversations/0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN"
 ```
@@ -492,7 +492,7 @@ This is expected behavior. The Responses API v2 allows you to change the model/p
 ### Empty Conversation History
 
 **Symptom:**
-Calling `/v3/conversations/{conversation_id}` returns empty `chat_history`.
+Calling `/v1/conversations/{conversation_id}` returns empty `chat_history`.
 
 **Possible Causes:**
 1. The conversation was just created and has no messages yet

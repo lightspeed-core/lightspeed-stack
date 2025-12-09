@@ -1020,12 +1020,12 @@ Examples
 | 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
 ## POST `/v1/query`
 
-> **Query Endpoint Handler**
+> **Query Endpoint Handler V1**
 
-Handle request to the /query endpoint using Agent API.
+Handle request to the /query endpoint using Responses API.
 
 This is a wrapper around query_endpoint_handler_base that provides
-the Agent API specific retrieve_response and get_topic_summary functions.
+the Responses API specific retrieve_response and get_topic_summary functions.
 
 Returns:
     QueryResponse: Contains the conversation ID and the LLM-generated response.
@@ -1320,20 +1320,27 @@ Examples
  |
 ## POST `/v1/streaming_query`
 
-> **Streaming Query Endpoint Handler**
+> **Streaming Query Endpoint Handler V1**
 
-Handle request to the /streaming_query endpoint using Agent API.
+Handle request to the /streaming_query endpoint using Responses API.
 
-This is a wrapper around streaming_query_endpoint_handler_base that provides
-the Agent API specific retrieve_response and response generator functions.
+Returns a streaming response using Server-Sent Events (SSE) format with
+content type text/event-stream.
 
 Returns:
     StreamingResponse: An HTTP streaming response yielding
-    SSE-formatted events for the query lifecycle.
+    SSE-formatted events for the query lifecycle with content type
+    text/event-stream.
 
 Raises:
-    HTTPException: Returns HTTP 500 if unable to connect to the
-    Llama Stack server.
+    HTTPException:
+        - 401: Unauthorized - Missing or invalid credentials
+        - 403: Forbidden - Insufficient permissions or model override not allowed
+        - 404: Not Found - Conversation, model, or provider not found
+        - 422: Unprocessable Entity - Request validation failed
+        - 429: Too Many Requests - Quota limit exceeded
+        - 500: Internal Server Error - Configuration not loaded or other server errors
+        - 503: Service Unavailable - Unable to connect to Llama Stack backend
 
 
 
@@ -1347,7 +1354,7 @@ Raises:
 
 | Status Code | Description | Component |
 |-------------|-------------|-----------|
-| 200 | Streaming response (Server-Sent Events) | ...string |
+| 200 | Successful response | string |
 | 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
 
 Examples
@@ -1960,7 +1967,7 @@ Examples
 | 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
 ## GET `/v1/conversations`
 
-> **Get Conversations List Endpoint Handler**
+> **Conversations List Endpoint Handler V1**
 
 Handle request to retrieve all conversations for the authenticated user.
 
@@ -2067,23 +2074,25 @@ Examples
  |
 ## GET `/v1/conversations/{conversation_id}`
 
-> **Get Conversation Endpoint Handler**
+> **Conversation Get Endpoint Handler V1**
 
-Handle request to retrieve a conversation by ID.
+Handle request to retrieve a conversation by ID using Conversations API.
 
-Retrieve a conversation's chat history by its ID. Then fetches
-the conversation session from the Llama Stack backend,
-simplifies the session data to essential chat history, and
-returns it in a structured response. Raises HTTP 400 for
-invalid IDs, 404 if not found, 503 if the backend is
-unavailable, and 500 for unexpected errors.
+Retrieve a conversation's chat history by its ID using the LlamaStack
+Conversations API. This endpoint fetches the conversation items from
+the backend, simplifies them to essential chat history, and returns
+them in a structured response. Raises HTTP 400 for invalid IDs, 404
+if not found, 503 if the backend is unavailable, and 500 for
+unexpected errors.
 
-Parameters:
-    conversation_id (str): Unique identifier of the conversation to retrieve.
+Args:
+    request: The FastAPI request object
+    conversation_id: Unique identifier of the conversation to retrieve
+    auth: Authentication tuple from dependency
 
 Returns:
     ConversationResponse: Structured response containing the conversation
-    ID and simplified chat history.
+    ID and simplified chat history
 
 
 
@@ -2240,17 +2249,22 @@ Examples
 | 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
 ## DELETE `/v1/conversations/{conversation_id}`
 
-> **Delete Conversation Endpoint Handler**
+> **Conversation Delete Endpoint Handler V1**
 
-Handle request to delete a conversation by ID.
+Handle request to delete a conversation by ID using Conversations API.
 
 Validates the conversation ID format and attempts to delete the
-corresponding session from the Llama Stack backend. Raises HTTP
-errors for invalid IDs, not found conversations, connection
+conversation from the Llama Stack backend using the Conversations API.
+Raises HTTP errors for invalid IDs, not found conversations, connection
 issues, or unexpected failures.
 
+Args:
+    request: The FastAPI request object
+    conversation_id: Unique identifier of the conversation to delete
+    auth: Authentication tuple from dependency
+
 Returns:
-    ConversationDeleteResponse: Response indicating the result of the deletion operation.
+    ConversationDeleteResponse: Response indicating the result of the deletion operation
 
 
 
@@ -2367,6 +2381,152 @@ Examples
 }
 ```
  |
+| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Lightspeed Stack configuration has not been initialized.",
+    "response": "Configuration is not loaded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Failed to query the database",
+    "response": "Database query failed"
+  }
+}
+```
+ |
+| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Connection error while trying to reach backend service.",
+    "response": "Unable to connect to Llama Stack"
+  }
+}
+```
+ |
+| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+## PUT `/v1/conversations/{conversation_id}`
+
+> **Conversation Update Endpoint Handler V1**
+
+Handle request to update a conversation metadata using Conversations API.
+
+Updates the conversation metadata (including topic summary) in both the
+LlamaStack backend using the Conversations API and the local database.
+
+Args:
+    request: The FastAPI request object
+    conversation_id: Unique identifier of the conversation to update
+    update_request: Request containing the topic summary to update
+    auth: Authentication tuple from dependency
+
+Returns:
+    ConversationUpdateResponse: Response indicating the result of the update operation
+
+
+
+### 🔗 Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| conversation_id | string | True |  |
+
+
+### 📦 Request Body 
+
+[ConversationUpdateRequest](#conversationupdaterequest)
+
+### ✅ Responses
+
+| Status Code | Description | Component |
+|-------------|-------------|-----------|
+| 200 | Successful response | [ConversationUpdateResponse](#conversationupdateresponse) |
+| 400 | Invalid request format | [BadRequestResponse](#badrequestresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "The conversation ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+    "response": "Invalid conversation ID format"
+  }
+}
+```
+ |
+| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No Authorization header found",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No token found in Authorization header",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+ |
+| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+ |
 | 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
 
 Examples
@@ -2431,6 +2591,618 @@ Examples
 ```
  |
 | 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+## POST `/v2/query`
+
+> **Query Endpoint Handler V1**
+
+Handle request to the /query endpoint using Responses API.
+
+This is a wrapper around query_endpoint_handler_base that provides
+the Responses API specific retrieve_response and get_topic_summary functions.
+
+Returns:
+    QueryResponse: Contains the conversation ID and the LLM-generated response.
+
+
+
+
+
+### 📦 Request Body 
+
+[QueryRequest](#queryrequest)
+
+### ✅ Responses
+
+| Status Code | Description | Component |
+|-------------|-------------|-----------|
+| 200 | Successful response | [QueryResponse](#queryresponse) |
+| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No Authorization header found",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No token found in Authorization header",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+ |
+| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 does not have permission to read conversation with ID 123e4567-e89b-12d3-a456-426614174000",
+    "response": "User does not have permission to perform this action"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User lacks model_override permission required to override model/provider.",
+    "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
+  }
+}
+```
+ |
+| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+    "response": "Conversation not found"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Provider with ID openai does not exist",
+    "response": "Provider not found"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Model with ID gpt-4-turbo is not configured",
+    "response": "Model not found"
+  }
+}
+```
+ |
+| 422 | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Invalid request format. The request body could not be parsed.",
+    "response": "Invalid request format"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Missing required attributes: ['query', 'model', 'provider']",
+    "response": "Missing required attributes"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+    "response": "Invalid attribute value"
+  }
+}
+```
+ |
+| 429 | Quota limit exceeded | [QuotaExceededResponse](#quotaexceededresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "The token quota for model gpt-4-turbo has been exceeded.",
+    "response": "The model quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 123 has no available tokens.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Cluster has no available tokens.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Unknown subject 999 has no available tokens.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+ |
+| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Lightspeed Stack configuration has not been initialized.",
+    "response": "Configuration is not loaded"
+  }
+}
+```
+ |
+| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Connection error while trying to reach backend service.",
+    "response": "Unable to connect to Llama Stack"
+  }
+}
+```
+ |
+## POST `/v2/streaming_query`
+
+> **Streaming Query Endpoint Handler V1**
+
+Handle request to the /streaming_query endpoint using Responses API.
+
+Returns a streaming response using Server-Sent Events (SSE) format with
+content type text/event-stream.
+
+Returns:
+    StreamingResponse: An HTTP streaming response yielding
+    SSE-formatted events for the query lifecycle with content type
+    text/event-stream.
+
+Raises:
+    HTTPException:
+        - 401: Unauthorized - Missing or invalid credentials
+        - 403: Forbidden - Insufficient permissions or model override not allowed
+        - 404: Not Found - Conversation, model, or provider not found
+        - 422: Unprocessable Entity - Request validation failed
+        - 429: Too Many Requests - Quota limit exceeded
+        - 500: Internal Server Error - Configuration not loaded or other server errors
+        - 503: Service Unavailable - Unable to connect to Llama Stack backend
+
+
+
+
+
+### 📦 Request Body 
+
+[QueryRequest](#queryrequest)
+
+### ✅ Responses
+
+| Status Code | Description | Component |
+|-------------|-------------|-----------|
+| 200 | Successful response | string |
+| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No Authorization header found",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No token found in Authorization header",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+ |
+| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 does not have permission to read conversation with ID 123e4567-e89b-12d3-a456-426614174000",
+    "response": "User does not have permission to perform this action"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User lacks model_override permission required to override model/provider.",
+    "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
+  }
+}
+```
+ |
+| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+    "response": "Conversation not found"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Provider with ID openai does not exist",
+    "response": "Provider not found"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Model with ID gpt-4-turbo is not configured",
+    "response": "Model not found"
+  }
+}
+```
+ |
+| 422 | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Invalid request format. The request body could not be parsed.",
+    "response": "Invalid request format"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Missing required attributes: ['query', 'model', 'provider']",
+    "response": "Missing required attributes"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+    "response": "Invalid attribute value"
+  }
+}
+```
+ |
+| 429 | Quota limit exceeded | [QuotaExceededResponse](#quotaexceededresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "The token quota for model gpt-4-turbo has been exceeded.",
+    "response": "The model quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 123 has no available tokens.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Cluster has no available tokens.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Unknown subject 999 has no available tokens.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+ |
+| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Lightspeed Stack configuration has not been initialized.",
+    "response": "Configuration is not loaded"
+  }
+}
+```
+ |
+| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Connection error while trying to reach backend service.",
+    "response": "Unable to connect to Llama Stack"
+  }
+}
+```
+ |
 ## GET `/v2/conversations`
 
 > **Get Conversations List Endpoint Handler**
@@ -2760,23 +3532,6 @@ Examples
 }
 ```
  |
-| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
-    "response": "Conversation not found"
-  }
-}
-```
- |
 | 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
 
 Examples
@@ -2941,612 +3696,6 @@ Examples
 ```
  |
 | 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
-## POST `/v2/query`
-
-> **Query Endpoint Handler V2**
-
-Handle request to the /query endpoint using Responses API.
-
-This is a wrapper around query_endpoint_handler_base that provides
-the Responses API specific retrieve_response and get_topic_summary functions.
-
-Returns:
-    QueryResponse: Contains the conversation ID and the LLM-generated response.
-
-
-
-
-
-### 📦 Request Body 
-
-[QueryRequest](#queryrequest)
-
-### ✅ Responses
-
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [QueryResponse](#queryresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "No Authorization header found",
-    "response": "Missing or invalid credentials provided by client"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "No token found in Authorization header",
-    "response": "Missing or invalid credentials provided by client"
-  }
-}
-```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "User 6789 does not have permission to read conversation with ID 123e4567-e89b-12d3-a456-426614174000",
-    "response": "User does not have permission to perform this action"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "User 6789 is not authorized to access this endpoint.",
-    "response": "User does not have permission to access this endpoint"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "User lacks model_override permission required to override model/provider.",
-    "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
-  }
-}
-```
- |
-| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
-    "response": "Conversation not found"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Provider with ID openai does not exist",
-    "response": "Provider not found"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Model with ID gpt-4-turbo is not configured",
-    "response": "Model not found"
-  }
-}
-```
- |
-| 422 | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Invalid request format. The request body could not be parsed.",
-    "response": "Invalid request format"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Missing required attributes: ['query', 'model', 'provider']",
-    "response": "Missing required attributes"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
-    "response": "Invalid attribute value"
-  }
-}
-```
- |
-| 429 | Quota limit exceeded | [QuotaExceededResponse](#quotaexceededresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "The token quota for model gpt-4-turbo has been exceeded.",
-    "response": "The model quota has been exceeded"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "User 123 has no available tokens.",
-    "response": "The quota has been exceeded"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Cluster has no available tokens.",
-    "response": "The quota has been exceeded"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Unknown subject 999 has no available tokens.",
-    "response": "The quota has been exceeded"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
-    "response": "The quota has been exceeded"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
-    "response": "The quota has been exceeded"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
-    "response": "The quota has been exceeded"
-  }
-}
-```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Lightspeed Stack configuration has not been initialized.",
-    "response": "Configuration is not loaded"
-  }
-}
-```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Connection error while trying to reach backend service.",
-    "response": "Unable to connect to Llama Stack"
-  }
-}
-```
- |
-## POST `/v2/streaming_query`
-
-> **Streaming Query Endpoint Handler V2**
-
-Handle request to the /streaming_query endpoint using Responses API.
-
-This is a wrapper around streaming_query_endpoint_handler_base that provides
-the Responses API specific retrieve_response and response generator functions.
-
-Returns:
-    StreamingResponse: An HTTP streaming response yielding
-    SSE-formatted events for the query lifecycle.
-
-Raises:
-    HTTPException: Returns HTTP 500 if unable to connect to the
-    Llama Stack server.
-
-
-
-
-
-### 📦 Request Body 
-
-[QueryRequest](#queryrequest)
-
-### ✅ Responses
-
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Streaming response with Server-Sent Events | string
-string |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "No Authorization header found",
-    "response": "Missing or invalid credentials provided by client"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "No token found in Authorization header",
-    "response": "Missing or invalid credentials provided by client"
-  }
-}
-```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "User 6789 does not have permission to read conversation with ID 123e4567-e89b-12d3-a456-426614174000",
-    "response": "User does not have permission to perform this action"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "User 6789 is not authorized to access this endpoint.",
-    "response": "User does not have permission to access this endpoint"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "User lacks model_override permission required to override model/provider.",
-    "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
-  }
-}
-```
- |
-| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
-    "response": "Conversation not found"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Provider with ID openai does not exist",
-    "response": "Provider not found"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Model with ID gpt-4-turbo is not configured",
-    "response": "Model not found"
-  }
-}
-```
- |
-| 422 | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Invalid request format. The request body could not be parsed.",
-    "response": "Invalid request format"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Missing required attributes: ['query', 'model', 'provider']",
-    "response": "Missing required attributes"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
-    "response": "Invalid attribute value"
-  }
-}
-```
- |
-| 429 | Quota limit exceeded | [QuotaExceededResponse](#quotaexceededresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "The token quota for model gpt-4-turbo has been exceeded.",
-    "response": "The model quota has been exceeded"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "User 123 has no available tokens.",
-    "response": "The quota has been exceeded"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Cluster has no available tokens.",
-    "response": "The quota has been exceeded"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Unknown subject 999 has no available tokens.",
-    "response": "The quota has been exceeded"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
-    "response": "The quota has been exceeded"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
-    "response": "The quota has been exceeded"
-  }
-}
-```
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
-    "response": "The quota has been exceeded"
-  }
-}
-```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Lightspeed Stack configuration has not been initialized.",
-    "response": "Configuration is not loaded"
-  }
-}
-```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Connection error while trying to reach backend service.",
-    "response": "Unable to connect to Llama Stack"
-  }
-}
-```
- |
 ## GET `/readiness`
 
 > **Readiness Probe Get Method**
@@ -3868,6 +4017,17 @@ Examples
 
 
 
+## APIKeyTokenConfiguration
+
+
+API Key Token configuration.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| api_key | string |  |
+
+
 ## AccessRule
 
 
@@ -3931,6 +4091,7 @@ Authentication configuration.
 | k8s_cluster_api |  |  |
 | k8s_ca_cert_path |  |  |
 | jwk_config |  |  |
+| api_key_config |  |  |
 | rh_identity_config |  |  |
 
 
@@ -4546,11 +4707,11 @@ Useful resources:
 
 Model context protocol server configuration.
 
-MCP (Model Context Protocol) servers provide tools and
-capabilities to the AI agents. These are configured by this structure.
-Only MCP servers defined in the lightspeed-stack.yaml configuration are
-available to the agents. Tools configured in the llama-stack run.yaml
-are not accessible to lightspeed-core agents.
+MCP (Model Context Protocol) servers provide tools and capabilities to the
+AI agents. These are configured by this structure. Only MCP servers
+defined in the lightspeed-stack.yaml configuration are available to the
+agents. Tools configured in the llama-stack run.yaml are not accessible to
+lightspeed-core agents.
 
 Useful resources:
 
@@ -4594,9 +4755,9 @@ Model representing a response to models request.
 
 PostgreSQL database configuration.
 
-PostgreSQL database is used by Lightspeed Core Stack service for storing information about
-conversation IDs. It can also be leveraged to store conversation history and information
-about quota usage.
+PostgreSQL database is used by Lightspeed Core Stack service for storing
+information about conversation IDs. It can also be leveraged to store
+conversation history and information about quota usage.
 
 Useful resources:
 
@@ -4718,13 +4879,13 @@ Attributes:
 |-------|------|-------------|
 | conversation_id |  | The optional conversation ID (UUID) |
 | response | string | Response from LLM |
-| rag_chunks | array | List of RAG chunks used to generate the response |
-| tool_calls |  | List of tool calls made during response generation |
 | referenced_documents | array | List of documents referenced in generating the response |
 | truncated | boolean | Whether conversation history was truncated |
 | input_tokens | integer | Number of tokens sent to LLM |
 | output_tokens | integer | Number of tokens received from LLM |
 | available_quotas | object | Quota available as measured by all configured quota limiters |
+| tool_calls |  | List of tool calls made during response generation |
+| tool_results |  | List of tool results |
 
 
 ## QuotaExceededResponse
@@ -4801,19 +4962,6 @@ Quota scheduler configuration.
 | Field | Type | Description |
 |-------|------|-------------|
 | period | integer | Quota scheduler period specified in seconds |
-
-
-## RAGChunk
-
-
-Model representing a RAG chunk used in the response.
-
-
-| Field | Type | Description |
-|-------|------|-------------|
-| content | string | The content of the chunk |
-| source |  | Source document or URL |
-| score |  | Relevance score |
 
 
 ## RAGInfoResponse
@@ -4906,10 +5054,10 @@ SQLite database configuration.
 
 Service configuration.
 
-Lightspeed Core Stack is a REST API service that accepts requests
-on a specified hostname and port. It is also possible to enable
-authentication and specify the number of Uvicorn workers. When more
-workers are specified, the service can handle requests concurrently.
+Lightspeed Core Stack is a REST API service that accepts requests on a
+specified hostname and port. It is also possible to enable authentication
+and specify the number of Uvicorn workers. When more workers are specified,
+the service can handle requests concurrently.
 
 
 | Field | Type | Description |
@@ -4988,17 +5136,33 @@ Useful resources:
 | tls_key_password |  | Path to file containing the password to decrypt the SSL/TLS private key. |
 
 
-## ToolCall
+## ToolCallSummary
 
 
-Model representing a tool call made during response generation.
+Model representing a tool call made during response generation (for tool_calls list).
 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| tool_name | string | Name of the tool called |
-| arguments | object | Arguments passed to the tool |
-| result |  | Result from the tool |
+| id | string | ID of the tool call |
+| name | string | Name of the tool called |
+| args | object | Arguments passed to the tool |
+| type | string | Type indicator for tool call |
+
+
+## ToolResultSummary
+
+
+Model representing a result from a tool call (for tool_results list).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | ID of the tool call/result, matches the corresponding tool call 'id' |
+| status | string | Status of the tool execution (e.g., 'success') |
+| content |  | Content/result returned from the tool |
+| type | string | Type indicator for tool result |
+| round | integer | Round number or step of tool execution |
 
 
 ## ToolsResponse

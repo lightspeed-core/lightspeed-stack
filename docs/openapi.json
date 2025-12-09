@@ -2941,6 +2941,594 @@
                 }
             }
         },
+        "/v2/query": {
+            "post": {
+                "tags": [
+                    "query_v1"
+                ],
+                "summary": "Query Endpoint Handler V1",
+                "description": "Handle request to the /query endpoint using Responses API.\n\nThis is a wrapper around query_endpoint_handler_base that provides\nthe Responses API specific retrieve_response and get_topic_summary functions.\n\nReturns:\n    QueryResponse: Contains the conversation ID and the LLM-generated response.",
+                "operationId": "query_endpoint_handler_v2_v2_query_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/QueryRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QueryResponse"
+                                },
+                                "example": {
+                                    "available_quotas": {
+                                        "ClusterQuotaLimiter": 998911,
+                                        "UserQuotaLimiter": 998911
+                                    },
+                                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                    "input_tokens": 123,
+                                    "output_tokens": 456,
+                                    "referenced_documents": [
+                                        {
+                                            "doc_title": "Operator Lifecycle Manager concepts and resources",
+                                            "doc_url": "https://docs.openshift.com/container-platform/4.15/operators/understanding/olm/olm-understanding-olm.html"
+                                        }
+                                    ],
+                                    "response": "Operator Lifecycle Manager (OLM) helps users install...",
+                                    "tool_calls": [
+                                        {
+                                            "args": {},
+                                            "id": "1",
+                                            "name": "tool1",
+                                            "type": "tool_call"
+                                        }
+                                    ],
+                                    "tool_results": [
+                                        {
+                                            "content": "bla",
+                                            "id": "1",
+                                            "round": 1,
+                                            "status": "success",
+                                            "type": "tool_result"
+                                        }
+                                    ],
+                                    "truncated": false
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                },
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                },
+                                "examples": {
+                                    "conversation read": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 does not have permission to read conversation with ID 123e4567-e89b-12d3-a456-426614174000",
+                                                "response": "User does not have permission to perform this action"
+                                            }
+                                        }
+                                    },
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    },
+                                    "model override": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User lacks model_override permission required to override model/provider.",
+                                                "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotFoundResponse"
+                                },
+                                "examples": {
+                                    "conversation": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                                "response": "Conversation not found"
+                                            }
+                                        }
+                                    },
+                                    "provider": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Provider with ID openai does not exist",
+                                                "response": "Provider not found"
+                                            }
+                                        }
+                                    },
+                                    "model": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Model with ID gpt-4-turbo is not configured",
+                                                "response": "Model not found"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Request validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnprocessableEntityResponse"
+                                },
+                                "examples": {
+                                    "invalid format": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid request format. The request body could not be parsed.",
+                                                "response": "Invalid request format"
+                                            }
+                                        }
+                                    },
+                                    "missing attributes": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Missing required attributes: ['query', 'model', 'provider']",
+                                                "response": "Missing required attributes"
+                                            }
+                                        }
+                                    },
+                                    "invalid value": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+                                                "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Quota limit exceeded",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QuotaExceededResponse"
+                                },
+                                "examples": {
+                                    "model": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The token quota for model gpt-4-turbo has been exceeded.",
+                                                "response": "The model quota has been exceeded"
+                                            }
+                                        }
+                                    },
+                                    "user none": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 123 has no available tokens.",
+                                                "response": "The quota has been exceeded"
+                                            }
+                                        }
+                                    },
+                                    "cluster none": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Cluster has no available tokens.",
+                                                "response": "The quota has been exceeded"
+                                            }
+                                        }
+                                    },
+                                    "subject none": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Unknown subject 999 has no available tokens.",
+                                                "response": "The quota has been exceeded"
+                                            }
+                                        }
+                                    },
+                                    "user insufficient": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
+                                                "response": "The quota has been exceeded"
+                                            }
+                                        }
+                                    },
+                                    "cluster insufficient": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
+                                                "response": "The quota has been exceeded"
+                                            }
+                                        }
+                                    },
+                                    "subject insufficient": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
+                                                "response": "The quota has been exceeded"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                },
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
+                                },
+                                "examples": {
+                                    "llama stack": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Connection error while trying to reach backend service.",
+                                                "response": "Unable to connect to Llama Stack"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v2/streaming_query": {
+            "post": {
+                "tags": [
+                    "streaming_query_v1"
+                ],
+                "summary": "Streaming Query Endpoint Handler V1",
+                "description": "Handle request to the /streaming_query endpoint using Responses API.\n\nReturns a streaming response using Server-Sent Events (SSE) format with\ncontent type text/event-stream.\n\nReturns:\n    StreamingResponse: An HTTP streaming response yielding\n    SSE-formatted events for the query lifecycle with content type\n    text/event-stream.\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Too Many Requests - Quota limit exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to Llama Stack backend",
+                "operationId": "streaming_query_endpoint_handler_v2_v2_streaming_query_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/QueryRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "text/event-stream"
+                                },
+                                "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 11, \"output_tokens\": 19}, \"available_quotas\": {}}\n\n"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                },
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                },
+                                "examples": {
+                                    "conversation read": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 does not have permission to read conversation with ID 123e4567-e89b-12d3-a456-426614174000",
+                                                "response": "User does not have permission to perform this action"
+                                            }
+                                        }
+                                    },
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    },
+                                    "model override": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User lacks model_override permission required to override model/provider.",
+                                                "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotFoundResponse"
+                                },
+                                "examples": {
+                                    "conversation": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                                "response": "Conversation not found"
+                                            }
+                                        }
+                                    },
+                                    "provider": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Provider with ID openai does not exist",
+                                                "response": "Provider not found"
+                                            }
+                                        }
+                                    },
+                                    "model": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Model with ID gpt-4-turbo is not configured",
+                                                "response": "Model not found"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Request validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnprocessableEntityResponse"
+                                },
+                                "examples": {
+                                    "invalid format": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid request format. The request body could not be parsed.",
+                                                "response": "Invalid request format"
+                                            }
+                                        }
+                                    },
+                                    "missing attributes": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Missing required attributes: ['query', 'model', 'provider']",
+                                                "response": "Missing required attributes"
+                                            }
+                                        }
+                                    },
+                                    "invalid value": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+                                                "response": "Invalid attribute value"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Quota limit exceeded",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QuotaExceededResponse"
+                                },
+                                "examples": {
+                                    "model": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The token quota for model gpt-4-turbo has been exceeded.",
+                                                "response": "The model quota has been exceeded"
+                                            }
+                                        }
+                                    },
+                                    "user none": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 123 has no available tokens.",
+                                                "response": "The quota has been exceeded"
+                                            }
+                                        }
+                                    },
+                                    "cluster none": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Cluster has no available tokens.",
+                                                "response": "The quota has been exceeded"
+                                            }
+                                        }
+                                    },
+                                    "subject none": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Unknown subject 999 has no available tokens.",
+                                                "response": "The quota has been exceeded"
+                                            }
+                                        }
+                                    },
+                                    "user insufficient": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
+                                                "response": "The quota has been exceeded"
+                                            }
+                                        }
+                                    },
+                                    "cluster insufficient": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
+                                                "response": "The quota has been exceeded"
+                                            }
+                                        }
+                                    },
+                                    "subject insufficient": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
+                                                "response": "The quota has been exceeded"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                },
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
+                                },
+                                "examples": {
+                                    "llama stack": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Connection error while trying to reach backend service.",
+                                                "response": "Unable to connect to Llama Stack"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v2/conversations": {
             "get": {
                 "tags": [
