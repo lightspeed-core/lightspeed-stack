@@ -347,6 +347,7 @@ async def test_query_v2_endpoint_with_tool_calls(
     mock_result.file_id = "doc-1"
     mock_result.filename = "ansible-docs.txt"
     mock_result.score = 0.95
+    mock_result.text = "Ansible is an open-source automation tool..."
     mock_result.attributes = {
         "doc_url": "https://example.com/ansible-docs.txt",
         "link": "https://example.com/ansible-docs.txt",

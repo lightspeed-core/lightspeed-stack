@@ -787,17 +787,12 @@ async def test_retrieve_response_no_violation_with_shields(
     validation_metric.inc.assert_not_called()
 
 
-@pytest.mark.asyncio
-async def test_retrieve_response_parses_referenced_documents(
-    mocker: MockerFixture,
-) -> None:
-    """Test that retrieve_response correctly parses referenced documents from response."""
-    mock_client = mocker.AsyncMock()
-
+def _create_message_output_with_citations(mocker: MockerFixture) -> Any:
+    """Create mock message output item with content annotations (citations)."""
     # 1. Output item with message content annotations (citations)
-    output_item_1 = mocker.Mock()
-    output_item_1.type = "message"
-    output_item_1.role = "assistant"
+    output_item = mocker.Mock()
+    output_item.type = "message"
+    output_item.role = "assistant"
 
     # Mock content with annotations
     content_part = mocker.Mock()
@@ -816,19 +811,48 @@ async def test_retrieve_response_parses_referenced_documents(
     annotation2.title = None
 
     content_part.annotations = [annotation1, annotation2]
-    output_item_1.content = [content_part]
+    output_item.content = [content_part]
+    return output_item
 
+
+def _create_file_search_output(mocker: MockerFixture) -> Any:
+    """Create mock file search tool call output with results."""
     # 2. Output item with file search tool call results
-    output_item_2 = mocker.Mock()
-    output_item_2.type = "file_search_call"
-    output_item_2.queries = (
+    output_item = mocker.Mock()
+    output_item.type = "file_search_call"
+    output_item.queries = (
         []
     )  # Ensure queries is a list to avoid iteration error in tool summary
-    output_item_2.status = "completed"
-    output_item_2.results = [
-        {"filename": "file2.pdf", "attributes": {"url": "http://example.com/doc2"}},
-        {"filename": "file3.docx", "attributes": {}},  # No URL
-    ]
+    output_item.status = "completed"
+    # Create mock result objects with proper attributes matching real llama-stack response
+    result_1 = mocker.Mock()
+    result_1.filename = "file2.pdf"
+    result_1.attributes = {"url": "http://example.com/doc2"}
+    result_1.text = "Sample text from file2.pdf"
+    result_1.score = 0.95
+    result_1.file_id = "file-123"
+
+    result_2 = mocker.Mock()
+    result_2.filename = "file3.docx"
+    result_2.attributes = {}
+    result_2.text = "Sample text from file3.docx"
+    result_2.score = 0.85
+    result_2.file_id = "file-456"
+
+    output_item.results = [result_1, result_2]
+    return output_item
+
+
+@pytest.mark.asyncio
+async def test_retrieve_response_parses_referenced_documents(
+    mocker: MockerFixture,
+) -> None:
+    """Test that retrieve_response correctly parses referenced documents from response."""
+    mock_client = mocker.AsyncMock()
+
+    # Create output items using helper functions
+    output_item_1 = _create_message_output_with_citations(mocker)
+    output_item_2 = _create_file_search_output(mocker)
 
     response_obj = mocker.Mock()
     response_obj.id = "resp-docs"
@@ -870,3 +894,12 @@ async def test_retrieve_response_parses_referenced_documents(
     doc4 = next((d for d in referenced_docs if d.doc_title == "file3.docx"), None)
     assert doc4
     assert doc4.doc_url is None
+
+    # Verify RAG chunks were extracted from file_search_call results
+    assert len(_summary.rag_chunks) == 2
+    assert _summary.rag_chunks[0].content == "Sample text from file2.pdf"
+    assert _summary.rag_chunks[0].source == "file_search"
+    assert _summary.rag_chunks[0].score == 0.95
+    assert _summary.rag_chunks[1].content == "Sample text from file3.docx"
+    assert _summary.rag_chunks[1].source == "file_search"
+    assert _summary.rag_chunks[1].score == 0.85

@@ -40,12 +40,12 @@ from utils.endpoints import (
     get_system_prompt,
     get_topic_summary_system_prompt,
 )
-from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
 from utils.mcp_headers import mcp_headers_dependency
 from utils.responses import extract_text_from_response_output_item
 from utils.shields import detect_shield_violations, get_available_shields
+from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
 from utils.token_counter import TokenCounter
-from utils.types import ToolCallSummary, ToolResultSummary, TurnSummary
+from utils.types import RAGChunk, ToolCallSummary, ToolResultSummary, TurnSummary
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query_v1"])
@@ -419,11 +419,14 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         len(llm_response),
     )
 
+    # Extract rag chunks
+    rag_chunks = parse_rag_chunks_from_responses_api(response)
+
     summary = TurnSummary(
         llm_response=llm_response,
         tool_calls=tool_calls,
         tool_results=tool_results,
-        rag_chunks=[],
+        rag_chunks=rag_chunks,
     )
 
     # Extract referenced documents and token usage from Responses API response
@@ -447,6 +450,34 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     )
 
     return (summary, normalized_conversation_id, referenced_documents, token_usage)
+
+
+def parse_rag_chunks_from_responses_api(response_obj: Any) -> list[RAGChunk]:
+    """
+    Extract rag_chunks from the llama-stack OpenAI response.
+
+    Args:
+        response_obj: The ResponseObject from OpenAI compatible response API in llama-stack.
+
+    Returns:
+        List of RAGChunk with content, source, score
+    """
+    rag_chunks = []
+
+    for output_item in response_obj.output:
+        if (
+            hasattr(output_item, "type")
+            and output_item.type == "file_search_call"
+            and hasattr(output_item, "results")
+        ):
+
+            for result in output_item.results:
+                rag_chunk = RAGChunk(
+                    content=result.text, source="file_search", score=result.score
+                )
+                rag_chunks.append(rag_chunk)
+
+    return rag_chunks
 
 
 def parse_referenced_documents_from_responses_api(
