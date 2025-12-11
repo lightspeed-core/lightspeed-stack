@@ -1,6 +1,6 @@
 """Models for REST API requests."""
 
-from typing import Optional, Self
+from typing import Optional, Self, Any
 from enum import Enum
 
 from pydantic import BaseModel, model_validator, field_validator, Field
@@ -157,6 +157,14 @@ class QueryRequest(BaseModel):
         None,
         description="Media type for the response format",
         examples=[MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT],
+    )
+
+    solr: Optional[dict[str, Any]] = Field(
+        None,
+        description="Solr-specific query parameters including filter queries",
+        examples=[
+            {"fq": {"product:*openshift*", "product_version:*4.16*"}},
+        ],
     )
 
     # provides examples for /docs endpoint
