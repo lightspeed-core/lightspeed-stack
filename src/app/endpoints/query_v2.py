@@ -439,14 +439,12 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
             conversation_id,
         )
 
-    # Normalize conversation ID before returning (remove conv_ prefix for consistency)
-    normalized_conversation_id = (
-        normalize_conversation_id(conversation_id)
-        if conversation_id
-        else conversation_id
+    return (
+        summary,
+        normalize_conversation_id(conversation_id),
+        referenced_documents,
+        token_usage,
     )
-
-    return (summary, normalized_conversation_id, referenced_documents, token_usage)
 
 
 def parse_referenced_documents_from_responses_api(

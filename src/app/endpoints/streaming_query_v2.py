@@ -456,6 +456,6 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     response_stream = cast(AsyncIterator[OpenAIResponseObjectStream], response)
     # async for chunk in response_stream:
     #     logger.error("Chunk: %s", chunk.model_dump_json())
-    # Return the normalized conversation_id (already normalized above)
+    # Return the normalized conversation_id
     # The response_generator will emit it in the start event
-    return response_stream, conversation_id
+    return response_stream, normalize_conversation_id(conversation_id)
