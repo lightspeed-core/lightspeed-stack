@@ -743,10 +743,13 @@ async def prepare_tools_for_responses_api(
         return None
 
     toolgroups = []
-    # Get vector stores for RAG tools
-    vector_store_ids = [
-        vector_store.id for vector_store in (await client.vector_stores.list()).data
-    ]
+    # Get vector stores for RAG tools - use specified ones or fetch all
+    if query_request.vector_store_ids:
+        vector_store_ids = query_request.vector_store_ids
+    else:
+        vector_store_ids = [
+            vector_store.id for vector_store in (await client.vector_stores.list()).data
+        ]
 
     # Add RAG tools if vector stores are available
     rag_tools = get_rag_tools(vector_store_ids)

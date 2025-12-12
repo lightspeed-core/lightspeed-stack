@@ -83,6 +83,7 @@ class QueryRequest(BaseModel):
         no_tools: Whether to bypass all tools and MCP servers (default: False).
         generate_topic_summary: Whether to generate topic summary for new conversations.
         media_type: The optional media type for response format (application/json or text/plain).
+        vector_store_ids: The optional list of specific vector store IDs to query for RAG.
 
     Example:
         ```python
@@ -159,6 +160,13 @@ class QueryRequest(BaseModel):
         examples=[MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT],
     )
 
+    vector_store_ids: Optional[list[str]] = Field(
+        None,
+        description="Optional list of specific vector store IDs to query for RAG. "
+        "If not provided, all available vector stores will be queried.",
+        examples=["ocp_docs", "knowledge_base", "vector_db_1"],
+    )
+
     # provides examples for /docs endpoint
     model_config = {
         "extra": "forbid",
@@ -172,6 +180,7 @@ class QueryRequest(BaseModel):
                     "system_prompt": "You are a helpful assistant",
                     "no_tools": False,
                     "generate_topic_summary": True,
+                    "vector_store_ids": ["ocp_docs", "knowledge_base"],
                     "attachments": [
                         {
                             "attachment_type": "log",
