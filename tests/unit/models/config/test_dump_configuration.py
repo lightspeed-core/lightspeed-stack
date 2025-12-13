@@ -102,6 +102,7 @@ def test_dump_configuration(tmp_path: Path) -> None:
             "service": {
                 "host": "localhost",
                 "port": 8080,
+                "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
                 "color_log": True,
@@ -185,6 +186,10 @@ def test_dump_configuration(tmp_path: Path) -> None:
                 "limiters": [],
                 "scheduler": {"period": 1},
                 "enable_token_history": False,
+            },
+            "a2a_state": {
+                "sqlite": None,
+                "postgres": None,
             },
         }
 
@@ -402,6 +407,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
             "service": {
                 "host": "localhost",
                 "port": 8080,
+                "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
                 "color_log": True,
@@ -501,6 +507,10 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "scheduler": {"period": 10},
                 "enable_token_history": True,
             },
+            "a2a_state": {
+                "sqlite": None,
+                "postgres": None,
+            },
         }
 
 
@@ -587,6 +597,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
             "service": {
                 "host": "localhost",
                 "port": 8080,
+                "base_url": None,
                 "auth_enabled": False,
                 "workers": 1,
                 "color_log": True,
@@ -679,5 +690,9 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 "limiters": [],
                 "scheduler": {"period": 1},
                 "enable_token_history": False,
+            },
+            "a2a_state": {
+                "sqlite": None,
+                "postgres": None,
             },
         }
