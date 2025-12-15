@@ -135,6 +135,7 @@ def test_dump_configuration(tmp_path: Path) -> None:
                 "use_as_library_client": True,
                 "api_key": "**********",
                 "library_client_config_path": "tests/configuration/run.yaml",
+                "tls_security_profile": None,
             },
             "user_data_collection": {
                 "feedback_enabled": False,
@@ -435,6 +436,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "use_as_library_client": True,
                 "api_key": "**********",
                 "library_client_config_path": "tests/configuration/run.yaml",
+                "tls_security_profile": None,
             },
             "user_data_collection": {
                 "feedback_enabled": False,
@@ -621,6 +623,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 "use_as_library_client": True,
                 "api_key": "**********",
                 "library_client_config_path": "tests/configuration/run.yaml",
+                "tls_security_profile": None,
             },
             "user_data_collection": {
                 "feedback_enabled": False,
