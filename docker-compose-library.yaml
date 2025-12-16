@@ -19,6 +19,9 @@ services:
       # OpenAI
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - E2E_OPENAI_MODEL=${E2E_OPENAI_MODEL:-gpt-4-turbo}
+      # Default model for rlsapi v1 tests
+      - E2E_DEFAULT_PROVIDER=${E2E_DEFAULT_PROVIDER:-openai}
+      - E2E_DEFAULT_MODEL=${E2E_DEFAULT_MODEL:-gpt-4o-mini}
       # Azure
       - AZURE_API_KEY=${AZURE_API_KEY:-}
       # RHAIIS

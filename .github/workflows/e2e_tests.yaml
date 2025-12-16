@@ -135,9 +135,9 @@ jobs:
         run: |
           CONFIGS_DIR="tests/e2e/configs"
           ENVIRONMENT="$CONFIG_ENVIRONMENT"
-          
+
           echo "Looking for configurations in $CONFIGS_DIR/"
-          
+
           # List available configurations
           if [ -d "$CONFIGS_DIR" ]; then
             echo "Available configurations:"
@@ -146,12 +146,12 @@ jobs:
             echo "Configs directory '$CONFIGS_DIR' not found!"
             exit 1
           fi
-          
+
           # Determine which config file to use
           CONFIG_FILE="$CONFIGS_DIR/run-$ENVIRONMENT.yaml"
-          
+
           echo "Looking for: $CONFIG_FILE"
-          
+
           if [ -f "$CONFIG_FILE" ]; then
             echo "✅ Found config for environment: $ENVIRONMENT"
             cp "$CONFIG_FILE" run.yaml
@@ -162,6 +162,30 @@ jobs:
             ls -la "$CONFIGS_DIR/"
             exit 1
           fi
+
+      - name: Set default model for rlsapi v1 tests
+        run: |
+          # Set default model/provider for rlsapi v1 endpoint based on environment
+          case "${{ matrix.environment }}" in
+            ci)
+              echo "E2E_DEFAULT_PROVIDER=openai" >> $GITHUB_ENV
+              echo "E2E_DEFAULT_MODEL=gpt-4o-mini" >> $GITHUB_ENV
+              ;;
+            azure)
+              echo "E2E_DEFAULT_PROVIDER=azure" >> $GITHUB_ENV
+              echo "E2E_DEFAULT_MODEL=gpt-4o-mini" >> $GITHUB_ENV
+              ;;
+            vertexai)
+              echo "E2E_DEFAULT_PROVIDER=google-vertex" >> $GITHUB_ENV
+              echo "E2E_DEFAULT_MODEL=gemini-2.0-flash-exp" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "⚠️ Unknown environment: ${{ matrix.environment }}, using defaults"
+              echo "E2E_DEFAULT_PROVIDER=openai" >> $GITHUB_ENV
+              echo "E2E_DEFAULT_MODEL=gpt-4o-mini" >> $GITHUB_ENV
+              ;;
+          esac
+          echo "✅ Set E2E_DEFAULT_PROVIDER=${E2E_DEFAULT_PROVIDER} and E2E_DEFAULT_MODEL=${E2E_DEFAULT_MODEL}"
 
       - name: Show final configuration
         run: |

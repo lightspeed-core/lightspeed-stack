@@ -17,3 +17,8 @@ user_data_collection:
   transcripts_storage: "/tmp/data/transcripts"
 authentication:
   module: "noop"
+inference:
+  # Configure default model/provider for rlsapi v1 endpoint
+  # These are set per-environment in the CI workflow
+  default_provider: ${env.E2E_DEFAULT_PROVIDER:=openai}
+  default_model: ${env.E2E_DEFAULT_MODEL:=gpt-4o-mini}

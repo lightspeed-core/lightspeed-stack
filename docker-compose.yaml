@@ -55,6 +55,9 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - AZURE_API_KEY=${AZURE_API_KEY}
+      # Default model for rlsapi v1 tests
+      - E2E_DEFAULT_PROVIDER=${E2E_DEFAULT_PROVIDER:-openai}
+      - E2E_DEFAULT_MODEL=${E2E_DEFAULT_MODEL:-gpt-4o-mini}
     depends_on:
         llama-stack:
           condition: service_healthy
