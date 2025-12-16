@@ -7,6 +7,7 @@ from typing import Optional, Any, Pattern
 from enum import Enum
 from functools import cached_property
 import re
+import yaml
 
 import jsonpath_ng
 from jsonpath_ng.exceptions import JSONPathError
@@ -360,6 +361,12 @@ class ServiceConfiguration(ConfigurationBase):
         8080,
         title="Port",
         description="Service port",
+    )
+
+    base_url: Optional[str] = Field(
+        None,
+        title="Base URL",
+        description="Externally reachable base URL for the service; needed for A2A support.",
     )
 
     auth_enabled: bool = Field(
@@ -807,6 +814,12 @@ class Action(str, Enum):
     # RHEL Lightspeed rlsapi v1 compatibility - stateless inference (no history/RAG)
     RLSAPI_V1_INFER = "rlsapi_v1_infer"
 
+    # A2A (Agent-to-Agent) protocol actions
+    A2A_AGENT_CARD = "a2a_agent_card"
+    A2A_TASK_EXECUTION = "a2a_task_execution"
+    A2A_MESSAGE = "a2a_message"
+    A2A_JSONRPC = "a2a_jsonrpc"
+
 
 class AccessRule(ConfigurationBase):
     """Rule defining what actions a role can perform."""
@@ -1081,6 +1094,8 @@ class Customization(ConfigurationBase):
     disable_query_system_prompt: bool = False
     system_prompt_path: Optional[FilePath] = None
     system_prompt: Optional[str] = None
+    agent_card_path: Optional[FilePath] = None
+    agent_card_config: Optional[dict[str, Any]] = None
     custom_profile: Optional[CustomProfile] = Field(default=None, init=False)
 
     @model_validator(mode="after")
@@ -1103,6 +1118,23 @@ class Customization(ConfigurationBase):
             self.system_prompt = checks.get_attribute_from_file(
                 dict(self), "system_prompt_path"
             )
+
+        # Load agent card configuration from YAML file
+        if self.agent_card_path is not None:
+            checks.file_check(self.agent_card_path, "agent card")
+
+            try:
+                with open(self.agent_card_path, "r", encoding="utf-8") as f:
+                    self.agent_card_config = yaml.safe_load(f)
+            except yaml.YAMLError as e:
+                raise ValueError(
+                    f"Invalid YAML in agent card file '{self.agent_card_path}': {e}"
+                ) from e
+            except OSError as e:
+                raise ValueError(
+                    f"Unable to read agent card file '{self.agent_card_path}': {e}"
+                ) from e
+
         return self
 
 
@@ -1215,6 +1247,64 @@ class ConversationHistoryConfiguration(ConfigurationBase):
                 if any([self.memory, self.sqlite]):
                     raise ValueError("Only PostgreSQL cache config must be provided")
         return self
+
+
+class A2AStateConfiguration(ConfigurationBase):
+    """A2A protocol persistent state configuration.
+
+    Configures how A2A task state and context-to-conversation mappings are
+    stored. For multi-worker deployments, use SQLite or PostgreSQL to ensure
+    state is shared across all workers.
+
+    If no configuration is provided, in-memory storage is used (default).
+    This is suitable for single-worker deployments but state will be lost
+    on restarts and not shared across workers.
+
+    Attributes:
+        sqlite: SQLite database configuration for A2A state storage.
+        postgres: PostgreSQL database configuration for A2A state storage.
+    """
+
+    sqlite: Optional[SQLiteDatabaseConfiguration] = Field(
+        default=None,
+        title="SQLite configuration",
+        description="SQLite database configuration for A2A state storage.",
+    )
+    postgres: Optional[PostgreSQLDatabaseConfiguration] = Field(
+        default=None,
+        title="PostgreSQL configuration",
+        description="PostgreSQL database configuration for A2A state storage.",
+    )
+
+    @model_validator(mode="after")
+    def check_a2a_state_configuration(self) -> Self:
+        """Validate A2A state configuration - only one type can be configured."""
+        total_configured = sum([self.sqlite is not None, self.postgres is not None])
+
+        if total_configured > 1:
+            raise ValueError("Only one A2A state storage configuration can be provided")
+
+        return self
+
+    @property
+    def storage_type(self) -> Literal["memory", "sqlite", "postgres"]:
+        """Return the configured storage type."""
+        if self.sqlite is not None:
+            return "sqlite"
+        if self.postgres is not None:
+            return "postgres"
+        return "memory"
+
+    @property
+    def config(
+        self,
+    ) -> SQLiteDatabaseConfiguration | PostgreSQLDatabaseConfiguration | None:
+        """Return the active storage configuration, or None for memory storage."""
+        if self.sqlite is not None:
+            return self.sqlite
+        if self.postgres is not None:
+            return self.postgres
+        return None
 
 
 class ByokRag(ConfigurationBase):
@@ -1456,6 +1546,12 @@ class Configuration(ConfigurationBase):
         title="BYOK RAG configuration",
         description="BYOK RAG configuration. This configuration can be used to "
         "reconfigure Llama Stack through its run.yaml configuration file",
+    )
+
+    a2a_state: A2AStateConfiguration = Field(
+        default_factory=A2AStateConfiguration,
+        title="A2A state configuration",
+        description="Configuration for A2A protocol persistent state storage.",
     )
 
     quota_handlers: QuotaHandlersConfiguration = Field(

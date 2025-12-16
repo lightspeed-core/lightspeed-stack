@@ -41,11 +41,16 @@ dependencies = [
     # Used by JWK token auth handler
     "aiohttp>=3.12.14",
     "authlib>=1.6.0",
+    # Used for A2A protocol support
+    "a2a-sdk>=0.3.4,<0.4.0",
     # OpenAPI exporter
     "email-validator>=2.2.0",
     "openai>=1.99.9",
     # Used by database interface
     "sqlalchemy>=2.0.42",
+    # Async database drivers for A2A persistent storage
+    "aiosqlite>=0.21.0",
+    "asyncpg>=0.31.0",
     # Used by Llama Stack version checker
     "semver<4.0.0",
     # Used by authorization resolvers
@@ -53,6 +58,8 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "litellm>=1.75.5.post1",
     "urllib3==2.6.1",
+    # Used for agent card configuration
+    "PyYAML>=6.0.0",
 ]
 
 

@@ -18,8 +18,15 @@ src/
 ├── app/                  # FastAPI application
 │   ├── endpoints/        # REST API endpoints
 │   └── main.py           # Application entry point
+├── a2a_storage/          # A2A protocol persistent storage
+│   ├── context_store.py  # Abstract base class for context stores
+│   ├── in_memory_context_store.py  # In-memory implementation
+│   ├── sqlite_context_store.py     # SQLite implementation
+│   ├── postgres_context_store.py   # PostgreSQL implementation
+│   └── storage_factory.py          # Factory for creating stores
 ├── auth/                 # Authentication modules (k8s, jwk, noop)
 ├── authorization/        # Authorization middleware & resolvers
+├── cache/                # Conversation cache implementations
 ├── models/               # Pydantic models
 │   ├── config.py         # Configuration classes
 │   ├── requests.py       # Request models

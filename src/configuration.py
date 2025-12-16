@@ -9,6 +9,7 @@ from llama_stack.core.stack import replace_env_vars
 
 import yaml
 from models.config import (
+    A2AStateConfiguration,
     AuthorizationConfiguration,
     Configuration,
     Customization,
@@ -157,6 +158,13 @@ class AppConfig:
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         return self._configuration.quota_handlers
+
+    @property
+    def a2a_state(self) -> "A2AStateConfiguration":
+        """Return A2A state configuration."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.a2a_state
 
     @property
     def conversation_cache(self) -> Cache:
