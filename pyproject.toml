@@ -53,6 +53,7 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "litellm>=1.75.5.post1",
     "urllib3==2.6.1",
+    "einops>=0.8.1",
 ]
 
 
