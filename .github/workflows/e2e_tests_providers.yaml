@@ -1,7 +1,10 @@
 # .github/workflows/e2e_tests.yml
-name: E2E Tests
+name: E2E Inference Provider Tests
 
-on: [push, pull_request_target]
+on: 
+  schedule:
+    - cron: "0 0 * * *"  # Runs once a day at midnight UTC
+  workflow_dispatch:
 
 jobs:
   e2e_tests:
@@ -10,13 +13,16 @@ jobs:
       fail-fast: false
       matrix:
         mode: ["server", "library"]
-        environment: ["ci"]
+        environment: ["azure", "vertexai"]
     
     name: "E2E: ${{ matrix.mode }} mode / ${{ matrix.environment }}"
     
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       E2E_OPENAI_MODEL: ${{ vars.E2E_OPENAI_MODEL }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      TENANT_ID: ${{ secrets.TENANT_ID }}
       E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
 
     steps:
@@ -61,6 +67,71 @@ jobs:
           cp "${CONFIG_FILE}" lightspeed-stack.yaml
           echo "✅ Configuration loaded successfully"
         
+      - name: Get Azure API key (access token)
+        if: matrix.environment == 'azure'
+        id: azure_token
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+        run: |
+          echo "Requesting Azure API token..."
+          RESPONSE=$(curl -s -X POST \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "client_id=$CLIENT_ID&scope=https://cognitiveservices.azure.com/.default&client_secret=$CLIENT_SECRET&grant_type=client_credentials" \
+            "https://login.microsoftonline.com/$TENANT_ID/oauth2/v2.0/token")
+
+          echo "Response received. Extracting access_token..."
+          ACCESS_TOKEN=$(echo "$RESPONSE" | jq -r '.access_token')
+
+          if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" == "null" ]; then
+            echo "❌ Failed to obtain Azure access token. Response:"
+            echo "$RESPONSE"
+            exit 1
+          fi
+
+          echo "✅ Successfully obtained Azure access token."
+          echo "AZURE_API_KEY=$ACCESS_TOKEN" >> $GITHUB_ENV
+
+      - name: Save VertexAI service account key to file
+        if: matrix.environment == 'vertexai'
+        env:
+          GOOGLE_SA_KEY: ${{ secrets.GOOGLE_SA_KEY }}
+        run: |
+          echo "Setting up Google Cloud service account credentials..."
+
+          if [ -z "$GOOGLE_SA_KEY" ]; then
+            echo "❌ GOOGLE_SA_KEY is not set. Please configure the secret in GitHub repository settings."
+            exit 1
+          fi
+
+          GCP_KEYS_PATH=./tmp/.gcp-keys
+          echo "GCP_KEYS_PATH=$GCP_KEYS_PATH" >> $GITHUB_ENV
+
+          mkdir -p $GCP_KEYS_PATH
+
+          echo "Writing service account key to file..."
+
+          # Decode from base64, needed because GH changes the key if using the raw key
+          printf '%s' "$GOOGLE_SA_KEY" | base64 -d > $GCP_KEYS_PATH/gcp-key.json
+
+          # Verify the file was created and is valid JSON
+          if [ ! -f "$GCP_KEYS_PATH/gcp-key.json" ]; then
+            echo "❌ Failed to create gcp-key.json file"
+            exit 1
+          fi
+
+          if ! jq empty "$GCP_KEYS_PATH/gcp-key.json" 2>/dev/null; then
+            echo "❌ gcp-key.json is not valid JSON"
+            exit 1
+          fi
+          echo "✅ gcp-key.json is valid JSON"
+
+          # Set proper permissions (readable by all, needed for container user 1001)
+          chmod 644 $GCP_KEYS_PATH/gcp-key.json
+
+          echo "GOOGLE_APPLICATION_CREDENTIALS=/opt/app-root/.gcp-keys/gcp-key.json" >> $GITHUB_ENV
+
       - name: Select and configure run.yaml
         env:
           CONFIG_ENVIRONMENT: ${{ matrix.environment || 'ci' }}
@@ -127,6 +198,11 @@ jobs:
         if: matrix.mode == 'server'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AZURE_API_KEY: ${{ env.AZURE_API_KEY }}
+          VERTEX_AI_LOCATION: ${{ secrets.VERTEX_AI_LOCATION }}
+          VERTEX_AI_PROJECT: ${{ secrets.VERTEX_AI_PROJECT }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+          GCP_KEYS_PATH: ${{ env.GCP_KEYS_PATH }}
         run: |
           # Debug: Check if environment variable is available for docker-compose
           echo "OPENAI_API_KEY is set: $([ -n "$OPENAI_API_KEY" ] && echo 'YES' || echo 'NO')"
@@ -148,6 +224,11 @@ jobs:
         if: matrix.mode == 'library'
         env: 
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AZURE_API_KEY: ${{ env.AZURE_API_KEY }}
+          VERTEX_AI_LOCATION: ${{ secrets.VERTEX_AI_LOCATION }}
+          VERTEX_AI_PROJECT: ${{ secrets.VERTEX_AI_PROJECT }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+          GCP_KEYS_PATH: ${{ env.GCP_KEYS_PATH }}
         run: |
           echo "Starting service in library mode (1 container)"
           docker compose -f docker-compose-library.yaml up -d
