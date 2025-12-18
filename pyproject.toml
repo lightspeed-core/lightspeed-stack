@@ -52,7 +52,7 @@ dependencies = [
     "jsonpath-ng>=1.6.1",
     "psycopg2-binary>=2.9.10",
     "litellm>=1.75.5.post1",
-    "urllib3==2.6.1",
+    "urllib3==2.6.2",
     "einops>=0.8.1",
 ]
 
