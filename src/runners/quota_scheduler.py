@@ -27,9 +27,6 @@ from quota.sql import (
 
 logger = get_logger(__name__)
 
-DATABASE_RECONNECTION_COUNT: int = 10
-RECONNECTION_DELAY: int = 1
-
 
 # pylint: disable=R0912
 def quota_scheduler(config: QuotaHandlersConfiguration) -> bool:
@@ -59,15 +56,19 @@ def quota_scheduler(config: QuotaHandlersConfiguration) -> bool:
         logger.warning("No limiters are setup, skipping")
         return False
 
-    for _ in range(DATABASE_RECONNECTION_COUNT):
+    for _ in range(config.scheduler.database_reconnection_count):
         try:
+            # try to connect to database
             connection = connect(config)
+            # if connection is established, we are ok
             if connection is not None:
                 break
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.warning("Can not connect to database, will try later: %s", e)
-        sleep(RECONNECTION_DELAY)
+        sleep(config.scheduler.database_reconnection_delay)
     else:
+        # if the connection cannot be established after specified count
+        # attempts, give up
         logger.warning("Can not connect to database, skipping")
         return False
 

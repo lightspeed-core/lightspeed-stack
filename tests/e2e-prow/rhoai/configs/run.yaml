@@ -52,8 +52,7 @@ providers:
   #   provider_id: llama-guard
   #   provider_type: inline::llama-guard
   scoring:
-  - config: {}
-    provider_id: basic
+  - provider_id: basic
     provider_type: inline::basic
   tool_runtime:
   - config: {}

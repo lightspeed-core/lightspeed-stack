@@ -29,7 +29,14 @@ MOCK_AUTH = (
 
 @pytest.fixture
 def dummy_request() -> Request:
-    """Create a dummy FastAPI Request object for testing."""
+    """Create a dummy FastAPI Request object for testing.
+
+    Create a minimal FastAPI Request object suitable for unit tests.
+
+    Returns:
+        request (fastapi.Request): A Request constructed with a bare HTTP scope
+        (type "http") for use in tests.
+    """
     req = Request(scope={"type": "http"})
     return req
 

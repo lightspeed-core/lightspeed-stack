@@ -53,6 +53,13 @@ class TextDelta:
     """Mock TextDelta for Agent API tests."""
 
     def __init__(self, text: str, type: str = "text"):  # noqa: A002
+        """
+        Initialize the object with textual content and a chunk type.
+
+        Parameters:
+            text (str): The textual content for this instance.
+            type (str): The content type or category (for example, "text"). Defaults to "text".
+        """
         self.text = text
         self.type = type
 
@@ -61,6 +68,15 @@ class ToolCallDelta:
     """Mock ToolCallDelta for Agent API tests."""
 
     def __init__(self, **kwargs: Any):
+        """
+        Initialize the instance by setting attributes from the provided keyword arguments.
+
+        Parameters:
+            **kwargs: Any
+                Attribute names and values to assign to the instance. Each key in
+                `kwargs` becomes an attribute on the created object with the
+                corresponding value.
+        """
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -73,6 +89,15 @@ class TurnResponseEvent:
     """Mock TurnResponseEvent for Agent API tests."""
 
     def __init__(self, **kwargs: Any):
+        """
+        Initialize the instance by setting attributes from the provided keyword arguments.
+
+        Parameters:
+            **kwargs: Any
+                Attribute names and values to assign to the instance. Each key in
+                `kwargs` becomes an attribute on the created object with the
+                corresponding value.
+        """
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -81,6 +106,15 @@ class AgentTurnResponseStreamChunk:
     """Mock AgentTurnResponseStreamChunk for Agent API tests."""
 
     def __init__(self, **kwargs: Any):
+        """
+        Initialize the instance by setting attributes from the provided keyword arguments.
+
+        Parameters:
+            **kwargs: Any
+                Attribute names and values to assign to the instance. Each key in
+                `kwargs` becomes an attribute on the created object with the
+                corresponding value.
+        """
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -89,6 +123,15 @@ class AgentTurnResponseStepCompletePayload:
     """Mock AgentTurnResponseStepCompletePayload for Agent API tests."""
 
     def __init__(self, **kwargs: Any):
+        """
+        Initialize the instance by setting attributes from the provided keyword arguments.
+
+        Parameters:
+            **kwargs: Any
+                Attribute names and values to assign to the instance. Each key in
+                `kwargs` becomes an attribute on the created object with the
+                corresponding value.
+        """
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -97,6 +140,15 @@ class AgentTurnResponseStepProgressPayload:
     """Mock AgentTurnResponseStepProgressPayload for Agent API tests."""
 
     def __init__(self, **kwargs: Any):
+        """
+        Initialize the instance by setting attributes from the provided keyword arguments.
+
+        Parameters:
+            **kwargs: Any
+                Attribute names and values to assign to the instance. Each key in
+                `kwargs` becomes an attribute on the created object with the
+                corresponding value.
+        """
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -105,6 +157,15 @@ class AgentTurnResponseTurnAwaitingInputPayload:
     """Mock AgentTurnResponseTurnAwaitingInputPayload for Agent API tests."""
 
     def __init__(self, **kwargs: Any):
+        """
+        Initialize the instance by setting attributes from the provided keyword arguments.
+
+        Parameters:
+            **kwargs: Any
+                Attribute names and values to assign to the instance. Each key in
+                `kwargs` becomes an attribute on the created object with the
+                corresponding value.
+        """
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -113,6 +174,15 @@ class AgentTurnResponseTurnCompletePayload:
     """Mock AgentTurnResponseTurnCompletePayload for Agent API tests."""
 
     def __init__(self, **kwargs: Any):
+        """
+        Initialize the instance by setting attributes from the provided keyword arguments.
+
+        Parameters:
+            **kwargs: Any
+                Attribute names and values to assign to the instance. Each key in
+                `kwargs` becomes an attribute on the created object with the
+                corresponding value.
+        """
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -121,6 +191,15 @@ class AgentTurnResponseTurnStartPayload:
     """Mock AgentTurnResponseTurnStartPayload for Agent API tests."""
 
     def __init__(self, **kwargs: Any):
+        """
+        Initialize the instance by setting attributes from the provided keyword arguments.
+
+        Parameters:
+            **kwargs: Any
+                Attribute names and values to assign to the instance. Each key in
+                `kwargs` becomes an attribute on the created object with the
+                corresponding value.
+        """
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -129,6 +208,15 @@ class ToolExecutionStep:
     """Mock ToolExecutionStep for Agent API tests."""
 
     def __init__(self, **kwargs: Any):
+        """
+        Initialize the instance by setting attributes from the provided keyword arguments.
+
+        Parameters:
+            **kwargs: Any
+                Attribute names and values to assign to the instance. Each key in
+                `kwargs` becomes an attribute on the created object with the
+                corresponding value.
+        """
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -137,6 +225,15 @@ class ToolResponse:
     """Mock ToolResponse for Agent API tests."""
 
     def __init__(self, **kwargs: Any):
+        """
+        Initialize the instance by setting attributes from the provided keyword arguments.
+
+        Parameters:
+            **kwargs: Any
+                Attribute names and values to assign to the instance. Each key in
+                `kwargs` becomes an attribute on the created object with the
+                corresponding value.
+        """
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -152,7 +249,17 @@ MOCK_AUTH = (
 
 
 def mock_database_operations(mocker: MockerFixture) -> None:
-    """Helper function to mock database operations for streaming query endpoints."""
+    """Helper function to mock database operations for streaming query endpoints.
+
+    Configure test mocks for conversation ownership validation and post-stream
+    cleanup used by streaming-query tests.
+
+    Parameters:
+        mocker (MockerFixture): Pytest-mock fixture used to patch functions.
+        After calling this helper, `validate_conversation_ownership` is patched
+        to return `True` and `cleanup_after_streaming` is patched to an async
+        no-op.
+    """
     mocker.patch(
         "app.endpoints.streaming_query.validate_conversation_ownership",
         return_value=True,
@@ -203,7 +310,17 @@ Use them as supporting information only in answering this query.
 
 @pytest.fixture(autouse=True, name="setup_configuration")
 def setup_configuration_fixture() -> AppConfig:
-    """Set up configuration for tests."""
+    """Set up configuration for tests.
+
+    Create and initialize an AppConfig instance preconfigured for unit tests.
+
+    The configuration uses a local service (localhost:8080), a test Llama Stack
+    API key and URL, disables user transcript collection, and sets a noop
+    conversation cache and empty MCP servers to avoid external dependencies.
+
+    Returns:
+        AppConfig: An initialized AppConfig populated with the test settings.
+    """
     config_dict = {
         "name": "test",
         "service": {
@@ -275,6 +392,16 @@ async def test_streaming_query_endpoint_on_connection_error(
 
     # simulate situation when it is not possible to connect to Llama Stack
     def _raise_connection_error(*args: Any, **kwargs: Any) -> None:
+        """
+        Raise an APIConnectionError unconditionally.
+
+        Accepts any positional and keyword arguments and always raises an
+        APIConnectionError (with `request=None`), intended for use in tests to
+        simulate a connection failure.
+
+        Raises:
+            APIConnectionError: Always raised to represent a client connection error.
+        """
         raise APIConnectionError(request=None)  # type: ignore[arg-type]
 
     mocker.patch(
@@ -303,7 +430,16 @@ async def test_streaming_query_endpoint_on_connection_error(
 
 # pylint: disable=too-many-locals
 async def _test_streaming_query_endpoint_handler(mocker: MockerFixture) -> None:
-    """Test the streaming query endpoint handler."""
+    """
+    Set up a simulated Llama Stack streaming response and verify the streaming-query endpoint.
+
+    Mocks an AsyncLlamaStack client and retrieve_response to produce a sequence
+    of step_progress, step_complete, and turn_complete chunks, invokes
+    streaming_query_endpoint_handler, and asserts that the returned
+    StreamingResponse contains SSE start/token/end events, the final LLM
+    answer, seven streamed chunks, and two referenced documents with the second
+    titled "Doc2".
+    """
     mock_client = mocker.AsyncMock()
     mock_async_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
     mock_async_lsc.return_value = mock_client
@@ -495,7 +631,20 @@ async def test_streaming_query_endpoint_handler_store_transcript(
 async def test_retrieve_response_vector_db_available(
     prepare_agent_mocks: AgentFixtures, mocker: MockerFixture
 ) -> None:
-    """Test the retrieve_response function."""
+    """Test the retrieve_response function.
+
+    Verifies that retrieve_response detects available vector databases and
+    invokes the agent with appropriate toolgroups for a streaming query.
+
+    Mocks an agent and client with one vector database present, patches
+    configuration and agent retrieval, then calls retrieve_response and
+    asserts:
+    - a streaming response object is returned (non-None),
+    - the conversation ID returned matches the agent's ID,
+    - the agent's create_turn is called once with the user message, streaming
+      enabled, no documents, and toolgroups derived from the detected vector
+      database.
+    """
     mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
@@ -591,12 +740,30 @@ async def test_retrieve_response_one_available_shield(
         """Mock for Llama Stack shield to be used."""
 
         def __init__(self, identifier: str) -> None:
+            """
+            Initialize the instance with a unique identifier.
+
+            Parameters:
+                identifier (str): A unique string used to identify this instance.
+            """
             self.identifier = identifier
 
         def __str__(self) -> str:
+            """
+            Provide a readable name for the mock shield.
+
+            Returns:
+                str: The fixed string 'MockShield'.
+            """
             return "MockShield"
 
         def __repr__(self) -> str:
+            """
+            Provide a concise developer-facing representation for MockShield objects.
+
+            Returns:
+                representation (str): The string "MockShield".
+            """
             return "MockShield"
 
     mock_client, mock_agent = prepare_agent_mocks
@@ -640,18 +807,48 @@ async def test_retrieve_response_one_available_shield(
 async def test_retrieve_response_two_available_shields(
     prepare_agent_mocks: AgentFixtures, mocker: MockerFixture
 ) -> None:
-    """Test the retrieve_response function."""
+    """Test the retrieve_response function.
+
+    Verifies retrieve_response uses available shields and starts a streaming
+    turn with expected arguments.
+
+    Patches configuration and agent retrieval to provide a mocked client and
+    agent with two shields available, then calls retrieve_response and asserts:
+    - a non-None response is returned and the conversation ID matches the
+      mocked agent value,
+    - the agent's create_turn is invoked once with the user's message, the
+      mocked session_id, an empty documents list, stream=True, and
+      toolgroups=None.
+    """
 
     class MockShield:
         """Mock for Llama Stack shield to be used."""
 
         def __init__(self, identifier: str) -> None:
+            """
+            Initialize the instance with a unique identifier.
+
+            Parameters:
+                identifier (str): A unique string used to identify this instance.
+            """
             self.identifier = identifier
 
         def __str__(self) -> str:
+            """
+            Provide a readable name for the mock shield.
+
+            Returns:
+                str: The fixed string 'MockShield'.
+            """
             return "MockShield"
 
         def __repr__(self) -> str:
+            """
+            Provide a concise developer-facing representation for MockShield objects.
+
+            Returns:
+                representation (str): The string "MockShield".
+            """
             return "MockShield"
 
     mock_client, mock_agent = prepare_agent_mocks
@@ -704,12 +901,30 @@ async def test_retrieve_response_four_available_shields(
         """Mock for Llama Stack shield to be used."""
 
         def __init__(self, identifier: str) -> None:
+            """
+            Initialize the instance with a unique identifier.
+
+            Parameters:
+                identifier (str): A unique string used to identify this instance.
+            """
             self.identifier = identifier
 
         def __str__(self) -> str:
+            """
+            Provide a readable name for the mock shield.
+
+            Returns:
+                str: The fixed string 'MockShield'.
+            """
             return "MockShield"
 
         def __repr__(self) -> str:
+            """
+            Provide a concise developer-facing representation for MockShield objects.
+
+            Returns:
+                representation (str): The string "MockShield".
+            """
             return "MockShield"
 
     mock_client, mock_agent = prepare_agent_mocks
@@ -825,7 +1040,17 @@ async def test_retrieve_response_with_one_attachment(
 async def test_retrieve_response_with_two_attachments(
     prepare_agent_mocks: AgentFixtures, mocker: MockerFixture
 ) -> None:
-    """Test the retrieve_response function."""
+    """Test the retrieve_response function.
+
+    Verifies that retrieve_response converts request attachments into document
+    inputs, calls the agent with streaming enabled, and returns the agent
+    response and conversation id.
+
+    Asserts that:
+    - the returned conversation id matches the agent's id,
+    - the agent's create_turn is invoked once with stream=True,
+    - attachments are transformed into documents with the correct content and mime_type.
+    """
     mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []

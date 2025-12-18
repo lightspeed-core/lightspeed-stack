@@ -135,7 +135,16 @@ class TestTransformChatMessage:
 
 @pytest.fixture
 def mock_configuration(mocker: MockerFixture) -> MockType:
-    """Mock configuration with conversation cache."""
+    """Mock configuration with conversation cache.
+
+    Create a mocked configuration object with a mocked `conversation_cache` attribute.
+
+    Parameters:
+        mocker (pytest.MockFixture): The pytest-mock fixture used to create mocks.
+
+    Returns:
+        Mock: A mock configuration object whose `conversation_cache` attribute is a mock.
+    """
     mock_config = mocker.Mock()
     mock_cache = mocker.Mock()
     mock_config.conversation_cache = mock_cache
@@ -303,7 +312,15 @@ class TestGetConversationsListEndpoint:
     async def test_with_skip_userid_check(
         self, mocker: MockerFixture, mock_configuration: MockType
     ) -> None:
-        """Test the endpoint with skip_userid_check flag."""
+        """Test the endpoint with skip_userid_check flag.
+
+        Verify the conversations list handler forwards the skip_userid_check
+        flag from the auth tuple to the conversation cache.
+
+        Sets up a mocked configuration and auth tuple with the skip flag set to
+        True, invokes the handler, and asserts that `conversation_cache.list`
+        is called with the user ID and `True`.
+        """
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
         mock_configuration.conversation_cache.list.return_value = []
@@ -375,7 +392,18 @@ class TestGetConversationEndpoint:
     async def test_conversation_cache_not_configured(
         self, mocker: MockerFixture
     ) -> None:
-        """Test the endpoint when conversation cache is not configured."""
+        """Test the endpoint when conversation cache is not configured.
+
+        Verify the conversation GET endpoint raises an HTTP 500 error when the
+        conversation cache is not configured.
+
+        Patches the application configuration so
+        `conversation_cache_configuration.type` is None and ensures
+        `check_suid` returns True, then calls
+        `get_conversation_endpoint_handler` and asserts that it raises an
+        `HTTPException` with status code 500 and a response detail containing
+        "Conversation cache not configured".
+        """
         mock_authorization_resolvers(mocker)
         mock_config = mocker.Mock()
         mock_config.conversation_cache_configuration = mocker.Mock()
@@ -632,7 +660,17 @@ class TestDeleteConversationEndpoint:
     async def test_with_skip_userid_check(
         self, mocker: MockerFixture, mock_configuration: MockType
     ) -> None:
-        """Test the endpoint with skip_userid_check flag."""
+        """Test the endpoint with skip_userid_check flag.
+
+        Verifies that providing an auth tuple with the skip-userid flag set
+        causes the conversation delete handler to call the cache delete method
+        with the skip flag.
+
+        This test patches configuration and SUID validation, supplies an auth
+        tuple where the third element is True, invokes
+        delete_conversation_endpoint_handler, and asserts the cache.delete was
+        called with (user_id, conversation_id, True).
+        """
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
         mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)

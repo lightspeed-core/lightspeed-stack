@@ -91,14 +91,13 @@ providers:
         backend: kv_default
     provider_id: huggingface
     provider_type: remote::huggingface
-  - config:
+    config:
       kvstore:
         namespace: localfs_datasetio
         backend: kv_default
     provider_id: localfs
     provider_type: inline::localfs
-  eval:
-  - config:
+    config:
       kvstore:
         namespace: eval_store
         backend: kv_default

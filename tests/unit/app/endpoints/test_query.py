@@ -57,7 +57,18 @@ MOCK_AUTH = (
 
 @pytest.fixture
 def dummy_request() -> Request:
-    """Dummy request fixture for testing."""
+    """Dummy request fixture for testing.
+
+    Create a minimal FastAPI Request with test-ready authorization state.
+
+    The returned Request has a minimal HTTP scope and a
+    `state.authorized_actions` attribute initialized to a set containing all
+    members of the `Action` enum, suitable for use in unit tests that require
+    an authenticated request context.
+
+    Returns:
+        req (Request): FastAPI Request with `state.authorized_actions` set to `set(Action)`.
+    """
     req = Request(
         scope={
             "type": "http",
@@ -69,7 +80,14 @@ def dummy_request() -> Request:
 
 
 def mock_metrics(mocker: MockerFixture) -> None:
-    """Helper function to mock metrics operations for query endpoints."""
+    """Helper function to mock metrics operations for query endpoints.
+
+    Configure the provided pytest-mock `mocker` to stub token metrics and
+    related metrics counters used by query endpoint tests.
+
+    Patches the token metrics extraction helper and the LLM metrics counters so
+    tests can run without emitting real metrics.
+    """
     mocker.patch(
         "app.endpoints.query.extract_and_update_token_metrics",
         return_value=TokenCounter(),
@@ -81,7 +99,18 @@ def mock_metrics(mocker: MockerFixture) -> None:
 
 
 def mock_database_operations(mocker: MockerFixture) -> None:
-    """Helper function to mock database operations for query endpoints."""
+    """Helper function to mock database operations for query endpoints.
+
+    Patch common database operations used by query endpoint tests.
+
+    This applies test-time patches so that conversation ownership checks
+    succeed, persistence of conversation details is stubbed out, and
+    `get_session` returns a context-manager mock whose
+    `query(...).filter_by(...).first()` returns `None`.
+
+    Parameters:
+        mocker (MockerFixture): The pytest-mock fixture used to apply patches.
+    """
     mocker.patch(
         "app.endpoints.query.validate_conversation_ownership", return_value=True
     )
@@ -97,7 +126,20 @@ def mock_database_operations(mocker: MockerFixture) -> None:
 
 @pytest.fixture(name="setup_configuration")
 def setup_configuration_fixture() -> AppConfig:
-    """Set up configuration for tests."""
+    """Set up configuration for tests.
+
+    Create a reusable application configuration tailored for unit tests.
+
+    The returned AppConfig is initialized from a fixed dictionary that sets:
+    - a lightweight service configuration (localhost, port 8080, minimal workers, logging enabled),
+    - a test Llama Stack configuration (test API key and URL, not used as a library client),
+    - user data collection with transcripts disabled,
+    - an empty MCP servers list,
+    - a noop conversation cache.
+
+    Returns:
+        AppConfig: an initialized configuration instance suitable for test fixtures.
+    """
     config_dict: dict[Any, Any] = {
         "name": "test",
         "service": {
@@ -185,7 +227,22 @@ async def _test_query_endpoint_handler(
     dummy_request: Request,
     store_transcript_to_file: bool = False,
 ) -> None:
-    """Test the query endpoint handler."""
+    """Test the query endpoint handler.
+
+    Exercise the query_endpoint_handler and assert observable outcomes for a
+    typical successful request.
+
+    Calls query_endpoint_handler with mocked dependencies and verifies the
+    returned response and conversation_id match the agent summary, that a
+    CacheEntry with referenced documents is stored, and that transcript storage
+    is invoked only when transcripts are enabled in configuration.
+
+    Parameters:
+        store_transcript_to_file (bool): When True, configuration reports
+        transcripts enabled and the test asserts store_transcript is called
+        with expected arguments; when False, asserts store_transcript is not
+        called.
+    """
     mock_client = mocker.AsyncMock()
     mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
     mock_lsc.return_value = mock_client
@@ -707,12 +764,31 @@ async def test_retrieve_response_one_available_shield(
         """Mock for Llama Stack shield to be used."""
 
         def __init__(self, identifier: str) -> None:
+            """
+            Initialize the instance with an identifying string.
+
+            Parameters:
+                identifier (str): The identifier for this instance; saved to
+                the `identifier` attribute.
+            """
             self.identifier = identifier
 
         def __str__(self) -> str:
+            """
+            Return a human-readable name for this mock shield instance.
+
+            Returns:
+                The string "MockShield".
+            """
             return "MockShield"
 
         def __repr__(self) -> str:
+            """
+            Return the developer-facing string representation for this MockShield.
+
+            Returns:
+                str: The fixed representation "MockShield".
+            """
             return "MockShield"
 
     mock_client, mock_agent = prepare_agent_mocks
@@ -763,12 +839,30 @@ async def test_retrieve_response_two_available_shields(
         """Mock for Llama Stack shield to be used."""
 
         def __init__(self, identifier: str):
+            """
+            Initialize the instance with the provided identifier.
+
+            Parameters:
+                identifier (str): Unique identifier for this object.
+            """
             self.identifier = identifier
 
         def __str__(self) -> str:
+            """
+            Return a human-readable name for this mock shield instance.
+
+            Returns:
+                The string "MockShield".
+            """
             return "MockShield"
 
         def __repr__(self) -> str:
+            """
+            Return the developer-facing string representation for this MockShield.
+
+            Returns:
+                str: The fixed representation "MockShield".
+            """
             return "MockShield"
 
     mock_client, mock_agent = prepare_agent_mocks
@@ -822,12 +916,31 @@ async def test_retrieve_response_four_available_shields(
         """Mock for Llama Stack shield to be used."""
 
         def __init__(self, identifier: str) -> None:
+            """
+            Initialize the instance with an identifying string.
+
+            Parameters:
+                identifier (str): The identifier for this instance; saved to
+                the `identifier` attribute.
+            """
             self.identifier = identifier
 
         def __str__(self) -> str:
+            """
+            Return a human-readable name for this mock shield instance.
+
+            Returns:
+                The string "MockShield".
+            """
             return "MockShield"
 
         def __repr__(self) -> str:
+            """
+            Return the developer-facing string representation for this MockShield.
+
+            Returns:
+                str: The fixed representation "MockShield".
+            """
             return "MockShield"
 
     mock_client, mock_agent = prepare_agent_mocks
@@ -889,7 +1002,18 @@ async def test_retrieve_response_four_available_shields(
 async def test_retrieve_response_with_one_attachment(
     prepare_agent_mocks: AgentFixtures, mocker: MockerFixture
 ) -> None:
-    """Test the retrieve_response function."""
+    """Test the retrieve_response function.
+
+    Verifies that retrieve_response includes a single attachment as a document
+    when calling the agent and returns the LLM response and conversation id.
+
+    Asserts that:
+    - The returned summary.llm_response matches the agent's output.
+    - The returned conversation_id matches the agent session's conversation id.
+    - The agent.create_turn is invoked once with the attachment converted to a
+      document dict containing `content` and `mime_type`, and with the expected
+      session_id, messages, stream, and toolgroups.
+    """
     mock_client, mock_agent = prepare_agent_mocks
     mock_agent.create_turn.return_value.output_message.content = "LLM answer"
     mock_client.shields.list.return_value = []
@@ -1437,7 +1561,18 @@ def test_get_rag_toolgroups() -> None:
 async def test_query_endpoint_handler_on_connection_error(
     mocker: MockerFixture, dummy_request: Request
 ) -> None:
-    """Test the query endpoint handler."""
+    """Test the query endpoint handler.
+
+    Verifies that query_endpoint_handler raises an HTTPException with status
+    503 when connecting to Llama Stack fails and that the failure metric is
+    incremented.
+
+    The test simulates an APIConnectionError from the Llama Stack client, calls
+    query_endpoint_handler with a simple QueryRequest, and asserts that:
+    - an HTTPException is raised with status code 503 Service Unavailable,
+    - the exception detail is a dict containing response == "Unable to connect to Llama Stack",
+    - the llm failure metric counter's increment method was called once.
+    """
     mock_metric = mocker.patch("metrics.llm_calls_failures_total")
 
     mocker.patch(

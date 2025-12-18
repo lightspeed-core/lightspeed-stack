@@ -71,12 +71,24 @@ async def test_rags_endpoint_success(
         """RagInfo mock."""
 
         def __init__(self, rag_id: str) -> None:
+            """
+            Initialize a RagInfo instance with the given identifier.
+
+            Parameters:
+                rag_id (str): The unique identifier for the RAG.
+            """
             self.id = rag_id
 
     class RagList:
         """List of RAGs mock."""
 
         def __init__(self) -> None:
+            """
+            Initialize the object with a predefined list of RagInfo objects used as mock data.
+
+            The instance attribute `data` contains three RagInfo instances with
+            fixed IDs simulating available RAG entries for tests.
+            """
             self.data = [
                 RagInfo("vs_00000000-cafe-babe-0000-000000000000"),
                 RagInfo("vs_7b52a8cf-0fa3-489c-beab-27e061d102f3"),

@@ -47,7 +47,19 @@ async def test_authorized_unauthorized() -> None:
 
 @pytest.mark.asyncio
 async def test_authorized_dependency_unauthorized() -> None:
-    """Test that auth dependency raises HTTPException with 403 for unauthorized access."""
+    """Test that auth dependency raises HTTPException with 403 for unauthorized access.
+
+    Verify extract_user_token raises HTTPException with status code 401 and the
+    expected detail for missing or malformed Authorization headers.
+
+    Checks two scenarios:
+    - Missing Authorization header: HTTPException.status_code == 401,
+      detail["response"] == "Missing or invalid credentials provided by
+      client", detail["cause"] == "No Authorization header found".
+    - Invalid Authorization format: HTTPException.status_code == 401,
+      detail["response"] == "Missing or invalid credentials provided by
+      client", detail["cause"] == "No token found in Authorization header".
+    """
     # Test the auth utility function that would be called by auth dependencies
     # This simulates the unauthorized scenario that would prevent the handler from being called
 

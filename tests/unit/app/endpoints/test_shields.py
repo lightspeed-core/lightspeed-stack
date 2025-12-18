@@ -46,7 +46,16 @@ async def test_shields_endpoint_handler_configuration_not_loaded(
 async def test_shields_endpoint_handler_improper_llama_stack_configuration(
     mocker: MockerFixture,
 ) -> None:
-    """Test the shields endpoint handler if Llama Stack configuration is not proper."""
+    """Test the shields endpoint handler if Llama Stack configuration is not proper.
+
+    Verify shields_endpoint_handler returns an empty ShieldsResponse when Llama
+    Stack is configured minimally and the client provides no shields.
+
+    Patches the endpoint configuration and client holder to supply a mocked
+    Llama Stack client whose `shields.list` returns an empty list, then calls
+    the handler with a test request and authorization tuple and asserts the
+    response is a ShieldsResponse with an empty `shields` list.
+    """
     mock_authorization_resolvers(mocker)
 
     # configuration for tests
@@ -106,7 +115,20 @@ async def test_shields_endpoint_handler_improper_llama_stack_configuration(
 async def test_shields_endpoint_handler_configuration_loaded(
     mocker: MockerFixture,
 ) -> None:
-    """Test the shields endpoint handler if configuration is loaded."""
+    """Test the shields endpoint handler if configuration is loaded.
+
+    Verify shields_endpoint_handler raises an HTTP 503 with detail "Unable to
+    connect to Llama Stack" when configuration is loaded but the Llama Stack
+    client is unreachable.
+
+    Sets up an AppConfig from a valid configuration, patches the endpoint's
+    configuration and AsyncLlamaStackClientHolder to return a client whose
+    shields.list raises APIConnectionError, and asserts the handler raises an
+    HTTPException with status 503 and the expected detail.
+
+    Parameters:
+        mocker (MockerFixture): pytest-mock fixture used to create patches and mocks.
+    """
     mock_authorization_resolvers(mocker)
 
     # configuration for tests
@@ -219,7 +241,16 @@ async def test_shields_endpoint_handler_unable_to_retrieve_shields_list(
 async def test_shields_endpoint_llama_stack_connection_error(
     mocker: MockerFixture,
 ) -> None:
-    """Test the shields endpoint when LlamaStack connection fails."""
+    """Test the shields endpoint when LlamaStack connection fails.
+
+    Verifies that the shields endpoint responds with HTTP 503 and an
+    appropriate cause when the Llama Stack client cannot be reached.
+
+    Simulates the Llama Stack client raising an APIConnectionError and asserts
+    that calling the endpoint raises an HTTPException with status 503, a detail
+    response of "Service unavailable", and a detail cause that contains "Unable
+    to connect to Llama Stack".
+    """
     mock_authorization_resolvers(mocker)
 
     # configuration for tests

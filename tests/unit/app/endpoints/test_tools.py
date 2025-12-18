@@ -49,7 +49,15 @@ def mock_configuration() -> Configuration:
 
 @pytest.fixture
 def mock_tools_response(mocker: MockerFixture) -> list[MockType]:
-    """Create mock tools response from LlamaStack client."""
+    """Create mock tools response from LlamaStack client.
+
+    Each mock supports mapping-like access (so dict() conversion, iteration,
+    and item access work) and contains fields: 'identifier', 'description',
+    'parameters', 'provider_id', 'toolgroup_id', 'type', and 'metadata'.
+
+    Returns:
+        list[MockType]: A list with two mock tool objects representing filesystem and git tools.
+    """
     # Create mock tools that behave like dict when converted
     tool1 = mocker.Mock()
     tool1.__dict__.update(

@@ -1,33 +1,158 @@
 @startuml
+skin rose
+
 
 participant Client
-participant "API Server"
+participant "API Server" as API_server
+collections "root.py" as root_py
+collections "metrics.py" as metrics_py
+collections "health.py" as health_py
+collections "authorized.py" as authorized_py
+collections "info.py" as info_py
+collections "config.py" as config_py
+collections "query_v2.py" as query_py
+collections "streaming_query_v2.py" as streaming_query_py
+collections "rlsapi_v1.py" as rlsapi_v1_py
+collections "conversations_v3.py" as conversations_py
+collections "feedback.py" as feedback_py
+collections "providers.py" as providers_py
+collections "models.py" as models_py
+collections "tools.py" as tools_py
+collections "rags.py" as rags_py
+collections "shields.py" as shields_py
 
-Client->>"API Server": GET /v1/info
-"API Server"-->>Client: InfoResponse
 
-Client->>"API Server": GET /v1/models
-"API Server"-->>Client: ModelsResponse
+== Root page endpoint ==
+Client->>API_server: GET /
+API_server->> root_py: Request
+root_py-->>API_server: HTMLResponse
+API_server-->>Client: HTMLResponse
 
-Client->>"API Server": POST /v1/query (QueryRequest)
-"API Server"-->>Client: QueryResponse
 
-Client->>"API Server": POST /v1/streaming_query (QueryRequest)
-"API Server"-->>Client: StreamingQueryResponse
+== Metrics endpoint ==
+Client->>API_server: GET /metrics
+API_server->> metrics_py: Request
+metrics_py-->>API_server: PlainTextResponse
+API_server-->>Client: PlainTextResponse
 
-Client->>"API Server": POST /v1/feedback (FeedbackRequest)
-"API Server"-->>Client: FeedbackResponse
 
-Client->>"API Server": GET /v1/conversations/{conversation_id}
-"API Server"-->>Client: ConversationResponse
+== Readiness and liveness endpoints ==
+Client->>API_server: GET /readiness
+API_server->> health_py: Request
+health_py-->>API_server: ReadinessResponse
+API_server-->>Client: ReadinessResponse
 
-Client->>"API Server": DELETE /v1/conversations/{conversation_id}
-"API Server"-->>Client: ConversationDeleteResponse
+Client->>API_server: GET /liveness
+API_server->> health_py: Request
+health_py-->>API_server: LivenessResponse
+API_server-->>Client: LivenessResponse
 
-Client->>"API Server": GET /readiness
-"API Server"-->>Client: ReadinessResponse
+Client->>API_server: GET /v1/authorized
+API_server->> authorized_py: Request
+authorized_py-->>API_server: AuthorizedResponse
+API_server-->>Client: AuthorizedResponse
 
-Client->>"API Server": GET /liveness
-"API Server"-->>Client: LivenessResponse
+
+== Info endpoints ==
+Client->>API_server: GET /v1/info
+API_server->> info_py: Request
+info_py-->>API_server: InfoResponse
+API_server-->>Client: InfoResponse
+
+Client->>API_server: GET /v1/config
+API_server->> config_py: Request
+config_py-->>API_server: ConfigurationResponse
+API_server-->>Client: ConfigurationResponse
+
+
+== Query endpoints ==
+Client->>API_server: POST /v1/query (QueryRequest)
+API_server->> query_py: QueryRequest
+query_py-->>API_server: QueryResponse
+API_server-->>Client: QueryResponse
+
+Client->>API_server: POST /v1/streaming_query (QueryRequest)
+API_server->> streaming_query_py: QueryRequest
+streaming_query_py-->>API_server: StreamingResponse
+API_server-->>Client: StreamingResponse
+
+Client->>API_server: POST /infer
+API_server->> rlsapi_v1_py: RlsapiV1InferRequest
+rlsapi_v1_py-->>API_server: RlsapiV1InferResponse
+API_server-->>Client: RlsapiV1InferResponse
+
+
+== Conversation endpoints ==
+Client->>API_server: GET /v1/conversations/
+API_server->> conversations_py: Request
+conversations_py-->>API_server: ConversationListResponse
+API_server-->>Client: ConversationListResponse
+
+Client->>API_server: GET /v1/conversations/{conversation_id}
+API_server->> conversations_py: Request
+conversations_py-->>API_server: ConversationResponse
+API_server-->>Client: ConversationResponse
+
+Client->>API_server: PUT /v1/conversations/{conversation_id}
+API_server->> conversations_py: ConversationUpdateRequest
+conversations_py-->>API_server: ConversationUpdateResponse
+API_server-->>Client: ConversationUpdateResponse
+
+Client->>API_server: DELETE /v1/conversations/{conversation_id}
+API_server->> conversations_py: Request
+conversations_py-->>API_server: ConversationDeleteResponse
+API_server-->>Client: ConversationDeleteResponse
+
+
+
+== Feedback endpoint ==
+Client->>API_server: POST /v1/feedback (FeedbackRequest)
+API_server->> feedback_py: FeedbackRequest
+feedback_py-->>API_server: FeedbackResponse
+API_server-->>Client: FeedbackResponse
+
+Client->>API_server: GET /v1/status
+API_server->> feedback_py: Request
+feedback_py-->>API_server: StatusResponse
+API_server-->>Client: StatusResponse
+
+Client->>API_server: PUT /v1/status
+API_server->> feedback_py: Request
+feedback_py-->>API_server: FeedbackStatusUpdateResponse
+API_server-->>Client: FeedbackStatusUpdateResponse
+
+
+
+== Providers, models, tools and RAGs ==
+Client->>API_server: GET /v1/providers
+API_server->> providers_py: Request
+providers_py-->>API_server: ProvidersListResponse
+API_server-->>Client: ProvidersListResponse
+
+Client->>API_server: GET /v1/models
+API_server->> models_py: Request
+models_py-->>API_server: ModelsResponse
+API_server-->>Client: ModelsResponse
+
+Client->>API_server: GET /v1/tools
+API_server->> tools_py: Request
+tools_py-->>API_server: ToolsResponse
+API_server-->>Client: ToolsResponse
+
+Client->>API_server: GET /v1/rags
+API_server->> rags_py: Request
+rags_py-->>API_server: RAGListResponse
+API_server-->>Client: RAGListResponse
+
+Client->>API_server: GET /v1/rags/RAG_ID
+API_server->> rags_py: Request
+rags_py-->>API_server: RAGInfoResponse
+API_server-->>Client: RAGInfoResponse
+
+Client->>API_server: GET /v1/shields
+API_server->> shields_py: Request
+shields_py-->>API_server: ShieldsResponse
+API_server-->>Client: ShieldsResponse
 
 @enduml
+

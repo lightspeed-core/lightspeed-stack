@@ -126,7 +126,18 @@ class TestGetProvidersHealthStatuses:
     """Test cases for the get_providers_health_statuses function."""
 
     async def test_get_providers_health_statuses(self, mocker: MockerFixture) -> None:
-        """Test get_providers_health_statuses with healthy providers."""
+        """Test get_providers_health_statuses with healthy providers.
+
+        Verify get_providers_health_statuses returns a ProviderHealthStatus
+        entry for each provider reported by the client.
+
+        Mocks an AsyncLlamaStack client whose providers.list() returns three
+        providers with distinct health dicts, then asserts the function
+        produces three results with:
+        - provider1: status OK, message "All good"
+        - provider2: status NOT_IMPLEMENTED, message "Provider does not implement health check"
+        - unhealthy_provider: status ERROR, message "Connection failed"
+        """
         # Mock the imports
         mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
 

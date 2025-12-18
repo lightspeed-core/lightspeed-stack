@@ -124,8 +124,8 @@ jobs:
 
       - name: Docker Login for quay access
         env:
-          QUAY_ROBOT_USERNAME: ${{ secrets.QUAY_ROBOT_USERNAME }}
-          QUAY_ROBOT_TOKEN: ${{ secrets.QUAY_ROBOT_TOKEN }}
+          QUAY_ROBOT_USERNAME: ${{ secrets.QUAY_DOWNSTREAM_USERNAME }}
+          QUAY_ROBOT_TOKEN: ${{ secrets.QUAY_DOWNSTREAM_TOKEN }}
         run: |
           echo $QUAY_ROBOT_TOKEN | docker login quay.io -u=$QUAY_ROBOT_USERNAME --password-stdin
 

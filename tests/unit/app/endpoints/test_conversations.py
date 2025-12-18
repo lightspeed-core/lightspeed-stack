@@ -34,7 +34,13 @@ INVALID_CONVERSATION_ID = "invalid-id"
 
 @pytest.fixture
 def dummy_request() -> Request:
-    """Mock request object for testing."""
+    """Mock request object for testing.
+
+    Create a mock FastAPI Request configured for tests with full authorization.
+
+    The returned Request has state.authorized_actions set to a set containing
+    every member of Action.
+    """
     request = Request(
         scope={
             "type": "http",
@@ -56,7 +62,35 @@ def create_mock_conversation(
     last_used_provider: str,
     topic_summary: Optional[str] = None,
 ) -> MockType:
-    """Helper function to create a mock conversation object with all required attributes."""
+    """Helper function to create a mock conversation object with all required attributes.
+
+    Create a mock conversation object with the attributes used by the
+    conversations list and detail tests.
+
+    The returned mock has the following attributes:
+    - id: the conversation identifier (string)
+    - created_at.isoformat(): returns the provided created_at string
+    - last_message_at.isoformat(): returns the provided last_message_at string
+    - message_count: number of messages in the conversation
+    - last_used_model: model identifier last used in the conversation
+    - last_used_provider: provider identifier last used in the conversation
+    - topic_summary: optional topic summary (may be None or empty string)
+
+    Parameters:
+        mocker (MockerFixture): pytest mocker fixture used to build the mock object.
+        conversation_id (str): Conversation identifier to assign to the mock.
+        created_at (str): ISO-formatted created-at timestamp to be returned by
+        created_at.isoformat().
+        last_message_at (str): ISO-formatted last-message timestamp to be
+        returned by last_message_at.isoformat().
+        message_count (int): Message count to assign to the mock.
+        last_used_model (str): Last used model string to assign to the mock.
+        last_used_provider (str): Last used provider string to assign to the mock.
+        topic_summary (Optional[str]): Optional topic summary to assign to the mock.
+
+    Returns:
+        mock_conversation: A mock object configured with the above attributes.
+    """
     mock_conversation = mocker.Mock()
     mock_conversation.id = conversation_id
     mock_conversation.created_at = mocker.Mock()
@@ -73,7 +107,20 @@ def create_mock_conversation(
 def mock_database_session(
     mocker: MockerFixture, query_result: Optional[list[MockType]] = None
 ) -> MockType:
-    """Helper function to mock get_session with proper context manager support."""
+    """Helper function to mock get_session with proper context manager support.
+
+    Create and patch a mocked database session and a context-manager-compatible get_session.
+
+    Parameters:
+        mocker (pytest.MockerFixture): Fixture used to create and patch mocks.
+        query_result (Optional[list]): If provided, configures the
+        session.query().all() and session.query().filter_by().all() to return
+        this list.
+
+    Returns:
+        Mock: The mocked session object that will be yielded by the patched
+        get_session context manager.
+    """
     mock_session = mocker.Mock()
     if query_result is not None:
         # Mock both the filtered and unfiltered query paths
@@ -94,7 +141,16 @@ def mock_database_session(
 
 @pytest.fixture(name="setup_configuration")
 def setup_configuration_fixture() -> AppConfig:
-    """Set up configuration for tests."""
+    """Set up configuration for tests.
+
+    Create an AppConfig prepopulated with test-friendly default settings.
+
+    Returns:
+        AppConfig: An AppConfig instance initialized from a dictionary
+        containing defaults suitable for tests (local service host/port,
+        disabled auth and user-data collection, test Llama Stack API key and
+        URL, and single worker).
+    """
     config_dict: dict[str, Any] = {
         "name": "test",
         "service": {
@@ -123,7 +179,29 @@ def setup_configuration_fixture() -> AppConfig:
 
 @pytest.fixture(name="mock_session_data")
 def mock_session_data_fixture() -> dict[str, Any]:
-    """Create mock session data for testing."""
+    """Create mock session data for testing.
+
+    Provide a representative mock session data payload used by tests to
+    simulate a conversation session.
+
+    The returned dictionary contains:
+    - session_id: conversation identifier.
+    - session_name: human-readable session name.
+    - started_at: ISO 8601 timestamp when the session started.
+    - turns: list of turn objects; each turn includes:
+        - turn_id: identifier for the turn.
+        - input_messages: list of input message objects with `content`, `role`,
+          and optional `context`.
+        - output_message: assistant response object with `content`, `role`, and
+          auxiliary fields (e.g., `stop_reason`, `tool_calls`) that tests
+          expect to be filtered by simplification logic.
+        - started_at / completed_at: ISO 8601 timestamps for the turn.
+        - steps: detailed internal steps included to verify they are removed by simplification.
+
+    Returns:
+        dict: A mock session data structure matching the shape produced by the
+        Llama Stack client for use in unit tests.
+    """
     return {
         "session_id": VALID_CONVERSATION_ID,
         "session_name": "test-session",
@@ -165,7 +243,17 @@ def mock_session_data_fixture() -> dict[str, Any]:
 
 @pytest.fixture(name="expected_chat_history")
 def expected_chat_history_fixture() -> list[dict[str, Any]]:
-    """Create expected simplified chat history for testing."""
+    """Create expected simplified chat history for testing.
+
+    Expected simplified chat history used by tests.
+
+    Returns:
+        list[dict[str, Any]]: A list of conversation turns. Each turn contains:
+            - messages: list of message dicts with `content` (str) and `type`
+              (`"user"` or `"assistant"`)
+            - started_at: ISO 8601 UTC timestamp string for the turn start
+            - completed_at: ISO 8601 UTC timestamp string for the turn end
+    """
     return [
         {
             "messages": [
@@ -188,7 +276,14 @@ def expected_chat_history_fixture() -> list[dict[str, Any]]:
 
 @pytest.fixture(name="mock_conversation")
 def mock_conversation_fixture() -> UserConversation:
-    """Create a mock UserConversation object for testing."""
+    """Create a mock UserConversation object for testing.
+
+    Returns:
+        mock_conv (UserConversation): A UserConversation initialized with
+        VALID_CONVERSATION_ID, user_id set to "another_user", message_count 2,
+        last_used_model "mock-model", last_used_provider "mock-provider", and
+        topic_summary "Mock topic".
+    """
     mock_conv = UserConversation()
     mock_conv.id = VALID_CONVERSATION_ID
     mock_conv.user_id = "another_user"  # Different from test auth
@@ -366,7 +461,15 @@ class TestGetConversationEndpoint:
         setup_configuration: AppConfig,
         dummy_request: Request,
     ) -> None:
-        """Test the endpoint when LlamaStack returns NotFoundError."""
+        """Test the endpoint when LlamaStack returns NotFoundError.
+
+        Verify the GET /conversations/{conversation_id} handler raises an HTTP
+        404 when the Llama Stack client reports the session as not found.
+
+        Asserts that the raised HTTPException contains a response message
+        indicating the conversation was not found and a cause that includes
+        "does not exist" and the conversation ID.
+        """
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
         mocker.patch("app.endpoints.conversations.check_suid", return_value=True)

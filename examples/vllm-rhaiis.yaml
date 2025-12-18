@@ -1,0 +1,157 @@
+version: '2'
+image_name: sample-notebook
+apis:
+- agents
+- batches
+- datasetio
+- eval
+- files
+- inference
+- safety
+- scoring
+- tool_runtime
+- vector_io
+
+providers:
+  inference:
+  - provider_id: vllm
+    provider_type: remote::vllm
+    config:
+      url: http://${env.RHAIIS_URL}:8000/v1/
+      api_token: ${env.RHAIIS_API_KEY}
+      tls_verify: false
+      max_tokens: 2048  
+  - provider_id: sentence-transformers
+    provider_type: inline::sentence-transformers
+    config: {}
+  vector_io:
+  - provider_id: documentation_faiss
+    provider_type: inline::faiss
+    config:
+      persistence:
+        namespace: vector_io::faiss
+        backend: kv_default
+  files:
+  - provider_id: meta-reference-files
+    provider_type: inline::localfs
+    config:
+      storage_dir: ${env.FILES_STORAGE_DIR:=~/.llama/storage}
+      metadata_store:
+        table_name: files_metadata
+        backend: sql_default
+  safety:
+  - provider_id: llama-guard
+    provider_type: inline::llama-guard
+    config:
+      excluded_categories: []
+  agents:
+  - provider_id: meta-reference
+    provider_type: inline::meta-reference
+    config:
+      persistence:
+        agent_state:
+          namespace: agents
+          backend: kv_default
+        responses:
+          table_name: responses
+          backend: sql_default
+          max_write_queue_size: 10000
+          num_writers: 4
+  eval:
+  - provider_id: meta-reference
+    provider_type: inline::meta-reference
+    config:
+      kvstore:
+        namespace: eval
+        backend: kv_default
+  datasetio:
+  - provider_id: huggingface
+    provider_type: remote::huggingface
+    config:
+      kvstore:
+        namespace: datasetio::huggingface
+        backend: kv_default
+  - provider_id: localfs
+    provider_type: inline::localfs
+    config:
+      kvstore:
+        namespace: datasetio::localfs
+        backend: kv_default
+  scoring:
+  - provider_id: basic
+    provider_type: inline::basic
+    config: {}
+  tool_runtime:
+  - provider_id: rag-runtime
+    provider_type: inline::rag-runtime
+    config: {}
+  - provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
+    config: {}
+  batches:
+  - provider_id: reference
+    provider_type: inline::reference
+    config:
+      kvstore:
+        namespace: batches
+        backend: kv_default
+storage:
+  backends:
+    kv_default:
+      type: kv_sqlite
+      db_path: ${env.SQLITE_STORE_DIR:=~/.llama/storage}/kv_store.db
+    sql_default:
+      type: sql_sqlite
+      db_path: ${env.SQLITE_STORE_DIR:=~/.llama/storage}/sql_store.db
+  stores:
+    metadata:
+      namespace: registry
+      backend: kv_default
+    inference:
+      table_name: inference_store
+      backend: sql_default
+      max_write_queue_size: 10000
+      num_writers: 4
+    conversations:
+      table_name: openai_conversations
+      backend: sql_default
+    prompts:
+      namespace: prompts
+      backend: kv_default
+registered_resources:
+  models:
+  - model_id: all-mpnet-base-v2
+    provider_id: sentence-transformers
+    provider_model_id: all-mpnet-base-v2
+    model_type: embedding
+    metadata:
+      embedding_dimension: 768
+  - model_id: ${env.RHAIIS_MODEL}
+    provider_id: vllm
+    model_type: llm
+    provider_model_id: ${env.RHAIIS_MODEL}
+
+  shields:
+  - shield_id: llama-guard
+    provider_id: ${env.SAFETY_MODEL:+llama-guard}
+    provider_shield_id: ${env.SAFETY_MODEL:=}
+  - shield_id: code-scanner
+    provider_id: ${env.CODE_SCANNER_MODEL:+code-scanner}
+    provider_shield_id: ${env.CODE_SCANNER_MODEL:=}
+  datasets: []
+  scoring_fns: []
+  benchmarks: []
+  tool_groups:
+  - toolgroup_id: builtin::rag
+    provider_id: rag-runtime
+server:
+  port: 8321
+telemetry:
+  enabled: true
+vector_stores:
+  default_provider_id: documentation_faiss
+  default_embedding_model:
+    provider_id: sentence-transformers
+    model_id: all-mpnet-base-v2
+safety:
+  default_shield_id: llama-guard

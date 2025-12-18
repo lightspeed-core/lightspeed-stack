@@ -42,6 +42,9 @@ Unit tests for the /query (v2) REST API endpoint using Responses API.
 ## [test_rags.py](test_rags.py)
 Unit tests for the /rags REST API endpoints.
 
+## [test_rlsapi_v1.py](test_rlsapi_v1.py)
+Unit tests for the rlsapi v1 /infer REST API endpoint.
+
 ## [test_root.py](test_root.py)
 Unit tests for the / endpoint handler.
 

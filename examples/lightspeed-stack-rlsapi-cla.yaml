@@ -1,0 +1,37 @@
+name: RHEL Lightspeed CLA Configuration Example
+# Example configuration for RHEL Lightspeed Command Line Assistant (CLA)
+# deployments using the rlsapi v1 /infer endpoint.
+#
+# The rlsapi v1 endpoint provides stateless inference without conversation
+# history or RAG. It is designed for the RHEL Lightspeed CLI tool.
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: true
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: false
+  url: http://localhost:8321
+inference:
+  # Configure the default model for rlsapi v1 inference
+  # Provider ID must match the provider_id in your Llama Stack config
+  default_provider: google-vertex
+  default_model: gemini-2.5-flash
+
+# Red Hat Identity authentication (typical for CLA deployments)
+authentication:
+  module: "rh-identity"
+  rh_identity_config:
+    required_entitlements: ["rhel"]
+
+# Authorization configuration for CLA
+# Grant rlsapi_v1_infer to all authenticated users
+authorization:
+  access_rules:
+    - role: "*"
+      actions: ["info", "rlsapi_v1_infer"]
+    # Optional: Add admin role for full access
+    # - role: "admin"
+    #   actions: ["admin"]

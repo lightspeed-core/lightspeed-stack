@@ -44,7 +44,17 @@ async def test_models_endpoint_handler_configuration_not_loaded(
 async def test_models_endpoint_handler_configuration_loaded(
     mocker: MockerFixture,
 ) -> None:
-    """Test the models endpoint handler if configuration is loaded."""
+    """Test the models endpoint handler if configuration is loaded.
+
+    Verify the models endpoint raises HTTP 503 when configuration is loaded but
+    the Llama Stack client cannot connect.
+
+    Loads an AppConfig from a test dictionary, patches the endpoint's
+    configuration and AsyncLlamaStackClientHolder so that get_client raises
+    APIConnectionError, issues a request with an authorization header, and
+    asserts that calling the handler raises an HTTPException with status 503
+    and a detail response of "Unable to connect to Llama Stack".
+    """
     mock_authorization_resolvers(mocker)
 
     # configuration for tests

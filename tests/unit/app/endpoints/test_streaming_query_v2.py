@@ -21,7 +21,14 @@ from models.requests import QueryRequest
 
 @pytest.fixture
 def dummy_request() -> Request:
-    """Create a dummy FastAPI Request for testing with authorized actions."""
+    """Create a dummy FastAPI Request for testing with authorized actions.
+
+    Create a FastAPI Request configured for tests with permissive RBAC.
+
+    Returns:
+        Request: A FastAPI Request whose `state.authorized_actions` is set to a
+        set of all `Action` members.
+    """
     req = Request(scope={"type": "http"})
     # Provide a permissive authorized_actions set to satisfy RBAC check
     req.state.authorized_actions = set(Action)
@@ -141,6 +148,26 @@ async def test_streaming_query_endpoint_handler_v2_success_yields_events(
 
     # Build a fake async stream of chunks
     async def fake_stream() -> AsyncIterator[SimpleNamespace]:
+        """
+        Produce a fake asynchronous stream of response events used for testing streaming endpoints.
+
+        Yields SimpleNamespace objects that emulate event frames from a
+        streaming responses API, including:
+        - a "response.created" event with a conversation id,
+        - content and text delta events ("response.content_part.added",
+          "response.output_text.delta"),
+        - function call events ("response.output_item.added",
+          "response.function_call_arguments.delta",
+          "response.function_call_arguments.done"),
+        - a final "response.output_text.done" event and a "response.completed" event.
+
+        Returns:
+            AsyncIterator[SimpleNamespace]: An async iterator that yields
+            event-like SimpleNamespace objects representing the streamed
+            response frames; the final yielded response contains an `output`
+            attribute (an empty list) to allow shield violation detection in
+            tests.
+        """
         yield SimpleNamespace(
             type="response.created", response=SimpleNamespace(id="conv-xyz")
         )
@@ -219,6 +246,13 @@ async def test_streaming_query_endpoint_handler_v2_api_connection_error(
     mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
 
     def _raise(*_a: Any, **_k: Any) -> None:
+        """
+        Always raises an APIConnectionError with its `request` attribute set to None.
+
+        Raises:
+            APIConnectionError: Raised every time the function is called; the
+            exception's `request` is None.
+        """
         raise APIConnectionError(request=None)  # type: ignore[arg-type]
 
     mocker.patch("client.AsyncLlamaStackClientHolder.get_client", side_effect=_raise)
@@ -362,6 +396,18 @@ async def test_streaming_response_detects_shield_violation(
 
     # Build a fake async stream with shield violation
     async def fake_stream_with_violation() -> AsyncIterator[SimpleNamespace]:
+        """
+        Produce an async iterator of SimpleNamespace events that simulates a streaming response.
+
+        Yields:
+            AsyncIterator[SimpleNamespace]: Sequence of event objects in order:
+                - type="response.created" with a `response.id`
+                - type="response.output_text.delta" with a `delta` fragment
+                - type="response.output_text.done" with a `text` final chunk
+                - type="response.completed" whose `response.output` contains a
+                  message object with a `refusal` field indicating a safety
+                  policy violation
+        """
         yield SimpleNamespace(
             type="response.created", response=SimpleNamespace(id="conv-violation")
         )
@@ -454,6 +500,20 @@ async def test_streaming_response_no_shield_violation(
 
     # Build a fake async stream without violation
     async def fake_stream_without_violation() -> AsyncIterator[SimpleNamespace]:
+        """
+        Produce a deterministic sequence of streaming response events that end with a message.
+
+        Yields four events in order:
+        - `response.created` with a response id,
+        - `response.output_text.delta` with a text fragment,
+        - `response.output_text.done` with the final text,
+        - `response.completed` whose `response.output` contains an assistant
+          message where `refusal` is `None`.
+
+        Returns:
+            An iterator yielding SimpleNamespace objects representing the
+            streaming events of a successful response with no refusal.
+        """
         yield SimpleNamespace(
             type="response.created", response=SimpleNamespace(id="conv-safe")
         )

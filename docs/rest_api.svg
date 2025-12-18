@@ -1,89 +1,544 @@
 <?xml version="1.0"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" height="619px" preserveAspectRatio="none" style="width:382px;height:619px;background:#FFFFFF;" version="1.1" viewBox="0 0 382 619" width="382px" zoomAndPan="magnify">
-  <defs/>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" height="3396px" preserveAspectRatio="none" style="width:2118px;height:3396px;background:#FFFFFF;" version="1.1" viewBox="0 0 2118 3396" width="2118px" zoomAndPan="magnify">
+  <defs>
+    <filter height="300%" id="f143xggdh0uczj" width="300%" x="-1" y="-1">
+      <feGaussianBlur result="blurOut" stdDeviation="2.0"/>
+      <feColorMatrix in="blurOut" result="blurOut2" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .4 0"/>
+      <feOffset dx="4.0" dy="4.0" in="blurOut2" result="blurOut3"/>
+      <feBlend in="SourceGraphic" in2="blurOut3" mode="normal"/>
+    </filter>
+  </defs>
   <g>
-    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="31" x2="31" y1="36.4883" y2="584.0781"/>
-    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="334.9277" x2="334.9277" y1="36.4883" y2="584.0781"/>
-    <rect fill="#E2E2F0" height="30.4883" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="53.5049" x="5" y="5"/>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="39.5049" x="12" y="25.5352">Client</text>
-    <rect fill="#E2E2F0" height="30.4883" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="53.5049" x="5" y="583.0781"/>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="39.5049" x="12" y="603.6133">Client</text>
-    <rect fill="#E2E2F0" height="30.4883" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="81.7031" x="294.9277" y="5"/>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="67.7031" x="301.9277" y="25.5352">API Server</text>
-    <rect fill="#E2E2F0" height="30.4883" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="81.7031" x="294.9277" y="583.0781"/>
-    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="67.7031" x="301.9277" y="603.6133">API Server</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="67.7988" y2="63.7988"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="67.7988" y2="71.7988"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="31.7524" x2="334.7793" y1="67.7988" y2="67.7988"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="81.9482" x="38.7524" y="63.0566">GET /v1/info</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="97.1094" y2="93.1094"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="97.1094" y2="101.1094"/>
-    <line style="stroke:#181818;stroke-width:1;stroke-dasharray:2.0,2.0;" x1="31.7524" x2="334.7793" y1="97.1094" y2="97.1094"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="84.7729" x="48.7524" y="92.3672">InfoResponse</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="126.4199" y2="122.4199"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="126.4199" y2="130.4199"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="31.7524" x2="334.7793" y1="126.4199" y2="126.4199"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="103.2891" x="38.7524" y="121.6777">GET /v1/models</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="155.7305" y2="151.7305"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="155.7305" y2="159.7305"/>
-    <line style="stroke:#181818;stroke-width:1;stroke-dasharray:2.0,2.0;" x1="31.7524" x2="334.7793" y1="155.7305" y2="155.7305"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="105.187" x="48.7524" y="150.9883">ModelsResponse</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="185.041" y2="181.041"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="185.041" y2="189.041"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="31.7524" x2="334.7793" y1="185.041" y2="185.041"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="201.3413" x="38.7524" y="180.2988">POST /v1/query (QueryRequest)</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="214.3516" y2="210.3516"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="214.3516" y2="218.3516"/>
-    <line style="stroke:#181818;stroke-width:1;stroke-dasharray:2.0,2.0;" x1="31.7524" x2="334.7793" y1="214.3516" y2="214.3516"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="97.7158" x="48.7524" y="209.6094">QueryResponse</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="243.6621" y2="239.6621"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="243.6621" y2="247.6621"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="31.7524" x2="334.7793" y1="243.6621" y2="243.6621"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="271.1401" x="38.7524" y="238.9199">POST /v1/streaming_query (QueryRequest)</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="272.9727" y2="268.9727"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="272.9727" y2="276.9727"/>
-    <line style="stroke:#181818;stroke-width:1;stroke-dasharray:2.0,2.0;" x1="31.7524" x2="334.7793" y1="272.9727" y2="272.9727"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="161.3892" x="48.7524" y="268.2305">StreamingQueryResponse</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="302.2832" y2="298.2832"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="302.2832" y2="306.2832"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="31.7524" x2="334.7793" y1="302.2832" y2="302.2832"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="244.5371" x="38.7524" y="297.541">POST /v1/feedback (FeedbackRequest)</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="331.5938" y2="327.5938"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="331.5938" y2="335.5938"/>
-    <line style="stroke:#181818;stroke-width:1;stroke-dasharray:2.0,2.0;" x1="31.7524" x2="334.7793" y1="331.5938" y2="331.5938"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="119.4502" x="48.7524" y="326.8516">FeedbackResponse</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="360.9043" y2="356.9043"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="360.9043" y2="364.9043"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="31.7524" x2="334.7793" y1="360.9043" y2="360.9043"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="258.6606" x="38.7524" y="356.1621">GET /v1/conversations/{conversation_id}</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="390.2148" y2="386.2148"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="390.2148" y2="394.2148"/>
-    <line style="stroke:#181818;stroke-width:1;stroke-dasharray:2.0,2.0;" x1="31.7524" x2="334.7793" y1="390.2148" y2="390.2148"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="143.0127" x="48.7524" y="385.4727">ConversationResponse</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="419.5254" y2="415.5254"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="419.5254" y2="423.5254"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="31.7524" x2="334.7793" y1="419.5254" y2="419.5254"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="280.0269" x="38.7524" y="414.7832">DELETE /v1/conversations/{conversation_id}</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="448.8359" y2="444.8359"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="448.8359" y2="452.8359"/>
-    <line style="stroke:#181818;stroke-width:1;stroke-dasharray:2.0,2.0;" x1="31.7524" x2="334.7793" y1="448.8359" y2="448.8359"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="183.0981" x="48.7524" y="444.0938">ConversationDeleteResponse</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="478.1465" y2="474.1465"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="478.1465" y2="482.1465"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="31.7524" x2="334.7793" y1="478.1465" y2="478.1465"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="95.8369" x="38.7524" y="473.4043">GET /readiness</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="507.457" y2="503.457"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="507.457" y2="511.457"/>
-    <line style="stroke:#181818;stroke-width:1;stroke-dasharray:2.0,2.0;" x1="31.7524" x2="334.7793" y1="507.457" y2="507.457"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="123.3413" x="48.7524" y="502.7148">ReadinessResponse</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="536.7676" y2="532.7676"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="333.7793" x2="323.7793" y1="536.7676" y2="540.7676"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="31.7524" x2="334.7793" y1="536.7676" y2="536.7676"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="85.6426" x="38.7524" y="532.0254">GET /liveness</text>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="566.0781" y2="562.0781"/>
-    <line style="stroke:#181818;stroke-width:1;" x1="32.7524" x2="42.7524" y1="566.0781" y2="570.0781"/>
-    <line style="stroke:#181818;stroke-width:1;stroke-dasharray:2.0,2.0;" x1="31.7524" x2="334.7793" y1="566.0781" y2="566.0781"/>
-    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="113.4199" x="48.7524" y="561.3359">LivenessResponse</text>
-    <!--SRC=[hP912u8m5CVlVehXgGuXNJi4eHQ2KQbtMVgCHpfjMq94txsLLhkO1fsslVVRxyyUgoYNc615cIHsZi2aKMabSx7rI0Yy1cuQHWDCvdEzF2ChDo9MFRMGPQMXjoOARUxCYAUQ0OYgP09wJKMPGYuwNUjdkzUstOIDxdG6VY6ZtMC9G9s477VAMsgeMqWEj41sY7zA2L_NVepB0D8zJOvaj6ntlL4VSE3qavAfWg0I5MvTzMECwQqpoDR0tZ37zTt8_LkU0pb86FP4DVaK6OZk3nQyY67276luwlDRuAsx0m00]-->
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="32" x2="32" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="324.0493" x2="324.0493" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="443.4504" x2="443.4504" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="531.7282" x2="531.7282" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="628.0899" x2="628.0899" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="734.3117" x2="734.3117" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="833.9753" x2="833.9753" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="917.0272" x2="917.0272" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="1017.4089" x2="1017.4089" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="1164.3266" x2="1164.3266" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="1310.716" x2="1310.716" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="1445.7297" x2="1445.7297" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="1583.2532" x2="1583.2532" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="1694.6329" x2="1694.6329" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="1800.7146" x2="1800.7146" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="1891.6003" x2="1891.6003" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="1972.4141" x2="1972.4141" y1="46.0679" y2="3348.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:5.0,5.0;" x1="2060.8679" x2="2060.8679" y1="46.0679" y2="3348.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="51.6738" x="5" y="8"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="37.6738" x="12" y="29.9659">Client</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="51.6738" x="5" y="3347.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="37.6738" x="12" y="3369.6355">Client</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="81.9557" x="282.0493" y="8"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="67.9557" x="289.0493" y="29.9659">API Server</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="81.9557" x="282.0493" y="3347.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="67.9557" x="289.0493" y="3369.6355">API Server</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="61.2778" x="413.4504" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="61.2778" x="409.4504" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="47.2778" x="416.4504" y="30.9659">root.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="61.2778" x="413.4504" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="61.2778" x="409.4504" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="47.2778" x="416.4504" y="3373.6355">root.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="82.3617" x="491.7282" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="82.3617" x="487.7282" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="68.3617" x="494.7282" y="30.9659">metrics.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="82.3617" x="491.7282" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="82.3617" x="487.7282" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="68.3617" x="494.7282" y="3373.6355">metrics.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="75.2218" x="591.0899" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="75.2218" x="587.0899" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="61.2218" x="594.0899" y="30.9659">health.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="75.2218" x="591.0899" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="75.2218" x="587.0899" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="61.2218" x="594.0899" y="3373.6355">health.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="104.6637" x="683.3117" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="104.6637" x="679.3117" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="90.6637" x="686.3117" y="30.9659">authorized.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="104.6637" x="683.3117" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="104.6637" x="679.3117" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="90.6637" x="686.3117" y="3373.6355">authorized.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="59.0518" x="804.9753" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="59.0518" x="800.9753" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="45.0518" x="807.9753" y="30.9659">info.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="59.0518" x="804.9753" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="59.0518" x="800.9753" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="45.0518" x="807.9753" y="3373.6355">info.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="74.3818" x="881.0272" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="74.3818" x="877.0272" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="60.3818" x="884.0272" y="30.9659">config.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="74.3818" x="881.0272" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="74.3818" x="877.0272" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="60.3818" x="884.0272" y="3373.6355">config.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="92.9177" x="972.4089" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="92.9177" x="968.4089" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="78.9177" x="975.4089" y="30.9659">query_v2.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="92.9177" x="972.4089" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="92.9177" x="968.4089" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="78.9177" x="975.4089" y="3373.6355">query_v2.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="166.3894" x="1082.3266" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="166.3894" x="1078.3266" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="152.3894" x="1085.3266" y="30.9659">streaming_query_v2.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="166.3894" x="1082.3266" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="166.3894" x="1078.3266" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="152.3894" x="1085.3266" y="3373.6355">streaming_query_v2.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="91.0137" x="1265.716" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="91.0137" x="1261.716" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="77.0137" x="1268.716" y="30.9659">rlsapi_v1.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="91.0137" x="1265.716" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="91.0137" x="1261.716" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="77.0137" x="1268.716" y="3373.6355">rlsapi_v1.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="146.5235" x="1373.7297" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="146.5235" x="1369.7297" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.5235" x="1376.7297" y="30.9659">conversations_v3.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="146.5235" x="1373.7297" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="146.5235" x="1369.7297" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.5235" x="1376.7297" y="3373.6355">conversations_v3.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="93.3797" x="1537.2532" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="93.3797" x="1533.2532" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="79.3797" x="1540.2532" y="30.9659">feedback.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="93.3797" x="1537.2532" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="93.3797" x="1533.2532" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="79.3797" x="1540.2532" y="3373.6355">feedback.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="96.0817" x="1647.6329" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="96.0817" x="1643.6329" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="82.0817" x="1650.6329" y="30.9659">providers.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="96.0817" x="1647.6329" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="96.0817" x="1643.6329" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="82.0817" x="1650.6329" y="3373.6355">providers.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="81.8857" x="1760.7146" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="81.8857" x="1756.7146" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="67.8857" x="1763.7146" y="30.9659">models.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="81.8857" x="1760.7146" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="81.8857" x="1756.7146" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="67.8857" x="1763.7146" y="3373.6355">models.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="65.8138" x="1859.6003" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="65.8138" x="1855.6003" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="51.8138" x="1862.6003" y="30.9659">tools.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="65.8138" x="1859.6003" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="65.8138" x="1855.6003" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="51.8138" x="1862.6003" y="3373.6355">tools.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="62.4538" x="1942.4141" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="62.4538" x="1938.4141" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="48.4538" x="1945.4141" y="30.9659">rags.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="62.4538" x="1942.4141" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="62.4538" x="1938.4141" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="48.4538" x="1945.4141" y="3373.6355">rags.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="79.2957" x="2021.8679" y="5"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="79.2957" x="2017.8679" y="9"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="65.2957" x="2024.8679" y="30.9659">shields.py</text>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="79.2957" x="2021.8679" y="3347.6696"/>
+    <rect fill="#FEFECE" filter="url(#f143xggdh0uczj)" height="33.0679" style="stroke:#A80036;stroke-width:1.5;" width="79.2957" x="2017.8679" y="3351.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="65.2957" x="2024.8679" y="3373.6355">shields.py</text>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="3" style="stroke:#EEEEEE;stroke-width:1.0;" width="2109.1637" x="0" y="77.9209"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="77.9209" y2="77.9209"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="80.9209" y2="80.9209"/>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="25.706" style="stroke:#000000;stroke-width:2.0;" width="145.0661" x="982.0488" y="66.0679"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="127.6861" x="988.0488" y="83.9649">Root page endpoint</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="125.4799" y2="121.4799"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="125.4799" y2="129.4799"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="125.4799" y2="125.4799"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="32.136" x="39.8369" y="119.6709">GET /</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="441.5893" x2="431.5893" y1="157.186" y2="153.186"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="441.5893" x2="431.5893" y1="157.186" y2="161.186"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="442.5893" y1="157.186" y2="157.186"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="151.377">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="188.892" y2="184.892"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="188.892" y2="192.892"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="442.5893" y1="188.892" y2="188.892"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="94.5621" x="342.0272" y="183.083">HTMLResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="220.598" y2="216.598"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="220.598" y2="224.598"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="220.598" y2="220.598"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="94.5621" x="49.8369" y="214.789">HTMLResponse</text>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="3" style="stroke:#EEEEEE;stroke-width:1.0;" width="2109.1637" x="0" y="250.451"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="250.451" y2="250.451"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="253.451" y2="253.451"/>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="25.706" style="stroke:#000000;stroke-width:2.0;" width="127.1619" x="991.0009" y="238.598"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="109.7819" x="997.0009" y="256.495">Metrics endpoint</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="298.01" y2="294.01"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="298.01" y2="302.01"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="298.01" y2="298.01"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="77.5061" x="39.8369" y="292.201">GET /metrics</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="530.4091" x2="520.4091" y1="329.716" y2="325.716"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="530.4091" x2="520.4091" y1="329.716" y2="333.716"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="531.4091" y1="329.716" y2="329.716"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="323.907">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="361.4221" y2="357.4221"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="361.4221" y2="365.4221"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="531.4091" y1="361.4221" y2="361.4221"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="115.1281" x="342.0272" y="355.6131">PlainTextResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="393.1281" y2="389.1281"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="393.1281" y2="397.1281"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="393.1281" y2="393.1281"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="115.1281" x="49.8369" y="387.3191">PlainTextResponse</text>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="3" style="stroke:#EEEEEE;stroke-width:1.0;" width="2109.1637" x="0" y="422.9811"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="422.9811" y2="422.9811"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="425.9811" y2="425.9811"/>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="25.706" style="stroke:#000000;stroke-width:2.0;" width="234.4964" x="937.3336" y="411.1281"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="217.1164" x="943.3336" y="429.0251">Readiness and liveness endpoints</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="470.5401" y2="466.5401"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="470.5401" y2="474.5401"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="470.5401" y2="470.5401"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="91.2991" x="39.8369" y="464.7311">GET /readiness</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="626.2008" x2="616.2008" y1="502.2461" y2="498.2461"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="626.2008" x2="616.2008" y1="502.2461" y2="506.2461"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="627.2008" y1="502.2461" y2="502.2461"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="496.4371">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="533.9521" y2="529.9521"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="533.9521" y2="537.9521"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="627.2008" y1="533.9521" y2="533.9521"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="120.9781" x="342.0272" y="528.1431">ReadinessResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="565.6582" y2="561.6582"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="565.6582" y2="569.6582"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="565.6582" y2="565.6582"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="120.9781" x="49.8369" y="559.8492">ReadinessResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="597.3642" y2="593.3642"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="597.3642" y2="601.3642"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="597.3642" y2="597.3642"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="80.6001" x="39.8369" y="591.5552">GET /liveness</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="626.2008" x2="616.2008" y1="629.0702" y2="625.0702"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="626.2008" x2="616.2008" y1="629.0702" y2="633.0702"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="627.2008" y1="629.0702" y2="629.0702"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="623.2612">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="660.7762" y2="656.7762"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="660.7762" y2="664.7762"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="627.2008" y1="660.7762" y2="660.7762"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="111.0201" x="342.0272" y="654.9672">LivenessResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="692.4822" y2="688.4822"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="692.4822" y2="696.4822"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="692.4822" y2="692.4822"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="111.0201" x="49.8369" y="686.6732">LivenessResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="724.1882" y2="720.1882"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="724.1882" y2="728.1882"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="724.1882" y2="724.1882"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="117.0911" x="39.8369" y="718.3792">GET /v1/authorized</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="733.1435" x2="723.1435" y1="755.8943" y2="751.8943"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="733.1435" x2="723.1435" y1="755.8943" y2="759.8943"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="734.1435" y1="755.8943" y2="755.8943"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="750.0853">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="787.6003" y2="783.6003"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="787.6003" y2="791.6003"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="734.1435" y1="787.6003" y2="787.6003"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="126.1911" x="342.0272" y="781.7913">AuthorizedResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="819.3063" y2="815.3063"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="819.3063" y2="823.3063"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="819.3063" y2="819.3063"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="126.1911" x="49.8369" y="813.4973">AuthorizedResponse</text>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="3" style="stroke:#EEEEEE;stroke-width:1.0;" width="2109.1637" x="0" y="849.1593"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="849.1593" y2="849.1593"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="852.1593" y2="852.1593"/>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="25.706" style="stroke:#000000;stroke-width:2.0;" width="112.3483" x="998.4077" y="837.3063"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="94.9683" x="1004.4077" y="855.2033">Info endpoints</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="896.7183" y2="892.7183"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="896.7183" y2="900.7183"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="896.7183" y2="896.7183"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="74.7371" x="39.8369" y="890.9093">GET /v1/info</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="832.0012" x2="822.0012" y1="928.4243" y2="924.4243"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="832.0012" x2="822.0012" y1="928.4243" y2="932.4243"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="833.0012" y1="928.4243" y2="928.4243"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="922.6153">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="960.1304" y2="956.1304"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="960.1304" y2="964.1304"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="833.0012" y1="960.1304" y2="960.1304"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="83.8761" x="342.0272" y="954.3214">InfoResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="991.8364" y2="987.8364"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="991.8364" y2="995.8364"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="991.8364" y2="991.8364"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="83.8761" x="49.8369" y="986.0274">InfoResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1023.5424" y2="1019.5424"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1023.5424" y2="1027.5424"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="1023.5424" y2="1023.5424"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="88.9721" x="39.8369" y="1017.7334">GET /v1/config</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="915.718" x2="905.718" y1="1055.2484" y2="1051.2484"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="915.718" x2="905.718" y1="1055.2484" y2="1059.2484"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="916.718" y1="1055.2484" y2="1055.2484"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="1049.4394">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1086.9544" y2="1082.9544"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1086.9544" y2="1090.9544"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="916.718" y1="1086.9544" y2="1086.9544"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="143.6761" x="342.0272" y="1081.1454">ConfigurationResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1118.6604" y2="1114.6604"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1118.6604" y2="1122.6604"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="1118.6604" y2="1118.6604"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="143.6761" x="49.8369" y="1112.8514">ConfigurationResponse</text>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="3" style="stroke:#EEEEEE;stroke-width:1.0;" width="2109.1637" x="0" y="1148.5135"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="1148.5135" y2="1148.5135"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="1151.5135" y2="1151.5135"/>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="25.706" style="stroke:#000000;stroke-width:2.0;" width="125.4946" x="991.8345" y="1136.6604"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="108.1146" x="997.8345" y="1154.5575">Query endpoints</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1196.0725" y2="1192.0725"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1196.0725" y2="1200.0725"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="1196.0725" y2="1196.0725"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="193.2322" x="39.8369" y="1190.2635">POST /v1/query (QueryRequest)</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1016.3678" x2="1006.3678" y1="1227.7785" y2="1223.7785"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1016.3678" x2="1006.3678" y1="1227.7785" y2="1231.7785"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1017.3678" y1="1227.7785" y2="1227.7785"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="87.2171" x="332.0272" y="1221.9695">QueryRequest</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1259.4845" y2="1255.4845"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1259.4845" y2="1263.4845"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1017.3678" y1="1259.4845" y2="1259.4845"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="96.6161" x="342.0272" y="1253.6755">QueryResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1291.1905" y2="1287.1905"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1291.1905" y2="1295.1905"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="1291.1905" y2="1291.1905"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="96.6161" x="49.8369" y="1285.3815">QueryResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1322.8965" y2="1318.8965"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1322.8965" y2="1326.8965"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="1322.8965" y2="1322.8965"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="261.4562" x="39.8369" y="1317.0875">POST /v1/streaming_query (QueryRequest)</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1163.0213" x2="1153.0213" y1="1354.6026" y2="1350.6026"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1163.0213" x2="1153.0213" y1="1354.6026" y2="1358.6026"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1164.0213" y1="1354.6026" y2="1354.6026"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="87.2171" x="332.0272" y="1348.7936">QueryRequest</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1386.3086" y2="1382.3086"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1386.3086" y2="1390.3086"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1164.0213" y1="1386.3086" y2="1386.3086"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="122.4601" x="342.0272" y="1380.4996">StreamingResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1418.0146" y2="1414.0146"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1418.0146" y2="1422.0146"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="1418.0146" y2="1418.0146"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="122.4601" x="49.8369" y="1412.2056">StreamingResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1449.7206" y2="1445.7206"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1449.7206" y2="1453.7206"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="1449.7206" y2="1449.7206"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="69.1601" x="39.8369" y="1443.9116">POST /infer</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1308.7228" x2="1298.7228" y1="1481.4266" y2="1477.4266"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1308.7228" x2="1298.7228" y1="1481.4266" y2="1485.4266"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1309.7228" y1="1481.4266" y2="1481.4266"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="130.8581" x="332.0272" y="1475.6176">RlsapiV1InferRequest</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1513.1326" y2="1509.1326"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1513.1326" y2="1517.1326"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1309.7228" y1="1513.1326" y2="1513.1326"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="140.2571" x="342.0272" y="1507.3236">RlsapiV1InferResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1544.8387" y2="1540.8387"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1544.8387" y2="1548.8387"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="1544.8387" y2="1544.8387"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="140.2571" x="49.8369" y="1539.0297">RlsapiV1InferResponse</text>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="3" style="stroke:#EEEEEE;stroke-width:1.0;" width="2109.1637" x="0" y="1574.6917"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="1574.6917" y2="1574.6917"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="1577.6917" y2="1577.6917"/>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="25.706" style="stroke:#000000;stroke-width:2.0;" width="171.7064" x="968.7286" y="1562.8387"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="154.3264" x="974.7286" y="1580.7357">Conversation endpoints</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1622.2507" y2="1618.2507"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1622.2507" y2="1626.2507"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="1622.2507" y2="1622.2507"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="140.9851" x="39.8369" y="1616.4417">GET /v1/conversations/</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1444.4914" x2="1434.4914" y1="1653.9567" y2="1649.9567"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1444.4914" x2="1434.4914" y1="1653.9567" y2="1657.9567"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1445.4914" y1="1653.9567" y2="1653.9567"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="1648.1477">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1685.6627" y2="1681.6627"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1685.6627" y2="1689.6627"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1445.4914" y1="1685.6627" y2="1685.6627"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="161.0701" x="342.0272" y="1679.8537">ConversationListResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1717.3687" y2="1713.3687"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1717.3687" y2="1721.3687"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="1717.3687" y2="1717.3687"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="161.0701" x="49.8369" y="1711.5597">ConversationListResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1749.0748" y2="1745.0748"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1749.0748" y2="1753.0748"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="1749.0748" y2="1749.0748"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="246.8962" x="39.8369" y="1743.2658">GET /v1/conversations/{conversation_id}</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1444.4914" x2="1434.4914" y1="1780.7808" y2="1776.7808"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1444.4914" x2="1434.4914" y1="1780.7808" y2="1784.7808"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1445.4914" y1="1780.7808" y2="1780.7808"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="1774.9718">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1812.4868" y2="1808.4868"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1812.4868" y2="1816.4868"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1445.4914" y1="1812.4868" y2="1812.4868"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="139.9841" x="342.0272" y="1806.6778">ConversationResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1844.1928" y2="1840.1928"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1844.1928" y2="1848.1928"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="1844.1928" y2="1844.1928"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="139.9841" x="49.8369" y="1838.3838">ConversationResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1875.8988" y2="1871.8988"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="1875.8988" y2="1879.8988"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="1875.8988" y2="1875.8988"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="247.5722" x="39.8369" y="1870.0898">PUT /v1/conversations/{conversation_id}</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1444.4914" x2="1434.4914" y1="1907.6048" y2="1903.6048"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1444.4914" x2="1434.4914" y1="1907.6048" y2="1911.6048"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1445.4914" y1="1907.6048" y2="1907.6048"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="175.3961" x="332.0272" y="1901.7958">ConversationUpdateRequest</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1939.3109" y2="1935.3109"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="1939.3109" y2="1943.3109"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1445.4914" y1="1939.3109" y2="1939.3109"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="184.7952" x="342.0272" y="1933.5019">ConversationUpdateResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1971.0169" y2="1967.0169"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="1971.0169" y2="1975.0169"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="1971.0169" y2="1971.0169"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="184.7952" x="49.8369" y="1965.2079">ConversationUpdateResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2002.7229" y2="1998.7229"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2002.7229" y2="2006.7229"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="2002.7229" y2="2002.7229"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="268.1902" x="39.8369" y="1996.9139">DELETE /v1/conversations/{conversation_id}</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1444.4914" x2="1434.4914" y1="2034.4289" y2="2030.4289"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1444.4914" x2="1434.4914" y1="2034.4289" y2="2038.4289"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1445.4914" y1="2034.4289" y2="2034.4289"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="2028.6199">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2066.1349" y2="2062.1349"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2066.1349" y2="2070.1349"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1445.4914" y1="2066.1349" y2="2066.1349"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="179.5171" x="342.0272" y="2060.3259">ConversationDeleteResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2097.8409" y2="2093.8409"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2097.8409" y2="2101.8409"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="2097.8409" y2="2097.8409"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="179.5171" x="49.8369" y="2092.0319">ConversationDeleteResponse</text>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="3" style="stroke:#EEEEEE;stroke-width:1.0;" width="2109.1637" x="0" y="2127.694"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="2127.694" y2="2127.694"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="2130.694" y2="2130.694"/>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="25.706" style="stroke:#000000;stroke-width:2.0;" width="140.4381" x="984.3628" y="2115.8409"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="123.0581" x="990.3628" y="2133.738">Feedback endpoint</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2175.253" y2="2171.253"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2175.253" y2="2179.253"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="2175.253" y2="2175.253"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="233.8312" x="39.8369" y="2169.444">POST /v1/feedback (FeedbackRequest)</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1581.443" x2="1571.443" y1="2206.959" y2="2202.959"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1581.443" x2="1571.443" y1="2206.959" y2="2210.959"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1582.443" y1="2206.959" y2="2206.959"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="107.5751" x="332.0272" y="2201.15">FeedbackRequest</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2238.665" y2="2234.665"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2238.665" y2="2242.665"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1582.443" y1="2238.665" y2="2238.665"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="116.9741" x="342.0272" y="2232.856">FeedbackResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2270.371" y2="2266.371"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2270.371" y2="2274.371"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="2270.371" y2="2270.371"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="116.9741" x="49.8369" y="2264.562">FeedbackResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2302.077" y2="2298.077"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2302.077" y2="2306.077"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="2302.077" y2="2302.077"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="88.1791" x="39.8369" y="2296.268">GET /v1/status</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1581.443" x2="1571.443" y1="2333.7831" y2="2329.7831"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1581.443" x2="1571.443" y1="2333.7831" y2="2337.7831"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1582.443" y1="2333.7831" y2="2333.7831"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="2327.9741">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2365.4891" y2="2361.4891"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2365.4891" y2="2369.4891"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1582.443" y1="2365.4891" y2="2365.4891"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="97.1751" x="342.0272" y="2359.6801">StatusResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2397.1951" y2="2393.1951"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2397.1951" y2="2401.1951"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="2397.1951" y2="2397.1951"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="97.1751" x="49.8369" y="2391.3861">StatusResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2428.9011" y2="2424.9011"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2428.9011" y2="2432.9011"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="2428.9011" y2="2428.9011"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="88.8551" x="39.8369" y="2423.0921">PUT /v1/status</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1581.443" x2="1571.443" y1="2460.6071" y2="2456.6071"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1581.443" x2="1571.443" y1="2460.6071" y2="2464.6071"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1582.443" y1="2460.6071" y2="2460.6071"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="2454.7981">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2492.3131" y2="2488.3131"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2492.3131" y2="2496.3131"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1582.443" y1="2492.3131" y2="2492.3131"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="199.8622" x="342.0272" y="2486.5041">FeedbackStatusUpdateResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2524.0192" y2="2520.0192"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2524.0192" y2="2528.0192"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="2524.0192" y2="2524.0192"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="199.8622" x="49.8369" y="2518.2102">FeedbackStatusUpdateResponse</text>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="3" style="stroke:#EEEEEE;stroke-width:1.0;" width="2109.1637" x="0" y="2553.8722"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="2553.8722" y2="2553.8722"/>
+    <line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="2109.1637" y1="2556.8722" y2="2556.8722"/>
+    <rect fill="#EEEEEE" filter="url(#f143xggdh0uczj)" height="25.706" style="stroke:#000000;stroke-width:2.0;" width="237.9675" x="935.5981" y="2542.0192"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="220.5874" x="941.5981" y="2559.9162">Providers, models, tools and RAGs</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2601.4312" y2="2597.4312"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2601.4312" y2="2605.4312"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="2601.4312" y2="2601.4312"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="109.1221" x="39.8369" y="2595.6222">GET /v1/providers</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1693.1737" x2="1683.1737" y1="2633.1372" y2="2629.1372"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1693.1737" x2="1683.1737" y1="2633.1372" y2="2637.1372"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1694.1737" y1="2633.1372" y2="2633.1372"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="2627.3282">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2664.8432" y2="2660.8432"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2664.8432" y2="2668.8432"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1694.1737" y1="2664.8432" y2="2664.8432"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="138.1641" x="342.0272" y="2659.0342">ProvidersListResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2696.5492" y2="2692.5492"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2696.5492" y2="2700.5492"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="2696.5492" y2="2696.5492"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="138.1641" x="49.8369" y="2690.7402">ProvidersListResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2728.2553" y2="2724.2553"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2728.2553" y2="2732.2553"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="2728.2553" y2="2728.2553"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="95.9401" x="39.8369" y="2722.4463">GET /v1/models</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1799.1574" x2="1789.1574" y1="2759.9613" y2="2755.9613"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1799.1574" x2="1789.1574" y1="2759.9613" y2="2763.9613"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1800.1574" y1="2759.9613" y2="2759.9613"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="2754.1523">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2791.6673" y2="2787.6673"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2791.6673" y2="2795.6673"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1800.1574" y1="2791.6673" y2="2791.6673"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="103.6621" x="342.0272" y="2785.8583">ModelsResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2823.3733" y2="2819.3733"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2823.3733" y2="2827.3733"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="2823.3733" y2="2823.3733"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="103.6621" x="49.8369" y="2817.5643">ModelsResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2855.0793" y2="2851.0793"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2855.0793" y2="2859.0793"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="2855.0793" y2="2855.0793"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="81.0161" x="39.8369" y="2849.2703">GET /v1/tools</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1890.0072" x2="1880.0072" y1="2886.7853" y2="2882.7853"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1890.0072" x2="1880.0072" y1="2886.7853" y2="2890.7853"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1891.0072" y1="2886.7853" y2="2886.7853"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="2880.9763">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2918.4914" y2="2914.4914"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="2918.4914" y2="2922.4914"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1891.0072" y1="2918.4914" y2="2918.4914"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="91.6371" x="342.0272" y="2912.6824">ToolsResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2950.1974" y2="2946.1974"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="2950.1974" y2="2954.1974"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="2950.1974" y2="2950.1974"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="91.6371" x="49.8369" y="2944.3884">ToolsResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2981.9034" y2="2977.9034"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="2981.9034" y2="2985.9034"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="2981.9034" y2="2981.9034"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="77.8961" x="39.8369" y="2976.0944">GET /v1/rags</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1971.141" x2="1961.141" y1="3013.6094" y2="3009.6094"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1971.141" x2="1961.141" y1="3013.6094" y2="3017.6094"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1972.141" y1="3013.6094" y2="3013.6094"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="3007.8004">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="3045.3154" y2="3041.3154"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="3045.3154" y2="3049.3154"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1972.141" y1="3045.3154" y2="3045.3154"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="106.0411" x="342.0272" y="3039.5064">RAGListResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="3077.0214" y2="3073.0214"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="3077.0214" y2="3081.0214"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="3077.0214" y2="3077.0214"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="106.0411" x="49.8369" y="3071.2124">RAGListResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="3108.7275" y2="3104.7275"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="3108.7275" y2="3112.7275"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="3108.7275" y2="3108.7275"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="128.2581" x="39.8369" y="3102.9185">GET /v1/rags/RAG_ID</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1971.141" x2="1961.141" y1="3140.4335" y2="3136.4335"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="1971.141" x2="1961.141" y1="3140.4335" y2="3144.4335"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="1972.141" y1="3140.4335" y2="3140.4335"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="3134.6245">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="3172.1395" y2="3168.1395"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="3172.1395" y2="3176.1395"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="1972.141" y1="3172.1395" y2="3172.1395"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="109.7331" x="342.0272" y="3166.3305">RAGInfoResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="3203.8455" y2="3199.8455"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="3203.8455" y2="3207.8455"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="3203.8455" y2="3203.8455"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="109.7331" x="49.8369" y="3198.0365">RAGInfoResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="3235.5515" y2="3231.5515"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="323.0272" x2="313.0272" y1="3235.5515" y2="3239.5515"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="32.8369" x2="324.0272" y1="3235.5515" y2="3235.5515"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="93.5351" x="39.8369" y="3229.7425">GET /v1/shields</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="2059.0158" x2="2049.0158" y1="3267.2575" y2="3263.2575"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="2059.0158" x2="2049.0158" y1="3267.2575" y2="3271.2575"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="325.0272" x2="2060.0158" y1="3267.2575" y2="3267.2575"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="49.6991" x="332.0272" y="3261.4485">Request</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="3298.9636" y2="3294.9636"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="326.0272" x2="336.0272" y1="3298.9636" y2="3302.9636"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="325.0272" x2="2060.0158" y1="3298.9636" y2="3298.9636"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="102.5311" x="342.0272" y="3293.1546">ShieldsResponse</text>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="3330.6696" y2="3326.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;" x1="33.8369" x2="43.8369" y1="3330.6696" y2="3334.6696"/>
+    <line style="stroke:#A80036;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="32.8369" x2="324.0272" y1="3330.6696" y2="3330.6696"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="102.5311" x="49.8369" y="3324.8606">ShieldsResponse</text>
+    <!--SRC=[nPVVRzCm4CVVyrTOUnhIHZLugzH9rLP6fKwKhkCrCetNMikI4BiL0_6_uzZnZvo3dOuXtdBdZvFlEUUpZptI0jKb8qcILBZcT4ChN71qbLDIy8xhPBgSepjI7qXzWZ13maoPD9DDcUTamsbPC7HIboL_MprBfdbEg-Sky4HuJJTCCwtfOJk2SxxJbB8y2E_vhgpf3v9fq7eyc1OFfSQQPm_ObCK3tMf4MHxqRK_gv_JmJcFAXXJZDS5FjDYca8SZS6QTCrpHz71X5b4x-lIAvMTOckdXlQFSySDP3uHaN_7cKTFQzi2gBWyq4o_If77u_xJCI6v_gRGyY9UbPQJX1u-tXcYU_NNTKP9dXcdD1akIoGIjHCAX2cy98aLMbLJaxMIIg6m-lxoqEJj6DxCr6YNM8uPrlexHYeYVmtZIEix1t8_hsyMAi4f88kuh1AQ-1H2fxLOb-a1bxRO00krciHgj3yfSvfWMQ_ATHxJwd5fCWZDQ42OsLP6Xd1w8DBH-5WwWrhD126OdsmYC2mPW54G2yBc0C1t8N-XQjA-8oFAmWAh3nSYMBY2jKzEil8uRIfoQmOZ87b3-_Rcea4F_jH3V55GWkwsnLd3hW5ARBqL4Tf2m45MsWHHJowqOuu9ohkJ0lfRbCwAhdvNhzxcfxWCMSFdfJWcNnm4wbVDQaMz06Fh462ENIhGRHj92mGYwJ4GYEBl2Ols33iZs0HZ0dIOYGVXSA12HXkBI0Yg_SyYA797MbujvGvgpm46yGjMT42vMlQpCcIldu3vYxtNE-v6V-ftBG6S7T4PwDe8PNr36utkX7pz6_4_NJ6dswvz4SqGaiOowVvqet4_ULndcv2LnwPc3emCJ-cEydYrcwzb_-rdN92T71GKcgAtreRtbngzVfjhfYp4wrPF_KEcS6_GO0JPn1c6K5Wt6vc7X3SKuvdiMaZX0sfryIRJiTg3m3daLMNefr9S7fNjmYigDfUvhpjhMvKor9_BUkvhUn2kmwOn0V6x7P0DqlTwTNOyDgBZzR5Yf2X2s5RfXSxeAxO82R-L0H1c0mfBaMWD5kZsqWhG7wbat_eYSBXDMqxITy7AWEb6dBLGExnOmlHdmro0LbpCIKzBvzSjL3RXXGofIOrJV3MzyfXktegpFAp5g95PZ0FKR]-->
   </g>
 </svg>

@@ -77,7 +77,18 @@ async def test_info_endpoint(mocker: MockerFixture) -> None:
 
 @pytest.mark.asyncio
 async def test_info_endpoint_connection_error(mocker: MockerFixture) -> None:
-    """Test the info endpoint handler."""
+    """Test the info endpoint handler.
+
+    Verify that info_endpoint_handler raises an HTTPException with
+    status 503 when the LlamaStack client cannot connect.
+
+    Sets up application configuration and patches the LlamaStack
+    client so that calling its version inspection raises an
+    APIConnectionError, then asserts the raised HTTPException has
+    status code 503 and a detail payload containing a "response" of
+    "Service unavailable" and a "cause" that includes "Unable to
+    connect to Llama Stack".
+    """
     mock_authorization_resolvers(mocker)
 
     # configuration for tests

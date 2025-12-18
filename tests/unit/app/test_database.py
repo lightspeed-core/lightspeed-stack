@@ -16,7 +16,12 @@ from models.config import SQLiteDatabaseConfiguration, PostgreSQLDatabaseConfigu
 
 @pytest.fixture(name="reset_database_state")
 def reset_database_state_fixture() -> Generator:
-    """Reset global database state before and after tests."""
+    """Reset global database state before and after tests.
+
+    Returns:
+        generator: A fixture generator that yields control to the test and
+        restores global database state afterwards.
+    """
     original_engine = database.engine
     original_session_local = database.session_local
 
@@ -33,7 +38,13 @@ def reset_database_state_fixture() -> Generator:
 
 @pytest.fixture(name="base_postgres_config")
 def base_postgres_config_fixture() -> PostgreSQLDatabaseConfiguration:
-    """Provide base PostgreSQL configuration for tests."""
+    """Provide base PostgreSQL configuration for tests.
+
+    Returns:
+        PostgreSQLDatabaseConfiguration: Configuration with host "localhost",
+        port 5432, database "testdb", user "testuser", password "testpass", and
+        namespace "public".
+    """
     return PostgreSQLDatabaseConfiguration(
         host="localhost",
         port=5432,
@@ -263,7 +274,24 @@ class TestInitializeDatabase:
         mock_logger: MockType,
         enable_debug: bool = False,
     ) -> tuple[MockType, MockType]:
-        """Setup common mocks for initialize_database tests."""
+        """Setup common mocks for initialize_database tests.
+
+        Create and configure common mock objects used by
+        initialize_database tests.
+
+        Parameters:
+            mocker (MockerFixture): pytest-mock fixture used to create MagicMock instances.
+            mock_sessionmaker (MockType): Mocked sessionmaker whose return
+            value will be set to the mocked session-local factory.
+            mock_logger (MockType): Mock logger whose `isEnabledFor` behavior will be configured.
+            enable_debug (bool): If True, configures `mock_logger.isEnabledFor` to return True.
+
+        Returns:
+            tuple[MockType, MockType]: A tuple (mock_engine,
+            mock_session_local) where `mock_engine` is a mocked SQLAlchemy
+            Engine and `mock_session_local` is the mocked session-local
+            factory.
+        """
         mock_engine = mocker.MagicMock(spec=Engine)
         mock_session_local = mocker.MagicMock()
         mock_sessionmaker.return_value = mock_session_local
@@ -277,7 +305,20 @@ class TestInitializeDatabase:
         mock_engine: MockType,
         mock_session_local: MockType,
     ) -> None:
-        """Verify common assertions for initialize_database tests."""
+        """Verify common assertions for initialize_database tests.
+
+        Assert that initialize_database set up the engine and session factory
+        and that sessionmaker was invoked with the expected arguments.
+
+        Parameters:
+            mock_sessionmaker (MockType): Mock of the sessionmaker factory;
+            expected to have been called with autocommit=False,
+            autoflush=False, bind=mock_engine.
+            mock_engine (MockType): Mock Engine instance expected to be
+            assigned to database.engine.
+            mock_session_local (MockType): Mock session factory expected to be
+            assigned to database.session_local.
+        """
         mock_sessionmaker.assert_called_once_with(
             autocommit=False, autoflush=False, bind=mock_engine
         )
