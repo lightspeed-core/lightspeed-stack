@@ -10,7 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         mode: ["server", "library"]
-        environment: ["ci", "azure", "vertexai"]
+        environment: ["ci", "azure", "vertexai", "watsonx"]
     
     name: "E2E: ${{ matrix.mode }} mode / ${{ matrix.environment }}"
     
@@ -200,6 +200,8 @@ jobs:
           VERTEX_AI_PROJECT: ${{ secrets.VERTEX_AI_PROJECT }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
           GCP_KEYS_PATH: ${{ env.GCP_KEYS_PATH }}
+          WATSONX_PROJECT_ID: ${{ secrets.WATSONX_PROJECT_ID }}
+          WATSONX_API_KEY: ${{ secrets.WATSONX_API_KEY }}
         run: |
           # Debug: Check if environment variable is available for docker-compose
           echo "OPENAI_API_KEY is set: $([ -n "$OPENAI_API_KEY" ] && echo 'YES' || echo 'NO')"
@@ -226,6 +228,8 @@ jobs:
           VERTEX_AI_PROJECT: ${{ secrets.VERTEX_AI_PROJECT }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
           GCP_KEYS_PATH: ${{ env.GCP_KEYS_PATH }}
+          WATSONX_PROJECT_ID: ${{ secrets.WATSONX_PROJECT_ID }}
+          WATSONX_API_KEY: ${{ secrets.WATSONX_API_KEY }}
         run: |
           echo "Starting service in library mode (1 container)"
           docker compose -f docker-compose-library.yaml up -d
@@ -255,6 +259,13 @@ jobs:
             fi
             exit 1
           }
+
+      # watsonx has a different convention than "<provider>/<model>"
+      - name: Set watsonx test overrides
+        if: matrix.environment == 'watsonx'
+        run: |
+          echo "E2E_DEFAULT_MODEL_OVERRIDE=watsonx/watsonx/meta-llama/llama-3-3-70b-instruct" >> $GITHUB_ENV
+          echo "E2E_DEFAULT_PROVIDER_OVERRIDE=watsonx" >> $GITHUB_ENV
 
       - name: Run e2e tests
         env:

@@ -22,6 +22,9 @@ from tests.e2e.utils.utils import (
     switch_config,
 )
 
+FALLBACK_MODEL = "gpt-4o-mini"
+FALLBACK_PROVIDER = "openai"
+
 
 def _fetch_models_from_service() -> dict:
     """Query /v1/models endpoint and return first LLM model.
@@ -58,21 +61,33 @@ def before_all(context: Context) -> None:
     # Get first LLM model from running service
     print(f"Running tests in {context.deployment_mode} mode")
 
-    llm_model = _fetch_models_from_service()
+    # Check for environment variable overrides first
+    model_override = os.getenv("E2E_DEFAULT_MODEL_OVERRIDE")
+    provider_override = os.getenv("E2E_DEFAULT_PROVIDER_OVERRIDE")
 
-    if llm_model:
-        context.default_model = llm_model["model_id"]
-        context.default_provider = llm_model["provider_id"]
+    # Only override if the variables contain actual values (skip if empty)
+    if model_override and provider_override:
+        context.default_model = model_override
+        context.default_provider = provider_override
         print(
-            f"Detected LLM: {context.default_model} (provider: {context.default_provider})"
+            f"Using override LLM: {context.default_model} (provider: {context.default_provider})"
         )
     else:
-        # Fallback for development
-        context.default_model = "gpt-4o-mini"
-        context.default_provider = "openai"
-        print(
-            f"⚠ Could not detect models, using fallback: {context.default_provider}/{context.default_model}"
-        )
+        llm_model = _fetch_models_from_service()
+
+        if llm_model:
+            context.default_model = llm_model["model_id"]
+            context.default_provider = llm_model["provider_id"]
+            print(
+                f"Detected LLM: {context.default_model} (provider: {context.default_provider})"
+            )
+        else:
+            # Fallback for development
+            context.default_model = FALLBACK_MODEL
+            context.default_provider = FALLBACK_PROVIDER
+            print(
+                f"⚠ Could not detect models, using fallback: {context.default_provider}/{context.default_model}"
+            )
 
 
 def before_scenario(context: Context, scenario: Scenario) -> None:
