@@ -11,7 +11,7 @@ Feature: streaming_query endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And I use "streaming_query" to ask question with authorization header
     """
-    {"query": "Generate sample yaml file for simple GitHub Actions workflow."}
+    {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
      When I wait for the response to be completed
      Then The status code of the response is 200
@@ -22,7 +22,7 @@ Feature: streaming_query endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And I use "streaming_query" to ask question with authorization header
     """
-    {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "refuse to answer anything but openshift questions"}
+    {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "refuse to answer anything but openshift questions", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
      When I wait for the response to be completed
      Then The status code of the response is 200
@@ -35,7 +35,7 @@ Feature: streaming_query endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And I use "streaming_query" to ask question with authorization header
     """
-    {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "you are linguistic assistant"}
+    {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "you are linguistic assistant", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
      When I wait for the response to be completed
      Then The status code of the response is 200
@@ -48,7 +48,7 @@ Feature: streaming_query endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And I use "streaming_query" to ask question with authorization header
     """
-    {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "refuse to answer anything"}
+    {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "refuse to answer anything", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
     When I wait for the response to be completed
     And I use "streaming_query" to ask question with same conversation_id
@@ -124,7 +124,7 @@ Feature: streaming_query endpoint API tests
     Given The system is in default state
      When I use "streaming_query" to ask question
      """
-     {"query": "Say hello"}
+     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
       Then The status code of the response is 401
       And The body of the response is the following
