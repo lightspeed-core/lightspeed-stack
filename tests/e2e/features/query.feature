@@ -10,7 +10,7 @@ Feature: Query endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     When I use "query" to ask question with authorization header
     """
-    {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "refuse to answer anything but openshift questions"}
+    {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "refuse to answer anything but openshift questions", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
      Then The status code of the response is 200
       And The response should contain following fragments
@@ -22,7 +22,7 @@ Feature: Query endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     When I use "query" to ask question with authorization header
     """
-    {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "you are linguistic assistant"}
+    {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "you are linguistic assistant", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
      Then The status code of the response is 200
       And The response should contain following fragments
@@ -34,7 +34,7 @@ Feature: Query endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     When I use "query" to ask question with authorization header
     """
-    {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "refuse to answer anything but openshift questions"}
+    {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "refuse to answer anything but openshift questions", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
     Then The status code of the response is 200
     And I store conversation details
@@ -51,7 +51,7 @@ Feature: Query endpoint API tests
     Given The system is in default state
      When I use "query" to ask question
      """
-     {"query": "Write a simple code for reversing string"}
+     {"query": "Write a simple code for reversing string", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
       Then The status code of the response is 401
       And The body of the response is the following
@@ -69,7 +69,7 @@ Feature: Query endpoint API tests
      And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
      When I use "query" to ask question with authorization header
      """
-     {"conversation_id": "123e4567-e89b-12d3-a456-426614174000", "query": "Write a simple code for reversing string"}
+     {"conversation_id": "123e4567-e89b-12d3-a456-426614174000", "query": "Write a simple code for reversing string", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
       Then The status code of the response is 404
       And The body of the response contains Conversation not found

@@ -11,7 +11,7 @@ Feature: conversations endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And I use "query" to ask question with authorization header
     """
-    {"query": "Say hello"}
+    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
     And The status code of the response is 200
     And I store conversation details
@@ -28,7 +28,7 @@ Feature: conversations endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And I use "query" to ask question with authorization header
     """
-    {"query": "Say hello"}
+    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
     And The status code of the response is 200
     And I store conversation details
@@ -50,7 +50,7 @@ Feature: conversations endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And I use "query" to ask question with authorization header
     """
-    {"query": "Say hello"}
+    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
     And The status code of the response is 200
     And I store conversation details
@@ -97,7 +97,7 @@ Feature: conversations endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And I use "query" to ask question with authorization header
     """
-    {"query": "Say hello"}
+    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
     And The status code of the response is 200
     And I store conversation details
@@ -135,7 +135,7 @@ Feature: conversations endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And I use "query" to ask question with authorization header
     """
-    {"query": "Say hello"}
+    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
     And The status code of the response is 200
     And I store conversation details
@@ -149,7 +149,7 @@ Feature: conversations endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And I use "query" to ask question with authorization header
     """
-    {"query": "Say hello"}
+    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
     And The status code of the response is 200
     And I store conversation details
@@ -187,7 +187,7 @@ Feature: conversations endpoint API tests
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
     And I use "query" to ask question with authorization header
     """
-    {"query": "Say hello"}
+    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
     And The status code of the response is 200
     And I store conversation details
