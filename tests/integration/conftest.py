@@ -37,6 +37,9 @@ def test_config_fixture() -> Generator:
 
     This fixture loads the actual configuration file used in testing,
     demonstrating integration with the configuration system.
+
+    Yields:
+        The `configuration` module with the loaded settings.
     """
     config_path = (
         Path(__file__).parent.parent / "configuration" / "lightspeed-stack.yaml"
@@ -56,6 +59,9 @@ def current_config_fixture() -> Generator:
 
     This fixture loads the actual configuration file from project root (current configuration),
     demonstrating integration with the configuration system.
+
+    Yields:
+        configuration: The loaded configuration object.
     """
     config_path = Path(__file__).parent.parent.parent / "lightspeed-stack.yaml"
     assert config_path.exists(), f"Config file not found: {config_path}"
@@ -73,6 +79,9 @@ def test_db_engine_fixture() -> Generator:
 
     This provides a real database (not mocked) for integration tests.
     Each test gets a fresh database.
+
+    Yields:
+        engine (Engine): A SQLAlchemy Engine connected to a new in-memory SQLite database.
     """
     # Create in-memory SQLite database
     engine = create_engine(
@@ -96,6 +105,10 @@ def test_db_session_fixture(test_db_engine: Engine) -> Generator[Session, None, 
     """Create a database session for testing.
 
     Provides a real database session connected to the in-memory test database.
+
+    Yields:
+        session (Session): A database session bound to the test engine; the
+        fixture closes the session after the test.
     """
     session_local = sessionmaker(autocommit=False, autoflush=False, bind=test_db_engine)
     session = session_local()
@@ -107,7 +120,12 @@ def test_db_session_fixture(test_db_engine: Engine) -> Generator[Session, None, 
 
 @pytest.fixture(name="test_request")
 def test_request_fixture() -> Request:
-    """Create a test FastAPI Request object with proper scope."""
+    """Create a test FastAPI Request object with proper scope.
+
+    Returns:
+        request (fastapi.Request): A Request object whose scope has `"type":
+        "http"`, an empty `query_string`, and no headers.
+    """
     return Request(
         scope={
             "type": "http",
@@ -119,7 +137,11 @@ def test_request_fixture() -> Request:
 
 @pytest.fixture(name="test_response")
 def test_response_fixture() -> Response:
-    """Create a test FastAPI Response object with proper scope."""
+    """Create a test FastAPI Response object with proper scope.
+
+    Returns:
+        Response: Response with empty content, status 200, and media_type "application/json".
+    """
     return Response(content="", status_code=200, media_type="application/json")
 
 
@@ -129,6 +151,9 @@ async def test_auth_fixture(test_request: Request) -> AuthTuple:
 
     This uses the actual NoopAuthDependency instead of mocking,
     making this a true integration test.
+
+    Returns:
+        AuthTuple: Authentication information produced by NoopAuthDependency.
     """
     noop_auth = NoopAuthDependency()
     return await noop_auth(test_request)

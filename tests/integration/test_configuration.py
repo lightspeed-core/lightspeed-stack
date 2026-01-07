@@ -21,7 +21,19 @@ def test_default_configuration() -> None:
 
 
 def test_loading_proper_configuration(configuration_filename: str) -> None:
-    """Test the configuration loading."""
+    """Test the configuration loading.
+
+    Validate that loading the given configuration YAML populates all expected sections and values.
+
+    Loads configuration from the provided file and asserts presence and
+    correctness of top-level sections (configuration, service, llama_stack,
+    user_data_collection, mcp_servers) and selected field values including
+    service host and flags, CORS settings, llama stack URL and API key secret,
+    user data collection settings, and three MCP server entries.
+
+    Parameters:
+        configuration_filename (str): Path to the YAML configuration file used for the test.
+    """
     cfg = configuration
     cfg.load_configuration(configuration_filename)
 

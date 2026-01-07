@@ -33,7 +33,14 @@ def test_byok_rag_configuration_default_values() -> None:
 
 
 def test_byok_rag_configuration_nondefault_values() -> None:
-    """Test the ByokRag constructor."""
+    """Test the ByokRag constructor.
+
+    Verify that ByokRag class accepts and stores non-default configuration values.
+
+    Asserts that rag_id, rag_type, embedding_model, embedding_dimension, and
+    vector_db_id match the provided inputs and that db_path is converted to a
+    Path.
+    """
 
     byok_rag = ByokRag(
         rag_id="rag_id",
@@ -83,7 +90,14 @@ def test_byok_rag_configuration_empty_rag_id() -> None:
 
 
 def test_byok_rag_configuration_empty_rag_type() -> None:
-    """Test the ByokRag constructor."""
+    """Test the ByokRag constructor.
+
+    Verify that constructing a ByokRag with an empty `rag_type` raises a validation error.
+
+    Raises:
+        ValidationError: if `rag_type` is an empty string; error message
+        includes "String should have at least 1 character".
+    """
 
     with pytest.raises(
         ValidationError, match="String should have at least 1 character"

@@ -18,7 +18,13 @@ def test_quota_scheduler_default_configuration() -> None:
 
 
 def test_quota_scheduler_custom_configuration() -> None:
-    """Test the custom configuration."""
+    """Test the custom configuration.
+
+    Verify that QuotaSchedulerConfiguration accepts a custom period value.
+
+    Constructs a QuotaSchedulerConfiguration with period=10 and asserts the
+    instance is created and its period equals 10 (the input value).
+    """
     cfg = QuotaSchedulerConfiguration(
         period=10,
         database_reconnection_count=2,

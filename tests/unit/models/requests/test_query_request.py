@@ -76,7 +76,16 @@ class TestQueryRequest:
         assert qr.attachments is None
 
     def test_get_documents(self) -> None:
-        """Test the get_documents method."""
+        """Test the get_documents method.
+
+        Verify that QueryRequest.get_documents converts attachments into
+        document dictionaries with correct content and mime_type.
+
+        Asserts that:
+        - Two attachments produce two document entries.
+        - Each document's "content" matches the attachment's content.
+        - Each document's "mime_type" matches the attachment's content_type.
+        """
         attachments = [
             Attachment(
                 attachment_type="log",
@@ -135,7 +144,14 @@ class TestQueryRequest:
             QueryRequest(query="Tell me about Kubernetes", provider="OpenAI")
 
     def test_validate_media_type(self, mocker: MockerFixture) -> None:
-        """Test the validate_media_type method."""
+        """Test the validate_media_type method.
+
+        Verify that setting a supported media type does not emit a warning.
+
+        Patches the module logger, constructs a QueryRequest with provider,
+        model, and media_type "text/plain", and asserts the logger's warning
+        method was not called.
+        """
 
         # Mock the logger
         mock_logger = mocker.Mock(spec=Logger)

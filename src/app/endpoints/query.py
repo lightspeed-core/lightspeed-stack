@@ -387,9 +387,12 @@ async def query_endpoint_handler_base(  # pylint: disable=R0914
 
         consume_tokens(
             configuration.quota_limiters,
+            configuration.token_usage_history,
             user_id,
             input_tokens=token_usage.input_tokens,
             output_tokens=token_usage.output_tokens,
+            model_id=model_id,
+            provider_id=provider_id,
         )
 
         store_conversation_into_cache(

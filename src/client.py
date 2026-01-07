@@ -21,7 +21,28 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
     _lsc: Optional[AsyncLlamaStackClient] = None
 
     async def load(self, llama_stack_config: LlamaStackConfiguration) -> None:
-        """Retrieve Async Llama stack client according to configuration."""
+        """
+        Load and initialize the holder's AsyncLlamaStackClient according to the provided config.
+
+        If `llama_stack_config.use_as_library_client` is set to True, a
+        library-mode client is created using
+        `llama_stack_config.library_client_config_path` and initialized before
+        being stored.
+
+        Otherwise, a service-mode client is created using
+        `llama_stack_config.url` and optional `llama_stack_config.api_key`.
+        The created client is stored on the instance for later retrieval via
+        `get_client()`.
+
+        Parameters:
+            llama_stack_config (LlamaStackConfiguration): Configuration that
+            selects client mode and provides either a library client config
+            path or service connection details (URL and optional API key).
+
+        Raises:
+            ValueError: If `use_as_library_client` is True but
+            `library_client_config_path` is not set.
+        """
         if llama_stack_config.use_as_library_client is True:
             if llama_stack_config.library_client_config_path is not None:
                 logger.info("Using Llama stack as library client")
@@ -47,7 +68,15 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
             )
 
     def get_client(self) -> AsyncLlamaStackClient:
-        """Return an initialised AsyncLlamaStackClient."""
+        """
+        Get the initialized client held by this holder.
+
+        Returns:
+            AsyncLlamaStackClient: The initialized client instance.
+
+        Raises:
+            RuntimeError: If the client has not been initialized; call `load(...)` first.
+        """
         if not self._lsc:
             raise RuntimeError(
                 "AsyncLlamaStackClient has not been initialised. Ensure 'load(..)' has been called."

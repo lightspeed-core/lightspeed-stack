@@ -45,6 +45,9 @@ Handler for REST API call to provide answer to query using Response API.
 ## [rags.py](rags.py)
 Handler for REST API calls to list and retrieve available RAGs.
 
+## [rlsapi_v1.py](rlsapi_v1.py)
+Handler for RHEL Lightspeed rlsapi v1 REST API endpoints.
+
 ## [root.py](root.py)
 Handler for the / endpoint.
 

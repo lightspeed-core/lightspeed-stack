@@ -137,7 +137,13 @@ def test_authentication_configuration_rh_identity_more_entitlements() -> None:
 
 
 def test_authentication_configuration_rh_identity_but_insufficient_config() -> None:
-    """Test the AuthenticationConfiguration with RH identity token."""
+    """Test the AuthenticationConfiguration with RH identity token.
+
+    Verify that selecting the RH Identity authentication module without
+    providing a RHIdentityConfiguration raises a validation error.
+
+    Expects a ValidationError with the message "RH Identity configuration must be specified".
+    """
 
     with pytest.raises(
         ValidationError, match="RH Identity configuration must be specified"
@@ -171,7 +177,15 @@ def test_authentication_configuration_jwk_token() -> None:
 
 
 def test_authentication_configuration_jwk_token_but_insufficient_config() -> None:
-    """Test the AuthenticationConfiguration with JWK token."""
+    """Test the AuthenticationConfiguration with JWK token.
+
+    Verify that using the JWK token module with an insufficient
+    `JwkConfiguration` triggers validation.
+
+    Attempts to construct an `AuthenticationConfiguration` with
+    `module=AUTH_MOD_JWK_TOKEN` and an empty `JwkConfiguration` must raise a
+    `ValidationError` containing the text "JwkConfiguration".
+    """
 
     with pytest.raises(ValidationError, match="JwkConfiguration"):
         AuthenticationConfiguration(
@@ -200,7 +214,15 @@ def test_authentication_configuration_jwk_token_but_not_config() -> None:
 
 
 def test_authentication_configuration_jwk_broken_config() -> None:
-    """Test the AuthenticationConfiguration with JWK set, but not configured."""
+    """Test the AuthenticationConfiguration with JWK set, but not configured.
+
+    Verify that accessing `jwk_configuration` raises a ValueError after the JWK
+    config is removed.
+
+    Creates an AuthenticationConfiguration with a JWK configuration, clears its
+    `jwk_config`, and asserts that accessing `jwk_configuration` raises
+    ValueError with message "JWK configuration should not be None".
+    """
 
     auth_config = AuthenticationConfiguration(
         module=AUTH_MOD_JWK_TOKEN,
@@ -220,7 +242,13 @@ def test_authentication_configuration_jwk_broken_config() -> None:
 
 
 def test_authentication_configuration_supported() -> None:
-    """Test the AuthenticationConfiguration constructor."""
+    """Test the AuthenticationConfiguration constructor.
+
+    Verify AuthenticationConfiguration initializes correctly for the K8S authentication module.
+
+    Asserts that the module is set to K8S, `skip_tls_verification` is False,
+    and both `k8s_ca_cert_path` and `k8s_cluster_api` are None.
+    """
     auth_config = AuthenticationConfiguration(
         module=AUTH_MOD_K8S,
         skip_tls_verification=False,
@@ -296,7 +324,18 @@ def test_authentication_configuration_in_config_k8s() -> None:
 
 
 def test_authentication_configuration_in_config_rh_identity() -> None:
-    """Test the authentication configuration in main config."""
+    """Test the authentication configuration in main config.
+
+    Verify that a Configuration with RH Identity authentication is constructed
+    with the expected authentication fields.
+
+    Asserts that:
+    - authentication.module is set to RH Identity,
+    - skip_tls_verification is True,
+    - k8s_ca_cert_path is converted to a Path for the provided certificate file,
+    - k8s_cluster_api is None,
+    - an RHIdentityConfiguration is attached to the authentication.
+    """
     # pylint: disable=no-member
     cfg = Configuration(
         name="test_name",

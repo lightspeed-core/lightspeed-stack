@@ -68,7 +68,14 @@ def test_tls_configuration_wrong_password_path() -> None:
 
 
 def test_tls_configuration_certificate_path_to_directory() -> None:
-    """Test the TLS configuration loading when some path points to a directory."""
+    """Test the TLS configuration loading when some path points to a directory.
+
+    Verify that TLSConfiguration raises a ValueError when a provided TLS path
+    points to a directory.
+
+    Raises:
+        ValueError: If any of the provided TLS paths does not point to a file.
+    """
     with pytest.raises(ValueError, match="Path does not point to a file"):
         TLSConfiguration(
             tls_certificate_path=Path("tests/"),

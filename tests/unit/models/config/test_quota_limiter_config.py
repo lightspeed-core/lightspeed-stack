@@ -23,7 +23,12 @@ def test_quota_limiter_configuration() -> None:
 
 
 def test_quota_limiter_configuration_improper_value_1() -> None:
-    """Test the default configuration."""
+    """Test the default configuration.
+
+    Verify that constructing a QuotaLimiterConfiguration with a negative
+    `initial_quota` raises a ValueError with message "Input should be greater
+    than or equal to 0".
+    """
     with pytest.raises(ValueError, match="Input should be greater than or equal to 0"):
         _ = QuotaLimiterConfiguration(
             type="cluster_limiter",
@@ -35,7 +40,14 @@ def test_quota_limiter_configuration_improper_value_1() -> None:
 
 
 def test_quota_limiter_configuration_improper_value_2() -> None:
-    """Test the default configuration."""
+    """Test the default configuration.
+
+    Verify that providing a negative `quota_increase` raises a ValueError.
+
+    Asserts that constructing a QuotaLimiterConfiguration with `quota_increase`
+    less than zero raises a ValueError with the message "Input should be
+    greater than or equal to 0".
+    """
     with pytest.raises(ValueError, match="Input should be greater than or equal to 0"):
         _ = QuotaLimiterConfiguration(
             type="cluster_limiter",
@@ -47,7 +59,14 @@ def test_quota_limiter_configuration_improper_value_2() -> None:
 
 
 def test_quota_limiter_configuration_improper_value_3() -> None:
-    """Test the default configuration."""
+    """Test the default configuration.
+
+    Check that constructing QuotaLimiterConfiguration with an invalid `type`
+    raises a ValueError with the expected message.
+
+    Raises:
+        ValueError: if `type` is not 'user_limiter' or 'cluster_limiter'.
+    """
     with pytest.raises(
         ValueError, match="Input should be 'user_limiter' or 'cluster_limiter'"
     ):

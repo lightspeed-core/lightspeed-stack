@@ -14,7 +14,14 @@ class TestRAGChunk:
         assert chunk.score is None
 
     def test_constructor_with_all_fields(self) -> None:
-        """Test RAGChunk constructor with all fields."""
+        """Test RAGChunk constructor with all fields.
+
+        Verify that providing content, source, and score assigns those values
+        to the RAGChunk instance.
+
+        Asserts that the chunk's `content`, `source`, and `score` fields equal
+        the values passed to the constructor.
+        """
         chunk = RAGChunk(
             content="Kubernetes is an open-source container orchestration system",
             source="kubernetes-docs/overview.md",
@@ -66,7 +73,14 @@ class TestRAGChunk:
         assert chunk.score is None
 
     def test_multiline_content(self) -> None:
-        """Test RAGChunk with multiline content."""
+        """Test RAGChunk with multiline content.
+
+        Verify that a RAGChunk preserves multiline content and stores the
+        provided source and score.
+
+        Asserts that the chunk's `content` equals the original multiline
+        string, `source` equals "docs/multiline.md", and `score` equals 0.88.
+        """
         multiline_content = """This is a multiline content
         that spans multiple lines
         and contains various information."""

@@ -32,6 +32,9 @@ def test_dump_configuration(tmp_path: Path) -> None:
     that the resulting file contains all expected sections and values.
 
     Please note that redaction process is not in place.
+
+    Parameters:
+        tmp_path (Path): Directory where the test JSON file will be written.
     """
     cfg = Configuration(
         name="test_name",

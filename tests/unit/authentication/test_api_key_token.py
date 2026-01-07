@@ -13,7 +13,14 @@ from models.config import APIKeyTokenConfiguration
 
 @pytest.fixture
 def default_api_key_token_configuration() -> APIKeyTokenConfiguration:
-    """Default APIKeyTokenConfiguration for testing."""
+    """Default APIKeyTokenConfiguration for testing.
+
+    Provide a default APIKeyTokenConfiguration for tests.
+
+    Returns:
+        APIKeyTokenConfiguration: configuration with `api_key` set to
+        `SecretStr("some-test-api-key")`.
+    """
     return APIKeyTokenConfiguration(api_key=SecretStr("some-test-api-key"))
 
 

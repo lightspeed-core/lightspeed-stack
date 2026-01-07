@@ -27,6 +27,9 @@ Simple quota limiter where quota can be revoked.
 ## [sql.py](sql.py)
 SQL commands used by quota management package.
 
+## [token_usage_history.py](token_usage_history.py)
+Class with implementation of storage for token usage history.
+
 ## [user_quota_limiter.py](user_quota_limiter.py)
 Simple user quota limiter where each user has a fixed quota.
 

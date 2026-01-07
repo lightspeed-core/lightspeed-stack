@@ -51,15 +51,37 @@ class QuotaLimiter(ABC):
 
     @abstractmethod
     def available_quota(self, subject_id: str) -> int:
-        """Retrieve available quota for given user."""
+        """Retrieve available quota for given user.
+
+        Get the remaining quota for the specified subject.
+
+        Parameters:
+            subject_id (str): Identifier of the subject (user or service) whose quota to retrieve.
+
+        Returns:
+            available_quota (int): Number of quota units currently available for the subject.
+        """
 
     @abstractmethod
     def revoke_quota(self) -> None:
-        """Revoke quota for given user."""
+        """Revoke quota for given user.
+
+        Revoke the quota for the limiter's target subject by setting its available quota to zero.
+
+        This operation removes or disables any remaining allowance so
+        subsequent checks will report no available quota.
+        """
 
     @abstractmethod
     def increase_quota(self) -> None:
-        """Increase quota for given user."""
+        """Increase quota for given user.
+
+        Increase the available quota for the limiter's subject according to its
+        configured increase policy.
+
+        Updates persistent storage to add the configured quota increment to the
+        subject's stored available quota.
+        """
 
     @abstractmethod
     def ensure_available_quota(self, subject_id: str = "") -> None:
@@ -69,11 +91,30 @@ class QuotaLimiter(ABC):
     def consume_tokens(
         self, input_tokens: int, output_tokens: int, subject_id: str = ""
     ) -> None:
-        """Consume tokens by given user."""
+        """Consume tokens by given user.
+
+        Consume the specified input and output tokens from a subject's available quota.
+
+        Parameters:
+            input_tokens (int): Number of input tokens to deduct from the subject's quota.
+            output_tokens (int): Number of output tokens to deduct from the subject's quota.
+            subject_id (str): Identifier of the subject (user or service) whose
+            quota will be reduced. If omitted, applies to the default subject.
+        """
 
     @abstractmethod
     def __init__(self) -> None:
-        """Initialize connection configuration(s)."""
+        """Initialize connection configuration(s).
+
+        Create a QuotaLimiter instance and initialize database connection configuration attributes.
+
+        Attributes:
+            sqlite_connection_config (Optional[SQLiteDatabaseConfiguration]):
+            SQLite connection configuration or `None` when not configured.
+            postgres_connection_config
+            (Optional[PostgreSQLDatabaseConfiguration]): PostgreSQL connection
+            configuration or `None` when not configured.
+        """
         self.sqlite_connection_config: Optional[SQLiteDatabaseConfiguration] = None
         self.postgres_connection_config: Optional[PostgreSQLDatabaseConfiguration] = (
             None
@@ -81,11 +122,28 @@ class QuotaLimiter(ABC):
 
     @abstractmethod
     def _initialize_tables(self) -> None:
-        """Initialize tables and indexes."""
+        """Initialize tables and indexes.
+
+        Create any database tables and indexes required by the quota limiter implementation.
+
+        Implementations must ensure the database schema and indexes needed for
+        storing and querying quota state exist; calling this method when the
+        schema already exists should be safe (idempotent). Raise an exception
+        on irrecoverable initialization failures.
+        """
 
     # pylint: disable=W0201
     def connect(self) -> None:
-        """Initialize connection to database."""
+        """Initialize connection to database.
+
+        Establish the configured database connection, initialize required
+        tables, and enable autocommit.
+
+        If a PostgreSQL or SQLite configuration is present, a connection to
+        that backend will be created, then _initialize_tables() will be called
+        to prepare storage. If table initialization fails, the connection is
+        closed and the original exception is propagated.
+        """
         logger.info("Initializing connection to quota limiter database")
         if self.postgres_connection_config is not None:
             self.connection = connect_pg(self.postgres_connection_config)
@@ -102,7 +160,13 @@ class QuotaLimiter(ABC):
         self.connection.autocommit = True
 
     def connected(self) -> bool:
-        """Check if connection to cache is alive."""
+        """Check if connection to quota limiter database is alive.
+
+        Determine whether the storage connection is alive.
+
+        Returns:
+            `true` if the connection is alive, `false` otherwise.
+        """
         if self.connection is None:
             logger.warning("Not connected, need to reconnect later")
             return False

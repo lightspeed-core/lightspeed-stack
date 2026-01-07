@@ -89,7 +89,15 @@ async def test_noop_with_token_auth_dependency_no_token() -> None:
 
 
 async def test_noop_with_token_auth_dependency_no_bearer() -> None:
-    """Test the NoopWithTokenAuthDependency class with no token."""
+    """Test the NoopWithTokenAuthDependency class with no token.
+
+    Verify that NoopWithTokenAuthDependency raises an HTTPException when the
+    Authorization header does not contain a Bearer token.
+
+    Asserts the exception has status code 401 and that the detail contains:
+    - response: "Missing or invalid credentials provided by client"
+    - cause: "No token found in Authorization header"
+    """
     dependency = NoopWithTokenAuthDependency()
 
     # Create a mock request without token

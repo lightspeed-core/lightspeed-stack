@@ -50,7 +50,15 @@ def test_postgresql_database_configuration_namespace_specification() -> None:
 
 
 def test_postgresql_database_configuration_port_setting(subtests: SubTests) -> None:
-    """Test the PostgreSQLDatabaseConfiguration model."""
+    """Test the PostgreSQLDatabaseConfiguration model.
+
+    Validate port handling of PostgreSQLDatabaseConfiguration.
+
+    Checks three scenarios:
+    - A valid explicit port (1234) is preserved on the model.
+    - A negative port raises ValidationError with message "Input should be greater than 0".
+    - A port >= 65536 raises ValueError with message "Port value should be less than 65536".
+    """
     with subtests.test(msg="Correct port value"):
         c = PostgreSQLDatabaseConfiguration(
             db="db", user="user", password="password", port=1234
@@ -72,7 +80,18 @@ def test_postgresql_database_configuration_port_setting(subtests: SubTests) -> N
 
 
 def test_postgresql_database_configuration_ca_cert_path(subtests: SubTests) -> None:
-    """Test the PostgreSQLDatabaseConfiguration model."""
+    """Test the PostgreSQLDatabaseConfiguration model.
+
+    Validate ca_cert_path handling in PostgreSQLDatabaseConfiguration.
+
+    Verifies two behaviors using subtests:
+    - When `ca_cert_path` points to an existing file, the value is preserved on the model.
+    - When `ca_cert_path` points to a non-existent path, a ValidationError is
+      raised with the message "Path does not point to a file".
+
+    Parameters:
+        subtests (SubTests): Test helper providing subtest contexts.
+    """
     with subtests.test(msg="Path exists"):
         c = PostgreSQLDatabaseConfiguration(
             db="db",

@@ -188,3 +188,6 @@ dev/
 
 # Database files
 *.sqlite
+
+# requirements backups files
+requirements.*.backup

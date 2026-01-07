@@ -139,8 +139,17 @@ storage:
       namespace: prompts
       backend: kv_default
 registered_resources:
-  models: []
   shields: [] # WARNING: Shields disabled due to infinite loop issue with LLM calls
+  - model_id: sentence-transformers/all-mpnet-base-v2
+    model_type: embedding
+    provider_id: sentence-transformers
+    provider_model_id: sentence-transformers/all-mpnet-base-v2
+    metadata:
+      embedding_dimension: 768
+  - model_id: gpt-4o-mini
+    provider_id: openai
+    model_type: llm
+    provider_model_id: gpt-4o-mini
   vector_dbs: []
   datasets: []
   scoring_fns: []

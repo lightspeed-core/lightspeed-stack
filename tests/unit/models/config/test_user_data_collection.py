@@ -33,7 +33,15 @@ def test_user_data_collection_transcripts_enabled() -> None:
 
 
 def test_user_data_collection_transcripts_disabled() -> None:
-    """Test the UserDataCollection constructor for transcripts."""
+    """Test the UserDataCollection constructor for transcripts.
+
+    Verify the UserDataCollection constructor raises when transcripts are
+    enabled but no storage is provided.
+
+    Asserts that constructing with transcripts_enabled=True and
+    transcripts_storage=None raises a ValueError with the message
+    "transcripts_storage is required when transcripts is enabled".
+    """
     # incorrect configuration
     with pytest.raises(
         ValueError,
@@ -43,7 +51,17 @@ def test_user_data_collection_transcripts_disabled() -> None:
 
 
 def test_user_data_collection_wrong_directory_path() -> None:
-    """Test the UserDataCollection constructor for wrong directory path."""
+    """Test the UserDataCollection constructor for wrong directory path.
+
+    Verify UserDataCollection raises InvalidConfigurationError when provided
+    storage paths point to non-writable directories.
+
+    Ensures that enabling feedback with feedback_storage='/root' raises
+    InvalidConfigurationError with message "Check directory to store feedback
+    '/root' is not writable", and enabling transcripts with
+    transcripts_storage='/root' raises InvalidConfigurationError with message
+    "Check directory to store transcripts '/root' is not writable".
+    """
     with pytest.raises(
         InvalidConfigurationError,
         match="Check directory to store feedback '/root' is not writable",

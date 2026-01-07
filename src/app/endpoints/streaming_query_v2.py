@@ -275,9 +275,12 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
         )
         consume_tokens(
             configuration.quota_limiters,
+            configuration.token_usage_history,
             context.user_id,
             input_tokens=token_usage.input_tokens,
             output_tokens=token_usage.output_tokens,
+            model_id=context.model_id,
+            provider_id=context.provider_id,
         )
         referenced_documents = parse_referenced_documents_from_responses_api(
             cast(OpenAIResponseObject, latest_response_object)

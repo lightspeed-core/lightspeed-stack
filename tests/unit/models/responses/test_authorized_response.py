@@ -21,7 +21,16 @@ class TestAuthorizedResponse:
         assert ar.skip_userid_check is True
 
     def test_constructor_fields_required(self) -> None:
-        """Test the AuthorizedResponse constructor."""
+        """Test the AuthorizedResponse constructor.
+
+        Verify that constructing AuthorizedResponse without required fields
+        raises ValidationError.
+
+        Checks three cases where a ValidationError is expected:
+        - no parameters provided
+        - missing `user_id`
+        - missing `username`
+        """
         with pytest.raises(ValidationError):
             # missing all parameters
             _ = AuthorizedResponse()  # pyright: ignore

@@ -6,7 +6,17 @@ from models.config import CORSConfiguration
 
 
 def test_cors_default_configuration() -> None:
-    """Test the CORS configuration."""
+    """Test the CORS configuration.
+
+    Verify that a default CORSConfiguration instance has the expected default
+    values.
+
+    Asserts that:
+    - allow_origins is ["*"]
+    - allow_credentials is False
+    - allow_methods is ["*"]
+    - allow_headers is ["*"]
+    """
     cfg = CORSConfiguration()
     assert cfg is not None
     assert cfg.allow_origins == ["*"]
@@ -46,7 +56,15 @@ def test_cors_custom_configuration_v2() -> None:
 
 
 def test_cors_custom_configuration_v3() -> None:
-    """Test the CORS configuration."""
+    """Test the CORS configuration.
+
+    Verify that CORSConfiguration accepts a wildcard origin when credentials
+    are disabled and preserves provided methods and headers.
+
+    Creates a CORSConfiguration with allow_origins ["*"], allow_credentials
+    False, and explicit allow_methods and allow_headers, then asserts the
+    instance exists and its attributes match the provided values.
+    """
     cfg = CORSConfiguration(
         allow_origins=["*"],
         allow_credentials=False,
@@ -61,7 +79,15 @@ def test_cors_custom_configuration_v3() -> None:
 
 
 def test_cors_improper_configuration() -> None:
-    """Test the CORS configuration."""
+    """Test the CORS configuration.
+
+    Verify that constructing CORSConfiguration with a wildcard origin and
+    credentials enabled raises a ValueError.
+
+    Asserts the raised ValueError contains the message that `allow_credentials`
+    cannot be true when `allow_origins` contains the '*' wildcard and advises
+    using explicit origins or disabling credentials.
+    """
     expected = (
         "Value error, Invalid CORS configuration: "
         + "allow_credentials can not be set to true when allow origins contains the '\\*' wildcard."

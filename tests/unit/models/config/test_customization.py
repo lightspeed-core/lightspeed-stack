@@ -9,7 +9,24 @@ from models.config import Customization
 
 
 def test_service_customization(subtests: SubTests) -> None:
-    """Check the service customization class."""
+    """Check the service customization class.
+
+    Run subtests validating Customization model loading and disable-flag behavior.
+
+    Performs three subtests:
+    - "System prompt is enabled": verifies defaults
+      (disable_query_system_prompt is False; system_prompt_path and
+      system_prompt are None).
+    - "System prompt is disabled": verifies disable_query_system_prompt is True
+      and prompt fields remain None.
+    - "Disabled overrides provided path, but the prompt is still loaded":
+      verifies that providing a system_prompt_path while
+      disable_query_system_prompt is True still loads the prompt content, and
+      the disable flag remains True.
+
+    Parameters:
+        subtests (SubTests): Pytest SubTests context used to group related assertions.
+    """
     with subtests.test(msg="System prompt is enabled"):
         c = Customization()
         assert c is not None

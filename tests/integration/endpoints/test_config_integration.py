@@ -22,10 +22,10 @@ async def test_config_endpoint_returns_config(
     - Real noop authentication is used
     - Response structure matches expected format
 
-    Args:
-        test_config: Loads test configuration
-        test_request: FastAPI request
-        test_auth: noop authentication tuple
+    Parameters:
+        test_config (AppConfig): Fixture providing the expected configuration to be returned.
+        test_request (Request): FastAPI request object used to call the endpoint.
+        test_auth (AuthTuple): Authentication fixture used for the request.
     """
     response = await config_endpoint_handler(auth=test_auth, request=test_request)
 
@@ -47,10 +47,10 @@ async def test_config_endpoint_returns_current_config(
     - Real noop authentication is used
     - Response structure matches expected format
 
-    Args:
-        current_config: Loads root configuration
-        test_request: FastAPI request
-        test_auth: noop authentication tuple
+    Parameters:
+        current_config (AppConfig): Loads root configuration
+        test_request (Request): FastAPI request
+        test_auth (AuthTuple): noop authentication tuple
     """
     response = await config_endpoint_handler(auth=test_auth, request=test_request)
 
@@ -69,9 +69,9 @@ async def test_config_endpoint_fails_without_configuration(
     - HTTPException is raised when configuration is not loaded
     - Error message indicates configuration is not loaded
 
-    Args:
-        test_request: FastAPI request
-        test_auth: noop authentication tuple
+    Parameters:
+        test_request (Request): FastAPI request fixture
+        test_auth (AuthTuple): noop authentication fixture
     """
 
     # Verify that HTTPException is raised when configuration is not loaded

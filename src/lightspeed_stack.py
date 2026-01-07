@@ -25,7 +25,20 @@ logger = get_logger(__name__)
 
 
 def create_argument_parser() -> ArgumentParser:
-    """Create and configure argument parser object."""
+    """Create and configure argument parser object.
+
+    The parser includes these options:
+    - -v / --verbose: enable verbose output
+    - -d / --dump-configuration: dump the loaded configuration to JSON and exit
+    - -c / --config: path to the configuration file (default "lightspeed-stack.yaml")
+    - -g / --generate-llama-stack-configuration: generate a Llama Stack
+                                                 configuration from the service configuration
+    - -i / --input-config-file: Llama Stack input configuration filename (default "run.yaml")
+    - -o / --output-config-file: Llama Stack output configuration filename (default "run_.yaml")
+
+    Returns:
+        Configured ArgumentParser for parsing the service CLI options.
+    """
     parser = ArgumentParser()
     parser.add_argument(
         "-v",
@@ -77,7 +90,23 @@ def create_argument_parser() -> ArgumentParser:
 
 
 def main() -> None:
-    """Entry point to the web service."""
+    """Entry point to the web service.
+
+    Start the Lightspeed Core Stack service process based on CLI flags and configuration.
+
+    Parses command-line arguments, loads the configured settings, and then:
+    - If --dump-configuration is provided, writes the active configuration to
+      configuration.json and exits (exits with status 1 on failure).
+    - If --generate-llama-stack-configuration is provided, generates and stores
+      the Llama Stack configuration to the specified output file and exits
+      (exits with status 1 on failure).
+    - Otherwise, sets LIGHTSPEED_STACK_CONFIG_PATH for worker processes, starts
+      the quota scheduler, and starts the Uvicorn web service.
+
+    Raises:
+        SystemExit: when configuration dumping or Llama Stack generation fails
+                    (exits with status 1).
+    """
     logger.info("Lightspeed Core Stack startup")
     parser = create_argument_parser()
     args = parser.parse_args()

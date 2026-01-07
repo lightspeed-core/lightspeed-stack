@@ -21,8 +21,14 @@ class QuotaLimiterFactory:
     def quota_limiters(config: QuotaHandlersConfiguration) -> list[QuotaLimiter]:
         """Create instances of quota limiters based on loaded configuration.
 
+        Parameters:
+            config (QuotaHandlersConfiguration): Configuration containing
+                                                 storage settings and limiter definitions.
+
         Returns:
-            List of instances of 'QuotaLimiter',
+            list[QuotaLimiter]: List of initialized quota limiter instances.
+            Returns an empty list if storage configuration or limiter
+            definitions are missing.
         """
         limiters: list[QuotaLimiter] = []
 
@@ -56,7 +62,24 @@ class QuotaLimiterFactory:
         initial_quota: int,
         increase_by: int,
     ) -> QuotaLimiter:
-        """Create selected quota limiter."""
+        """Create selected quota limiter.
+
+        Instantiate a quota limiter instance for the given limiter type.
+
+        Parameters:
+            configuration (QuotaHandlersConfiguration): Configuration used to
+                                                        initialize the limiter.
+            limiter_type (str): Identifier of the limiter to create; expected values are
+                `constants.USER_QUOTA_LIMITER` or `constants.CLUSTER_QUOTA_LIMITER`.
+            initial_quota (int): Starting quota value assigned to the limiter.
+            increase_by (int): Amount by which the quota increases when replenished.
+
+        Returns:
+            QuotaLimiter: A configured quota limiter instance of the requested type.
+
+        Raises:
+            ValueError: If `limiter_type` is not a recognized limiter identifier.
+        """
         match limiter_type:
             case constants.USER_QUOTA_LIMITER:
                 return UserQuotaLimiter(configuration, initial_quota, increase_by)

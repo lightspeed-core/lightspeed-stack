@@ -65,7 +65,18 @@ def test_no_databases_configuration() -> None:
 
 
 def test_two_databases_configuration() -> None:
-    """Test if two databases configuration is checked."""
+    """Test if two databases configuration is checked.
+
+    Verify that constructing DatabaseConfiguration with both PostgreSQL and
+    SQLite configurations raises a validation error.
+
+    Asserts that passing both `postgres` and `sqlite` to DatabaseConfiguration
+    triggers a `ValidationError` with message "Only one database configuration
+    can be provided".
+
+    Raises:
+        ValidationError: If more than one database configuration is provided.
+    """
     d1 = PostgreSQLDatabaseConfiguration(db="db", user="user", password="password")
     d2 = SQLiteDatabaseConfiguration(db_path="foo_bar_baz")
     with pytest.raises(

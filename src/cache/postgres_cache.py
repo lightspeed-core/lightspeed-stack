@@ -2,6 +2,7 @@
 
 import json
 import psycopg2
+from psycopg2.extensions import AsIs
 
 from cache.cache import Cache
 from cache.cache_error import CacheError
@@ -37,6 +38,10 @@ class PostgresCache(Cache):
         "timestamps" btree (created_at)
     ```
     """
+
+    CREATE_SCHEMA = """
+       CREATE SCHEMA IF NOT EXISTS %s;
+       """
 
     CREATE_CACHE_TABLE = """
         CREATE TABLE IF NOT EXISTS cache (
@@ -133,6 +138,18 @@ class PostgresCache(Cache):
         # even if PostgreSQL is not alive
         self.connection = None
         config = self.postgres_config
+        namespace = "public"
+        if config.namespace is not None:
+            namespace = config.namespace
+            # LCORE-1158 need to be implemented too!
+            # validate namespace contains only valid PostgreSQL identifier characters
+            if not namespace.replace("_", "").replace("$", "").isalnum():
+                raise ValueError(f"Invalid namespace: {namespace}")
+            if len(namespace) > 63:
+                raise ValueError(
+                    f"Invalid namespace: {namespace}. "
+                    "Maximum length is 63 characters."
+                )
         try:
             self.connection = psycopg2.connect(
                 host=config.host,
@@ -143,8 +160,9 @@ class PostgresCache(Cache):
                 sslmode=config.ssl_mode,
                 sslrootcert=config.ca_cert_path,
                 gssencmode=config.gss_encmode,
+                options=f"-c search_path={namespace}",
             )
-            self.initialize_cache()
+            self.initialize_cache(namespace)
         except Exception as e:
             if self.connection is not None:
                 self.connection.close()
@@ -166,8 +184,16 @@ class PostgresCache(Cache):
             logger.error("Disconnected from storage: %s", e)
             return False
 
-    def initialize_cache(self) -> None:
-        """Initialize cache - clean it up etc."""
+    def initialize_cache(self, namespace: str) -> None:
+        """Initialize cache and create schema if needed.
+
+        Parameters:
+            namespace: PostgreSQL schema namespace to use for cache tables.
+                      If not "public", the schema will be created if it doesn't exist.
+
+        Raises:
+            CacheError: If the cache is disconnected.
+        """
         if self.connection is None:
             logger.error("Cache is disconnected")
             raise CacheError("Initialize_cache: cache is disconnected")
@@ -176,6 +202,10 @@ class PostgresCache(Cache):
         # any CREATE statement can raise it's own exception
         # and it should not interfere with other statements
         cursor = self.connection.cursor()
+
+        logger.info("Initializing schema")
+        if namespace != "public":
+            cursor.execute(PostgresCache.CREATE_SCHEMA, (AsIs(namespace),))
 
         logger.info("Initializing table for cache")
         cursor.execute(PostgresCache.CREATE_CACHE_TABLE)

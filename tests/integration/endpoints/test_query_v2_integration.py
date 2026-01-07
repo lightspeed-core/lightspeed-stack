@@ -40,6 +40,12 @@ def mock_llama_stack_client_fixture(
 
     This is the only external dependency we mock for integration tests,
     as it represents an external service call.
+
+    Parameters:
+        mocker (MockerFixture): pytest-mock fixture used to create and patch mocks.
+
+    Returns:
+        mock_client: The mocked Llama Stack client instance configured as described above.
     """
     # Patch in app.endpoints.query where it's actually used by query_endpoint_handler_base
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
@@ -107,6 +113,9 @@ def patch_db_session_fixture(
     This sets up the global session_local in app.database to use the test database.
     Uses an in-memory SQLite database, isolating tests from production data.
     This fixture is autouse=True, so it applies to all tests in this module automatically.
+
+    Returns:
+        The test database Session instance to be used by the test.
     """
     # Store original values to restore later
     original_engine = app.database.engine
@@ -143,7 +152,7 @@ async def test_query_v2_endpoint_successful_response(
     - Response is correctly formatted
     - Conversation ID is returned
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -188,12 +197,15 @@ async def test_query_v2_endpoint_handles_connection_error(
     - HTTPException is raised with correct status code
     - Error response includes proper error details
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
+
+    Returns:
+        None
     """
     _ = test_config
 
@@ -232,11 +244,14 @@ async def test_query_v2_endpoint_empty_query(
     - Validation works correctly
     - Error response is returned if needed
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
         test_auth: noop authentication tuple
+
+    Returns:
+        None
     """
     _ = test_config
     _ = mock_llama_stack_client
@@ -272,7 +287,7 @@ async def test_query_v2_endpoint_with_attachments(
     - Attachment content is included in request
     - Response handles attachments correctly
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -326,7 +341,7 @@ async def test_query_v2_endpoint_with_tool_calls(
     - RAG tool responses are included
     - Referenced documents are returned
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -392,7 +407,7 @@ async def test_query_v2_endpoint_with_mcp_list_tools(
     - Tool names list is captured
     - Server label is included
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -456,7 +471,7 @@ async def test_query_v2_endpoint_with_multiple_tool_types(
     - All tool summaries are included
     - Response text combines with tool results
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -527,13 +542,16 @@ async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
     - Response succeeds without tools
     - Integration between query handler and tool preparation
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture
+
+    Returns:
+        None
     """
     _ = test_config
     _ = patch_db_session
@@ -580,13 +598,16 @@ async def test_query_v2_endpoint_uses_tools_when_available(
     - Response succeeds with tools enabled
     - Integration between query handler, vector stores, and tool preparation
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture
+
+    Returns:
+        None
     """
     _ = test_config
     _ = patch_db_session
@@ -639,7 +660,7 @@ async def test_query_v2_endpoint_persists_conversation_to_database(
     - User ID, model, provider are stored correctly
     - Topic summary is generated and stored
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -690,7 +711,7 @@ async def test_query_v2_endpoint_updates_existing_conversation(
     - Last message timestamp updates
     - Topic summary is NOT regenerated
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -751,7 +772,7 @@ async def test_query_v2_endpoint_conversation_ownership_validation(
     - User can access their own conversation
     - Conversation must exist in database
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -805,13 +826,16 @@ async def test_query_v2_endpoint_creates_valid_cache_entry(
 
     Note: We spy on cache storage to verify integration, not to mock it.
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture
+
+    Returns:
+        None
     """
     _ = test_config
     _ = mock_llama_stack_client
@@ -864,7 +888,7 @@ async def test_query_v2_endpoint_conversation_not_found_returns_404(
     - Status code is 404 NOT FOUND
     - Error message indicates conversation not found
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -920,7 +944,7 @@ async def test_query_v2_endpoint_with_shield_violation(
     Note: Shields are advisory - violations are logged but don't block requests.
     This matches query V1 behavior.
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -982,7 +1006,7 @@ async def test_query_v2_endpoint_without_shields(
     - extra_body.guardrails is not included when no shields
     - Response succeeds without shields
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -1032,7 +1056,7 @@ async def test_query_v2_endpoint_handles_empty_llm_response(
     - Response contains empty/minimal content
     - Conversation is still persisted
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -1091,7 +1115,7 @@ async def test_query_v2_endpoint_quota_integration(
     - Token usage from Llama Stack flows through quota system
     - Complete integration between query handler and quota management
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -1126,7 +1150,9 @@ async def test_query_v2_endpoint_quota_integration(
     mock_consume.assert_called_once()
     consume_args = mock_consume.call_args
     user_id, _, _, _ = test_auth
-    assert consume_args.args[1] == user_id
+    assert consume_args.args[2] == user_id
+    assert consume_args.kwargs["model_id"] == "test-model"
+    assert consume_args.kwargs["provider_id"] == "test-provider"
     assert consume_args.kwargs["input_tokens"] == 100
     assert consume_args.kwargs["output_tokens"] == 50
 
@@ -1151,13 +1177,16 @@ async def test_query_v2_endpoint_rejects_query_when_quota_exceeded(
     - Error response contains appropriate message
     - LLM is not called when quota is exceeded
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture (to simulate quota exceeded)
+
+    Returns:
+        None
     """
     _ = test_config
     _ = mock_llama_stack_client
@@ -1212,7 +1241,7 @@ async def test_query_v2_endpoint_transcript_behavior(
     - Conversation is persisted regardless of transcript setting
     - Integration between query handler and transcript configuration
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request
@@ -1302,7 +1331,7 @@ async def test_query_v2_endpoint_uses_conversation_history_model(
     - Message count increments properly
     - Integration between query handler and conversation persistence
 
-    Args:
+    Parameters:
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
         test_request: FastAPI request

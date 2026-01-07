@@ -16,7 +16,18 @@ from constants import NO_USER_TOKEN
 
 @pytest.fixture
 def user_identity_data() -> dict:
-    """Fixture providing valid User identity data."""
+    """Fixture providing valid User identity data.
+
+    Provide a valid Red Hat identity payload for a User, suitable for unit tests.
+
+    Returns:
+        identity_data (dict): A dictionary with two top-level keys:
+            - "identity": contains "account_number", "org_id", "type" (set to
+              "User"), and "user" (with "user_id", "username", "is_org_admin").
+            - "entitlements": maps service names (e.g., "rhel", "ansible",
+              "openshift") to entitlement objects with "is_entitled" and
+              "is_trial".
+    """
     return {
         "identity": {
             "account_number": "123",
@@ -38,7 +49,21 @@ def user_identity_data() -> dict:
 
 @pytest.fixture
 def system_identity_data() -> dict:
-    """Fixture providing valid System identity data."""
+    """Fixture providing valid System identity data.
+
+    Provide a sample System identity payload used by tests.
+
+    Returns:
+        dict: A System identity dictionary with the following shape:
+            - identity: {
+                "account_number": str,
+                "org_id": str,
+                "type": "System",
+                "system": {"cn": str}
+              }
+            - entitlements: mapping of product names to entitlement objects, e.g.
+              {"rhel": {"is_entitled": bool, "is_trial": bool}}
+    """
     return {
         "identity": {
             "account_number": "123",
@@ -53,13 +78,35 @@ def system_identity_data() -> dict:
 
 
 def create_auth_header(identity_data: dict) -> str:
-    """Helper to create base64-encoded x-rh-identity header value."""
+    """Helper to create base64-encoded x-rh-identity header value.
+
+    Create a base64-encoded string suitable for use as an x-rh-identity header from identity data.
+
+    Parameters:
+        identity_data (dict): Identity payload (serializable to JSON)
+        containing identity, user/system fields, and optional entitlements.
+
+    Returns:
+        header_value (str): Base64-encoded JSON string representing the provided identity data.
+    """
     json_str = json.dumps(identity_data)
     return base64.b64encode(json_str.encode("utf-8")).decode("utf-8")
 
 
 def create_request_with_header(header_value: Optional[str]) -> Request:
-    """Helper to create mock Request with x-rh-identity header."""
+    """Helper to create mock Request with x-rh-identity header.
+
+    Create a mock FastAPI Request with an `x-rh-identity` header for tests.
+
+    Parameters:
+        header_value (Optional[str]): Base64-encoded identity header value to
+        set. If `None` or empty, the returned request will have no headers.
+
+    Returns:
+        Request: A mocked Request object whose `headers` contains
+        `{"x-rh-identity": header_value}` when a value is provided, or an empty
+        dict otherwise.
+    """
     request = Mock(spec=Request)
     request.headers = {"x-rh-identity": header_value} if header_value else {}
     return request
@@ -139,7 +186,16 @@ class TestRHIdentityData:
         should_raise: bool,
         expected_error: Optional[str],
     ) -> None:
-        """Test validate_entitlements with various requirement configurations."""
+        """Test validate_entitlements with various requirement configurations.
+
+        Verify that RHIdentityData.validate_entitlements enforces required entitlements.
+
+        Creates an RHIdentityData instance from the provided identity
+        dictionary and required_entitlements; asserts that calling
+        validate_entitlements raises an HTTPException with status code 403
+        containing expected_error when should_raise is True, and does not raise
+        when should_raise is False.
+        """
         rh_identity = RHIdentityData(user_identity_data, required_entitlements)
 
         if should_raise:

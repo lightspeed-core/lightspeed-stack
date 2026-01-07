@@ -61,7 +61,14 @@ class TestBadRequestResponse:
         )
 
     def test_openapi_response(self) -> None:
-        """Test BadRequestResponse.openapi_response() method."""
+        """Test BadRequestResponse.openapi_response() method.
+
+        Verify that BadRequestResponse.openapi_response() produces an OpenAPI
+        entry with the correct description, model reference, and JSON examples,
+        and that the examples list matches the model schema's examples and
+        contains a `conversation_id` example whose detail.response equals
+        "Invalid conversation ID format".
+        """
         schema = BadRequestResponse.model_json_schema()
         model_examples = schema.get("examples", [])
         expected_count = len(model_examples)
@@ -86,7 +93,16 @@ class TestBadRequestResponse:
         )
 
     def test_openapi_response_with_explicit_examples(self) -> None:
-        """Test BadRequestResponse.openapi_response() with explicit examples."""
+        """Test BadRequestResponse.openapi_response() with explicit examples.
+
+        Verify BadRequestResponse.openapi_response returns only the specified
+        example when explicit example labels are provided.
+
+        Asserts that calling
+        BadRequestResponse.openapi_response(examples=["conversation_id"])
+        produces application/json examples containing exactly one entry with
+        the key "conversation_id".
+        """
         result = BadRequestResponse.openapi_response(examples=["conversation_id"])
         examples = result["content"]["application/json"]["examples"]
 
@@ -204,7 +220,11 @@ class TestForbiddenResponse:
         )
 
     def test_factory_feedback_disabled(self) -> None:
-        """Test ForbiddenResponse.feedback_disabled() factory method."""
+        """Test ForbiddenResponse.feedback_disabled() factory method.
+
+        Verifies that ForbiddenResponse.feedback_disabled() produces a 403
+        AbstractErrorResponse with the expected detail message and cause.
+        """
         response = ForbiddenResponse.feedback_disabled()
         assert isinstance(response, AbstractErrorResponse)
         assert response.status_code == status.HTTP_403_FORBIDDEN
