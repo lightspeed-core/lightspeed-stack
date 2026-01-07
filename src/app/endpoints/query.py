@@ -20,9 +20,9 @@ from llama_stack_client.types.alpha.agents.turn_create_params import (
     Toolgroup,
     ToolgroupAgentToolGroupWithArgs,
 )
+from llama_stack_client.types.alpha.tool_execution_step import ToolExecutionStep
 from llama_stack_client.types.model_list_response import ModelListResponse
 from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
-from llama_stack_client.types.alpha.tool_execution_step import ToolExecutionStep
 from sqlalchemy.exc import SQLAlchemyError
 
 import constants
@@ -41,8 +41,8 @@ from models.responses import (
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
-    QueryResponse,
     PromptTooLongResponse,
+    QueryResponse,
     QuotaExceededResponse,
     ReferencedDocument,
     ServiceUnavailableResponse,
@@ -543,7 +543,8 @@ def select_model_and_provider_id(
     logger.debug("Searching for model: %s, provider: %s", model_id, provider_id)
     # TODO: Create sepparate validation of provider
     if not any(
-        m.identifier == llama_stack_model_id and m.provider_id == provider_id
+        m.identifier in (llama_stack_model_id, model_id)
+        and m.provider_id == provider_id
         for m in models
     ):
         message = f"Model {model_id} from provider {provider_id} not found in available models"
