@@ -5,12 +5,14 @@ from the RHEL Lightspeed Command Line Assistant (CLA).
 """
 
 import logging
-from typing import Annotated, Any, cast
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from llama_stack_client import APIConnectionError  # type: ignore
-from llama_stack_client.types import UserMessage  # type: ignore
-from llama_stack_client.types.alpha.agents.turn import Turn
+from llama_stack_client.types.chat.completion_create_params import (
+    MessageOpenAISystemMessageParam,
+    MessageOpenAIUserMessageParam,
+)
 
 import constants
 from authentication import get_auth_dependency
@@ -27,9 +29,7 @@ from models.responses import (
 )
 from models.rlsapi.requests import RlsapiV1InferRequest
 from models.rlsapi.responses import RlsapiV1InferData, RlsapiV1InferResponse
-from utils.endpoints import get_temp_agent
 from utils.suid import get_suid
-from utils.types import content_to_str
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["rlsapi-v1"])
@@ -82,8 +82,7 @@ def _get_default_model_id() -> str:
 async def retrieve_simple_response(question: str) -> str:
     """Retrieve a simple response from the LLM for a stateless query.
 
-    Creates a temporary agent, sends a single turn with the user's question,
-    and returns the LLM response text. No conversation persistence or tools.
+    Uses direct chat completion API for simple stateless inference.
 
     Args:
         question: The combined user input (question + context).
@@ -100,24 +99,33 @@ async def retrieve_simple_response(question: str) -> str:
 
     logger.debug("Using model %s for rlsapi v1 inference", model_id)
 
-    agent, session_id, _ = await get_temp_agent(
-        client, model_id, constants.DEFAULT_SYSTEM_PROMPT
+    sys_msg: MessageOpenAISystemMessageParam = {
+        "role": "system",
+        "content": constants.DEFAULT_SYSTEM_PROMPT,
+    }
+    user_msg: MessageOpenAIUserMessageParam = {
+        "role": "user",
+        "content": question,
+    }
+
+    response = await client.chat.completions.create(
+        model=model_id,
+        messages=[sys_msg, user_msg],
     )
 
-    response = await agent.create_turn(
-        messages=[UserMessage(role="user", content=question).model_dump()],
-        session_id=session_id,
-        stream=False,
-    )
-    response = cast(Turn, response)
-
-    if getattr(response, "output_message", None) is None:
+    if not response.choices:
         return ""
 
-    if getattr(response.output_message, "content", None) is None:
+    choice = response.choices[0]
+    message = getattr(choice, "message", None)
+    if message is None:
         return ""
 
-    return content_to_str(response.output_message.content)
+    content = getattr(message, "content", None)
+    if content is None:
+        return ""
+
+    return str(content)
 
 
 @router.post("/infer", responses=infer_responses)
