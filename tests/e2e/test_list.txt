@@ -1,3 +1,4 @@
+features/faiss.feature
 features/smoketests.feature
 features/authorized_noop.feature
 features/authorized_noop_token.feature

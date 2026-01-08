@@ -1,128 +1,150 @@
-version: '2'
-image_name: minimal-viable-llama-stack-configuration
+version: 2
+image_name: azure-configuration
 
 apis:
-  - agents
-  - datasetio
-  - eval
-  - files
-  - inference
-  - post_training
-  - safety
-  - scoring
-  - telemetry
-  - tool_runtime
-  - vector_io
+- agents
+- batches
+- datasetio
+- eval
+- files
+- inference
+- safety
+- scoring
+- tool_runtime
+- vector_io
+      
 benchmarks: []
-container_image: null
+conversations_store:
+  db_path: ${env.SQLITE_STORE_DIR:=~/.llama/storage/conversations.db}
+  type: sqlite
 datasets: []
-external_providers_dir: null
+# external_providers_dir: /opt/app-root/src/.llama/providers.d
 inference_store:
-  db_path: .llama/distributions/ollama/inference_store.db
+  db_path: ${env.SQLITE_STORE_DIR:=~/.llama/storage/inference-store.db}
   type: sqlite
-logging: null
 metadata_store:
-  db_path: .llama/distributions/ollama/registry.db
-  namespace: null
+  db_path: ${env.SQLITE_STORE_DIR:=~/.llama/storage/registry.db}
   type: sqlite
+
 providers:
-  files:
-  - provider_id: localfs
-    provider_type: inline::localfs
-    config:
-      storage_dir: /tmp/llama-stack-files
-      metadata_store:
-        type: sqlite
-        db_path: .llama/distributions/ollama/files_metadata.db
-  agents:
-  - provider_id: meta-reference
-    provider_type: inline::meta-reference
-    config:
-      persistence_store:
-        db_path: .llama/distributions/ollama/agents_store.db
-        namespace: null
-        type: sqlite
-      responses_store:
-        db_path: .llama/distributions/ollama/responses_store.db
-        type: sqlite
-  datasetio:
-  - provider_id: huggingface
-    provider_type: remote::huggingface
-    config:
-      kvstore:
-        db_path: .llama/distributions/ollama/huggingface_datasetio.db
-        namespace: null
-        type: sqlite
-  - provider_id: localfs
-    provider_type: inline::localfs
-    config:
-      kvstore:
-        db_path: .llama/distributions/ollama/localfs_datasetio.db
-        namespace: null
-        type: sqlite
-  eval:
-  - provider_id: meta-reference
-    provider_type: inline::meta-reference
-    config:
-      kvstore:
-        db_path: .llama/distributions/ollama/meta_reference_eval.db
-        namespace: null
-        type: sqlite
   inference:
-    - provider_id: azure
-      provider_type: remote::azure
-      config: 
-        api_key: ${env.AZURE_API_KEY}
-        api_base: https://ols-test.openai.azure.com/
-        api_version: 2024-02-15-preview
-        api_type: ${env.AZURE_API_TYPE:=}
-  post_training:
-  - provider_id: huggingface
-    provider_type: inline::huggingface-gpu
-    config:
-      checkpoint_format: huggingface
-      device: cpu
-      distributed_backend: null
-      dpo_output_dir: "."
-  safety:
-  - provider_id: llama-guard
-    provider_type: inline::llama-guard
-    config:
-      excluded_categories: []
+  - provider_id: azure
+    provider_type: remote::azure
+    config: 
+      api_key: ${env.AZURE_API_KEY}
+      api_base: https://ols-test.openai.azure.com/
+      api_version: 2024-02-15-preview
+  - config: {}
+    provider_id: sentence-transformers
+    provider_type: inline::sentence-transformers
+  files:
+  - config:
+      metadata_store:
+        table_name: files_metadata
+        backend: sql_default
+      storage_dir: ${env.SQLITE_STORE_DIR:=~/.llama/storage/files}
+    provider_id: meta-reference-files
+    provider_type: inline::localfs
+  safety: [] # WARNING: Shields disabled due to infinite loop issue with LLM calls
+  # - config:
+  #     excluded_categories: []
+  #   provider_id: llama-guard
+  #   provider_type: inline::llama-guard
   scoring:
-  - provider_id: basic
+  - config: {}
+    provider_id: basic
     provider_type: inline::basic
-    config: {}
-  - provider_id: llm-as-judge
-    provider_type: inline::llm-as-judge
-    config: {}
-  - provider_id: braintrust
-    provider_type: inline::braintrust
-    config:
-      openai_api_key: '********'
-  telemetry:
-  - provider_id: meta-reference
-    provider_type: inline::meta-reference
-    config:
-      service_name: 'lightspeed-stack-telemetry'
-      sinks: sqlite
-      sqlite_db_path: .llama/distributions/ollama/trace_store.db
   tool_runtime:
-    - provider_id: model-context-protocol
-      provider_type: remote::model-context-protocol
-      config: {}
+  - config: {}
+    provider_id: rag-runtime
+    provider_type: inline::rag-runtime
+  vector_io:
+  - config:
+      persistence:
+        namespace: vector_io::faiss
+        backend: kv_default
+    provider_id: faiss
+    provider_type: inline::faiss
+  agents:
+  - config:
+      persistence:
+        agent_state:
+          namespace: agents_state
+          backend: kv_default
+        responses:
+          table_name: agents_responses
+          backend: sql_default
+    provider_id: meta-reference
+    provider_type: inline::meta-reference
+  batches:
+  - config:
+      kvstore:
+        namespace: batches_store
+        backend: kv_default
+    provider_id: reference
+    provider_type: inline::reference
+  datasetio:
+  - config:
+      kvstore:
+        namespace: huggingface_datasetio
+        backend: kv_default
+    provider_id: huggingface
+    provider_type: remote::huggingface
+  - config:
+      kvstore:
+        namespace: localfs_datasetio
+        backend: kv_default
+    provider_id: localfs
+    provider_type: inline::localfs
+  eval:
+  - config:
+      kvstore:
+        namespace: eval_store
+        backend: kv_default
+    provider_id: meta-reference
+    provider_type: inline::meta-reference
 scoring_fns: []
 server:
-  auth: null
-  host: null
   port: 8321
-  quota: null
-  tls_cafile: null
-  tls_certfile: null
-  tls_keyfile: null
-shields: []
-models:
+storage:
+  backends:
+    kv_default:
+      type: kv_sqlite
+      db_path: ${env.SQLITE_STORE_DIR:=~/.llama/storage/rag/kv_store.db}
+    sql_default:
+      type: sql_sqlite
+      db_path: ${env.SQLITE_STORE_DIR:=~/.llama/storage/sql_store.db}
+  stores:
+    metadata:
+      namespace: registry
+      backend: kv_default
+    inference:
+      table_name: inference_store
+      backend: sql_default
+      max_write_queue_size: 10000
+      num_writers: 4
+    conversations:
+      table_name: openai_conversations
+      backend: sql_default
+    prompts:
+      namespace: prompts
+      backend: kv_default
+registered_resources:
+  models:
   - model_id: gpt-4o-mini
-    model_type: llm
     provider_id: azure
+    model_type: llm
     provider_model_id: gpt-4o-mini
+  shields: [] # WARNING: Shields disabled due to infinite loop issue with LLM calls
+  vector_dbs: []
+  datasets: []
+  scoring_fns: []
+  benchmarks: []
+  tool_groups:
+  - toolgroup_id: builtin::rag
+    provider_id: rag-runtime
+vector_stores:
+  default_provider_id: faiss
+  default_embedding_model:
+    provider_id: sentence-transformers
+    model_id: nomic-ai/nomic-embed-text-v1.5

@@ -1,5 +1,5 @@
 version: 2
-image_name: vertexai-configuration
+image_name: rhaiis-configuration
 
 apis:
 - agents
@@ -28,12 +28,13 @@ metadata_store:
 
 providers:
   inference:
-  - provider_id: google-vertex
-    provider_type: remote::vertexai
+  - provider_id: vllm
+    provider_type: remote::vllm
     config:
-      project: ${env.VERTEX_AI_PROJECT}
-      location: ${env.VERTEX_AI_LOCATION}
-      allowed_models: ["google/gemini-2.5-flash"]
+      url: http://${env.RHAIIS_URL}:8000/v1/
+      api_token: ${env.RHAIIS_API_KEY}
+      tls_verify: false
+      max_tokens: 2048  
   - config: {}
     provider_id: sentence-transformers
     provider_type: inline::sentence-transformers
@@ -130,7 +131,11 @@ storage:
       namespace: prompts
       backend: kv_default
 registered_resources:
-  models: []
+  models:
+  - model_id: ${env.RHAIIS_MODEL}
+    provider_id: vllm
+    model_type: llm
+    provider_model_id: ${env.RHAIIS_MODEL}
   shields: [] # WARNING: Shields disabled due to infinite loop issue with LLM calls
   vector_dbs: []
   datasets: []

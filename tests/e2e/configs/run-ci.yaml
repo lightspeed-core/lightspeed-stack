@@ -9,24 +9,69 @@ apis:
 - inference
 - safety
 - scoring
+- telemetry
 - tool_runtime
 - vector_io
       
 benchmarks: []
 conversations_store:
-  db_path: ~/.llama/storage/conversations.db
+  db_path: ${env.SQLITE_STORE_DIR:=~/.llama/storage/conversations.db}
   type: sqlite
 datasets: []
 image_name: starter
 # external_providers_dir: /opt/app-root/src/.llama/providers.d
 inference_store:
-  db_path: ~/.llama/storage/inference-store.db
+  db_path: ${env.SQLITE_STORE_DIR:=~/.llama/storage/inference-store.db}
   type: sqlite
 metadata_store:
-  db_path: ~/.llama/storage/registry.db
+  db_path: ${env.SQLITE_STORE_DIR:=~/.llama/storage/registry.db}
   type: sqlite
 
 providers:
+  inference:
+  - provider_id: openai # This ID is a reference to 'providers.inference'
+    provider_type: remote::openai
+    config:
+      api_key: ${env.OPENAI_API_KEY}
+      allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"]
+  - config: {}
+    provider_id: sentence-transformers
+    provider_type: inline::sentence-transformers
+  files:
+  - config:
+      metadata_store:
+        table_name: files_metadata
+        backend: sql_default
+      storage_dir: ${env.SQLITE_STORE_DIR:=~/.llama/storage/files}
+    provider_id: meta-reference-files
+    provider_type: inline::localfs
+  safety: [] # WARNING: Shields disabled due to infinite loop issue with LLM calls
+  # - config:
+  #     excluded_categories: []
+  #   provider_id: llama-guard
+  #   provider_type: inline::llama-guard
+  scoring:
+  - provider_id: basic
+    provider_type: inline::basic
+    config: {}
+  - provider_id: llm-as-judge
+    provider_type: inline::llm-as-judge
+    config: {}
+  - provider_id: braintrust
+    provider_type: inline::braintrust
+    config:
+      openai_api_key: '********'
+  tool_runtime:
+  - config: {} # Enable the RAG tool
+    provider_id: rag-runtime
+    provider_type: inline::rag-runtime
+  vector_io:
+  - config: # Define the storage backend for RAG
+      persistence:
+        namespace: vector_io::faiss
+        backend: kv_default
+    provider_id: faiss
+    provider_type: inline::faiss
   agents:
   - config:
       persistence:
@@ -65,56 +110,19 @@ providers:
         backend: kv_default
     provider_id: meta-reference
     provider_type: inline::meta-reference
-  files:
-  - config:
-      metadata_store:
-        table_name: files_metadata
-        backend: sql_default
-      storage_dir: ~/.llama/storage
-    provider_id: meta-reference-files
-    provider_type: inline::localfs
-  inference:
-  - provider_id: openai
-    provider_type: remote::openai
-    config:
-      api_key: ${env.OPENAI_API_KEY}
-  - config: {}
-    provider_id: sentence-transformers
-    provider_type: inline::sentence-transformers
-  safety:
-  - config:
-      excluded_categories: []
-    provider_id: llama-guard
-    provider_type: inline::llama-guard
-  scoring:
-  - config: {}
-    provider_id: basic
-    provider_type: inline::basic
-  - config: {}
-    provider_id: llm-as-judge
-    provider_type: inline::llm-as-judge
-  tool_runtime:
-  - config: {}
-    provider_id: rag-runtime
-    provider_type: inline::rag-runtime
-  vector_io:
-  - config:
-      persistence:
-        namespace: faiss_store
-        backend: kv_default
-    provider_id: faiss
-    provider_type: inline::faiss
 scoring_fns: []
+telemetry:
+  enabled: true
 server:
   port: 8321
 storage:
   backends:
-    kv_default:
+    kv_default: # Define the storage backend type for RAG, in this case registry and RAG are unified i.e. information on registered resources (e.g. models, vector_stores) are saved together with the RAG chunks
       type: kv_sqlite
-      db_path: ~/.llama/storage/kv_store.db
+      db_path: ${env.SQLITE_STORE_DIR:=~/.llama/storage/rag/kv_store.db}
     sql_default:
       type: sql_sqlite
-      db_path: ~/.llama/storage/sql_store.db
+      db_path: ${env.SQLITE_STORE_DIR:=~/.llama/storage/sql_store.db}
   stores:
     metadata:
       namespace: registry
@@ -131,7 +139,7 @@ storage:
       namespace: prompts
       backend: kv_default
 registered_resources:
-  models:
+  shields: [] # WARNING: Shields disabled due to infinite loop issue with LLM calls
   - model_id: sentence-transformers/all-mpnet-base-v2
     model_type: embedding
     provider_id: sentence-transformers
@@ -142,11 +150,15 @@ registered_resources:
     provider_id: openai
     model_type: llm
     provider_model_id: gpt-4o-mini
-  shields: []
   vector_dbs: []
   datasets: []
   scoring_fns: []
   benchmarks: []
   tool_groups:
-  - toolgroup_id: builtin::rag
+  - toolgroup_id: builtin::rag # Register the RAG tool
     provider_id: rag-runtime
+vector_stores:
+  default_provider_id: faiss
+  default_embedding_model: # Define the default embedding model for RAG
+    provider_id: sentence-transformers
+    model_id: nomic-ai/nomic-embed-text-v1.5

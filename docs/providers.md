@@ -100,7 +100,7 @@ Red Hat providers:
 | Name | Type | Pip Dependencies | Supported in LCS |
 |---|---|---|:---:|
 | code-scanner | inline | `codeshield` | ❌ |
-| llama-guard | inline | — | ✅ |
+| llama-guard | inline | — | ❌ |
 | prompt-guard | inline | `transformers[accelerate]`, `torch --index-url https://download.pytorch.org/whl/cpu` | ❌ |
 | bedrock | remote | `boto3` | ❌ |
 | nvidia | remote | `requests` | ❌ |
@@ -157,7 +157,7 @@ Red Hat providers:
 
 | Name | Type | Pip Dependencies | Supported in LCS |
 |---|---|---|:---:|
-| rag-runtime | inline | `chardet`,`pypdf`, `tqdm`, `numpy`, `scikit-learn`, `scipy`, `nltk`, `sentencepiece`, `transformers` | ❌ |
+| rag-runtime | inline | `chardet`,`pypdf`, `tqdm`, `numpy`, `scikit-learn`, `scipy`, `nltk`, `sentencepiece`, `transformers` | ✅ |
 | bing-search | remote | `requests` | ❌ |
 | brave-search | remote | `requests` | ❌ |
 | model-context-protocol | remote | `mcp>=1.8.1` | ✅ |
