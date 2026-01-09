@@ -227,6 +227,15 @@ def before_feature(context: Context, feature: Feature) -> None:
         switch_config(context.feature_config)
         restart_container("lightspeed-stack")
 
+    if "RlsapiConfig" in feature.tags:
+        mode_dir = "library-mode" if context.is_library_mode else "server-mode"
+        context.feature_config = (
+            f"tests/e2e/configuration/{mode_dir}/lightspeed-stack-rlsapi.yaml"
+        )
+        context.default_config_backup = create_config_backup("lightspeed-stack.yaml")
+        switch_config(context.feature_config)
+        restart_container("lightspeed-stack")
+
     if "Feedback" in feature.tags:
         context.hostname = os.getenv("E2E_LSC_HOSTNAME", "localhost")
         context.port = os.getenv("E2E_LSC_PORT", "8080")
@@ -240,6 +249,11 @@ def after_feature(context: Context, feature: Feature) -> None:
     clean up feedback conversations.
     """
     if "Authorized" in feature.tags:
+        switch_config(context.default_config_backup)
+        restart_container("lightspeed-stack")
+        remove_config_backup(context.default_config_backup)
+
+    if "RlsapiConfig" in feature.tags:
         switch_config(context.default_config_backup)
         restart_container("lightspeed-stack")
         remove_config_backup(context.default_config_backup)
