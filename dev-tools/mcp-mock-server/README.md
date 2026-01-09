@@ -11,6 +11,8 @@ This mock server helps developers:
 - Develop and test MCP-related features
 - Test both HTTP and HTTPS connections
 
+**⚠️ Testing Only:** This server is single-threaded and handles requests sequentially. It is designed purely for development and testing purposes, not for production or high-load scenarios.
+
 ## Features
 
 - ✅ **Pure Python** - No external dependencies (uses stdlib only)

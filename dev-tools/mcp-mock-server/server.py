@@ -23,19 +23,19 @@ import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from datetime import datetime
 from pathlib import Path
-from typing import Dict
+from typing import Any
 
 
 # Global storage for captured headers (last request)
-last_headers: Dict[str, str] = {}
+last_headers: dict[str, str] = {}
 request_log: list = []
 
 
 class MCPMockHandler(BaseHTTPRequestHandler):
     """HTTP request handler for mock MCP server."""
 
-    def log_message(self, format, *args) -> None:  # pylint: disable=redefined-builtin
-        """Log requests with timestamp."""
+    def log_message(self, format: str, *args: Any) -> None:
+        """Log requests with timestamp."""  # pylint: disable=redefined-builtin
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[{timestamp}] {format % args}")
 
@@ -79,19 +79,22 @@ class MCPMockHandler(BaseHTTPRequestHandler):
 
         # Determine tool name based on authorization header to avoid collisions
         auth_header = self.headers.get("Authorization", "")
-        if "test-secret-token" in auth_header:
-            tool_name = "mock_tool_file"
-            tool_desc = "Mock tool with file-based auth"
-        elif "my-k8s-token" in auth_header:
-            tool_name = "mock_tool_k8s"
-            tool_desc = "Mock tool with Kubernetes token"
-        elif "my-client-token" in auth_header:
-            tool_name = "mock_tool_client"
-            tool_desc = "Mock tool with client-provided token"
-        else:
-            # No auth header or unrecognized token
-            tool_name = "mock_tool_no_auth"
-            tool_desc = "Mock tool with no authorization"
+
+        # Match based on token content
+        match auth_header:
+            case _ if "test-secret-token" in auth_header:
+                tool_name = "mock_tool_file"
+                tool_desc = "Mock tool with file-based auth"
+            case _ if "my-k8s-token" in auth_header:
+                tool_name = "mock_tool_k8s"
+                tool_desc = "Mock tool with Kubernetes token"
+            case _ if "my-client-token" in auth_header:
+                tool_name = "mock_tool_client"
+                tool_desc = "Mock tool with client-provided token"
+            case _:
+                # No auth header or unrecognized token
+                tool_name = "mock_tool_no_auth"
+                tool_desc = "Mock tool with no authorization"
 
         # Handle MCP protocol methods
         if method == "initialize":
@@ -150,51 +153,53 @@ class MCPMockHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # pylint: disable=invalid-name
         """Handle GET requests (debug endpoints)."""
-        # Debug endpoint to view captured headers
-        if self.path == "/debug/headers":
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            response = {
-                "last_headers": last_headers,
-                "request_count": len(request_log),
-            }
-            self.wfile.write(json.dumps(response, indent=2).encode())
+        # Handle different GET endpoints
+        match self.path:
+            case "/debug/headers":
+                self._send_json_response(
+                    {"last_headers": last_headers, "request_count": len(request_log)}
+                )
+            case "/debug/requests":
+                self._send_json_response(request_log)
+            case "/":
+                self._send_help_page()
+            case _:
+                self.send_response(404)
+                self.end_headers()
 
-        # Debug endpoint to view request log
-        elif self.path == "/debug/requests":
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(request_log, indent=2).encode())
+    def _send_json_response(self, data: dict | list) -> None:
+        """Send a JSON response."""
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(data, indent=2).encode())
 
-        # Root endpoint - show help
-        elif self.path == "/":
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html")
-            self.end_headers()
-            help_html = """
-            <html>
-            <head><title>MCP Mock Server</title></head>
-            <body>
-                <h1>MCP Mock Server</h1>
-                <p>This is a development mock server for testing MCP integrations.</p>
-                <h2>Debug Endpoints:</h2>
-                <ul>
-                    <li><a href="/debug/headers">/debug/headers</a> - View last captured headers</li>
-                    <li><a href="/debug/requests">/debug/requests</a> - View recent request log</li>
-                </ul>
-                <h2>MCP Endpoints:</h2>
-                <ul>
-                    <li>POST /mcp/v1/list_tools - Mock MCP tools endpoint</li>
-                </ul>
-            </body>
-            </html>
-            """
-            self.wfile.write(help_html.encode())
-        else:
-            self.send_response(404)
-            self.end_headers()
+    def _send_help_page(self) -> None:
+        """Send HTML help page for root endpoint."""
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.end_headers()
+        help_html = """<!DOCTYPE html>
+        <html>
+        <head><title>MCP Mock Server</title></head>
+        <body>
+            <h1>MCP Mock Server</h1>
+            <p>Development mock server for testing MCP integrations.</p>
+            <h2>Debug Endpoints:</h2>
+            <ul>
+                <li><a href="/debug/headers">/debug/headers</a> - View captured headers</li>
+                <li><a href="/debug/requests">/debug/requests</a> - View request log</li>
+            </ul>
+            <h2>MCP Protocol:</h2>
+            <p>POST requests to any path with JSON-RPC format:</p>
+            <ul>
+                <li><code>{"jsonrpc": "2.0", "id": 1, "method": "initialize"}</code></li>
+                <li><code>{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}</code></li>
+            </ul>
+        </body>
+        </html>
+        """
+        self.wfile.write(help_html.encode())
 
 
 def generate_self_signed_cert(cert_dir: Path) -> tuple[Path, Path]:
@@ -263,7 +268,7 @@ def run_https_server(port: int, httpd: HTTPServer) -> None:
         print(f"HTTPS server error: {e}")
 
 
-def main():
+def main() -> None:
     """Start the mock MCP server with both HTTP and HTTPS."""
     http_port = int(sys.argv[1]) if len(sys.argv) > 1 else 3000
     https_port = http_port + 1
@@ -294,7 +299,7 @@ def main():
     print("  • /debug/headers  - View captured headers")
     print("  • /debug/requests - View request log")
     print("MCP endpoint:")
-    print("  • POST /mcp/v1/list_tools")
+    print("  • POST to any path (e.g., / or /mcp/v1/list_tools)")
     print("=" * 70)
     print("Note: HTTPS uses a self-signed certificate (for testing only)")
     print("Press Ctrl+C to stop")

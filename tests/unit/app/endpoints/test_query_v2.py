@@ -1,7 +1,8 @@
-# pylint: disable=redefined-outer-name, import-error,too-many-locals
+# pylint: disable=redefined-outer-name, import-error,too-many-locals,too-many-lines
 # pyright: reportCallIssue=false
 """Unit tests for the /query (v2) REST API endpoint using Responses API."""
 
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -111,7 +112,7 @@ def test_get_mcp_tools_with_mcp_headers() -> None:
     assert len(tools_no_headers) == 0  # Server skipped due to missing required auth
 
 
-def test_get_mcp_tools_with_static_headers(tmp_path) -> None:
+def test_get_mcp_tools_with_static_headers(tmp_path: Path) -> None:
     """Test get_mcp_tools with static headers from config files."""
     # Create a secret file
     secret_file = tmp_path / "token.txt"
@@ -130,7 +131,7 @@ def test_get_mcp_tools_with_static_headers(tmp_path) -> None:
     assert tools[0]["headers"] == {"Authorization": "static-secret-token"}
 
 
-def test_get_mcp_tools_with_mixed_headers(tmp_path) -> None:
+def test_get_mcp_tools_with_mixed_headers(tmp_path: Path) -> None:
     """Test get_mcp_tools with mixed header types."""
     # Create a secret file
     secret_file = tmp_path / "api-key.txt"

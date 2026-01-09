@@ -59,6 +59,30 @@ curl -X POST http://localhost:8080/v1/streaming_query \
   -d '{"query": "Test all MCP auth types"}'
 ```
 
+<details>
+<summary><b>Optional: Using Real Tokens (for production testing)</b></summary>
+
+If you want to test with actual tokens instead of mock values:
+
+```bash
+# Extract real Kubernetes token (requires oc or kubectl)
+K8S_TOKEN=$(oc whoami -t 2>/dev/null || kubectl get secret -o jsonpath='{.data.token}' | base64 -d)
+
+# Set your client token
+CLIENT_TOKEN="your-actual-client-token"
+
+# Make request with real tokens
+curl -X POST http://localhost:8080/v1/streaming_query \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${K8S_TOKEN}" \
+  -H "MCP-HEADERS: {\"mock-client-auth\": {\"Authorization\": \"Bearer ${CLIENT_TOKEN}\"}}" \
+  -d '{"query": "Test with real tokens"}'
+```
+
+**Note:** The mock MCP server doesn't validate tokens, so the simple example above is sufficient for local testing.
+
+</details>
+
 **What This Tests:**
 - **`mock-file-auth`**: Uses static token from `/tmp/lightspeed-mcp-test-token`
 - **`mock-k8s-auth`**: Forwards the Kubernetes token from your `Authorization` header
@@ -91,7 +115,7 @@ The mock server should return unique tool names for each auth type:
 - `mock_tool_client` - from `mock-client-auth`
 
 Check the Lightspeed Core logs, you should see:
-```
+```text
 DEBUG    Configured 3 MCP tools: ['mock-file-auth', 'mock-k8s-auth', 'mock-client-auth']
 ```
 

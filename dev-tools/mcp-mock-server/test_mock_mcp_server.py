@@ -20,39 +20,57 @@ import pytest
 
 
 @pytest.fixture(scope="module")
-def mock_server():
+def mock_server() -> Any:
     """Start mock server for testing and stop it after tests complete."""
+    # Using fixed ports for simplicity. For parallel test execution,
+    # consider using dynamic port allocation (e.g., bind to port 0).
     http_port = 9000
     https_port = 9001
 
     print(f"\n🚀 Starting mock server on ports {http_port}/{https_port}...")
-    process = subprocess.Popen(
+    # Keep stdout/stderr as PIPE to capture errors if startup fails
+    with subprocess.Popen(
         [sys.executable, "dev-tools/mcp-mock-server/server.py", str(http_port)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-    )
+    ) as process:
+        # Poll server health endpoint instead of blind sleep
+        max_attempts = 10
+        server_url = f"http://localhost:{http_port}/"
 
-    # Wait for server to start
-    time.sleep(2)
+        for attempt in range(max_attempts):
+            if process.poll() is not None:
+                # Server crashed during startup
+                _, stderr = process.communicate()
+                pytest.fail(f"Server failed to start: {stderr.decode('utf-8')}")
 
-    # Check if server started successfully
-    if process.poll() is not None:
-        _, stderr = process.communicate()
-        pytest.fail(f"Server failed to start: {stderr.decode('utf-8')}")
+            # Try to connect to health endpoint
+            try:
+                with urllib.request.urlopen(server_url, timeout=1) as response:
+                    if response.status == 200:
+                        print(f"✅ Server ready after {attempt + 1} attempt(s)")
+                        break
+            except (urllib.error.URLError, OSError):
+                # Server not ready yet
+                time.sleep(0.5)
+        else:
+            # Timeout waiting for server
+            process.terminate()
+            pytest.fail(f"Server did not respond after {max_attempts} attempts")
 
-    yield {
-        "process": process,
-        "http_url": f"http://localhost:{http_port}",
-        "https_url": f"https://localhost:{https_port}",
-    }
+        yield {
+            "process": process,
+            "http_url": f"http://localhost:{http_port}",
+            "https_url": f"https://localhost:{https_port}",
+        }
 
-    # Cleanup: stop server
-    print("\n🛑 Stopping mock server...")
-    process.terminate()
-    try:
-        process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        process.kill()
+        # Cleanup: stop server
+        print("\n🛑 Stopping mock server...")
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
 
 
 def make_request(
@@ -63,26 +81,26 @@ def make_request(
     use_https: bool = False,
 ) -> tuple[int, dict[str, Any] | str]:
     """Make HTTP request and return status code and response."""
+    req_headers = headers or {}
+    req_data = None
+    if data:
+        req_data = json.dumps(data).encode("utf-8")
+        req_headers["Content-Type"] = "application/json"
+
+    request = urllib.request.Request(
+        url, data=req_data, headers=req_headers, method=method
+    )
+
+    # For HTTPS with self-signed certs, disable SSL verification
+    import ssl  # pylint: disable=import-outside-toplevel
+
+    context = (
+        ssl._create_unverified_context()  # pylint: disable=protected-access
+        if use_https
+        else None
+    )
+
     try:
-        req_headers = headers or {}
-        req_data = None
-        if data:
-            req_data = json.dumps(data).encode("utf-8")
-            req_headers["Content-Type"] = "application/json"
-
-        request = urllib.request.Request(
-            url, data=req_data, headers=req_headers, method=method
-        )
-
-        # For HTTPS with self-signed certs, disable SSL verification
-        import ssl  # pylint: disable=import-outside-toplevel
-
-        context = (
-            ssl._create_unverified_context()
-            if use_https
-            else None  # pylint: disable=protected-access
-        )
-
         with urllib.request.urlopen(request, context=context, timeout=5) as response:
             body = response.read().decode("utf-8")
             try:
@@ -98,42 +116,47 @@ def make_request(
             return e.code, body
     except Exception as e:  # pylint: disable=broad-except
         pytest.fail(f"Request failed: {e}")
+        return 500, ""  # Never reached, but makes pylint happy
 
 
-def test_http_mcp_list_tools(mock_server):
+def test_http_mcp_list_tools(mock_server: Any) -> None:
     """Test the MCP list_tools endpoint over HTTP."""
     status, response = make_request(
-        f"{mock_server['http_url']}/mcp/v1/list_tools",
+        f"{mock_server['http_url']}/",
         method="POST",
-        data={"test": "data"},
+        data={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
         headers={"Authorization": "Bearer test-token-123"},
     )
 
     assert status == 200, f"Expected 200 OK, got {status}"
     assert isinstance(response, dict), f"Expected dict, got {type(response)}"
-    assert "tools" in response, "Response should contain 'tools' key"
-    assert isinstance(response["tools"], list), "Tools should be a list"
-    assert len(response["tools"]) == 1, "Should have 1 mock tool"
-    assert (
-        response["tools"][0]["name"] == "mock_tool"
-    ), "Tool name should be 'mock_tool'"
+    assert "result" in response, "Response should contain 'result' key (JSON-RPC)"
+    assert "tools" in response["result"], "Result should contain 'tools' key"
+    assert isinstance(response["result"]["tools"], list), "Tools should be a list"
+    assert len(response["result"]["tools"]) == 1, "Should have 1 mock tool"
+    # Tool name varies based on auth header
+    assert response["result"]["tools"][0]["name"].startswith(
+        "mock_tool"
+    ), "Tool name should start with 'mock_tool'"
 
 
-def test_https_mcp_list_tools(mock_server):
+def test_https_mcp_list_tools(mock_server: Any) -> None:
     """Test the MCP list_tools endpoint over HTTPS."""
     status, response = make_request(
-        f"{mock_server['https_url']}/mcp/v1/list_tools",
+        f"{mock_server['https_url']}/",
         method="POST",
-        data={"test": "data"},
+        data={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
         headers={"Authorization": "Bearer test-https-token"},
         use_https=True,
     )
 
     assert status == 200, f"Expected 200 OK over HTTPS, got {status}"
     assert isinstance(response, dict), f"Expected dict, got {type(response)}"
+    assert "result" in response, "Response should contain 'result' key (JSON-RPC)"
+    assert "tools" in response["result"], "Result should contain 'tools' key"
 
 
-def test_debug_headers_endpoint(mock_server):
+def test_debug_headers_endpoint(mock_server: Any) -> None:
     """Test the debug headers endpoint captures authorization headers."""
     # First, make a request with custom headers
     make_request(
@@ -163,7 +186,7 @@ def test_debug_headers_endpoint(mock_server):
     assert "request_count" in response, "request_count not in response"
 
 
-def test_debug_requests_endpoint(mock_server):
+def test_debug_requests_endpoint(mock_server: Any) -> None:
     """Test the debug requests endpoint logs request history."""
     # Make a request
     make_request(
@@ -194,7 +217,7 @@ def test_debug_requests_endpoint(mock_server):
     assert isinstance(last_request["headers"], dict), "Headers should be dict"
 
 
-def test_multiple_authorization_headers(mock_server):
+def test_multiple_authorization_headers(mock_server: Any) -> None:
     """Test capturing multiple authorization headers simultaneously."""
     make_request(
         f"{mock_server['http_url']}/mcp/v1/list_tools",
@@ -226,7 +249,7 @@ def test_multiple_authorization_headers(mock_server):
     ), f"Should capture multiple headers, got {len(last_headers)}"
 
 
-def test_all_headers_captured(mock_server):
+def test_all_headers_captured(mock_server: Any) -> None:
     """Test that all request headers are captured, not just predefined ones."""
     make_request(
         f"{mock_server['http_url']}/mcp/v1/list_tools",
@@ -241,6 +264,7 @@ def test_all_headers_captured(mock_server):
     status, response = make_request(f"{mock_server['http_url']}/debug/headers")
 
     assert status == 200
+    assert isinstance(response, dict), f"Expected dict, got {type(response)}"
     last_headers = response.get("last_headers", {})
 
     # All custom headers should be captured
@@ -248,20 +272,29 @@ def test_all_headers_captured(mock_server):
     assert "X-Another-One" in last_headers, "Another header not captured"
 
 
-def test_request_count_increments(mock_server):
-    """Test that request count increments with each request."""
-    # Get initial count
+def test_request_count_increments(mock_server: Any) -> None:
+    """Test that request count increments with each request.
+
+    Note: The mock server only logs POST requests in request_log,
+    so GET requests to /debug/headers do not increment the count.
+    """
+    # Get initial count (this GET is not logged)
     _, initial_response = make_request(f"{mock_server['http_url']}/debug/headers")
+    assert isinstance(initial_response, dict), "Expected dict response"
     initial_count = initial_response.get("request_count", 0)
 
-    # Make another request
+    # Make a POST request (this will be logged)
     make_request(
         f"{mock_server['http_url']}/mcp/v1/list_tools",
         method="POST",
     )
 
-    # Check count increased
+    # Check count increased by exactly 1 (only POST requests are logged)
     _, final_response = make_request(f"{mock_server['http_url']}/debug/headers")
+    assert isinstance(final_response, dict), "Expected dict response"
     final_count = final_response.get("request_count", 0)
 
-    assert final_count > initial_count, "Request count did not increment"
+    # The count should have increased by 1 (only the POST to /mcp/v1/list_tools)
+    assert (
+        final_count == initial_count + 1
+    ), f"Expected count to increase by 1, but went from {initial_count} to {final_count}"

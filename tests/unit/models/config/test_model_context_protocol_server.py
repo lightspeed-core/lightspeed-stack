@@ -2,6 +2,8 @@
 
 # pyright: reportCallIssue=false
 
+from pathlib import Path
+
 import pytest
 
 from pydantic import ValidationError
@@ -137,20 +139,31 @@ def test_configuration_multiple_mcp_servers() -> None:
     assert cfg.mcp_servers[2].name == "server3"
 
 
-def test_model_context_protocol_server_with_authorization_headers() -> None:
+def test_model_context_protocol_server_with_authorization_headers(
+    tmp_path: Path,
+) -> None:
     """Test ModelContextProtocolServer with authorization headers."""
+    auth_file = tmp_path / "auth.txt"
+    auth_file.write_text("my-secret")
+    api_key_file = tmp_path / "api_key.txt"
+    api_key_file.write_text("api-key-secret")
+
     mcp = ModelContextProtocolServer(
         name="auth-server",
         url="http://localhost:8080",
         authorization_headers={
-            "Authorization": "my-secret",
-            "X-API-Key": "api-key-secret",
+            "Authorization": str(auth_file),
+            "X-API-Key": str(api_key_file),
         },
     )
     assert mcp is not None
     assert mcp.name == "auth-server"
     assert mcp.url == "http://localhost:8080"
     assert mcp.authorization_headers == {
+        "Authorization": str(auth_file),
+        "X-API-Key": str(api_key_file),
+    }
+    assert mcp.resolved_authorization_headers == {
         "Authorization": "my-secret",
         "X-API-Key": "api-key-secret",
     }
@@ -178,19 +191,22 @@ def test_model_context_protocol_server_client_special_case() -> None:
     assert mcp.authorization_headers == {"Authorization": "client"}
 
 
-def test_configuration_mcp_servers_with_mixed_auth_headers() -> None:
+def test_configuration_mcp_servers_with_mixed_auth_headers(tmp_path: Path) -> None:
     """
     Test Configuration with MCP servers having mixed authorization headers.
 
     Verifies backward compatibility (servers without auth headers) and
     new functionality (servers with auth headers) work together.
     """
+    secret_file = tmp_path / "secret.txt"
+    secret_file.write_text("my-secret")
+
     mcp_servers = [
         ModelContextProtocolServer(name="server-no-auth", url="http://localhost:8080"),
         ModelContextProtocolServer(
             name="server-with-secret",
             url="http://localhost:8081",
-            authorization_headers={"Authorization": "my-secret"},
+            authorization_headers={"Authorization": str(secret_file)},
         ),
         ModelContextProtocolServer(
             name="server-with-k8s",
@@ -225,7 +241,12 @@ def test_configuration_mcp_servers_with_mixed_auth_headers() -> None:
 
     # Server with secret reference
     assert cfg.mcp_servers[1].name == "server-with-secret"
-    assert cfg.mcp_servers[1].authorization_headers == {"Authorization": "my-secret"}
+    assert cfg.mcp_servers[1].authorization_headers == {
+        "Authorization": str(secret_file)
+    }
+    assert cfg.mcp_servers[1].resolved_authorization_headers == {
+        "Authorization": "my-secret"
+    }
 
     # Server with kubernetes special case
     assert cfg.mcp_servers[2].name == "server-with-k8s"
@@ -255,7 +276,7 @@ def test_model_context_protocol_server_resolved_headers_with_special_values() ->
 
 
 def test_model_context_protocol_server_resolved_headers_with_file(
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     """Test that resolved_authorization_headers reads from files."""
     # Create a temporary secret file
@@ -279,4 +300,4 @@ def test_model_context_protocol_server_resolved_headers_empty() -> None:
         url="http://localhost:8080",
     )
     assert mcp is not None
-    assert mcp.resolved_authorization_headers == {}
+    assert not mcp.resolved_authorization_headers

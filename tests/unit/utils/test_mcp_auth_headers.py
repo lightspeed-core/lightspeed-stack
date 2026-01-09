@@ -9,7 +9,7 @@ from utils.mcp_auth_headers import resolve_authorization_headers
 def test_resolve_authorization_headers_empty() -> None:
     """Test resolving empty authorization headers."""
     result = resolve_authorization_headers({})
-    assert result == {}
+    assert not result
 
 
 def test_resolve_authorization_headers_with_file(tmp_path: Path) -> None:
@@ -43,7 +43,7 @@ def test_resolve_authorization_headers_with_nonexistent_file() -> None:
     result = resolve_authorization_headers(headers)
 
     # Should return empty dict when file doesn't exist
-    assert result == {}
+    assert not result
 
 
 def test_resolve_authorization_headers_client_token() -> None:
@@ -113,4 +113,4 @@ def test_resolve_authorization_headers_file_read_error(tmp_path: Path) -> None:
     result = resolve_authorization_headers(headers)
 
     # Should handle error gracefully and return empty dict
-    assert result == {}
+    assert not result

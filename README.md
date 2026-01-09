@@ -302,21 +302,21 @@ MCP (Model Context Protocol) servers provide tools and capabilities to the AI ag
 
 **Basic Configuration Structure:**
 
-Each MCP server requires three fields:
+Each MCP server requires two fields:
 - `name`: Unique identifier for the MCP server
-- `provider_id`: MCP provider identification (typically `"model-context-protocol"`)
 - `url`: The endpoint where the MCP server is running
+
+And one optional field:
+- `provider_id`: MCP provider identification (defaults to `"model-context-protocol"`)
 
 **Minimal Example:**
 
 ```yaml
 mcp_servers:
   - name: "filesystem-tools"
-    provider_id: "model-context-protocol"
-    url: "http://localhost:3000"
+    url: "http://localhost:9000"
   - name: "git-tools"
-    provider_id: "model-context-protocol"
-    url: "http://localhost:3001"
+    url: "http://localhost:9001"
 ```
 
 In addition to the basic configuration above, you can configure authentication headers for your MCP servers to securely communicate with services that require credentials.
@@ -332,7 +332,6 @@ Store authentication tokens in secret files and reference them in your configura
 ```yaml
 mcp_servers:
   - name: "api-service"
-    provider_id: "model-context-protocol"
     url: "http://api-service:8080"
     authorization_headers:
       Authorization: "/var/secrets/api-token"      # Path to file containing token
@@ -356,7 +355,6 @@ Use the special `"kubernetes"` keyword to automatically use the authenticated us
 ```yaml
 mcp_servers:
   - name: "k8s-internal-service"
-    provider_id: "model-context-protocol"
     url: "http://internal-mcp.default.svc.cluster.local:8080"
     authorization_headers:
       Authorization: "kubernetes"    # Uses user's k8s token from request auth
@@ -371,7 +369,6 @@ Use the special `"client"` keyword to allow clients to provide custom tokens per
 ```yaml
 mcp_servers:
   - name: "user-specific-service"
-    provider_id: "model-context-protocol"
     url: "http://user-service:8080"
     authorization_headers:
       Authorization: "client"         # Token provided via MCP-HEADERS
@@ -387,7 +384,9 @@ curl -X POST "http://localhost:8080/v1/query" \
   -d '{"query": "Get my data"}'
 ```
 
-**Note**: The `MCP-HEADERS` dictionary is keyed by **server name** (not URL), matching the `name` field in your MCP server configuration.
+**Note**: `MCP-HEADERS` is an **HTTP request header** containing a JSON-encoded dictionary. The dictionary is keyed by **server name** (not URL), matching the `name` field in your MCP server configuration. Each server name maps to another dictionary containing the HTTP headers to forward to that specific MCP server.
+
+**Structure**: `MCP-HEADERS: {"<server-name>": {"<header-name>": "<header-value>", ...}, ...}`
 
 ##### Combining Authentication Methods
 
@@ -397,21 +396,18 @@ You can mix and match authentication methods across different MCP servers, and e
 mcp_servers:
   # Static credentials for public API
   - name: "weather-api"
-    provider_id: "model-context-protocol"
     url: "http://weather-api:8080"
     authorization_headers:
       X-API-Key: "/var/secrets/weather-api-key"
   
   # Kubernetes auth for internal services
   - name: "internal-db"
-    provider_id: "model-context-protocol"
     url: "http://db-mcp.cluster.local:8080"
     authorization_headers:
       Authorization: "kubernetes"
   
   # Mixed: static API key + per-user token
   - name: "multi-tenant-service"
-    provider_id: "model-context-protocol"
     url: "http://multi-tenant:8080"
     authorization_headers:
       X-Service-Key: "/var/secrets/service-key"    # Static service credential
@@ -1118,7 +1114,7 @@ python dev-tools/mcp-mock-server/server.py
 # Add to lightspeed-stack.yaml:
 mcp_servers:
   - name: "mock-test"
-    url: "http://localhost:3000"
+    url: "http://localhost:9000"
     authorization_headers:
       Authorization: "/tmp/test-token"
 ```

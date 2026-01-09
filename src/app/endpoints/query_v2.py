@@ -707,7 +707,7 @@ def get_mcp_tools(
     """
 
     def _get_token_value(original: str, header: str) -> str | None:
-        """convert to header value"""
+        """Convert to header value."""
         match original:
             case "kubernetes":
                 # use k8s token

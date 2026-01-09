@@ -474,6 +474,7 @@ class ModelContextProtocolServer(ConfigurationBase):
     resolved_authorization_headers: dict[str, str] = Field(
         default_factory=dict,
         init=False,
+        exclude=True,
         title="Resolved authorization headers",
         description=(
             "Resolved authorization headers with file paths converted to actual values. "
@@ -1539,7 +1540,7 @@ class Configuration(ConfigurationBase):
         description="Quota handlers configuration",
     )
 
-    def dump(self, filename: str = "configuration.json") -> None:
+    def dump(self, filename: str | Path = "configuration.json") -> None:
         """
         Write the current Configuration model to a JSON file.
 
@@ -1548,7 +1549,7 @@ class Configuration(ConfigurationBase):
         file exists it will be overwritten.
 
         Parameters:
-            filename (str): Path to the output file (defaults to "configuration.json").
+            filename (str | Path): Path to the output file (defaults to "configuration.json").
         """
         with open(filename, "w", encoding="utf-8") as fout:
             fout.write(self.model_dump_json(indent=4))

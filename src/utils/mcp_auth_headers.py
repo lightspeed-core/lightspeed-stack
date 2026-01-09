@@ -14,8 +14,8 @@ def resolve_authorization_headers(
 
     Parameters:
         authorization_headers: Map of header names to secret locations or special keywords.
-            - If value is "kubernetes": live is unchanged. We substitute it during request.
-            - If value is "client": live it unchanged. . We substitute it during request.
+            - If value is "kubernetes": leave is unchanged. We substitute it during request.
+            - If value is "client": leave it unchanged. . We substitute it during request.
             - Otherwise: Treat as file path and read the secret from that file
 
     Returns:
