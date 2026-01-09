@@ -333,7 +333,9 @@ class ReferencedDocument(BaseModel):
         doc_title: Title of the referenced doc.
     """
 
-    doc_url: AnyUrl | None = Field(None, description="URL of the referenced document")
+    doc_url: str | Optional[AnyUrl] = Field(
+        None, description="URL of the referenced document"
+    )
 
     doc_title: str | None = Field(None, description="Title of the referenced document")
 
