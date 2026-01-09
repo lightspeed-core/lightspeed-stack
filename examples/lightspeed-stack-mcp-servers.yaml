@@ -27,3 +27,23 @@ mcp_servers:
   - name: "server3"
     provider_id: "provider3"
     url: "http://url.com:3"
+  # Example with authorization headers using secret file paths
+  - name: "server-with-secret-auth"
+    provider_id: "provider4"
+    url: "http://url.com:4"
+    authorization_headers:
+      Authorization: "/var/secrets/auth-token"  # Path to file containing auth token
+      X-API-Key: "/var/secrets/api-key"         # Path to file containing API key
+  # Example with kubernetes token (special case)
+  - name: "server-with-k8s-auth"
+    provider_id: "provider5"
+    url: "http://url.com:5"
+    authorization_headers:
+      Authorization: "kubernetes"  # Special value to use kubernetes service account token
+  # Example with client-provided token (special case)
+  - name: "server-with-client-auth"
+    provider_id: "provider6"
+    url: "http://url.com:6"
+    authorization_headers:
+      Authorization: "client"  # Special value to forward the client's token
+    timeout: 30  # Optional: timeout in seconds (future Llama Stack feature)

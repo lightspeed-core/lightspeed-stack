@@ -294,9 +294,20 @@ user_data_collection:
 
 **Note**: The `run.yaml` configuration is currently an implementation detail. In the future, all configuration will be available directly from the lightspeed-core config.
 
+**Important**: Only MCP servers defined in the `lightspeed-stack.yaml` configuration are available to the agents. Tools configured in the llama-stack `run.yaml` are not accessible to lightspeed-core agents.
+
 #### Configuring MCP Servers
 
-MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in the `mcp_servers` section of your `lightspeed-stack.yaml`:
+MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in the `mcp_servers` section of your `lightspeed-stack.yaml`.
+
+**Basic Configuration Structure:**
+
+Each MCP server requires three fields:
+- `name`: Unique identifier for the MCP server
+- `provider_id`: MCP provider identification (typically `"model-context-protocol"`)
+- `url`: The endpoint where the MCP server is running
+
+**Minimal Example:**
 
 ```yaml
 mcp_servers:
@@ -306,23 +317,125 @@ mcp_servers:
   - name: "git-tools"
     provider_id: "model-context-protocol"
     url: "http://localhost:3001"
-  - name: "database-tools"
-    provider_id: "model-context-protocol"
-    url: "http://localhost:3002"
 ```
 
-**Important**: Only MCP servers defined in the `lightspeed-stack.yaml` configuration are available to the agents. Tools configured in the llama-stack `run.yaml` are not accessible to lightspeed-core agents.
+In addition to the basic configuration above, you can configure authentication headers for your MCP servers to securely communicate with services that require credentials.
 
-#### Configuring MCP Headers
+#### Configuring MCP Server Authentication
 
-MCP headers allow you to pass authentication tokens, API keys, or other metadata to MCP servers. These are configured **per request** via the `MCP-HEADERS` HTTP header:
+Lightspeed Core Stack supports three methods for authenticating with MCP servers, each suited for different use cases:
+
+##### 1. Static Tokens from Files (Recommended for Service Credentials)
+
+Store authentication tokens in secret files and reference them in your configuration. This is ideal for API keys, service tokens, or any credentials that don't change per-user:
+
+```yaml
+mcp_servers:
+  - name: "api-service"
+    provider_id: "model-context-protocol"
+    url: "http://api-service:8080"
+    authorization_headers:
+      Authorization: "/var/secrets/api-token"      # Path to file containing token
+      X-API-Key: "/var/secrets/api-key"            # Multiple headers supported
+```
+
+The secret files should contain only the header value (tokens are automatically stripped of whitespace):
+
+```bash
+# /var/secrets/api-token
+Bearer sk-abc123def456...
+
+# /var/secrets/api-key
+my-api-key-value
+```
+
+##### 2. Kubernetes Service Account Tokens (For K8s Deployments)
+
+Use the special `"kubernetes"` keyword to automatically use the authenticated user's Kubernetes token. This is perfect for MCP servers running in the same Kubernetes cluster:
+
+```yaml
+mcp_servers:
+  - name: "k8s-internal-service"
+    provider_id: "model-context-protocol"
+    url: "http://internal-mcp.default.svc.cluster.local:8080"
+    authorization_headers:
+      Authorization: "kubernetes"    # Uses user's k8s token from request auth
+```
+
+The user's Kubernetes token is extracted from the incoming request's `Authorization` header and forwarded to the MCP server.
+
+##### 3. Client-Provided Tokens (For Per-User Authentication)
+
+Use the special `"client"` keyword to allow clients to provide custom tokens per-request. This enables user-specific authentication:
+
+```yaml
+mcp_servers:
+  - name: "user-specific-service"
+    provider_id: "model-context-protocol"
+    url: "http://user-service:8080"
+    authorization_headers:
+      Authorization: "client"         # Token provided via MCP-HEADERS
+      X-User-Token: "client"          # Multiple client headers supported
+```
+
+Clients then provide tokens via the `MCP-HEADERS` HTTP header:
 
 ```bash
 curl -X POST "http://localhost:8080/v1/query" \
   -H "Content-Type: application/json" \
-  -H "MCP-HEADERS: {\"filesystem-tools\": {\"Authorization\": \"Bearer token123\"}}" \
-  -d '{"query": "List files in /tmp"}'
+  -H "MCP-HEADERS: {\"user-specific-service\": {\"Authorization\": \"Bearer user-token-123\", \"X-User-Token\": \"custom-value\"}}" \
+  -d '{"query": "Get my data"}'
 ```
+
+**Note**: The `MCP-HEADERS` dictionary is keyed by **server name** (not URL), matching the `name` field in your MCP server configuration.
+
+##### Combining Authentication Methods
+
+You can mix and match authentication methods across different MCP servers, and even combine multiple methods for a single server:
+
+```yaml
+mcp_servers:
+  # Static credentials for public API
+  - name: "weather-api"
+    provider_id: "model-context-protocol"
+    url: "http://weather-api:8080"
+    authorization_headers:
+      X-API-Key: "/var/secrets/weather-api-key"
+  
+  # Kubernetes auth for internal services
+  - name: "internal-db"
+    provider_id: "model-context-protocol"
+    url: "http://db-mcp.cluster.local:8080"
+    authorization_headers:
+      Authorization: "kubernetes"
+  
+  # Mixed: static API key + per-user token
+  - name: "multi-tenant-service"
+    provider_id: "model-context-protocol"
+    url: "http://multi-tenant:8080"
+    authorization_headers:
+      X-Service-Key: "/var/secrets/service-key"    # Static service credential
+      Authorization: "client"                       # User-specific token
+```
+
+##### Authentication Method Comparison
+
+| Method | Use Case | Configuration | Token Scope | Example |
+|--------|----------|---------------|-------------|---------|
+| **Static File** | Service tokens, API keys | File path in config | Global (all users) | `"/var/secrets/token"` |
+| **Kubernetes** | K8s service accounts | `"kubernetes"` keyword | Per-user (from auth) | `"kubernetes"` |
+| **Client** | User-specific tokens | `"client"` keyword + HTTP header | Per-request | `"client"` |
+
+##### Important: Automatic Server Skipping
+
+**If an MCP server has `authorization_headers` configured but the required tokens cannot be resolved at runtime, the server will be automatically skipped for that request.** This prevents failed authentication attempts to MCP servers.
+
+**Examples:**
+- A server with `Authorization: "kubernetes"` will be skipped if the user's request doesn't include a Kubernetes token
+- A server with `Authorization: "client"` will be skipped if no `MCP-HEADERS` are provided in the request
+- A server with multiple headers will be skipped if **any** required header cannot be resolved
+
+Skipped servers are logged as warnings. Check Lightspeed Core logs to see which servers were skipped and why.
 
 
 ### Llama Stack project and configuration
@@ -987,6 +1100,36 @@ The version X.Y.Z indicates:
 * X is the major version (backward-incompatible),
 * Y is the minor version (backward-compatible), and
 * Z is the patch version (backward-compatible bug fix).
+
+# Development Tools
+
+Lightspeed Core Stack includes development utilities to help with local testing and debugging. These tools are located in the `dev-tools/` directory.
+
+## MCP Mock Server
+
+A lightweight mock MCP server for testing MCP integrations locally without requiring real MCP infrastructure.
+
+**Quick Start:**
+```bash
+# Start the mock server
+python dev-tools/mcp-mock-server/server.py
+
+# Configure Lightspeed Core Stack to use it
+# Add to lightspeed-stack.yaml:
+mcp_servers:
+  - name: "mock-test"
+    url: "http://localhost:3000"
+    authorization_headers:
+      Authorization: "/tmp/test-token"
+```
+
+**Features:**
+- Test authorization header configuration
+- Debug MCP connectivity issues
+- Inspect captured headers via debug endpoints
+- No external dependencies (pure Python stdlib)
+
+For detailed usage instructions, see [`dev-tools/mcp-mock-server/README.md`](dev-tools/mcp-mock-server/README.md).
 
 # Konflux
 

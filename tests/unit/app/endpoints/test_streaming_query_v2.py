@@ -58,7 +58,11 @@ async def test_retrieve_response_builds_rag_and_mcp_tools(
 
     mock_cfg = mocker.Mock()
     mock_cfg.mcp_servers = [
-        ModelContextProtocolServer(name="fs", url="http://localhost:3000"),
+        ModelContextProtocolServer(
+            name="fs",
+            url="http://localhost:3000",
+            authorization_headers={"Authorization": "kubernetes"},
+        ),
     ]
     mocker.patch("app.endpoints.streaming_query_v2.configuration", mock_cfg)
 

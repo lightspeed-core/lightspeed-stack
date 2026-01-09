@@ -180,6 +180,9 @@ openai_api_key.txt
 # Dev stuff
 dev/
 
+# Mock server certificates (auto-generated)
+dev-tools/mcp-mock-server/.certs/
+
 # VSCode
 .vscode/
 
