@@ -334,7 +334,7 @@ class AppConfig:
             raise LogicError("logic error: configuration is not loaded")
         if (
             self._token_usage_history is None
-            and self._configuration.quota_handlers.enable_token_history
+            and self._configuration.quota_handlers.enable_token_history  # pylint: disable=no-member
         ):
             self._token_usage_history = TokenUsageHistory(
                 self._configuration.quota_handlers

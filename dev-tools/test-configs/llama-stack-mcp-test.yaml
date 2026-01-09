@@ -1,0 +1,98 @@
+# Llama Stack configuration for MCP testing
+# Minimal configuration with only APIs needed for MCP server testing
+#
+# Prerequisites:
+# - Set OPENAI_API_KEY environment variable
+#
+version: 2
+image_name: mcp-test-config
+
+apis:
+- agents
+- files
+- inference
+- safety
+- tool_runtime
+- vector_io
+
+models:
+- model_id: gpt-4o-mini
+  provider_id: openai
+  model_type: llm
+  provider_model_id: gpt-4o-mini
+
+shields:
+- shield_id: default-shield
+  provider_id: llama-guard
+  provider_shield_id: llama-guard
+
+providers:
+  agents:
+  - provider_id: meta-reference
+    provider_type: inline::meta-reference
+    config:
+      persistence:
+        agent_state:
+          namespace: agents_state
+          backend: kv_default
+        responses:
+          table_name: agents_responses
+          backend: sql_default
+
+  files:
+  - provider_id: meta-reference-files
+    provider_type: inline::localfs
+    config:
+      metadata_store:
+        table_name: files_metadata
+        backend: sql_default
+      storage_dir: /tmp/llama_mcp_test_files
+
+  inference:
+  - provider_id: openai
+    provider_type: remote::openai
+    config:
+      api_key: ${env.OPENAI_API_KEY}
+
+  safety:
+  - provider_id: llama-guard
+    provider_type: inline::llama-guard
+    config:
+      excluded_categories: []
+
+  tool_runtime:
+  - provider_id: rag-runtime
+    provider_type: inline::rag-runtime
+    config: {}
+  - provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
+    config: {}
+
+  vector_io:
+  - provider_id: faiss
+    provider_type: inline::faiss
+    config:
+      persistence:
+        namespace: faiss_store
+        backend: kv_default
+
+storage:
+  backends:
+    kv_default:
+      type: kv_sqlite
+      db_path: /tmp/llama_mcp_test_kv_store.db
+    sql_default:
+      type: sql_sqlite
+      db_path: /tmp/llama_mcp_test_sql_store.db
+  stores:
+    metadata:
+      namespace: registry
+      backend: kv_default
+    inference:
+      table_name: inference_store
+      backend: sql_default
+      max_write_queue_size: 10000
+      num_writers: 4
+    conversations:
+      table_name: openai_conversations
+      backend: sql_default

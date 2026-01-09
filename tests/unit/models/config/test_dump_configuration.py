@@ -1,6 +1,7 @@
 """Unit tests checking ability to dump configuration."""
 
 # pylint: disable=too-many-lines
+# pyright: reportCallIssue=false
 
 import json
 
@@ -247,6 +248,8 @@ def test_dump_configuration_with_one_mcp_server(tmp_path: Path) -> None:
                 "name": "test-server",
                 "url": "http://localhost:8080",
                 "provider_id": "model-context-protocol",
+                "authorization_headers": {},
+                "timeout": None,
             }
         ]
 
@@ -304,16 +307,22 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path: Path) -> None:
                 "name": "test-server-1",
                 "provider_id": "model-context-protocol",
                 "url": "http://localhost:8081",
+                "authorization_headers": {},
+                "timeout": None,
             },
             {
                 "name": "test-server-2",
                 "provider_id": "model-context-protocol",
                 "url": "http://localhost:8082",
+                "authorization_headers": {},
+                "timeout": None,
             },
             {
                 "name": "test-server-3",
                 "provider_id": "model-context-protocol",
                 "url": "http://localhost:8083",
+                "authorization_headers": {},
+                "timeout": None,
             },
         ]
 

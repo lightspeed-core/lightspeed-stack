@@ -1,6 +1,8 @@
-# pylint: disable=redefined-outer-name, import-error,too-many-locals
+# pylint: disable=redefined-outer-name, import-error,too-many-locals,too-many-lines
+# pyright: reportCallIssue=false
 """Unit tests for the /query (v2) REST API endpoint using Responses API."""
 
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -53,63 +55,179 @@ def test_get_rag_tools() -> None:
 
 
 def test_get_mcp_tools_with_and_without_token() -> None:
-    """Test get_mcp_tools generates correct tool definitions with and without auth tokens."""
-    servers = [
+    """Test get_mcp_tools with resolved_authorization_headers."""
+    # Servers without authorization headers
+    servers_no_auth = [
         ModelContextProtocolServer(name="fs", url="http://localhost:3000"),
         ModelContextProtocolServer(name="git", url="https://git.example.com/mcp"),
     ]
 
-    tools_no_token = get_mcp_tools(servers, token=None)
-    assert len(tools_no_token) == 2
-    assert tools_no_token[0]["type"] == "mcp"
-    assert tools_no_token[0]["server_label"] == "fs"
-    assert tools_no_token[0]["server_url"] == "http://localhost:3000"
-    assert "headers" not in tools_no_token[0]
+    tools_no_auth = get_mcp_tools(servers_no_auth, token=None)
+    assert len(tools_no_auth) == 2
+    assert tools_no_auth[0]["type"] == "mcp"
+    assert tools_no_auth[0]["server_label"] == "fs"
+    assert tools_no_auth[0]["server_url"] == "http://localhost:3000"
+    assert "headers" not in tools_no_auth[0]
 
-    tools_with_token = get_mcp_tools(servers, token="abc")
-    assert len(tools_with_token) == 2
-    assert tools_with_token[1]["type"] == "mcp"
-    assert tools_with_token[1]["server_label"] == "git"
-    assert tools_with_token[1]["server_url"] == "https://git.example.com/mcp"
-    assert tools_with_token[1]["headers"] == {"Authorization": "Bearer abc"}
+    # Servers with kubernetes auth
+    servers_k8s = [
+        ModelContextProtocolServer(
+            name="k8s-server",
+            url="http://localhost:3000",
+            authorization_headers={"Authorization": "kubernetes"},
+        ),
+    ]
+    tools_k8s = get_mcp_tools(servers_k8s, token="user-k8s-token")
+    assert len(tools_k8s) == 1
+    assert tools_k8s[0]["headers"] == {"Authorization": "Bearer user-k8s-token"}
 
 
 def test_get_mcp_tools_with_mcp_headers() -> None:
-    """Test get_mcp_tools merges token auth and per-server headers correctly."""
+    """Test get_mcp_tools with client-provided headers."""
+    # Server with client auth
     servers = [
-        ModelContextProtocolServer(name="fs", url="http://localhost:3000"),
-        ModelContextProtocolServer(name="git", url="https://git.example.com/mcp"),
+        ModelContextProtocolServer(
+            name="fs",
+            url="http://localhost:3000",
+            authorization_headers={"Authorization": "client", "X-Custom": "client"},
+        ),
     ]
 
-    # Test with mcp_headers only (no token)
+    # Test with mcp_headers provided
     mcp_headers = {
-        "http://localhost:3000": {"X-Custom-Header": "value1"},
-        "https://git.example.com/mcp": {"X-API-Key": "secret123"},
+        "fs": {
+            "Authorization": "client-provided-token",
+            "X-Custom": "custom-value",
+        }
     }
     tools = get_mcp_tools(servers, token=None, mcp_headers=mcp_headers)
-    assert len(tools) == 2
-    assert tools[0]["headers"] == {"X-Custom-Header": "value1"}
-    assert tools[1]["headers"] == {"X-API-Key": "secret123"}
-
-    # Test with both token and mcp_headers (should merge)
-    tools_merged = get_mcp_tools(servers, token="abc", mcp_headers=mcp_headers)
-    assert len(tools_merged) == 2
-    assert tools_merged[0]["headers"] == {
-        "Authorization": "Bearer abc",
-        "X-Custom-Header": "value1",
-    }
-    assert tools_merged[1]["headers"] == {
-        "Authorization": "Bearer abc",
-        "X-API-Key": "secret123",
+    assert len(tools) == 1
+    assert tools[0]["headers"] == {
+        "Authorization": "client-provided-token",
+        "X-Custom": "custom-value",
     }
 
-    # Test mcp_headers can override Authorization
-    override_headers = {
-        "http://localhost:3000": {"Authorization": "Custom auth"},
+    # Test with mcp_headers=None (server should be skipped since auth is required but unavailable)
+    tools_no_headers = get_mcp_tools(servers, token=None, mcp_headers=None)
+    assert len(tools_no_headers) == 0  # Server skipped due to missing required auth
+
+
+def test_get_mcp_tools_with_static_headers(tmp_path: Path) -> None:
+    """Test get_mcp_tools with static headers from config files."""
+    # Create a secret file
+    secret_file = tmp_path / "token.txt"
+    secret_file.write_text("static-secret-token")
+
+    servers = [
+        ModelContextProtocolServer(
+            name="server1",
+            url="http://localhost:3000",
+            authorization_headers={"Authorization": str(secret_file)},
+        ),
+    ]
+
+    tools = get_mcp_tools(servers, token=None)
+    assert len(tools) == 1
+    assert tools[0]["headers"] == {"Authorization": "static-secret-token"}
+
+
+def test_get_mcp_tools_with_mixed_headers(tmp_path: Path) -> None:
+    """Test get_mcp_tools with mixed header types."""
+    # Create a secret file
+    secret_file = tmp_path / "api-key.txt"
+    secret_file.write_text("secret-api-key")
+
+    servers = [
+        ModelContextProtocolServer(
+            name="mixed-server",
+            url="http://localhost:3000",
+            authorization_headers={
+                "Authorization": "kubernetes",
+                "X-API-Key": str(secret_file),
+                "X-Custom": "client",
+            },
+        ),
+    ]
+
+    mcp_headers = {
+        "mixed-server": {
+            "X-Custom": "client-custom-value",
+        }
     }
-    tools_override = get_mcp_tools(servers, token="abc", mcp_headers=override_headers)
-    assert tools_override[0]["headers"] == {"Authorization": "Custom auth"}
-    assert tools_override[1]["headers"] == {"Authorization": "Bearer abc"}
+
+    tools = get_mcp_tools(servers, token="k8s-token", mcp_headers=mcp_headers)
+    assert len(tools) == 1
+    assert tools[0]["headers"] == {
+        "Authorization": "Bearer k8s-token",
+        "X-API-Key": "secret-api-key",
+        "X-Custom": "client-custom-value",
+    }
+
+
+def test_get_mcp_tools_skips_server_with_missing_auth() -> None:
+    """Test that servers with required but unavailable auth headers are skipped."""
+    servers = [
+        # Server with kubernetes auth but no token provided
+        ModelContextProtocolServer(
+            name="missing-k8s-auth",
+            url="http://localhost:3001",
+            authorization_headers={"Authorization": "kubernetes"},
+        ),
+        # Server with client auth but no MCP-HEADERS provided
+        ModelContextProtocolServer(
+            name="missing-client-auth",
+            url="http://localhost:3002",
+            authorization_headers={"X-Token": "client"},
+        ),
+        # Server with partial auth (2 headers required, only 1 available)
+        ModelContextProtocolServer(
+            name="partial-auth",
+            url="http://localhost:3003",
+            authorization_headers={
+                "Authorization": "kubernetes",
+                "X-Custom": "client",
+            },
+        ),
+    ]
+
+    # No token, no mcp_headers
+    tools = get_mcp_tools(servers, token=None, mcp_headers=None)
+    # All servers should be skipped
+    assert len(tools) == 0
+
+    # With token but no mcp_headers
+    tools = get_mcp_tools(servers, token="k8s-token", mcp_headers=None)
+    # First server should work, others skipped
+    assert len(tools) == 1
+    assert tools[0]["server_label"] == "missing-k8s-auth"
+
+    # With mcp_headers but missing one for partial-auth
+    mcp_headers = {
+        "missing-client-auth": {"X-Token": "client-token"},
+        "partial-auth": {"X-Custom": "client-custom"},  # Missing Authorization
+    }
+    tools = get_mcp_tools(servers, token=None, mcp_headers=mcp_headers)
+    # Only missing-client-auth should work
+    assert len(tools) == 1
+    assert tools[0]["server_label"] == "missing-client-auth"
+
+
+def test_get_mcp_tools_includes_server_without_auth() -> None:
+    """Test that servers without auth config are always included."""
+    servers = [
+        # Server with no auth requirements
+        ModelContextProtocolServer(
+            name="public-server",
+            url="http://localhost:3000",
+            authorization_headers={},
+        ),
+    ]
+
+    # Should work even without token or headers
+    tools = get_mcp_tools(servers, token=None, mcp_headers=None)
+    assert len(tools) == 1
+    assert tools[0]["server_label"] == "public-server"
+    assert "headers" not in tools[0]
 
 
 @pytest.mark.asyncio
@@ -178,7 +296,11 @@ async def test_retrieve_response_builds_rag_and_mcp_tools(  # pylint: disable=to
     mocker.patch("app.endpoints.query_v2.get_system_prompt", return_value="PROMPT")
     mock_cfg = mocker.Mock()
     mock_cfg.mcp_servers = [
-        ModelContextProtocolServer(name="fs", url="http://localhost:3000"),
+        ModelContextProtocolServer(
+            name="fs",
+            url="http://localhost:3000",
+            authorization_headers={"Authorization": "kubernetes"},
+        ),
     ]
     mocker.patch("app.endpoints.query_v2.configuration", mock_cfg)
 
@@ -546,7 +668,7 @@ async def test_query_endpoint_handler_v2_api_connection_error(
     assert exc.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     detail = exc.value.detail
     assert isinstance(detail, dict)
-    assert detail["response"] == "Unable to connect to Llama Stack"
+    assert detail["response"] == "Unable to connect to Llama Stack"  # type: ignore[index]
     fail_metric.inc.assert_called_once()
 
 

@@ -31,10 +31,10 @@ test-e2e-local: ## Run end to end tests for the service
 
 
 check-types: ## Checks type hints in sources
-	uv run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --ignore-missing-imports --disable-error-code attr-defined src/ tests/unit tests/integration tests/e2e/
+	uv run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --ignore-missing-imports --disable-error-code attr-defined src/ tests/unit tests/integration tests/e2e/ dev-tools/
 
 security-check: ## Check the project for security issues
-	bandit -c pyproject.toml -r src tests
+	uv run bandit -c pyproject.toml -r src tests dev-tools
 
 format: ## Format the code into unified format
 	uv run black .
@@ -84,13 +84,13 @@ black:	## Check source code using Black code formatter
 	uv run black --check .
 
 pylint:	## Check source code using Pylint static code analyser
-	uv run pylint src tests
+	uv run pylint src tests dev-tools
 
 pyright:	## Check source code using Pyright static type checker
-	uv run pyright src
+	uv run pyright src dev-tools
 
 docstyle:	## Check the docstring style using Docstyle checker
-	uv run pydocstyle -v src
+	uv run pydocstyle -v src dev-tools
 
 ruff:	## Check source code using Ruff linter
 	uv run ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101

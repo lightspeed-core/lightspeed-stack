@@ -22,7 +22,7 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from configuration import AppConfig, configuration
 from constants import DEFAULT_RAG_TOOL
-from models.config import Action
+from models.config import Action, ModelContextProtocolServer
 from models.requests import QueryRequest
 from models.responses import (
     ForbiddenResponse,
@@ -77,7 +77,7 @@ def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-
     The OpenAI ``response.output`` array may contain any ``OpenAIResponseOutput`` variant:
     ``message``, ``function_call``, ``file_search_call``, ``web_search_call``, ``mcp_call``,
     ``mcp_list_tools``, or ``mcp_approval_request``. The OpenAI Spec supports more types
-    but as llamastack does not support them yet they are not considered here.
+    but as llamastack does not support them, yet they are not considered here.
     """
     item_type = getattr(output_item, "type", None)
 
@@ -494,7 +494,8 @@ def parse_referenced_documents_from_responses_api(
     # Use a set to track unique documents by (doc_url, doc_title) tuple
     seen_docs: set[tuple[str | None, str | None]] = set()
 
-    if not response.output:
+    # Handle None response (e.g., when agent fails)
+    if response is None or not response.output:
         return documents
 
     for output_item in response.output:
@@ -703,7 +704,7 @@ def get_rag_tools(vector_store_ids: list[str]) -> list[dict[str, Any]] | None:
 
 
 def get_mcp_tools(
-    mcp_servers: list,
+    mcp_servers: list[ModelContextProtocolServer],
     token: str | None = None,
     mcp_headers: dict[str, dict[str, str]] | None = None,
 ) -> list[dict[str, Any]]:
@@ -718,9 +719,47 @@ def get_mcp_tools(
     Returns:
         list[dict[str, Any]]: List of MCP tool definitions with server
             details and optional auth headers
+
+    The way it works is we go through all the defined mcp servers and
+    create a tool definitions for each of them. If MCP server definition
+    has a non-empty resolved_authorization_headers we create invocation
+    headers, following the algorithm:
+    1. If the header value is 'kubernetes' the header value is a k8s token
+    2. If the header value is 'client':
+        find the value for a given MCP server/header in mcp_headers.
+        if the value is not found omit this header, otherwise use found value
+    3.  otherwise use the value from resolved_authorization_headers directly
+
+    This algorithm allows to:
+    1. Use static global header values, provided by configuration
+    2. Use user specific k8s token, which will work for the majority of kubernetes
+       based MCP servers
+    3. Use user specific tokens (passed by the client) for user specific MCP headers
     """
+
+    def _get_token_value(original: str, header: str) -> str | None:
+        """Convert to header value."""
+        match original:
+            case "kubernetes":
+                # use k8s token
+                if token is None or token == "":
+                    return None
+                return f"Bearer {token}"
+            case "client":
+                # use client provided token
+                if mcp_headers is None:
+                    return None
+                c_headers = mcp_headers.get(mcp_server.name, None)
+                if c_headers is None:
+                    return None
+                return c_headers.get(header, None)
+            case _:
+                # use provided
+                return original
+
     tools = []
     for mcp_server in mcp_servers:
+        # Base tool definition
         tool_def = {
             "type": "mcp",
             "server_label": mcp_server.name,
@@ -728,18 +767,31 @@ def get_mcp_tools(
             "require_approval": "never",
         }
 
-        # Build headers: start with token auth, then merge in per-server headers
-        if token or mcp_headers:
-            headers = {}
-            # Add token-based auth if available
-            if token:
-                headers["Authorization"] = f"Bearer {token}"
-            # Merge in per-server headers (can override Authorization if needed)
-            server_headers = (mcp_headers or {}).get(mcp_server.url)
-            if server_headers:
-                headers.update(server_headers)
-            tool_def["headers"] = headers
+        # Build headers
+        headers = {}
+        for name, value in mcp_server.resolved_authorization_headers.items():
+            # for each defined header
+            h_value = _get_token_value(value, name)
+            # only add the header if we got value
+            if h_value is not None:
+                headers[name] = h_value
 
+        # Skip server if auth headers were configured but not all could be resolved
+        if mcp_server.authorization_headers and len(headers) != len(
+            mcp_server.authorization_headers
+        ):
+            logger.warning(
+                "Skipping MCP server %s: required %d auth headers but only resolved %d",
+                mcp_server.name,
+                len(mcp_server.authorization_headers),
+                len(headers),
+            )
+            continue
+
+        if len(headers) > 0:
+            # add headers to tool definition
+            tool_def["headers"] = headers  # type: ignore[index]
+        # collect tools info
         tools.append(tool_def)
     return tools
 
