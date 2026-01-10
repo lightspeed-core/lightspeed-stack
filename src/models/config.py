@@ -29,6 +29,7 @@ from typing_extensions import Self, Literal
 import constants
 
 from utils import checks
+from utils import tls
 
 
 class ConfigurationBase(BaseModel):
@@ -81,6 +82,98 @@ class TLSConfiguration(ConfigurationBase):
         Returns:
             Self: The validated model instance.
         """
+        return self
+
+
+class TLSSecurityProfile(ConfigurationBase):
+    """TLS security profile for outgoing connections.
+
+    This configuration allows customizing the TLS security settings for
+    outgoing connections to LM providers. Users can specify:
+    - A predefined profile type (OldType, IntermediateType, ModernType, Custom)
+    - Minimum TLS version (VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13)
+    - List of allowed cipher suites
+    - CA certificate path for custom certificate authorities
+    - Option to skip TLS verification (for testing only)
+
+    Example configuration:
+        tls_security_profile:
+            type: Custom
+            minTLSVersion: VersionTLS13
+            ciphers:
+                - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+                - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+            caCertPath: /path/to/ca.crt
+    """
+
+    profile_type: Optional[str] = Field(
+        None,
+        alias="type",
+        title="Profile type",
+        description="TLS profile type: OldType, IntermediateType, ModernType, or Custom",
+    )
+    min_tls_version: Optional[str] = Field(
+        None,
+        alias="minTLSVersion",
+        title="Minimum TLS version",
+        description="Minimum TLS version: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13",
+    )
+    ciphers: Optional[list[str]] = Field(
+        None,
+        title="Ciphers",
+        description="List of allowed cipher suites",
+    )
+    ca_cert_path: Optional[FilePath] = Field(
+        None,
+        alias="caCertPath",
+        title="CA certificate path",
+        description="Path to CA certificate file for verifying server certificates",
+    )
+    skip_tls_verification: bool = Field(
+        False,
+        alias="skipTLSVerification",
+        title="Skip TLS verification",
+        description="Skip TLS certificate verification (for testing only, not recommended for production)",
+    )
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    @model_validator(mode="after")
+    def check_tls_security_profile(self) -> Self:
+        """Validate TLS security profile configuration."""
+        # check the TLS profile type
+        if self.profile_type is not None:
+            try:
+                tls.TLSProfiles(self.profile_type)
+            except ValueError as e:
+                valid_profiles = [p.value for p in tls.TLSProfiles]
+                raise ValueError(
+                    f"Invalid TLS profile type '{self.profile_type}'. "
+                    f"Valid types: {valid_profiles}"
+                ) from e
+
+        # check the TLS protocol version
+        if self.min_tls_version is not None:
+            try:
+                tls.TLSProtocolVersion(self.min_tls_version)
+            except ValueError as e:
+                valid_versions = [v.value for v in tls.TLSProtocolVersion]
+                raise ValueError(
+                    f"Invalid minimal TLS version '{self.min_tls_version}'. "
+                    f"Valid versions: {valid_versions}"
+                ) from e
+
+        # check ciphers - validate against profile if not Custom
+        if self.ciphers is not None and self.profile_type is not None:
+            if self.profile_type != tls.TLSProfiles.CUSTOM_TYPE:
+                profile = tls.TLSProfiles(self.profile_type)
+                supported_ciphers = tls.TLS_CIPHERS.get(profile, [])
+                for cipher in self.ciphers:
+                    if cipher not in supported_ciphers:
+                        raise ValueError(
+                            f"Unsupported cipher '{cipher}' for profile '{self.profile_type}'"
+                        )
+
         return self
 
 
@@ -501,6 +594,12 @@ class LlamaStackConfiguration(ConfigurationBase):
         None,
         title="Llama Stack configuration path",
         description="Path to configuration file used when Llama Stack is run in library mode",
+    )
+
+    tls_security_profile: Optional[TLSSecurityProfile] = Field(
+        None,
+        title="TLS security profile",
+        description="TLS security profile for outgoing connections to Llama Stack",
     )
 
     @model_validator(mode="after")
