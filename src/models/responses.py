@@ -329,8 +329,14 @@ class ReferencedDocument(BaseModel):
     """Model representing a document referenced in generating a response.
 
     Attributes:
-        doc_url: Url to the referenced doc.
+        doc_url: URL to the referenced doc.
         doc_title: Title of the referenced doc.
+        document_id: Unique identifier for the document in the RAG system.
+        product_name: Product name (e.g., "Red Hat OpenShift").
+        product_version: Product version (e.g., "4.15").
+        source_path: Source path or identifier for local/filesystem documents.
+        score: Relevance score from RAG retrieval (0.0 to 1.0).
+        chunk_metadata: Additional metadata fields from the RAG chunk.
     """
 
     doc_url: Optional[AnyUrl] = Field(
@@ -339,6 +345,23 @@ class ReferencedDocument(BaseModel):
 
     doc_title: Optional[str] = Field(
         None, description="Title of the referenced document"
+    )
+
+    document_id: str | None = Field(
+        None, description="Document identifier from RAG system"
+    )
+
+    product_name: str | None = Field(None, description="Product name")
+
+    product_version: str | None = Field(None, description="Product version")
+
+    source_path: str | None = Field(None, description="Source path for local documents")
+
+    score: float | None = Field(None, description="Relevance score from RAG retrieval")
+
+    chunk_metadata: dict[str, Any] | None = Field(
+        None,
+        description="Additional metadata from RAG chunk",
     )
 
 

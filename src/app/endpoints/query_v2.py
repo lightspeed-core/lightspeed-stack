@@ -539,7 +539,16 @@ def parse_referenced_documents_from_responses_api(
                     final_url = doc_url if doc_url else None
                     if (final_url, filename) not in seen_docs:
                         documents.append(
-                            ReferencedDocument(doc_url=final_url, doc_title=filename)
+                            ReferencedDocument(
+                                doc_url=final_url,
+                                doc_title=filename,
+                                document_id=None,
+                                product_name=None,
+                                product_version=None,
+                                source_path=None,
+                                score=None,
+                                chunk_metadata=None,
+                            )
                         )
                         seen_docs.add((final_url, filename))
 
@@ -574,7 +583,14 @@ def parse_referenced_documents_from_responses_api(
                             if (final_url, anno_title) not in seen_docs:
                                 documents.append(
                                     ReferencedDocument(
-                                        doc_url=final_url, doc_title=anno_title
+                                        doc_url=final_url,
+                                        doc_title=anno_title,
+                                        document_id=None,
+                                        product_name=None,
+                                        product_version=None,
+                                        source_path=None,
+                                        score=None,
+                                        chunk_metadata=None,
                                     )
                                 )
                                 seen_docs.add((final_url, anno_title))
@@ -583,7 +599,14 @@ def parse_referenced_documents_from_responses_api(
                             if (None, anno_title) not in seen_docs:
                                 documents.append(
                                     ReferencedDocument(
-                                        doc_url=None, doc_title=anno_title
+                                        doc_url=None,
+                                        doc_title=anno_title,
+                                        document_id=None,
+                                        product_name=None,
+                                        product_version=None,
+                                        source_path=None,
+                                        score=None,
+                                        chunk_metadata=None,
                                     )
                                 )
                                 seen_docs.add((None, anno_title))

@@ -441,9 +441,9 @@ def create_rag_chunks_dict(summary: TurnSummary) -> list[dict[str, Any]]:
 
 def _process_http_source(
     src: str, doc_urls: set[str]
-) -> Optional[tuple[Optional[AnyUrl], str]]:
+) -> tuple[AnyUrl | None, str, dict[str, Any]] | None:
     """
-    Process HTTP source and return (doc_url, doc_title) tuple.
+    Process HTTP source and return (doc_url, doc_title, metadata_dict) tuple.
 
     Parameters:
         src (str): The source URL string to process.
@@ -451,12 +451,14 @@ def _process_http_source(
                              will add `src` to this set when it is new.
 
     Returns:
-        Optional[tuple[Optional[AnyUrl], str]]: A tuple (validated_url, doc_title)
-               when `src` was not previously seen:
+        tuple[AnyUrl | None, str, dict[str, Any]] | None: A tuple
+               (validated_url, doc_title, metadata_dict) when `src` was not
+               previously seen:
             - `validated_url`: an `AnyUrl` instance if `src` is a valid URL, or
               `None` if validation failed.
             - `doc_title`: the last path segment of the URL or `src` if no path
                segment is present.
+            - `metadata_dict`: dict containing document_id (the URL itself).
         Returns `None` if `src` was already present in `doc_urls`.
     """
     if src not in doc_urls:
@@ -468,19 +470,27 @@ def _process_http_source(
             validated_url = None
 
         doc_title = src.rsplit("/", 1)[-1] or src
-        return (validated_url, doc_title)
+        # For HTTP sources, document_id is the URL itself
+        metadata_dict = {
+            "document_id": src,
+            "product_name": None,
+            "product_version": None,
+            "source_path": None,
+            "chunk_metadata": None,
+        }
+        return (validated_url, doc_title, metadata_dict)
     return None
 
 
-def _process_document_id(
+def _process_document_id(  # pylint: disable=too-many-locals
     src: str,
     doc_ids: set[str],
     doc_urls: set[str],
     metas_by_id: dict[str, dict[str, Any]],
-    metadata_map: Optional[dict[str, Any]],
-) -> Optional[tuple[Optional[AnyUrl], str]]:
+    metadata_map: dict[str, Any] | None,
+) -> tuple[AnyUrl | None, str, dict[str, Any]] | None:
     """
-    Process document ID and return (doc_url, doc_title) tuple.
+    Process document ID and return (doc_url, doc_title, metadata_dict) tuple.
 
     Parameters:
         src (str): Document identifier to process.
@@ -491,15 +501,16 @@ def _process_document_id(
                                                  metadata dicts that may
                                                  contain `docs_url` and
                                                  `title`.
-        metadata_map (Optional[dict[str, Any]]): If provided (truthy), indicates
+        metadata_map (dict[str, Any] | None): If provided (truthy), indicates
                                               metadata is available and enables
                                               metadata lookup; when falsy,
                                               metadata lookup is skipped.
 
     Returns:
-        Optional[tuple[Optional[AnyUrl], str]]: `(validated_url, doc_title)` where
-        `validated_url` is a validated `AnyUrl` or `None` and `doc_title` is
-        the chosen title string; returns `None` if the `src` or its URL was
+        tuple[AnyUrl | None, str, dict[str, Any]] | None: `(validated_url,
+        doc_title, metadata_dict)` where `validated_url` is a validated `AnyUrl`
+        or `None` and `doc_title` is the chosen title string, and `metadata_dict`
+        contains enriched metadata; returns `None` if the `src` or its URL was
         already processed.
     """
     if src in doc_ids:
@@ -509,6 +520,12 @@ def _process_document_id(
     meta = metas_by_id.get(src, {}) if metadata_map else {}
     doc_url = meta.get("docs_url")
     title = meta.get("title")
+
+    # Extract additional metadata fields
+    product_name = meta.get("product_name")
+    product_version = meta.get("product_version")
+    source_path = meta.get("source_path") or meta.get("source")
+
     # Type check to ensure we have the right types
     if not isinstance(doc_url, (str, type(None))):
         doc_url = None
@@ -529,23 +546,53 @@ def _process_document_id(
         validated_doc_url = None
 
     doc_title = title or (doc_url.rsplit("/", 1)[-1] if doc_url else src)
-    return (validated_doc_url, doc_title)
+
+    # Build metadata dict with additional fields not in top-level ReferencedDocument
+    excluded_fields = {
+        "docs_url",
+        "title",
+        "document_id",
+        "product_name",
+        "product_version",
+        "source_path",
+        "source",
+    }
+    additional_metadata = (
+        {k: v for k, v in meta.items() if k not in excluded_fields} if meta else {}
+    )
+
+    metadata_dict = {
+        "document_id": src,
+        "product_name": product_name,
+        "product_version": product_version,
+        "source_path": source_path,
+        "chunk_metadata": additional_metadata if additional_metadata else None,
+    }
+
+    return (validated_doc_url, doc_title, metadata_dict)
 
 
 def _add_additional_metadata_docs(
     doc_urls: set[str],
     metas_by_id: dict[str, dict[str, Any]],
-) -> list[tuple[Optional[AnyUrl], str]]:
+) -> list[tuple[AnyUrl | None, str, dict[str, Any]]]:
     """Add additional referenced documents from metadata_map."""
-    additional_entries: list[tuple[Optional[AnyUrl], str]] = []
-    for meta in metas_by_id.values():
+    additional_entries: list[tuple[AnyUrl | None, str, dict[str, Any]]] = []
+    for doc_id, meta in metas_by_id.items():
         doc_url = meta.get("docs_url")
         title = meta.get("title")  # Note: must be "title", not "Title"
+
+        # Extract additional metadata fields
+        product_name = meta.get("product_name")
+        product_version = meta.get("product_version")
+        source_path = meta.get("source_path") or meta.get("source")
+
         # Type check to ensure we have the right types
         if not isinstance(doc_url, (str, type(None))):
             doc_url = None
         if not isinstance(title, (str, type(None))):
             title = None
+
         if doc_url and doc_url not in doc_urls and title is not None:
             doc_urls.add(doc_url)
             try:
@@ -556,69 +603,118 @@ def _add_additional_metadata_docs(
                 logger.warning("Invalid URL in metadata_map: %s", doc_url)
                 validated_url = None
 
-            additional_entries.append((validated_url, title))
+            # Build metadata dict
+            excluded_fields = {
+                "docs_url",
+                "title",
+                "document_id",
+                "product_name",
+                "product_version",
+                "source_path",
+                "source",
+            }
+            additional_metadata = {
+                k: v for k, v in meta.items() if k not in excluded_fields
+            }
+
+            metadata_dict = {
+                "document_id": doc_id,
+                "product_name": product_name,
+                "product_version": product_version,
+                "source_path": source_path,
+                "chunk_metadata": additional_metadata if additional_metadata else None,
+            }
+
+            additional_entries.append((validated_url, title, metadata_dict))
     return additional_entries
 
 
-def _process_rag_chunks_for_documents(
+def _process_rag_chunks_for_documents(  # pylint: disable=too-many-locals,too-many-branches
     rag_chunks: list,
-    metadata_map: Optional[dict[str, Any]] = None,
-) -> list[tuple[Optional[AnyUrl], str]]:
+    metadata_map: dict[str, Any] | None = None,
+) -> list[tuple[AnyUrl | None, str, dict[str, Any], float | None]]:
     """
-    Process RAG chunks and return a list of (doc_url, doc_title) tuples.
+    Process RAG chunks and return enriched document tuples with metadata and scores.
 
     This is the core logic shared between both return formats.
 
     Parameters:
         rag_chunks (list): Iterable of RAG chunk objects; each chunk must
         provide a `source` attribute (e.g., an HTTP URL or a document ID).
-        metadata_map (Optional[dict[str, Any]]): Optional mapping of document IDs
+        metadata_map (dict[str, Any] | None): Optional mapping of document IDs
         to metadata dictionaries used to resolve titles and document URLs.
 
     Returns:
-        list[tuple[Optional[AnyUrl], str]]: Ordered list of tuples where the first
-        element is a validated URL object or `None` (if no URL is available)
-        and the second element is the document title.
+        list[tuple[AnyUrl | None, str, dict[str, Any], float | None]]: Ordered list of tuples where:
+        - First element is a validated URL object or `None` (if no URL is available)
+        - Second element is the document title
+        - Third element is a dict with metadata (document_id, product_name, product_version, etc.)
+        - Fourth element is the relevance score or `None`
     """
     doc_urls: set[str] = set()
     doc_ids: set[str] = set()
+
+    # Track scores by document source identifier
+    doc_scores: dict[str, float | None] = {}
 
     # Process metadata_map if provided
     metas_by_id: dict[str, dict[str, Any]] = {}
     if metadata_map:
         metas_by_id = {k: v for k, v in metadata_map.items() if isinstance(v, dict)}
 
-    document_entries: list[tuple[Optional[AnyUrl], str]] = []
+    document_entries: list[tuple[AnyUrl | None, str, dict[str, Any]]] = []
 
     for chunk in rag_chunks:
         src = chunk.source
         if not src or src == constants.DEFAULT_RAG_TOOL:
             continue
 
+        # Extract score from chunk if available
+        score = getattr(chunk, "score", None)
+
         if src.startswith("http"):
             entry = _process_http_source(src, doc_urls)
             if entry:
                 document_entries.append(entry)
+                # Track score by source
+                if src not in doc_scores:
+                    doc_scores[src] = score
         else:
             entry = _process_document_id(
                 src, doc_ids, doc_urls, metas_by_id, metadata_map
             )
             if entry:
                 document_entries.append(entry)
+                # Track score by source
+                if src not in doc_scores:
+                    doc_scores[src] = score
 
     # Add any additional referenced documents from metadata_map not already present
     if metadata_map:
         additional_entries = _add_additional_metadata_docs(doc_urls, metas_by_id)
-        document_entries.extend(additional_entries)
+        for additional_entry in additional_entries:
+            document_entries.append(additional_entry)
+            # Additional entries don't have scores from chunks
+            doc_id = additional_entry[2].get("document_id")
+            if doc_id and doc_id not in doc_scores:
+                doc_scores[doc_id] = None
 
-    return document_entries
+    # Build final result with scores
+    result: list[tuple[AnyUrl | None, str, dict[str, Any], float | None]] = []
+    for doc_url, doc_title, metadata_dict in document_entries:
+        # Get score using document_id from metadata
+        doc_id = metadata_dict.get("document_id")
+        score = doc_scores.get(doc_id) if doc_id else None
+        result.append((doc_url, doc_title, metadata_dict, score))
+
+    return result
 
 
 def create_referenced_documents(
     rag_chunks: list,
     metadata_map: Optional[dict[str, Any]] = None,
     return_dict_format: bool = False,
-) -> list[ReferencedDocument] | list[dict[str, Optional[str]]]:
+) -> list[ReferencedDocument] | list[dict[str, str | None]]:
     """
     Create referenced documents from RAG chunks with optional metadata enrichment.
 
@@ -633,7 +729,9 @@ def create_referenced_documents(
             ReferencedDocument objects
 
     Returns:
-        List of ReferencedDocument objects or dictionaries with doc_url and doc_title
+        List of ReferencedDocument objects or dictionaries with all metadata fields
+        including doc_url, doc_title, document_id, product_name, product_version,
+        source_path, score, and chunk_metadata
     """
     document_entries = _process_rag_chunks_for_documents(rag_chunks, metadata_map)
 
@@ -642,12 +740,27 @@ def create_referenced_documents(
             {
                 "doc_url": str(doc_url) if doc_url else None,
                 "doc_title": doc_title,
+                "document_id": metadata_dict.get("document_id"),
+                "product_name": metadata_dict.get("product_name"),
+                "product_version": metadata_dict.get("product_version"),
+                "source_path": metadata_dict.get("source_path"),
+                "score": score,
+                "chunk_metadata": metadata_dict.get("chunk_metadata"),
             }
-            for doc_url, doc_title in document_entries
+            for doc_url, doc_title, metadata_dict, score in document_entries
         ]
     return [
-        ReferencedDocument(doc_url=doc_url, doc_title=doc_title)
-        for doc_url, doc_title in document_entries
+        ReferencedDocument(
+            doc_url=doc_url,
+            doc_title=doc_title,
+            document_id=metadata_dict.get("document_id"),
+            product_name=metadata_dict.get("product_name"),
+            product_version=metadata_dict.get("product_version"),
+            source_path=metadata_dict.get("source_path"),
+            score=score,
+            chunk_metadata=metadata_dict.get("chunk_metadata"),
+        )
+        for doc_url, doc_title, metadata_dict, score in document_entries
     ]
 
 
@@ -674,8 +787,17 @@ def create_referenced_documents_with_metadata(
         summary.rag_chunks, metadata_map
     )
     return [
-        ReferencedDocument(doc_url=doc_url, doc_title=doc_title)
-        for doc_url, doc_title in document_entries
+        ReferencedDocument(
+            doc_url=doc_url,
+            doc_title=doc_title,
+            document_id=metadata_dict.get("document_id"),
+            product_name=metadata_dict.get("product_name"),
+            product_version=metadata_dict.get("product_version"),
+            source_path=metadata_dict.get("source_path"),
+            score=score,
+            chunk_metadata=metadata_dict.get("chunk_metadata"),
+        )
+        for doc_url, doc_title, metadata_dict, score in document_entries
     ]
 
 
@@ -698,8 +820,17 @@ def create_referenced_documents_from_chunks(
     """
     document_entries = _process_rag_chunks_for_documents(rag_chunks)
     return [
-        ReferencedDocument(doc_url=doc_url, doc_title=doc_title)
-        for doc_url, doc_title in document_entries
+        ReferencedDocument(
+            doc_url=doc_url,
+            doc_title=doc_title,
+            document_id=metadata_dict.get("document_id"),
+            product_name=metadata_dict.get("product_name"),
+            product_version=metadata_dict.get("product_version"),
+            source_path=metadata_dict.get("source_path"),
+            score=score,
+            chunk_metadata=metadata_dict.get("chunk_metadata"),
+        )
+        for doc_url, doc_title, metadata_dict, score in document_entries
     ]
 
 

@@ -1,5 +1,8 @@
-"""Unit tests for RAGChunk model."""
+"""Unit tests for RAGChunk and ReferencedDocument models."""
 
+from pydantic import AnyUrl
+
+from models.responses import ReferencedDocument
 from utils.types import RAGChunk
 
 
@@ -110,3 +113,111 @@ class TestRAGChunk:
         )
         assert chunk.source == url_source
         assert chunk.score == 0.92
+
+
+class TestReferencedDocument:
+    """Test cases for the ReferencedDocument model."""
+
+    def test_referenced_document_with_full_metadata(self) -> None:
+        """Test ReferencedDocument construction with all fields."""
+        doc = ReferencedDocument(
+            doc_url=AnyUrl("https://example.com/doc"),
+            doc_title="Test Document",
+            document_id="doc-123",
+            product_name="Red Hat OpenShift",
+            product_version="4.15",
+            source_path="/docs/install.md",
+            score=0.95,
+            chunk_metadata={"author": "Red Hat", "custom": "value"},
+        )
+
+        assert doc.doc_url == AnyUrl("https://example.com/doc")
+        assert doc.doc_title == "Test Document"
+        assert doc.document_id == "doc-123"
+        assert doc.product_name == "Red Hat OpenShift"
+        assert doc.product_version == "4.15"
+        assert doc.source_path == "/docs/install.md"
+        assert doc.score == 0.95
+        assert doc.chunk_metadata is not None
+        assert doc.chunk_metadata["author"] == "Red Hat"
+        assert doc.chunk_metadata["custom"] == "value"
+
+    def test_referenced_document_minimal_fields(self) -> None:
+        """Test ReferencedDocument with minimal fields (backward compatibility)."""
+        doc = ReferencedDocument()
+
+        assert doc.doc_url is None
+        assert doc.doc_title is None
+        assert doc.document_id is None
+        assert doc.product_name is None
+        assert doc.product_version is None
+        assert doc.source_path is None
+        assert doc.score is None
+        assert doc.chunk_metadata is None
+
+    def test_referenced_document_backward_compatible(self) -> None:
+        """Test that existing code using only doc_url and doc_title still works."""
+        doc = ReferencedDocument(
+            doc_url=AnyUrl("https://example.com/doc"), doc_title="Test Document"
+        )
+
+        assert doc.doc_url == AnyUrl("https://example.com/doc")
+        assert doc.doc_title == "Test Document"
+        # New fields default to None
+        assert doc.document_id is None
+        assert doc.product_name is None
+        assert doc.product_version is None
+        assert doc.source_path is None
+        assert doc.score is None
+        assert doc.chunk_metadata is None
+
+    def test_referenced_document_with_product_metadata_only(self) -> None:
+        """Test ReferencedDocument with only product metadata fields."""
+        doc = ReferencedDocument(
+            product_name="Red Hat OpenStack", product_version="17.1"
+        )
+
+        assert doc.product_name == "Red Hat OpenStack"
+        assert doc.product_version == "17.1"
+        assert doc.doc_url is None
+        assert doc.doc_title is None
+        assert doc.document_id is None
+        assert doc.source_path is None
+        assert doc.score is None
+        assert doc.chunk_metadata is None
+
+    def test_referenced_document_with_score(self) -> None:
+        """Test ReferencedDocument with relevance score."""
+        doc = ReferencedDocument(
+            doc_url=AnyUrl("https://example.com/doc"),
+            doc_title="Scored Document",
+            score=0.87,
+        )
+
+        assert doc.score == 0.87
+        assert doc.doc_url == AnyUrl("https://example.com/doc")
+        assert doc.doc_title == "Scored Document"
+
+    def test_referenced_document_empty_chunk_metadata(self) -> None:
+        """Test ReferencedDocument with empty chunk_metadata dict."""
+        doc = ReferencedDocument(
+            doc_url=AnyUrl("https://example.com/doc"),
+            doc_title="Test Document",
+            chunk_metadata={},
+        )
+
+        assert doc.chunk_metadata == {}
+        assert doc.doc_url == AnyUrl("https://example.com/doc")
+
+    def test_referenced_document_with_document_id_and_source_path(self) -> None:
+        """Test ReferencedDocument with document_id and source_path."""
+        doc = ReferencedDocument(
+            document_id="doc-456",
+            source_path="/local/path/to/document.md",
+            doc_title="Local Document",
+        )
+
+        assert doc.document_id == "doc-456"
+        assert doc.source_path == "/local/path/to/document.md"
+        assert doc.doc_title == "Local Document"
+        assert doc.doc_url is None
