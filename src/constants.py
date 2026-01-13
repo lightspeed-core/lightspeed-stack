@@ -152,3 +152,7 @@ DEFAULT_EMBEDDING_DIMENSION = 768
 # quota limiters constants
 USER_QUOTA_LIMITER = "user_limiter"
 CLUSTER_QUOTA_LIMITER = "cluster_limiter"
+
+# TLS security profile constants
+DEFAULT_SSL_VERSION = "TLSv1_2"
+DEFAULT_SSL_CIPHERS = "DEFAULT"

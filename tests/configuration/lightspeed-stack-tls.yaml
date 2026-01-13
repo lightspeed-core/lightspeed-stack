@@ -1,0 +1,21 @@
+name: TLS Test Configuration
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  url: https://localhost:8321
+  use_as_library_client: false
+  api_key: test-key
+  tls_security_profile:
+    type: ModernType
+    minTLSVersion: VersionTLS13
+    ciphers:
+      - TLS_AES_128_GCM_SHA256
+      - TLS_AES_256_GCM_SHA384
+user_data_collection:
+  feedback_enabled: false
+
