@@ -1,0 +1,246 @@
+# Llama Stack Configuration for Ollama Integration
+#
+# This configuration enables Lightspeed Stack to use Ollama for local LLM inference.
+# Ollama allows running models locally without requiring cloud API keys or internet connectivity.
+#
+# Prerequisites:
+# 1. Install Ollama: https://ollama.com
+# 2. Pull at least one model: ollama pull llama3.2:latest
+# 3. Ensure Ollama is running: ollama serve (or run Ollama app)
+#
+# Usage:
+#   cp examples/ollama-run.yaml run.yaml
+#   cp examples/lightspeed-stack-ollama.yaml lightspeed-stack.yaml
+#   make run
+#
+# ⚠️ KNOWN LIMITATION - AGENTS PROVIDER REQUIRES SAFETY API ⚠️
+#
+# Current Status: SERVER STARTS ✓ but QUERIES FAIL ✗
+#
+# The meta-reference agents provider in Llama Stack has a hard dependency on the
+# safety API. However, the safety API (llama-guard) appears to require an OpenAI
+# provider, creating a circular dependency that prevents pure Ollama-only operation.
+#
+# Configuration State:
+# - agents API: ENABLED (required by Lightspeed /v1/query endpoint)
+# - safety API: DISABLED (has OpenAI dependency)
+# - Result: Server starts but agents provider cannot initialize without safety
+#
+# What Actually Works:
+# ✓ Server startup and readiness checks pass
+# ✓ Ollama provider loads and connects to localhost:11434
+# ✓ Embedding models via sentence-transformers
+# ✓ Vector storage with FAISS
+# ✓ Health monitoring endpoints
+#
+# What's Blocked:
+# ✗ /v1/query endpoint (returns 500 - agents needs safety)
+# ✗ /v1/query_v2 endpoint (same issue)
+# ✗ Streaming query endpoints (same issue)
+# ✗ Shield-based content moderation
+#
+# Workarounds:
+# 1. Add minimal OpenAI config just for safety (hybrid approach)
+# 2. Use direct /v1/inference/chat-completion endpoint (if available)
+# 3. Wait for Llama Stack fix to make safety optional in agents provider
+#
+# An issue will be filed with the Llama Stack project to address this dependency.
+#
+
+version: '2'
+image_name: ollama-llama-stack-configuration
+
+apis:
+  - agents  # Required by Lightspeed /v1/query endpoint (but has safety dependency - see below)
+  - datasetio
+  - eval
+  - files
+  - inference  # Required - Ollama provider configured here
+  - post_training
+  # - safety  # DISABLED: llama-guard has OpenAI dependency, blocking agents from working
+  - scoring
+  - telemetry
+  - tool_runtime
+  - vector_io
+
+benchmarks: []
+container_image: null
+datasets: []
+external_providers_dir: null
+
+inference_store:
+  db_path: .llama/distributions/ollama/inference_store.db
+  type: sqlite
+
+logging: null
+
+metadata_store:
+  db_path: .llama/distributions/ollama/registry.db
+  namespace: null
+  type: sqlite
+
+providers:
+  files:
+  - provider_id: localfs
+    provider_type: inline::localfs
+    config:
+      storage_dir: /tmp/llama-stack-files
+      metadata_store:
+        type: sqlite
+        db_path: .llama/distributions/ollama/files_metadata.db
+
+  agents:
+  - provider_id: meta-reference
+    provider_type: inline::meta-reference
+    config:
+      persistence_store:
+        db_path: .llama/distributions/ollama/agents_store.db
+        namespace: null
+        type: sqlite
+      responses_store:
+        db_path: .llama/distributions/ollama/responses_store.db
+        type: sqlite
+
+  datasetio:
+  - provider_id: huggingface
+    provider_type: remote::huggingface
+    config:
+      kvstore:
+        db_path: .llama/distributions/ollama/huggingface_datasetio.db
+        namespace: null
+        type: sqlite
+  - provider_id: localfs
+    provider_type: inline::localfs
+    config:
+      kvstore:
+        db_path: .llama/distributions/ollama/localfs_datasetio.db
+        namespace: null
+        type: sqlite
+
+  eval:
+  - provider_id: meta-reference
+    provider_type: inline::meta-reference
+    config:
+      kvstore:
+        db_path: .llama/distributions/ollama/meta_reference_eval.db
+        namespace: null
+        type: sqlite
+
+  inference:
+    # Embedding model for RAG - use sentence-transformers
+    - provider_id: sentence-transformers
+      provider_type: inline::sentence-transformers
+      config: {}
+    # Local LLM inference via Ollama
+    - provider_id: ollama
+      provider_type: remote::ollama
+      config:
+        url: http://localhost:11434  # Default Ollama port
+
+  post_training:
+  - provider_id: huggingface
+    provider_type: inline::huggingface-gpu
+    config:
+      checkpoint_format: huggingface
+      device: cpu
+      distributed_backend: null
+      dpo_output_dir: "."
+
+  # safety:
+  # - provider_id: llama-guard
+  #   provider_type: inline::llama-guard
+  #   config:
+  #     excluded_categories: []
+
+  scoring:
+  - provider_id: basic
+    provider_type: inline::basic
+    config: {}
+  # Disabled: These providers require OpenAI
+  # - provider_id: llm-as-judge
+  #   provider_type: inline::llm-as-judge
+  #   config: {}
+  # - provider_id: braintrust
+  #   provider_type: inline::braintrust
+  #   config:
+  #     openai_api_key: '********'
+
+  telemetry:
+  - provider_id: meta-reference
+    provider_type: inline::meta-reference
+    config:
+      service_name: 'lightspeed-stack-ollama'
+      sinks: sqlite
+      sqlite_db_path: .llama/distributions/ollama/trace_store.db
+
+  tool_runtime:
+    - provider_id: model-context-protocol
+      provider_type: remote::model-context-protocol
+      config: {}
+    - provider_id: rag-runtime
+      provider_type: inline::rag-runtime
+      config: {}
+
+  vector_io:
+  - provider_id: faiss
+    provider_type: inline::faiss
+    config:
+      kvstore:
+        db_path: .llama/distributions/ollama/faiss_store.db
+        namespace: null
+        type: sqlite
+
+scoring_fns: []
+
+server:
+  auth: null
+  host: null
+  port: 8321
+  quota: null
+  tls_cafile: null
+  tls_certfile: null
+  tls_keyfile: null
+
+shields: []
+  # Disabled - llama-guard requires specific Llama Guard models
+  # - shield_id: llama-guard-shield
+  #   provider_id: llama-guard
+  #   provider_shield_id: "llama3.2:latest"
+
+vector_dbs:
+  - vector_db_id: my_knowledge_base
+    embedding_model: sentence-transformers/all-mpnet-base-v2
+    embedding_dimension: 768
+    provider_id: faiss
+
+models:
+  # Embedding model for RAG
+  - model_id: sentence-transformers/all-mpnet-base-v2
+    model_type: embedding
+    provider_id: sentence-transformers
+    provider_model_id: sentence-transformers/all-mpnet-base-v2
+    metadata:
+      embedding_dimension: 768
+
+  # Local Ollama models (users must pull these first with: ollama pull <model>)
+  # Fast, small model - great for development
+  - model_id: llama3.2:latest
+    model_type: llm
+    provider_id: ollama
+    provider_model_id: llama3.2:latest
+
+  # To add more models, first pull them with: ollama pull <model>
+  # Then uncomment and configure:
+  # - model_id: qwen2.5:7b
+  #   model_type: llm
+  #   provider_id: ollama
+  #   provider_model_id: qwen2.5:7b
+  #
+  # - model_id: llama3.1:8b
+  #   model_type: llm
+  #   provider_id: ollama
+  #   provider_model_id: llama3.1:8b
+
+tool_groups:
+  - toolgroup_id: builtin::rag
+    provider_id: rag-runtime

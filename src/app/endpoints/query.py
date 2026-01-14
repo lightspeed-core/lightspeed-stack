@@ -696,22 +696,29 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         a summary of the LLM or agent's response
         content, the conversation ID, the list of parsed referenced documents, and token usage information.
     """
-    available_input_shields = [
-        shield.identifier
-        for shield in filter(is_input_shield, await client.shields.list())
-    ]
-    available_output_shields = [
-        shield.identifier
-        for shield in filter(is_output_shield, await client.shields.list())
-    ]
-    if not available_input_shields and not available_output_shields:
-        logger.info("No available shields. Disabling safety")
-    else:
-        logger.info(
-            "Available input shields: %s, output shields: %s",
-            available_input_shields,
-            available_output_shields,
-        )
+    # Try to get available shields, but gracefully handle if safety API is not available
+    try:
+        available_input_shields = [
+            shield.identifier
+            for shield in filter(is_input_shield, await client.shields.list())
+        ]
+        available_output_shields = [
+            shield.identifier
+            for shield in filter(is_output_shield, await client.shields.list())
+        ]
+        if not available_input_shields and not available_output_shields:
+            logger.info("No available shields. Disabling safety")
+        else:
+            logger.info(
+                "Available input shields: %s, output shields: %s",
+                available_input_shields,
+                available_output_shields,
+            )
+    except (ValueError, KeyError) as e:
+        # Safety API not available (e.g., when using minimal Ollama configuration)
+        logger.info("Safety API not available, disabling shields: %s", e)
+        available_input_shields = []
+        available_output_shields = []
     # use system prompt from request or default one
     system_prompt = get_system_prompt(query_request, configuration)
     logger.debug("Using system prompt: %s", system_prompt)
