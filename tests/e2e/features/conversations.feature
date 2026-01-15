@@ -45,6 +45,13 @@ Feature: conversations endpoint API tests
         }
         """
 
+  Scenario: Check if conversations endpoint fails when the bearer token is missing
+    Given The system is in default state
+    And I set the Authorization header to Bearer
+     When I access REST API endpoint "conversations" using HTTP GET method
+     Then The status code of the response is 401
+      And The body of the response contains No token found in Authorization header
+
   Scenario: Check if conversations/{conversation_id} endpoint finds the correct conversation when it exists
     Given The system is in default state
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
@@ -110,9 +117,16 @@ Feature: conversations endpoint API tests
           "detail": {
               "response": "Missing or invalid credentials provided by client",
               "cause": "No Authorization header found"
-            }           
+            }
       }
       """
+
+  Scenario: Check if conversations/{conversation_id} endpoint fails when the bearer token is missing
+    Given The system is in default state
+    And I set the Authorization header to Bearer
+     When I use REST API conversation endpoint with conversation_id "12345678-abcd-0000-0123-456789abcdef" using HTTP GET method
+     Then The status code of the response is 401
+      And The body of the response contains No token found in Authorization header
 
   Scenario: Check if conversations/{conversation_id} GET endpoint fails when conversation_id is malformed
     Given The system is in default state
