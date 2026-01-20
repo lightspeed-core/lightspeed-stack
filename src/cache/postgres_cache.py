@@ -8,6 +8,7 @@ from cache.cache import Cache
 from cache.cache_error import CacheError
 from models.cache_entry import CacheEntry
 from models.config import PostgreSQLDatabaseConfiguration
+from models.requests import Attachment
 from models.responses import ConversationData, ReferencedDocument
 from utils.connection_decorator import connection
 from utils.types import ToolCallSummary, ToolResultSummary
@@ -36,6 +37,7 @@ class PostgresCache(Cache):
      referenced_documents  | jsonb                          |          |
      tool_calls            | jsonb                          |          |
      tool_results          | jsonb                          |          |
+     attachments           | jsonb                          |          |
     Indexes:
         "cache_pkey" PRIMARY KEY, btree (user_id, conversation_id, created_at)
         "timestamps" btree (created_at)
@@ -60,6 +62,7 @@ class PostgresCache(Cache):
             referenced_documents jsonb,
             tool_calls           jsonb,
             tool_results         jsonb,
+            attachments          jsonb,
             PRIMARY KEY(user_id, conversation_id, created_at)
         );
         """
@@ -81,7 +84,7 @@ class PostgresCache(Cache):
 
     SELECT_CONVERSATION_HISTORY_STATEMENT = """
         SELECT query, response, provider, model, started_at, completed_at,
-               referenced_documents, tool_calls, tool_results
+               referenced_documents, tool_calls, tool_results, attachments
           FROM cache
          WHERE user_id=%s AND conversation_id=%s
          ORDER BY created_at
@@ -90,8 +93,8 @@ class PostgresCache(Cache):
     INSERT_CONVERSATION_HISTORY_STATEMENT = """
         INSERT INTO cache(user_id, conversation_id, created_at, started_at, completed_at,
                           query, response, provider, model, referenced_documents,
-                          tool_calls, tool_results)
-        VALUES (%s, %s, CURRENT_TIMESTAMP, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                          tool_calls, tool_results, attachments)
+        VALUES (%s, %s, CURRENT_TIMESTAMP, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
     QUERY_CACHE_SIZE = """
@@ -321,6 +324,22 @@ class PostgresCache(Cache):
                             e,
                         )
 
+                # Parse attachments back into Attachment objects
+                attachments_data = conversation_entry[9]
+                attachments_obj = None
+                if attachments_data:
+                    try:
+                        attachments_obj = [
+                            Attachment.model_validate(att) for att in attachments_data
+                        ]
+                    except (ValueError, TypeError) as e:
+                        logger.warning(
+                            "Failed to deserialize attachments for "
+                            "conversation %s: %s",
+                            conversation_id,
+                            e,
+                        )
+
                 cache_entry = CacheEntry(
                     query=conversation_entry[0],
                     response=conversation_entry[1],
@@ -331,6 +350,7 @@ class PostgresCache(Cache):
                     referenced_documents=docs_obj,
                     tool_calls=tool_calls_obj,
                     tool_results=tool_results_obj,
+                    attachments=attachments_obj,
                 )
                 result.append(cache_entry)
 
@@ -405,6 +425,20 @@ class PostgresCache(Cache):
                         e,
                     )
 
+            attachments_json = None
+            if cache_entry.attachments:
+                try:
+                    attachments_as_dicts = [
+                        att.model_dump(mode="json") for att in cache_entry.attachments
+                    ]
+                    attachments_json = json.dumps(attachments_as_dicts)
+                except (TypeError, ValueError) as e:
+                    logger.warning(
+                        "Failed to serialize attachments for conversation %s: %s",
+                        conversation_id,
+                        e,
+                    )
+
             # the whole operation is run in one transaction
             with self.connection.cursor() as cursor:
                 cursor.execute(
@@ -421,6 +455,7 @@ class PostgresCache(Cache):
                         referenced_documents_json,
                         tool_calls_json,
                         tool_results_json,
+                        attachments_json,
                     ),
                 )
 

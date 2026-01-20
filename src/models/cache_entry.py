@@ -1,7 +1,10 @@
 """Model for conversation history cache entry."""
 
 from typing import Optional
+
 from pydantic import BaseModel
+
+from models.requests import Attachment
 from models.responses import ReferencedDocument
 from utils.types import ToolCallSummary, ToolResultSummary
 
@@ -17,6 +20,7 @@ class CacheEntry(BaseModel):
         referenced_documents: List of documents referenced by the response
         tool_calls: List of tool calls made during response generation
         tool_results: List of tool results from tool calls
+        attachments: List of attachments included with the user query
     """
 
     query: str
@@ -28,3 +32,4 @@ class CacheEntry(BaseModel):
     referenced_documents: Optional[list[ReferencedDocument]] = None
     tool_calls: Optional[list[ToolCallSummary]] = None
     tool_results: Optional[list[ToolResultSummary]] = None
+    attachments: list[Attachment] | None = None

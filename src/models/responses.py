@@ -823,12 +823,25 @@ class ConversationResponse(AbstractSuccessfulResponse):
 
     chat_history: list[dict[str, Any]] = Field(
         ...,
-        description="The simplified chat history as a list of conversation turns",
+        description=(
+            "The simplified chat history as a list of conversation turns, "
+            "where user messages may include attachments"
+        ),
         examples=[
             {
                 "messages": [
-                    {"content": "Hello", "type": "user"},
-                    {"content": "Hi there!", "type": "assistant"},
+                    {
+                        "content": "What do these files say?",
+                        "type": "user",
+                        "attachments": [
+                            {
+                                "attachment_type": "log",
+                                "content_type": "text/plain",
+                                "content": "Ingredients:\n- 6 cups thinly sliced apples",
+                            }
+                        ],
+                    },
+                    {"content": "The file contains a recipe...", "type": "assistant"},
                 ],
                 "started_at": "2024-01-01T00:01:00Z",
                 "completed_at": "2024-01-01T00:01:05Z",
@@ -845,12 +858,35 @@ class ConversationResponse(AbstractSuccessfulResponse):
                     "chat_history": [
                         {
                             "messages": [
+                                {
+                                    "content": "What do these files say?",
+                                    "type": "user",
+                                    "attachments": [
+                                        {
+                                            "attachment_type": "log",
+                                            "content_type": "text/plain",
+                                            "content": (
+                                                "Ingredients:\n- 6 cups thinly sliced apples"
+                                            ),
+                                        }
+                                    ],
+                                },
+                                {
+                                    "content": "The file contains a recipe for apple pie...",
+                                    "type": "assistant",
+                                },
+                            ],
+                            "started_at": "2024-01-01T00:01:00Z",
+                            "completed_at": "2024-01-01T00:01:05Z",
+                        },
+                        {
+                            "messages": [
                                 {"content": "Hello", "type": "user"},
                                 {"content": "Hi there!", "type": "assistant"},
                             ],
                             "started_at": "2024-01-01T00:01:00Z",
                             "completed_at": "2024-01-01T00:01:05Z",
-                        }
+                        },
                     ],
                 }
             ]

@@ -1,6 +1,7 @@
 """Cache that uses SQLite to store cached values."""
 
 from time import time
+from typing import Any
 
 import sqlite3
 import json
@@ -9,6 +10,7 @@ from cache.cache import Cache
 from cache.cache_error import CacheError
 from models.cache_entry import CacheEntry
 from models.config import SQLiteDatabaseConfiguration
+from models.requests import Attachment
 from models.responses import ConversationData, ReferencedDocument
 from utils.connection_decorator import connection
 from utils.types import ToolCallSummary, ToolResultSummary
@@ -37,6 +39,7 @@ class SQLiteCache(Cache):
      referenced_documents  | text                        |          |
      tool_calls            | text                        |          |
      tool_results          | text                        |          |
+     attachments           | text                        |          |
     Indexes:
         "cache_pkey" PRIMARY KEY, btree (user_id, conversation_id, created_at)
         "cache_key_key" UNIQUE CONSTRAINT, btree (key)
@@ -59,6 +62,7 @@ class SQLiteCache(Cache):
             referenced_documents text,
             tool_calls           text,
             tool_results         text,
+            attachments          text,
             PRIMARY KEY(user_id, conversation_id, created_at)
         );
         """
@@ -80,7 +84,7 @@ class SQLiteCache(Cache):
 
     SELECT_CONVERSATION_HISTORY_STATEMENT = """
         SELECT query, response, provider, model, started_at, completed_at,
-               referenced_documents, tool_calls, tool_results
+               referenced_documents, tool_calls, tool_results, attachments
           FROM cache
          WHERE user_id=? AND conversation_id=?
          ORDER BY created_at
@@ -89,8 +93,8 @@ class SQLiteCache(Cache):
     INSERT_CONVERSATION_HISTORY_STATEMENT = """
         INSERT INTO cache(user_id, conversation_id, created_at, started_at, completed_at,
                           query, response, provider, model, referenced_documents,
-                          tool_calls, tool_results)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          tool_calls, tool_results, attachments)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
     QUERY_CACHE_SIZE = """
@@ -301,6 +305,21 @@ class SQLiteCache(Cache):
                         e,
                     )
 
+            attachments_json_str = conversation_entry[9]
+            attachments_obj = None
+            if attachments_json_str:
+                try:
+                    attachments_data = json.loads(attachments_json_str)
+                    attachments_obj = [
+                        Attachment.model_validate(att) for att in attachments_data
+                    ]
+                except (json.JSONDecodeError, ValueError) as e:
+                    logger.warning(
+                        "Failed to deserialize attachments for conversation %s: %s",
+                        conversation_id,
+                        e,
+                    )
+
             cache_entry = CacheEntry(
                 query=conversation_entry[0],
                 response=conversation_entry[1],
@@ -311,10 +330,37 @@ class SQLiteCache(Cache):
                 referenced_documents=docs_obj,
                 tool_calls=tool_calls_obj,
                 tool_results=tool_results_obj,
+                attachments=attachments_obj,
             )
             result.append(cache_entry)
 
         return result
+
+    def _serialize_json_field(self, obj: Any, field_name: str) -> str | None:
+        """Serialize a Pydantic model or list to JSON.
+
+        Args:
+            obj: The object or list to serialize.
+            field_name: The name of the field (for logging).
+
+        Returns:
+            JSON string or None if serialization fails.
+        """
+        if not obj:
+            return None
+        try:
+            if isinstance(obj, list):
+                obj_as_dicts = [item.model_dump(mode="json") for item in obj]
+            else:
+                obj_as_dicts = obj.model_dump(mode="json")
+            return json.dumps(obj_as_dicts)
+        except (TypeError, ValueError) as e:
+            logger.warning(
+                "Failed to serialize %s: %s",
+                field_name,
+                e,
+            )
+            return None
 
     @connection
     def insert_or_append(
@@ -342,49 +388,18 @@ class SQLiteCache(Cache):
         cursor = self.connection.cursor()
         current_time = time()
 
-        referenced_documents_json = None
-        if cache_entry.referenced_documents:
-            try:
-                docs_as_dicts = [
-                    doc.model_dump(mode="json")
-                    for doc in cache_entry.referenced_documents
-                ]
-                referenced_documents_json = json.dumps(docs_as_dicts)
-            except (TypeError, ValueError) as e:
-                logger.warning(
-                    "Failed to serialize referenced_documents for "
-                    "conversation %s: %s",
-                    conversation_id,
-                    e,
-                )
-
-        tool_calls_json = None
-        if cache_entry.tool_calls:
-            try:
-                tool_calls_as_dicts = [
-                    tc.model_dump(mode="json") for tc in cache_entry.tool_calls
-                ]
-                tool_calls_json = json.dumps(tool_calls_as_dicts)
-            except (TypeError, ValueError) as e:
-                logger.warning(
-                    "Failed to serialize tool_calls for conversation %s: %s",
-                    conversation_id,
-                    e,
-                )
-
-        tool_results_json = None
-        if cache_entry.tool_results:
-            try:
-                tool_results_as_dicts = [
-                    tr.model_dump(mode="json") for tr in cache_entry.tool_results
-                ]
-                tool_results_json = json.dumps(tool_results_as_dicts)
-            except (TypeError, ValueError) as e:
-                logger.warning(
-                    "Failed to serialize tool_results for conversation %s: %s",
-                    conversation_id,
-                    e,
-                )
+        referenced_documents_json = self._serialize_json_field(
+            cache_entry.referenced_documents, "referenced_documents"
+        )
+        tool_calls_json = self._serialize_json_field(
+            cache_entry.tool_calls, "tool_calls"
+        )
+        tool_results_json = self._serialize_json_field(
+            cache_entry.tool_results, "tool_results"
+        )
+        attachments_json = self._serialize_json_field(
+            cache_entry.attachments, "attachments"
+        )
 
         cursor.execute(
             self.INSERT_CONVERSATION_HISTORY_STATEMENT,
@@ -401,6 +416,7 @@ class SQLiteCache(Cache):
                 referenced_documents_json,
                 tool_calls_json,
                 tool_results_json,
+                attachments_json,
             ),
         )
 

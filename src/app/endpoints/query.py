@@ -407,6 +407,7 @@ async def query_endpoint_handler_base(  # pylint: disable=R0914
             referenced_documents=referenced_documents if referenced_documents else None,
             tool_calls=summary.tool_calls if summary.tool_calls else None,
             tool_results=summary.tool_results if summary.tool_results else None,
+            attachments=query_request.attachments or None,
         )
 
         consume_tokens(
