@@ -25,7 +25,6 @@ async def test_info_endpoint(mocker: MockerFixture) -> None:
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,
@@ -97,7 +96,6 @@ async def test_info_endpoint_connection_error(mocker: MockerFixture) -> None:
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,

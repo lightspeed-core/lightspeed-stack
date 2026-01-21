@@ -3,7 +3,6 @@ service:
   host: localhost
   port: 8080
   base_url: "https://lightspeed.example.com"
-  auth_enabled: false
   workers: 4
   color_log: true
   access_log: true

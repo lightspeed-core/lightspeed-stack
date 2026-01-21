@@ -366,8 +366,7 @@
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="137.7875" x="2441.9668" y="269.842">ServiceConfiguration</text>
       <line style="stroke:#181818;stroke-width:0.5;" x1="2371.22" x2="2618.001" y1="280.41" y2="280.41"/>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="109.7036" x="2376.22" y="299.3759">access_log : bool</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="129.7515" x="2376.22" y="318.4439">auth_enabled : bool</text>
-      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="100.1556" x="2376.22" y="337.5118">color_log : bool</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="100.1556" x="2376.22" y="318.4439">color_log : bool</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="27.6779" x="2376.22" y="356.5797">cors</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="57.4558" x="2376.22" y="375.6476">host : str</text>
       <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="27.9159" x="2376.22" y="394.7155">port</text>

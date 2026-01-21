@@ -63,7 +63,6 @@ async def test_models_endpoint_handler_configuration_loaded(
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,
@@ -120,7 +119,6 @@ async def test_models_endpoint_handler_unable_to_retrieve_models_list(
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,
@@ -177,7 +175,6 @@ async def test_models_endpoint_llama_stack_connection_error(
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,

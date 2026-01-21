@@ -68,7 +68,6 @@ def setup_configuration_fixture(mocker: MockerFixture) -> AppConfig:
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "base_url": "http://localhost:8080",
         },
         "llama_stack": {
@@ -377,7 +376,6 @@ class TestGetLightspeedAgentCard:
             "service": {
                 "host": "localhost",
                 "port": 8080,
-                "auth_enabled": False,
                 "base_url": "http://localhost:8080",
             },
             "llama_stack": {

@@ -1829,7 +1829,6 @@
                                         },
                                         "service": {
                                             "access_log": true,
-                                            "auth_enabled": false,
                                             "color_log": true,
                                             "cors": {
                                                 "allow_credentials": false,
@@ -5499,7 +5498,6 @@
                             },
                             "service": {
                                 "access_log": true,
-                                "auth_enabled": false,
                                 "color_log": true,
                                 "cors": {
                                     "allow_credentials": false,
@@ -8525,12 +8523,6 @@
                         ],
                         "title": "Base URL",
                         "description": "Externally reachable base URL for the service; needed for A2A support."
-                    },
-                    "auth_enabled": {
-                        "type": "boolean",
-                        "title": "Authentication enabled",
-                        "description": "Enables the authentication subsystem",
-                        "default": false
                     },
                     "workers": {
                         "type": "integer",

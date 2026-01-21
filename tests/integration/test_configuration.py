@@ -54,7 +54,6 @@ def test_loading_proper_configuration(configuration_filename: str) -> None:
     # check 'service' section
     svc_config = cfg.service_configuration
     assert svc_config.host == "localhost"
-    assert svc_config.auth_enabled is False
     assert svc_config.workers == 1
     assert svc_config.color_log is True
     assert svc_config.access_log is True

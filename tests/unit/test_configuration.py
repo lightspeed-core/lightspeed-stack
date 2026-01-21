@@ -108,7 +108,6 @@ def test_init_from_dict() -> None:
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,
@@ -148,7 +147,6 @@ def test_init_from_dict() -> None:
     # check for service_configuration subsection
     assert cfg.service_configuration.host == "localhost"
     assert cfg.service_configuration.port == 8080
-    assert cfg.service_configuration.auth_enabled is False
     assert cfg.service_configuration.workers == 1
     assert cfg.service_configuration.color_log is True
     assert cfg.service_configuration.access_log is True
@@ -180,7 +178,6 @@ def test_init_from_dict_with_mcp_servers() -> None:
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,
@@ -225,7 +222,6 @@ def test_init_from_dict_with_authorization_configuration() -> None:
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,
@@ -256,7 +252,6 @@ name: foo bar baz
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true
@@ -286,7 +281,6 @@ name: test service
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true
@@ -323,7 +317,6 @@ def test_mcp_servers_property_empty() -> None:
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,
@@ -354,7 +347,6 @@ def test_mcp_servers_property_with_servers() -> None:
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,
@@ -448,7 +440,6 @@ name: test service
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true
@@ -486,7 +477,6 @@ name: test service
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true
@@ -529,7 +519,6 @@ name: test service
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true
@@ -570,7 +559,6 @@ name: test service
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true
@@ -607,7 +595,6 @@ name: test service
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true
@@ -644,7 +631,6 @@ name: test service
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true
@@ -681,7 +667,6 @@ name: test service
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true
@@ -733,7 +718,6 @@ name: test service
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true
@@ -798,7 +782,6 @@ name: test service
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true
@@ -833,7 +816,6 @@ name: test service
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true

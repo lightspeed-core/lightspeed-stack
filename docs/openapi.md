@@ -5351,7 +5351,6 @@ the service can handle requests concurrently.
 | host | string | Service hostname |
 | port | integer | Service port |
 | base_url |  | Externally reachable base URL for the service; needed for A2A support. |
-| auth_enabled | boolean | Enables the authentication subsystem |
 | workers | integer | Number of Uvicorn worker processes to start |
 | color_log | boolean | Enables colorized logging |
 | access_log | boolean | Enables logging of all access information |

@@ -374,12 +374,6 @@ class ServiceConfiguration(ConfigurationBase):
         description="Externally reachable base URL for the service; needed for A2A support.",
     )
 
-    auth_enabled: bool = Field(
-        False,
-        title="Authentication enabled",
-        description="Enables the authentication subsystem",
-    )
-
     workers: PositiveInt = Field(
         1,
         title="Number of workers",

@@ -306,7 +306,6 @@ name: foo bar baz
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true
@@ -531,7 +530,6 @@ name: foo bar baz
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true
@@ -639,7 +637,6 @@ It is possible to configure CORS handling. This configuration is part of service
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true

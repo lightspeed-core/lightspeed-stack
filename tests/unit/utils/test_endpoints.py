@@ -143,7 +143,6 @@ def setup_configuration_fixture() -> AppConfig:
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,

@@ -953,12 +953,6 @@
             "title": "Port",
             "type": "integer"
           },
-          "auth_enabled": {
-            "default": false,
-            "description": "Enables the authentication subsystem",
-            "title": "Authentication enabled",
-            "type": "boolean"
-          },
           "workers": {
             "default": 1,
             "description": "Number of Uvicorn worker processes to start",

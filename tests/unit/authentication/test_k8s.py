@@ -243,7 +243,6 @@ async def test_auth_dependency_no_token_readiness_liveness_endpoints_1(
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,
@@ -318,7 +317,6 @@ async def test_auth_dependency_no_token_readiness_liveness_endpoints_2(
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,
@@ -403,7 +401,6 @@ async def test_auth_dependency_no_token_normal_endpoints(
         "service": {
             "host": "localhost",
             "port": 8080,
-            "auth_enabled": False,
             "workers": 1,
             "color_log": True,
             "access_log": True,

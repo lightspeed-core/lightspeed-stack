@@ -17,7 +17,6 @@ def test_service_configuration_constructor() -> None:
 
     assert s.host == "localhost"
     assert s.port == 8080
-    assert s.auth_enabled is False
     assert s.workers == 1
     assert s.color_log is True
     assert s.access_log is True

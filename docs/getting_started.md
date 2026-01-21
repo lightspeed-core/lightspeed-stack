@@ -252,7 +252,6 @@ name: Lightspeed Core Service (LCS)
 service:
   host: localhost
   port: 8080
-  auth_enabled: false
   workers: 1
   color_log: true
   access_log: true

@@ -169,7 +169,6 @@ class "SQLiteDatabaseConfiguration" as src.models.config.SQLiteDatabaseConfigura
 }
 class "ServiceConfiguration" as src.models.config.ServiceConfiguration {
   access_log : bool
-  auth_enabled : bool
   color_log : bool
   cors
   host : str
