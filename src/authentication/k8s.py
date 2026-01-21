@@ -224,6 +224,7 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
     Raises:
         HTTPException: If unable to connect to Kubernetes API or unexpected error occurs.
     """
+    logger.debug("Starting Kubernetes TokenReview for token validation")
     try:
         auth_api = K8sClientSingleton.get_authn_api()
     except Exception as e:
@@ -240,7 +241,18 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
     try:
         response = auth_api.create_token_review(token_review)
         if response.status.authenticated:
+            logger.debug(
+                "TokenReview succeeded: user='%s', uid='%s', groups=%s",
+                response.status.user.username,
+                response.status.user.uid,
+                response.status.user.groups,
+            )
             return response.status
+        logger.debug(
+            "TokenReview failed: token not authenticated. "
+            "Error from API: %s",
+            getattr(response.status, "error", "no error message"),
+        )
         return None
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("API exception during TokenReview: %s", e)
@@ -294,22 +306,45 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
         Raises:
             HTTPException: If authentication or authorization fails.
         """
+        logger.debug(
+            "K8S auth: processing request to path='%s', virtual_path='%s'",
+            request.url.path,
+            self.virtual_path,
+        )
+
         # LCORE-694: Config option to skip authorization for readiness and liveness probe
         if not request.headers.get("Authorization"):
             if configuration.authentication_configuration.skip_for_health_probes:
                 if request.url.path in ("/readiness", "/liveness"):
+                    logger.debug(
+                        "Skipping auth for health probe endpoint: %s", request.url.path
+                    )
                     return NO_AUTH_TUPLE
 
         token = extract_user_token(request.headers)
         user_info = get_user_info(token)
 
         if user_info is None:
+            logger.debug(
+                "K8S auth: authentication failed - token validation returned no user info. "
+                "Token may be invalid or expired."
+            )
             response = UnauthorizedResponse(cause="Invalid or expired Kubernetes token")
             raise HTTPException(**response.model_dump())
+
+        logger.debug(
+            "K8S auth: token validated successfully for user='%s', uid='%s'",
+            user_info.user.username,
+            user_info.user.uid,
+        )
 
         if user_info.user.username == "kube:admin":
             try:
                 user_info.user.uid = K8sClientSingleton.get_cluster_id()
+                logger.debug(
+                    "K8S auth: kube:admin user detected, using cluster_id as uid='%s'",
+                    user_info.user.uid,
+                )
             except ClusterIDUnavailableError as e:
                 logger.error("Failed to get cluster ID: %s", e)
                 response = InternalServerErrorResponse(
@@ -329,7 +364,14 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
                     ),
                 )
             )
-            response = authorization_api.create_subject_access_review(sar)
+            logger.debug(
+                "K8S auth: submitting SubjectAccessReview - user='%s', groups=%s, "
+                "path='%s', verb='get'",
+                user_info.user.username,
+                user_info.user.groups,
+                self.virtual_path,
+            )
+            sar_response = authorization_api.create_subject_access_review(sar)
 
         except Exception as e:
             logger.error("API exception during SubjectAccessReview: %s", e)
@@ -339,9 +381,26 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
             )
             raise HTTPException(**response.model_dump()) from e
 
-        if not response.status.allowed:
+        if not sar_response.status.allowed:
+            logger.debug(
+                "K8S auth: SubjectAccessReview DENIED - user='%s', uid='%s', "
+                "groups=%s, path='%s', verb='get', reason='%s', evaluationError='%s'",
+                user_info.user.username,
+                user_info.user.uid,
+                user_info.user.groups,
+                self.virtual_path,
+                getattr(sar_response.status, "reason", "no reason provided"),
+                getattr(sar_response.status, "evaluation_error", "none"),
+            )
             response = ForbiddenResponse.endpoint(user_id=user_info.user.uid)
             raise HTTPException(**response.model_dump())
+
+        logger.debug(
+            "K8S auth: SubjectAccessReview ALLOWED - user='%s', uid='%s', path='%s'",
+            user_info.user.username,
+            user_info.user.uid,
+            self.virtual_path,
+        )
 
         return (
             user_info.user.uid,
