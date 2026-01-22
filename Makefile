@@ -57,21 +57,18 @@ openapi-doc:	docs/openapi.json scripts/fix_openapi_doc.py	## Generate OpenAPI do
 	python3 scripts/fix_openapi_doc.py <  output.md > docs/openapi.md
 	rm output.md
 
-generate-documentation:	## Generate documentation
-	scripts/gen_doc.py
-
 # TODO uv migration
 requirements.txt:	pyproject.toml pdm.lock ## Generate requirements.txt file containing hashes for all non-devel packages
 	pdm export --prod --format requirements --output requirements.txt --no-extras --without evaluation
 
-doc:	## Generate documentation for developers
-	scripts/gen_doc.py
-
-docs-build:	## Build MkDocs documentation
+docs-build:	## Build MkDocs documentation site
 	uv run mkdocs build
 
 docs-serve:	## Serve MkDocs documentation locally with hot-reload
 	uv run mkdocs serve
+
+docs-readmes:	## Generate README.md files in source directories
+	uv run scripts/gen_doc.py
 
 docs/config.puml:	src/models/config.py ## Generate PlantUML class diagram for configuration
 	pyreverse src/models/config.py --output puml --output-directory=docs/
