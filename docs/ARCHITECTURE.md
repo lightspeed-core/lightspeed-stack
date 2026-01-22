@@ -44,7 +44,7 @@ To enhance LLM responses, LCore leverages **RAG (Retrieval-Augmented Generation)
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                   Client Applications                   │
-│  (Web UI, CLI, VS Code Extension, Mobile Apps, etc.)   │
+│  (Web UI, CLI, VS Code Extension, Mobile Apps, etc.)    │
 └────────────────────┬────────────────────────────────────┘
                      │ REST/A2A/JSON-RPC
                      ▼
