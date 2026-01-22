@@ -33,6 +33,26 @@ theme:
 
 plugins:
   - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: true
+            show_root_heading: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            docstring_style: google
+            members_order: source
+            separate_signature: true
+            signature_crossrefs: true
+  - gen-files:
+      scripts:
+        - scripts/gen_api_ref.py
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - section-index
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -63,6 +83,7 @@ nav:
   - API:
       - OpenAPI: openapi.md
       - Conversations API: conversations_api.md
+  - API Reference: reference/
   - Deployment:
       - Deployment Guide: deployment_guide.md
       - User Data Collection: user_data_collection.md
