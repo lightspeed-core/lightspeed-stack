@@ -190,6 +190,14 @@ build = [
     "twine>=6.1.0",
 ]
 
+docs = [
+    "mkdocs-material>=9.6",
+    "mkdocstrings[python]>=0.27",
+    "mkdocs-gen-files>=0.5",
+    "mkdocs-literate-nav>=0.6",
+    "mkdocs-section-index>=0.3",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 pythonpath = [

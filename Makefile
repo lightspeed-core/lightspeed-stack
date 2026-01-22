@@ -67,6 +67,12 @@ requirements.txt:	pyproject.toml pdm.lock ## Generate requirements.txt file cont
 doc:	## Generate documentation for developers
 	scripts/gen_doc.py
 
+docs-build:	## Build MkDocs documentation
+	uv run mkdocs build
+
+docs-serve:	## Serve MkDocs documentation locally with hot-reload
+	uv run mkdocs serve
+
 docs/config.puml:	src/models/config.py ## Generate PlantUML class diagram for configuration
 	pyreverse src/models/config.py --output puml --output-directory=docs/
 	mv docs/classes.puml docs/config.puml
