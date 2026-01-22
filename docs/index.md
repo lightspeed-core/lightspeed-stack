@@ -1,71 +1,41 @@
----
-layout: default
-nav_order: 1
----
+# Lightspeed Core Stack
 
-# Lightspeed core stack
+Lightspeed Core Stack (LCS) is an AI-powered assistant that provides answers to product questions using backend LLM services, agents, and RAG databases.
 
-About The Project
-
-Lightspeed Core Stack (LCS) is an AI powered assistant that provides answers to product questions using backend LLM services, agents, and RAG databases.
-
-![Logo](https://lightspeed-core.github.io/lightspeed-stack/logo.jpg)
+![Logo](logo.jpg)
 
 ## Overview
 
-[Architecture](https://lightspeed-core.github.io/lightspeed-stack/ARCHITECTURE.html)
+- [Architecture](ARCHITECTURE.md)
+- [Architecture diagram](architecture.svg)
+- [Getting started](getting_started.md)
+- [Authentication and Authorization](auth.md)
 
-[Architecture diagram](https://lightspeed-core.github.io/lightspeed-stack/architecture.svg)
+## Installation and Configuration
 
-[Getting started](https://lightspeed-core.github.io/lightspeed-stack/getting_started.html)
-
-[Authentication and Authorization](https://lightspeed-core.github.io/lightspeed-stack/auth.html)
-
-
-
-## Installation and configuration
-
-[Deployment Guide](https://lightspeed-core.github.io/lightspeed-stack/deployment_guide.html)
-
-[Linux](https://lightspeed-core.github.io/lightspeed-stack/installation_linux.html)
-
-[MacOS](https://lightspeed-core.github.io/lightspeed-stack/installation_macos.html)
-
-[Configuration](https://lightspeed-core.github.io/lightspeed-stack/config.html)
-
-
+- [Deployment Guide](deployment_guide.md)
+- [Linux](installation_linux.md)
+- [macOS](installation_macos.md)
+- [Configuration](config.md)
 
 ## API
 
-[OpenAPI specification](https://lightspeed-core.github.io/lightspeed-stack/openapi.html)
-
-[Conversations API](https://lightspeed-core.github.io/lightspeed-stack/conversations_api.html)
-
-[A2A [Agent-to-Agent] Protocol](https://lightspeed-core.github.io/lightspeed-stack/a2a_protocol.html)
-
-
-
+- [OpenAPI specification](openapi.md)
+- [Conversations API](conversations_api.md)
+- [A2A (Agent-to-Agent) Protocol](a2a_protocol.md)
 
 ## RAG and BYOK
 
-[RAG Configuration Guide](https://lightspeed-core.github.io/lightspeed-stack/rag_guide.html)
+- [RAG Configuration Guide](rag_guide.md)
+- [BYOK Guide](byok_guide.md)
 
-[BYOK guide](https://lightspeed-core.github.io/lightspeed-stack/byok_guide.html)
+## Other Features
 
-
-## Other features
-
-[Providers](https://lightspeed-core.github.io/lightspeed-stack/providers.html)
-
-[User data collection](https://lightspeed-core.github.io/lightspeed-stack/user_data_collection.html)
-
-[Database structure](https://lightspeed-core.github.io/lightspeed-stack/DB/index.html)
-
-
+- [Providers](providers.md)
+- [User data collection](user_data_collection.md)
+- [Database structure](DB/index.html)
 
 ## Testing
 
-[Testing](https://lightspeed-core.github.io/lightspeed-stack/testing.html)
-
-[List of e2e scenarios](https://lightspeed-core.github.io/lightspeed-stack/e2e_scenarios.html)
-
+- [Testing](testing.md)
+- [List of E2E scenarios](e2e_scenarios.md)

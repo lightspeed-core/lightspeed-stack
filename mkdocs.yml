@@ -45,6 +45,27 @@ markdown_extensions:
   - toc:
       permalink: true
 
-# Minimal nav for infrastructure PR - will be expanded in PR 2
 nav:
   - Home: index.md
+  - Getting Started:
+      - Getting Started: getting_started.md
+      - Installation (Linux): installation_linux.md
+      - Installation (macOS): installation_macos.md
+  - Configuration:
+      - Configuration Guide: config.md
+      - Providers: providers.md
+      - RAG Guide: rag_guide.md
+      - BYOK Guide: byok_guide.md
+  - Architecture:
+      - Overview: ARCHITECTURE.md
+      - Authentication: auth.md
+      - A2A Protocol: a2a_protocol.md
+  - API:
+      - OpenAPI: openapi.md
+      - Conversations API: conversations_api.md
+  - Deployment:
+      - Deployment Guide: deployment_guide.md
+      - User Data Collection: user_data_collection.md
+  - Testing:
+      - Testing Guide: testing.md
+      - E2E Scenarios: e2e_scenarios.md
