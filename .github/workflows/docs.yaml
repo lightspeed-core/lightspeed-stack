@@ -18,6 +18,7 @@ on:
       - 'src/**'
       - 'mkdocs.yml'
       - 'scripts/gen_api_ref.py'
+      - '.github/workflows/docs.yaml'
   workflow_dispatch:
 
 permissions:
