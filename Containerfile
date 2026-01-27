@@ -79,7 +79,7 @@ COPY --from=builder /app-root/LICENSE /licenses/
 USER root
 
 # Additional tools for derived images
-RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch libpq libtiff openjpeg2 lcms2 libjpeg-turbo libwebp
+RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch libpq libtiff openjpeg2 lcms2 libjpeg-turbo libwebp openblas-threads
 
 # Create llama-stack directories for library mode
 RUN mkdir -p /opt/app-root/src/.llama/storage /opt/app-root/src/.llama/providers.d && \

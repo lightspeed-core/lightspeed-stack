@@ -11,6 +11,7 @@ packages:
     lcms2,
     libjpeg-turbo,
     libwebp,
+    openblas-threads,
   ]
 contentOrigin:
   repofiles: ["./ubi.repo"]
