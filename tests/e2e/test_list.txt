@@ -10,6 +10,8 @@ features/feedback.feature
 features/health.feature
 features/info.feature
 features/query.feature
+features/rlsapi_v1.feature
+features/rlsapi_v1_errors.feature
 features/streaming_query.feature
 features/rest_api.feature
 features/models.feature
