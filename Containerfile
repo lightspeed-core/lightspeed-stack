@@ -1,4 +1,7 @@
 # vim: set filetype=dockerfile
+ARG RUNTIME_BASE_IMAGE=registry.access.redhat.com/ubi9/python-312-minimal
+ARG RUNTIME_DNF_COMMAND=microdnf
+
 FROM registry.access.redhat.com/ubi9/python-312 AS builder
 
 ARG APP_ROOT=/app-root
@@ -51,7 +54,7 @@ RUN if [ -f /cachi2/cachi2.env ]; then \
 RUN uv pip uninstall ecdsa
 
 # Final image without uv package manager
-FROM registry.access.redhat.com/ubi9/python-312-minimal
+FROM ${RUNTIME_BASE_IMAGE}
 ARG APP_ROOT=/app-root
 WORKDIR /app-root
 
@@ -79,7 +82,7 @@ COPY --from=builder /app-root/LICENSE /licenses/
 USER root
 
 # Additional tools for derived images
-RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch libpq libtiff openjpeg2 lcms2 libjpeg-turbo libwebp
+RUN ${RUNTIME_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch
 
 # Create llama-stack directories for library mode
 RUN mkdir -p /opt/app-root/src/.llama/storage /opt/app-root/src/.llama/providers.d && \
