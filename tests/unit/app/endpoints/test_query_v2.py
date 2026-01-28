@@ -909,14 +909,22 @@ def _create_file_search_output(mocker: MockerFixture) -> Any:
     # Create mock result objects with proper attributes matching real llama-stack response
     result_1 = mocker.Mock()
     result_1.filename = "file2.pdf"
-    result_1.attributes = {"url": "http://example.com/doc2"}
+    result_1.attributes = {
+        "doc_url": "http://example.com/doc2",
+        "title": "Title 1",
+        "document_id": "doc-123",
+    }
     result_1.text = "Sample text from file2.pdf"
     result_1.score = 0.95
     result_1.file_id = "file-123"
     result_1.model_dump = mocker.Mock(
         return_value={
             "filename": "file2.pdf",
-            "attributes": {"url": "http://example.com/doc2"},
+            "attributes": {
+                "doc_url": "http://example.com/doc2",
+                "title": "Title 1",
+                "document_id": "doc-123",
+            },
             "text": "Sample text from file2.pdf",
             "score": 0.95,
             "file_id": "file-123",
@@ -925,14 +933,22 @@ def _create_file_search_output(mocker: MockerFixture) -> Any:
 
     result_2 = mocker.Mock()
     result_2.filename = "file3.docx"
-    result_2.attributes = {}
+    result_2.attributes = {
+        "doc_url": "http://example.com/doc3",
+        "title": "Title 2",
+        "document_id": "doc-456",
+    }
     result_2.text = "Sample text from file3.docx"
     result_2.score = 0.85
     result_2.file_id = "file-456"
     result_2.model_dump = mocker.Mock(
         return_value={
             "filename": "file3.docx",
-            "attributes": {},
+            "attributes": {
+                "doc_url": "http://example.com/doc3",
+                "title": "Title 2",
+                "document_id": "doc-456",
+            },
             "text": "Sample text from file3.docx",
             "score": 0.85,
             "file_id": "file-456",
@@ -975,27 +991,20 @@ async def test_retrieve_response_parses_referenced_documents(
         mock_client, "model-docs", qr, token="tkn", provider_id="test-provider"
     )
 
-    assert len(referenced_docs) == 4
+    # Referenced documents are now extracted only from file_search_call attributes
+    assert len(referenced_docs) == 2
 
-    # Verify Doc 1 (URL citation)
-    doc1 = next((d for d in referenced_docs if d.doc_title == "Doc 1"), None)
+    # Verify Title 1 (File search result with URL)
+    doc1 = next((d for d in referenced_docs if d.doc_title == "Title 1"), None)
     assert doc1
-    assert str(doc1.doc_url) == "http://example.com/doc1"
+    assert str(doc1.doc_url) == "http://example.com/doc2"
+    assert doc1.doc_id == "doc-123"
 
-    # Verify file1.txt (File citation)
-    doc2 = next((d for d in referenced_docs if d.doc_title == "file1.txt"), None)
+    # Verify Title 2 (File search result with URL)
+    doc2 = next((d for d in referenced_docs if d.doc_title == "Title 2"), None)
     assert doc2
-    assert doc2.doc_url is None
-
-    # Verify file2.pdf (File search result with URL)
-    doc3 = next((d for d in referenced_docs if d.doc_title == "file2.pdf"), None)
-    assert doc3
-    assert str(doc3.doc_url) == "http://example.com/doc2"
-
-    # Verify file3.docx (File search result without URL)
-    doc4 = next((d for d in referenced_docs if d.doc_title == "file3.docx"), None)
-    assert doc4
-    assert doc4.doc_url is None
+    assert str(doc2.doc_url) == "http://example.com/doc3"
+    assert doc2.doc_id == "doc-456"
 
     # Verify RAG chunks were extracted from file_search_call results
     assert len(_summary.rag_chunks) == 2

@@ -8,14 +8,11 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
-from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 
 from app.endpoints.query import (
     evaluate_model_hints,
     is_transcripts_enabled,
-    parse_metadata_from_text_item,
     select_model_and_provider_id,
     validate_attachments_metadata,
 )
@@ -23,7 +20,6 @@ from configuration import AppConfig
 from models.config import Action
 from models.database.conversations import UserConversation
 from models.requests import Attachment, QueryRequest
-from models.responses import ReferencedDocument
 from utils.token_counter import TokenCounter
 
 # User ID must be proper UUID
@@ -390,48 +386,6 @@ def test_validate_attachments_metadata_invalid_content_type() -> None:
     assert (
         "Invalid attatchment content type text/invalid_content_type" in detail["cause"]
     )
-
-
-def test_parse_metadata_from_text_item_valid(mocker: MockerFixture) -> None:
-    """Test parsing metadata from a TextContentItem."""
-    text = """
-    Some text...
-    Metadata: {"docs_url": "https://redhat.com", "title": "Example Doc"}
-    """
-    mock_item = mocker.Mock(spec=TextContentItem)
-    mock_item.text = text
-
-    doc = parse_metadata_from_text_item(mock_item)
-
-    assert isinstance(doc, ReferencedDocument)
-    assert doc.doc_url == AnyUrl("https://redhat.com")
-    assert doc.doc_title == "Example Doc"
-
-
-def test_parse_metadata_from_text_item_missing_title(mocker: MockerFixture) -> None:
-    """Test parsing metadata from a TextContentItem with missing title."""
-    mock_item = mocker.Mock(spec=TextContentItem)
-    mock_item.text = """Metadata: {"docs_url": "https://redhat.com"}"""
-    doc = parse_metadata_from_text_item(mock_item)
-    assert doc is None
-
-
-def test_parse_metadata_from_text_item_missing_url(mocker: MockerFixture) -> None:
-    """Test parsing metadata from a TextContentItem with missing url."""
-    mock_item = mocker.Mock(spec=TextContentItem)
-    mock_item.text = """Metadata: {"title": "Example Doc"}"""
-    doc = parse_metadata_from_text_item(mock_item)
-    assert doc is None
-
-
-def test_parse_metadata_from_text_item_malformed_url(mocker: MockerFixture) -> None:
-    """Test parsing metadata from a TextContentItem with malformed url."""
-    mock_item = mocker.Mock(spec=TextContentItem)
-    mock_item.text = (
-        """Metadata: {"docs_url": "not a valid url", "title": "Example Doc"}"""
-    )
-    doc = parse_metadata_from_text_item(mock_item)
-    assert doc is None
 
 
 def test_no_tools_parameter_backward_compatibility() -> None:

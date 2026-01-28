@@ -560,74 +560,32 @@ def parse_referenced_documents_from_responses_api(
             for result in results:
                 # Handle both object and dict access
                 if isinstance(result, dict):
-                    filename = result.get("filename")
                     attributes = result.get("attributes", {})
                 else:
-                    filename = getattr(result, "filename", None)
                     attributes = getattr(result, "attributes", {})
 
                 # Try to get URL from attributes
                 # Look for common URL fields in attributes
                 doc_url = (
-                    attributes.get("link")
+                    attributes.get("doc_url")
+                    or attributes.get("docs_url")
                     or attributes.get("url")
-                    or attributes.get("doc_url")
+                    or attributes.get("link")
                 )
+                doc_title = attributes.get("title")
+                doc_id = attributes.get("document_id") or attributes.get("doc_id")
 
                 # If we have at least a filename or url
-                if filename or doc_url:
+                if doc_title or doc_url:
                     # Treat empty string as None for URL to satisfy Optional[AnyUrl]
                     final_url = doc_url if doc_url else None
-                    if (final_url, filename) not in seen_docs:
+                    if (final_url, doc_title) not in seen_docs:
                         documents.append(
-                            ReferencedDocument(doc_url=final_url, doc_title=filename)
+                            ReferencedDocument(
+                                doc_url=final_url, doc_title=doc_title, doc_id=doc_id
+                            )
                         )
-                        seen_docs.add((final_url, filename))
-
-        # 2. Parse from message content annotations
-        elif item_type == "message":
-            content = getattr(output_item, "content", None)
-            if isinstance(content, list):
-                for part in content:
-                    # Skip if part is a string or doesn't have annotations
-                    if isinstance(part, str):
-                        continue
-
-                    annotations = getattr(part, "annotations", []) or []
-                    for annotation in annotations:
-                        # Handle both object and dict access for annotations
-                        if isinstance(annotation, dict):
-                            anno_type = annotation.get("type")
-                            anno_url = annotation.get("url")
-                            anno_title = annotation.get("title") or annotation.get(
-                                "filename"
-                            )
-                        else:
-                            anno_type = getattr(annotation, "type", None)
-                            anno_url = getattr(annotation, "url", None)
-                            anno_title = getattr(annotation, "title", None) or getattr(
-                                annotation, "filename", None
-                            )
-
-                        if anno_type == "url_citation":
-                            # Treat empty string as None
-                            final_url = anno_url if anno_url else None
-                            if (final_url, anno_title) not in seen_docs:
-                                documents.append(
-                                    ReferencedDocument(
-                                        doc_url=final_url, doc_title=anno_title
-                                    )
-                                )
-                                seen_docs.add((final_url, anno_title))
-
-                        elif anno_type == "file_citation":
-                            if (None, anno_title) not in seen_docs:
-                                documents.append(
-                                    ReferencedDocument(
-                                        doc_url=None, doc_title=anno_title
-                                    )
-                                )
-                                seen_docs.add((None, anno_title))
+                        seen_docs.add((final_url, doc_title))
 
     return documents
 

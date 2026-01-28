@@ -601,7 +601,7 @@ def test_insert_and_get_with_referenced_documents(
     inserted_json_str = sql_params[-3]
 
     assert json.loads(inserted_json_str) == [
-        {"doc_url": "http://example.com/", "doc_title": "Test Doc"}
+        {"doc_url": "http://example.com/", "doc_title": "Test Doc", "doc_id": None}
     ]
 
     # Simulate the database returning that data
@@ -612,7 +612,7 @@ def test_insert_and_get_with_referenced_documents(
         "bar",
         "start_time",
         "end_time",
-        [{"doc_url": "http://example.com/", "doc_title": "Test Doc"}],
+        [{"doc_url": "http://example.com/", "doc_title": "Test Doc", "doc_id": None}],
         None,  # tool_calls
         None,  # tool_results
     )
