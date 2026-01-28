@@ -1,8 +1,6 @@
 """Handler for REST API call to provide answer to query."""
 
-import ast
 import logging
-import re
 from datetime import UTC, datetime
 from typing import Annotated, Any, Optional
 
@@ -14,7 +12,6 @@ from llama_stack_client import (
     RateLimitError,  # type: ignore
 )
 from llama_stack_client.types.model_list_response import ModelListResponse
-from llama_stack_client.types.shared.interleaved_content_item import TextContentItem
 from sqlalchemy.exc import SQLAlchemyError
 
 import constants
@@ -36,7 +33,6 @@ from models.responses import (
     PromptTooLongResponse,
     QueryResponse,
     QuotaExceededResponse,
-    ReferencedDocument,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
     UnprocessableEntityResponse,
@@ -551,39 +547,6 @@ def is_input_shield(shield: Shield) -> bool:
         bool: True if the shield is for input or both input/output monitoring; False otherwise.
     """
     return _is_inout_shield(shield) or not is_output_shield(shield)
-
-
-def parse_metadata_from_text_item(
-    text_item: TextContentItem,
-) -> Optional[ReferencedDocument]:
-    """
-    Parse a single TextContentItem to extract referenced documents.
-
-    Args:
-        text_item (TextContentItem): The TextContentItem containing metadata.
-
-    Returns:
-        ReferencedDocument: A ReferencedDocument object containing 'doc_url' and 'doc_title'
-        representing the referenced documents found in the metadata.
-    """
-    docs: list[ReferencedDocument] = []
-    if not isinstance(text_item, TextContentItem):
-        return docs
-
-    metadata_blocks = re.findall(
-        r"Metadata:\s*({.*?})(?:\n|$)", text_item.text, re.DOTALL
-    )
-    for block in metadata_blocks:
-        try:
-            data = ast.literal_eval(block)
-            url = data.get("docs_url")
-            title = data.get("title")
-            if url and title:
-                return ReferencedDocument(doc_url=url, doc_title=title)
-            logger.debug("Invalid metadata block (missing url or title): %s", block)
-        except (ValueError, SyntaxError) as e:
-            logger.debug("Failed to parse metadata block: %s | Error: %s", block, e)
-    return None
 
 
 def validate_attachments_metadata(attachments: list[Attachment]) -> None:

@@ -8,8 +8,8 @@ from fastapi import status
 from pydantic import AnyUrl, BaseModel, Field
 from pydantic_core import SchemaError
 
-from quota.quota_exceed_error import QuotaExceedError
 from models.config import Action, Configuration
+from quota.quota_exceed_error import QuotaExceedError
 from utils.types import RAGChunk, ToolCallSummary, ToolResultSummary
 
 SUCCESSFUL_RESPONSE_DESCRIPTION = "Successful response"
@@ -369,6 +369,7 @@ class ReferencedDocument(BaseModel):
     Attributes:
         doc_url: Url to the referenced doc.
         doc_title: Title of the referenced doc.
+        doc_id: ID of the referenced doc.
     """
 
     doc_url: Optional[AnyUrl] = Field(
@@ -378,6 +379,8 @@ class ReferencedDocument(BaseModel):
     doc_title: Optional[str] = Field(
         None, description="Title of the referenced document"
     )
+
+    doc_id: Optional[str] = Field(None, description="ID of the referenced document")
 
 
 class QueryResponse(AbstractSuccessfulResponse):
