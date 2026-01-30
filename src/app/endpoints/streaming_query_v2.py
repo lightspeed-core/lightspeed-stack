@@ -249,7 +249,7 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
                 error_response = InternalServerErrorResponse.query_failed(
                     "An unexpected error occurred while processing the request."
                 )
-                logger.error("Error while obtaining answer for user question")
+                logger.error("Incomplete response received during streaming")
                 yield format_stream_data(
                     {"event": "error", "data": {**error_response.detail.model_dump()}}
                 )
@@ -265,7 +265,7 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
                     else "An unexpected error occurred while processing the request."
                 )
                 error_response = InternalServerErrorResponse.query_failed(error_message)
-                logger.error("Error while obtaining answer for user question")
+                logger.error("Failed response during streaming: %s", error_message)
                 yield format_stream_data(
                     {"event": "error", "data": {**error_response.detail.model_dump()}}
                 )
@@ -471,6 +471,29 @@ async def retrieve_response(  # pylint: disable=too-many-locals
         "tools": toolgroups,
         "conversation": llama_stack_conv_id,
     }
+
+    # Log request details before calling Llama Stack (same as non-streaming)
+    if toolgroups:
+        rag_tool_count = sum(1 for t in toolgroups if t.get("type") == "file_search")
+        mcp_tool_count = sum(1 for t in toolgroups if t.get("type") == "mcp")
+        logger.debug(
+            "Calling Llama Stack Responses API (streaming) with %d tool(s): %d RAG + %d MCP",
+            len(toolgroups),
+            rag_tool_count,
+            mcp_tool_count,
+        )
+        # Log MCP server endpoints that may be called
+        mcp_servers = [
+            (t.get("server_label"), t.get("server_url"))
+            for t in toolgroups
+            if t.get("type") == "mcp"
+        ]
+        if mcp_servers:
+            logger.debug("MCP server endpoints that may be called:")
+            for server_name, server_url in mcp_servers:
+                logger.debug("  - %s: %s", server_name, server_url)
+    else:
+        logger.debug("Calling Llama Stack Responses API (streaming) without tools")
 
     response = await client.responses.create(**create_params)
     response_stream = cast(AsyncIterator[OpenAIResponseObjectStream], response)

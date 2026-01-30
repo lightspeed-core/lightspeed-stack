@@ -66,6 +66,11 @@ services:
       - WATSONX_API_KEY=${WATSONX_API_KEY:-}
       # Enable debug logging if needed
       - LLAMA_STACK_LOGGING=${LLAMA_STACK_LOGGING:-}
+    entrypoint: >
+      /bin/bash -c "
+      echo 'test-secret-token-123' > /tmp/lightspeed-mcp-test-token &&
+      /opt/app-root/src/scripts/run.sh
+      "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/liveness"]
       interval: 10s   # how often to run the check

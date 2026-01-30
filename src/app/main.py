@@ -19,7 +19,8 @@ from configuration import configuration
 from log import get_logger
 from a2a_storage import A2AStorageFactory
 from models.responses import InternalServerErrorResponse
-from utils.common import register_mcp_servers_async
+
+# from utils.common import register_mcp_servers_async  # Not needed for Responses API
 from utils.llama_stack_version import check_llama_stack_version
 
 logger = get_logger(__name__)
@@ -55,9 +56,32 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # check if the Llama Stack version is supported by the service
     await check_llama_stack_version(client)
 
-    logger.info("Registering MCP servers")
-    await register_mcp_servers_async(logger, configuration.configuration)
-    get_logger("app.endpoints.handlers")
+    # Log MCP server configuration
+    mcp_servers = configuration.configuration.mcp_servers
+    if mcp_servers:
+        logger.info("Loaded %d MCP server(s) from configuration:", len(mcp_servers))
+        for server in mcp_servers:
+            has_auth = bool(server.authorization_headers)
+            logger.info(
+                "  - %s at %s (auth: %s)",
+                server.name,
+                server.url,
+                "yes" if has_auth else "no",
+            )
+            # Debug: Show auth header names if configured
+            if has_auth:
+                logger.debug(
+                    "    Auth headers: %s",
+                    ", ".join(server.authorization_headers.keys()),
+                )
+    else:
+        logger.info("No MCP servers configured")
+
+    # NOTE: MCP server registration not needed for Responses API
+    # The Responses API takes inline tool definitions instead of pre-registered toolgroups
+    # logger.info("Registering MCP servers")
+    # await register_mcp_servers_async(logger, configuration.configuration)
+    # get_logger("app.endpoints.handlers")
     logger.info("App startup complete")
 
     initialize_database()
