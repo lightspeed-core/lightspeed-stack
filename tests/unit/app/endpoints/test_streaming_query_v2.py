@@ -1,6 +1,7 @@
 # pylint: disable=redefined-outer-name,import-error, too-many-function-args
 """Unit tests for the /streaming_query (v2) endpoint using Responses API."""
 
+import asyncio
 from typing import Any, AsyncIterator
 from unittest.mock import Mock
 
@@ -221,6 +222,9 @@ async def test_streaming_query_endpoint_handler_v2_success_yields_events(
     # turn complete and end
     assert "EV:turn_complete:Hello world\n" in events
     assert events[-1] == "END\n"
+
+    # Wait for background cleanup task to complete (has 0.5s delay)
+    await asyncio.sleep(0.7)
 
     # Verify cleanup function was invoked after streaming
     assert cleanup_spy.call_count == 1

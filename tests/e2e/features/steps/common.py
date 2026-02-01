@@ -29,6 +29,10 @@ def system_in_default_state(context: Context) -> None:
     Ensure the Behave test context is present for steps that assume the system
     is in its default state.
 
+    Note: Does NOT clear auth headers, as those may be set in Background section
+    and should persist for the entire scenario. Auth headers are explicitly
+    cleared by the after_scenario hook in environment.py between scenarios.
+
     Parameters:
         context (Context): Behave Context instance used to store and share test state.
 
@@ -36,3 +40,6 @@ def system_in_default_state(context: Context) -> None:
         AssertionError: If `context` is None.
     """
     assert context is not None
+    # Reset MCP error expectation flag for test isolation
+    if hasattr(context, "expect_tool_errors"):
+        context.expect_tool_errors = False

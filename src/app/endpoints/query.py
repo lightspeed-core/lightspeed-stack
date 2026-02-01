@@ -1,5 +1,6 @@
 """Handler for REST API call to provide answer to query."""
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import Annotated, Any, Optional
@@ -72,6 +73,33 @@ query_response: dict[int | str, dict[str, Any]] = {
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(),
 }
+
+# Track background tasks to prevent garbage collection
+# Background tasks created with asyncio.create_task() need strong references
+# to prevent premature garbage collection before they complete
+background_tasks_set: set[asyncio.Task] = set()
+
+
+def create_background_task(coro: Any) -> None:
+    """Create a background task and track it to prevent garbage collection.
+
+    This function creates a detached async task that runs independently of the
+    HTTP request lifecycle. Tasks are stored in a module-level set to maintain
+    strong references, preventing garbage collection. When a task completes,
+    it automatically removes itself from the set.
+
+    Args:
+        coro: Coroutine to run as a background task
+    """
+    try:
+        task = asyncio.create_task(coro)
+        background_tasks_set.add(task)
+        task.add_done_callback(background_tasks_set.discard)
+        logger.debug(
+            f"Background task created, active tasks: {len(background_tasks_set)}"
+        )
+    except Exception as e:
+        logger.error(f"Failed to create background task: {e}", exc_info=True)
 
 
 def is_transcripts_enabled() -> bool:
@@ -293,26 +321,6 @@ async def query_endpoint_handler_base(  # pylint: disable=R0914
             )
         )
 
-        # Get the initial topic summary for the conversation
-        topic_summary = None
-        with get_session() as session:
-            existing_conversation = (
-                session.query(UserConversation).filter_by(id=conversation_id).first()
-            )
-            if not existing_conversation:
-                # Check if topic summary should be generated (default: True)
-                should_generate = query_request.generate_topic_summary
-
-                if should_generate:
-                    logger.debug("Generating topic summary for new conversation")
-                    topic_summary = await get_topic_summary_func(
-                        query_request.query, client, llama_stack_model_id
-                    )
-                else:
-                    logger.debug(
-                        "Topic summary generation disabled by request parameter"
-                    )
-                    topic_summary = None
         # Convert RAG chunks to dictionary format once for reuse
         logger.info("Processing RAG chunks...")
         rag_chunks_dict = [chunk.model_dump() for chunk in summary.rag_chunks]
@@ -333,15 +341,6 @@ async def query_endpoint_handler_base(  # pylint: disable=R0914
                 truncated=False,  # TODO(lucasagomes): implement truncation as part of quota work
                 attachments=query_request.attachments or [],
             )
-
-        logger.info("Persisting conversation details...")
-        persist_user_conversation_details(
-            user_id=user_id,
-            conversation_id=conversation_id,
-            model=model_id,
-            provider_id=provider_id,
-            topic_summary=topic_summary,
-        )
 
         completed_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         cache_entry = CacheEntry(
@@ -372,7 +371,7 @@ async def query_endpoint_handler_base(  # pylint: disable=R0914
             conversation_id,
             cache_entry,
             _skip_userid_check,
-            topic_summary,
+            None,  # topic_summary is generated in background task
         )
 
         # Convert tool calls to response format
@@ -380,7 +379,12 @@ async def query_endpoint_handler_base(  # pylint: disable=R0914
 
         logger.info("Using referenced documents from response...")
 
-        available_quotas = get_available_quotas(configuration.quota_limiters, user_id)
+        # Get available quotas if quota limiters are configured
+        available_quotas = {}
+        if configuration.quota_limiters:
+            available_quotas = get_available_quotas(
+                configuration.quota_limiters, user_id
+            )
 
         logger.info("Building final response...")
         response = QueryResponse(
@@ -395,10 +399,117 @@ async def query_endpoint_handler_base(  # pylint: disable=R0914
             output_tokens=token_usage.output_tokens,
             available_quotas=available_quotas,
         )
+
+        # Schedule conversation persistence as a detached background task
+        # IMPORTANT: We use asyncio.create_task() instead of FastAPI's BackgroundTasks
+        # for two critical reasons:
+        # 1. Complete detachment from request context: The task runs independently,
+        #    not tied to the HTTP request lifecycle or middleware processing
+        # 2. MCP session lifecycle compatibility: Llama Stack's MCPSessionManager.close_all()
+        #    aggressively cancels tasks within the request context. By creating a detached
+        #    task, we avoid this cancellation scope entirely.
+        async def persist_with_topic_summary() -> None:
+            """Persist conversation with topic summary generation.
+
+            This function runs as a background task AFTER the HTTP response has been sent.
+
+            Strategy for MCP compatibility and database isolation:
+            1. Wait 500ms for MCP session cleanup to complete naturally
+            2. Then safely call LLM for topic summary generation without cancellation
+            3. Use independent database sessions in thread pool to avoid connection issues
+            4. Persist conversation details with or without topic summary
+
+            The delay ensures MCPSessionManager.close_all() has finished its cleanup
+            before we make any new LLM calls, preventing CancelledError exceptions.
+            Database operations run in thread pool to isolate from request lifecycle.
+            """
+            logger.debug("Background task: waiting for MCP cleanup")
+            # Give MCP sessions time to clean up (they close after response is sent)
+            await asyncio.sleep(0.5)  # 500ms should be enough for cleanup
+            logger.debug("Background task: MCP cleanup complete")
+
+            topic_summary = None
+            should_generate = (
+                query_request.generate_topic_summary
+                if query_request.generate_topic_summary is not None
+                else True
+            )
+
+            # Check if this is a new conversation and generate topic summary if needed
+            if should_generate:
+                try:
+
+                    def check_conversation_exists() -> bool:
+                        """Check if conversation exists in database (runs in thread pool)."""
+                        with get_session() as session:
+                            existing = (
+                                session.query(UserConversation)
+                                .filter_by(id=conversation_id)
+                                .first()
+                            )
+                            return existing is not None
+
+                    # Run database check in thread pool to avoid connection issues
+                    conversation_exists = await asyncio.to_thread(
+                        check_conversation_exists
+                    )
+
+                    if not conversation_exists:
+                        logger.debug("Generating topic summary for new conversation")
+                        topic_summary = await get_topic_summary_func(
+                            query_request.query, client, llama_stack_model_id
+                        )
+                        logger.info("Topic summary generated successfully")
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    logger.error(
+                        "Failed to generate topic summary: %s", e, exc_info=True
+                    )
+                    topic_summary = None
+
+            # Persist conversation
+            try:
+
+                def persist_conversation() -> None:
+                    """Persist conversation to database (runs in thread pool)."""
+                    persist_user_conversation_details(
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        model=model_id,
+                        provider_id=provider_id,
+                        topic_summary=topic_summary,
+                    )
+
+                # Run persistence in thread pool to avoid connection issues
+                await asyncio.to_thread(persist_conversation)
+                logger.debug("Conversation persisted successfully")
+
+                # Also persist to conversation cache for V2 endpoints
+                if (
+                    topic_summary
+                    and configuration.conversation_cache_configuration.type
+                ):
+                    try:
+                        configuration.conversation_cache.set_topic_summary(
+                            user_id=user_id,
+                            conversation_id=conversation_id,
+                            topic_summary=topic_summary,
+                            skip_user_id_check=_skip_userid_check,
+                        )
+                        logger.debug("Topic summary written to cache for V2 endpoint")
+                    except (
+                        Exception
+                    ) as cache_err:  # pylint: disable=broad-exception-caught
+                        logger.error(
+                            "Failed to write topic summary to cache: %s", cache_err
+                        )
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error("Failed to persist conversation: %s", e)
+
+        # Create detached task with strong reference to prevent garbage collection
+        create_background_task(persist_with_topic_summary())
+
         logger.info("Query processing completed successfully!")
         return response
-
-    # connection to Llama Stack server
     except APIConnectionError as e:
         # Update metrics for the LLM call failure
         metrics.llm_calls_failures_total.inc()

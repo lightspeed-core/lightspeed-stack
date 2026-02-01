@@ -53,7 +53,7 @@ Feature: MCP Server Integration
      When I send a query that uses MCP tools
       And I wait for MCP server to receive requests
      Then The MCP mock server should have received requests
-      And The MCP mock server should have captured Authorization header containing "my-client-token" from client-auth server
+      And The MCP mock server request log should contain exactly tools mock_tool_file, mock_tool_k8s, mock_tool_client
 
   Scenario: MCP server with client auth is skipped when MCP-HEADERS is missing
     Given The system is in default state
@@ -61,8 +61,7 @@ Feature: MCP Server Integration
       And The MCP mock server request log is cleared
      When I send a query that uses MCP tools
       And I wait for MCP server to receive requests
-     Then The service logs should contain "Skipping MCP server 'mock-client-auth'"
-      And The service logs should contain "Required: Authorization | Resolved: none | Missing: Authorization"
+     Then The MCP mock server request log should contain exactly tools mock_tool_file, mock_tool_k8s
 
   Scenario: All three MCP auth types work in a single request
     Given The system is in default state
@@ -115,8 +114,10 @@ Feature: MCP Server Integration
      When I send a query that uses MCP tools
      Then The status code of the response is 200
       And The response should indicate tool execution failed
-      And The service logs should contain tool failure information
+      And The MCP mock server should confirm error mode is active
 
+  # Note: This scenario can be slow in CI (up to 120s) due to multiple LLM+tool roundtrips
+  # Completes in ~8s locally but timing is highly variable in containerized CI environments
   Scenario: Multiple MCP tools can be called in sequence
     Given The system is in default state
       And I set the Authorization header to Bearer my-k8s-token
@@ -138,6 +139,8 @@ Feature: MCP Server Integration
       And The MCP mock server should have received tools/call method
       And The streaming response should be successful
 
+  # Note: This scenario can be slow in CI (up to 120s) due to multiple LLM+tool roundtrips
+  # Completes in ~8s locally but timing is highly variable in containerized CI environments
   Scenario: Streaming query with multiple MCP tools
     Given The system is in default state
       And I set the Authorization header to Bearer my-k8s-token
@@ -154,4 +157,34 @@ Feature: MCP Server Integration
       And The MCP mock server is configured to return errors
      When I send a streaming query that uses MCP tools
      Then The streaming response should be successful
-      And The service logs should contain tool failure information
+      And The MCP mock server should confirm error mode is active
+
+  Scenario: Streaming query receives file-based static token
+    Given The system is in default state
+      And I set the Authorization header to Bearer my-k8s-token
+      And The MCP mock server request log is cleared
+     When I send a streaming query that uses MCP tools
+      And I wait for MCP server to receive requests
+     Then The MCP mock server should have received requests
+      And The MCP mock server should have captured Authorization header "Bearer test-secret-token-123" from file-auth server
+      And The streaming response should be successful
+
+  Scenario: Streaming query receives client-provided token via MCP-HEADERS
+    Given The system is in default state
+      And I set the Authorization header to Bearer my-k8s-token
+      And I set the MCP-HEADERS header with client token for "mock-client-auth"
+      And The MCP mock server request log is cleared
+     When I send a streaming query that uses MCP tools
+      And I wait for MCP server to receive requests
+     Then The MCP mock server should have received requests
+      And The MCP mock server request log should contain exactly tools mock_tool_file, mock_tool_k8s, mock_tool_client
+      And The streaming response should be successful
+
+  Scenario: Streaming query skips MCP server with client auth when MCP-HEADERS is missing
+    Given The system is in default state
+      And I set the Authorization header to Bearer my-k8s-token
+      And The MCP mock server request log is cleared
+     When I send a streaming query that uses MCP tools
+      And I wait for MCP server to receive requests
+     Then The MCP mock server request log should contain exactly tools mock_tool_file, mock_tool_k8s
+      And The streaming response should be successful

@@ -6,7 +6,7 @@ services:
       dockerfile: dev-tools/mcp-mock-server/Dockerfile
     container_name: mcp-mock-server
     ports:
-      - "3000:3000"
+      - "9000:3000"
     networks:
       - lightspeednet
     healthcheck:
@@ -68,8 +68,8 @@ services:
       - LLAMA_STACK_LOGGING=${LLAMA_STACK_LOGGING:-}
     entrypoint: >
       /bin/bash -c "
-      echo 'test-secret-token-123' > /tmp/lightspeed-mcp-test-token &&
-      /opt/app-root/src/scripts/run.sh
+      printf %s 'test-secret-token-123' > /tmp/lightspeed-mcp-test-token &&
+      /app-root/.venv/bin/python3.12 /app-root/src/lightspeed_stack.py
       "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/liveness"]

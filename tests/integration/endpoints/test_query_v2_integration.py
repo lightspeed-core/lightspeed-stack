@@ -4,6 +4,7 @@
 # pylint: disable=too-many-arguments  # Integration tests need many fixtures
 # pylint: disable=too-many-positional-arguments  # Integration tests need many fixtures
 
+import asyncio
 from typing import Any, Generator
 
 import pytest
@@ -30,6 +31,34 @@ TEST_CONV_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 NON_EXISTENT_ID = "00000000-0000-0000-0000-000000000001"
 OTHER_USER_CONV_ID = "11111111-1111-1111-1111-111111111111"
 EXISTING_CONV_ID = "22222222-2222-2222-2222-222222222222"
+
+
+async def wait_for_background_tasks() -> None:
+    """Wait for background tasks to complete.
+
+    The query endpoint uses asyncio.create_task() to persist conversations
+    with a 500ms delay for MCP cleanup, plus time for DB operations in thread pool.
+    Tests must wait for these background tasks to complete before checking database state.
+
+    Strategy:
+    1. Wait 600ms for the 500ms sleep + initial task startup
+    2. Check background_tasks_set and wait for tasks to complete
+    3. Give extra time for thread pool operations to finish
+    """
+    # Wait for the initial 500ms delay + buffer
+    await asyncio.sleep(0.6)
+
+    # Wait for any remaining background tasks to complete
+    # pylint: disable=import-outside-toplevel
+    from app.endpoints.query import background_tasks_set
+
+    # Snapshot to avoid "set changed size during iteration" error
+    tasks = list(background_tasks_set)
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Give thread pool operations extra time to complete
+    await asyncio.sleep(0.2)
 
 
 @pytest.fixture(name="mock_llama_stack_client")
@@ -109,12 +138,16 @@ def mock_llama_stack_client_fixture(
 def patch_db_session_fixture(
     test_db_session: Session,
     test_db_engine: Engine,
+    mocker: MockerFixture,
 ) -> Generator[Session, None, None]:
     """Initialize database session for integration tests.
 
     This sets up the global session_local in app.database to use the test database.
     Uses an in-memory SQLite database, isolating tests from production data.
     This fixture is autouse=True, so it applies to all tests in this module automatically.
+
+    CRITICAL: Also patches asyncio.to_thread to run synchronously, ensuring background
+    tasks use the test database instead of creating new threaded connections.
 
     Returns:
         The test database Session instance to be used by the test.
@@ -126,6 +159,15 @@ def patch_db_session_fixture(
     # Set the test database engine and session maker globally
     app.database.engine = test_db_engine
     app.database.session_local = sessionmaker(bind=test_db_engine)
+
+    # CRITICAL FIX: Patch asyncio.to_thread to run synchronously in tests
+    # Background tasks use asyncio.to_thread() for DB operations. In tests, we need
+    # these to run in the main thread to access the test database.
+    async def mock_to_thread(func: Any, *args: Any, **kwargs: Any) -> Any:
+        """Run function synchronously instead of in thread pool for tests."""
+        return func(*args, **kwargs)
+
+    mocker.patch("asyncio.to_thread", side_effect=mock_to_thread)
 
     yield test_db_session
 
@@ -699,6 +741,9 @@ async def test_query_v2_endpoint_persists_conversation_to_database(
         mcp_headers={},
     )
 
+    # Wait for background task to complete (500ms delay + buffer)
+    await wait_for_background_tasks()
+
     conversation = (
         patch_db_session.query(UserConversation)
         .filter_by(id=response.conversation_id)
@@ -766,6 +811,9 @@ async def test_query_v2_endpoint_updates_existing_conversation(
         auth=test_auth,
         mcp_headers={},
     )
+
+    # Wait for background task to complete (500ms delay + buffer)
+    await wait_for_background_tasks()
 
     # Refresh from database to get updated values
     patch_db_session.refresh(existing_conversation)
@@ -1004,6 +1052,9 @@ async def test_query_v2_endpoint_with_shield_violation(
 
     assert response.conversation_id is not None
     assert response.response == "I cannot respond to this request"
+
+    # Wait for background task to complete (500ms delay + buffer)
+    await wait_for_background_tasks()
 
     # Verify conversation was persisted (processing continued)
     conversations = patch_db_session.query(UserConversation).all()
@@ -1298,6 +1349,9 @@ async def test_query_v2_endpoint_transcript_behavior(
     assert response_enabled.conversation_id is not None
     assert response_enabled.response is not None
 
+    # Wait for background task to complete (500ms delay + buffer)
+    await wait_for_background_tasks()
+
     # Verify conversation was persisted
     conversation_enabled = (
         patch_db_session.query(UserConversation)
@@ -1388,6 +1442,9 @@ async def test_query_v2_endpoint_uses_conversation_history_model(
 
     assert response.conversation_id is not None
     assert response.response is not None
+
+    # Wait for background task to complete (500ms delay + buffer)
+    await wait_for_background_tasks()
 
     patch_db_session.refresh(existing_conv)
     assert existing_conv.message_count == 2

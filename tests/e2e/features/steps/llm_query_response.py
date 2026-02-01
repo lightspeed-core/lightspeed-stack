@@ -1,6 +1,7 @@
 """LLM query and response steps."""
 
 import json
+import time
 import requests
 from behave import then, step  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
@@ -52,13 +53,28 @@ def ask_question_authorized(context: Context, endpoint: str) -> None:
 
 @step("I store conversation details")
 def store_conversation_details(context: Context) -> None:
-    """Store details about the conversation."""
+    """Store details about the conversation.
+
+    Also waits for background persistence to complete, simulating realistic user behavior
+    where they read the response before taking the next action.
+    """
     context.response_data = json.loads(context.response.text)
+
+    # Wait for background task to persist conversation before next operation
+    # Background tasks include: MCP cleanup (500ms), topic summary generation (2-5s), DB write
+    # This 3s delay simulates realistic timing (user reading response) and ensures
+    # conversation is persisted before switching to V2 operations or subsequent queries
+    # (observed persistence times: typically 2-3 seconds in CI)
+    time.sleep(3)
 
 
 @step('I use "{endpoint}" to ask question with same conversation_id')
 def ask_question_in_same_conversation(context: Context, endpoint: str) -> None:
-    """Call the service REST API endpoint with question, but use the existing conversation id."""
+    """Call the service REST API endpoint with question, but use the existing conversation id.
+
+    Note: The 'store conversation details' step already waits 3s for background persistence,
+    so no additional delay is needed here.
+    """
     base = f"http://{context.hostname}:{context.port}"
     path = f"{context.api_prefix}/{endpoint}".replace("//", "/")
     url = base + path

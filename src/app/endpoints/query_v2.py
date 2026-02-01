@@ -183,7 +183,7 @@ def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-
             mcp_call_item.server_label,
             mcp_call_item.id,
         )
-        logger.debug("  Arguments: %s", args)
+        logger.debug("  Arguments keys: %s", list(args.keys()) if args else [])
 
         # Log MCP tool result
         if mcp_call_item.error:
@@ -193,13 +193,12 @@ def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-
                 mcp_call_item.error,
             )
         else:
-            output_preview = content[:100] + "..." if len(content) > 100 else content
             logger.debug(
                 "MCP tool result: %s SUCCESS (output length: %d)",
                 mcp_call_item.name,
                 len(content),
             )
-            logger.debug("  Output preview: %s", output_preview)
+            logger.debug("  Output preview: <redacted> (%d chars)", len(content))
 
         return ToolCallSummary(
             id=mcp_call_item.id,
@@ -862,12 +861,15 @@ def get_mcp_tools(
             h_value = _get_token_value(value, name)
             # only add the header if we got value
             if h_value is not None:
-                # Log successful resolution
-                auth_type = (
-                    "kubernetes"
-                    if value == constants.MCP_AUTH_KUBERNETES
-                    else "client" if value == constants.MCP_AUTH_CLIENT else "static"
-                )
+                # Log successful resolution - determine auth type for logging
+                match value:
+                    case _ if value == constants.MCP_AUTH_KUBERNETES:
+                        auth_type = "kubernetes"
+                    case _ if value == constants.MCP_AUTH_CLIENT:
+                        auth_type = "client"
+                    case _:
+                        auth_type = "static"
+
                 logger.debug(
                     "MCP server '%s': Header '%s' -> type: %s (resolved)",
                     mcp_server.name,
@@ -882,15 +884,16 @@ def get_mcp_tools(
             else:
                 # Log failed resolution
                 logger.debug(
-                    "MCP server '%s': Header '%s' -> FAILED to resolve",
+                    "MCP server '%s': Header '%s' -> FAILED to resolve (value was: %s)",
                     mcp_server.name,
                     name,
+                    value,
                 )
 
         # Skip server if auth headers were configured but not all could be resolved
         resolved_count = len(headers) + (1 if authorization is not None else 0)
-        if mcp_server.authorization_headers and resolved_count != len(
-            mcp_server.authorization_headers
+        if mcp_server.resolved_authorization_headers and resolved_count != len(
+            mcp_server.resolved_authorization_headers
         ):
             required_headers = list(mcp_server.authorization_headers.keys())
             resolved_headers = list(headers.keys())
@@ -898,17 +901,15 @@ def get_mcp_tools(
                 resolved_headers.append("Authorization")
             missing_headers = [h for h in required_headers if h not in resolved_headers]
 
-            logger.warning(
-                "Skipping MCP server '%s': required %d auth headers but only resolved %d",
+            logger.debug(
+                "MCP server '%s' SKIPPED - incomplete auth: "
+                "Required: %s | Resolved: %s | Missing: %s (resolved_count=%d, expected=%d)",
                 mcp_server.name,
-                len(mcp_server.authorization_headers),
-                resolved_count,
-            )
-            logger.warning(
-                "  Required: %s | Resolved: %s | Missing: %s",
                 ", ".join(required_headers),
                 ", ".join(resolved_headers) if resolved_headers else "none",
                 ", ".join(missing_headers) if missing_headers else "none",
+                resolved_count,
+                len(mcp_server.resolved_authorization_headers),
             )
             continue
 
@@ -922,7 +923,7 @@ def get_mcp_tools(
 
         # Log successful tool creation
         logger.debug(
-            "MCP server '%s': Tool definition created (authorization: %s, additional headers: %d)",
+            "MCP server '%s': Tool ADDED (authorization: %s, headers: %d)",
             mcp_server.name,
             "SET" if authorization is not None else "NOT SET",
             len(headers),
@@ -930,6 +931,8 @@ def get_mcp_tools(
 
         # collect tools info
         tools.append(tool_def)
+
+    logger.debug("get_mcp_tools: Returning %d tool(s)", len(tools))
     return tools
 
 

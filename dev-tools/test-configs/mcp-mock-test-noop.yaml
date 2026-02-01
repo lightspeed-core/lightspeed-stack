@@ -1,0 +1,38 @@
+name: Lightspeed Core Service - MCP Mock Server Test (Noop Auth)
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: true
+  library_client_config_path: "dev-tools/test-configs/llama-stack-mcp-test.yaml"
+user_data_collection:
+  feedback_enabled: false
+  transcripts_enabled: false
+authentication:
+  module: "noop"
+inference:
+  default_model: "gpt-4o-mini"
+  default_provider: "openai"
+mcp_servers:
+  # Test 1: Static file-based authentication (HTTP)
+  - name: "mock-file-auth"
+    provider_id: "model-context-protocol"
+    url: "http://localhost:9000"
+    authorization_headers:
+      Authorization: "/tmp/lightspeed-mcp-test-token"
+  # Test 2: Kubernetes token forwarding (HTTP)
+  - name: "mock-k8s-auth"
+    provider_id: "model-context-protocol"
+    url: "http://localhost:9000"
+    authorization_headers:
+      Authorization: "kubernetes"
+  # Test 3: Client-provided token (HTTP - simplified for testing)
+  - name: "mock-client-auth"
+    provider_id: "model-context-protocol"
+    url: "http://localhost:9000"
+    authorization_headers:
+      Authorization: "client"

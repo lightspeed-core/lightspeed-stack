@@ -1,6 +1,7 @@
 """Implementation of common test steps."""
 
 import json
+import time
 from behave import (
     step,
     when,
@@ -14,12 +15,139 @@ from tests.e2e.utils.utils import replace_placeholders, restart_container, switc
 # default timeout for HTTP operations
 DEFAULT_TIMEOUT = 10
 
+# Retry configuration for conversation polling
+# Background persistence takes ~500ms for MCP cleanup + topic summary generation
+MAX_RETRIES = 10  # Maximum retry attempts
+INITIAL_RETRY_DELAY = 0.2  # Start with 200ms delay
+MAX_RETRY_DELAY = 2.0  # Cap at 2 second delay
+
+
+def poll_for_conversation(
+    url: str, headers: dict, max_retries: int = MAX_RETRIES
+) -> requests.Response:
+    """Poll for conversation availability with exponential backoff.
+
+    Conversations are persisted asynchronously in background tasks, which includes:
+    - 500ms MCP cleanup delay
+    - Topic summary generation
+    - Database write operations
+
+    This function retries GET requests with exponential backoff to handle the
+    asynchronous persistence timing.
+
+    Parameters:
+        url (str): The conversation endpoint URL
+        headers (dict): Request headers (including auth)
+        max_retries (int): Maximum number of retry attempts (must be >= 1)
+
+    Returns:
+        requests.Response: The final response (successful or last failure)
+
+    Raises:
+        ValueError: If max_retries < 1
+    """
+    if max_retries < 1:
+        raise ValueError("max_retries must be >= 1")
+
+    delay = INITIAL_RETRY_DELAY
+
+    for attempt in range(max_retries):
+        response = requests.get(url, headers=headers, timeout=DEFAULT_TIMEOUT)
+
+        # Success - conversation found
+        if response.status_code == 200:
+            if attempt > 0:
+                print(
+                    f"✅ Conversation found after {attempt + 1} attempts "
+                    f"(waited {sum(min(INITIAL_RETRY_DELAY * (2 ** i), MAX_RETRY_DELAY) for i in range(attempt)):.2f}s)"
+                )
+            return response
+
+        # 404 means not persisted yet - retry
+        if response.status_code == 404 and attempt < max_retries - 1:
+            print(
+                f"⏳ Conversation not yet persisted (attempt {attempt + 1}/{max_retries}), "
+                f"waiting {delay:.2f}s..."
+            )
+            time.sleep(delay)
+            delay = min(delay * 2, MAX_RETRY_DELAY)  # Exponential backoff with cap
+            continue
+
+        # Other errors or final attempt - return as-is
+        return response
+
+    return response  # Return last response if all retries exhausted
+
+
+def poll_for_topic_summary(
+    url: str, headers: dict, conversation_id: str, max_seconds: int = 10
+) -> dict | None:
+    """Poll until topic_summary is populated in the conversation.
+
+    After a conversation is persisted, the topic_summary is generated asynchronously
+    via an LLM call, which can take several seconds. This function polls the
+    conversation list or GET endpoint until topic_summary is not None.
+
+    Parameters:
+        url (str): The conversations list endpoint URL
+        headers (dict): Request headers (including auth)
+        conversation_id (str): The conversation ID to check
+        max_seconds (int): Maximum total seconds to poll (default 10)
+
+    Returns:
+        dict | None: The conversation dict with topic_summary, or None if timeout
+
+    Raises:
+        ValueError: If max_seconds < 1
+    """
+    if max_seconds < 1:
+        raise ValueError("max_seconds must be >= 1")
+
+    delay = 0.5  # Start with 500ms
+    elapsed = 0.0
+    attempt = 0
+
+    print(f"⏳ Polling for topic_summary (conversation: {conversation_id[:8]}...)")
+
+    while elapsed < max_seconds:
+        attempt += 1
+        response = requests.get(url, headers=headers, timeout=DEFAULT_TIMEOUT)
+
+        if response.status_code == 200:
+            data = response.json()
+            # Search for our conversation in the list
+            for conv in data.get("conversations", []):
+                if conv.get("conversation_id") == conversation_id:
+                    topic_summary = conv.get("topic_summary")
+                    if topic_summary is not None:
+                        print(
+                            f"✅ Topic summary populated after {elapsed:.1f}s "
+                            f"({attempt} attempts)"
+                        )
+                        return conv
+
+        # Not ready yet - wait and retry
+        print(
+            f"⏳ Topic summary not ready (attempt {attempt}, elapsed {elapsed:.1f}s), "
+            f"waiting {delay:.1f}s..."
+        )
+        time.sleep(delay)
+        elapsed += delay
+        delay = min(delay * 1.5, 2.0)  # Exponential backoff, cap at 2s
+
+    print(f"⚠️  Timeout after {max_seconds}s - topic_summary still None")
+    return None
+
 
 @step(
     "I use REST API conversation endpoint with conversation_id from above using HTTP GET method"
 )
 def access_conversation_endpoint_get(context: Context) -> None:
-    """Send GET HTTP request to tested service for conversation/{conversation_id}."""
+    """Send GET HTTP request to tested service for conversation/{conversation_id}.
+
+    Uses polling with exponential backoff to handle asynchronous conversation
+    persistence from background tasks.
+    """
     assert (
         context.response_data["conversation_id"] is not None
     ), "conversation id not stored"
@@ -33,8 +161,8 @@ def access_conversation_endpoint_get(context: Context) -> None:
     # initial value
     context.response = None
 
-    # perform REST API call
-    context.response = requests.get(url, headers=headers, timeout=DEFAULT_TIMEOUT)
+    # Poll for conversation availability (handles async background persistence)
+    context.response = poll_for_conversation(url, headers)
 
 
 @step(
@@ -60,7 +188,10 @@ def access_conversation_endpoint_get_specific(
     "I use REST API conversation endpoint with conversation_id from above using HTTP DELETE method"
 )
 def access_conversation_endpoint_delete(context: Context) -> None:
-    """Send DELETE HTTP request to tested service for conversation/{conversation_id}."""
+    """Send DELETE HTTP request to tested service for conversation/{conversation_id}.
+
+    Polls to ensure conversation is persisted before attempting deletion.
+    """
     assert (
         context.response_data["conversation_id"] is not None
     ), "conversation id not stored"
@@ -74,7 +205,14 @@ def access_conversation_endpoint_delete(context: Context) -> None:
     # initial value
     context.response = None
 
-    # perform REST API call
+    # First, poll to ensure conversation is persisted
+    check_response = poll_for_conversation(url, headers)
+    if check_response.status_code != 200:
+        print(
+            f"⚠️  Warning: Conversation not found before DELETE (status: {check_response.status_code})"
+        )
+
+    # Now perform DELETE
     context.response = requests.delete(url, headers=headers, timeout=DEFAULT_TIMEOUT)
 
 
@@ -171,26 +309,80 @@ def access_conversation_endpoint_put_empty(context: Context) -> None:
 
 @then("The conversation with conversation_id from above is returned")
 def check_returned_conversation_id(context: Context) -> None:
-    """Check the conversation id in response."""
-    response_json = context.response.json()
-    found_conversation = None
-    for conversation in response_json["conversations"]:
-        if conversation["conversation_id"] == context.response_data["conversation_id"]:
-            found_conversation = conversation
-            break
+    """Check the conversation id in response.
 
-    context.found_conversation = found_conversation
+    If the conversation is not found in the list, retries the GET request
+    with exponential backoff to handle asynchronous background persistence.
+    """
+    max_retries = 10
+    delay = 0.2  # Start with 200ms
 
-    assert found_conversation is not None, "conversation not found"
+    for attempt in range(max_retries):
+        assert context.response.status_code == 200, (
+            f"Expected 200 from conversations list, got {context.response.status_code}: "
+            f"{context.response.text}"
+        )
+        response_json = context.response.json()
+        conversations = response_json.get("conversations")
+        assert conversations is not None, "Missing 'conversations' in response payload"
+        found_conversation = None
+        for conversation in conversations:
+            if (
+                conversation["conversation_id"]
+                == context.response_data["conversation_id"]
+            ):
+                found_conversation = conversation
+                break
+
+        if found_conversation is not None:
+            context.found_conversation = found_conversation
+            if attempt > 0:
+                print(
+                    f"✅ Conversation found in list after {attempt + 1} attempts "
+                    f"(waited {sum(0.2 * (2 ** i) for i in range(attempt)):.2f}s)"
+                )
+            return
+
+        # Not found yet - retry if not last attempt
+        if attempt < max_retries - 1:
+            print(
+                f"⏳ Conversation not in list yet (attempt {attempt + 1}/{max_retries}), "
+                f"retrying in {delay:.2f}s..."
+            )
+            time.sleep(delay)
+            delay = min(delay * 2, 2.0)  # Exponential backoff, cap at 2s
+
+            # Re-fetch the list
+            endpoint = "conversations"
+            base = f"http://{context.hostname}:{context.port}"
+            path = f"{context.api_prefix}/{endpoint}".replace("//", "/")
+            url = base + path
+            headers = context.auth_headers if hasattr(context, "auth_headers") else {}
+            context.response = requests.get(url, headers=headers, timeout=10)
+        else:
+            # Final attempt - fail with helpful message
+            conversation_ids = [
+                c["conversation_id"] for c in response_json["conversations"]
+            ]
+            assert False, (
+                f"conversation not found after {max_retries} attempts. "
+                f"Looking for: {context.response_data['conversation_id']}, "
+                f"Found IDs: {conversation_ids}"
+            )
 
 
 @then("The conversation has topic_summary and last_message_timestamp")
 def check_conversation_metadata_not_empty(context: Context) -> None:
-    """Check that conversation has non-empty metadata fields."""
+    """Check that conversation has non-empty metadata fields.
+
+    If topic_summary is None, polls the endpoint until it's populated
+    (up to 10 seconds) since topic generation happens asynchronously.
+    """
     found_conversation = context.found_conversation
 
     assert found_conversation is not None, "conversation not found in context"
 
+    # Check last_message_timestamp (should be immediate)
     assert (
         "last_message_timestamp" in found_conversation
     ), "last_message_timestamp field missing"
@@ -200,8 +392,35 @@ def check_conversation_metadata_not_empty(context: Context) -> None:
     ), f"last_message_timestamp should be a number, got {type(timestamp)}"
     assert timestamp > 0, f"last_message_timestamp should be positive, got {timestamp}"
 
+    # Check topic_summary (may need polling)
     assert "topic_summary" in found_conversation, "topic_summary field missing"
     topic_summary = found_conversation["topic_summary"]
+
+    # If topic_summary is None, poll until it's ready (async generation via LLM)
+    if topic_summary is None:
+        print("⏳ Topic summary not yet generated, polling...")
+        # Re-fetch from the same endpoint that was used to get the conversation
+        base = f"http://{context.hostname}:{context.port}"
+        path = f"{context.api_prefix}/conversations".replace("//", "/")
+        url = base + path
+        headers = context.auth_headers if hasattr(context, "auth_headers") else {}
+
+        conversation_id = context.response_data["conversation_id"]
+        updated_conv = poll_for_topic_summary(
+            url, headers, conversation_id, max_seconds=10
+        )
+
+        if updated_conv is not None:
+            # Update context with the refreshed conversation
+            context.found_conversation = updated_conv
+            topic_summary = updated_conv["topic_summary"]
+        else:
+            # Timeout - fail with helpful message
+            assert False, (
+                "topic_summary still None after 10 seconds of polling. "
+                "Background LLM call may have failed or timed out."
+            )
+
     assert topic_summary is not None, "topic_summary should not be None"
 
 
