@@ -266,6 +266,7 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
                 )
                 error_response = InternalServerErrorResponse.query_failed(error_message)
                 logger.error("Error while obtaining answer for user question")
+                logger.debug("Full error response: %s", error_message)
                 yield format_stream_data(
                     {"event": "error", "data": {**error_response.detail.model_dump()}}
                 )
