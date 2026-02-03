@@ -451,7 +451,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals
         )
 
     # Run shield moderation before calling LLM
-    moderation_result = await run_shield_moderation(client, input_text)
+    moderation_result = await run_shield_moderation(
+        client, input_text, query_request.shield_ids
+    )
     if moderation_result.blocked:
         violation_message = moderation_result.message or ""
         await append_turn_to_conversation(

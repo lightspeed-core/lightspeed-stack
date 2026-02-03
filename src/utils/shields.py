@@ -1,7 +1,7 @@
 """Utility functions for working with Llama Stack shields."""
 
 import logging
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from fastapi import HTTPException
 from llama_stack_client import AsyncLlamaStackClient, BadRequestError
@@ -63,16 +63,19 @@ def detect_shield_violations(output_items: list[Any]) -> bool:
 async def run_shield_moderation(
     client: AsyncLlamaStackClient,
     input_text: str,
+    shield_ids: Optional[list[str]] = None,
 ) -> ShieldModerationResult:
     """
     Run shield moderation on input text.
 
-    Iterates through all configured shields and runs moderation checks.
+    Iterates through configured shields and runs moderation checks.
     Raises HTTPException if shield model is not found.
 
     Parameters:
         client: The Llama Stack client.
         input_text: The text to moderate.
+        shield_ids: Optional list of shield IDs to use. If None, uses all shields.
+                   If empty list, skips all shields.
 
     Returns:
         ShieldModerationResult: Result indicating if content was blocked and the message.
@@ -80,9 +83,28 @@ async def run_shield_moderation(
     Raises:
         HTTPException: If shield's provider_resource_id is not configured or model not found.
     """
+    all_shields = await client.shields.list()
+
+    # Filter shields based on shield_ids parameter
+    if shield_ids is not None:
+        if len(shield_ids) == 0:
+            logger.info("shield_ids=[] provided, skipping all shields")
+            return ShieldModerationResult(blocked=False)
+
+        shields_to_run = [s for s in all_shields if s.identifier in shield_ids]
+
+        # Log warning if requested shield not found
+        requested = set(shield_ids)
+        available = {s.identifier for s in shields_to_run}
+        missing = requested - available
+        if missing:
+            logger.warning("Requested shields not found: %s", missing)
+    else:
+        shields_to_run = list(all_shields)
+
     available_models = {model.id for model in await client.models.list()}
 
-    for shield in await client.shields.list():
+    for shield in shields_to_run:
         if (
             not shield.provider_resource_id
             or shield.provider_resource_id not in available_models
