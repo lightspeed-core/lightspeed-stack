@@ -8,7 +8,7 @@ from llama_stack_client import AsyncLlamaStackClient, BadRequestError
 from llama_stack_client.types import CreateResponse
 
 import metrics
-from models.responses import NotFoundResponse
+from models.responses import NotFoundResponse, UnprocessableEntityResponse
 from utils.types import ShieldModerationResult
 
 logger = logging.getLogger(__name__)
@@ -99,6 +99,14 @@ async def run_shield_moderation(
         missing = requested - available
         if missing:
             logger.warning("Requested shields not found: %s", missing)
+
+        # Reject if no requested shields were found (prevents accidental bypass)
+        if not shields_to_run:
+            response = UnprocessableEntityResponse(
+                response="Invalid shield configuration",
+                cause=f"Requested shield_ids not found: {sorted(missing)}",
+            )
+            raise HTTPException(**response.model_dump())
     else:
         shields_to_run = list(all_shields)
 
