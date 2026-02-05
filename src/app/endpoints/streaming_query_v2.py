@@ -1,5 +1,6 @@
 """Streaming query handler using Responses API (v2)."""
 
+import asyncio
 import logging
 from typing import Annotated, Any, AsyncIterator, Optional, cast
 
@@ -75,6 +76,28 @@ from utils.types import RAGChunk, TurnSummary
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query_v1"])
 auth_dependency = get_auth_dependency()
+
+# Module-level set to maintain strong references to background tasks
+# This prevents tasks from being garbage collected before they complete
+background_tasks_set: set[asyncio.Task] = set()
+
+
+def create_background_task(coro: Any) -> None:
+    """Create a detached background task with strong reference.
+
+    Args:
+        coro: Coroutine to run as background task
+    """
+    try:
+        task = asyncio.create_task(coro)
+        background_tasks_set.add(task)
+        task.add_done_callback(background_tasks_set.discard)
+        logger.debug(
+            "Background task created, active tasks: %d", len(background_tasks_set)
+        )
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.error("Failed to create background task: %s", e, exc_info=True)
+
 
 streaming_query_v2_responses: dict[int | str, dict[str, Any]] = {
     200: StreamingQueryResponse.openapi_response(),
@@ -249,7 +272,7 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
                 error_response = InternalServerErrorResponse.query_failed(
                     "An unexpected error occurred while processing the request."
                 )
-                logger.error("Error while obtaining answer for user question")
+                logger.error("Incomplete response received during streaming")
                 yield format_stream_data(
                     {"event": "error", "data": {**error_response.detail.model_dump()}}
                 )
@@ -265,7 +288,7 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
                     else "An unexpected error occurred while processing the request."
                 )
                 error_response = InternalServerErrorResponse.query_failed(error_message)
-                logger.error("Error while obtaining answer for user question")
+                logger.error("Failed response during streaming: %s", error_message)
                 yield format_stream_data(
                     {"event": "error", "data": {**error_response.detail.model_dump()}}
                 )
@@ -297,9 +320,12 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
         referenced_documents = parse_referenced_documents_from_responses_api(
             cast(OpenAIResponseObject, latest_response_object)
         )
-        available_quotas = get_available_quotas(
-            configuration.quota_limiters, context.user_id
-        )
+        # Get available quotas if quota limiters are configured
+        available_quotas = {}
+        if configuration.quota_limiters:
+            available_quotas = get_available_quotas(
+                configuration.quota_limiters, context.user_id
+            )
         yield stream_end_event(
             context.metadata_map,
             token_usage,
@@ -308,26 +334,39 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
             media_type,
         )
 
-        # Perform cleanup tasks (database and cache operations))
-        await cleanup_after_streaming(
-            user_id=context.user_id,
-            conversation_id=conv_id,
-            model_id=context.model_id,
-            provider_id=context.provider_id,
-            llama_stack_model_id=context.llama_stack_model_id,
-            query_request=context.query_request,
-            summary=summary,
-            metadata_map=context.metadata_map,
-            started_at=context.started_at,
-            client=context.client,
-            config=configuration,
-            skip_userid_check=context.skip_userid_check,
-            get_topic_summary_func=get_topic_summary,
-            is_transcripts_enabled_func=is_transcripts_enabled,
-            store_transcript_func=store_transcript,
-            persist_user_conversation_details_func=persist_user_conversation_details,
-            rag_chunks=[rag_chunk.model_dump() for rag_chunk in rag_chunks],
-        )
+        # Perform cleanup tasks in background (database and cache operations)
+        # Use detached task to avoid database connection cancellation issues
+        async def cleanup_task() -> None:
+            """Background cleanup after streaming response is sent."""
+            # Small delay to ensure response is fully sent and MCP cleanup completes
+            await asyncio.sleep(0.5)
+            logger.debug("Background cleanup: starting after streaming")
+            try:
+                await cleanup_after_streaming(
+                    user_id=context.user_id,
+                    conversation_id=conv_id,
+                    model_id=context.model_id,
+                    provider_id=context.provider_id,
+                    llama_stack_model_id=context.llama_stack_model_id,
+                    query_request=context.query_request,
+                    summary=summary,
+                    metadata_map=context.metadata_map,
+                    started_at=context.started_at,
+                    client=context.client,
+                    config=configuration,
+                    skip_userid_check=context.skip_userid_check,
+                    get_topic_summary_func=get_topic_summary,
+                    is_transcripts_enabled_func=is_transcripts_enabled,
+                    store_transcript_func=store_transcript,
+                    persist_user_conversation_details_func=persist_user_conversation_details,
+                    rag_chunks=[rag_chunk.model_dump() for rag_chunk in rag_chunks],
+                )
+                logger.debug("Background cleanup: completed successfully")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error("Background cleanup failed: %s", e)
+
+        # Create detached background task
+        create_background_task(cleanup_task())
 
     return response_generator
 
@@ -471,6 +510,29 @@ async def retrieve_response(  # pylint: disable=too-many-locals
         "tools": toolgroups,
         "conversation": llama_stack_conv_id,
     }
+
+    # Log request details before calling Llama Stack (same as non-streaming)
+    if toolgroups:
+        rag_tool_count = sum(1 for t in toolgroups if t.get("type") == "file_search")
+        mcp_tool_count = sum(1 for t in toolgroups if t.get("type") == "mcp")
+        logger.debug(
+            "Calling Llama Stack Responses API (streaming) with %d tool(s): %d RAG + %d MCP",
+            len(toolgroups),
+            rag_tool_count,
+            mcp_tool_count,
+        )
+        # Log MCP server endpoints that may be called
+        mcp_servers = [
+            (t.get("server_label"), t.get("server_url"))
+            for t in toolgroups
+            if t.get("type") == "mcp"
+        ]
+        if mcp_servers:
+            logger.debug("MCP server endpoints that may be called:")
+            for server_name, server_url in mcp_servers:
+                logger.debug("  - %s: %s", server_name, server_url)
+    else:
+        logger.debug("Calling Llama Stack Responses API (streaming) without tools")
 
     response = await client.responses.create(**create_params)
     response_stream = cast(AsyncIterator[OpenAIResponseObjectStream], response)

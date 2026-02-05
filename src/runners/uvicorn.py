@@ -25,6 +25,8 @@ def start_uvicorn(configuration: ServiceConfiguration) -> None:
 
     # please note:
     # TLS fields can be None, which means we will pass those values as None to uvicorn.run
+    # IMPORTANT: We use "app.main:app" which loads the FastAPI app with ASGI middleware
+    # registered via add_middleware() to ensure proper ordering in the middleware stack
     uvicorn.run(
         "app.main:app",
         host=configuration.host,

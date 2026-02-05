@@ -176,6 +176,11 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
         switch_config(context.feature_config)
         restart_container("lightspeed-stack")
 
+    # Clear auth headers to prevent leakage between scenarios
+    # Context attributes persist across scenarios unless explicitly cleared
+    if hasattr(context, "auth_headers"):
+        del context.auth_headers
+
     # Restore Llama Stack connection if it was disrupted (only in server mode)
     if (
         not context.is_library_mode
@@ -260,6 +265,17 @@ def before_feature(context: Context, feature: Feature) -> None:
         switch_config(context.feature_config)
         restart_container("lightspeed-stack")
 
+    if "MCP" in feature.tags:
+        # For MCP tests, we need noop-with-token auth to support k8s token forwarding
+        # Use mode-specific configs (server vs library)
+        mode_dir = "library-mode" if context.is_library_mode else "server-mode"
+        context.feature_config = (
+            f"tests/e2e/configuration/{mode_dir}/lightspeed-stack-mcp.yaml"
+        )
+        context.default_config_backup = create_config_backup("lightspeed-stack.yaml")
+        switch_config(context.feature_config)
+        restart_container("lightspeed-stack")
+
     if "Feedback" in feature.tags:
         context.hostname = os.getenv("E2E_LSC_HOSTNAME", "localhost")
         context.port = os.getenv("E2E_LSC_PORT", "8080")
@@ -283,6 +299,11 @@ def after_feature(context: Context, feature: Feature) -> None:
         remove_config_backup(context.default_config_backup)
 
     if "RHIdentity" in feature.tags:
+        switch_config(context.default_config_backup)
+        restart_container("lightspeed-stack")
+        remove_config_backup(context.default_config_backup)
+
+    if "MCP" in feature.tags:
         switch_config(context.default_config_backup)
         restart_container("lightspeed-stack")
         remove_config_backup(context.default_config_backup)

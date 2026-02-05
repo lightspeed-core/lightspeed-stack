@@ -1,4 +1,4 @@
-# pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks
+# pylint: disable=too-many-lines,too-many-locals,too-many-branches,too-many-nested-blocks
 
 """Handler for REST API call to provide answer to query using Response API."""
 
@@ -176,6 +176,30 @@ def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-
             else (mcp_call_item.output if mcp_call_item.output else "")
         )
 
+        # Log MCP tool call
+        logger.debug(
+            "MCP tool call: %s on server '%s' (call_id: %s)",
+            mcp_call_item.name,
+            mcp_call_item.server_label,
+            mcp_call_item.id,
+        )
+        logger.debug("  Arguments keys: %s", list(args.keys()) if args else [])
+
+        # Log MCP tool result
+        if mcp_call_item.error:
+            logger.warning(
+                "MCP tool result: %s FAILED - %s",
+                mcp_call_item.name,
+                mcp_call_item.error,
+            )
+        else:
+            logger.debug(
+                "MCP tool result: %s SUCCESS (output length: %d)",
+                mcp_call_item.name,
+                len(content),
+            )
+            logger.debug("  Output preview: <redacted> (%d chars)", len(content))
+
         return ToolCallSummary(
             id=mcp_call_item.id,
             name=mcp_call_item.name,
@@ -199,6 +223,18 @@ def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-
             }
             for tool in mcp_list_tools_item.tools
         ]
+
+        # Log MCP list_tools call
+        logger.debug(
+            "MCP server '%s' listed %d available tool(s)",
+            mcp_list_tools_item.server_label,
+            len(mcp_list_tools_item.tools),
+        )
+        logger.debug(
+            "  Tools: %s",
+            ", ".join(tool.name for tool in mcp_list_tools_item.tools),
+        )
+
         content_dict = {
             "server_label": mcp_list_tools_item.server_label,
             "tools": tools_info,
@@ -222,6 +258,15 @@ def _build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-
     if item_type == "mcp_approval_request":
         approval_request_item = cast(OpenAIResponseMCPApprovalRequest, output_item)
         args = parse_arguments_string(approval_request_item.arguments)
+
+        # Log MCP approval request
+        logger.debug(
+            "MCP approval requested: tool '%s' on server '%s'",
+            approval_request_item.name,
+            approval_request_item.server_label,
+        )
+        logger.debug("  Arguments: %s", args)
+
         return (
             ToolCallSummary(
                 id=approval_request_item.id,
@@ -430,6 +475,29 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         "store": True,
         "conversation": llama_stack_conv_id,
     }
+
+    # Log request details before calling Llama Stack
+    if toolgroups:
+        rag_tool_count = sum(1 for t in toolgroups if t.get("type") == "file_search")
+        mcp_tool_count = sum(1 for t in toolgroups if t.get("type") == "mcp")
+        logger.debug(
+            "Calling Llama Stack Responses API with %d tool(s): %d RAG + %d MCP",
+            len(toolgroups),
+            rag_tool_count,
+            mcp_tool_count,
+        )
+        # Log MCP server endpoints that may be called
+        mcp_servers = [
+            (t.get("server_label"), t.get("server_url"))
+            for t in toolgroups
+            if t.get("type") == "mcp"
+        ]
+        if mcp_servers:
+            logger.debug("MCP server endpoints that may be called:")
+            for server_name, server_url in mcp_servers:
+                logger.debug("  - %s: %s", server_name, server_url)
+    else:
+        logger.debug("Calling Llama Stack Responses API without tools")
 
     response = await client.responses.create(**create_kwargs)
     response = cast(OpenAIResponseObject, response)
@@ -742,6 +810,9 @@ def get_mcp_tools(
     2. Use user specific k8s token, which will work for the majority of kubernetes
        based MCP servers
     3. Use user specific tokens (passed by the client) for user specific MCP headers
+
+    Note: Starting with llama_stack 0.4.x, the Authorization header must be passed
+    via the 'authorization' parameter instead of in the 'headers' dict.
     """
 
     def _get_token_value(original: str, header: str) -> str | None:
@@ -774,32 +845,94 @@ def get_mcp_tools(
             "require_approval": "never",
         }
 
-        # Build headers
+        # Log header resolution process
+        if mcp_server.authorization_headers:
+            logger.debug(
+                "MCP server '%s': Resolving %d authorization header(s)",
+                mcp_server.name,
+                len(mcp_server.authorization_headers),
+            )
+
+        # Build headers and separate Authorization header
         headers = {}
+        authorization = None
         for name, value in mcp_server.resolved_authorization_headers.items():
             # for each defined header
             h_value = _get_token_value(value, name)
             # only add the header if we got value
             if h_value is not None:
-                headers[name] = h_value
+                # Log successful resolution - determine auth type for logging
+                match value:
+                    case _ if value == constants.MCP_AUTH_KUBERNETES:
+                        auth_type = "kubernetes"
+                    case _ if value == constants.MCP_AUTH_CLIENT:
+                        auth_type = "client"
+                    case _:
+                        auth_type = "static"
+
+                logger.debug(
+                    "MCP server '%s': Header '%s' -> type: %s (resolved)",
+                    mcp_server.name,
+                    name,
+                    auth_type,
+                )
+                # Special handling for Authorization header (llama_stack 0.4.x+)
+                if name.lower() == "authorization":
+                    authorization = h_value
+                else:
+                    headers[name] = h_value
+            else:
+                # Log failed resolution
+                logger.debug(
+                    "MCP server '%s': Header '%s' -> FAILED to resolve (value was: %s)",
+                    mcp_server.name,
+                    name,
+                    value,
+                )
 
         # Skip server if auth headers were configured but not all could be resolved
-        if mcp_server.authorization_headers and len(headers) != len(
-            mcp_server.authorization_headers
+        resolved_count = len(headers) + (1 if authorization is not None else 0)
+        if mcp_server.resolved_authorization_headers and resolved_count != len(
+            mcp_server.resolved_authorization_headers
         ):
-            logger.warning(
-                "Skipping MCP server %s: required %d auth headers but only resolved %d",
+            required_headers = list(mcp_server.authorization_headers.keys())
+            resolved_headers = list(headers.keys())
+            if authorization is not None:
+                resolved_headers.append("Authorization")
+            missing_headers = [h for h in required_headers if h not in resolved_headers]
+
+            logger.debug(
+                "MCP server '%s' SKIPPED - incomplete auth: "
+                "Required: %s | Resolved: %s | Missing: %s (resolved_count=%d, expected=%d)",
                 mcp_server.name,
-                len(mcp_server.authorization_headers),
-                len(headers),
+                ", ".join(required_headers),
+                ", ".join(resolved_headers) if resolved_headers else "none",
+                ", ".join(missing_headers) if missing_headers else "none",
+                resolved_count,
+                len(mcp_server.resolved_authorization_headers),
             )
             continue
 
+        # Add authorization parameter if we have an Authorization header
+        if authorization is not None:
+            tool_def["authorization"] = authorization  # type: ignore[index]
+
+        # Add other headers if present
         if len(headers) > 0:
-            # add headers to tool definition
             tool_def["headers"] = headers  # type: ignore[index]
+
+        # Log successful tool creation
+        logger.debug(
+            "MCP server '%s': Tool ADDED (authorization: %s, headers: %d)",
+            mcp_server.name,
+            "SET" if authorization is not None else "NOT SET",
+            len(headers),
+        )
+
         # collect tools info
         tools.append(tool_def)
+
+    logger.debug("get_mcp_tools: Returning %d tool(s)", len(tools))
     return tools
 
 
@@ -828,31 +961,73 @@ async def prepare_tools_for_responses_api(
         Responses API, or None if no_tools is True or no tools are available
     """
     if query_request.no_tools:
+        logger.debug("Tools disabled for this request (no_tools=True)")
         return None
 
     toolgroups = []
     # Get vector stores for RAG tools - use specified ones or fetch all
     if query_request.vector_store_ids:
         vector_store_ids = query_request.vector_store_ids
+        logger.debug(
+            "Using %d specified vector store(s): %s",
+            len(vector_store_ids),
+            vector_store_ids,
+        )
     else:
         vector_store_ids = [
             vector_store.id for vector_store in (await client.vector_stores.list()).data
         ]
+        logger.debug("Retrieved %d available vector store(s)", len(vector_store_ids))
 
     # Add RAG tools if vector stores are available
     rag_tools = get_rag_tools(vector_store_ids)
     if rag_tools:
         toolgroups.extend(rag_tools)
+        logger.debug(
+            "Added %d RAG tool(s) for vector stores: %s",
+            len(rag_tools),
+            vector_store_ids,
+        )
 
     # Add MCP server tools
     mcp_tools = get_mcp_tools(config.mcp_servers, token, mcp_headers)
     if mcp_tools:
         toolgroups.extend(mcp_tools)
-        logger.debug(
-            "Configured %d MCP tools: %s",
+        mcp_server_names = [tool.get("server_label", "unknown") for tool in mcp_tools]
+        logger.info(
+            "Prepared %d MCP tool(s) for request: %s",
             len(mcp_tools),
-            [tool.get("server_label", "unknown") for tool in mcp_tools],
+            ", ".join(mcp_server_names),
         )
+        # Debug: Show full tool definitions
+        for tool in mcp_tools:
+            logger.debug(
+                "  MCP tool: %s at %s (auth: %s, headers: %d)",
+                tool.get("server_label"),
+                tool.get("server_url"),
+                "yes" if "authorization" in tool else "no",
+                len(tool.get("headers", {})),
+            )
+    else:
+        if config.mcp_servers:
+            logger.warning(
+                "No MCP tools prepared (all %d configured servers were skipped)",
+                len(config.mcp_servers),
+            )
+        else:
+            logger.debug("No MCP servers configured")
+
+    # Summary log
+    if toolgroups:
+        logger.info(
+            "Prepared %d total tool(s) for Responses API: %d RAG + %d MCP",
+            len(toolgroups),
+            len(rag_tools) if rag_tools else 0,
+            len(mcp_tools) if mcp_tools else 0,
+        )
+    else:
+        logger.debug("No tools available for this request")
+
     # Convert empty list to None for consistency with existing behavior
     if not toolgroups:
         return None

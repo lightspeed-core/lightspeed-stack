@@ -113,7 +113,11 @@ def initialize_conversation_with_user_id(context: Context, user_id: str) -> None
 def create_conversation_with_user_id(
     context: Context, user_id: Optional[str] = None
 ) -> None:
-    """Create a conversation, optionally with a specific user_id query parameter."""
+    """Create a conversation, optionally with a specific user_id query parameter.
+
+    After creating the conversation, polls to ensure it's persisted to the database
+    before proceeding. This handles the asynchronous background persistence.
+    """
     endpoint = "query"
     base = f"http://{context.hostname}:{context.port}"
     path = f"{context.api_prefix}/{endpoint}".replace("//", "/")
@@ -138,6 +142,23 @@ def create_conversation_with_user_id(
     assert context.conversation_id, "Conversation was not created."
     context.feedback_conversations.append(context.conversation_id)
     context.response = response
+
+    # Poll to ensure conversation is persisted before proceeding with feedback
+    # Feedback endpoint validates conversation exists in DB, so we must wait
+    # Import here to avoid circular dependency
+    from tests.e2e.features.steps.conversation import poll_for_conversation
+
+    # Build path separately to avoid collapsing http:// to http:/
+    path = f"{context.api_prefix}/conversations/{context.conversation_id}".replace(
+        "//", "/"
+    )
+    conversation_url = base + path
+    poll_response = poll_for_conversation(conversation_url, headers)
+    if poll_response.status_code != 200:
+        print(
+            f"⚠️  Warning: Conversation {context.conversation_id} not found after creation "
+            f"(status: {poll_response.status_code})"
+        )
 
 
 @given("An invalid feedback storage path is configured")  # type: ignore

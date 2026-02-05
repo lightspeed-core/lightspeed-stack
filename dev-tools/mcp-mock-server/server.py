@@ -60,7 +60,11 @@ class MCPMockHandler(BaseHTTPRequestHandler):
         if len(request_log) > 10:
             request_log.pop(0)
 
-    def do_POST(self) -> None:  # pylint: disable=invalid-name
+    def do_POST(
+        self,
+    ) -> (
+        None
+    ):  # pylint: disable=invalid-name,too-many-locals,too-many-branches,too-many-statements
         """Handle POST requests (MCP protocol endpoints)."""
         self._capture_headers()
 
@@ -73,14 +77,24 @@ class MCPMockHandler(BaseHTTPRequestHandler):
             request_id = request_data.get("id", 1)
             method = request_data.get("method", "unknown")
         except (json.JSONDecodeError, UnicodeDecodeError):
+            request_data = {}
             request_id = 1
             method = "unknown"
+
+        # Log the RPC method in the request log
+        if request_log:
+            request_log[-1]["rpc_method"] = method
 
         # Determine tool name based on authorization header to avoid collisions
         auth_header = self.headers.get("Authorization", "")
 
+        # Initialize tool info defaults
+        tool_name = "mock_tool_no_auth"
+        tool_desc = "Mock tool with no authorization"
+        error_mode = False
+
         # Match based on token content
-        match auth_header:
+        match True:
             case _ if "test-secret-token" in auth_header:
                 tool_name = "mock_tool_file"
                 tool_desc = "Mock tool with file-based auth"
@@ -90,58 +104,116 @@ class MCPMockHandler(BaseHTTPRequestHandler):
             case _ if "my-client-token" in auth_header:
                 tool_name = "mock_tool_client"
                 tool_desc = "Mock tool with client-provided token"
+            case _ if "error-mode" in auth_header:
+                tool_name = "mock_tool_error"
+                tool_desc = "Mock tool configured to return errors"
+                error_mode = True
             case _:
-                # No auth header or unrecognized token
-                tool_name = "mock_tool_no_auth"
-                tool_desc = "Mock tool with no authorization"
+                # Default case already set above
+                pass
 
-        # Handle MCP protocol methods
-        if method == "initialize":
-            # Return MCP initialize response
-            response = {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {
-                        "tools": {},
+        # Log the tool name in the request log
+        if request_log:
+            request_log[-1]["tool_name"] = tool_name
+
+        # Handle MCP protocol methods using match statement
+        response: dict = {}
+        match method:
+            case "initialize":
+                # Return MCP initialize response
+                response = {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "result": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {
+                            "tools": {},
+                        },
+                        "serverInfo": {
+                            "name": "mock-mcp-server",
+                            "version": "1.0.0",
+                        },
                     },
-                    "serverInfo": {
-                        "name": "mock-mcp-server",
-                        "version": "1.0.0",
-                    },
-                },
-            }
-        elif method == "tools/list":
-            # Return list of tools with unique name
-            response = {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "tools": [
-                        {
-                            "name": tool_name,
-                            "description": tool_desc,
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {
-                                    "message": {
-                                        "type": "string",
-                                        "description": "Test message",
-                                    }
+                }
+
+            case "tools/list":
+                # Return list of tools with unique name
+                response = {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "result": {
+                        "tools": [
+                            {
+                                "name": tool_name,
+                                "description": tool_desc,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Test message",
+                                        }
+                                    },
                                 },
-                            },
-                        }
-                    ]
-                },
-            }
-        else:
-            # Generic success response for other methods
-            response = {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {"status": "ok"},
-            }
+                            }
+                        ]
+                    },
+                }
+
+            case "tools/call":
+                # Handle tool execution
+                params = request_data.get("params", {})
+                tool_called = params.get("name", "unknown")
+                arguments = params.get("arguments", {})
+
+                # Check if error mode is enabled
+                if error_mode:
+                    # Return error response
+                    response = {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": (
+                                        f"Error: Tool '{tool_called}' "
+                                        "execution failed - simulated error."
+                                    ),
+                                }
+                            ],
+                            "isError": True,
+                        },
+                    }
+                else:
+                    # Build result text
+                    result_text = (
+                        f"Mock tool '{tool_called}' executed successfully "
+                        f"with arguments: {arguments}."
+                    )
+
+                    # Return successful tool execution result
+                    response = {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": result_text,
+                                }
+                            ],
+                            "isError": False,
+                        },
+                    }
+
+            case _:
+                # Generic success response for other methods
+                response = {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "result": {"status": "ok"},
+                }
 
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
@@ -160,6 +232,11 @@ class MCPMockHandler(BaseHTTPRequestHandler):
                 )
             case "/debug/requests":
                 self._send_json_response(request_log)
+            case "/debug/clear":
+                # Clear the request log and last captured headers
+                request_log.clear()
+                last_headers.clear()
+                self._send_json_response({"status": "cleared", "request_count": 0})
             case "/":
                 self._send_help_page()
             case _:
@@ -273,10 +350,10 @@ def main() -> None:
     https_port = http_port + 1
 
     # Create HTTP server
-    http_server = HTTPServer(("", http_port), MCPMockHandler)
+    http_server = HTTPServer(("", http_port), MCPMockHandler)  # type: ignore[arg-type]
 
     # Create HTTPS server with self-signed certificate
-    https_server = HTTPServer(("", https_port), MCPMockHandler)
+    https_server = HTTPServer(("", https_port), MCPMockHandler)  # type: ignore[arg-type]
 
     # Generate or load self-signed certificate
     script_dir = Path(__file__).parent
