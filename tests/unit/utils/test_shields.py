@@ -312,6 +312,75 @@ class TestRunShieldModeration:
         assert result.shield_model == "moderation-model"
         mock_metric.inc.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_shield_ids_empty_list_skips_all_shields(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that shield_ids=[] explicitly skips all shields (intentional bypass)."""
+        mock_client = mocker.Mock()
+        shield = mocker.Mock()
+        shield.identifier = "shield-1"
+        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
+
+        result = await run_shield_moderation(mock_client, "test input", shield_ids=[])
+
+        assert result.blocked is False
+        mock_client.shields.list.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_shield_ids_raises_exception_when_no_shields_found(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test shield_ids raises HTTPException when no requested shields exist."""
+        mock_client = mocker.Mock()
+        shield = mocker.Mock()
+        shield.identifier = "shield-1"
+        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
+
+        with pytest.raises(HTTPException) as exc_info:
+            await run_shield_moderation(
+                mock_client, "test input", shield_ids=["typo-shield"]
+            )
+
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert "Invalid shield configuration" in exc_info.value.detail["response"]  # type: ignore
+        assert "typo-shield" in exc_info.value.detail["cause"]  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_shield_ids_filters_to_specific_shield(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that shield_ids filters to only specified shields."""
+        mock_client = mocker.Mock()
+
+        shield1 = mocker.Mock()
+        shield1.identifier = "shield-1"
+        shield1.provider_resource_id = "model-1"
+        shield2 = mocker.Mock()
+        shield2.identifier = "shield-2"
+        shield2.provider_resource_id = "model-2"
+        mock_client.shields.list = mocker.AsyncMock(return_value=[shield1, shield2])
+
+        model1 = mocker.Mock()
+        model1.id = "model-1"
+        mock_client.models.list = mocker.AsyncMock(return_value=[model1])
+
+        moderation_result = mocker.Mock()
+        moderation_result.results = [mocker.Mock(flagged=False)]
+        mock_client.moderations.create = mocker.AsyncMock(
+            return_value=moderation_result
+        )
+
+        result = await run_shield_moderation(
+            mock_client, "test input", shield_ids=["shield-1"]
+        )
+
+        assert result.blocked is False
+        assert mock_client.moderations.create.call_count == 1
+        mock_client.moderations.create.assert_called_with(
+            input="test input", model="model-1"
+        )
+
 
 class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
     """Tests for append_turn_to_conversation function."""
