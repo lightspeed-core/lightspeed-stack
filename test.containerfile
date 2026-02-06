@@ -1,4 +1,3 @@
-# Upstream llama-stack built from Red Hat UBI
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 
 USER root
