@@ -74,6 +74,7 @@ async def create_violation_stream(
         model=shield_model or "shield",
         output=[],
         status="in_progress",
+        store=False,
     )
     yield OpenAIResponseObjectStreamResponseCreated(response=response_obj)
 
