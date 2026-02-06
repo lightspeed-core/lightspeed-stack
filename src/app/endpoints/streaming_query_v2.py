@@ -1,7 +1,9 @@
 """Streaming query handler using Responses API (v2)."""
 
 import logging
+import traceback
 from typing import Annotated, Any, AsyncIterator, Optional, cast
+from urllib.parse import urljoin
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
@@ -14,7 +16,7 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseObjectStreamResponseOutputTextDelta,
     OpenAIResponseObjectStreamResponseOutputTextDone,
 )
-from llama_stack_client import AsyncLlamaStackClient
+from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
 from app.endpoints.query import (
     is_transcripts_enabled,
@@ -42,7 +44,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from configuration import configuration
-from constants import MEDIA_TYPE_JSON
+from constants import MEDIA_TYPE_JSON, MIMIR_DOC_URL
 from models.config import Action
 from models.context import ResponseGeneratorContext
 from models.requests import QueryRequest
@@ -51,6 +53,7 @@ from models.responses import (
     InternalServerErrorResponse,
     NotFoundResponse,
     QuotaExceededResponse,
+    ReferencedDocument,
     ServiceUnavailableResponse,
     StreamingQueryResponse,
     UnauthorizedResponse,
@@ -97,6 +100,7 @@ streaming_query_v2_responses: dict[int | str, dict[str, Any]] = {
 
 def create_responses_response_generator(  # pylint: disable=too-many-locals,too-many-statements
     context: ResponseGeneratorContext,
+    doc_ids_from_chunks: Optional[list[ReferencedDocument]] = None,
 ) -> Any:
     """
     Create a response generator function for Responses API streaming.
@@ -106,6 +110,7 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
 
     Args:
         context: Context object containing all necessary parameters for response generation
+        doc_ids_from_chunks: Referenced documents extracted from vector DB chunks
 
     Returns:
         An async generator function that yields SSE-formatted strings
@@ -294,9 +299,13 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
             model_id=context.model_id,
             provider_id=context.provider_id,
         )
-        referenced_documents = parse_referenced_documents_from_responses_api(
+        response_referenced_documents = parse_referenced_documents_from_responses_api(
             cast(OpenAIResponseObject, latest_response_object)
         )
+        # Combine doc_ids_from_chunks with response_referenced_documents
+        all_referenced_documents = (
+            doc_ids_from_chunks or []
+        ) + response_referenced_documents
         available_quotas = get_available_quotas(
             configuration.quota_limiters, context.user_id
         )
@@ -304,7 +313,7 @@ def create_responses_response_generator(  # pylint: disable=too-many-locals,too-
             context.metadata_map,
             token_usage,
             available_quotas,
-            referenced_documents,
+            all_referenced_documents,
             media_type,
         )
 
@@ -382,7 +391,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     query_request: QueryRequest,
     token: str,
     mcp_headers: Optional[dict[str, dict[str, str]]] = None,
-) -> tuple[AsyncIterator[OpenAIResponseObjectStream], str]:
+) -> tuple[AsyncIterator[OpenAIResponseObjectStream], str, list[ReferencedDocument]]:
     """
     Retrieve response from LLMs and agents.
 
@@ -403,8 +412,8 @@ async def retrieve_response(  # pylint: disable=too-many-locals
         Multi-cluster proxy headers for tool integrations.
 
     Returns:
-        tuple: A tuple containing the streaming response object
-        and the conversation ID.
+        tuple: A tuple containing the streaming response object,
+        the conversation ID, and the list of referenced documents from vector DB chunks.
     """
     # use system prompt from request or default one
     system_prompt = get_system_prompt(query_request, configuration)
@@ -415,10 +424,179 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
 
-    # Prepare tools for responses API
+    # Prepare tools for responses API - skip RAG tools since we're doing direct vector query
     toolgroups = await prepare_tools_for_responses_api(
-        client, query_request, token, configuration, mcp_headers
+        client,
+        query_request,
+        token,
+        configuration,
+        mcp_headers=mcp_headers,
+        skip_rag_tools=True,
     )
+
+    # Extract RAG chunks from vector DB query response BEFORE calling responses API
+    rag_chunks = []
+    doc_ids_from_chunks = []
+    retrieved_chunks = []
+    retrieved_scores = []
+
+    # When offline is False, use reference_url for chunk source
+    # When offline is True, use parent_id for chunk source
+    # TODO: move this setting to a higher level configuration
+    offline = True
+
+    try:
+        # Get vector stores for direct querying
+        if query_request.vector_store_ids:
+            vector_store_ids = query_request.vector_store_ids
+            logger.info(
+                "Using specified vector_store_ids for direct query: %s",
+                vector_store_ids,
+            )
+        else:
+            vector_store_ids = [
+                vector_store.id
+                for vector_store in (await client.vector_stores.list()).data
+            ]
+            logger.info(
+                "Using all available vector_store_ids for direct query: %s",
+                vector_store_ids,
+            )
+
+        if vector_store_ids:
+            vector_store_id = vector_store_ids[0]  # Use first available vector store
+
+            params = {"k": 5, "score_threshold": 0.0, "mode": "hybrid"}
+            logger.info("Initial params: %s", params)
+            logger.info("query_request.solr: %s", query_request.solr)
+            if query_request.solr:
+                # Pass the entire solr dict under the 'solr' key
+                params["solr"] = query_request.solr
+                logger.info("Final params with solr filters: %s", params)
+            else:
+                logger.info("No solr filters provided")
+            logger.info("Final params being sent to vector_io.query: %s", params)
+
+            query_response = await client.vector_io.query(
+                vector_store_id=vector_store_id,
+                query=query_request.query,
+                params=params,
+            )
+
+            logger.info("The query response total payload: %s", query_response)
+
+            if query_response.chunks:
+                retrieved_chunks = query_response.chunks
+                retrieved_scores = (
+                    query_response.scores if hasattr(query_response, "scores") else []
+                )
+
+                # Extract doc_ids from chunks for referenced_documents
+            metadata_doc_ids = set()
+
+            for chunk in query_response.chunks:
+                logger.info("Extract doc ids from chunk: %s", chunk)
+
+                # 1) dict metadata
+                md = getattr(chunk, "metadata", None) or {}
+                doc_id = md.get("doc_id") or md.get("document_id")
+                title = md.get("title")
+
+                # 2) typed chunk_metadata
+                if not doc_id:
+                    cm = getattr(chunk, "chunk_metadata", None)
+                    if cm is not None:
+                        # cm might be a pydantic model or a dict depending on caller
+                        if isinstance(cm, dict):
+                            doc_id = cm.get("doc_id") or cm.get("document_id")
+                            title = title or cm.get("title")
+                            reference_url = cm.get("reference_url")
+                        else:
+                            doc_id = getattr(cm, "doc_id", None) or getattr(
+                                cm, "document_id", None
+                            )
+                            title = title or getattr(cm, "title", None)
+                            reference_url = getattr(cm, "reference_url", None)
+                    else:
+                        reference_url = None
+                else:
+                    reference_url = md.get("reference_url")
+
+                if not doc_id and not reference_url:
+                    continue
+
+                # Build URL based on offline flag
+                if offline:
+                    # Use parent/doc path
+                    reference_doc = doc_id
+                    doc_url = MIMIR_DOC_URL + reference_doc
+                else:
+                    # Use reference_url if online
+                    reference_doc = reference_url or doc_id
+                    doc_url = (
+                        reference_doc
+                        if reference_doc.startswith("http")
+                        else (MIMIR_DOC_URL + reference_doc)
+                    )
+
+                if reference_doc and reference_doc not in metadata_doc_ids:
+                    metadata_doc_ids.add(reference_doc)
+                    doc_ids_from_chunks.append(
+                        ReferencedDocument(
+                            doc_title=title,
+                            doc_url=doc_url,
+                        )
+                    )
+
+            logger.info(
+                "Extracted %d unique document IDs from chunks", len(doc_ids_from_chunks)
+            )
+
+    except (
+        APIConnectionError,
+        APIStatusError,
+        AttributeError,
+        KeyError,
+        ValueError,
+    ) as e:
+        logger.warning("Failed to query vector database for chunks: %s", e)
+        logger.debug("Vector DB query error details: %s", traceback.format_exc())
+        # Continue without RAG chunks
+
+    # Convert retrieved chunks to RAGChunk format
+    for i, chunk in enumerate(retrieved_chunks):
+        # Extract source from chunk metadata based on offline flag
+        source = None
+        if chunk.metadata:
+            if offline:
+                parent_id = chunk.metadata.get("parent_id")
+                if parent_id:
+                    source = urljoin(MIMIR_DOC_URL, parent_id)
+            else:
+                source = chunk.metadata.get("reference_url")
+
+        # Get score from retrieved_scores list if available
+        score = retrieved_scores[i] if i < len(retrieved_scores) else None
+
+        rag_chunks.append(
+            RAGChunk(
+                content=chunk.content,
+                source=source,
+                score=score,
+            )
+        )
+
+    logger.info("Retrieved %d chunks from vector DB", len(rag_chunks))
+
+    # Format RAG context for injection into user message
+    rag_context = ""
+    if rag_chunks:
+        context_chunks = []
+        for chunk in rag_chunks[:5]:  # Limit to top 5 chunks
+            chunk_text = f"Source: {chunk.source or 'Unknown'}\n{chunk.content}"
+            context_chunks.append(chunk_text)
+        rag_context = "\n\nRelevant documentation:\n" + "\n\n".join(context_chunks)
+        logger.info("Injecting %d RAG chunks into user message", len(context_chunks))
 
     # Prepare input for Responses API
     # Convert attachments to text and concatenate with query
@@ -429,6 +607,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals
                 f"\n\n[Attachment: {attachment.attachment_type}]\n"
                 f"{attachment.content}"
             )
+
+    # Add RAG context to input text
+    input_text += rag_context
 
     # Handle conversation ID for Responses API
     # Create conversation upfront if not provided
@@ -475,4 +656,8 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     response = await client.responses.create(**create_params)
     response_stream = cast(AsyncIterator[OpenAIResponseObjectStream], response)
 
-    return response_stream, normalize_conversation_id(conversation_id)
+    return (
+        response_stream,
+        normalize_conversation_id(conversation_id),
+        doc_ids_from_chunks,
+    )

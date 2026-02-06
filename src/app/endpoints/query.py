@@ -56,6 +56,11 @@ logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
 
 
+# When OFFLINE is False, use reference_url for chunk source
+# When OFFLINE is True, use parent_id for chunk source
+# TODO: move this setting to a higher level configuration
+OFFLINE = True
+
 query_response: dict[int | str, dict[str, Any]] = {
     200: QueryResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(
@@ -420,9 +425,9 @@ async def query_endpoint_handler_base(  # pylint: disable=R0914
         response = QueryResponse(
             conversation_id=conversation_id,
             response=summary.llm_response,
-            tool_calls=summary.tool_calls,
-            tool_results=summary.tool_results,
-            rag_chunks=summary.rag_chunks,
+            rag_chunks=rag_chunks_dict,
+            tool_calls=summary.tool_calls if summary.tool_calls else [],
+            tool_results=summary.tool_results if summary.tool_results else [],
             referenced_documents=referenced_documents,
             truncated=False,  # TODO: implement truncation detection
             input_tokens=token_usage.input_tokens,

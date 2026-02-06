@@ -59,7 +59,6 @@ from utils.types import content_to_str
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["streaming_query"])
 
-
 streaming_query_responses: dict[int | str, dict[str, Any]] = {
     200: StreamingQueryResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(
@@ -662,6 +661,7 @@ async def streaming_query_endpoint_handler_base(  # pylint: disable=too-many-loc
             token,
             mcp_headers=mcp_headers,
         )
+
         metadata_map: dict[str, dict[str, Any]] = {}
 
         # Create context object for response generator

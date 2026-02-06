@@ -4,9 +4,12 @@
 
 import json
 import logging
+import traceback
 from typing import Annotated, Any, Optional, cast
+from urllib.parse import urljoin
 
 from fastapi import APIRouter, Depends, Request
+from llama_stack_client import APIConnectionError, APIStatusError
 from llama_stack_api.openai_responses import (
     OpenAIResponseMCPApprovalRequest,
     OpenAIResponseMCPApprovalResponse,
@@ -30,7 +33,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from configuration import AppConfig, configuration
-from constants import DEFAULT_RAG_TOOL
+from constants import DEFAULT_RAG_TOOL, MIMIR_DOC_URL
 from models.config import Action, ModelContextProtocolServer
 from models.requests import QueryRequest
 from models.responses import (
@@ -364,9 +367,14 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
 
-    # Prepare tools for responses API
+    # Prepare tools for responses API - skip RAG tools since we're doing direct vector query
     toolgroups = await prepare_tools_for_responses_api(
-        client, query_request, token, configuration, mcp_headers
+        client,
+        query_request,
+        token,
+        configuration,
+        mcp_headers=mcp_headers,
+        skip_rag_tools=True,
     )
 
     # Prepare input for Responses API
@@ -420,6 +428,174 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
             TokenCounter(),
         )
 
+    # Extract RAG chunks from vector DB query response BEFORE calling responses API
+    rag_chunks = []
+    doc_ids_from_chunks = []
+    retrieved_chunks = []
+    retrieved_scores = []
+
+    # When offline is False, use reference_url for chunk source
+    # When offline is True, use parent_id for chunk source
+    # TODO: move this setting to a higher level configuration
+    offline = True
+
+    try:
+        # Get vector stores for direct querying
+        if query_request.vector_store_ids:
+            vector_store_ids = query_request.vector_store_ids
+            logger.info(
+                "Using specified vector_store_ids for direct query: %s",
+                vector_store_ids,
+            )
+        else:
+            vector_store_ids = [
+                vector_store.id
+                for vector_store in (await client.vector_stores.list()).data
+            ]
+            logger.info(
+                "Using all available vector_store_ids for direct query: %s",
+                vector_store_ids,
+            )
+
+        if vector_store_ids:
+            vector_store_id = vector_store_ids[0]  # Use first available vector store
+
+            params = {"k": 5, "score_threshold": 0.0, "mode": "hybrid"}
+            logger.info("Initial params: %s", params)
+            logger.info("query_request.solr: %s", query_request.solr)
+            if query_request.solr:
+                # Pass the entire solr dict under the 'solr' key
+                params["solr"] = query_request.solr
+                logger.info("Final params with solr filters: %s", params)
+            else:
+                logger.info("No solr filters provided")
+            logger.info("Final params being sent to vector_io.query: %s", params)
+
+            query_response = await client.vector_io.query(
+                vector_store_id=vector_store_id,
+                query=query_request.query,
+                params=params,
+            )
+
+            logger.info("The query response total payload: %s", query_response)
+
+            if query_response.chunks:
+                retrieved_chunks = query_response.chunks
+                retrieved_scores = (
+                    query_response.scores if hasattr(query_response, "scores") else []
+                )
+
+                # Extract doc_ids from chunks for referenced_documents
+            metadata_doc_ids = set()
+
+            for chunk in query_response.chunks:
+                logger.info("Extract doc ids from chunk: %s", chunk)
+
+                # 1) dict metadata (what your code expects today)
+                md = getattr(chunk, "metadata", None) or {}
+                doc_id = md.get("doc_id") or md.get("document_id")
+                title = md.get("title")
+
+                # 2) typed chunk_metadata (what your provider/logs are actually populating)
+                if not doc_id:
+                    cm = getattr(chunk, "chunk_metadata", None)
+                    if cm is not None:
+                        # cm might be a pydantic model or a dict depending on caller
+                        if isinstance(cm, dict):
+                            doc_id = cm.get("doc_id") or cm.get("document_id")
+                            title = title or cm.get("title")
+                            reference_url = cm.get("reference_url")
+                        else:
+                            doc_id = getattr(cm, "doc_id", None) or getattr(
+                                cm, "document_id", None
+                            )
+                            title = title or getattr(cm, "title", None)
+                            reference_url = getattr(cm, "reference_url", None)
+                    else:
+                        reference_url = None
+                else:
+                    reference_url = md.get("reference_url")
+
+                if not doc_id and not reference_url:
+                    continue
+
+                # Build URL based on offline flag
+                if offline:
+                    # Use parent/doc path
+                    reference_doc = doc_id
+                    doc_url = MIMIR_DOC_URL + reference_doc
+                else:
+                    # Use reference_url if online
+                    reference_doc = reference_url or doc_id
+                    doc_url = (
+                        reference_doc
+                        if reference_doc.startswith("http")
+                        else (MIMIR_DOC_URL + reference_doc)
+                    )
+
+                if reference_doc and reference_doc not in metadata_doc_ids:
+                    metadata_doc_ids.add(reference_doc)
+                    doc_ids_from_chunks.append(
+                        ReferencedDocument(
+                            doc_title=title,
+                            doc_url=doc_url,
+                        )
+                    )
+
+            logger.info(
+                "Extracted %d unique document IDs from chunks", len(doc_ids_from_chunks)
+            )
+
+    except (
+        APIConnectionError,
+        APIStatusError,
+        AttributeError,
+        KeyError,
+        ValueError,
+    ) as e:
+        logger.warning("Failed to query vector database for chunks: %s", e)
+        logger.debug("Vector DB query error details: %s", traceback.format_exc())
+        # Continue without RAG chunks
+
+    # Convert retrieved chunks to RAGChunk format
+    for i, chunk in enumerate(retrieved_chunks):
+        # Extract source from chunk metadata based on offline flag
+        source = None
+        if chunk.metadata:
+            if offline:
+                parent_id = chunk.metadata.get("parent_id")
+                if parent_id:
+                    source = urljoin(MIMIR_DOC_URL, parent_id)
+            else:
+                source = chunk.metadata.get("reference_url")
+
+        # Get score from retrieved_scores list if available
+        score = retrieved_scores[i] if i < len(retrieved_scores) else None
+
+        rag_chunks.append(
+            RAGChunk(
+                content=chunk.content,
+                source=source,
+                score=score,
+            )
+        )
+
+    logger.info("Retrieved %d chunks from vector DB", len(rag_chunks))
+
+    # Format RAG context for injection into user message
+    rag_context = ""
+    if rag_chunks:
+        context_chunks = []
+        for chunk in rag_chunks[:5]:  # Limit to top 5 chunks
+            chunk_text = f"Source: {chunk.source or 'Unknown'}\n{chunk.content}"
+            context_chunks.append(chunk_text)
+        rag_context = "\n\nRelevant documentation:\n" + "\n\n".join(context_chunks)
+        logger.info("Injecting %d RAG chunks into user message", len(context_chunks))
+
+    # Inject RAG context into input text
+    if rag_context:
+        input_text = input_text + rag_context
+
     # Create OpenAI response using responses API
     create_kwargs: dict[str, Any] = {
         "input": input_text,
@@ -444,17 +620,28 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     llm_response = ""
     tool_calls: list[ToolCallSummary] = []
     tool_results: list[ToolResultSummary] = []
-    rag_chunks: list[RAGChunk] = []
+    response_api_rag_chunks: list[RAGChunk] = []
     for output_item in response.output:
         message_text = extract_text_from_response_output_item(output_item)
         if message_text:
             llm_response += message_text
 
-        tool_call, tool_result = _build_tool_call_summary(output_item, rag_chunks)
+        tool_call, tool_result = _build_tool_call_summary(
+            output_item, response_api_rag_chunks
+        )
         if tool_call:
             tool_calls.append(tool_call)
         if tool_result:
             tool_results.append(tool_result)
+
+    # Merge RAG chunks from direct vector query with those from responses API
+    all_rag_chunks = rag_chunks + response_api_rag_chunks
+    logger.info(
+        "Combined RAG chunks: %d from direct query + %d from responses API = %d total",
+        len(rag_chunks),
+        len(response_api_rag_chunks),
+        len(all_rag_chunks),
+    )
 
     logger.info(
         "Response processing complete - Tool calls: %d, Response length: %d chars",
@@ -466,11 +653,21 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
         llm_response=llm_response,
         tool_calls=tool_calls,
         tool_results=tool_results,
-        rag_chunks=rag_chunks,
+        rag_chunks=all_rag_chunks,
     )
 
     # Extract referenced documents and token usage from Responses API response
-    referenced_documents = parse_referenced_documents_from_responses_api(response)
+    # Merge with documents from direct vector query
+    response_referenced_documents = parse_referenced_documents_from_responses_api(
+        response
+    )
+    all_referenced_documents = doc_ids_from_chunks + response_referenced_documents
+    logger.info(
+        "Combined referenced documents: %d from direct query + %d from responses API = %d total",
+        len(doc_ids_from_chunks),
+        len(response_referenced_documents),
+        len(all_referenced_documents),
+    )
     model_label = model_id.split("/", 1)[1] if "/" in model_id else model_id
     token_usage = extract_token_usage_from_responses_api(
         response, model_label, provider_id, system_prompt
@@ -485,7 +682,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals,too-many-branche
     return (
         summary,
         normalize_conversation_id(conversation_id),
-        referenced_documents,
+        all_referenced_documents,
         token_usage,
     )
 
@@ -687,12 +884,15 @@ def _increment_llm_call_metric(provider: str, model: str) -> None:
         logger.warning("Failed to update LLM call metric: %s", e)
 
 
-def get_rag_tools(vector_store_ids: list[str]) -> Optional[list[dict[str, Any]]]:
+def get_rag_tools(
+    vector_store_ids: list[str], solr_params: Optional[dict[str, Any]] = None
+) -> Optional[list[dict[str, Any]]]:
     """
     Convert vector store IDs to tools format for Responses API.
 
     Args:
         vector_store_ids: List of vector store identifiers
+        solr_params: Optional Solr filtering parameters
 
     Returns:
         Optional[list[dict[str, Any]]]: List containing file_search tool configuration,
@@ -701,13 +901,16 @@ def get_rag_tools(vector_store_ids: list[str]) -> Optional[list[dict[str, Any]]]
     if not vector_store_ids:
         return None
 
-    return [
-        {
-            "type": "file_search",
-            "vector_store_ids": vector_store_ids,
-            "max_num_results": 10,
-        }
-    ]
+    tool_config = {
+        "type": "file_search",
+        "vector_store_ids": vector_store_ids,
+        "max_num_results": 10,
+    }
+
+    if solr_params:
+        tool_config["solr"] = solr_params
+
+    return [tool_config]
 
 
 def get_mcp_tools(
@@ -808,7 +1011,9 @@ async def prepare_tools_for_responses_api(
     query_request: QueryRequest,
     token: str,
     config: AppConfig,
+    *,
     mcp_headers: Optional[dict[str, dict[str, str]]] = None,
+    skip_rag_tools: bool = False,
 ) -> Optional[list[dict[str, Any]]]:
     """
     Prepare tools for Responses API including RAG and MCP tools.
@@ -822,6 +1027,7 @@ async def prepare_tools_for_responses_api(
         token: Authentication token for MCP tools
         config: Configuration object containing MCP server settings
         mcp_headers: Per-request headers for MCP servers
+        skip_rag_tools: If True, skip adding RAG tools (used when doing direct vector querying)
 
     Returns:
         Optional[list[dict[str, Any]]]: List of tool configurations for the
@@ -831,18 +1037,32 @@ async def prepare_tools_for_responses_api(
         return None
 
     toolgroups = []
-    # Get vector stores for RAG tools - use specified ones or fetch all
-    if query_request.vector_store_ids:
-        vector_store_ids = query_request.vector_store_ids
-    else:
-        vector_store_ids = [
-            vector_store.id for vector_store in (await client.vector_stores.list()).data
-        ]
 
-    # Add RAG tools if vector stores are available
-    rag_tools = get_rag_tools(vector_store_ids)
-    if rag_tools:
-        toolgroups.extend(rag_tools)
+    # Add RAG tools if not skipped
+    if not skip_rag_tools:
+        # Get vector stores for RAG tools - use specified ones or fetch all
+        if query_request.vector_store_ids:
+            vector_store_ids = query_request.vector_store_ids
+            logger.info("Using specified vector_store_ids: %s", vector_store_ids)
+        else:
+            vector_store_ids = [
+                vector_store.id
+                for vector_store in (await client.vector_stores.list()).data
+            ]
+            logger.info("Using all available vector_store_ids: %s", vector_store_ids)
+
+        # Add RAG tools if vector stores are available
+        if vector_store_ids:
+            rag_tools = get_rag_tools(vector_store_ids)
+            if rag_tools:
+                logger.info("rag_tool are: %s", rag_tools)
+                toolgroups.extend(rag_tools)
+            else:
+                logger.info("No RAG tools configured")
+        else:
+            logger.info("No vector stores available for RAG tools")
+    else:
+        logger.info("Skipping RAG tools - using direct vector querying instead")
 
     # Add MCP server tools
     mcp_tools = get_mcp_tools(config.mcp_servers, token, mcp_headers)

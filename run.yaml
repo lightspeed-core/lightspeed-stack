@@ -15,124 +15,159 @@ apis:
 benchmarks: []
 datasets: []
 image_name: starter
-# external_providers_dir: /opt/app-root/src/.llama/providers.d
+external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR}
 
-providers:
-  inference:
-  - provider_id: openai # This ID is a reference to 'providers.inference'
-    provider_type: remote::openai
-    config:
-      api_key: ${env.OPENAI_API_KEY}
-      allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"]
-  - config: {}
-    provider_id: sentence-transformers
-    provider_type: inline::sentence-transformers
-  files:
-  - config:
-      metadata_store:
-        table_name: files_metadata
-        backend: sql_default
-      storage_dir: ~/.llama/storage/files
-    provider_id: meta-reference-files
-    provider_type: inline::localfs
-  safety:
-  - config:
-      excluded_categories: []
-    provider_id: llama-guard
-    provider_type: inline::llama-guard
-  scoring:
-  - provider_id: basic
-    provider_type: inline::basic
-    config: {}
-  - provider_id: llm-as-judge
-    provider_type: inline::llm-as-judge
-    config: {}
-  - provider_id: braintrust
-    provider_type: inline::braintrust
-    config:
-      openai_api_key: '********'
-  tool_runtime:
-  - config: {} # Enable the RAG tool
-    provider_id: rag-runtime
-    provider_type: inline::rag-runtime
-  vector_io:
-  - config: # Define the storage backend for RAG
-      persistence:
-        namespace: vector_io::faiss
-        backend: kv_default
-    provider_id: faiss
-    provider_type: inline::faiss
-  agents:
-  - config:
-      persistence:
-        agent_state:
-          namespace: agents_state
-          backend: kv_default
-        responses:
-          table_name: agents_responses
-          backend: sql_default
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
-  batches:
-  - config:
-      kvstore:
-        namespace: batches_store
-        backend: kv_default
-    provider_id: reference
-    provider_type: inline::reference
-  datasetio:
-  - config:
-      kvstore:
-        namespace: huggingface_datasetio
-        backend: kv_default
-    provider_id: huggingface
-    provider_type: remote::huggingface
-  - config:
-      kvstore:
-        namespace: localfs_datasetio
-        backend: kv_default
-    provider_id: localfs
-    provider_type: inline::localfs
-  eval:
-  - config:
-      kvstore:
-        namespace: eval_store
-        backend: kv_default
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
-scoring_fns: []
-server:
-  port: 8321
 storage:
   backends:
-    kv_default: # Define the storage backend type for RAG, in this case registry and RAG are unified i.e. information on registered resources (e.g. models, vector_stores) are saved together with the RAG chunks
+    kv_default:
       type: kv_sqlite
       db_path: ${env.KV_STORE_PATH:=~/.llama/storage/rag/kv_store.db}
     sql_default:
       type: sql_sqlite
       db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
+
   stores:
     metadata:
       namespace: registry
       backend: kv_default
+
     inference:
       table_name: inference_store
       backend: sql_default
       max_write_queue_size: 10000
       num_writers: 4
+
     conversations:
       table_name: openai_conversations
       backend: sql_default
+
     prompts:
       namespace: prompts
       backend: kv_default
+
+metadata_store:
+  type: sqlite
+  db_path: ~/.llama/storage/registry.db
+
+inference_store:
+  type: sqlite
+  db_path: ~/.llama/storage/inference-store.db
+
+conversations_store:
+  type: sqlite
+  db_path: ~/.llama/storage/conversations.db
+
+providers:
+  inference:
+    - provider_id: openai
+      provider_type: remote::openai
+      config:
+        api_key: ${env.OPENAI_API_KEY}
+        allowed_models:
+          - gpt-4o-mini
+
+    - provider_id: sentence-transformers
+      provider_type: inline::sentence-transformers
+      config:
+        allowed_models:
+          - ${env.EMBEDDING_MODEL_DIR}
+
+  files:
+    - provider_id: meta-reference-files
+      provider_type: inline::localfs
+      config:
+        storage_dir: ~/.llama/storage/files
+        metadata_store:
+          table_name: files_metadata
+          backend: sql_default
+
+  safety:
+    - provider_id: llama-guard
+      provider_type: inline::llama-guard
+      config:
+        excluded_categories: []
+
+  scoring:
+    - provider_id: basic
+      provider_type: inline::basic
+      config: {}
+
+    - provider_id: llm-as-judge
+      provider_type: inline::llm-as-judge
+      config: {}
+
+  tool_runtime:
+    - provider_id: rag-runtime
+      provider_type: inline::rag-runtime
+      config: {}
+
+  vector_io:
+    - provider_id: solr-vector
+      provider_type: remote::solr_vector_io
+      config:
+        solr_url: http://localhost:8983/solr
+        collection_name: portal-rag
+        vector_field: chunk_vector
+        content_field: chunk
+        embedding_dimension: 384
+        embedding_model: ${env.EMBEDDING_MODEL_DIR}
+        persistence:
+          namespace: portal-rag
+          backend: kv_default
+
+  agents:
+    - provider_id: meta-reference
+      provider_type: inline::meta-reference
+      config:
+        persistence:
+          agent_state:
+            namespace: agents_state
+            backend: kv_default
+          responses:
+            table_name: agents_responses
+            backend: sql_default
+
+  batches:
+    - provider_id: reference
+      provider_type: inline::reference
+      config:
+        kvstore:
+          namespace: batches_store
+          backend: kv_default
+
+  datasetio:
+    - provider_id: huggingface
+      provider_type: remote::huggingface
+      config:
+        kvstore:
+          namespace: huggingface_datasetio
+          backend: kv_default
+
+    - provider_id: localfs
+      provider_type: inline::localfs
+      config:
+        kvstore:
+          namespace: localfs_datasetio
+          backend: kv_default
+
 registered_resources:
-  models: []
+  models:
+    - model_id: granite-embedding-30m
+      model_type: embedding
+      provider_id: sentence-transformers
+      provider_model_id: ${env.EMBEDDING_MODEL_DIR}
+      metadata:
+        embedding_dimension: 384
+
   shields:
   - shield_id: llama-guard
     provider_id: llama-guard
     provider_shield_id: openai/gpt-4o-mini
-  vector_stores: []
+  vector_stores:
+  - vector_store_id: portal-rag
+    provider_id: solr-vector
+    embedding_model: sentence-transformers/${env.EMBEDDING_MODEL_DIR}
+    embedding_dimension: 384
   datasets: []
   scoring_fns: []
   benchmarks: []
@@ -140,9 +175,9 @@ registered_resources:
   - toolgroup_id: builtin::rag # Register the RAG tool
     provider_id: rag-runtime
 vector_stores:
-  default_provider_id: faiss
-  default_embedding_model: # Define the default embedding model for RAG
-    provider_id: sentence-transformers
-    model_id: nomic-ai/nomic-embed-text-v1.5
+  vector_store_id: portal-rag
+  provider_id: solr-vector
+  embedding_model: sentence-transformers/${env.EMBEDDING_MODEL_DIR}
+  embedding_dimension: 384
 safety:
   default_shield_id: llama-guard

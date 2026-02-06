@@ -70,6 +70,8 @@ async def shields_endpoint_handler(
     try:
         # try to get Llama Stack client
         client = AsyncLlamaStackClientHolder().get_client()
+        # await client.shields.delete(identifier="llama-guard-shielf")
+        # exit(1)
         # retrieve shields
         shields = await client.shields.list()
         s = [dict(s) for s in shields]

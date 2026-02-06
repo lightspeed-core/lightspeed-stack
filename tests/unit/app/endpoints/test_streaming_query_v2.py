@@ -53,6 +53,10 @@ async def test_retrieve_response_builds_rag_and_mcp_tools(
     # Mock shields.list and models.list for run_shield_moderation
     mock_client.shields.list = mocker.AsyncMock(return_value=[])
     mock_client.models.list = mocker.AsyncMock(return_value=[])
+    # Mock vector_io.query for direct vector querying
+    mock_query_response = mocker.Mock()
+    mock_query_response.chunks = []
+    mock_client.vector_io.query = mocker.AsyncMock(return_value=mock_query_response)
 
     mocker.patch(
         "app.endpoints.streaming_query_v2.get_system_prompt", return_value="PROMPT"
@@ -77,7 +81,9 @@ async def test_retrieve_response_builds_rag_and_mcp_tools(
     tools = kwargs["tools"]
     assert isinstance(tools, list)
     types = {t.get("type") for t in tools}
-    assert types == {"file_search", "mcp"}
+    # Since we're now skipping RAG tools and doing direct vector querying,
+    # we should only see MCP tools, not file_search tools
+    assert types == {"mcp"}
 
 
 @pytest.mark.asyncio
@@ -95,6 +101,10 @@ async def test_retrieve_response_no_tools_passes_none(mocker: MockerFixture) -> 
     # Mock shields.list and models.list for run_shield_moderation
     mock_client.shields.list = mocker.AsyncMock(return_value=[])
     mock_client.models.list = mocker.AsyncMock(return_value=[])
+    # Mock vector_io.query for direct vector querying
+    mock_query_response = mocker.Mock()
+    mock_query_response.chunks = []
+    mock_client.vector_io.query = mocker.AsyncMock(return_value=mock_query_response)
 
     mocker.patch(
         "app.endpoints.streaming_query_v2.get_system_prompt", return_value="PROMPT"
