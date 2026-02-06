@@ -355,7 +355,6 @@ async def get_agent(
         tool_parser=None if no_tools else GraniteToolParser.get_parser(model_id),
         enable_session_persistence=True,  # type: ignore[call-arg]
     )
-    await agent.initialize()  # type: ignore[attr-defined]
 
     if existing_agent_id and conversation_id:
         logger.debug("Existing conversation ID: %s", conversation_id)
@@ -412,7 +411,6 @@ async def get_temp_agent(
         # type: ignore[call-arg]  # Temporary agent doesn't need persistence
         # enable_session_persistence=False,
     )
-    await agent.initialize()  # type: ignore[attr-defined]
 
     # Generate new IDs for the temporary agent
     # conversation_id = agent.agent_id
