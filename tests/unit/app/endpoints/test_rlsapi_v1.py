@@ -518,3 +518,92 @@ def test_infer_request_question_is_stripped() -> None:
     """Test that question whitespace is stripped during validation."""
     request = RlsapiV1InferRequest(question="  How do I list files?  ")
     assert request.question == "How do I list files?"
+
+
+# --- Test MCP tools passthrough ---
+
+
+def _setup_responses_mock_with_capture(
+    mocker: MockerFixture, response_text: str = "Test response."
+) -> Any:
+    """Set up responses.create mock and return the create mock for assertion.
+
+    Unlike _setup_responses_mock, this returns the mock_create object so
+    callers can inspect call_args to verify tools were passed correctly.
+
+    Args:
+        mocker: The pytest mocker fixture.
+        response_text: Text for the mock LLM response.
+
+    Returns:
+        The mock create coroutine, whose call_args can be inspected.
+    """
+    mock_response = mocker.Mock()
+    mock_response.output = [_create_mock_response_output(mocker, response_text)]
+
+    mock_create = mocker.AsyncMock(return_value=mock_response)
+    _setup_responses_mock(mocker, mock_create)
+    return mock_create
+
+
+@pytest.mark.asyncio
+async def test_retrieve_simple_response_passes_tools(
+    mocker: MockerFixture, mock_configuration: AppConfig
+) -> None:
+    """Test that retrieve_simple_response forwards tools to responses.create()."""
+    mock_create = _setup_responses_mock_with_capture(mocker)
+    tools = [
+        {
+            "type": "mcp",
+            "server_label": "test-mcp",
+            "server_url": "http://localhost:9000/sse",
+            "require_approval": "never",
+        }
+    ]
+
+    await retrieve_simple_response("Test question", "Instructions", tools=tools)
+
+    mock_create.assert_called_once()
+    call_kwargs = mock_create.call_args.kwargs
+    assert call_kwargs["tools"] == tools
+
+
+@pytest.mark.asyncio
+async def test_retrieve_simple_response_defaults_to_empty_tools(
+    mocker: MockerFixture, mock_configuration: AppConfig
+) -> None:
+    """Test that retrieve_simple_response passes empty list when tools is None."""
+    mock_create = _setup_responses_mock_with_capture(mocker)
+
+    await retrieve_simple_response("Test question", "Instructions")
+
+    mock_create.assert_called_once()
+    call_kwargs = mock_create.call_args.kwargs
+    assert call_kwargs["tools"] == []
+
+
+@pytest.mark.asyncio
+async def test_infer_endpoint_calls_get_mcp_tools(
+    mocker: MockerFixture,
+    mock_configuration: AppConfig,
+    mock_llm_response: None,
+    mock_auth_resolvers: None,
+) -> None:
+    """Test that infer_endpoint calls get_mcp_tools with configuration.mcp_servers."""
+    mock_get_mcp_tools = mocker.patch(
+        "app.endpoints.rlsapi_v1.get_mcp_tools",
+        return_value=[{"type": "mcp", "server_label": "test"}],
+    )
+
+    infer_request = RlsapiV1InferRequest(question="How do I list files?")
+    mock_request = _create_mock_request(mocker)
+    mock_background_tasks = _create_mock_background_tasks(mocker)
+
+    await infer_endpoint(
+        infer_request=infer_request,
+        request=mock_request,
+        background_tasks=mock_background_tasks,
+        auth=MOCK_AUTH,
+    )
+
+    mock_get_mcp_tools.assert_called_once_with(mock_configuration.mcp_servers)

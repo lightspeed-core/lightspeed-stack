@@ -31,6 +31,7 @@ from models.responses import (
 )
 from models.rlsapi.requests import RlsapiV1InferRequest, RlsapiV1SystemInfo
 from models.rlsapi.responses import RlsapiV1InferData, RlsapiV1InferResponse
+from app.endpoints.query_v2 import get_mcp_tools
 from observability import InferenceEventData, build_inference_event, send_splunk_event
 from utils.responses import extract_text_from_response_output_item
 from utils.suid import get_suid
@@ -142,7 +143,9 @@ def _get_default_model_id() -> str:
     )
 
 
-async def retrieve_simple_response(question: str, instructions: str) -> str:
+async def retrieve_simple_response(
+    question: str, instructions: str, tools: list | None = None
+) -> str:
     """Retrieve a simple response from the LLM for a stateless query.
 
     Uses the Responses API for simple stateless inference, consistent with
@@ -151,6 +154,7 @@ async def retrieve_simple_response(question: str, instructions: str) -> str:
     Args:
         question: The combined user input (question + context).
         instructions: System instructions for the LLM.
+        tools: Optional list of MCP tool definitions for the LLM.
 
     Returns:
         The LLM-generated response text.
@@ -168,6 +172,7 @@ async def retrieve_simple_response(question: str, instructions: str) -> str:
         input=question,
         model=model_id,
         instructions=instructions,
+        tools=tools or [],
         stream=False,
         store=False,
     )
@@ -255,13 +260,16 @@ async def infer_endpoint(
 
     input_source = infer_request.get_input_source()
     instructions = _build_instructions(infer_request.context.systeminfo)
+    mcp_tools = get_mcp_tools(configuration.mcp_servers)
     logger.debug(
         "Request %s: Combined input source length: %d", request_id, len(input_source)
     )
 
     start_time = time.monotonic()
     try:
-        response_text = await retrieve_simple_response(input_source, instructions)
+        response_text = await retrieve_simple_response(
+            input_source, instructions, tools=mcp_tools
+        )
         inference_time = time.monotonic() - start_time
     except APIConnectionError as e:
         inference_time = time.monotonic() - start_time
