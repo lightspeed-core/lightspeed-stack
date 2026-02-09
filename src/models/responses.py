@@ -1347,6 +1347,200 @@ class ConfigurationResponse(AbstractSuccessfulResponse):
     }
 
 
+class ResponsesResponse(AbstractSuccessfulResponse):
+    """Model representing a response from the Responses API following LCORE specification.
+
+    This model inherits a subset of response attributes directly from the LLS OpenAPI specification
+    and includes LCORE-specific fields.
+
+    Attributes:
+        id: Response ID (inherited from LLS).
+        created_at: Creation timestamp (inherited from LLS).
+        model: Model identifier (inherited from LLS).
+        status: Response status (inherited from LLS).
+        output: Structured output items (inherited from LLS).
+        text: Text output (inherited from LLS).
+        error: Error information (inherited from LLS).
+        temperature: Temperature used (inherited from LLS).
+        previous_response_id: Previous response ID (inherited from LLS).
+        prompt: Prompt used (inherited from LLS).
+        top_p: Top-p parameter (inherited from LLS).
+        tools: Tools used (inherited from LLS).
+        tool_choice: Tool choice used (inherited from LLS).
+        truncation: Truncation strategy (inherited from LLS).
+        usage: Token usage information (inherited from LLS).
+        instructions: Instructions used (inherited from LLS).
+        max_tool_calls: Maximum tool calls (inherited from LLS).
+        metadata: Metadata dictionary (inherited from LLS).
+        parallel_tool_calls: Parallel tool calls flag (inherited from LLS).
+        conversation: Conversation ID (LCORE-specific, exposed as conversation).
+        available_quotas: Available quotas (LCORE-specific).
+    """
+
+    id: Optional[str] = Field(
+        None,
+        description="Response ID",
+        examples=["resp_abc123"],
+    )
+    created_at: Optional[int] = Field(
+        None,
+        description="Creation timestamp",
+        examples=[1704067200],
+    )
+    model: Optional[str] = Field(
+        None,
+        description="Model identifier",
+        examples=["openai/gpt-4o-mini"],
+    )
+    status: Optional[str] = Field(
+        None,
+        description="Response status",
+        examples=["completed"],
+    )
+    output: Optional[list[dict[str, Any]]] = Field(
+        None,
+        description="Structured output items",
+    )
+    text: Optional[str] = Field(
+        None,
+        description="Text output",
+        examples=["Kubernetes is an open-source container orchestration system..."],
+    )
+    error: Optional[dict[str, Any]] = Field(
+        None,
+        description="Error information",
+    )
+    temperature: Optional[float] = Field(
+        None,
+        description="Temperature used",
+    )
+    previous_response_id: Optional[str] = Field(
+        None,
+        description="Previous response ID",
+    )
+    prompt: Optional[str] = Field(
+        None,
+        description="Prompt used",
+    )
+    top_p: Optional[float] = Field(
+        None,
+        description="Top-p parameter",
+    )
+    tools: Optional[list[dict[str, Any]]] = Field(
+        None,
+        description="Tools used",
+    )
+    tool_choice: Optional[str] = Field(
+        None,
+        description="Tool choice used",
+    )
+    truncation: Optional[str] = Field(
+        None,
+        description="Truncation strategy",
+    )
+    usage: Optional[dict[str, Any]] = Field(
+        None,
+        description="Token usage information",
+        examples=[{"prompt_tokens": 100, "completion_tokens": 50}],
+    )
+    instructions: Optional[str] = Field(
+        None,
+        description="Instructions used",
+    )
+    max_tool_calls: Optional[int] = Field(
+        None,
+        description="Maximum tool calls",
+    )
+    metadata: Optional[dict[str, Any]] = Field(
+        None,
+        description="Metadata dictionary",
+    )
+    parallel_tool_calls: Optional[bool] = Field(
+        None,
+        description="Parallel tool calls flag",
+    )
+    conversation: Optional[str] = Field(
+        None,
+        description="Conversation ID (LCORE-specific)",
+        examples=["conv_0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e"],
+    )
+    available_quotas: Optional[dict[str, int]] = Field(
+        None,
+        description="Available quotas (LCORE-specific)",
+        examples=[{"daily": 1000, "monthly": 50000}],
+    )
+    object: Optional[Literal["response"]] = Field(
+        None,
+        description="Object type identifier",
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "id": "resp_abc123",
+                    "created_at": 1704067200,
+                    "model": "openai/gpt-4-turbo",
+                    "status": "completed",
+                    "text": "Kubernetes is an open-source container orchestration system...",
+                    "output": [
+                        {
+                            "type": "message",
+                            "role": "assistant",
+                            "content": "Kubernetes is an open-source container orchestration system...",
+                        }
+                    ],
+                    "usage": {"prompt_tokens": 100, "completion_tokens": 50},
+                    "conversation": "conv_0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e",
+                    "available_quotas": {"daily": 1000, "monthly": 50000},
+                }
+            ]
+        }
+    }
+
+
+class ResponsesStreamCreatedEvent(BaseModel):
+    """Enriched response.created event with LCORE-specific conversation field."""
+
+    id: str = Field(..., description="Response ID")
+    conversation: Optional[str] = Field(
+        None, description="Conversation ID (LCORE-specific extension)"
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "id": "resp_abc123",
+                    "conversation": "conv_0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e",
+                }
+            ]
+        }
+    }
+
+
+class ResponsesStreamCompletedEvent(BaseModel):
+    """Enriched response.completed event with LCORE-specific available_quotas field."""
+
+    usage: Optional[dict[str, Any]] = Field(
+        None, description="Token usage information"
+    )
+    available_quotas: Optional[dict[str, int]] = Field(
+        None, description="Available quotas (LCORE-specific extension)"
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "usage": {"prompt_tokens": 100, "completion_tokens": 50},
+                    "available_quotas": {"daily": 1000, "monthly": 50000},
+                }
+            ]
+        }
+    }
+
+
 class DetailModel(BaseModel):
     """Nested detail model for error responses."""
 

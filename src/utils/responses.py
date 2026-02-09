@@ -1,7 +1,10 @@
 """Utility functions for processing Responses API output."""
 
 import json
-from typing import Any, Optional, cast
+import logging
+from typing import Any, Optional, Union, Iterable, cast
+
+from models.responses_api_types import ResponseInput
 
 from fastapi import HTTPException
 from llama_stack_api.openai_responses import (
@@ -23,14 +26,16 @@ from configuration import AppConfig, configuration
 from constants import DEFAULT_RAG_TOOL
 from models.config import ModelContextProtocolServer
 from models.database.conversations import UserConversation
+from models.config import Action
 from models.requests import QueryRequest
 from models.responses import (
+    ForbiddenResponse,
     InternalServerErrorResponse,
+    NotFoundResponse,
     ServiceUnavailableResponse,
 )
 from utils.prompts import get_system_prompt, get_topic_summary_system_prompt
 from utils.query import (
-    evaluate_model_hints,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     prepare_input,
@@ -49,6 +54,63 @@ from utils.types import (
 from log import get_logger
 
 logger = get_logger(__name__)
+
+
+def extract_text_from_input(input_value: Optional[ResponseInput]) -> str:
+    """Extract text content from Responses API input field.
+    
+    The input field can be:
+    - A string (simple text input)
+    - An iterable of message objects (complex input with role and content)
+    - None (if input is optional)
+    
+    Args:
+        input_value: The input value from ResponsesRequest
+        
+    Returns:
+        Extracted text content as a string, or empty string if input is None or cannot be extracted
+    """
+    if input_value is None:
+        return ""
+    if isinstance(input_value, str):
+        return input_value
+    
+    # Handle iterable of message objects (list, tuple, etc.)
+    # Note: str is also iterable, but we've already handled it above
+    text_fragments: list[str] = []
+    try:
+        for message in input_value:
+            if isinstance(message, dict):
+                content = message.get("content")
+                if isinstance(content, str):
+                    text_fragments.append(content)
+                elif isinstance(content, list):
+                    for part in content:
+                        if isinstance(part, str):
+                            text_fragments.append(part)
+                        elif isinstance(part, dict):
+                            text_value = part.get("text") or part.get("refusal")
+                            if text_value:
+                                text_fragments.append(str(text_value))
+            elif hasattr(message, "content"):
+                # Handle object with content attribute
+                content = getattr(message, "content")
+                if isinstance(content, str):
+                    text_fragments.append(content)
+                elif isinstance(content, list):
+                    for part in content:
+                        if isinstance(part, str):
+                            text_fragments.append(part)
+                        elif hasattr(part, "text"):
+                            text_fragments.append(getattr(part, "text", ""))
+                        elif isinstance(part, dict):
+                            text_value = part.get("text") or part.get("refusal")
+                            if text_value:
+                                text_fragments.append(str(text_value))
+        return " ".join(text_fragments)
+    except TypeError:
+        # Not iterable, convert to string
+        return str(input_value)
 
 
 def extract_text_from_response_output_item(output_item: Any) -> str:
@@ -137,6 +199,29 @@ async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
     return summary_text.strip() if summary_text else ""
 
 
+def validate_model_override_permissions(
+    model_id: Optional[str], authorized_actions: set[Action] | frozenset[Action]
+) -> None:
+    """Validate whether model/provider overrides are allowed by RBAC.
+
+    Args:
+        model_id: The model identifier in format "provider/model" (e.g., "openai/gpt-4-turbo").
+                  If None, no validation is performed.
+        authorized_actions: Set of actions the user is authorized to perform.
+
+    Raises:
+        HTTPException: HTTP 403 if model_id is provided and the caller lacks
+                       Action.MODEL_OVERRIDE permission.
+    """
+    if model_id is None:
+        return
+
+    # Check if user has permission to override model/provider
+    if Action.MODEL_OVERRIDE not in authorized_actions:
+        response = ForbiddenResponse.model_override()
+        raise HTTPException(**response.model_dump())
+
+
 async def prepare_tools(
     client: AsyncLlamaStackClient,
     query_request: QueryRequest,
@@ -198,6 +283,86 @@ async def prepare_tools(
     return toolgroups
 
 
+async def select_model_for_responses(
+    client: AsyncLlamaStackClient,
+    user_conversation: Optional[UserConversation],
+) -> str:
+    """Select model and provider for Responses API (takes model in provider/model format).
+
+    Extracts provider and model from the joined format, applies conversation hints if needed,
+    and invokes the internal model selection function. This function is intended for use
+    with ResponsesRequest which has a combined model field in "provider/model" format.
+
+    Args:
+        client: The AsyncLlamaStackClient instance
+        model_id: The model identifier in "provider/model" format or None
+        user_conversation: The user conversation if conversation_id was provided, None otherwise
+
+    Returns:
+        The llama_stack_model_id (provider/model format)
+
+    Raises:
+        HTTPException: If models cannot be fetched or an error occurs, or if no LLM model is found
+    """
+    # Early return if conversation has existing last_used_model
+    if (
+        user_conversation is not None
+        and user_conversation.last_used_model
+        and user_conversation.last_used_provider
+    ):
+        model_id = f"{user_conversation.last_used_provider}/{user_conversation.last_used_model}"
+        try:
+            await client.models.retrieve(model_id)
+            logger.debug(
+                "Using last used model from conversation: %s",
+                model_id,
+            )
+            return model_id
+        except APIStatusError as e:
+            if e.status_code == 404:
+                logger.warning(
+                    "Last used model %s from conversation not found, will select from available models",
+                    model_id,
+                )
+                # Fall through to select from available models
+            else:
+                error_response = InternalServerErrorResponse.generic()
+                raise HTTPException(**error_response.model_dump()) from e
+        except APIConnectionError as e:
+            error_response = ServiceUnavailableResponse(
+                backend_name="Llama Stack",
+                cause=str(e),
+            )
+            raise HTTPException(**error_response.model_dump()) from e
+
+    # Fetch models list
+    try:
+        models = await client.models.list()
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="Llama Stack",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+    except APIStatusError as e:
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump()) from e
+
+    try:
+        model = next(
+            m
+            for m in models
+            if m.custom_metadata and m.custom_metadata.get("model_type") == "llm"
+        )
+        logger.info("Selected first LLM model: %s", model.id)
+        return model.id
+    except StopIteration as e:
+        message = "No LLM model found in available models"
+        logger.error(message)
+        response = NotFoundResponse(resource="model", resource_id="")
+        raise HTTPException(**response.model_dump()) from e
+
+
 async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-many-locals,too-many-positional-arguments
     client: AsyncLlamaStackClient,
     query_request: QueryRequest,
@@ -222,6 +387,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
         ResponsesApiParams containing all prepared parameters for the API request
     """
     # Select model and provider
+    # Use select_model_and_provider_id directly with model hints from query_request
     try:
         models = await client.models.list()
     except APIConnectionError as e:
@@ -234,11 +400,17 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e
 
+    # Apply conversation hints if available
+    model_id = query_request.model
+    provider_id = query_request.provider
+    if user_conversation is not None:
+        if model_id is None:
+            model_id = user_conversation.last_used_model
+        if provider_id is None:
+            provider_id = user_conversation.last_used_provider
+
     llama_stack_model_id, _model_id, _provider_id = select_model_and_provider_id(
-        models,
-        *evaluate_model_hints(
-            user_conversation=user_conversation, query_request=query_request
-        ),
+        models, model_id, provider_id
     )
 
     # Use system prompt from request or default one

@@ -21,6 +21,7 @@ from app.endpoints import (
     mcp_auth,
     # Query endpoints for Response API support
     query,
+    responses,
     # RHEL Lightspeed rlsapi v1 compatibility
     rlsapi_v1,
     # A2A (Agent-to-Agent) protocol support
@@ -51,6 +52,7 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(rags.router, prefix="/v1")
     # Query endpoints
     app.include_router(query.router, prefix="/v1")
+    app.include_router(responses.router, prefix="/v1")
     app.include_router(streaming_query.router, prefix="/v1")
     app.include_router(config.router, prefix="/v1")
     app.include_router(feedback.router, prefix="/v1")

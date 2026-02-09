@@ -224,48 +224,6 @@ def is_input_shield(shield: Shield) -> bool:
     return _is_inout_shield(shield) or not is_output_shield(shield)
 
 
-def evaluate_model_hints(
-    user_conversation: Optional[UserConversation],
-    query_request: QueryRequest,
-) -> tuple[Optional[str], Optional[str]]:
-    """Evaluate model hints from user conversation."""
-    model_id: Optional[str] = query_request.model
-    provider_id: Optional[str] = query_request.provider
-
-    if user_conversation is not None:
-        if query_request.model is not None:
-            if query_request.model != user_conversation.last_used_model:
-                logger.debug(
-                    "Model specified in request: %s, preferring it over user conversation model %s",
-                    query_request.model,
-                    user_conversation.last_used_model,
-                )
-        else:
-            logger.debug(
-                "No model specified in request, using latest model from user conversation: %s",
-                user_conversation.last_used_model,
-            )
-            model_id = user_conversation.last_used_model
-
-        if query_request.provider is not None:
-            if query_request.provider != user_conversation.last_used_provider:
-                logger.debug(
-                    "Provider specified in request: %s, "
-                    "preferring it over user conversation provider %s",
-                    query_request.provider,
-                    user_conversation.last_used_provider,
-                )
-        else:
-            logger.debug(
-                "No provider specified in request, "
-                "using latest provider from user conversation: %s",
-                user_conversation.last_used_provider,
-            )
-            provider_id = user_conversation.last_used_provider
-
-    return model_id, provider_id
-
-
 async def update_azure_token(
     client: AsyncLlamaStackClient,
 ) -> AsyncLlamaStackClient:
