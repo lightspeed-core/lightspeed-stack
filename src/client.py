@@ -7,12 +7,14 @@ import tempfile
 from typing import Optional
 
 import yaml
+from fastapi import HTTPException
 from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
-from llama_stack_client import AsyncLlamaStackClient  # type: ignore
+from llama_stack_client import APIConnectionError, AsyncLlamaStackClient  # type: ignore
 
 from configuration import configuration
 from llama_stack_configuration import enrich_byok_rag, YamlDumper
 from models.config import LlamaStackConfiguration
+from models.responses import ServiceUnavailableResponse
 from utils.types import Singleton
 
 logger = logging.getLogger(__name__)
@@ -131,9 +133,15 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
         """
         if not self._config_path:
             raise RuntimeError("Cannot reload: config path not set")
-
-        client = AsyncLlamaStackAsLibraryClient(self._config_path)
-        await client.initialize()
+        try:
+            client = AsyncLlamaStackAsLibraryClient(self._config_path)
+            await client.initialize()
+        except APIConnectionError as e:
+            error_response = ServiceUnavailableResponse(
+                backend_name="Llama Stack",
+                cause=str(e),
+            )
+            raise HTTPException(**error_response.model_dump()) from e
         self._lsc = client
         return client
 
@@ -167,5 +175,6 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
             **current_headers,
             "X-LlamaStack-Provider-Data": json.dumps(provider_data),
         }
+
         self._lsc = self._lsc.copy(set_default_headers=updated_headers)  # type: ignore
         return self._lsc

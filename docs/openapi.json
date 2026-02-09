@@ -1293,11 +1293,11 @@
         "/v1/query": {
             "post": {
                 "tags": [
-                    "query_v1"
+                    "query"
                 ],
-                "summary": "Query Endpoint Handler V1",
-                "description": "Handle request to the /query endpoint using Responses API.\n\nThis is a wrapper around query_endpoint_handler_base that provides\nthe Responses API specific retrieve_response and get_topic_summary functions.\n\nReturns:\n    QueryResponse: Contains the conversation ID and the LLM-generated response.",
-                "operationId": "query_endpoint_handler_v2_v1_query_post",
+                "summary": "Query Endpoint Handler",
+                "description": "Handle request to the /query endpoint using Responses API.\n\nProcesses a POST request to a query endpoint, forwarding the\nuser's query to a selected Llama Stack LLM and returning the generated response.\n\nReturns:\n    QueryResponse: Contains the conversation ID and the LLM-generated response.\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 413: Prompt too long - Prompt exceeded model's context window size\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Quota limit exceeded - The token quota for model or user has been exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to Llama Stack backend",
+                "operationId": "query_endpoint_handler_v1_query_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1453,6 +1453,26 @@
                             }
                         }
                     },
+                    "413": {
+                        "description": "Prompt is too long",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptTooLongResponse"
+                                },
+                                "examples": {
+                                    "prompt too long": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The prompt exceeds the maximum allowed length.",
+                                                "response": "Prompt is too long"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "description": "Request validation failed",
                         "content": {
@@ -1480,7 +1500,7 @@
                                     "invalid value": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+                                                "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
                                                 "response": "Invalid attribute value"
                                             }
                                         }
@@ -1603,11 +1623,11 @@
         "/v1/streaming_query": {
             "post": {
                 "tags": [
-                    "streaming_query_v1"
+                    "streaming_query"
                 ],
-                "summary": "Streaming Query Endpoint Handler V1",
-                "description": "Handle request to the /streaming_query endpoint using Responses API.\n\nReturns a streaming response using Server-Sent Events (SSE) format with\ncontent type text/event-stream.\n\nReturns:\n    StreamingResponse: An HTTP streaming response yielding\n    SSE-formatted events for the query lifecycle with content type\n    text/event-stream.\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Too Many Requests - Quota limit exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to Llama Stack backend",
-                "operationId": "streaming_query_endpoint_handler_v2_v1_streaming_query_post",
+                "summary": "Streaming Query Endpoint Handler",
+                "description": "Handle request to the /streaming_query endpoint using Responses API.\n\nReturns a streaming response using Server-Sent Events (SSE) format with\ncontent type text/event-stream.\n\nReturns:\n    SSE-formatted events for the query lifecycle.\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 413: Prompt too long - Prompt exceeded model's context window size\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Quota limit exceeded - The token quota for model or user has been exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to Llama Stack backend",
+                "operationId": "streaming_query_endpoint_handler_v1_streaming_query_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1731,6 +1751,26 @@
                             }
                         }
                     },
+                    "413": {
+                        "description": "Prompt is too long",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptTooLongResponse"
+                                },
+                                "examples": {
+                                    "prompt too long": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The prompt exceeds the maximum allowed length.",
+                                                "response": "Prompt is too long"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "description": "Request validation failed",
                         "content": {
@@ -1758,7 +1798,7 @@
                                     "invalid value": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+                                                "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
                                                 "response": "Invalid attribute value"
                                             }
                                         }
@@ -3756,7 +3796,7 @@
                                     "invalid value": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+                                                "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
                                                 "response": "Invalid attribute value"
                                             }
                                         }
@@ -4278,7 +4318,7 @@
                 ],
                 "summary": "Handle A2A Jsonrpc",
                 "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
-                "operationId": "handle_a2a_jsonrpc_a2a_get",
+                "operationId": "handle_a2a_jsonrpc_a2a_post",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -4296,7 +4336,7 @@
                 ],
                 "summary": "Handle A2A Jsonrpc",
                 "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
-                "operationId": "handle_a2a_jsonrpc_a2a_get",
+                "operationId": "handle_a2a_jsonrpc_a2a_post",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -6975,14 +7015,16 @@
                     "url": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "type": "string",
+                                "minLength": 1,
+                                "format": "uri"
                             },
                             {
                                 "type": "null"
                             }
                         ],
                         "title": "Llama Stack URL",
-                        "description": "URL to Llama Stack service; used when library mode is disabled"
+                        "description": "URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL."
                     },
                     "api_key": {
                         "anyOf": [
@@ -7517,6 +7559,33 @@
                 "title": "PostgreSQLDatabaseConfiguration",
                 "description": "PostgreSQL database configuration.\n\nPostgreSQL database is used by Lightspeed Core Stack service for storing\ninformation about conversation IDs. It can also be leveraged to store\nconversation history and information about quota usage.\n\nUseful resources:\n\n- [Psycopg: connection classes](https://www.psycopg.org/psycopg3/docs/api/connections.html)\n- [PostgreSQL connection strings](https://www.connectionstrings.com/postgresql/)\n- [How to Use PostgreSQL in Python](https://www.freecodecamp.org/news/postgresql-in-python/)"
             },
+            "PromptTooLongResponse": {
+                "properties": {
+                    "status_code": {
+                        "type": "integer",
+                        "title": "Status Code"
+                    },
+                    "detail": {
+                        "$ref": "#/components/schemas/DetailModel"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status_code",
+                    "detail"
+                ],
+                "title": "PromptTooLongResponse",
+                "description": "413 Payload Too Large - Prompt is too long.",
+                "examples": [
+                    {
+                        "detail": {
+                            "cause": "The prompt exceeds the maximum allowed length.",
+                            "response": "Prompt is too long"
+                        },
+                        "label": "prompt too long"
+                    }
+                ]
+            },
             "ProviderHealthStatus": {
                 "properties": {
                     "provider_id": {
@@ -7965,7 +8034,7 @@
                     "truncated": {
                         "type": "boolean",
                         "title": "Truncated",
-                        "description": "Whether conversation history was truncated",
+                        "description": "Deprecated:Whether conversation history was truncated",
                         "default": false,
                         "examples": [
                             false,
@@ -9327,7 +9396,7 @@
                     },
                     {
                         "detail": {
-                            "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+                            "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
                             "response": "Invalid attribute value"
                         },
                         "label": "invalid value"
@@ -9401,6 +9470,13 @@
                     "type": {
                         "type": "string",
                         "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
                     }
                 },
                 "type": "object",

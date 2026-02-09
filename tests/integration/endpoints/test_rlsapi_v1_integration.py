@@ -9,7 +9,7 @@ Assistant (CLA) for single-turn LLM queries without conversation persistence.
 # pylint: disable=protected-access
 # pylint: disable=unused-argument
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from fastapi import HTTPException, status
@@ -139,6 +139,7 @@ async def test_rlsapi_v1_infer_minimal_request(
 
     assert isinstance(response, RlsapiV1InferResponse)
     assert response.data.text == "Use the `ls` command to list files in a directory."
+    assert response.data.request_id is not None
     assert check_suid(response.data.request_id)
 
 
@@ -221,7 +222,9 @@ async def test_rlsapi_v1_infer_generates_unique_request_ids(
     request_ids = {r.data.request_id for r in responses}
 
     assert len(request_ids) == 3
-    assert all(check_suid(rid) for rid in request_ids)
+    for rid in request_ids:
+        assert rid is not None
+    assert all(check_suid(rid) for rid in request_ids if rid is not None)
 
 
 # ==========================================
@@ -262,7 +265,9 @@ async def test_rlsapi_v1_infer_connection_error_returns_503(
 
     assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     assert isinstance(exc_info.value.detail, dict)
-    assert "Llama Stack" in exc_info.value.detail["response"]
+    assert "response" in exc_info.value.detail
+    detail = cast(dict[str, str], exc_info.value.detail)
+    assert "Llama Stack" in detail["response"]
 
 
 @pytest.mark.asyncio
@@ -347,6 +352,104 @@ async def test_rlsapi_v1_infer_input_source_combination(
 
     for expected in ["My question", "stdin content", "attachment content", "terminal"]:
         assert expected in input_content
+
+
+# ==========================================
+# MCP Tools Passthrough Tests
+# ==========================================
+
+
+@pytest.mark.asyncio
+async def test_rlsapi_v1_infer_no_mcp_servers_passes_empty_tools(
+    rlsapi_config: AppConfig,
+    mock_authorization: None,
+    test_auth: AuthTuple,
+    mocker: MockerFixture,
+) -> None:
+    """Regression: no MCP servers configured passes empty tools list.
+
+    When mcp_servers is empty (the default), get_mcp_tools returns [],
+    and responses.create should receive tools=[].
+    """
+    _ = rlsapi_config
+
+    mock_response = mocker.Mock()
+    mock_response.output = [_create_mock_response_output(mocker, "response text")]
+
+    mock_responses = mocker.Mock()
+    mock_responses.create = mocker.AsyncMock(return_value=mock_response)
+
+    mock_client = mocker.Mock()
+    mock_client.responses = mock_responses
+
+    mock_holder_class = mocker.patch(
+        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
+    )
+    mock_holder_class.return_value.get_client.return_value = mock_client
+
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.get_mcp_tools",
+        return_value=[],
+    )
+
+    await infer_endpoint(
+        infer_request=RlsapiV1InferRequest(question="How do I list files?"),
+        request=_create_mock_request(mocker),
+        background_tasks=_create_mock_background_tasks(mocker),
+        auth=test_auth,
+    )
+
+    call_kwargs = mock_responses.create.call_args.kwargs
+    assert call_kwargs["tools"] == []
+
+
+@pytest.mark.asyncio
+async def test_rlsapi_v1_infer_mcp_tools_passed_to_llm(
+    rlsapi_config: AppConfig,
+    mock_authorization: None,
+    test_auth: AuthTuple,
+    mocker: MockerFixture,
+) -> None:
+    """Test that MCP tool definitions are forwarded to responses.create()."""
+    _ = rlsapi_config
+
+    mock_response = mocker.Mock()
+    mock_response.output = [_create_mock_response_output(mocker, "enriched response")]
+
+    mock_responses = mocker.Mock()
+    mock_responses.create = mocker.AsyncMock(return_value=mock_response)
+
+    mock_client = mocker.Mock()
+    mock_client.responses = mock_responses
+
+    mock_holder_class = mocker.patch(
+        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder"
+    )
+    mock_holder_class.return_value.get_client.return_value = mock_client
+
+    mcp_tools = [
+        {
+            "type": "mcp",
+            "server_label": "rag-knowledge-base",
+            "server_url": "http://rag-server:8080/sse",
+            "require_approval": "never",
+        }
+    ]
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.get_mcp_tools",
+        return_value=mcp_tools,
+    )
+
+    response = await infer_endpoint(
+        infer_request=RlsapiV1InferRequest(question="How do I configure SELinux?"),
+        request=_create_mock_request(mocker),
+        background_tasks=_create_mock_background_tasks(mocker),
+        auth=test_auth,
+    )
+
+    call_kwargs = mock_responses.create.call_args.kwargs
+    assert call_kwargs["tools"] == mcp_tools
+    assert response.data.text == "enriched response"
 
 
 # ==========================================

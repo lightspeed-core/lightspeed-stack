@@ -1,9 +1,7 @@
 """Unit tests for utils/shields.py functions."""
 
-import httpx
 import pytest
 from fastapi import HTTPException, status
-from llama_stack_client import BadRequestError
 from pytest_mock import MockerFixture
 
 from utils.shields import (
@@ -278,7 +276,7 @@ class TestRunShieldModeration:
     async def test_returns_blocked_on_bad_request_error(
         self, mocker: MockerFixture
     ) -> None:
-        """Test that run_shield_moderation returns blocked when BadRequestError is raised."""
+        """Test that run_shield_moderation returns blocked when ValueError is raised."""
         mock_metric = mocker.patch(
             "utils.shields.metrics.llm_calls_validation_errors_total"
         )
@@ -295,14 +293,9 @@ class TestRunShieldModeration:
         model.id = "moderation-model"
         mock_client.models.list = mocker.AsyncMock(return_value=[model])
 
-        # Setup moderation to raise BadRequestError
-        mock_response = httpx.Response(
-            400, request=httpx.Request("POST", "http://test")
-        )
+        # Setup moderation to raise ValueError (known Llama Stack bug)
         mock_client.moderations.create = mocker.AsyncMock(
-            side_effect=BadRequestError(
-                "Bad request", response=mock_response, body=None
-            )
+            side_effect=ValueError("Bad request")
         )
 
         result = await run_shield_moderation(mock_client, "test input")

@@ -133,6 +133,12 @@ DEFAULT_RAG_TOOL = "knowledge_search"
 MEDIA_TYPE_JSON = "application/json"
 MEDIA_TYPE_TEXT = "text/plain"
 
+# Streaming event type constants
+LLM_TOKEN_EVENT = "token"
+LLM_TOOL_CALL_EVENT = "tool_call"
+LLM_TOOL_RESULT_EVENT = "tool_result"
+LLM_TURN_COMPLETE_EVENT = "turn_complete"
+
 # PostgreSQL connection constants
 # See: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLMODE
 POSTGRES_DEFAULT_SSL_MODE = "prefer"

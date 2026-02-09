@@ -1,4 +1,4 @@
-# pylint: disable=unsupported-membership-test,unsubscriptable-object, too-many-lines
+# pylint: disable=unsupported-membership-test,unsubscriptable-object,too-many-lines
 
 """Unit tests for all successful response models."""
 
@@ -16,9 +16,7 @@ from models.responses import (
     AbstractSuccessfulResponse,
     AuthorizedResponse,
     ConfigurationResponse,
-    ConversationData,
     ConversationDeleteResponse,
-    ConversationDetails,
     ConversationResponse,
     ConversationsListResponse,
     ConversationsListResponseV2,
@@ -27,19 +25,22 @@ from models.responses import (
     FeedbackStatusUpdateResponse,
     InfoResponse,
     LivenessResponse,
+    MCPClientAuthOptionsResponse,
+    MCPServerAuthInfo,
     ModelsResponse,
-    ProviderHealthStatus,
     ProviderResponse,
     ProvidersListResponse,
     QueryResponse,
+    RAGInfoResponse,
+    RAGListResponse,
     ReadinessResponse,
-    ReferencedDocument,
     ShieldsResponse,
     StatusResponse,
     StreamingQueryResponse,
     ToolsResponse,
 )
-from utils.types import ToolCallSummary, ToolResultSummary
+from models.responses import ConversationData, ConversationDetails, ProviderHealthStatus
+from utils.types import ReferencedDocument, ToolCallSummary, ToolResultSummary
 
 
 class TestModelsResponse:
@@ -657,11 +658,17 @@ class TestConversationDeleteResponse:
         assert response.response == "Conversation cannot be deleted"
 
     def test_missing_required_parameters(self) -> None:
-        """Test ConversationDeleteResponse raises ValidationError when required fields missing."""
+        """Test ConversationDeleteResponse raises TypeError when required fields missing."""
         with pytest.raises(TypeError):
             ConversationDeleteResponse()  # pylint: disable=missing-kwoa # pyright: ignore
         with pytest.raises(TypeError):
-            ConversationDeleteResponse(deleted=True)  # pylint: disable=missing-kwoa
+            ConversationDeleteResponse(  # pylint: disable=missing-kwoa # pyright: ignore[reportCallIssue]
+                deleted=True
+            )
+        with pytest.raises(TypeError):
+            ConversationDeleteResponse(  # pylint: disable=missing-kwoa # pyright: ignore[reportCallIssue]
+                conversation_id="conv-123"
+            )
 
     def test_openapi_response(self) -> None:
         """Test ConversationDeleteResponse.openapi_response() method."""
@@ -1015,6 +1022,121 @@ class TestStreamingQueryResponse:
         assert "examples" in schema
         assert len(schema["examples"]) == 1
         assert isinstance(schema["examples"][0], str)
+
+
+class TestMCPClientAuthOptionsResponse:
+    """Test cases for MCPClientAuthOptionsResponse."""
+
+    def test_constructor(self) -> None:
+        """Test MCPClientAuthOptionsResponse with servers list."""
+        servers = [
+            MCPServerAuthInfo(name="github", client_auth_headers=["Authorization"]),
+            MCPServerAuthInfo(
+                name="gitlab", client_auth_headers=["Authorization", "X-API-Key"]
+            ),
+        ]
+        response = MCPClientAuthOptionsResponse(servers=servers)
+        assert isinstance(response, AbstractSuccessfulResponse)
+        assert len(response.servers) == 2
+        assert response.servers[0].name == "github"
+
+    def test_empty_servers_list(self) -> None:
+        """Test MCPClientAuthOptionsResponse with empty servers list."""
+        response = MCPClientAuthOptionsResponse(servers=[])
+        assert response.servers == []
+
+    def test_openapi_response(self) -> None:
+        """Test MCPClientAuthOptionsResponse.openapi_response() method."""
+        schema = MCPClientAuthOptionsResponse.model_json_schema()
+        model_examples = schema.get("examples", [])
+        expected_count = len(model_examples)
+
+        result = MCPClientAuthOptionsResponse.openapi_response()
+        assert result["description"] == "Successful response"
+        assert result["model"] == MCPClientAuthOptionsResponse
+        assert "example" in result["content"]["application/json"]
+
+        assert expected_count == 1
+
+
+class TestRAGInfoResponse:
+    """Test cases for RAGInfoResponse."""
+
+    def test_constructor(self) -> None:
+        """Test RAGInfoResponse with all fields."""
+        response = RAGInfoResponse(
+            id="vs_7b52a8cf-0fa3-489c-beab-27e061d102f3",
+            name="Test RAG",
+            created_at=1763391371,
+            last_active_at=1763391371,
+            usage_bytes=1024000,
+            expires_at=None,
+            object="vector_store",
+            status="completed",
+        )
+        assert isinstance(response, AbstractSuccessfulResponse)
+        assert response.id == "vs_7b52a8cf-0fa3-489c-beab-27e061d102f3"
+        assert response.name == "Test RAG"
+        assert response.created_at == 1763391371
+        assert response.usage_bytes == 1024000
+        assert response.object == "vector_store"
+        assert response.status == "completed"
+
+    def test_missing_required_parameters(self) -> None:
+        """Test RAGInfoResponse raises ValidationError when required fields are missing."""
+        with pytest.raises(ValidationError):
+            RAGInfoResponse()  # type: ignore[call-arg]
+
+    def test_openapi_response(self) -> None:
+        """Test RAGInfoResponse.openapi_response() method."""
+        schema = RAGInfoResponse.model_json_schema()
+        model_examples = schema.get("examples", [])
+        expected_count = len(model_examples)
+
+        result = RAGInfoResponse.openapi_response()
+        assert result["description"] == "Successful response"
+        assert result["model"] == RAGInfoResponse
+        assert "example" in result["content"]["application/json"]
+
+        assert expected_count == 1
+
+
+class TestRAGListResponse:
+    """Test cases for RAGListResponse."""
+
+    def test_constructor(self) -> None:
+        """Test RAGListResponse with RAG list."""
+        rags = [
+            "vs_00000000-cafe-babe-0000-000000000000",
+            "vs_7b52a8cf-0fa3-489c-beab-27e061d102f3",
+        ]
+        response = RAGListResponse(rags=rags)
+        assert isinstance(response, AbstractSuccessfulResponse)
+        assert len(response.rags) == 2
+        assert response.rags[0] == "vs_00000000-cafe-babe-0000-000000000000"
+
+    def test_empty_rags_list(self) -> None:
+        """Test RAGListResponse with empty rags list."""
+        response = RAGListResponse(rags=[])
+        assert response.rags == []
+
+    def test_missing_required_parameter(self) -> None:
+        """Test RAGListResponse raises ValidationError when rags is missing."""
+        with pytest.raises(ValidationError):
+            RAGListResponse()  # type: ignore[call-arg]
+
+    def test_openapi_response(self) -> None:
+        """Test RAGListResponse.openapi_response() method."""
+        schema = RAGListResponse.model_json_schema()
+        model_examples = schema.get("examples", [])
+        expected_count = len(model_examples)
+
+        result = RAGListResponse.openapi_response()
+        assert result["description"] == "Successful response"
+        assert result["model"] == RAGListResponse
+        assert "example" in result["content"]["application/json"]
+
+        assert expected_count == 1
 
 
 class TestAbstractSuccessfulResponseOpenAPI:

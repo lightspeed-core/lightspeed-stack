@@ -39,6 +39,7 @@ from utils.endpoints import (
     check_configuration_loaded,
     delete_conversation,
     retrieve_conversation,
+    validate_and_retrieve_conversation,
 )
 from utils.suid import (
     check_suid,
@@ -214,47 +215,13 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
     )
 
     user_id = auth[0]
-    if not can_access_conversation(
-        normalized_conv_id,
-        user_id,
+    conversation = validate_and_retrieve_conversation(
+        normalized_conv_id=normalized_conv_id,
+        user_id=user_id,
         others_allowed=(
             Action.READ_OTHERS_CONVERSATIONS in request.state.authorized_actions
         ),
-    ):
-        logger.warning(
-            "User %s attempted to read conversation %s they don't have access to",
-            user_id,
-            normalized_conv_id,
-        )
-        response = ForbiddenResponse.conversation(
-            action="read",
-            resource_id=normalized_conv_id,
-            user_id=user_id,
-        ).model_dump()
-        raise HTTPException(**response)
-
-    # If reached this, user is authorized to retrieve this conversation
-    try:
-        conversation = retrieve_conversation(normalized_conv_id)
-        if conversation is None:
-            logger.error(
-                "Conversation %s not found in database.",
-                normalized_conv_id,
-            )
-            response = NotFoundResponse(
-                resource="conversation", resource_id=normalized_conv_id
-            ).model_dump()
-            raise HTTPException(**response)
-
-    except SQLAlchemyError as e:
-        logger.error(
-            "Database error occurred while retrieving conversation %s: %s",
-            normalized_conv_id,
-            str(e),
-        )
-        response = InternalServerErrorResponse.database_error()
-        raise HTTPException(**response.model_dump()) from e
-
+    )
     logger.info(
         "Retrieving conversation %s using Conversations API", normalized_conv_id
     )

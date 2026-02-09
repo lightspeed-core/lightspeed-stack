@@ -8,9 +8,9 @@ from cache.cache import Cache
 from cache.cache_error import CacheError
 from models.cache_entry import CacheEntry
 from models.config import PostgreSQLDatabaseConfiguration
-from models.responses import ConversationData, ReferencedDocument
+from models.responses import ConversationData
 from utils.connection_decorator import connection
-from utils.types import ToolCallSummary, ToolResultSummary
+from utils.types import ReferencedDocument, ToolCallSummary, ToolResultSummary
 from log import get_logger
 
 logger = get_logger("cache.postgres_cache")

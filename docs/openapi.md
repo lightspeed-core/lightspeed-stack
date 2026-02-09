@@ -2158,23 +2158,6 @@ Examples
 }
 ```
  |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Connection error while trying to reach backend service.",
-    "response": "Unable to connect to Llama Stack"
-  }
-}
-```
- |
 ## GET `/v1/conversations/{conversation_id}`
 
 > **Conversation Get Endpoint Handler V1**
@@ -4361,30 +4344,39 @@ Model representing a response for retrieving a conversation.
 
 Attributes:
     conversation_id: The conversation ID (UUID).
-    chat_history: The simplified chat history as a list of conversation turns.
-
-Example:
-    ```python
-    conversation_response = ConversationResponse(
-        conversation_id="123e4567-e89b-12d3-a456-426614174000",
-        chat_history=[
-            {
-                "messages": [
-                    {"content": "Hello", "type": "user"},
-                    {"content": "Hi there!", "type": "assistant"}
-                ],
-                "started_at": "2024-01-01T00:01:00Z",
-                "completed_at": "2024-01-01T00:01:05Z"
-            }
-        ]
-    )
-    ```
+    chat_history: The chat history as a list of conversation turns.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
 | conversation_id | string | Conversation ID (UUID) |
 | chat_history | array | The simplified chat history as a list of conversation turns |
+
+
+## ConversationTurn
+
+
+Model representing a single conversation turn.
+
+Attributes:
+    messages: List of messages in this turn.
+    tool_calls: List of tool calls made in this turn.
+    tool_results: List of tool results from this turn.
+    provider: Provider identifier used for this turn.
+    model: Model identifier used for this turn.
+    started_at: ISO 8601 timestamp when the turn started.
+    completed_at: ISO 8601 timestamp when the turn completed.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| messages | array | List of messages in this turn |
+| tool_calls | array | List of tool calls made in this turn |
+| tool_results | array | List of tool results from this turn |
+| provider | string | Provider identifier used for this turn |
+| model | string | Model identifier used for this turn |
+| started_at | string | ISO 8601 timestamp when the turn started |
+| completed_at | string | ISO 8601 timestamp when the turn completed |
 
 
 ## ConversationUpdateRequest
@@ -4858,7 +4850,7 @@ Useful resources:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| url |  | URL to Llama Stack service; used when library mode is disabled |
+| url |  | URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL. |
 | api_key |  | API key to access Llama Stack service |
 | use_as_library_client |  | When set to true Llama Stack will be used in library mode, not in server mode (default) |
 | library_client_config_path |  | Path to configuration file used when Llama Stack is run in library mode |
@@ -4886,6 +4878,22 @@ Information about MCP server client authentication options.
 |-------|------|-------------|
 | name | string | MCP server name |
 | client_auth_headers | array | List of authentication header names for client-provided tokens |
+
+
+## Message
+
+
+Model representing a message in a conversation turn.
+
+Attributes:
+    content: The message content.
+    type: The type of message.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| content | string | The message content |
+| type | string | The type of message |
 
 
 ## ModelContextProtocolServer
@@ -5700,3 +5708,5 @@ User data collection configuration.
 | loc | array |  |
 | msg | string |  |
 | type | string |  |
+| input |  |  |
+| ctx | object |  |

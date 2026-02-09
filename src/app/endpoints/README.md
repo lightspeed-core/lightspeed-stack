@@ -12,14 +12,11 @@ Handler for REST API call to authorized endpoint.
 ## [config.py](config.py)
 Handler for REST API call to retrieve service configuration.
 
-## [conversations.py](conversations.py)
-Handler for REST API calls to manage conversation history.
+## [conversations_v1.py](conversations_v1.py)
+Handler for REST API calls to manage conversation history using Conversations API.
 
 ## [conversations_v2.py](conversations_v2.py)
 Handler for REST API calls to manage conversation history.
-
-## [conversations_v3.py](conversations_v3.py)
-Handler for REST API calls to manage conversation history using Conversations API.
 
 ## [feedback.py](feedback.py)
 Handler for REST API endpoint for user feedback.
@@ -43,10 +40,7 @@ Handler for REST API call to list available models.
 Handler for REST API calls to list and retrieve available providers.
 
 ## [query.py](query.py)
-Handler for REST API call to provide answer to query.
-
-## [query_v2.py](query_v2.py)
-Handler for REST API call to provide answer to query using Response API.
+Handler for REST API call to provide answer to query using Responses API.
 
 ## [rags.py](rags.py)
 Handler for REST API calls to list and retrieve available RAGs.
@@ -61,10 +55,7 @@ Handler for the / endpoint.
 Handler for REST API call to list available shields.
 
 ## [streaming_query.py](streaming_query.py)
-Handler for REST API call to provide answer to streaming query.
-
-## [streaming_query_v2.py](streaming_query_v2.py)
-Streaming query handler using Responses API (v2).
+Handler for REST API call to provide answer to streaming query using Responses API.
 
 ## [tools.py](tools.py)
 Handler for REST API call to list available tools from MCP servers.

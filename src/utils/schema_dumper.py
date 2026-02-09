@@ -6,13 +6,17 @@ from pydantic.json_schema import models_json_schema
 from models.config import Configuration
 
 
-def recursive_update(original: dict) -> dict:
+# pylint: disable=too-many-boolean-expressions
+def recursive_update(
+    original: dict,
+) -> dict:
     """Recursively update the schema to be 100% OpenAPI-compatible.
 
     Parameters:
-        original: The original schema dictionary to transform.
+        original (dict): The original schema dictionary to transform.
+
     Returns:
-        A new dictionary with OpenAPI-compatible transformations applied.
+        dict: A new dictionary with OpenAPI-compatible transformations applied.
     """
     new: dict = {}
     for key, value in original.items():
@@ -24,8 +28,10 @@ def recursive_update(original: dict) -> dict:
             key == "anyOf"
             and isinstance(value, list)
             and len(value) >= 2
+            and isinstance(value[0], dict)
             and "type" in value[0]
-            and value[1]["type"] == "null"
+            and isinstance(value[1], dict)
+            and value[1].get("type") == "null"
         ):
             # only the first type is correct,
             # we need to ignore the second one

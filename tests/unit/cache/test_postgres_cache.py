@@ -12,9 +12,9 @@ from cache.cache_error import CacheError
 from cache.postgres_cache import PostgresCache
 from models.cache_entry import CacheEntry
 from models.config import PostgreSQLDatabaseConfiguration
-from models.responses import ConversationData, ReferencedDocument
+from models.responses import ConversationData
 from utils import suid
-from utils.types import ToolCallSummary, ToolResultSummary
+from utils.types import ReferencedDocument, ToolCallSummary, ToolResultSummary
 
 USER_ID_1 = suid.get_suid()
 USER_ID_2 = suid.get_suid()

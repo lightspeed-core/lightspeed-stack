@@ -817,6 +817,13 @@
             "default": null,
             "description": "Path to configuration file used when Llama Stack is run in library mode",
             "title": "Llama Stack configuration path"
+          },
+          "timeout": {
+            "default": 180,
+            "description": "Timeout in seconds for requests to Llama Stack service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
+            "minimum": 0,
+            "title": "Request timeout",
+            "type": "integer"
           }
         },
         "title": "LlamaStackConfiguration",

@@ -18,6 +18,12 @@ Unit tests for the connection decorator.
 ## [test_endpoints.py](test_endpoints.py)
 Unit tests for endpoints utility functions.
 
+## [test_prompts.py](test_prompts.py)
+Unit tests for prompts utility functions (get_system_prompt, get_topic_summary_system_prompt).
+
+## [test_query.py](test_query.py)
+Unit tests for query utility functions (store_conversation_into_cache, select_model_and_provider_id, validate_model_provider_override, etc.).
+
 ## [test_llama_stack_version.py](test_llama_stack_version.py)
 Unit tests for utility function to check Llama Stack version.
 

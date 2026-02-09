@@ -211,6 +211,8 @@ build-backend = "pdm.backend"
 disable = ["R0801"]
 
 [tool.ruff]
+exclude = ["tests/profiles/syntax_error.py"]
+
 [tool.ruff.lint.flake8-tidy-imports]
 banned-api = { "unittest" = { msg = "use pytest instead of unittest" }, "unittest.mock" = { msg = "use pytest-mock instead of unittest.mock" } }
 

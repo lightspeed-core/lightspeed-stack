@@ -1,7 +1,6 @@
 """Context objects for internal operations."""
 
 from dataclasses import dataclass
-from typing import Any
 
 from llama_stack_client import AsyncLlamaStackClient
 
@@ -9,7 +8,7 @@ from models.requests import QueryRequest
 
 
 @dataclass
-class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
+class ResponseGeneratorContext:
     """
     Context object for response generator creation.
 
@@ -21,12 +20,9 @@ class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
         user_id: The user identifier
         skip_userid_check: Whether to skip user ID validation
         model_id: The model identifier
-        provider_id: The provider identifier
-        llama_stack_model_id: The full llama stack model ID
         query_request: The query request object
         started_at: Timestamp when the request started (ISO 8601 format)
         client: The Llama Stack client for API interactions
-        metadata_map: Dictionary for storing metadata from tool responses
     """
 
     # Conversation & User context
@@ -34,10 +30,8 @@ class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
     user_id: str
     skip_userid_check: bool
 
-    # Model & Provider info
+    # Model info
     model_id: str
-    provider_id: str
-    llama_stack_model_id: str
 
     # Request & Timing
     query_request: QueryRequest
@@ -45,4 +39,3 @@ class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
 
     # Dependencies & State
     client: AsyncLlamaStackClient
-    metadata_map: dict[str, dict[str, Any]]

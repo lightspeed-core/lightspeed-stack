@@ -9,16 +9,11 @@ import pytest
 from fastapi import HTTPException
 from pydantic import AnyUrl
 from pytest_mock import MockerFixture
+from sqlalchemy.exc import SQLAlchemyError
 
-import constants
-from configuration import AppConfig
-from models.config import Action, CustomProfile
-from models.requests import QueryRequest
-from models.responses import ReferencedDocument
-from tests.unit import config_dict
+from models.database.conversations import UserConversation
 from utils import endpoints
-
-CONFIGURED_SYSTEM_PROMPT = "This is a configured system prompt"
+from utils.types import ReferencedDocument
 
 
 @pytest.fixture(name="input_file")
@@ -28,324 +23,6 @@ def input_file_fixture(tmp_path: Path) -> str:
     with open(filename, "wt", encoding="utf-8") as fout:
         fout.write("this is prompt!")
     return filename
-
-
-@pytest.fixture(name="config_without_system_prompt")
-def config_without_system_prompt_fixture() -> AppConfig:
-    """Configuration w/o custom system prompt set."""
-    test_config = config_dict.copy()
-
-    # no customization provided
-    test_config["customization"] = None
-
-    cfg = AppConfig()
-    cfg.init_from_dict(test_config)
-
-    return cfg
-
-
-@pytest.fixture(name="config_with_custom_system_prompt")
-def config_with_custom_system_prompt_fixture() -> AppConfig:
-    """Configuration with custom system prompt set."""
-    test_config = config_dict.copy()
-
-    # system prompt is customized
-    test_config["customization"] = {
-        "system_prompt": CONFIGURED_SYSTEM_PROMPT,
-    }
-    cfg = AppConfig()
-    cfg.init_from_dict(test_config)
-
-    return cfg
-
-
-@pytest.fixture(name="config_with_custom_system_prompt_and_disable_query_system_prompt")
-def config_with_custom_system_prompt_and_disable_query_system_prompt_fixture() -> (
-    AppConfig
-):
-    """Configuration with custom system prompt and disabled query system prompt set."""
-    test_config = config_dict.copy()
-
-    # system prompt is customized and query system prompt is disabled
-    test_config["customization"] = {
-        "system_prompt": CONFIGURED_SYSTEM_PROMPT,
-        "disable_query_system_prompt": True,
-    }
-    cfg = AppConfig()
-    cfg.init_from_dict(test_config)
-
-    return cfg
-
-
-@pytest.fixture(
-    name="config_with_custom_profile_prompt_and_enabled_query_system_prompt"
-)
-def config_with_custom_profile_prompt_and_enabled_query_system_prompt_fixture() -> (
-    AppConfig
-):
-    """Configuration with custom profile loaded for prompt and disabled query system prompt set."""
-    test_config = config_dict.copy()
-
-    test_config["customization"] = {
-        "profile_path": "tests/profiles/test/profile.py",
-        "system_prompt": CONFIGURED_SYSTEM_PROMPT,
-        "disable_query_system_prompt": False,
-    }
-    cfg = AppConfig()
-    cfg.init_from_dict(test_config)
-
-    return cfg
-
-
-@pytest.fixture(
-    name="config_with_custom_profile_prompt_and_disable_query_system_prompt"
-)
-def config_with_custom_profile_prompt_and_disable_query_system_prompt_fixture() -> (
-    AppConfig
-):
-    """Configuration with custom profile loaded for prompt and disabled query system prompt set."""
-    test_config = config_dict.copy()
-
-    test_config["customization"] = {
-        "profile_path": "tests/profiles/test/profile.py",
-        "system_prompt": CONFIGURED_SYSTEM_PROMPT,
-        "disable_query_system_prompt": True,
-    }
-    cfg = AppConfig()
-    cfg.init_from_dict(test_config)
-
-    return cfg
-
-
-@pytest.fixture(name="query_request_without_system_prompt")
-def query_request_without_system_prompt_fixture() -> QueryRequest:
-    """Fixture for query request without system prompt."""
-    return QueryRequest(
-        query="query", system_prompt=None
-    )  # pyright: ignore[reportCallIssue]
-
-
-@pytest.fixture(name="query_request_with_system_prompt")
-def query_request_with_system_prompt_fixture() -> QueryRequest:
-    """Fixture for query request with system prompt."""
-    return QueryRequest(
-        query="query", system_prompt="System prompt defined in query"
-    )  # pyright: ignore[reportCallIssue]
-
-
-@pytest.fixture(name="setup_configuration")
-def setup_configuration_fixture() -> AppConfig:
-    """Set up configuration for tests."""
-    test_config_dict = {
-        "name": "test",
-        "service": {
-            "host": "localhost",
-            "port": 8080,
-            "auth_enabled": False,
-            "workers": 1,
-            "color_log": True,
-            "access_log": True,
-        },
-        "llama_stack": {
-            "api_key": "test-key",
-            "url": "http://test.com:1234",
-            "use_as_library_client": False,
-        },
-        "user_data_collection": {
-            "transcripts_enabled": False,
-        },
-        "mcp_servers": [],
-    }
-    cfg = AppConfig()
-    cfg.init_from_dict(test_config_dict)
-    return cfg
-
-
-def test_get_default_system_prompt(
-    config_without_system_prompt: AppConfig,
-    query_request_without_system_prompt: QueryRequest,
-) -> None:
-    """Test that default system prompt is returned when other prompts are not provided."""
-    system_prompt = endpoints.get_system_prompt(
-        query_request_without_system_prompt, config_without_system_prompt
-    )
-    assert system_prompt == constants.DEFAULT_SYSTEM_PROMPT
-
-
-def test_get_customized_system_prompt(
-    config_with_custom_system_prompt: AppConfig,
-    query_request_without_system_prompt: QueryRequest,
-) -> None:
-    """Test that customized system prompt is used when system prompt is not provided in query."""
-    system_prompt = endpoints.get_system_prompt(
-        query_request_without_system_prompt, config_with_custom_system_prompt
-    )
-    assert system_prompt == CONFIGURED_SYSTEM_PROMPT
-
-
-def test_get_query_system_prompt(
-    config_without_system_prompt: AppConfig,
-    query_request_with_system_prompt: QueryRequest,
-) -> None:
-    """Test that system prompt from query is returned."""
-    system_prompt = endpoints.get_system_prompt(
-        query_request_with_system_prompt, config_without_system_prompt
-    )
-    assert system_prompt == query_request_with_system_prompt.system_prompt
-
-
-def test_get_query_system_prompt_not_customized_one(
-    config_with_custom_system_prompt: AppConfig,
-    query_request_with_system_prompt: QueryRequest,
-) -> None:
-    """Test that system prompt from query is returned even when customized one is specified."""
-    system_prompt = endpoints.get_system_prompt(
-        query_request_with_system_prompt, config_with_custom_system_prompt
-    )
-    assert system_prompt == query_request_with_system_prompt.system_prompt
-
-
-def test_get_system_prompt_with_disable_query_system_prompt(
-    config_with_custom_system_prompt_and_disable_query_system_prompt: AppConfig,
-    query_request_with_system_prompt: QueryRequest,
-) -> None:
-    """Test that query system prompt is disallowed when disable_query_system_prompt is True."""
-    with pytest.raises(HTTPException) as exc_info:
-        endpoints.get_system_prompt(
-            query_request_with_system_prompt,
-            config_with_custom_system_prompt_and_disable_query_system_prompt,
-        )
-    assert exc_info.value.status_code == 422
-
-
-def test_get_system_prompt_with_disable_query_system_prompt_and_non_system_prompt_query(
-    config_with_custom_system_prompt_and_disable_query_system_prompt: AppConfig,
-    query_request_without_system_prompt: QueryRequest,
-) -> None:
-    """Test that query without system prompt is allowed when disable_query_system_prompt is True."""
-    system_prompt = endpoints.get_system_prompt(
-        query_request_without_system_prompt,
-        config_with_custom_system_prompt_and_disable_query_system_prompt,
-    )
-    assert system_prompt == CONFIGURED_SYSTEM_PROMPT
-
-
-def test_get_profile_prompt_with_disable_query_system_prompt(
-    config_with_custom_profile_prompt_and_disable_query_system_prompt: AppConfig,
-    query_request_without_system_prompt: QueryRequest,
-) -> None:
-    """Test that system prompt is set if profile enabled and query system prompt disabled."""
-    custom_profile = CustomProfile(path="tests/profiles/test/profile.py")
-    prompts = custom_profile.get_prompts()
-    system_prompt = endpoints.get_system_prompt(
-        query_request_without_system_prompt,
-        config_with_custom_profile_prompt_and_disable_query_system_prompt,
-    )
-    assert system_prompt == prompts.get("default")
-
-
-def test_get_profile_prompt_with_enabled_query_system_prompt(
-    config_with_custom_profile_prompt_and_enabled_query_system_prompt: AppConfig,
-    query_request_with_system_prompt: QueryRequest,
-) -> None:
-    """Test that profile system prompt is overridden by query system prompt enabled."""
-    system_prompt = endpoints.get_system_prompt(
-        query_request_with_system_prompt,
-        config_with_custom_profile_prompt_and_enabled_query_system_prompt,
-    )
-    assert system_prompt == query_request_with_system_prompt.system_prompt
-
-
-def test_validate_model_provider_override_allowed_with_action() -> None:
-    """Ensure no exception when caller has MODEL_OVERRIDE and request includes model/provider."""
-    query_request = QueryRequest(
-        query="q", model="m", provider="p"
-    )  # pyright: ignore[reportCallIssue]
-    authorized_actions = {Action.MODEL_OVERRIDE}
-    endpoints.validate_model_provider_override(query_request, authorized_actions)
-
-
-def test_validate_model_provider_override_rejected_without_action() -> None:
-    """Ensure HTTP 403 when request includes model/provider and caller lacks permission."""
-    query_request = QueryRequest(
-        query="q", model="m", provider="p"
-    )  # pyright: ignore[reportCallIssue]
-    authorized_actions: set[Action] = set()
-    with pytest.raises(HTTPException) as exc_info:
-        endpoints.validate_model_provider_override(query_request, authorized_actions)
-    assert exc_info.value.status_code == 403
-
-
-def test_validate_model_provider_override_no_override_without_action() -> None:
-    """No exception when request does not include model/provider regardless of permission."""
-    query_request = QueryRequest(query="q")  # pyright:ignore[reportCallIssue]
-    endpoints.validate_model_provider_override(query_request, set())
-
-
-def test_get_topic_summary_system_prompt_default(
-    setup_configuration: AppConfig,
-) -> None:
-    """Test that default topic summary system prompt is returned when no custom
-    profile is configured.
-    """
-    topic_summary_prompt = endpoints.get_topic_summary_system_prompt(
-        setup_configuration
-    )
-    assert topic_summary_prompt == constants.DEFAULT_TOPIC_SUMMARY_SYSTEM_PROMPT
-
-
-def test_get_topic_summary_system_prompt_with_custom_profile() -> None:
-    """Test that custom profile topic summary prompt is returned when available."""
-    test_config = config_dict.copy()
-    test_config["customization"] = {
-        "profile_path": "tests/profiles/test/profile.py",
-    }
-    cfg = AppConfig()
-    cfg.init_from_dict(test_config)
-
-    # Mock the custom profile to return a topic_summary prompt
-    custom_profile = CustomProfile(path="tests/profiles/test/profile.py")
-    prompts = custom_profile.get_prompts()
-
-    topic_summary_prompt = endpoints.get_topic_summary_system_prompt(cfg)
-    assert topic_summary_prompt == prompts.get("topic_summary")
-
-
-def test_get_topic_summary_system_prompt_with_custom_profile_no_topic_summary(
-    mocker: MockerFixture,
-) -> None:
-    """Test that default topic summary prompt is returned when custom profile has
-    no topic_summary prompt.
-    """
-    test_config = config_dict.copy()
-    test_config["customization"] = {
-        "profile_path": "tests/profiles/test/profile.py",
-    }
-    cfg = AppConfig()
-    cfg.init_from_dict(test_config)
-
-    # Mock the custom profile to return None for topic_summary prompt
-    mock_profile = mocker.Mock()
-    mock_profile.get_prompts.return_value = {
-        "default": "some prompt"
-    }  # No topic_summary key
-
-    # Patch the custom_profile property to return our mock
-    mocker.patch.object(cfg.customization, "custom_profile", mock_profile)
-
-    topic_summary_prompt = endpoints.get_topic_summary_system_prompt(cfg)
-    assert topic_summary_prompt == constants.DEFAULT_TOPIC_SUMMARY_SYSTEM_PROMPT
-
-
-def test_get_topic_summary_system_prompt_no_customization() -> None:
-    """Test that default topic summary prompt is returned when customization is None."""
-    test_config = config_dict.copy()
-    test_config["customization"] = None
-    cfg = AppConfig()
-    cfg.init_from_dict(test_config)
-
-    topic_summary_prompt = endpoints.get_topic_summary_system_prompt(cfg)
-    assert topic_summary_prompt == constants.DEFAULT_TOPIC_SUMMARY_SYSTEM_PROMPT
 
 
 # Tests for unified create_referenced_documents function
@@ -492,109 +169,285 @@ class TestCreateReferencedDocuments:
         assert result[1].doc_title == "doc1"
 
 
-@pytest.mark.asyncio
-async def test_cleanup_after_streaming_generate_topic_summary_default_true(
-    mocker: MockerFixture,
-) -> None:
-    """Test that topic summary is generated by default for new conversations."""
-    mock_is_transcripts_enabled = mocker.Mock(return_value=False)
-    mock_get_topic_summary = mocker.AsyncMock(return_value="Generated topic")
-    mock_store_transcript = mocker.Mock()
-    mock_persist_conversation = mocker.Mock()
-    mock_client = mocker.AsyncMock()
-    mock_config = mocker.Mock()
+class TestValidateAndRetrieveConversation:
+    """Tests for validate_and_retrieve_conversation function."""
 
-    mock_session = mocker.Mock()
-    mock_session.query.return_value.filter_by.return_value.first.return_value = None
-    mock_session.__enter__ = mocker.Mock(return_value=mock_session)
-    mock_session.__exit__ = mocker.Mock(return_value=None)
-    mocker.patch("utils.endpoints.get_session", return_value=mock_session)
+    def test_successful_retrieval(self, mocker: MockerFixture) -> None:
+        """Test successful conversation retrieval when user has access."""
+        normalized_conv_id = "123e4567-e89b-12d3-a456-426614174000"
+        user_id = "user-123"
 
-    mocker.patch(
-        "utils.endpoints.create_referenced_documents_with_metadata", return_value=[]
-    )
-    mocker.patch("utils.endpoints.store_conversation_into_cache")
+        mock_conversation = mocker.Mock(spec=UserConversation)
+        mock_conversation.id = normalized_conv_id
+        mock_conversation.user_id = user_id
 
-    query_request = QueryRequest(query="test query")  # pyright: ignore[reportCallIssue]
+        mocker.patch("utils.endpoints.can_access_conversation", return_value=True)
+        mocker.patch(
+            "utils.endpoints.retrieve_conversation", return_value=mock_conversation
+        )
 
-    await endpoints.cleanup_after_streaming(
-        user_id="test_user",
-        conversation_id="test_conv_id",
-        model_id="test_model",
-        provider_id="test_provider",
-        llama_stack_model_id="test_llama_model",
-        query_request=query_request,
-        summary=mocker.Mock(
-            llm_response="test response", tool_calls=[], tool_results=[]
-        ),
-        metadata_map={},
-        started_at="2024-01-01T00:00:00Z",
-        client=mock_client,
-        config=mock_config,
-        skip_userid_check=False,
-        get_topic_summary_func=mock_get_topic_summary,
-        is_transcripts_enabled_func=mock_is_transcripts_enabled,
-        store_transcript_func=mock_store_transcript,
-        persist_user_conversation_details_func=mock_persist_conversation,
-    )
+        result = endpoints.validate_and_retrieve_conversation(
+            normalized_conv_id=normalized_conv_id,
+            user_id=user_id,
+            others_allowed=False,
+        )
 
-    mock_get_topic_summary.assert_called_once_with(
-        "test query", mock_client, "test_llama_model"
-    )
+        assert result == mock_conversation
 
-    mock_persist_conversation.assert_called_once()
-    assert mock_persist_conversation.call_args[1]["topic_summary"] == "Generated topic"
+    def test_forbidden_access(self, mocker: MockerFixture) -> None:
+        """Test that 403 Forbidden is raised when user doesn't have access."""
+        normalized_conv_id = "123e4567-e89b-12d3-a456-426614174000"
+        user_id = "user-123"
+
+        mocker.patch("utils.endpoints.can_access_conversation", return_value=False)
+        mocker.patch("utils.endpoints.logger")
+
+        with pytest.raises(HTTPException) as exc_info:
+            endpoints.validate_and_retrieve_conversation(
+                normalized_conv_id=normalized_conv_id,
+                user_id=user_id,
+                others_allowed=False,
+            )
+
+        assert exc_info.value.status_code == 403
+        # Check that it's a forbidden response with proper error details
+        assert isinstance(exc_info.value.detail, dict)
+        assert "response" in exc_info.value.detail
+        assert "cause" in exc_info.value.detail
+
+    def test_conversation_not_found(self, mocker: MockerFixture) -> None:
+        """Test that 404 Not Found is raised when conversation doesn't exist."""
+        normalized_conv_id = "123e4567-e89b-12d3-a456-426614174000"
+        user_id = "user-123"
+
+        mocker.patch("utils.endpoints.can_access_conversation", return_value=True)
+        mocker.patch("utils.endpoints.retrieve_conversation", return_value=None)
+        mocker.patch("utils.endpoints.logger")
+
+        with pytest.raises(HTTPException) as exc_info:
+            endpoints.validate_and_retrieve_conversation(
+                normalized_conv_id=normalized_conv_id,
+                user_id=user_id,
+                others_allowed=False,
+            )
+
+        assert exc_info.value.status_code == 404
+        # Check that it's a not found response with proper error details
+        assert isinstance(exc_info.value.detail, dict)
+        assert "response" in exc_info.value.detail
+        assert "cause" in exc_info.value.detail
+
+    def test_database_error(self, mocker: MockerFixture) -> None:
+        """Test that 500 Internal Server Error is raised on database error."""
+        normalized_conv_id = "123e4567-e89b-12d3-a456-426614174000"
+        user_id = "user-123"
+
+        mocker.patch("utils.endpoints.can_access_conversation", return_value=True)
+        mocker.patch(
+            "utils.endpoints.retrieve_conversation",
+            side_effect=SQLAlchemyError("Database connection error", None, None),
+        )
+        mocker.patch("utils.endpoints.logger")
+
+        with pytest.raises(HTTPException) as exc_info:
+            endpoints.validate_and_retrieve_conversation(
+                normalized_conv_id=normalized_conv_id,
+                user_id=user_id,
+                others_allowed=False,
+            )
+
+        assert exc_info.value.status_code == 500
+        # Check that it's an internal server error response with proper error details
+        assert isinstance(exc_info.value.detail, dict)
+        assert "response" in exc_info.value.detail
+        assert "cause" in exc_info.value.detail
+
+    def test_successful_retrieval_with_others_allowed(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test successful retrieval when others_allowed is True."""
+        normalized_conv_id = "123e4567-e89b-12d3-a456-426614174000"
+        user_id = "user-123"
+
+        mock_conversation = mocker.Mock(spec=UserConversation)
+        mock_conversation.id = normalized_conv_id
+        mock_conversation.user_id = "other-user"  # Different user
+
+        mocker.patch("utils.endpoints.can_access_conversation", return_value=True)
+        mocker.patch(
+            "utils.endpoints.retrieve_conversation", return_value=mock_conversation
+        )
+
+        result = endpoints.validate_and_retrieve_conversation(
+            normalized_conv_id=normalized_conv_id,
+            user_id=user_id,
+            others_allowed=True,  # Allow access to others' conversations
+        )
+
+        assert result == mock_conversation
 
 
-@pytest.mark.asyncio
-async def test_cleanup_after_streaming_generate_topic_summary_explicit_false(
-    mocker: MockerFixture,
-) -> None:
-    """Test that topic summary is NOT generated when explicitly set to False."""
-    mock_is_transcripts_enabled = mocker.Mock(return_value=False)
-    mock_get_topic_summary = mocker.AsyncMock(return_value="Generated topic")
-    mock_store_transcript = mocker.Mock()
-    mock_persist_conversation = mocker.Mock()
-    mock_client = mocker.AsyncMock()
-    mock_config = mocker.Mock()
+class TestValidateConversationOwnership:
+    """Tests for validate_conversation_ownership function."""
 
-    mock_session = mocker.Mock()
-    mock_session.query.return_value.filter_by.return_value.first.return_value = None
-    mock_session.__enter__ = mocker.Mock(return_value=mock_session)
-    mock_session.__exit__ = mocker.Mock(return_value=None)
-    mocker.patch("utils.endpoints.get_session", return_value=mock_session)
+    def test_successful_retrieval_own_conversation(self, mocker: MockerFixture) -> None:
+        """Test successful retrieval when conversation belongs to user."""
+        conversation_id = "123e4567-e89b-12d3-a456-426614174000"
+        user_id = "user-123"
 
-    mocker.patch(
-        "utils.endpoints.create_referenced_documents_with_metadata", return_value=[]
-    )
-    mocker.patch("utils.endpoints.store_conversation_into_cache")
+        mock_conversation = mocker.Mock(spec=UserConversation)
+        mock_conversation.id = conversation_id
+        mock_conversation.user_id = user_id
 
-    query_request = QueryRequest(
-        query="test query", generate_topic_summary=False
-    )  # pyright: ignore[reportCallIssue]
+        # Mock the database session and query chain
+        mock_query = mocker.Mock()
+        mock_filtered_query = mocker.Mock()
+        mock_filtered_query.first.return_value = mock_conversation
+        mock_query.filter_by.return_value = mock_filtered_query
 
-    await endpoints.cleanup_after_streaming(
-        user_id="test_user",
-        conversation_id="test_conv_id",
-        model_id="test_model",
-        provider_id="test_provider",
-        llama_stack_model_id="test_llama_model",
-        query_request=query_request,
-        summary=mocker.Mock(
-            llm_response="test response", tool_calls=[], tool_results=[]
-        ),
-        metadata_map={},
-        started_at="2024-01-01T00:00:00Z",
-        client=mock_client,
-        config=mock_config,
-        skip_userid_check=False,
-        get_topic_summary_func=mock_get_topic_summary,
-        is_transcripts_enabled_func=mock_is_transcripts_enabled,
-        store_transcript_func=mock_store_transcript,
-        persist_user_conversation_details_func=mock_persist_conversation,
-    )
+        mock_session = mocker.Mock()
+        mock_session.query.return_value = mock_query
+        mock_session.__enter__ = mocker.Mock(return_value=mock_session)
+        mock_session.__exit__ = mocker.Mock(return_value=None)
 
-    mock_get_topic_summary.assert_not_called()
+        mocker.patch("utils.endpoints.get_session", return_value=mock_session)
 
-    mock_persist_conversation.assert_called_once()
-    assert mock_persist_conversation.call_args[1]["topic_summary"] is None
+        result = endpoints.validate_conversation_ownership(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            others_allowed=False,
+        )
+
+        assert result == mock_conversation
+        # Verify filter_by was called with both id and user_id
+        mock_query.filter_by.assert_called_once_with(
+            id=conversation_id, user_id=user_id
+        )
+
+    def test_returns_none_when_not_own_conversation(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test returns None when conversation doesn't belong to user."""
+        conversation_id = "123e4567-e89b-12d3-a456-426614174000"
+        user_id = "user-123"
+
+        # Mock the database session and query chain - returns None
+        mock_query = mocker.Mock()
+        mock_filtered_query = mocker.Mock()
+        mock_filtered_query.first.return_value = None
+        mock_query.filter_by.return_value = mock_filtered_query
+
+        mock_session = mocker.Mock()
+        mock_session.query.return_value = mock_query
+        mock_session.__enter__ = mocker.Mock(return_value=mock_session)
+        mock_session.__exit__ = mocker.Mock(return_value=None)
+
+        mocker.patch("utils.endpoints.get_session", return_value=mock_session)
+
+        result = endpoints.validate_conversation_ownership(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            others_allowed=False,
+        )
+
+        assert result is None
+        # Verify filter_by was called with both id and user_id
+        mock_query.filter_by.assert_called_once_with(
+            id=conversation_id, user_id=user_id
+        )
+
+    def test_successful_retrieval_others_allowed(self, mocker: MockerFixture) -> None:
+        """Test successful retrieval when others_allowed=True (admin access)."""
+        conversation_id = "123e4567-e89b-12d3-a456-426614174000"
+        user_id = "user-123"
+
+        mock_conversation = mocker.Mock(spec=UserConversation)
+        mock_conversation.id = conversation_id
+        mock_conversation.user_id = "other-user"  # Different user
+
+        # Mock the database session and query chain
+        mock_query = mocker.Mock()
+        mock_filtered_query = mocker.Mock()
+        mock_filtered_query.first.return_value = mock_conversation
+        mock_query.filter_by.return_value = mock_filtered_query
+
+        mock_session = mocker.Mock()
+        mock_session.query.return_value = mock_query
+        mock_session.__enter__ = mocker.Mock(return_value=mock_session)
+        mock_session.__exit__ = mocker.Mock(return_value=None)
+
+        mocker.patch("utils.endpoints.get_session", return_value=mock_session)
+
+        result = endpoints.validate_conversation_ownership(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            others_allowed=True,
+        )
+
+        assert result == mock_conversation
+        # Verify filter_by was called with only id (not user_id) when others_allowed=True
+        mock_query.filter_by.assert_called_once_with(id=conversation_id)
+
+    def test_returns_none_when_conversation_not_found_others_allowed(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test returns None when conversation doesn't exist even with others_allowed=True."""
+        conversation_id = "123e4567-e89b-12d3-a456-426614174000"
+        user_id = "user-123"
+
+        # Mock the database session and query chain - returns None
+        mock_query = mocker.Mock()
+        mock_filtered_query = mocker.Mock()
+        mock_filtered_query.first.return_value = None
+        mock_query.filter_by.return_value = mock_filtered_query
+
+        mock_session = mocker.Mock()
+        mock_session.query.return_value = mock_query
+        mock_session.__enter__ = mocker.Mock(return_value=mock_session)
+        mock_session.__exit__ = mocker.Mock(return_value=None)
+
+        mocker.patch("utils.endpoints.get_session", return_value=mock_session)
+
+        result = endpoints.validate_conversation_ownership(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            others_allowed=True,
+        )
+
+        assert result is None
+        # Verify filter_by was called with only id
+        mock_query.filter_by.assert_called_once_with(id=conversation_id)
+
+    def test_default_others_allowed_false(self, mocker: MockerFixture) -> None:
+        """Test that others_allowed defaults to False."""
+        conversation_id = "123e4567-e89b-12d3-a456-426614174000"
+        user_id = "user-123"
+
+        mock_conversation = mocker.Mock(spec=UserConversation)
+        mock_conversation.id = conversation_id
+        mock_conversation.user_id = user_id
+
+        # Mock the database session and query chain
+        mock_query = mocker.Mock()
+        mock_filtered_query = mocker.Mock()
+        mock_filtered_query.first.return_value = mock_conversation
+        mock_query.filter_by.return_value = mock_filtered_query
+
+        mock_session = mocker.Mock()
+        mock_session.query.return_value = mock_query
+        mock_session.__enter__ = mocker.Mock(return_value=mock_session)
+        mock_session.__exit__ = mocker.Mock(return_value=None)
+
+        mocker.patch("utils.endpoints.get_session", return_value=mock_session)
+
+        # Call without others_allowed parameter (should default to False)
+        result = endpoints.validate_conversation_ownership(
+            user_id=user_id,
+            conversation_id=conversation_id,
+        )
+
+        assert result == mock_conversation
+        # Verify filter_by was called with both id and user_id (default behavior)
+        mock_query.filter_by.assert_called_once_with(
+            id=conversation_id, user_id=user_id
+        )
