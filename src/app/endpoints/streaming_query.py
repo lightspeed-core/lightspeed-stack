@@ -269,11 +269,13 @@ async def retrieve_response_generator(
         return response_generator(response, context, turn_summary), turn_summary
 
     # Handle know LLS client errors only at stream creation time and shield execution
-    except RuntimeError as e:  # library mode wraps 413 into runtime error
+    except RuntimeError as e:  # library mode wraps HTTP errors as RuntimeError
         if "context_length" in str(e).lower():
             error_response = PromptTooLongResponse(model=responses_params.model)
             raise HTTPException(**error_response.model_dump()) from e
-        raise e
+        logger.exception("RuntimeError during streaming inference")
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump()) from e
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
             backend_name="Llama Stack",
@@ -407,9 +409,9 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
     chunk_id = 0
     media_type = context.query_request.media_type or MEDIA_TYPE_JSON
     text_parts: list[str] = []
-    mcp_calls: dict[int, tuple[str, str]] = (
-        {}
-    )  # output_index -> (mcp_call_id, mcp_call_name)
+    mcp_calls: dict[
+        int, tuple[str, str]
+    ] = {}  # output_index -> (mcp_call_id, mcp_call_name)
     latest_response_object: Optional[OpenAIResponseObject] = None
 
     logger.debug("Starting streaming response (Responses API) processing")

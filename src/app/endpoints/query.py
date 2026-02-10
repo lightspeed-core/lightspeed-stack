@@ -257,11 +257,13 @@ async def retrieve_response(  # pylint: disable=too-many-locals
         response = await client.responses.create(**responses_params.model_dump())
         response = cast(OpenAIResponseObject, response)
 
-    except RuntimeError as e:  # library mode wraps 413 into runtime error
+    except RuntimeError as e:  # library mode wraps HTTP errors as RuntimeError
         if "context_length" in str(e).lower():
             error_response = PromptTooLongResponse(model=responses_params.model)
             raise HTTPException(**error_response.model_dump()) from e
-        raise e
+        logger.exception("RuntimeError during inference")
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump()) from e
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
             backend_name="Llama Stack",

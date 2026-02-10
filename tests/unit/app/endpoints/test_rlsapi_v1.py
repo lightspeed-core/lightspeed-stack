@@ -126,6 +126,26 @@ def mock_api_connection_error_fixture(mocker: MockerFixture) -> None:
     )
 
 
+@pytest.fixture(name="mock_runtime_error_context_length")
+def mock_runtime_error_context_length_fixture(mocker: MockerFixture) -> None:
+    """Mock responses.create() to raise RuntimeError with context_length message."""
+    _setup_responses_mock(
+        mocker,
+        mocker.AsyncMock(
+            side_effect=RuntimeError("context_length exceeded maximum tokens")
+        ),
+    )
+
+
+@pytest.fixture(name="mock_runtime_error_other")
+def mock_runtime_error_other_fixture(mocker: MockerFixture) -> None:
+    """Mock responses.create() to raise RuntimeError with non-context_length message."""
+    _setup_responses_mock(
+        mocker,
+        mocker.AsyncMock(side_effect=RuntimeError("Some other runtime error")),
+    )
+
+
 # --- Test _build_instructions ---
 
 
@@ -398,6 +418,51 @@ async def test_infer_api_connection_error_returns_503(
         )
 
     assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+
+
+@pytest.mark.asyncio
+async def test_infer_runtime_error_context_length_returns_413(
+    mocker: MockerFixture,
+    mock_configuration: AppConfig,
+    mock_runtime_error_context_length: None,
+    mock_auth_resolvers: None,
+) -> None:
+    """Test /infer returns 413 when LLM raises RuntimeError with context_length."""
+    infer_request = RlsapiV1InferRequest(question="Test question")
+    mock_request = _create_mock_request(mocker)
+    mock_background_tasks = _create_mock_background_tasks(mocker)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await infer_endpoint(
+            infer_request=infer_request,
+            request=mock_request,
+            background_tasks=mock_background_tasks,
+            auth=MOCK_AUTH,
+        )
+
+    assert exc_info.value.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+
+
+@pytest.mark.asyncio
+async def test_infer_runtime_error_other_reraises(
+    mocker: MockerFixture,
+    mock_configuration: AppConfig,
+    mock_runtime_error_other: None,
+    mock_auth_resolvers: None,
+) -> None:
+    """Test /infer returns 500 for RuntimeError when not context_length related."""
+    infer_request = RlsapiV1InferRequest(question="Test question")
+    mock_request = _create_mock_request(mocker)
+    mock_background_tasks = _create_mock_background_tasks(mocker)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await infer_endpoint(
+            infer_request=infer_request,
+            request=mock_request,
+            background_tasks=mock_background_tasks,
+            auth=MOCK_AUTH,
+        )
+    assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
 
 @pytest.mark.asyncio

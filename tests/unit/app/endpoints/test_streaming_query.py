@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from llama_stack_api.openai_responses import (
     OpenAIResponseObject,
@@ -257,20 +257,14 @@ class TestOLSCompatibilityIntegration:
 
     def test_media_type_validation(self) -> None:
         """Test that media type validation works correctly."""
-        valid_request = QueryRequest(
-            query="test", media_type="application/json"
-        )  # pyright: ignore[reportCallIssue]
+        valid_request = QueryRequest(query="test", media_type="application/json")  # pyright: ignore[reportCallIssue]
         assert valid_request.media_type == "application/json"
 
-        valid_request = QueryRequest(
-            query="test", media_type="text/plain"
-        )  # pyright: ignore[reportCallIssue]
+        valid_request = QueryRequest(query="test", media_type="text/plain")  # pyright: ignore[reportCallIssue]
         assert valid_request.media_type == "text/plain"
 
         with pytest.raises(ValueError, match="media_type must be either"):
-            QueryRequest(
-                query="test", media_type="invalid/type"
-            )  # pyright: ignore[reportCallIssue]
+            QueryRequest(query="test", media_type="invalid/type")  # pyright: ignore[reportCallIssue]
 
     def test_ols_end_event_structure(self) -> None:
         """Test that end event follows OLS structure."""
@@ -322,9 +316,7 @@ class TestStreamingQueryEndpointHandler:
         mocker: MockerFixture,
     ) -> None:
         """Test successful streaming query."""
-        query_request = QueryRequest(
-            query="What is Kubernetes?"
-        )  # pyright: ignore[reportCallIssue]
+        query_request = QueryRequest(query="What is Kubernetes?")  # pyright: ignore[reportCallIssue]
 
         mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
         mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
@@ -574,9 +566,7 @@ class TestStreamingQueryEndpointHandler:
         mocker: MockerFixture,
     ) -> None:
         """Test streaming query refreshes Azure token when needed."""
-        query_request = QueryRequest(
-            query="What is Kubernetes?"
-        )  # pyright: ignore[reportCallIssue]
+        query_request = QueryRequest(query="What is Kubernetes?")  # pyright: ignore[reportCallIssue]
 
         mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
         mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
@@ -679,9 +669,7 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
+        mock_context.query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
 
         async def mock_response_gen() -> AsyncIterator[str]:
             yield "test"
@@ -769,9 +757,7 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
+        mock_context.query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
 
         mocker.patch(
             "app.endpoints.streaming_query.run_shield_moderation",
@@ -822,9 +808,7 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
+        mock_context.query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
 
         mocker.patch(
             "app.endpoints.streaming_query.run_shield_moderation",
@@ -872,9 +856,7 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
+        mock_context.query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
 
         mocker.patch(
             "app.endpoints.streaming_query.run_shield_moderation",
@@ -919,9 +901,7 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
+        mock_context.query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
 
         mocker.patch(
             "app.endpoints.streaming_query.run_shield_moderation",
@@ -932,8 +912,9 @@ class TestCreateResponseGenerator:
             side_effect=RuntimeError("Some other error")
         )
 
-        with pytest.raises(RuntimeError):
+        with pytest.raises(HTTPException) as exc_info:
             await retrieve_response_generator(mock_responses_params, mock_context)
+        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
 
 class TestGenerateResponse:
@@ -950,9 +931,7 @@ class TestGenerateResponse:
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
         mock_context.user_id = "user_123"
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
+        mock_context.query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
         mock_context.started_at = "2024-01-01T00:00:00Z"
         mock_context.skip_userid_check = False
 
@@ -1047,9 +1026,7 @@ class TestGenerateResponse:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
+        mock_context.query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
         mock_context.started_at = "2024-01-01T00:00:00Z"
         mock_context.skip_userid_check = False
 
@@ -1082,9 +1059,7 @@ class TestGenerateResponse:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
-        mock_context.query_request = QueryRequest(
-            query="test"
-        )  # pyright: ignore[reportCallIssue]
+        mock_context.query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
         mock_context.started_at = "2024-01-01T00:00:00Z"
         mock_context.skip_userid_check = False
 

@@ -7,7 +7,7 @@
 from typing import Any
 
 import pytest
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, status
 from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 from pytest_mock import MockerFixture
@@ -110,9 +110,7 @@ class TestQueryEndpointHandler:
         mocker: MockerFixture,
     ) -> None:
         """Test successful query without existing conversation."""
-        query_request = QueryRequest(
-            query="What is Kubernetes?"
-        )  # pyright: ignore[reportCallIssue]
+        query_request = QueryRequest(query="What is Kubernetes?")  # pyright: ignore[reportCallIssue]
 
         mocker.patch("app.endpoints.query.configuration", setup_configuration)
         mocker.patch("app.endpoints.query.check_configuration_loaded")
@@ -386,9 +384,7 @@ class TestQueryEndpointHandler:
         mocker: MockerFixture,
     ) -> None:
         """Test query refreshes Azure token when needed."""
-        query_request = QueryRequest(
-            query="What is Kubernetes?"
-        )  # pyright: ignore[reportCallIssue]
+        query_request = QueryRequest(query="What is Kubernetes?")  # pyright: ignore[reportCallIssue]
 
         mocker.patch("app.endpoints.query.configuration", setup_configuration)
         mocker.patch("app.endpoints.query.check_configuration_loaded")
@@ -659,8 +655,9 @@ class TestRetrieveResponse:
             side_effect=RuntimeError("Some other error")
         )
 
-        with pytest.raises(RuntimeError):
+        with pytest.raises(HTTPException) as exc_info:
             await retrieve_response(mock_client, mock_responses_params)
+        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     @pytest.mark.asyncio
     async def test_retrieve_response_with_tool_calls(

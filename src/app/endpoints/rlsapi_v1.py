@@ -24,6 +24,7 @@ from models.config import Action
 from models.responses import (
     ForbiddenResponse,
     InternalServerErrorResponse,
+    PromptTooLongResponse,
     QuotaExceededResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
@@ -270,6 +271,26 @@ async def infer_endpoint(
             input_source, instructions, tools=mcp_tools
         )
         inference_time = time.monotonic() - start_time
+    except RuntimeError as e:
+        # Library mode wraps HTTP errors as RuntimeError
+        inference_time = time.monotonic() - start_time
+        metrics.llm_calls_failures_total.inc()
+        _queue_splunk_event(
+            background_tasks,
+            infer_request,
+            request,
+            request_id,
+            str(e),
+            inference_time,
+            "infer_error",
+        )
+        if "context_length" in str(e).lower():
+            logger.error("Prompt too long for request %s: %s", request_id, e)
+            error_response = PromptTooLongResponse(model=_get_default_model_id())
+            raise HTTPException(**error_response.model_dump()) from e
+        logger.exception("RuntimeError during inference for request %s", request_id)
+        response = InternalServerErrorResponse.generic()
+        raise HTTPException(**response.model_dump()) from e
     except APIConnectionError as e:
         inference_time = time.monotonic() - start_time
         metrics.llm_calls_failures_total.inc()
