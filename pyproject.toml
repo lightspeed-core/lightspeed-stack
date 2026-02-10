@@ -30,7 +30,7 @@ dependencies = [
     # Used to call Llama Stack APIs
     "llama-stack==0.4.3",
     "llama-stack-client==0.4.3",
-    "llama-stack-api==0.4.4",
+    "llama-stack-api==0.4.3",
     # Used by Logger
     "rich>=14.0.0",
     # Used by JWK token auth handler

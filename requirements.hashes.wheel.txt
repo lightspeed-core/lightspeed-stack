@@ -68,11 +68,6 @@ fsspec==2025.10.0 \
     --hash=sha256:f4295eca3b7a757fb18c27564c71d2d05ba20c239d1298711177ee628cb7533f
 googleapis-common-protos==1.72.0 \
     --hash=sha256:f09fc4740f11f52361600c7f3c7a116f8cb534bc67313b94e5a73333d2c5b3d4
-grpcio==1.76.0 \
-    --hash=sha256:198da80912c8c333e0253d683e86cd9b537742332eb66c159994367bc9b6f70a \
-    --hash=sha256:7c61d16a9041c9a9874dcdef7041808a9b03faf24a9af4474bb23d92ccc7049d \
-    --hash=sha256:8a546551d3e603396b5a5dd4ce081456d7fee59585127ff2d8c198eef936e563 \
-    --hash=sha256:cc28e6a51a57131f0849b2bc7cedfbb3b22c6002304ce8e78db4c98e8d6ae2ed
 h11==0.16.0 \
     --hash=sha256:2d9f5c55b31f88fb9b55b2c5750d325e5e5dbcb2672d08eb1f0121bba9ee72df
 hf-xet==1.2.0 \
@@ -159,8 +154,6 @@ propcache==0.4.1 \
 psycopg2-binary==2.9.11 \
     --hash=sha256:3f0e796e9a41255c22f0ebd5b2953b70d8bb624e7b9e4e89afeeda71ac0773b6 \
     --hash=sha256:4f883ef06d3b8bef9fb7fc6d79ab9dadf6c658d17998f39222852a6b1b62dc89
-pyaml==25.7.0 \
-    --hash=sha256:2da2e8b1064c77deea68d4b48e8227572f274a6b815abb0d0a025dc882658be8
 pyarrow==22.0.0 \
     --hash=sha256:2d6cf45c5985492e4adf6a53899497bd6887279ad3e195ca1a0b4fcb885713ae \
     --hash=sha256:34851b8bc2427ea89a830efe36f5d0a67dca09eb88ea71a69c6bd4b90cecd597 \
@@ -231,8 +224,6 @@ sqlalchemy==2.0.45 \
     --hash=sha256:4a0b03a1ff8ddbf6171b2bf1df0ca499250cc56a3c05bb789d9bbafa3f1f1ff9 \
     --hash=sha256:eca446d7df574922a640a00f8c50789b1d742e9e0aef9375b4a2fa727fd43a9b \
     --hash=sha256:f6256de5783c96c6090db092cb5c9c08ec6c5484590cc8ccd8abeb71c8956156
-starlette==0.50.0 \
-    --hash=sha256:5a8875a18ff844f633db23ddaee603bbbe3fec5def667e08e3f87ecab59400ad
 sympy==1.14.0 \
     --hash=sha256:4ec66f902c9e4bc8a1ae5345f97e4ea4efd05a1bce2e342862c4cb1172c0387c
 threadpoolctl==3.6.0 \

@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12, <3.14"
 resolution-markers = [
     "python_full_version >= '3.13' and sys_platform == 'win32'",
@@ -1403,7 +1403,7 @@ requires-dist = [
     { name = "kubernetes", specifier = ">=30.1.0" },
     { name = "litellm", specifier = ">=1.75.5.post1" },
     { name = "llama-stack", specifier = "==0.4.3" },
-    { name = "llama-stack-api", specifier = "==0.4.4" },
+    { name = "llama-stack-api", specifier = "==0.4.3" },
     { name = "llama-stack-client", specifier = "==0.4.3" },
     { name = "openai", specifier = ">=1.99.9" },
     { name = "prometheus-client", specifier = ">=0.22.1" },
@@ -1539,7 +1539,7 @@ wheels = [
 
 [[package]]
 name = "llama-stack-api"
-version = "0.4.4"
+version = "0.4.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
@@ -1549,9 +1549,9 @@ dependencies = [
     { name = "opentelemetry-sdk" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a9/84/075d5e4b2419777f7dc92a1153c683d82180739754c39ccb3ae01a9dc535/llama_stack_api-0.4.4.tar.gz", hash = "sha256:3973ca3bacf86916e04e521f77e7909533eec7364d32c3eabc35dc2976dbfe7d", size = 106579, upload-time = "2026-01-30T16:28:38.051Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0c/a5/ffc5cc66c3375df652dc3b03f9303923e9cd5dd7dd80fbef4d98e5a43e13/llama_stack_api-0.4.3.tar.gz", hash = "sha256:89cf8eaf1468b50ac426e14d39beb4f93994e0807b857f729765e4af0e9b53a1", size = 3165, upload-time = "2026-01-26T21:46:05.086Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/a0/e32f5b39a029c6fd120216d122a5333e8e4889103da56ff9efd6601eb987/llama_stack_api-0.4.4-py3-none-any.whl", hash = "sha256:7bbc63330ed186502dcd48f65cae014dbeb788ba5690be738c98693cfcd2f599", size = 107030, upload-time = "2026-01-30T16:28:36.725Z" },
+    { url = "https://files.pythonhosted.org/packages/ea/14/b228262ed1c715a3163616da87071c695dc1c13036e8ea7222b88fc9a39d/llama_stack_api-0.4.3-py3-none-any.whl", hash = "sha256:f6c3e4d81d27a3332983a44f9295567e375136d4a402084958ed247f5676c1ee", size = 2614, upload-time = "2026-01-26T21:46:04.319Z" },
 ]
 
 [[package]]
