@@ -36,17 +36,10 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
         if self._lsc is not None:  # early stopping - client already initialized
             return
 
-        try:
-            if llama_stack_config.use_as_library_client:
-                await self._load_library_client(llama_stack_config)
-            else:
-                self._load_service_client(llama_stack_config)
-        except APIConnectionError as e:
-            error_response = ServiceUnavailableResponse(
-                backend_name="Llama Stack",
-                cause=str(e),
-            )
-            raise HTTPException(**error_response.model_dump()) from e
+        if llama_stack_config.use_as_library_client:
+            await self._load_library_client(llama_stack_config)
+        else:
+            self._load_service_client(llama_stack_config)
 
     async def _load_library_client(self, config: LlamaStackConfiguration) -> None:
         """Initialize client in library mode.

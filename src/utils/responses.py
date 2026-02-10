@@ -1,15 +1,12 @@
+# pylint: disable=too-many-lines,too-many-branches,too-many-nested-blocks,too-many-arguments,too-many-positional-arguments,too-many-locals
 """Utility functions for processing Responses API output."""
 
 import json
-import logging
-from typing import Any, Optional, Union, Iterable, cast
-
-from models.responses_api_types import ResponseInput
+from typing import Any, Optional, cast
 
 from fastapi import HTTPException
 from llama_stack_api.openai_responses import (
     OpenAIResponseObject,
-    OpenAIResponseOutput,
     OpenAIResponseOutputMessageFileSearchToolCall as FileSearchCall,
     OpenAIResponseOutputMessageFunctionToolCall as FunctionCall,
     OpenAIResponseOutputMessageMCPCall as MCPCall,
@@ -19,14 +16,15 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseMCPApprovalResponse as MCPApprovalResponse,
 )
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
+from llama_stack_client.types import ResponseObject
+from llama_stack_client.types.response_object import Output, Usage
 
 import constants
 import metrics
 from configuration import AppConfig, configuration
 from constants import DEFAULT_RAG_TOOL
-from models.config import ModelContextProtocolServer
+from models.config import Action, ModelContextProtocolServer
 from models.database.conversations import UserConversation
-from models.config import Action
 from models.requests import QueryRequest
 from models.responses import (
     ForbiddenResponse,
@@ -34,14 +32,17 @@ from models.responses import (
     NotFoundResponse,
     ServiceUnavailableResponse,
 )
+from models.responses_api_types import ResponseInput
+from utils.mcp_headers import McpHeaders
 from utils.prompts import get_system_prompt, get_topic_summary_system_prompt
 from utils.query import (
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
+    persist_user_conversation_details_from_responses,
     prepare_input,
     select_model_and_provider_id,
+    store_conversation_into_cache_from_responses,
 )
-from utils.mcp_headers import McpHeaders
 from utils.suid import to_llama_stack_conversation_id
 from utils.token_counter import TokenCounter
 from utils.types import (
@@ -56,17 +57,14 @@ from log import get_logger
 logger = get_logger(__name__)
 
 
-def extract_text_from_input(input_value: Optional[ResponseInput]) -> str:
+def extract_text_from_input(
+    input_value: Optional[ResponseInput],
+) -> str:  # pylint: disable=too-many-branches
     """Extract text content from Responses API input field.
-    
-    The input field can be:
-    - A string (simple text input)
-    - An iterable of message objects (complex input with role and content)
-    - None (if input is optional)
-    
+
     Args:
         input_value: The input value from ResponsesRequest
-        
+
     Returns:
         Extracted text content as a string, or empty string if input is None or cannot be extracted
     """
@@ -74,43 +72,37 @@ def extract_text_from_input(input_value: Optional[ResponseInput]) -> str:
         return ""
     if isinstance(input_value, str):
         return input_value
-    
-    # Handle iterable of message objects (list, tuple, etc.)
-    # Note: str is also iterable, but we've already handled it above
+
     text_fragments: list[str] = []
-    try:
-        for message in input_value:
-            if isinstance(message, dict):
-                content = message.get("content")
-                if isinstance(content, str):
-                    text_fragments.append(content)
-                elif isinstance(content, list):
-                    for part in content:
-                        if isinstance(part, str):
-                            text_fragments.append(part)
-                        elif isinstance(part, dict):
-                            text_value = part.get("text") or part.get("refusal")
-                            if text_value:
-                                text_fragments.append(str(text_value))
-            elif hasattr(message, "content"):
-                # Handle object with content attribute
-                content = getattr(message, "content")
-                if isinstance(content, str):
-                    text_fragments.append(content)
-                elif isinstance(content, list):
-                    for part in content:
-                        if isinstance(part, str):
-                            text_fragments.append(part)
-                        elif hasattr(part, "text"):
-                            text_fragments.append(getattr(part, "text", ""))
-                        elif isinstance(part, dict):
-                            text_value = part.get("text") or part.get("refusal")
-                            if text_value:
-                                text_fragments.append(str(text_value))
-        return " ".join(text_fragments)
-    except TypeError:
-        # Not iterable, convert to string
-        return str(input_value)
+    for message in input_value:
+        if isinstance(message, dict):
+            content = message.get("content")
+            if isinstance(content, str):
+                text_fragments.append(content)
+            elif isinstance(content, list):
+                for part in content:
+                    if isinstance(part, str):
+                        text_fragments.append(part)
+                    elif isinstance(part, dict):
+                        text_value = part.get("text") or part.get("refusal")
+                        if text_value:
+                            text_fragments.append(str(text_value))
+        elif hasattr(message, "content"):
+            # Handle object with content attribute
+            content = getattr(message, "content")
+            if isinstance(content, str):
+                text_fragments.append(content)
+            elif isinstance(content, list):
+                for part in content:
+                    if isinstance(part, str):
+                        text_fragments.append(part)
+                    elif hasattr(part, "text"):
+                        text_fragments.append(getattr(part, "text", ""))
+                    elif isinstance(part, dict):
+                        text_value = part.get("text") or part.get("refusal")
+                        if text_value:
+                            text_fragments.append(str(text_value))
+    return " ".join(text_fragments)
 
 
 def extract_text_from_response_output_item(output_item: Any) -> str:
@@ -151,6 +143,19 @@ def extract_text_from_response_output_item(output_item: Any) -> str:
                     text_fragments.append(str(dict_text))
 
     return "".join(text_fragments)
+
+
+def extract_text_from_output_items(output_items: list[Output]) -> str:
+    """Extract and aggregate text from a list of Responses API output items.
+
+    Args:
+        output_items: List of output items from response.output array.
+
+    Returns:
+        Aggregated text content from all output items, joined with spaces.
+    """
+    text_parts = [extract_text_from_response_output_item(item) for item in output_items]
+    return " ".join(text_parts)
 
 
 async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
@@ -295,11 +300,10 @@ async def select_model_for_responses(
 
     Args:
         client: The AsyncLlamaStackClient instance
-        model_id: The model identifier in "provider/model" format or None
         user_conversation: The user conversation if conversation_id was provided, None otherwise
 
     Returns:
-        The llama_stack_model_id (provider/model format)
+        The llama_stack_model_id in "provider/model" format
 
     Raises:
         HTTPException: If models cannot be fetched or an error occurs, or if no LLM model is found
@@ -321,7 +325,8 @@ async def select_model_for_responses(
         except APIStatusError as e:
             if e.status_code == 404:
                 logger.warning(
-                    "Last used model %s from conversation not found, will select from available models",
+                    "Last used model %s from conversation not found, "
+                    "will select from available models",
                     model_id,
                 )
                 # Fall through to select from available models
@@ -580,7 +585,7 @@ def get_mcp_tools(
 
 
 def parse_referenced_documents(  # pylint: disable=too-many-locals
-    response: Optional[OpenAIResponseObject],
+    response: Optional[ResponseObject],
     vector_store_ids: Optional[list[str]] = None,
     rag_id_mapping: Optional[dict[str, str]] = None,
 ) -> list[ReferencedDocument]:
@@ -645,13 +650,12 @@ def parse_referenced_documents(  # pylint: disable=too-many-locals
     return documents
 
 
-def extract_token_usage(
-    response: Optional[OpenAIResponseObject], model_id: str
-) -> TokenCounter:
-    """Extract token usage from Responses API response and update metrics.
+def extract_token_usage(usage: Optional[Usage], model_id: str) -> TokenCounter:
+    """Extract token usage from Responses API usage object and update metrics.
 
     Args:
-        response: The OpenAI Response API response object
+        usage: Optional[Usage] from llama_stack_client.types.response_object. The Usage
+            object from the Responses API response, or None if not available.
         model_id: The model identifier for metrics labeling
 
     Returns:
@@ -661,73 +665,55 @@ def extract_token_usage(
     token_counter.llm_calls = 1
     provider, model = extract_provider_and_model_from_model_id(model_id)
 
-    # Extract usage from the response if available
-    # Note: usage attribute exists at runtime but may not be in type definitions
-    usage = getattr(response, "usage", None) if response else None
-    if usage:
-        try:
-            # Handle both dict and object cases due to llama_stack inconsistency:
-            # - When llama_stack converts to chat_completions internally, usage is a dict
-            # - When using proper Responses API, usage should be an object
-            # TODO: Remove dict handling once llama_stack standardizes on object type  # pylint: disable=fixme
-            if isinstance(usage, dict):
-                input_tokens = usage.get("input_tokens", 0)
-                output_tokens = usage.get("output_tokens", 0)
-            else:
-                # Object with attributes (expected final behavior)
-                input_tokens = getattr(usage, "input_tokens", 0)
-                output_tokens = getattr(usage, "output_tokens", 0)
-            # Only set if we got valid values
-            if input_tokens or output_tokens:
-                token_counter.input_tokens = input_tokens or 0
-                token_counter.output_tokens = output_tokens or 0
-
-                logger.debug(
-                    "Extracted token usage from Responses API: input=%d, output=%d",
-                    token_counter.input_tokens,
-                    token_counter.output_tokens,
-                )
-
-                # Update Prometheus metrics only when we have actual usage data
-                try:
-                    metrics.llm_token_sent_total.labels(provider, model).inc(
-                        token_counter.input_tokens
-                    )
-                    metrics.llm_token_received_total.labels(provider, model).inc(
-                        token_counter.output_tokens
-                    )
-                except (AttributeError, TypeError, ValueError) as e:
-                    logger.warning("Failed to update token metrics: %s", e)
-                _increment_llm_call_metric(provider, model)
-            else:
-                logger.debug(
-                    "Usage object exists but tokens are 0 or None, treating as no usage info"
-                )
-                # Still increment the call counter
-                _increment_llm_call_metric(provider, model)
-        except (AttributeError, KeyError, TypeError) as e:
-            logger.warning(
-                "Failed to extract token usage from response.usage: %s. Usage value: %s",
-                e,
-                usage,
-            )
-            # Still increment the call counter
-            _increment_llm_call_metric(provider, model)
-    else:
-        # No usage information available - this is expected when llama stack
-        # internally converts to chat_completions
+    if usage is None:
         logger.debug(
             "No usage information in Responses API response, token counts will be 0"
         )
-        # token_counter already initialized with 0 values
-        # Still increment the call counter
         _increment_llm_call_metric(provider, model)
+        return token_counter
 
+    try:
+        input_tokens = usage.input_tokens
+        output_tokens = usage.output_tokens
+    except (AttributeError, TypeError) as e:
+        logger.warning("Failed to extract token usage from usage object: %s", e)
+        _increment_llm_call_metric(provider, model)
+        return token_counter
+
+    # Only set if we got valid values
+    if not (input_tokens or output_tokens):
+        logger.debug(
+            "Usage object exists but tokens are 0 or None, treating as no usage info"
+        )
+        _increment_llm_call_metric(provider, model)
+        return token_counter
+
+    token_counter.input_tokens = input_tokens or 0
+    token_counter.output_tokens = output_tokens or 0
+
+    logger.debug(
+        "Extracted token usage from Responses API: input=%d, output=%d",
+        token_counter.input_tokens,
+        token_counter.output_tokens,
+    )
+
+    # Update Prometheus metrics only when we have actual usage data
+    try:
+        metrics.llm_token_sent_total.labels(provider, model).inc(
+            token_counter.input_tokens
+        )
+        metrics.llm_token_received_total.labels(provider, model).inc(
+            token_counter.output_tokens
+        )
+    except (AttributeError, TypeError, ValueError) as e:
+        logger.warning("Failed to update token metrics: %s", e)
+
+    _increment_llm_call_metric(provider, model)
     return token_counter
 
 
-def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-many-branches,too-many-locals
-    output_item: OpenAIResponseOutput,
+def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-many-branches
+    output_item: Output,
     rag_chunks: list[RAGChunk],
     vector_store_ids: Optional[list[str]] = None,
     rag_id_mapping: Optional[dict[str, str]] = None,
@@ -1024,6 +1010,108 @@ def _increment_llm_call_metric(provider: str, model: str) -> None:
         metrics.llm_calls_total.labels(provider, model).inc()
     except (AttributeError, TypeError, ValueError) as e:
         logger.warning("Failed to update LLM call metric: %s", e)
+
+
+def extract_response_metadata(
+    response: Optional[ResponseObject],
+    vector_store_ids: Optional[list[str]] = None,
+    rag_id_mapping: Optional[dict[str, str]] = None,
+) -> tuple[
+    str, list[ReferencedDocument], list[ToolCallSummary], list[ToolResultSummary]
+]:
+    """Extract response text and metadata from a ResponseObject.
+
+    Args:
+        response: The ResponseObject to extract metadata from, or None
+        vector_store_ids: Vector store IDs used in the query for source resolution.
+        rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
+
+    Returns:
+        Tuple of (response_text, referenced_documents, tool_calls, tool_results)
+        All list fields are empty lists if response is None or has no output
+    """
+    if response is None or not response.output:
+        return "", [], [], []
+
+    # Extract text from output items
+    response_text = extract_text_from_output_items(response.output)
+
+    # Extract referenced documents and tool calls/results
+    referenced_documents = parse_referenced_documents(
+        response, vector_store_ids, rag_id_mapping
+    )
+    rag_chunks: list[RAGChunk] = []
+    tool_calls: list[ToolCallSummary] = []
+    tool_results: list[ToolResultSummary] = []
+
+    for item in response.output:
+        tool_call, tool_result = build_tool_call_summary(
+            item, rag_chunks, vector_store_ids, rag_id_mapping
+        )
+        if tool_call:
+            tool_calls.append(tool_call)
+        if tool_result:
+            tool_results.append(tool_result)
+
+    return response_text, referenced_documents, tool_calls, tool_results
+
+
+async def persist_response_metadata(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    user_id: str,
+    conversation_id: str,
+    model_id: str,
+    input_text: str,
+    response_text: str,
+    started_at: str,
+    completed_at: str,
+    topic_summary: Optional[str],
+    referenced_documents: list[ReferencedDocument],
+    tool_calls: list[ToolCallSummary],
+    tool_results: list[ToolResultSummary],
+    _skip_userid_check: bool,
+) -> None:
+    """Persist response metadata to database and cache.
+
+    Args:
+        user_id: The authenticated user ID
+        conversation_id: The conversation ID
+        model_id: Model identifier in "provider/model" format
+        input_text: The input text
+        response_text: The extracted response text
+        started_at: Timestamp when the conversation started
+        completed_at: Timestamp when the conversation completed
+        topic_summary: Optional topic summary
+        referenced_documents: List of referenced documents
+        tool_calls: List of tool calls
+        tool_results: List of tool results
+        _skip_userid_check: Whether to skip user ID check for cache operations
+    """
+    logger.info("Persisting conversation details")
+    persist_user_conversation_details_from_responses(
+        user_id=user_id,
+        conversation_id=conversation_id,
+        model=model_id,
+        started_at=started_at,
+        completed_at=completed_at,
+        topic_summary=topic_summary,
+    )
+
+    logger.info("Storing conversation in cache")
+    store_conversation_into_cache_from_responses(
+        config=configuration,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        model=model_id,
+        query=input_text,
+        response=response_text,
+        started_at=started_at,
+        completed_at=completed_at,
+        _skip_userid_check=_skip_userid_check,
+        topic_summary=topic_summary,
+        referenced_documents=referenced_documents,
+        tool_calls=tool_calls,
+        tool_results=tool_results,
+    )
 
 
 def parse_arguments_string(arguments_str: str) -> dict[str, Any]:

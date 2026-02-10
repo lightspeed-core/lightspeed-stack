@@ -26,6 +26,7 @@ from app.endpoints import (
     rlsapi_v1,
     a2a,
     query,
+    responses,
 )  # noqa:E402
 
 
@@ -44,19 +45,20 @@ class MockFastAPI(FastAPI):
         """
         self.routers: list[tuple[Any, Optional[str]]] = []
 
-    def include_router(  # pylint: disable=too-many-arguments
+    def include_router(  # pylint: disable=too-many-arguments,arguments-differ
         self,
         router: Any,
         *,
         prefix: str = "",
         tags: Optional[list] = None,
         dependencies: Optional[Sequence] = None,
-        responses: Optional[dict] = None,
+        responses: Optional[dict] = None,  # pylint: disable=redefined-outer-name
         deprecated: Optional[bool] = None,
         include_in_schema: Optional[bool] = None,
         default_response_class: Optional[Any] = None,
         callbacks: Optional[list] = None,
         generate_unique_id_function: Optional[Callable] = None,
+        **kwargs: Any,  # pylint: disable=unused-argument
     ) -> None:
         """Register new router.
 
@@ -66,12 +68,16 @@ class MockFastAPI(FastAPI):
         Parameters:
             router (Any): Router object to register.
             prefix (str): Mount prefix to associate with the router.
+            responses: Optional response dictionary (unused, kept for API compatibility).
+            **kwargs: Additional FastAPI-compatible parameters for API compatibility.
 
         Notes:
             Accepts additional FastAPI-compatible parameters for
             API compatibility but ignores them; only the (router,
             prefix) pair is recorded.
         """
+        _ = responses  # Parameter kept for FastAPI API compatibility
+        _ = kwargs  # Acknowledge kwargs parameter for API compatibility
         self.routers.append((router, prefix))
 
     def get_routers(self) -> list[Any]:
@@ -106,7 +112,7 @@ def test_include_routers() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 19
+    assert len(app.routers) == 20
     assert root.router in app.get_routers()
     assert info.router in app.get_routers()
     assert models.router in app.get_routers()
@@ -115,6 +121,7 @@ def test_include_routers() -> None:
     assert shields.router in app.get_routers()
     assert providers.router in app.get_routers()
     assert query.router in app.get_routers()
+    assert responses.router in app.get_routers()
     assert streaming_query.router in app.get_routers()
     assert config.router in app.get_routers()
     assert feedback.router in app.get_routers()
@@ -142,7 +149,7 @@ def test_check_prefixes() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 19
+    assert len(app.routers) == 20
     assert app.get_router_prefix(root.router) == ""
     assert app.get_router_prefix(info.router) == "/v1"
     assert app.get_router_prefix(models.router) == "/v1"
@@ -152,6 +159,7 @@ def test_check_prefixes() -> None:
     assert app.get_router_prefix(providers.router) == "/v1"
     assert app.get_router_prefix(rags.router) == "/v1"
     assert app.get_router_prefix(query.router) == "/v1"
+    assert app.get_router_prefix(responses.router) == "/v1"
     assert app.get_router_prefix(streaming_query.router) == "/v1"
     assert app.get_router_prefix(config.router) == "/v1"
     assert app.get_router_prefix(feedback.router) == "/v1"

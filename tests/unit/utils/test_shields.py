@@ -2,10 +2,15 @@
 
 import pytest
 from fastapi import HTTPException, status
+from llama_stack_api.openai_responses import (
+    OpenAIResponseMessage,
+    OpenAIResponseOutputMessageFileSearchToolCall,
+)
 from pytest_mock import MockerFixture
 
 from utils.shields import (
     DEFAULT_VIOLATION_MESSAGE,
+    append_refused_turn_to_conversation,
     append_turn_to_conversation,
     detect_shield_violations,
     get_available_shields,
@@ -335,3 +340,80 @@ class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
                 },
             ],
         )
+
+
+class TestAppendRefusedTurnToConversation:
+    """Tests for append_refused_turn_to_conversation function."""
+
+    @pytest.mark.asyncio
+    async def test_appends_string_input(self, mocker: MockerFixture) -> None:
+        """Test that append_refused_turn_to_conversation handles string input."""
+        mock_client = mocker.Mock()
+        mock_client.conversations.items.create = mocker.AsyncMock(return_value=None)
+
+        refusal_message = OpenAIResponseMessage(
+            type="message",
+            role="assistant",
+            content="I cannot help with that",
+        )
+
+        await append_refused_turn_to_conversation(
+            mock_client,
+            conversation_id="conv-123",
+            user_input="Hello",
+            refusal_message=refusal_message,
+        )
+
+        mock_client.conversations.items.create.assert_called_once()
+        call_args = mock_client.conversations.items.create.call_args
+        assert call_args[0][0] == "conv-123"
+        items = call_args[1]["items"]
+        assert len(items) == 2
+        assert items[0]["type"] == "message"
+        assert items[0]["role"] == "user"
+        assert items[0]["content"] == "Hello"
+        assert items[1]["type"] == "message"
+        assert items[1]["role"] == "assistant"
+
+    @pytest.mark.asyncio
+    async def test_appends_list_input(self, mocker: MockerFixture) -> None:
+        """Test that append_refused_turn_to_conversation handles list input."""
+        mock_client = mocker.Mock()
+        mock_client.conversations.items.create = mocker.AsyncMock(return_value=None)
+
+        user_message = OpenAIResponseMessage(
+            type="message",
+            role="user",
+            content="Search for files",
+        )
+        file_search_call = OpenAIResponseOutputMessageFileSearchToolCall(
+            id="call_123",
+            type="file_search_call",
+            queries=["search query"],
+            status="completed",
+        )
+
+        refusal_message = OpenAIResponseMessage(
+            type="message",
+            role="assistant",
+            content="I cannot help with that",
+        )
+
+        await append_refused_turn_to_conversation(
+            mock_client,
+            conversation_id="conv-123",
+            user_input=[user_message, file_search_call],
+            refusal_message=refusal_message,
+        )
+
+        mock_client.conversations.items.create.assert_called_once()
+        call_args = mock_client.conversations.items.create.call_args
+        assert call_args[0][0] == "conv-123"
+        items = call_args[1]["items"]
+        # Should have 2 user items (message + file_search_call) + 1 refusal message
+        assert len(items) == 3
+        assert items[0]["type"] == "message"
+        assert items[0]["role"] == "user"
+        assert items[1]["type"] == "file_search_call"
+        assert items[2]["type"] == "message"
+        assert items[2]["role"] == "assistant"
