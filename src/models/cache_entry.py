@@ -2,8 +2,7 @@
 
 from typing import Optional
 from pydantic import BaseModel
-from models.responses import ReferencedDocument
-from utils.types import ToolCallSummary, ToolResultSummary
+from utils.types import ReferencedDocument, ToolCallSummary, ToolResultSummary
 
 
 class CacheEntry(BaseModel):

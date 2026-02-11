@@ -215,7 +215,7 @@ def default_jwk_configuration() -> JwkConfiguration:
         jwt_configuration=JwtConfiguration(
             # Should default to:
             # user_id_claim="user_id", username_claim="username"
-        ),
+        ),  # pyright: ignore[reportCallIssue]
     )
 
 

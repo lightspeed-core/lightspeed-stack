@@ -2,15 +2,15 @@
 
 """Models for REST API responses."""
 
-from typing import Any, ClassVar, Optional, Union
+from typing import Any, ClassVar, Literal, Optional, Union
 
 from fastapi import status
-from pydantic import AnyUrl, BaseModel, Field
+from pydantic import BaseModel, Field
 from pydantic_core import SchemaError
 
 from models.config import Action, Configuration
 from quota.quota_exceed_error import QuotaExceedError
-from utils.types import RAGChunk, ToolCallSummary, ToolResultSummary
+from utils.types import RAGChunk, ReferencedDocument, ToolCallSummary, ToolResultSummary
 
 SUCCESSFUL_RESPONSE_DESCRIPTION = "Successful response"
 BAD_REQUEST_DESCRIPTION = "Invalid request format"
@@ -23,21 +23,6 @@ SERVICE_UNAVAILABLE_DESCRIPTION = "Service unavailable"
 QUOTA_EXCEEDED_DESCRIPTION = "Quota limit exceeded"
 PROMPT_TOO_LONG_DESCRIPTION = "Prompt is too long"
 INTERNAL_SERVER_ERROR_DESCRIPTION = "Internal server error"
-
-
-# class ToolCall(BaseModel):
-#     """Model representing a tool call made during response generation."""
-
-#     tool_name: str = Field(description="Name of the tool called")
-#     arguments: dict[str, Any] = Field(description="Arguments passed to the tool")
-#     result: Optional[dict[str, Any]] = Field(None, description="Result from the tool")
-
-
-# class ToolResult(BaseModel):
-#     """Model representing a tool result."""
-
-#     tool_name: str = Field(description="Name of the tool")
-#     result: dict[str, Any] = Field(description="Result from the tool")
 
 
 class AbstractSuccessfulResponse(BaseModel):
@@ -363,23 +348,6 @@ class ConversationData(BaseModel):
     last_message_timestamp: float
 
 
-class ReferencedDocument(BaseModel):
-    """Model representing a document referenced in generating a response.
-
-    Attributes:
-        doc_url: Url to the referenced doc.
-        doc_title: Title of the referenced doc.
-    """
-
-    doc_url: Optional[AnyUrl] = Field(
-        None, description="URL of the referenced document"
-    )
-
-    doc_title: Optional[str] = Field(
-        None, description="Title of the referenced document"
-    )
-
-
 class QueryResponse(AbstractSuccessfulResponse):
     """Model representing LLM response to a query.
 
@@ -431,7 +399,7 @@ class QueryResponse(AbstractSuccessfulResponse):
 
     truncated: bool = Field(
         False,
-        description="Whether conversation history was truncated",
+        description="Deprecated:Whether conversation history was truncated",
         examples=[False, True],
     )
 
@@ -835,29 +803,79 @@ class AuthorizedResponse(AbstractSuccessfulResponse):
     }
 
 
+class Message(BaseModel):
+    """Model representing a message in a conversation turn.
+
+    Attributes:
+        content: The message content.
+        type: The type of message.
+    """
+
+    content: str = Field(
+        ...,
+        description="The message content",
+        examples=["Hello, how can I help you?"],
+    )
+    type: Literal["user", "assistant", "system", "developer"] = Field(
+        ...,
+        description="The type of message",
+        examples=["user", "assistant", "system", "developer"],
+    )
+
+
+class ConversationTurn(BaseModel):
+    """Model representing a single conversation turn.
+
+    Attributes:
+        messages: List of messages in this turn.
+        tool_calls: List of tool calls made in this turn.
+        tool_results: List of tool results from this turn.
+        provider: Provider identifier used for this turn.
+        model: Model identifier used for this turn.
+        started_at: ISO 8601 timestamp when the turn started.
+        completed_at: ISO 8601 timestamp when the turn completed.
+    """
+
+    messages: list[Message] = Field(
+        default_factory=list,
+        description="List of messages in this turn",
+    )
+    tool_calls: list[ToolCallSummary] = Field(
+        default_factory=list,
+        description="List of tool calls made in this turn",
+    )
+    tool_results: list[ToolResultSummary] = Field(
+        default_factory=list,
+        description="List of tool results from this turn",
+    )
+    provider: str = Field(
+        ...,
+        description="Provider identifier used for this turn",
+        examples=["openai"],
+    )
+    model: str = Field(
+        ...,
+        description="Model identifier used for this turn",
+        examples=["gpt-4o-mini"],
+    )
+    started_at: str = Field(
+        ...,
+        description="ISO 8601 timestamp when the turn started",
+        examples=["2024-01-01T00:01:00Z"],
+    )
+    completed_at: str = Field(
+        ...,
+        description="ISO 8601 timestamp when the turn completed",
+        examples=["2024-01-01T00:01:05Z"],
+    )
+
+
 class ConversationResponse(AbstractSuccessfulResponse):
     """Model representing a response for retrieving a conversation.
 
     Attributes:
         conversation_id: The conversation ID (UUID).
-        chat_history: The simplified chat history as a list of conversation turns.
-
-    Example:
-        ```python
-        conversation_response = ConversationResponse(
-            conversation_id="123e4567-e89b-12d3-a456-426614174000",
-            chat_history=[
-                {
-                    "messages": [
-                        {"content": "Hello", "type": "user"},
-                        {"content": "Hi there!", "type": "assistant"}
-                    ],
-                    "started_at": "2024-01-01T00:01:00Z",
-                    "completed_at": "2024-01-01T00:01:05Z"
-                }
-            ]
-        )
-        ```
+        chat_history: The chat history as a list of conversation turns.
     """
 
     conversation_id: str = Field(
@@ -866,7 +884,7 @@ class ConversationResponse(AbstractSuccessfulResponse):
         examples=["c5260aec-4d82-4370-9fdf-05cf908b3f16"],
     )
 
-    chat_history: list[dict[str, Any]] = Field(
+    chat_history: list[ConversationTurn] = Field(
         ...,
         description="The simplified chat history as a list of conversation turns",
         examples=[
@@ -875,6 +893,10 @@ class ConversationResponse(AbstractSuccessfulResponse):
                     {"content": "Hello", "type": "user"},
                     {"content": "Hi there!", "type": "assistant"},
                 ],
+                "tool_calls": [],
+                "tool_results": [],
+                "provider": "openai",
+                "model": "gpt-4o-mini",
                 "started_at": "2024-01-01T00:01:00Z",
                 "completed_at": "2024-01-01T00:01:05Z",
             }
@@ -893,6 +915,10 @@ class ConversationResponse(AbstractSuccessfulResponse):
                                 {"content": "Hello", "type": "user"},
                                 {"content": "Hi there!", "type": "assistant"},
                             ],
+                            "tool_calls": [],
+                            "tool_results": [],
+                            "provider": "openai",
+                            "model": "gpt-4o-mini",
                             "started_at": "2024-01-01T00:01:00Z",
                             "completed_at": "2024-01-01T00:01:05Z",
                         }
@@ -1759,13 +1785,27 @@ class PromptTooLongResponse(AbstractErrorResponse):
         }
     }
 
-    def __init__(self, *, response: str = "Prompt is too long", cause: str):
+    def __init__(
+        self,
+        *,
+        response: str = "Prompt is too long",
+        cause: str | None = None,
+        model: str | None = None,
+    ) -> None:
         """Initialize a PromptTooLongResponse.
 
         Args:
             response: Short summary of the error. Defaults to "Prompt is too long".
-            cause: Detailed explanation of what caused the error.
+            cause: Detailed explanation of what caused the error. If not provided,
+                   will be generated to include model information if model is provided.
+            model: The model identifier for which the prompt is too long.
         """
+        if cause is None:
+            if model:
+                cause = f"The input exceeds the context window size of model '{model}'."
+            else:
+                cause = "The prompt exceeds the maximum allowed length."
+
         super().__init__(
             response=response,
             cause=cause,
@@ -1798,7 +1838,7 @@ class UnprocessableEntityResponse(AbstractErrorResponse):
                     "label": "invalid value",
                     "detail": {
                         "response": "Invalid attribute value",
-                        "cause": "Invalid attatchment type: must be one of ['text/plain', "
+                        "cause": "Invalid attachment type: must be one of ['text/plain', "
                         "'application/json', 'application/yaml', 'application/xml']",
                     },
                 },

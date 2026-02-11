@@ -52,7 +52,7 @@ def base_postgres_config_fixture() -> PostgreSQLDatabaseConfiguration:
         user="testuser",
         password="testpass",
         namespace="public",
-    )
+    )  # pyright: ignore[reportCallIssue]
 
 
 @pytest.mark.usefixtures("reset_database_state")

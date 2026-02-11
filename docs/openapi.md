@@ -249,6 +249,11 @@ Handle requests to the /models endpoint.
 Process GET requests to the /models endpoint, returning a list of available
 models from the Llama Stack service.
 
+Parameters:
+    request: The incoming HTTP request.
+    auth: Authentication tuple from the auth dependency.
+    model_type: Optional filter to return only models matching this type.
+
 Raises:
     HTTPException: If unable to connect to the Llama Stack server or if
     model retrieval fails for any reason.
@@ -258,6 +263,11 @@ Returns:
 
 
 
+### 🔗 Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| model_type |  | False | Optional filter to return only models matching this type |
 
 
 ### ✅ Responses
@@ -345,6 +355,7 @@ Examples
 }
 ```
  |
+| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
 ## GET `/v1/tools`
 
 > **Tools Endpoint Handler**
@@ -1119,15 +1130,26 @@ Examples
 | 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
 ## POST `/v1/query`
 
-> **Query Endpoint Handler V1**
+> **Query Endpoint Handler**
 
 Handle request to the /query endpoint using Responses API.
 
-This is a wrapper around query_endpoint_handler_base that provides
-the Responses API specific retrieve_response and get_topic_summary functions.
+Processes a POST request to a query endpoint, forwarding the
+user's query to a selected Llama Stack LLM and returning the generated response.
 
 Returns:
     QueryResponse: Contains the conversation ID and the LLM-generated response.
+
+Raises:
+    HTTPException:
+        - 401: Unauthorized - Missing or invalid credentials
+        - 403: Forbidden - Insufficient permissions or model override not allowed
+        - 404: Not Found - Conversation, model, or provider not found
+        - 413: Prompt too long - Prompt exceeded model's context window size
+        - 422: Unprocessable Entity - Request validation failed
+        - 429: Quota limit exceeded - The token quota for model or user has been exceeded
+        - 500: Internal Server Error - Configuration not loaded or other server errors
+        - 503: Service Unavailable - Unable to connect to Llama Stack backend
 
 
 
@@ -1253,6 +1275,23 @@ Examples
 }
 ```
  |
+| 413 | Prompt is too long | [PromptTooLongResponse](#prompttoolongresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "The prompt exceeds the maximum allowed length.",
+    "response": "Prompt is too long"
+  }
+}
+```
+ |
 | 422 | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse)
 
 Examples
@@ -1288,7 +1327,7 @@ Examples
 ```json
 {
   "detail": {
-    "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+    "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
     "response": "Invalid attribute value"
   }
 }
@@ -1419,7 +1458,7 @@ Examples
  |
 ## POST `/v1/streaming_query`
 
-> **Streaming Query Endpoint Handler V1**
+> **Streaming Query Endpoint Handler**
 
 Handle request to the /streaming_query endpoint using Responses API.
 
@@ -1427,17 +1466,16 @@ Returns a streaming response using Server-Sent Events (SSE) format with
 content type text/event-stream.
 
 Returns:
-    StreamingResponse: An HTTP streaming response yielding
-    SSE-formatted events for the query lifecycle with content type
-    text/event-stream.
+    SSE-formatted events for the query lifecycle.
 
 Raises:
     HTTPException:
         - 401: Unauthorized - Missing or invalid credentials
         - 403: Forbidden - Insufficient permissions or model override not allowed
         - 404: Not Found - Conversation, model, or provider not found
+        - 413: Prompt too long - Prompt exceeded model's context window size
         - 422: Unprocessable Entity - Request validation failed
-        - 429: Too Many Requests - Quota limit exceeded
+        - 429: Quota limit exceeded - The token quota for model or user has been exceeded
         - 500: Internal Server Error - Configuration not loaded or other server errors
         - 503: Service Unavailable - Unable to connect to Llama Stack backend
 
@@ -1565,6 +1603,23 @@ Examples
 }
 ```
  |
+| 413 | Prompt is too long | [PromptTooLongResponse](#prompttoolongresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "The prompt exceeds the maximum allowed length.",
+    "response": "Prompt is too long"
+  }
+}
+```
+ |
 | 422 | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse)
 
 Examples
@@ -1600,7 +1655,7 @@ Examples
 ```json
 {
   "detail": {
-    "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+    "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
     "response": "Invalid attribute value"
   }
 }
@@ -2154,23 +2209,6 @@ Examples
   "detail": {
     "cause": "Failed to query the database",
     "response": "Database query failed"
-  }
-}
-```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "Connection error while trying to reach backend service.",
-    "response": "Unable to connect to Llama Stack"
   }
 }
 ```
@@ -3304,7 +3342,7 @@ Examples
 ```json
 {
   "detail": {
-    "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+    "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
     "response": "Invalid attribute value"
   }
 }
@@ -4361,30 +4399,39 @@ Model representing a response for retrieving a conversation.
 
 Attributes:
     conversation_id: The conversation ID (UUID).
-    chat_history: The simplified chat history as a list of conversation turns.
-
-Example:
-    ```python
-    conversation_response = ConversationResponse(
-        conversation_id="123e4567-e89b-12d3-a456-426614174000",
-        chat_history=[
-            {
-                "messages": [
-                    {"content": "Hello", "type": "user"},
-                    {"content": "Hi there!", "type": "assistant"}
-                ],
-                "started_at": "2024-01-01T00:01:00Z",
-                "completed_at": "2024-01-01T00:01:05Z"
-            }
-        ]
-    )
-    ```
+    chat_history: The chat history as a list of conversation turns.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
 | conversation_id | string | Conversation ID (UUID) |
 | chat_history | array | The simplified chat history as a list of conversation turns |
+
+
+## ConversationTurn
+
+
+Model representing a single conversation turn.
+
+Attributes:
+    messages: List of messages in this turn.
+    tool_calls: List of tool calls made in this turn.
+    tool_results: List of tool results from this turn.
+    provider: Provider identifier used for this turn.
+    model: Model identifier used for this turn.
+    started_at: ISO 8601 timestamp when the turn started.
+    completed_at: ISO 8601 timestamp when the turn completed.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| messages | array | List of messages in this turn |
+| tool_calls | array | List of tool calls made in this turn |
+| tool_results | array | List of tool results from this turn |
+| provider | string | Provider identifier used for this turn |
+| model | string | Model identifier used for this turn |
+| started_at | string | ISO 8601 timestamp when the turn started |
+| completed_at | string | ISO 8601 timestamp when the turn completed |
 
 
 ## ConversationUpdateRequest
@@ -4858,7 +4905,7 @@ Useful resources:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| url |  | URL to Llama Stack service; used when library mode is disabled |
+| url |  | URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL. |
 | api_key |  | API key to access Llama Stack service |
 | use_as_library_client |  | When set to true Llama Stack will be used in library mode, not in server mode (default) |
 | library_client_config_path |  | Path to configuration file used when Llama Stack is run in library mode |
@@ -4886,6 +4933,22 @@ Information about MCP server client authentication options.
 |-------|------|-------------|
 | name | string | MCP server name |
 | client_auth_headers | array | List of authentication header names for client-provided tokens |
+
+
+## Message
+
+
+Model representing a message in a conversation turn.
+
+Attributes:
+    content: The message content.
+    type: The type of message.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| content | string | The message content |
+| type | string | The type of message |
 
 
 ## ModelContextProtocolServer
@@ -5033,6 +5096,18 @@ Useful resources:
 | ca_cert_path |  | Path to CA certificate |
 
 
+## PromptTooLongResponse
+
+
+413 Payload Too Large - Prompt is too long.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer |  |
+| detail |  |  |
+
+
 ## ProviderHealthStatus
 
 
@@ -5139,7 +5214,7 @@ Attributes:
 | response | string | Response from LLM |
 | rag_chunks | array | Deprecated: List of RAG chunks used to generate the response. |
 | referenced_documents | array | List of documents referenced in generating the response |
-| truncated | boolean | Whether conversation history was truncated |
+| truncated | boolean | Deprecated:Whether conversation history was truncated |
 | input_tokens | integer | Number of tokens sent to LLM |
 | output_tokens | integer | Number of tokens received from LLM |
 | available_quotas | object | Quota available as measured by all configured quota limiters |
@@ -5512,6 +5587,7 @@ the service can handle requests concurrently.
 | color_log | boolean | Enables colorized logging |
 | access_log | boolean | Enables logging of all access information |
 | tls_config |  | Transport Layer Security configuration for HTTPS support |
+| root_path | string | ASGI root path for serving behind a reverse proxy on a subpath |
 | cors |  | Cross-Origin Resource Sharing configuration for cross-domain requests |
 
 
@@ -5700,3 +5776,5 @@ User data collection configuration.
 | loc | array |  |
 | msg | string |  |
 | type | string |  |
+| input |  |  |
+| ctx | object |  |

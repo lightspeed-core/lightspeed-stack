@@ -1,6 +1,12 @@
 # vim: set filetype=dockerfile
-FROM registry.access.redhat.com/ubi9/python-312 AS builder
+ARG BUILDER_BASE_IMAGE=registry.access.redhat.com/ubi9/python-312
+ARG BUILDER_DNF_COMMAND=dnf
+ARG RUNTIME_BASE_IMAGE=registry.access.redhat.com/ubi9/python-312-minimal
+ARG RUNTIME_DNF_COMMAND=microdnf
 
+FROM ${BUILDER_BASE_IMAGE} AS builder
+
+ARG BUILDER_DNF_COMMAND=dnf
 ARG APP_ROOT=/app-root
 ARG LSC_SOURCE_DIR=.
 
@@ -18,7 +24,7 @@ USER root
 # Install gcc - required by polyleven python package on aarch64
 # (dependency of autoevals, no pre-built binary wheels for linux on aarch64)
 # cmake and cargo are required by fastuuid, maturin
-RUN dnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc cmake cargo
+RUN ${BUILDER_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc gcc-c++ cmake cargo
 
 # Install uv package manager
 RUN pip3.12 install "uv>=0.8.15"
@@ -51,7 +57,8 @@ RUN if [ -f /cachi2/cachi2.env ]; then \
 RUN uv pip uninstall ecdsa
 
 # Final image without uv package manager
-FROM registry.access.redhat.com/ubi9/python-312-minimal
+FROM ${RUNTIME_BASE_IMAGE}
+ARG RUNTIME_DNF_COMMAND=microdnf
 ARG APP_ROOT=/app-root
 WORKDIR /app-root
 
@@ -79,7 +86,7 @@ COPY --from=builder /app-root/LICENSE /licenses/
 USER root
 
 # Additional tools for derived images
-RUN microdnf install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch libpq libtiff openjpeg2 lcms2 libjpeg-turbo libwebp
+RUN ${RUNTIME_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch
 
 # Create llama-stack directories for library mode
 RUN mkdir -p /opt/app-root/src/.llama/storage /opt/app-root/src/.llama/providers.d && \

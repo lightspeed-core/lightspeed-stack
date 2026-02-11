@@ -130,10 +130,18 @@ Feature: Conversation Cache V2 API tests
                    }
                  }
                },
+               "tool_calls": {
+                 "type": "array",
+                 "items": { "type": "object" }
+               },
+               "tool_results": {
+                 "type": "array",
+                 "items": { "type": "object" }
+               },
                "started_at": { "type": "string", "format": "date-time" },
                "completed_at": { "type": "string", "format": "date-time" }
              },
-             "required": ["provider", "model", "messages", "started_at", "completed_at"]
+             "required": ["provider", "model", "messages", "tool_calls", "tool_results", "started_at", "completed_at"]
            }
          }
        }

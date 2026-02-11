@@ -37,7 +37,9 @@ def noop_cache_config() -> ConversationHistoryConfiguration:
     Returns:
         ConversationHistoryConfiguration: configuration instance with `type` set to CACHE_TYPE_NOOP
     """
-    return ConversationHistoryConfiguration(type=CACHE_TYPE_NOOP)
+    return ConversationHistoryConfiguration(
+        type=CACHE_TYPE_NOOP
+    )  # pyright: ignore[reportCallIssue]
 
 
 @pytest.fixture(scope="module", name="memory_cache_config_fixture")
@@ -53,7 +55,7 @@ def memory_cache_config() -> ConversationHistoryConfiguration:
     """
     return ConversationHistoryConfiguration(
         type=CACHE_TYPE_MEMORY, memory=InMemoryCacheConfig(max_entries=10)
-    )
+    )  # pyright: ignore[reportCallIssue]
 
 
 @pytest.fixture(scope="module", name="postgres_cache_config_fixture")
@@ -72,7 +74,7 @@ def postgres_cache_config() -> ConversationHistoryConfiguration:
         type=CACHE_TYPE_POSTGRES,
         postgres=PostgreSQLDatabaseConfiguration(
             db="database", user="user", password=SecretStr("password")
-        ),
+        ),  # pyright: ignore[reportCallIssue],
     )
 
 
@@ -95,7 +97,7 @@ def sqlite_cache_config(tmpdir: Path) -> ConversationHistoryConfiguration:
     db_path = str(tmpdir / "test.sqlite")
     return ConversationHistoryConfiguration(
         type=CACHE_TYPE_SQLITE, sqlite=SQLiteDatabaseConfiguration(db_path=db_path)
-    )
+    )  # pyright: ignore[reportCallIssue]
 
 
 @pytest.fixture(scope="module", name="invalid_cache_type_config_fixture")
@@ -108,7 +110,7 @@ def invalid_cache_type_config() -> ConversationHistoryConfiguration:
     Returns:
         ConversationHistoryConfiguration: configuration with `type` set to "foo bar baz".
     """
-    c = ConversationHistoryConfiguration()
+    c = ConversationHistoryConfiguration()  # pyright: ignore[reportCallIssue]
     # the conversation cache type name is incorrect in purpose
     c.type = "foo bar baz"  # pyright: ignore
     return c
@@ -138,7 +140,7 @@ def test_conversation_cache_in_memory_improper_config() -> None:
     """Check if memory cache configuration is checked in cache factory."""
     cc = ConversationHistoryConfiguration(
         type=CACHE_TYPE_MEMORY, memory=InMemoryCacheConfig(max_entries=10)
-    )
+    )  # pyright: ignore[reportCallIssue]
     # simulate improper configuration (can not be done directly as model checks this)
     cc.memory = None
     with pytest.raises(ValueError, match="Expecting configuration for in-memory cache"):
@@ -168,7 +170,7 @@ def test_conversation_cache_sqlite_improper_config(tmpdir: Path) -> None:
     db_path = str(tmpdir / "test.sqlite")
     cc = ConversationHistoryConfiguration(
         type=CACHE_TYPE_SQLITE, sqlite=SQLiteDatabaseConfiguration(db_path=db_path)
-    )
+    )  # pyright: ignore[reportCallIssue]
     # simulate improper configuration (can not be done directly as model checks this)
     cc.sqlite = None
     with pytest.raises(ValueError, match="Expecting configuration for SQLite cache"):
@@ -201,7 +203,7 @@ def test_conversation_cache_postgres_improper_config() -> None:
         type=CACHE_TYPE_POSTGRES,
         postgres=PostgreSQLDatabaseConfiguration(
             db="db", user="u", password=SecretStr("p")
-        ),
+        ),  # pyright: ignore[reportCallIssue]
     )
     # simulate improper configuration (can not be done directly as model checks this)
     cc.postgres = None
@@ -220,7 +222,9 @@ def test_conversation_cache_no_type() -> None:
     whose `type` is None raises a ValueError with message "Cache type must be
     set".
     """
-    cc = ConversationHistoryConfiguration(type=CACHE_TYPE_NOOP)
+    cc = ConversationHistoryConfiguration(
+        type=CACHE_TYPE_NOOP
+    )  # pyright: ignore[reportCallIssue]
     # simulate improper configuration (can not be done directly as model checks this)
     cc.type = None
     with pytest.raises(ValueError, match="Cache type must be set"):

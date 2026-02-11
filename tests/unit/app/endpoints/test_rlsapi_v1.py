@@ -40,7 +40,7 @@ MOCK_AUTH: AuthTuple = ("mock_user_id", "mock_username", False, "mock_token")
 def _create_mock_request(mocker: MockerFixture, rh_identity: Any = None) -> Any:
     """Create a mock FastAPI Request with optional RH Identity data."""
     mock_request = mocker.Mock()
-    mock_request.headers = {"User-Agent": "CLA/0.4.0"}
+    mock_request.headers = {"User-Agent": "CLA/0.4.1"}
 
     if rh_identity is not None:
         mock_request.state = mocker.Mock()
@@ -165,6 +165,55 @@ def test_build_instructions(
         assert expected in result
     for not_expected in expected_not_contains:
         assert not_expected not in result
+
+
+# --- Test _build_instructions with customization.system_prompt ---
+
+
+@pytest.mark.parametrize(
+    ("custom_prompt", "expected_prompt"),
+    [
+        pytest.param(
+            "You are a RHEL expert.",
+            "You are a RHEL expert.",
+            id="customization_system_prompt_set",
+        ),
+        pytest.param(
+            None,
+            constants.DEFAULT_SYSTEM_PROMPT,
+            id="customization_system_prompt_none",
+        ),
+    ],
+)
+def test_build_instructions_with_customization(
+    mocker: MockerFixture,
+    custom_prompt: str | None,
+    expected_prompt: str,
+) -> None:
+    """Test _build_instructions uses customization.system_prompt when set."""
+    mock_customization = mocker.Mock()
+    mock_customization.system_prompt = custom_prompt
+    mock_config = mocker.Mock()
+    mock_config.customization = mock_customization
+    mocker.patch("app.endpoints.rlsapi_v1.configuration", mock_config)
+
+    systeminfo = RlsapiV1SystemInfo(os="RHEL", version="9.3", arch="x86_64")
+    result = _build_instructions(systeminfo)
+
+    assert expected_prompt in result
+    assert "OS: RHEL" in result
+
+
+def test_build_instructions_no_customization(mocker: MockerFixture) -> None:
+    """Test _build_instructions falls back when customization is None."""
+    mock_config = mocker.Mock()
+    mock_config.customization = None
+    mocker.patch("app.endpoints.rlsapi_v1.configuration", mock_config)
+
+    systeminfo = RlsapiV1SystemInfo()
+    result = _build_instructions(systeminfo)
+
+    assert result == constants.DEFAULT_SYSTEM_PROMPT
 
 
 # --- Test _get_default_model_id ---
@@ -518,3 +567,92 @@ def test_infer_request_question_is_stripped() -> None:
     """Test that question whitespace is stripped during validation."""
     request = RlsapiV1InferRequest(question="  How do I list files?  ")
     assert request.question == "How do I list files?"
+
+
+# --- Test MCP tools passthrough ---
+
+
+def _setup_responses_mock_with_capture(
+    mocker: MockerFixture, response_text: str = "Test response."
+) -> Any:
+    """Set up responses.create mock and return the create mock for assertion.
+
+    Unlike _setup_responses_mock, this returns the mock_create object so
+    callers can inspect call_args to verify tools were passed correctly.
+
+    Args:
+        mocker: The pytest mocker fixture.
+        response_text: Text for the mock LLM response.
+
+    Returns:
+        The mock create coroutine, whose call_args can be inspected.
+    """
+    mock_response = mocker.Mock()
+    mock_response.output = [_create_mock_response_output(mocker, response_text)]
+
+    mock_create = mocker.AsyncMock(return_value=mock_response)
+    _setup_responses_mock(mocker, mock_create)
+    return mock_create
+
+
+@pytest.mark.asyncio
+async def test_retrieve_simple_response_passes_tools(
+    mocker: MockerFixture, mock_configuration: AppConfig
+) -> None:
+    """Test that retrieve_simple_response forwards tools to responses.create()."""
+    mock_create = _setup_responses_mock_with_capture(mocker)
+    tools = [
+        {
+            "type": "mcp",
+            "server_label": "test-mcp",
+            "server_url": "http://localhost:9000/sse",
+            "require_approval": "never",
+        }
+    ]
+
+    await retrieve_simple_response("Test question", "Instructions", tools=tools)
+
+    mock_create.assert_called_once()
+    call_kwargs = mock_create.call_args.kwargs
+    assert call_kwargs["tools"] == tools
+
+
+@pytest.mark.asyncio
+async def test_retrieve_simple_response_defaults_to_empty_tools(
+    mocker: MockerFixture, mock_configuration: AppConfig
+) -> None:
+    """Test that retrieve_simple_response passes empty list when tools is None."""
+    mock_create = _setup_responses_mock_with_capture(mocker)
+
+    await retrieve_simple_response("Test question", "Instructions")
+
+    mock_create.assert_called_once()
+    call_kwargs = mock_create.call_args.kwargs
+    assert call_kwargs["tools"] == []
+
+
+@pytest.mark.asyncio
+async def test_infer_endpoint_calls_get_mcp_tools(
+    mocker: MockerFixture,
+    mock_configuration: AppConfig,
+    mock_llm_response: None,
+    mock_auth_resolvers: None,
+) -> None:
+    """Test that infer_endpoint calls get_mcp_tools with configuration.mcp_servers."""
+    mock_get_mcp_tools = mocker.patch(
+        "app.endpoints.rlsapi_v1.get_mcp_tools",
+        return_value=[{"type": "mcp", "server_label": "test"}],
+    )
+
+    infer_request = RlsapiV1InferRequest(question="How do I list files?")
+    mock_request = _create_mock_request(mocker)
+    mock_background_tasks = _create_mock_background_tasks(mocker)
+
+    await infer_endpoint(
+        infer_request=infer_request,
+        request=mock_request,
+        background_tasks=mock_background_tasks,
+        auth=MOCK_AUTH,
+    )
+
+    mock_get_mcp_tools.assert_called_once_with(mock_configuration.mcp_servers)

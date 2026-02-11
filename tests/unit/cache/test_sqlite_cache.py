@@ -11,9 +11,9 @@ import pytest
 
 from models.config import SQLiteDatabaseConfiguration
 from models.cache_entry import CacheEntry
-from models.responses import ConversationData, ReferencedDocument
+from models.responses import ConversationData
 from utils import suid
-from utils.types import ToolCallSummary, ToolResultSummary
+from utils.types import ReferencedDocument, ToolCallSummary, ToolResultSummary
 
 from cache.cache_error import CacheError
 from cache.sqlite_cache import SQLiteCache

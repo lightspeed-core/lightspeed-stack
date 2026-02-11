@@ -18,7 +18,7 @@ def sample_event_data_fixture() -> InferenceEventData:
         org_id="12345678",
         system_id="abc-def-123",
         request_id="req_xyz789",
-        cla_version="CLA/0.4.0",
+        cla_version="CLA/0.4.1",
         system_os="RHEL",
         system_version="9.3",
         system_arch="x86_64",
@@ -39,7 +39,7 @@ def test_builds_event_with_all_fields(sample_event_data: InferenceEventData) -> 
         assert event["org_id"] == "12345678"
         assert event["system_id"] == "abc-def-123"
         assert event["request_id"] == "req_xyz789"
-        assert event["cla_version"] == "CLA/0.4.0"
+        assert event["cla_version"] == "CLA/0.4.1"
         assert event["system_os"] == "RHEL"
         assert event["system_version"] == "9.3"
         assert event["system_arch"] == "x86_64"

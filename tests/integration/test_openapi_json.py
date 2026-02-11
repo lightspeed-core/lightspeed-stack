@@ -227,7 +227,7 @@ def test_servers_section_present_from_url(spec_from_url: dict[str, Any]) -> None
         ("/v1/feedback", "post", {"200", "401", "403", "404", "500"}),
         ("/v1/feedback/status", "get", {"200"}),
         ("/v1/feedback/status", "put", {"200", "401", "403", "500"}),
-        ("/v1/conversations", "get", {"200", "401", "403", "500", "503"}),
+        ("/v1/conversations", "get", {"200", "401", "403", "500"}),
         (
             "/v1/conversations/{conversation_id}",
             "get",
@@ -309,7 +309,7 @@ def test_paths_and_responses_exist_from_file(
         ("/v1/feedback", "post", {"200", "401", "403", "404", "500"}),
         ("/v1/feedback/status", "get", {"200"}),
         ("/v1/feedback/status", "put", {"200", "401", "403", "500"}),
-        ("/v1/conversations", "get", {"200", "401", "403", "500", "503"}),
+        ("/v1/conversations", "get", {"200", "401", "403", "500"}),
         (
             "/v1/conversations/{conversation_id}",
             "get",

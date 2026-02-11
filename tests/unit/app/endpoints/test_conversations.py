@@ -3,27 +3,33 @@
 
 """Unit tests for the /conversations REST API endpoints."""
 
+from datetime import UTC, datetime
 from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_client import APIConnectionError, NotFoundError
+from llama_stack_client import APIConnectionError, APIStatusError, NotFoundError
 from pytest_mock import MockerFixture, MockType
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.endpoints.conversations import (
+from app.endpoints.conversations_v1 import (
     delete_conversation_endpoint_handler,
     get_conversation_endpoint_handler,
     get_conversations_list_endpoint_handler,
-    simplify_session_data,
+    update_conversation_endpoint_handler,
 )
+from utils.conversations import build_conversation_turns_from_items
 from configuration import AppConfig
 from models.config import Action
-from models.database.conversations import UserConversation
+from models.database.conversations import UserConversation, UserTurn
+from models.requests import ConversationUpdateRequest
 from models.responses import (
     ConversationDeleteResponse,
     ConversationResponse,
     ConversationsListResponse,
+    ConversationUpdateResponse,
+    ForbiddenResponse,
+    InternalServerErrorResponse,
 )
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
@@ -104,8 +110,92 @@ def create_mock_conversation(
     return mock_conversation
 
 
+def create_mock_db_turn(
+    mocker: MockerFixture,
+    turn_number: int,
+    started_at: str = "2024-01-01T00:01:00Z",
+    completed_at: str = "2024-01-01T00:01:05Z",
+    provider: str = "google",
+    model: str = "gemini-2.0-flash-exp",
+) -> MockType:
+    """Create a mock UserTurn database object.
+
+    Args:
+        mocker: Mocker fixture
+        turn_number: Turn number (1-indexed)
+        started_at: ISO 8601 timestamp string
+        completed_at: ISO 8601 timestamp string
+        provider: Provider identifier
+        model: Model identifier
+
+    Returns:
+        Mock UserTurn database object with required attributes
+    """
+    mock_turn = mocker.Mock(spec=UserTurn)
+    mock_turn.turn_number = turn_number
+    # Convert ISO strings to datetime objects (Python 3.12+ supports "Z" directly)
+    mock_turn.started_at = datetime.fromisoformat(started_at)
+    mock_turn.completed_at = datetime.fromisoformat(completed_at)
+    mock_turn.provider = provider
+    mock_turn.model = model
+    return mock_turn
+
+
+def _setup_user_turn_query(
+    mock_query: MockType, db_turns: Optional[list[MockType]]
+) -> None:
+    """Configure mock query for UserTurn model.
+
+    Args:
+        mock_query: The mock query object to configure.
+        db_turns: List of UserTurn objects to return, or None for empty list.
+    """
+    turns_to_return = db_turns if db_turns is not None else []
+    mock_query.filter_by.return_value.order_by.return_value.all.return_value = (
+        turns_to_return
+    )
+
+
+def _setup_user_conversation_query(
+    mock_query: MockType, query_result: Optional[list[MockType]]
+) -> None:
+    """Configure mock query for UserConversation model.
+
+    Args:
+        mock_query: The mock query object to configure.
+        query_result: List of UserConversation objects to return, or None for None.
+    """
+    if query_result is not None:
+        mock_query.all.return_value = query_result
+        mock_query.filter_by.return_value.all.return_value = query_result
+        mock_query.filter_by.return_value.first.return_value = (
+            query_result[0] if query_result else None
+        )
+    else:
+        mock_query.filter_by.return_value.first.return_value = None
+
+
+def _patch_get_session_functions(
+    mocker: MockerFixture, mock_session_context: MockType
+) -> None:
+    """Patch all get_session functions used by the endpoint handlers.
+
+    Args:
+        mocker: Mocker fixture for creating patches.
+        mock_session_context: The context manager mock to return from get_session.
+    """
+    mocker.patch(
+        "app.endpoints.conversations_v1.get_session", return_value=mock_session_context
+    )
+    mocker.patch("app.database.get_session", return_value=mock_session_context)
+    mocker.patch("utils.endpoints.get_session", return_value=mock_session_context)
+    mocker.patch("utils.endpoints.can_access_conversation", return_value=True)
+
+
 def mock_database_session(
-    mocker: MockerFixture, query_result: Optional[list[MockType]] = None
+    mocker: MockerFixture,
+    query_result: Optional[list[MockType]] = None,
+    db_turns: Optional[list[MockType]] = None,
 ) -> MockType:
     """Helper function to mock get_session with proper context manager support.
 
@@ -115,27 +205,34 @@ def mock_database_session(
         mocker (pytest.MockerFixture): Fixture used to create and patch mocks.
         query_result (Optional[list]): If provided, configures the
         session.query().all() and session.query().filter_by().all() to return
-        this list.
+        this list (for UserConversation queries).
+        db_turns (Optional[list]): If provided, configures UserTurn queries
+        to return this list.
 
     Returns:
         Mock: The mocked session object that will be yielded by the patched
         get_session context manager.
     """
     mock_session = mocker.Mock()
-    if query_result is not None:
-        # Mock both the filtered and unfiltered query paths
-        mock_query = mocker.Mock()
-        mock_query.all.return_value = query_result
-        mock_query.filter_by.return_value.all.return_value = query_result
-        mock_session.query.return_value = mock_query
 
-    # Mock get_session to return a context manager
+    def query_side_effect(model_class: type[Any]) -> Any:
+        """Handle different model queries."""
+        mock_query = mocker.Mock()
+        if model_class == UserTurn:
+            _setup_user_turn_query(mock_query, db_turns)
+        else:
+            _setup_user_conversation_query(mock_query, query_result)
+        return mock_query
+
+    mock_session.query.side_effect = query_side_effect
+
+    # Create context manager mock for get_session
     mock_session_context = mocker.MagicMock()
     mock_session_context.__enter__.return_value = mock_session
     mock_session_context.__exit__.return_value = None
-    mocker.patch(
-        "app.endpoints.conversations.get_session", return_value=mock_session_context
-    )
+
+    _patch_get_session_functions(mocker, mock_session_context)
+
     return mock_session
 
 
@@ -251,6 +348,8 @@ def expected_chat_history_fixture() -> list[dict[str, Any]]:
         list[dict[str, Any]]: A list of conversation turns. Each turn contains:
             - messages: list of message dicts with `content` (str) and `type`
               (`"user"` or `"assistant"`)
+            - tool_calls: list of tool call summaries (empty by default)
+            - tool_results: list of tool result summaries (empty by default)
             - started_at: ISO 8601 UTC timestamp string for the turn start
             - completed_at: ISO 8601 UTC timestamp string for the turn end
     """
@@ -260,6 +359,10 @@ def expected_chat_history_fixture() -> list[dict[str, Any]]:
                 {"content": "Hello", "type": "user"},
                 {"content": "Hi there!", "type": "assistant"},
             ],
+            "tool_calls": [],
+            "tool_results": [],
+            "provider": "google",
+            "model": "gemini-2.0-flash-exp",
             "started_at": "2024-01-01T00:01:00Z",
             "completed_at": "2024-01-01T00:01:05Z",
         },
@@ -268,6 +371,10 @@ def expected_chat_history_fixture() -> list[dict[str, Any]]:
                 {"content": "How are you?", "type": "user"},
                 {"content": "I'm doing well, thanks!", "type": "assistant"},
             ],
+            "tool_calls": [],
+            "tool_results": [],
+            "provider": "google",
+            "model": "gemini-2.0-flash-exp",
             "started_at": "2024-01-01T00:02:00Z",
             "completed_at": "2024-01-01T00:02:03Z",
         },
@@ -294,76 +401,53 @@ def mock_conversation_fixture() -> UserConversation:
     return mock_conv
 
 
-class TestSimplifySessionData:
-    """Test cases for the simplify_session_data function."""
+class TestBuildConversationTurnsFromItems:
+    """Test cases for the build_conversation_turns_from_items function."""
 
     @pytest.mark.asyncio
-    async def test_simplify_session_data_with_model_dump(
+    async def test_build_conversation_turns_from_items_with_model_dump(
         self,
-        mock_session_data: dict[str, Any],
+        mocker: MockerFixture,
+        mock_session_data: dict[str, Any],  # pylint: disable=unused-argument
         expected_chat_history: list[dict[str, Any]],
     ) -> None:
-        """Test simplify_session_data with session data."""
-        result = simplify_session_data(mock_session_data)
-
-        assert result == expected_chat_history
+        """Test build_conversation_turns_from_items with items data."""
+        # Create mock items from session_data structure
+        mock_items = [
+            mocker.Mock(type="message", role="user", content="Hello"),
+            mocker.Mock(type="message", role="assistant", content="Hi there!"),
+            mocker.Mock(type="message", role="user", content="How are you?"),
+            mocker.Mock(
+                type="message", role="assistant", content="I'm doing well, thanks!"
+            ),
+        ]
+        # Create mock db_turns matching the expected turns
+        mock_db_turns = [
+            create_mock_db_turn(
+                mocker, 1, "2024-01-01T00:01:00Z", "2024-01-01T00:01:05Z"
+            ),
+            create_mock_db_turn(
+                mocker, 2, "2024-01-01T00:02:00Z", "2024-01-01T00:02:03Z"
+            ),
+        ]
+        conversation_start_time = datetime.fromisoformat(
+            "2024-01-01T00:00:00Z"
+        ).replace(tzinfo=UTC)
+        result = build_conversation_turns_from_items(
+            mock_items, mock_db_turns, conversation_start_time
+        )
+        actual_history = [turn.model_dump() for turn in result]
+        assert actual_history == expected_chat_history
 
     @pytest.mark.asyncio
-    async def test_simplify_session_data_empty_turns(self) -> None:
-        """Test simplify_session_data with empty turns."""
-        session_data = {
-            "session_id": VALID_CONVERSATION_ID,
-            "started_at": "2024-01-01T00:00:00Z",
-            "turns": [],
-        }
-
-        result = simplify_session_data(session_data)
+    async def test_build_conversation_turns_from_items_empty_turns(self) -> None:
+        """Test build_conversation_turns_from_items with empty items."""
+        conversation_start_time = datetime.fromisoformat(
+            "2024-01-01T00:00:00Z"
+        ).replace(tzinfo=UTC)
+        result = build_conversation_turns_from_items([], [], conversation_start_time)
 
         assert not result
-
-    @pytest.mark.asyncio
-    async def test_simplify_session_data_filters_unwanted_fields(self) -> None:
-        """Test that simplify_session_data properly filters out unwanted fields."""
-        session_data = {
-            "session_id": VALID_CONVERSATION_ID,
-            "turns": [
-                {
-                    "turn_id": "turn-1",
-                    "input_messages": [
-                        {
-                            "content": "Test message",
-                            "role": "user",
-                            "context": {"some": "context"},  # Should be filtered out
-                            "metadata": {"extra": "data"},  # Should be filtered out
-                        }
-                    ],
-                    "output_message": {
-                        "content": "Test response",
-                        "role": "assistant",
-                        "stop_reason": "end_of_turn",  # Should be filtered out
-                        "tool_calls": ["tool1", "tool2"],  # Should be filtered out
-                    },
-                    "started_at": "2024-01-01T00:01:00Z",
-                    "completed_at": "2024-01-01T00:01:05Z",
-                    "steps": ["step1", "step2"],  # Should be filtered out
-                }
-            ],
-        }
-
-        result = simplify_session_data(session_data)
-
-        expected = [
-            {
-                "messages": [
-                    {"content": "Test message", "type": "user"},
-                    {"content": "Test response", "type": "assistant"},
-                ],
-                "started_at": "2024-01-01T00:01:00Z",
-                "completed_at": "2024-01-01T00:01:05Z",
-            }
-        ]
-
-        assert result == expected
 
 
 class TestGetConversationEndpoint:
@@ -376,7 +460,7 @@ class TestGetConversationEndpoint:
         """Test the endpoint when configuration is not loaded."""
         mock_authorization_resolvers(mocker)
         mock_config = AppConfig()
-        mocker.patch("app.endpoints.conversations.configuration", mock_config)
+        mocker.patch("app.endpoints.conversations_v1.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(
@@ -400,8 +484,10 @@ class TestGetConversationEndpoint:
     ) -> None:
         """Test the endpoint with an invalid conversation ID format."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=False)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=False)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(
@@ -422,21 +508,23 @@ class TestGetConversationEndpoint:
         mocker: MockerFixture,
         setup_configuration: AppConfig,
         dummy_request: Request,
+        mock_conversation: MockType,
     ) -> None:
         """Test the endpoint when LlamaStack connection fails."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
-        mocker.patch("app.endpoints.conversations.retrieve_conversation")
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
 
-        # Mock AsyncLlamaStackClientHolder to raise APIConnectionError
+        mock_database_session(mocker, query_result=[mock_conversation], db_turns=[])
+
         mock_client = mocker.AsyncMock()
-        mock_client.agents.session.list.side_effect = APIConnectionError(
+        mock_client.conversations.items.list.side_effect = APIConnectionError(
             request=None  # type: ignore
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -460,6 +548,7 @@ class TestGetConversationEndpoint:
         mocker: MockerFixture,
         setup_configuration: AppConfig,
         dummy_request: Request,
+        mock_conversation: MockType,
     ) -> None:
         """Test the endpoint when LlamaStack returns NotFoundError.
 
@@ -471,18 +560,25 @@ class TestGetConversationEndpoint:
         "does not exist" and the conversation ID.
         """
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
-        mocker.patch("app.endpoints.conversations.retrieve_conversation")
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            return_value=mock_conversation,
+        )
 
-        # Mock AsyncLlamaStackClientHolder to raise NotFoundError
+        mock_database_session(mocker, db_turns=[])
+
         mock_client = mocker.AsyncMock()
-        mock_client.agents.session.list.side_effect = NotFoundError(
-            message="Session not found", response=mocker.Mock(request=None), body=None
+        mock_client.conversations.items.list.side_effect = NotFoundError(
+            message="Conversation not found",
+            response=mocker.Mock(request=None),
+            body=None,
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -502,74 +598,32 @@ class TestGetConversationEndpoint:
         assert VALID_CONVERSATION_ID in detail["cause"]  # type: ignore
 
     @pytest.mark.asyncio
-    async def test_session_retrieve_exception(
-        self,
-        mocker: MockerFixture,
-        setup_configuration: AppConfig,
-        dummy_request: Request,
-    ) -> None:
-        """Test the endpoint when session retrieval raises an APIConnectionError."""
-        mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
-        mocker.patch("app.endpoints.conversations.retrieve_conversation")
-
-        # Mock AsyncLlamaStackClientHolder to raise APIConnectionError
-        mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
-        )
-        mock_client = mocker.AsyncMock()
-        mock_client.agents.session.list.side_effect = APIConnectionError(
-            request=mocker.Mock()
-        )
-        mock_client_holder.return_value.get_client.return_value = mock_client
-
-        with pytest.raises(HTTPException) as exc_info:
-            await get_conversation_endpoint_handler(
-                request=dummy_request,
-                conversation_id=VALID_CONVERSATION_ID,
-                auth=MOCK_AUTH,
-            )
-
-        assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        detail = exc_info.value.detail
-        assert isinstance(detail, dict)
-        assert detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
-
-    @pytest.mark.asyncio
     async def test_get_conversation_forbidden(
         self,
         mocker: MockerFixture,
         setup_configuration: AppConfig,
         dummy_request: Request,
-        mock_conversation: MockType,
     ) -> None:
         """Test forbidden access when user lacks permission to read conversation."""
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
         mocker.patch(
-            "app.endpoints.conversations.retrieve_conversation",
-            return_value=mock_conversation,
+            "app.endpoints.conversations_v1.configuration", setup_configuration
         )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
         mocker.patch(
             "authorization.resolvers.NoopAccessResolver.get_actions",
             return_value=set(Action.GET_CONVERSATION),
-        )  # Reduce user's permissions to access only their conversations
-
-        mock_row = mocker.Mock()
-        mock_row.user_id = "different_user_id"
-
-        # Mock the SQLAlchemy-like session
-        mock_session = mocker.MagicMock()
-        mock_session.query.return_value.filter.return_value.first.return_value = (
-            mock_row
         )
 
-        mock_session.__enter__.return_value = mock_session
-        mock_session.__exit__.return_value = None
-
-        mocker.patch("utils.endpoints.get_session", return_value=mock_session)
+        # Mock validate_and_retrieve_conversation to raise 403 Forbidden
+        forbidden_response = ForbiddenResponse.conversation(
+            action="read",
+            resource_id=VALID_CONVERSATION_ID,
+            user_id=MOCK_AUTH[0],
+        )
+        mocker.patch(
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            side_effect=HTTPException(**forbidden_response.model_dump()),
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(
@@ -594,31 +648,41 @@ class TestGetConversationEndpoint:
         setup_configuration: AppConfig,
         mock_conversation: MockType,
         dummy_request: Request,
-        mock_session_data: dict[str, Any],
-    ) -> None:  # pylint: disable=too-many-arguments, too-many-positional-arguments
+    ) -> None:
         """Test allowed access to another user's conversation for authorized user."""
         mocker.patch(
             "authorization.resolvers.NoopAccessResolver.get_actions",
             return_value={Action.GET_CONVERSATION, Action.READ_OTHERS_CONVERSATIONS},
-        )  # Allow user to access other users' conversations
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
+        )
         mocker.patch(
-            "app.endpoints.conversations.retrieve_conversation",
-            return_value=mock_conversation,
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+
+        mock_db_turns = [
+            create_mock_db_turn(
+                mocker, 1, "2024-01-01T00:01:00Z", "2024-01-01T00:01:05Z"
+            ),
+        ]
+        mock_database_session(
+            mocker, query_result=[mock_conversation], db_turns=mock_db_turns
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.agents.session.list.return_value = mocker.Mock(
-            data=[mock_session_data]
-        )
-
-        mock_session_retrieve_result = mocker.Mock()
-        mock_session_retrieve_result.model_dump.return_value = mock_session_data
-        mock_client.agents.session.retrieve.return_value = mock_session_retrieve_result
+        mock_items_response = mocker.Mock()
+        mock_item1 = mocker.Mock()
+        mock_item1.type = "message"
+        mock_item1.role = "user"
+        mock_item1.content = "Hello"
+        mock_item2 = mocker.Mock()
+        mock_item2.type = "message"
+        mock_item2.role = "assistant"
+        mock_item2.content = "Hi there!"
+        mock_items_response.data = [mock_item1, mock_item2]
+        mock_client.conversations.items.list.return_value = mock_items_response
 
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
         response = await get_conversation_endpoint_handler(
@@ -635,30 +699,43 @@ class TestGetConversationEndpoint:
         self,
         mocker: MockerFixture,
         setup_configuration: AppConfig,
-        mock_session_data: dict[str, Any],
         expected_chat_history: list[dict[str, Any]],
         dummy_request: Request,
-    ) -> None:  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        mock_conversation: MockType,
+    ) -> None:
         """Test successful conversation retrieval with simplified response structure."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
-        mocker.patch("app.endpoints.conversations.retrieve_conversation")
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
 
-        # Mock AsyncLlamaStackClientHolder
-        mock_client = mocker.AsyncMock()
-        mock_client.agents.session.list.return_value = mocker.Mock(
-            data=[mock_session_data]
+        mock_db_turns = [
+            create_mock_db_turn(
+                mocker, 1, "2024-01-01T00:01:00Z", "2024-01-01T00:01:05Z"
+            ),
+            create_mock_db_turn(
+                mocker, 2, "2024-01-01T00:02:00Z", "2024-01-01T00:02:03Z"
+            ),
+        ]
+        mock_database_session(
+            mocker, query_result=[mock_conversation], db_turns=mock_db_turns
         )
 
-        # Mock session.retrieve to return an object with model_dump() method
-        mock_session_retrieve_result = mocker.Mock()
-        mock_session_retrieve_result.model_dump.return_value = mock_session_data
-        mock_client.agents.session.retrieve.return_value = mock_session_retrieve_result
+        mock_client = mocker.AsyncMock()
+        mock_items = mocker.Mock()
+        mock_items.data = [
+            mocker.Mock(type="message", role="user", content="Hello"),
+            mocker.Mock(type="message", role="assistant", content="Hi there!"),
+            mocker.Mock(type="message", role="user", content="How are you?"),
+            mocker.Mock(
+                type="message", role="assistant", content="I'm doing well, thanks!"
+            ),
+        ]
+        mock_client.conversations.items.list.return_value = mock_items
 
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -668,10 +745,8 @@ class TestGetConversationEndpoint:
 
         assert isinstance(response, ConversationResponse)
         assert response.conversation_id == VALID_CONVERSATION_ID
-        assert response.chat_history == expected_chat_history
-        mock_client.agents.session.list.assert_called_once_with(
-            agent_id=VALID_CONVERSATION_ID
-        )
+        actual_history = [turn.model_dump() for turn in response.chat_history]
+        assert actual_history == expected_chat_history
 
     @pytest.mark.asyncio
     async def test_retrieve_conversation_returns_none(
@@ -682,12 +757,16 @@ class TestGetConversationEndpoint:
     ) -> None:
         """Test when retrieve_conversation returns None."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
         mocker.patch(
-            "app.endpoints.conversations.retrieve_conversation", return_value=None
+            "app.endpoints.conversations_v1.configuration", setup_configuration
         )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mock_database_session(mocker, query_result=[])
+        mock_client = mocker.AsyncMock()
+        mock_client_holder = mocker.patch(
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+        )
+        mock_client_holder.return_value.get_client.return_value = mock_client
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(
@@ -702,28 +781,76 @@ class TestGetConversationEndpoint:
         assert "Conversation not found" in detail["response"]  # type: ignore
 
     @pytest.mark.asyncio
-    async def test_no_sessions_found_in_get_conversation(
+    async def test_no_items_found_in_get_conversation(
         self,
         mocker: MockerFixture,
         setup_configuration: AppConfig,
         dummy_request: Request,
         mock_conversation: MockType,
     ) -> None:
-        """Test when no sessions are found for the conversation."""
+        """Test when no items are found for the conversation (empty data list)."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
         mocker.patch(
-            "app.endpoints.conversations.retrieve_conversation",
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
             return_value=mock_conversation,
         )
 
-        # Mock AsyncLlamaStackClientHolder with empty sessions list
+        mock_database_session(mocker, db_turns=[])
+
         mock_client = mocker.AsyncMock()
-        mock_client.agents.session.list.return_value = mocker.Mock(data=[])
+        mock_items_response = mocker.Mock()
+        mock_items_response.data = []
+        mock_client.conversations.items.list.return_value = mock_items_response
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+        )
+        mock_client_holder.return_value.get_client.return_value = mock_client
+
+        with pytest.raises(HTTPException) as exc_info:
+            await get_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                auth=MOCK_AUTH,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "Conversation not found" in detail["response"]  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_api_status_error_in_get_conversation(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+        mock_conversation: MockType,
+    ) -> None:
+        """Test when APIStatusError is raised during conversation retrieval."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            return_value=mock_conversation,
+        )
+
+        mock_database_session(mocker, db_turns=[])
+
+        mock_client = mocker.AsyncMock()
+        mock_client.conversations.items.list.side_effect = APIStatusError(
+            message="Conversation not found",
+            response=mocker.Mock(status_code=404, request=None),
+            body=None,
+        )
+        mock_client_holder = mocker.patch(
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -745,30 +872,131 @@ class TestGetConversationEndpoint:
         mocker: MockerFixture,
         setup_configuration: AppConfig,
         dummy_request: Request,
-        mock_conversation: MockType,
     ) -> None:
         """Test when SQLAlchemyError is raised during conversation retrieval."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
         mocker.patch(
-            "app.endpoints.conversations.retrieve_conversation",
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        # Mock validate_and_retrieve_conversation to raise HTTPException (which it does
+        # when it catches SQLAlchemyError internally)
+        database_error_response = InternalServerErrorResponse.database_error()
+        mocker.patch(
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            side_effect=HTTPException(**database_error_response.model_dump()),
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await get_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                auth=MOCK_AUTH,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "Database" in detail["response"]  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_sqlalchemy_error_retrieving_turns_in_get_conversation(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+        mock_conversation: MockType,
+    ) -> None:
+        """Test when SQLAlchemyError is raised while retrieving conversation turns."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
             return_value=mock_conversation,
         )
 
-        # Mock AsyncLlamaStackClientHolder - SQLAlchemyError should come from session.retrieve
-        mock_client = mocker.AsyncMock()
-        mock_session_list_response = mocker.Mock()
-        mock_session_list_response.data = [{"session_id": VALID_CONVERSATION_ID}]
-        mock_client.agents.session.list.return_value = mock_session_list_response
-        mock_client.agents.session.retrieve.side_effect = SQLAlchemyError(
-            "Database error"
+        # Mock get_session to raise SQLAlchemyError when querying UserTurn
+        mock_session = mocker.Mock()
+
+        def query_side_effect(model_class: type[Any]) -> Any:
+            if model_class == UserTurn:
+                mock_query = mocker.Mock()
+                mock_query_chain = (
+                    mock_query.filter_by.return_value.order_by.return_value.all
+                )
+                mock_query_chain.side_effect = SQLAlchemyError("Database error")
+                return mock_query
+            # Return a default mock for other queries
+            return mocker.Mock()
+
+        mock_session.query.side_effect = query_side_effect
+
+        mock_session_context = mocker.MagicMock()
+        mock_session_context.__enter__.return_value = mock_session
+        mock_session_context.__exit__.return_value = None
+        mocker.patch(
+            "app.endpoints.conversations_v1.get_session",
+            return_value=mock_session_context,
         )
+
+        mock_client = mocker.AsyncMock()
+        mock_items_response = mocker.Mock()
+        mock_items_response.data = [
+            mocker.Mock(type="message", role="user", content="Hello"),
+            mocker.Mock(type="message", role="assistant", content="Hi!"),
+        ]
+        mock_client.conversations.items.list.return_value = mock_items_response
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
+
+        with pytest.raises(HTTPException) as exc_info:
+            await get_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                auth=MOCK_AUTH,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "Database" in detail["response"]  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_sqlalchemy_error_in_retrieve_conversation(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+    ) -> None:
+        """Test when SQLAlchemyError is raised during retrieve_conversation call."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "utils.endpoints.can_access_conversation",
+            return_value=True,
+        )
+
+        mock_session = mocker.Mock()
+        mock_query = mocker.Mock()
+        mock_query.filter_by.return_value.first.side_effect = SQLAlchemyError(
+            "Database error"
+        )
+        mock_session.query.return_value = mock_query
+        mock_session_context = mocker.MagicMock()
+        mock_session_context.__enter__.return_value = mock_session
+        mock_session_context.__exit__.return_value = None
+        mocker.patch(
+            "utils.endpoints.get_session",
+            return_value=mock_session_context,
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(
@@ -793,7 +1021,7 @@ class TestDeleteConversationEndpoint:
         """Test the endpoint when configuration is not loaded."""
         mock_authorization_resolvers(mocker)
         mock_config = AppConfig()
-        mocker.patch("app.endpoints.conversations.configuration", mock_config)
+        mocker.patch("app.endpoints.conversations_v1.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
             await delete_conversation_endpoint_handler(
@@ -817,8 +1045,10 @@ class TestDeleteConversationEndpoint:
     ) -> None:
         """Test the endpoint with an invalid conversation ID format."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=False)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=False)
 
         with pytest.raises(HTTPException) as exc_info:
             await delete_conversation_endpoint_handler(
@@ -843,18 +1073,23 @@ class TestDeleteConversationEndpoint:
     ) -> None:
         """Test the endpoint when LlamaStack connection fails."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
-        mocker.patch("app.endpoints.conversations.retrieve_conversation")
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch("app.endpoints.conversations_v1.retrieve_conversation")
 
-        # Mock AsyncLlamaStackClientHolder to raise APIConnectionError
+        mocker.patch(
+            "app.endpoints.conversations_v1.delete_conversation", return_value=True
+        )
+
         mock_client = mocker.AsyncMock()
-        mock_client.agents.session.delete.side_effect = APIConnectionError(
+        mock_client.conversations.delete.side_effect = APIConnectionError(
             request=None  # type: ignore
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -879,69 +1114,38 @@ class TestDeleteConversationEndpoint:
     ) -> None:
         """Test the endpoint when LlamaStack returns NotFoundError."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
-        mocker.patch("app.endpoints.conversations.retrieve_conversation")
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch("app.endpoints.conversations_v1.retrieve_conversation")
 
-        # Mock AsyncLlamaStackClientHolder to raise NotFoundError
+        mocker.patch(
+            "app.endpoints.conversations_v1.delete_conversation", return_value=True
+        )
+
         mock_client = mocker.AsyncMock()
-        mock_client.agents.session.delete.side_effect = NotFoundError(
-            message="Session not found", response=mocker.Mock(request=None), body=None
+        mock_client.conversations.delete.side_effect = APIStatusError(
+            message="Conversation not found",
+            response=mocker.Mock(status_code=404, request=None),
+            body=None,
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
-        with pytest.raises(HTTPException) as exc_info:
-            await delete_conversation_endpoint_handler(
-                request=dummy_request,
-                conversation_id=VALID_CONVERSATION_ID,
-                auth=MOCK_AUTH,
-            )
-
-        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-        detail = exc_info.value.detail
-        assert isinstance(detail, dict)
-        assert "Conversation not found" in detail["response"]  # type: ignore
-        assert "does not exist" in detail["cause"]  # type: ignore
-        assert VALID_CONVERSATION_ID in detail["cause"]  # type: ignore
-
-    @pytest.mark.asyncio
-    async def test_session_deletion_exception(
-        self,
-        mocker: MockerFixture,
-        setup_configuration: AppConfig,
-        dummy_request: Request,
-    ) -> None:
-        """Test the endpoint when session deletion raises an exception."""
-        mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
-        mocker.patch("app.endpoints.conversations.retrieve_conversation")
-
-        # Mock AsyncLlamaStackClientHolder to raise a general exception
-        mock_client = mocker.AsyncMock()
-        mock_client.agents.session.delete.side_effect = APIConnectionError(
-            request=None  # type: ignore
+        response = await delete_conversation_endpoint_handler(
+            request=dummy_request,
+            conversation_id=VALID_CONVERSATION_ID,
+            auth=MOCK_AUTH,
         )
-        mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
-        )
-        mock_client_holder.return_value.get_client.return_value = mock_client
 
-        with pytest.raises(HTTPException) as exc_info:
-            await delete_conversation_endpoint_handler(
-                request=dummy_request,
-                conversation_id=VALID_CONVERSATION_ID,
-                auth=MOCK_AUTH,
-            )
-        assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        detail = exc_info.value.detail
-        assert isinstance(detail, dict)
-        assert "Unable to connect to Llama Stack" in detail["response"]  # type: ignore
+        assert isinstance(response, ConversationDeleteResponse)
+        assert response.conversation_id == VALID_CONVERSATION_ID
+        assert response.success is True
+        assert "deleted successfully" in response.response
 
     @pytest.mark.asyncio
     async def test_delete_conversation_forbidden(
@@ -952,21 +1156,22 @@ class TestDeleteConversationEndpoint:
         mock_conversation: MockType,
     ) -> None:
         """Test forbidden deletion when user lacks permission to delete conversation."""
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
         mocker.patch(
-            "app.endpoints.conversations.retrieve_conversation",
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.retrieve_conversation",
             return_value=mock_conversation,
         )
         mocker.patch(
             "authorization.resolvers.NoopAccessResolver.get_actions",
             return_value=set(Action.DELETE_CONVERSATION),
-        )  # Reduce user's permissions to delete only their conversations
+        )
 
         mock_row = mocker.Mock()
         mock_row.user_id = "different_user_id"
 
-        # Mock the SQLAlchemy-like session
         mock_session = mocker.MagicMock()
         mock_session.query.return_value.filter.return_value.first.return_value = (
             mock_row
@@ -1008,36 +1213,38 @@ class TestDeleteConversationEndpoint:
                 Action.DELETE_OTHERS_CONVERSATIONS,
                 Action.DELETE_CONVERSATION,
             },
-        )  # Allow user to detele other users' conversations
+        )
 
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
         mocker.patch(
-            "app.endpoints.conversations.retrieve_conversation",
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.retrieve_conversation",
             return_value=mock_conversation,
+        )
+        mocker.patch(
+            "app.endpoints.conversations_v1.delete_conversation", return_value=True
         )
 
         mock_client = mocker.AsyncMock()
-        mock_client.agents.session.list.return_value.data = [
-            {"session_id": VALID_CONVERSATION_ID}
-        ]
-        mock_client.agents.session.delete.return_value = None
-        mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder.get_client",
-            return_value=mock_client,
+        mock_delete_response = mocker.Mock()
+        mock_delete_response.deleted = True
+        mock_client.conversations.delete.return_value = mock_delete_response
+        mock_client_holder = mocker.patch(
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
+        mock_client_holder.return_value.get_client.return_value = mock_client
 
-        mocker.patch(
-            "app.endpoints.conversations.delete_conversation", return_value=None
-        )
         response = await delete_conversation_endpoint_handler(
             request=dummy_request,
             conversation_id=VALID_CONVERSATION_ID,
             auth=MOCK_AUTH,
         )
 
-        assert response.success is True
+        assert isinstance(response, ConversationDeleteResponse)
         assert response.conversation_id == VALID_CONVERSATION_ID
+        assert response.success is True
         assert "deleted successfully" in response.response
 
     @pytest.mark.asyncio
@@ -1049,23 +1256,23 @@ class TestDeleteConversationEndpoint:
     ) -> None:
         """Test successful conversation deletion."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
-        mocker.patch("app.endpoints.conversations.retrieve_conversation")
-
-        # Mock the delete_conversation function
-        mocker.patch("app.endpoints.conversations.delete_conversation")
-
-        # Mock AsyncLlamaStackClientHolder
-        mock_client = mocker.AsyncMock()
-        # Ensure the endpoint sees an existing session so it proceeds to delete
-        mock_client.agents.session.list.return_value = mocker.Mock(
-            data=[{"session_id": VALID_CONVERSATION_ID}]
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mock_client.agents.session.delete.return_value = None  # Successful deletion
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch("app.endpoints.conversations_v1.retrieve_conversation")
+
+        mock_delete = mocker.patch(
+            "app.endpoints.conversations_v1.delete_conversation", return_value=True
+        )
+
+        mock_client = mocker.AsyncMock()
+        mock_delete_response = mocker.Mock()
+        mock_delete_response.deleted = True
+        mock_client.conversations.delete.return_value = mock_delete_response
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1076,10 +1283,9 @@ class TestDeleteConversationEndpoint:
         assert isinstance(response, ConversationDeleteResponse)
         assert response.conversation_id == VALID_CONVERSATION_ID
         assert response.success is True
-        assert response.response == "Conversation deleted successfully"
-        mock_client.agents.session.delete.assert_called_once_with(
-            agent_id=VALID_CONVERSATION_ID, session_id=VALID_CONVERSATION_ID
-        )
+        assert "deleted successfully" in response.response
+        mock_delete.assert_called_once()
+        mock_client.conversations.delete.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_retrieve_conversation_returns_none_in_delete(
@@ -1088,50 +1294,25 @@ class TestDeleteConversationEndpoint:
         setup_configuration: AppConfig,
         dummy_request: Request,
     ) -> None:
-        """Test when retrieve_conversation returns None in delete endpoint."""
+        """Test when conversation doesn't exist in delete endpoint."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
         mocker.patch(
-            "app.endpoints.conversations.retrieve_conversation", return_value=None
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.can_access_conversation", return_value=True
+        )
+        mocker.patch(
+            "app.endpoints.conversations_v1.delete_conversation", return_value=False
         )
 
-        with pytest.raises(HTTPException) as exc_info:
-            await delete_conversation_endpoint_handler(
-                request=dummy_request,
-                conversation_id=VALID_CONVERSATION_ID,
-                auth=MOCK_AUTH,
-            )
-
-        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-        detail = exc_info.value.detail
-        assert isinstance(detail, dict)
-        assert "Conversation not found" in detail["response"]  # type: ignore
-
-    @pytest.mark.asyncio
-    async def test_no_sessions_found_in_delete(
-        self,
-        mocker: MockerFixture,
-        setup_configuration: AppConfig,
-        dummy_request: Request,
-        mock_conversation: MockType,
-    ) -> None:
-        """Test when no sessions are found in delete endpoint (early return)."""
-        mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
-        mocker.patch(
-            "app.endpoints.conversations.retrieve_conversation",
-            return_value=mock_conversation,
-        )
-
-        # Mock AsyncLlamaStackClientHolder with empty sessions list
         mock_client = mocker.AsyncMock()
-        mock_client.agents.session.list.return_value = mocker.Mock(data=[])
+        mock_delete_response = mocker.Mock()
+        mock_delete_response.deleted = True
+        mock_client.conversations.delete.return_value = mock_delete_response
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1143,8 +1324,8 @@ class TestDeleteConversationEndpoint:
 
         assert isinstance(response, ConversationDeleteResponse)
         assert response.conversation_id == VALID_CONVERSATION_ID
-        assert response.success is True  # Operation completed successfully
-        assert "cannot be deleted" in response.response  # But nothing was deleted
+        assert response.success is True
+        assert "cannot be deleted" in response.response  # Not found locally
 
     @pytest.mark.asyncio
     async def test_sqlalchemy_error_in_delete(
@@ -1156,28 +1337,28 @@ class TestDeleteConversationEndpoint:
     ) -> None:
         """Test when SQLAlchemyError is raised during conversation deletion."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
-        mocker.patch("app.endpoints.conversations.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations.can_access_conversation")
         mocker.patch(
-            "app.endpoints.conversations.retrieve_conversation",
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch(
+            "app.endpoints.conversations_v1.retrieve_conversation",
             return_value=mock_conversation,
         )
 
-        # Mock AsyncLlamaStackClientHolder - SQLAlchemyError should come from delete_conversation
         mock_client = mocker.AsyncMock()
         mock_session_list_response = mocker.Mock()
         mock_session_list_response.data = [{"session_id": VALID_CONVERSATION_ID}]
         mock_client.agents.session.list.return_value = mock_session_list_response
         mock_client.agents.session.delete.return_value = None
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
-        # Mock delete_conversation to raise SQLAlchemyError
         mocker.patch(
-            "app.endpoints.conversations.delete_conversation",
+            "app.endpoints.conversations_v1.delete_conversation",
             side_effect=SQLAlchemyError("Database error"),
         )
 
@@ -1205,7 +1386,7 @@ class TestGetConversationsListEndpoint:
         """Test the endpoint when configuration is not loaded."""
         mock_authorization_resolvers(mocker)
         mock_config = AppConfig()
-        mocker.patch("app.endpoints.conversations.configuration", mock_config)
+        mocker.patch("app.endpoints.conversations_v1.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversations_list_endpoint_handler(
@@ -1226,7 +1407,9 @@ class TestGetConversationsListEndpoint:
     ) -> None:
         """Test successful retrieval of conversations list."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
 
         # Mock database session and query results
         mock_conversations = [
@@ -1289,7 +1472,9 @@ class TestGetConversationsListEndpoint:
     ) -> None:
         """Test when user has no conversations."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
 
         # Mock database session with no results
         mock_database_session(mocker, [])
@@ -1311,7 +1496,9 @@ class TestGetConversationsListEndpoint:
     ) -> None:
         """Test when database query raises an exception."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
 
         # Mock database session to raise exception
         mock_session = mock_database_session(mocker)
@@ -1331,7 +1518,9 @@ class TestGetConversationsListEndpoint:
     ) -> None:
         """Test when database query raises SQLAlchemyError."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
 
         # Mock database session to raise SQLAlchemyError when all() is called
         # Since dummy_request has all actions, it will use query directly (not filter_by)
@@ -1348,7 +1537,8 @@ class TestGetConversationsListEndpoint:
         mock_session_context.__enter__.return_value = mock_session
         mock_session_context.__exit__.return_value = None
         mocker.patch(
-            "app.endpoints.conversations.get_session", return_value=mock_session_context
+            "app.endpoints.conversations_v1.get_session",
+            return_value=mock_session_context,
         )
 
         with pytest.raises(HTTPException) as exc_info:
@@ -1370,7 +1560,9 @@ class TestGetConversationsListEndpoint:
     ) -> None:
         """Test conversations list when topic_summary is None."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
 
         # Mock database session with conversation having None topic_summary
         mock_conversations = [
@@ -1407,7 +1599,9 @@ class TestGetConversationsListEndpoint:
     ) -> None:
         """Test conversations list with mixed topic_summary values (some None, some not)."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
 
         # Mock database session with mixed topic_summary values
         mock_conversations = [
@@ -1475,7 +1669,9 @@ class TestGetConversationsListEndpoint:
     ) -> None:
         """Test conversations list when topic_summary is an empty string."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
 
         # Mock database session with conversation having empty topic_summary
         mock_conversations = [
@@ -1512,7 +1708,9 @@ class TestGetConversationsListEndpoint:
     ) -> None:
         """Test that topic_summary field is always present in ConversationDetails objects."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations.configuration", setup_configuration)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
 
         # Mock database session with conversations
         mock_conversations = [
@@ -1546,3 +1744,380 @@ class TestGetConversationsListEndpoint:
         conv_dict = conv.model_dump()
         assert "topic_summary" in conv_dict
         assert conv_dict["topic_summary"] == "Test topic summary"
+
+
+class TestUpdateConversationEndpoint:
+    """Test cases for the PUT /conversations/{conversation_id} endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_configuration_not_loaded(
+        self, mocker: MockerFixture, dummy_request: Request
+    ) -> None:
+        """Test the endpoint when configuration is not loaded."""
+        mock_authorization_resolvers(mocker)
+        mock_config = AppConfig()
+        mocker.patch("app.endpoints.conversations_v1.configuration", mock_config)
+
+        update_request = ConversationUpdateRequest(topic_summary="New topic")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await update_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                update_request=update_request,
+                auth=MOCK_AUTH,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "Configuration is not loaded" in detail["response"]  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_invalid_conversation_id_format(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+    ) -> None:
+        """Test the endpoint with an invalid conversation ID format."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=False)
+
+        update_request = ConversationUpdateRequest(topic_summary="New topic")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await update_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=INVALID_CONVERSATION_ID,
+                update_request=update_request,
+                auth=MOCK_AUTH,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "Invalid conversation ID format" in detail["response"]  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_update_conversation_forbidden(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+        mock_conversation: MockType,
+    ) -> None:
+        """Test forbidden access when user lacks permission to update conversation."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.retrieve_conversation",
+            return_value=mock_conversation,
+        )
+        mocker.patch(
+            "authorization.resolvers.NoopAccessResolver.get_actions",
+            return_value=set(Action.UPDATE_CONVERSATION),
+        )  # User can only update their own conversations
+
+        # Mock can_access_conversation to return False (user doesn't have access)
+        mocker.patch(
+            "app.endpoints.conversations_v1.can_access_conversation", return_value=False
+        )
+
+        update_request = ConversationUpdateRequest(topic_summary="New topic")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await update_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                update_request=update_request,
+                auth=MOCK_AUTH,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "does not have permission" in detail["cause"]  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_conversation_not_found_in_update(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+    ) -> None:
+        """Test when conversation is not found in update endpoint."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch(
+            "app.endpoints.conversations_v1.retrieve_conversation", return_value=None
+        )
+
+        update_request = ConversationUpdateRequest(topic_summary="New topic")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await update_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                update_request=update_request,
+                auth=MOCK_AUTH,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "Conversation not found" in detail["response"]  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_sqlalchemy_error_in_retrieve_conversation_update(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+    ) -> None:
+        """Test when SQLAlchemyError is raised during retrieve_conversation in update."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch(
+            "app.endpoints.conversations_v1.retrieve_conversation",
+            side_effect=SQLAlchemyError("Database error"),
+        )
+
+        update_request = ConversationUpdateRequest(topic_summary="New topic")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await update_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                update_request=update_request,
+                auth=MOCK_AUTH,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "Database" in detail["response"]  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_successful_conversation_update(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+        mock_conversation: MockType,
+    ) -> None:
+        """Test successful conversation update."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch(
+            "app.endpoints.conversations_v1.retrieve_conversation",
+            return_value=mock_conversation,
+        )
+
+        # Mock database session for update
+        mock_session = mocker.Mock()
+        mock_db_conv = mocker.Mock()
+        mock_db_conv.topic_summary = None
+        mock_session.query.return_value.filter_by.return_value.first.return_value = (
+            mock_db_conv
+        )
+        mock_session_context = mocker.MagicMock()
+        mock_session_context.__enter__.return_value = mock_session
+        mock_session_context.__exit__.return_value = None
+        mocker.patch(
+            "app.endpoints.conversations_v1.get_session",
+            return_value=mock_session_context,
+        )
+
+        # Mock AsyncLlamaStackClientHolder
+        mock_client = mocker.AsyncMock()
+        mock_client.conversations.update.return_value = None
+        mock_client_holder = mocker.patch(
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+        )
+        mock_client_holder.return_value.get_client.return_value = mock_client
+
+        update_request = ConversationUpdateRequest(topic_summary="New topic summary")
+
+        response = await update_conversation_endpoint_handler(
+            request=dummy_request,
+            conversation_id=VALID_CONVERSATION_ID,
+            update_request=update_request,
+            auth=MOCK_AUTH,
+        )
+
+        assert isinstance(response, ConversationUpdateResponse)
+        assert response.conversation_id == VALID_CONVERSATION_ID
+        assert response.success is True
+        assert "updated successfully" in response.message
+        mock_client.conversations.update.assert_called_once()
+        mock_session.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_llama_stack_connection_error_in_update(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+        mock_conversation: MockType,
+    ) -> None:
+        """Test the endpoint when LlamaStack connection fails during update."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch(
+            "app.endpoints.conversations_v1.retrieve_conversation",
+            return_value=mock_conversation,
+        )
+
+        # Mock AsyncLlamaStackClientHolder to raise APIConnectionError
+        mock_client = mocker.AsyncMock()
+        mock_client.conversations.update.side_effect = APIConnectionError(
+            request=None  # type: ignore
+        )
+        mock_client_holder = mocker.patch(
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+        )
+        mock_client_holder.return_value.get_client.return_value = mock_client
+
+        update_request = ConversationUpdateRequest(topic_summary="New topic")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await update_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                update_request=update_request,
+                auth=MOCK_AUTH,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_llama_stack_not_found_error_in_update(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+        mock_conversation: MockType,
+    ) -> None:
+        """Test the endpoint when LlamaStack returns NotFoundError during update."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch(
+            "app.endpoints.conversations_v1.retrieve_conversation",
+            return_value=mock_conversation,
+        )
+
+        # Mock AsyncLlamaStackClientHolder to raise APIStatusError
+        mock_client = mocker.AsyncMock()
+        mock_client.conversations.update.side_effect = APIStatusError(
+            message="Conversation not found",
+            response=mocker.Mock(status_code=404, request=None),
+            body=None,
+        )
+        mock_client_holder = mocker.patch(
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+        )
+        mock_client_holder.return_value.get_client.return_value = mock_client
+
+        update_request = ConversationUpdateRequest(topic_summary="New topic")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await update_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                update_request=update_request,
+                auth=MOCK_AUTH,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "Conversation not found" in detail["response"]  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_sqlalchemy_error_in_database_update(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+        mock_conversation: MockType,
+    ) -> None:
+        """Test when SQLAlchemyError is raised during database update."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch(
+            "app.endpoints.conversations_v1.retrieve_conversation",
+            return_value=mock_conversation,
+        )
+
+        # Mock AsyncLlamaStackClientHolder - update succeeds
+        mock_client = mocker.AsyncMock()
+        mock_client.conversations.update.return_value = None
+        mock_client_holder = mocker.patch(
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+        )
+        mock_client_holder.return_value.get_client.return_value = mock_client
+
+        # Mock database session - commit raises SQLAlchemyError
+        mock_session = mocker.Mock()
+        mock_db_conv = mocker.Mock()
+        mock_db_conv.topic_summary = None
+        mock_session.query.return_value.filter_by.return_value.first.return_value = (
+            mock_db_conv
+        )
+        mock_session.commit.side_effect = SQLAlchemyError("Database error")
+        mock_session_context = mocker.MagicMock()
+        mock_session_context.__enter__.return_value = mock_session
+        mock_session_context.__exit__.return_value = None
+        mocker.patch(
+            "app.endpoints.conversations_v1.get_session",
+            return_value=mock_session_context,
+        )
+
+        update_request = ConversationUpdateRequest(topic_summary="New topic")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await update_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                update_request=update_request,
+                auth=MOCK_AUTH,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "Database" in detail["response"]  # type: ignore

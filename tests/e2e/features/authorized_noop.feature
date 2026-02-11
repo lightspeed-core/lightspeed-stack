@@ -35,14 +35,14 @@ Feature: Authorized endpoint API tests for the noop authentication module
             {"user_id": "00000000-0000-0000-0000-000","username": "lightspeed-user","skip_userid_check": true}
           """
 
-  Scenario: Check if the authorized endpoint works when providing empty user_id
+  Scenario: Check if the authorized endpoint rejects empty user_id
     Given The system is in default state
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
      When I access endpoint "authorized" using HTTP POST method with user_id ""
-     Then The status code of the response is 200
+     Then The status code of the response is 400
       And The body of the response is the following
           """
-            {"user_id": "","username": "lightspeed-user","skip_userid_check": true}
+            {"detail": "user_id cannot be empty"}
           """
 
   Scenario: Check if the authorized endpoint works when providing proper user_id

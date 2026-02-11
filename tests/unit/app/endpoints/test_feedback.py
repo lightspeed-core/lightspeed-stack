@@ -35,7 +35,10 @@ def test_is_feedback_enabled(mocker: MockerFixture) -> None:
     mock_config = AppConfig()
     mock_config._configuration = mocker.Mock()
     mock_config._configuration.user_data_collection = UserDataCollection(
-        feedback_enabled=True, feedback_storage="/tmp"
+        feedback_enabled=True,
+        feedback_storage="/tmp",
+        transcripts_enabled=False,
+        transcripts_storage=None,
     )
     mocker.patch("app.endpoints.feedback.configuration", mock_config)
     assert is_feedback_enabled() is True, "Feedback should be enabled"
@@ -46,7 +49,10 @@ def test_is_feedback_disabled(mocker: MockerFixture) -> None:
     mock_config = AppConfig()
     mock_config._configuration = mocker.Mock()
     mock_config._configuration.user_data_collection = UserDataCollection(
-        feedback_enabled=False, feedback_storage=None
+        feedback_enabled=False,
+        feedback_storage=None,
+        transcripts_enabled=False,
+        transcripts_storage=None,
     )
     mocker.patch("app.endpoints.feedback.configuration", mock_config)
     assert is_feedback_enabled() is False, "Feedback should be disabled"
@@ -338,7 +344,10 @@ def test_feedback_status_enabled(mocker: MockerFixture) -> None:
     mock_config = AppConfig()
     mock_config._configuration = mocker.Mock()
     mock_config._configuration.user_data_collection = UserDataCollection(
-        feedback_enabled=True, feedback_storage="/tmp"
+        feedback_enabled=True,
+        feedback_storage="/tmp",
+        transcripts_enabled=False,
+        transcripts_storage=None,
     )
     mocker.patch("app.endpoints.feedback.configuration", mock_config)
 
@@ -353,7 +362,10 @@ def test_feedback_status_disabled(mocker: MockerFixture) -> None:
     mock_config = AppConfig()
     mock_config._configuration = mocker.Mock()
     mock_config._configuration.user_data_collection = UserDataCollection(
-        feedback_enabled=False, feedback_storage=None
+        feedback_enabled=False,
+        feedback_storage=None,
+        transcripts_enabled=False,
+        transcripts_storage=None,
     )
     mocker.patch("app.endpoints.feedback.configuration", mock_config)
 
@@ -384,7 +396,7 @@ async def test_feedback_endpoint_handler_conversation_not_found(
     assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
     detail = exc_info.value.detail
     assert isinstance(detail, dict)
-    assert detail["response"] == "Conversation not found"
+    assert detail["response"] == "Conversation not found"  # type: ignore[index]
 
 
 @pytest.mark.asyncio
@@ -414,4 +426,4 @@ async def test_feedback_endpoint_handler_conversation_wrong_owner(
     assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
     detail = exc_info.value.detail
     assert isinstance(detail, dict)
-    assert "does not have permission" in detail["response"]
+    assert "does not have permission" in detail["response"]  # type: ignore[index]

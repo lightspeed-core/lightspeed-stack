@@ -34,6 +34,7 @@ from abc import ABC, abstractmethod
 
 from typing import Optional
 
+import datetime
 import sqlite3
 import psycopg2
 
@@ -148,6 +149,12 @@ class QuotaLimiter(ABC):
             self.connection = connect_pg(self.postgres_connection_config)
         if self.sqlite_connection_config is not None:
             self.connection = connect_sqlite(self.sqlite_connection_config)
+            # the default adapters and converters are deprecated as of Python
+            # 3.12. Instead, we use the Adapter and converter recipes and
+            # tailor them to our needs.
+            sqlite3.register_adapter(
+                datetime.datetime, lambda val: val.replace(tzinfo=None).isoformat()
+            )
 
         try:
             self._initialize_tables()

@@ -117,7 +117,7 @@ BYOK (Bring Your Own Knowledge) RAG configuration.
 | rag_type | string | Type of RAG database. |
 | embedding_model | string | Embedding model identification |
 | embedding_dimension | integer | Dimensionality of embedding vectors. |
-| vector_db_id | string | Vector DB identification. |
+| vector_db_id | string | Vector database identification. |
 | db_path | string | Path to RAG database. |
 
 
@@ -341,7 +341,7 @@ Useful resources:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| url | string | URL to Llama Stack service; used when library mode is disabled |
+| url | string | URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL. |
 | api_key | string | API key to access Llama Stack service |
 | use_as_library_client | boolean | When set to true Llama Stack will be used in library mode, not in server mode (default) |
 | library_client_config_path | string | Path to configuration file used when Llama Stack is run in library mode |
@@ -513,6 +513,7 @@ the service can handle requests concurrently.
 | color_log | boolean | Enables colorized logging |
 | access_log | boolean | Enables logging of all access information |
 | tls_config |  | Transport Layer Security configuration for HTTPS support |
+| root_path | string | ASGI root path for serving behind a reverse proxy on a subpath |
 | cors |  | Cross-Origin Resource Sharing configuration for cross-domain requests |
 
 

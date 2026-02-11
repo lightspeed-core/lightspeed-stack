@@ -9,4 +9,4 @@
 # [tool.pdm.version]
 # source = "file"
 # path = "src/version.py"
-__version__ = "0.4.0"
+__version__ = "0.4.1"

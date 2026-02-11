@@ -12,15 +12,15 @@ from app.endpoints import (
     health,
     config,
     feedback,
-    streaming_query_v2,
+    streaming_query,
     authorized,
     conversations_v2,
-    conversations_v3,
+    conversations_v1,
     metrics,
     tools,
     mcp_auth,
-    # V2 endpoints for Response API support
-    query_v2,
+    # Query endpoints for Response API support
+    query,
     # RHEL Lightspeed rlsapi v1 compatibility
     rlsapi_v1,
     # A2A (Agent-to-Agent) protocol support
@@ -49,17 +49,13 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(shields.router, prefix="/v1")
     app.include_router(providers.router, prefix="/v1")
     app.include_router(rags.router, prefix="/v1")
-    # V1 endpoints now use V2 implementations (query and streaming_query are deprecated)
-    app.include_router(query_v2.router, prefix="/v1")
-    app.include_router(streaming_query_v2.router, prefix="/v1")
+    # Query endpoints
+    app.include_router(query.router, prefix="/v1")
+    app.include_router(streaming_query.router, prefix="/v1")
     app.include_router(config.router, prefix="/v1")
     app.include_router(feedback.router, prefix="/v1")
-    # V1 conversations endpoint now uses V3 implementation (conversations is deprecated)
-    app.include_router(conversations_v3.router, prefix="/v1")
+    app.include_router(conversations_v1.router, prefix="/v1")
     app.include_router(conversations_v2.router, prefix="/v2")
-
-    # Note: query_v2, streaming_query_v2, and conversations_v3 are now exposed at /v1 above
-    # The old query, streaming_query, and conversations modules are deprecated
 
     # RHEL Lightspeed rlsapi v1 compatibility - stateless CLA (Command Line Assistant) endpoint
     app.include_router(rlsapi_v1.router, prefix="/v1")

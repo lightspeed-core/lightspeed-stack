@@ -19,6 +19,7 @@
 - [ ] Unit tests improvement
 - [ ] Integration tests improvement
 - [ ] End to end tests improvement
+- [ ] Benchmarks improvement
 
 
 ## Tools used to create PR

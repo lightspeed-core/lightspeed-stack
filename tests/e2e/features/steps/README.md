@@ -30,3 +30,6 @@ LLM query and response steps.
 ## [rbac.py](rbac.py)
 Step definitions for RBAC E2E tests.
 
+## [token_counters.py](token_counters.py)
+Step definitions for token counter validation.
+

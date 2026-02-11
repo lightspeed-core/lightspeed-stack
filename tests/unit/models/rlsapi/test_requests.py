@@ -150,7 +150,7 @@ class TestRlsapiV1SystemInfo:
             os="RHEL",
             version="9.3",
             arch="x86_64",
-            system_id="machine-001",
+            system_id="machine-001",  # pyright: ignore[reportCallIssue]
         )
         assert sysinfo.os == "RHEL"
         assert sysinfo.version == "9.3"

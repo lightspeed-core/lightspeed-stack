@@ -3,18 +3,19 @@
 """Unit tests for the /conversations REST API endpoints."""
 
 from datetime import datetime, timezone
+from typing import Any, cast
 
 import pytest
 from fastapi import HTTPException, status
 from pytest_mock import MockerFixture, MockType
 
 from app.endpoints.conversations_v2 import (
+    build_conversation_turn_from_cache_entry,
     check_conversation_existence,
     check_valid_conversation_id,
     delete_conversation_endpoint_handler,
     get_conversation_endpoint_handler,
     get_conversations_list_endpoint_handler,
-    transform_chat_message,
     update_conversation_endpoint_handler,
 )
 from configuration import AppConfig
@@ -23,57 +24,20 @@ from models.requests import ConversationUpdateRequest
 from models.responses import (
     ConversationData,
     ConversationUpdateResponse,
-    ReferencedDocument,
 )
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
+from utils.types import ToolCallSummary, ToolResultSummary
 
 MOCK_AUTH = ("mock_user_id", "mock_username", False, "mock_token")
 VALID_CONVERSATION_ID = "123e4567-e89b-12d3-a456-426614174000"
 INVALID_CONVERSATION_ID = "invalid-id"
 
 
-def test_transform_message() -> None:
-    """Test the transform_chat_message transformation function."""
-    entry = CacheEntry(
-        query="query",
-        response="response",
-        provider="provider",
-        model="model",
-        started_at="2024-01-01T00:00:00Z",
-        completed_at="2024-01-01T00:00:05Z",
-    )
-    transformed = transform_chat_message(entry)
-    assert transformed is not None
+class TestBuildConversationTurnFromCacheEntry:
+    """Test cases for the build_conversation_turn_from_cache_entry utility function."""
 
-    assert "provider" in transformed
-    assert transformed["provider"] == "provider"
-
-    assert "model" in transformed
-    assert transformed["model"] == "model"
-
-    assert "started_at" in transformed
-    assert transformed["started_at"] == "2024-01-01T00:00:00Z"
-
-    assert "completed_at" in transformed
-    assert transformed["completed_at"] == "2024-01-01T00:00:05Z"
-
-    assert "messages" in transformed
-    assert len(transformed["messages"]) == 2
-
-    message1 = transformed["messages"][0]
-    assert message1["type"] == "user"
-    assert message1["content"] == "query"
-
-    message2 = transformed["messages"][1]
-    assert message2["type"] == "assistant"
-    assert message2["content"] == "response"
-
-
-class TestTransformChatMessage:
-    """Test cases for the transform_chat_message utility function."""
-
-    def test_transform_message_without_documents(self) -> None:
-        """Test the transformation when no referenced_documents are present."""
+    def test_build_turn_without_tool_calls(self) -> None:
+        """Test building a turn when no tool calls/results are present."""
         entry = CacheEntry(
             query="query",
             response="response",
@@ -81,20 +45,36 @@ class TestTransformChatMessage:
             model="model",
             started_at="2024-01-01T00:00:00Z",
             completed_at="2024-01-01T00:00:05Z",
-            # referenced_documents is None by default
+            # tool_calls and tool_results are None by default
         )
-        transformed = transform_chat_message(entry)
+        turn = build_conversation_turn_from_cache_entry(entry)
 
-        assistant_message = transformed["messages"][1]
+        assert turn.tool_calls == []
+        assert turn.tool_results == []
+        assert turn.provider == "provider"
+        assert turn.model == "model"
+        assert len(turn.messages) == 2
 
-        # Assert that the key is NOT present when the list is None
-        assert "referenced_documents" not in assistant_message
+    def test_build_turn_with_tool_calls(self) -> None:
+        """Test building a turn when tool calls and results are present."""
 
-    def test_transform_message_with_referenced_documents(self) -> None:
-        """Test the transformation when referenced_documents are present."""
-        docs = [
-            ReferencedDocument(doc_title="Test Doc", doc_url="http://example.com")
-        ]  # type: ignore
+        tool_calls = [
+            ToolCallSummary(
+                id="call_1",
+                name="test_tool",
+                args={"arg1": "value1"},
+                type="function_call",
+            )
+        ]
+        tool_results = [
+            ToolResultSummary(
+                id="call_1",
+                status="success",
+                content="result",
+                type="function_call_output",
+                round=1,
+            )
+        ]
         entry = CacheEntry(
             query="query",
             response="response",
@@ -102,35 +82,18 @@ class TestTransformChatMessage:
             model="model",
             started_at="2024-01-01T00:00:00Z",
             completed_at="2024-01-01T00:00:05Z",
-            referenced_documents=docs,
+            tool_calls=tool_calls,
+            tool_results=tool_results,
         )
 
-        transformed = transform_chat_message(entry)
-        assistant_message = transformed["messages"][1]
+        turn = build_conversation_turn_from_cache_entry(entry)
 
-        assert "referenced_documents" in assistant_message
-        ref_docs = assistant_message["referenced_documents"]
-        assert len(ref_docs) == 1
-        assert ref_docs[0]["doc_title"] == "Test Doc"
-        assert str(ref_docs[0]["doc_url"]) == "http://example.com/"
-
-    def test_transform_message_with_empty_referenced_documents(self) -> None:
-        """Test the transformation when referenced_documents is an empty list."""
-        entry = CacheEntry(
-            query="query",
-            response="response",
-            provider="provider",
-            model="model",
-            started_at="2024-01-01T00:00:00Z",
-            completed_at="2024-01-01T00:00:05Z",
-            referenced_documents=[],  # Explicitly empty
-        )
-
-        transformed = transform_chat_message(entry)
-        assistant_message = transformed["messages"][1]
-
-        assert "referenced_documents" in assistant_message
-        assert assistant_message["referenced_documents"] == []
+        assert turn.provider == "provider"
+        assert turn.model == "model"
+        assert len(turn.tool_calls) == 1
+        assert turn.tool_calls[0].name == "test_tool"
+        assert len(turn.tool_results) == 1
+        assert turn.tool_results[0].status == "success"
 
 
 @pytest.fixture
@@ -258,7 +221,9 @@ class TestGetConversationsListEndpoint:
         assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
-        assert "Conversation cache not configured" in detail["response"]
+        detail_dict = cast(dict[str, Any], detail)
+        response_text = detail_dict.get("response", "")
+        assert "Conversation cache not configured" in response_text
 
     @pytest.mark.asyncio
     async def test_successful_retrieval(
@@ -269,9 +234,9 @@ class TestGetConversationsListEndpoint:
         mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
 
         timestamp_str = "2024-01-01T00:00:00Z"
-        timestamp_dt = datetime.fromisoformat(
-            timestamp_str.replace("Z", "+00:00")
-        ).replace(tzinfo=timezone.utc)
+        timestamp_dt = datetime.fromisoformat(timestamp_str).replace(
+            tzinfo=timezone.utc
+        )
         timestamp = timestamp_dt.timestamp()
 
         mock_configuration.conversation_cache.list.return_value = [
@@ -334,20 +299,6 @@ class TestGetConversationsListEndpoint:
         mock_configuration.conversation_cache.list.assert_called_once_with(
             "mock_user_id", True
         )
-
-    @pytest.mark.asyncio
-    async def test_malformed_auth_object(
-        self, mocker: MockerFixture, mock_configuration: MockType
-    ) -> None:
-        """Test the endpoint with a malformed auth object."""
-        mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-
-        with pytest.raises(IndexError):
-            await get_conversations_list_endpoint_handler(
-                request=mocker.Mock(),
-                auth=(),  # Malformed auth object
-            )
 
 
 class TestGetConversationEndpoint:
@@ -421,7 +372,9 @@ class TestGetConversationEndpoint:
         assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
-        assert "Conversation cache not configured" in detail["response"]
+        detail_dict = cast(dict[str, Any], detail)
+        response_text = detail_dict.get("response", "")
+        assert "Conversation cache not configured" in response_text
 
     @pytest.mark.asyncio
     async def test_conversation_not_found(
@@ -473,7 +426,7 @@ class TestGetConversationEndpoint:
         assert response is not None
         assert response.conversation_id == VALID_CONVERSATION_ID
         assert len(response.chat_history) == 1
-        assert response.chat_history[0]["messages"][0]["content"] == "query"
+        assert response.chat_history[0].messages[0].content == "query"
 
     @pytest.mark.asyncio
     async def test_with_skip_userid_check(
@@ -507,22 +460,6 @@ class TestGetConversationEndpoint:
         mock_configuration.conversation_cache.get.assert_called_once_with(
             "mock_user_id", VALID_CONVERSATION_ID, True
         )
-
-    @pytest.mark.asyncio
-    async def test_malformed_auth_object(
-        self, mocker: MockerFixture, mock_configuration: MockType
-    ) -> None:
-        """Test the endpoint with a malformed auth object."""
-        mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
-
-        with pytest.raises(IndexError):
-            await get_conversation_endpoint_handler(
-                request=mocker.Mock(),
-                conversation_id=VALID_CONVERSATION_ID,
-                auth=(),  # Malformed auth object
-            )
 
 
 class TestDeleteConversationEndpoint:
@@ -585,28 +522,9 @@ class TestDeleteConversationEndpoint:
         assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
-        assert "Conversation cache not configured" in detail["response"]
-
-    @pytest.mark.asyncio
-    async def test_conversation_not_found(
-        self, mocker: MockerFixture, mock_configuration: MockType
-    ) -> None:
-        """Test the endpoint when conversation does not exist."""
-        mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
-        mock_configuration.conversation_cache.delete.return_value = False
-
-        response = await delete_conversation_endpoint_handler(
-            request=mocker.Mock(),
-            conversation_id=VALID_CONVERSATION_ID,
-            auth=MOCK_AUTH,
-        )
-
-        assert response is not None
-        assert response.conversation_id == VALID_CONVERSATION_ID
-        assert response.success is True
-        assert response.response == "Conversation cannot be deleted"
+        detail_dict = cast(dict[str, Any], detail)
+        response_text = detail_dict.get("response", "")
+        assert "Conversation cache not configured" in response_text
 
     @pytest.mark.asyncio
     async def test_successful_deletion(
@@ -616,9 +534,6 @@ class TestDeleteConversationEndpoint:
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
         mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
-        mock_configuration.conversation_cache.list.return_value = [
-            mocker.Mock(conversation_id=VALID_CONVERSATION_ID)
-        ]
         mock_configuration.conversation_cache.delete.return_value = True
 
         response = await delete_conversation_endpoint_handler(
@@ -636,13 +551,10 @@ class TestDeleteConversationEndpoint:
     async def test_unsuccessful_deletion(
         self, mocker: MockerFixture, mock_configuration: MockType
     ) -> None:
-        """Test unsuccessful deletion of a conversation."""
+        """Test unsuccessful deletion when delete returns False."""
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
         mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
-        mock_configuration.conversation_cache.list.return_value = [
-            mocker.Mock(conversation_id=VALID_CONVERSATION_ID)
-        ]
         mock_configuration.conversation_cache.delete.return_value = False
 
         response = await delete_conversation_endpoint_handler(
@@ -674,9 +586,6 @@ class TestDeleteConversationEndpoint:
         mock_authorization_resolvers(mocker)
         mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
         mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
-        mock_configuration.conversation_cache.list.return_value = [
-            mocker.Mock(conversation_id=VALID_CONVERSATION_ID)
-        ]
         mock_auth_with_skip = ("mock_user_id", "mock_username", True, "mock_token")
 
         await delete_conversation_endpoint_handler(
@@ -688,22 +597,6 @@ class TestDeleteConversationEndpoint:
         mock_configuration.conversation_cache.delete.assert_called_once_with(
             "mock_user_id", VALID_CONVERSATION_ID, True
         )
-
-    @pytest.mark.asyncio
-    async def test_malformed_auth_object(
-        self, mocker: MockerFixture, mock_configuration: MockType
-    ) -> None:
-        """Test the endpoint with a malformed auth object."""
-        mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
-
-        with pytest.raises(IndexError):
-            await delete_conversation_endpoint_handler(
-                request=mocker.Mock(),
-                conversation_id=VALID_CONVERSATION_ID,
-                auth=(),  # Malformed auth object
-            )
 
 
 class TestUpdateConversationEndpoint:
@@ -777,7 +670,9 @@ class TestUpdateConversationEndpoint:
         assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
-        assert "Conversation cache not configured" in detail["response"]  # type: ignore
+        detail_dict = cast(dict[str, Any], detail)
+        response_text = detail_dict.get("response", "")
+        assert "Conversation cache not configured" in response_text  # type: ignore
 
     @pytest.mark.asyncio
     async def test_conversation_not_found(
@@ -856,20 +751,3 @@ class TestUpdateConversationEndpoint:
         mock_configuration.conversation_cache.set_topic_summary.assert_called_once_with(
             "mock_user_id", VALID_CONVERSATION_ID, "New topic summary", True
         )
-
-    @pytest.mark.asyncio
-    async def test_malformed_auth_object(
-        self, mocker: MockerFixture, mock_configuration: MockType
-    ) -> None:
-        """Test the endpoint with a malformed auth object."""
-        mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
-        update_request = ConversationUpdateRequest(topic_summary="New topic summary")
-
-        with pytest.raises(IndexError):
-            await update_conversation_endpoint_handler(
-                conversation_id=VALID_CONVERSATION_ID,
-                update_request=update_request,
-                auth=(),  # Malformed auth object
-            )

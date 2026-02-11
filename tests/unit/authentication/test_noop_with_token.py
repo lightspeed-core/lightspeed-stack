@@ -117,3 +117,26 @@ async def test_noop_with_token_auth_dependency_no_bearer() -> None:
     detail = cast(dict[str, str], exc_info.value.detail)
     assert detail["response"] == ("Missing or invalid credentials provided by client")
     assert detail["cause"] == "No token found in Authorization header"
+
+
+async def test_noop_with_token_auth_dependency_empty_user_id() -> None:
+    """Test that NoopWithTokenAuthDependency rejects empty user_id with HTTP 400."""
+    dependency = NoopWithTokenAuthDependency()
+
+    # Create a mock request with empty user_id but valid token
+    request = Request(
+        scope={
+            "type": "http",
+            "query_string": b"user_id=",
+            "headers": [
+                (b"authorization", b"Bearer spongebob-token"),
+            ],
+        },
+    )
+
+    # Assert that an HTTPException is raised for empty user_id
+    with pytest.raises(HTTPException) as exc_info:
+        await dependency(request)
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "user_id cannot be empty"

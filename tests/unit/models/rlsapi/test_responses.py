@@ -77,7 +77,9 @@ class TestRlsapiV1InferData:
 
     def test_constructor_minimal(self) -> None:
         """Test RlsapiV1InferData with only required field."""
-        data = RlsapiV1InferData(text="Response text here")
+        data = RlsapiV1InferData(
+            text="Response text here"
+        )  # pyright: ignore[reportCallIssue]
         assert data.text == "Response text here"
         assert data.request_id is None
 

@@ -1,6 +1,7 @@
 """Unit tests for LlamaStackConfiguration model."""
 
 import pytest
+from pydantic import ValidationError
 
 from utils.checks import InvalidConfigurationError
 
@@ -18,6 +19,7 @@ def test_llama_stack_configuration_constructor() -> None:
         library_client_config_path="tests/configuration/run.yaml",
         url=None,
         api_key=None,
+        timeout=60,
     )
     assert llama_stack_configuration is not None
 
@@ -26,6 +28,7 @@ def test_llama_stack_configuration_constructor() -> None:
         url="http://localhost",
         library_client_config_path=None,
         api_key=None,
+        timeout=60,
     )
     assert llama_stack_configuration is not None
 
@@ -86,4 +89,38 @@ def test_llama_stack_wrong_configuration_no_config_file() -> None:
     with pytest.raises(ValueError, match=m):
         LlamaStackConfiguration(
             use_as_library_client=True
+        )  # pyright: ignore[reportCallIssue]
+
+
+def test_llama_stack_configuration_valid_http_url() -> None:
+    """Test that valid HTTP URLs are accepted."""
+    config = LlamaStackConfiguration(
+        url="http://localhost:8321"
+    )  # pyright: ignore[reportCallIssue]
+    assert config is not None
+    assert str(config.url) == "http://localhost:8321/"
+
+
+def test_llama_stack_configuration_valid_https_url() -> None:
+    """Test that valid HTTPS URLs are accepted."""
+    config = LlamaStackConfiguration(
+        url="https://llama-stack.example.com:8321"
+    )  # pyright: ignore[reportCallIssue]
+    assert config is not None
+    assert str(config.url) == "https://llama-stack.example.com:8321/"
+
+
+def test_llama_stack_configuration_malformed_url_rejected() -> None:
+    """Test that malformed URLs are rejected with a ValidationError."""
+    with pytest.raises(ValidationError, match="Input should be a valid URL"):
+        LlamaStackConfiguration(
+            url="not-a-valid-url"
+        )  # pyright: ignore[reportCallIssue]
+
+
+def test_llama_stack_configuration_invalid_scheme_rejected() -> None:
+    """Test that URLs without http/https scheme are rejected."""
+    with pytest.raises(ValidationError, match="URL scheme should be 'http' or 'https'"):
+        LlamaStackConfiguration(
+            url="ftp://localhost:8321"
         )  # pyright: ignore[reportCallIssue]

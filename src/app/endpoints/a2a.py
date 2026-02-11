@@ -36,11 +36,7 @@ from llama_stack_client import APIConnectionError
 from starlette.responses import Response, StreamingResponse
 
 from a2a_storage import A2AContextStore, A2AStorageFactory
-from app.endpoints.query import (
-    evaluate_model_hints,
-    select_model_and_provider_id,
-)
-from app.endpoints.streaming_query_v2 import retrieve_response
+
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
@@ -49,7 +45,11 @@ from configuration import configuration
 from models.config import Action
 from models.requests import QueryRequest
 from utils.mcp_headers import mcp_headers_dependency
-from utils.responses import extract_text_from_response_output_item
+from utils.responses import (
+    extract_text_from_response_output_item,
+    prepare_responses_params,
+)
+from utils.suid import normalize_conversation_id
 from version import __version__
 
 logger = logging.getLogger("app.endpoints.handlers")
@@ -318,23 +318,17 @@ class A2AAgentExecutor(AgentExecutor):
         # Get LLM client and select model
         client = AsyncLlamaStackClientHolder().get_client()
         try:
-            llama_stack_model_id, _model_id, _provider_id = (
-                select_model_and_provider_id(
-                    await client.models.list(),
-                    *evaluate_model_hints(
-                        user_conversation=None, query_request=query_request
-                    ),
-                )
-            )
-
-            # Stream response from LLM using the Responses API
-            stream, conversation_id = await retrieve_response(
+            responses_params = await prepare_responses_params(
                 client,
-                llama_stack_model_id,
                 query_request,
+                None,
                 self.auth_token,
-                mcp_headers=self.mcp_headers,
+                self.mcp_headers,
+                stream=True,
+                store=True,
             )
+            # Stream response from LLM using the Responses API
+            stream = await client.responses.create(**responses_params.model_dump())
         except APIConnectionError as e:
             error_message = (
                 f"Unable to connect to Llama Stack backend service: {str(e)}. "
@@ -357,6 +351,9 @@ class A2AAgentExecutor(AgentExecutor):
             return
 
         # Persist conversation_id for next turn in same A2A context
+        conversation_id = conversation_id or normalize_conversation_id(
+            responses_params.conversation
+        )
         if conversation_id:
             await context_store.set(a2a_context_id, conversation_id)
             logger.info(
@@ -380,7 +377,7 @@ class A2AAgentExecutor(AgentExecutor):
                 context_id=context_id,
                 final=False,
                 metadata={
-                    "model": llama_stack_model_id,
+                    "model": responses_params.model,
                     "conversation_id": conversation_id,
                 },
             )

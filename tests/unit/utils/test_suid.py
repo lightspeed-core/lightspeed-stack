@@ -21,6 +21,11 @@ class TestSUID:
         valid_suid = "123e4567-e89b-12d3-a456-426614174000"
         assert suid.check_suid(valid_suid), "check_suid should return True for UUID"
 
+    def test_check_suid_invalid_uuid_with_conv_prefix(self) -> None:
+        """Test that check_suid returns True for a valid UUID."""
+        valid_suid = "conv_123e4567-e89b-12d3-a456-426614174000"
+        assert not suid.check_suid(valid_suid), "check_suid should return True for UUID"
+
     def test_check_suid_valid_48char_hex(self) -> None:
         """Test that check_suid returns True for a 48-char hex string."""
         valid_hex = "e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
@@ -75,3 +80,23 @@ class TestSUID:
     def test_check_suid_invalid_type(self, invalid_type: Any) -> None:
         """Test that check_suid returns False for non-string types."""
         assert not suid.check_suid(invalid_type)
+
+    def test_normalize_conversation_id(self) -> None:
+        """Test the SUID normalization function."""
+        valid_conv = "conv_e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
+        expected_conv = "e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
+        assert suid.normalize_conversation_id(valid_conv) == expected_conv
+
+        valid_conv = "e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
+        expected_conv = "e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
+        assert suid.normalize_conversation_id(valid_conv) == expected_conv
+
+    def test_to_llama_stack_conversation_id(self) -> None:
+        """Test the function to_llama_stack_conversation_id."""
+        valid_conv = "conv_e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
+        expected_conv = "conv_e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
+        assert suid.to_llama_stack_conversation_id(valid_conv) == expected_conv
+
+        valid_conv = "e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
+        expected_conv = "conv_e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
+        assert suid.to_llama_stack_conversation_id(valid_conv) == expected_conv

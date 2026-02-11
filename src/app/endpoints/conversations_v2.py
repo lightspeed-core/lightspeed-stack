@@ -15,10 +15,12 @@ from models.responses import (
     BadRequestResponse,
     ConversationDeleteResponse,
     ConversationResponse,
+    ConversationTurn,
     ConversationsListResponseV2,
     ConversationUpdateResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
+    Message,
     NotFoundResponse,
     UnauthorizedResponse,
 )
@@ -131,7 +133,10 @@ async def get_conversation_endpoint_handler(
     conversation = configuration.conversation_cache.get(
         user_id, conversation_id, skip_userid_check
     )
-    chat_history = [transform_chat_message(entry) for entry in conversation]
+    # Each entry in conversation is a single turn
+    chat_history: list[ConversationTurn] = [
+        build_conversation_turn_from_cache_entry(entry) for entry in conversation
+    ]
 
     return ConversationResponse(
         conversation_id=conversation_id, chat_history=chat_history
@@ -238,21 +243,34 @@ def check_conversation_existence(user_id: str, conversation_id: str) -> None:
         raise HTTPException(**response.model_dump())
 
 
-def transform_chat_message(entry: CacheEntry) -> dict[str, Any]:
-    """Transform the message read from cache into format used by response payload."""
-    user_message = {"content": entry.query, "type": "user"}
-    assistant_message: dict[str, Any] = {"content": entry.response, "type": "assistant"}
+def build_conversation_turn_from_cache_entry(entry: CacheEntry) -> ConversationTurn:
+    """Build a ConversationTurn object from a cache entry.
 
-    # If referenced_documents exist on the entry, add them to the assistant message
-    if entry.referenced_documents is not None:
-        assistant_message["referenced_documents"] = [
-            doc.model_dump(mode="json") for doc in entry.referenced_documents
-        ]
+    Each CacheEntry represents a single conversation turn with user query,
+    assistant response, and optional tool calls/results.
 
-    return {
-        "provider": entry.provider,
-        "model": entry.model,
-        "messages": [user_message, assistant_message],
-        "started_at": entry.started_at,
-        "completed_at": entry.completed_at,
-    }
+    Args:
+        entry: Cache entry representing one turn in the conversation
+
+    Returns:
+        ConversationTurn object with messages, tool_calls, tool_results, and timestamps
+    """
+    # Create Message objects for user and assistant
+    messages = [
+        Message(content=entry.query, type="user"),
+        Message(content=entry.response, type="assistant"),
+    ]
+
+    # Extract tool calls and results (default to empty lists if None)
+    tool_calls = entry.tool_calls if entry.tool_calls else []
+    tool_results = entry.tool_results if entry.tool_results else []
+
+    return ConversationTurn(
+        messages=messages,
+        tool_calls=tool_calls,
+        tool_results=tool_results,
+        provider=entry.provider,
+        model=entry.model,
+        started_at=entry.started_at,
+        completed_at=entry.completed_at,
+    )

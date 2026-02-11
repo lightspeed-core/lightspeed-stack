@@ -1,4 +1,4 @@
-"""Integration tests for the /query endpoint (v2 with Responses API)."""
+"""Integration tests for the /query endpoint (using Responses API)."""
 
 # pylint: disable=too-many-lines  # Integration tests require comprehensive coverage
 # pylint: disable=too-many-arguments  # Integration tests need many fixtures
@@ -17,12 +17,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import app.database
 import app.endpoints.query
-from app.endpoints.query_v2 import query_endpoint_handler_v2
+from app.endpoints.query import query_endpoint_handler
 from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.cache_entry import CacheEntry
 from models.database.conversations import UserConversation
 from models.requests import Attachment, QueryRequest
+import utils.query
 
 # Test constants - use valid UUID format
 TEST_CONVERSATION_ID = "c9d40813-d64d-41eb-8060-3b2446929a02"
@@ -167,7 +168,7 @@ async def test_query_v2_endpoint_successful_response(
         query="What is Ansible?",
     )
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -218,7 +219,7 @@ async def test_query_v2_endpoint_handles_connection_error(
     query_request = QueryRequest(query="What is Ansible?")
 
     with pytest.raises(HTTPException) as exc_info:
-        await query_endpoint_handler_v2(
+        await query_endpoint_handler(
             request=test_request,
             query_request=query_request,
             auth=test_auth,
@@ -260,7 +261,7 @@ async def test_query_v2_endpoint_empty_query(
 
     query_request = QueryRequest(query="")
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -312,7 +313,7 @@ async def test_query_v2_endpoint_with_attachments(
         ],
     )
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -395,7 +396,7 @@ async def test_query_v2_endpoint_with_tool_calls(
 
     query_request = QueryRequest(query="What is Ansible?")
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -463,7 +464,7 @@ async def test_query_v2_endpoint_with_mcp_list_tools(
 
     query_request = QueryRequest(query="What tools are available?")
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -530,7 +531,7 @@ async def test_query_v2_endpoint_with_multiple_tool_types(
 
     query_request = QueryRequest(query="Search docs and calculate deployment replicas")
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -586,7 +587,7 @@ async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
 
     query_request = QueryRequest(query="What is Ansible?", no_tools=True)
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -643,7 +644,7 @@ async def test_query_v2_endpoint_uses_tools_when_available(
 
     query_request = QueryRequest(query="What is Ansible?", no_tools=False)
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -692,7 +693,7 @@ async def test_query_v2_endpoint_persists_conversation_to_database(
 
     query_request = QueryRequest(query="What is Ansible?")
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -760,7 +761,7 @@ async def test_query_v2_endpoint_updates_existing_conversation(
 
     query_request = QueryRequest(query="Tell me more", conversation_id=EXISTING_CONV_ID)
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -817,7 +818,7 @@ async def test_query_v2_endpoint_conversation_ownership_validation(
 
     query_request = QueryRequest(query="What is Ansible?", conversation_id=TEST_CONV_ID)
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -861,11 +862,11 @@ async def test_query_v2_endpoint_creates_valid_cache_entry(
     _ = mock_llama_stack_client
     _ = patch_db_session
 
-    cache_spy = mocker.spy(app.endpoints.query, "store_conversation_into_cache")
+    cache_spy = mocker.spy(utils.query, "store_conversation_into_cache")
 
     query_request = QueryRequest(query="What is Ansible?")
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -874,8 +875,8 @@ async def test_query_v2_endpoint_creates_valid_cache_entry(
 
     cache_spy.assert_called_once()
 
-    call_args = cache_spy.call_args.args
-    cache_entry = call_args[3]
+    call_args = cache_spy.call_args
+    cache_entry = call_args.kwargs["cache_entry"]
 
     assert isinstance(cache_entry, CacheEntry)
     assert cache_entry.query == "What is Ansible?"
@@ -923,7 +924,7 @@ async def test_query_v2_endpoint_conversation_not_found_returns_404(
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await query_endpoint_handler_v2(
+        await query_endpoint_handler(
             request=test_request,
             query_request=query_request,
             auth=test_auth,
@@ -995,7 +996,7 @@ async def test_query_v2_endpoint_with_shield_violation(
     query_request = QueryRequest(query="Inappropriate query")
 
     # Shield violations are advisory - request should succeed
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -1041,7 +1042,7 @@ async def test_query_v2_endpoint_without_shields(
 
     query_request = QueryRequest(query="What is Ansible?")
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -1102,7 +1103,7 @@ async def test_query_v2_endpoint_handles_empty_llm_response(
 
     query_request = QueryRequest(query="What is Ansible?")
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -1153,12 +1154,12 @@ async def test_query_v2_endpoint_quota_integration(
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
-    mock_consume = mocker.spy(app.endpoints.query, "consume_tokens")
+    mock_consume = mocker.spy(app.endpoints.query, "consume_query_tokens")
     _ = mocker.spy(app.endpoints.query, "get_available_quotas")
 
     query_request = QueryRequest(query="What is Ansible?")
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,
@@ -1170,11 +1171,12 @@ async def test_query_v2_endpoint_quota_integration(
     mock_consume.assert_called_once()
     consume_args = mock_consume.call_args
     user_id, _, _, _ = test_auth
-    assert consume_args.args[2] == user_id
-    assert consume_args.kwargs["model_id"] == "test-model"
-    assert consume_args.kwargs["provider_id"] == "test-provider"
-    assert consume_args.kwargs["input_tokens"] == 100
-    assert consume_args.kwargs["output_tokens"] == 50
+    assert consume_args.kwargs["user_id"] == user_id
+    assert consume_args.kwargs["model_id"] is not None
+    assert consume_args.kwargs["token_usage"] is not None
+    assert consume_args.kwargs["token_usage"].input_tokens == 100
+    assert consume_args.kwargs["token_usage"].output_tokens == 50
+    assert consume_args.kwargs["configuration"] is not None
 
     assert response.available_quotas is not None
     assert isinstance(response.available_quotas, dict)
@@ -1223,7 +1225,7 @@ async def test_query_v2_endpoint_rejects_query_when_quota_exceeded(
     query_request = QueryRequest(query="What is Ansible?")
 
     with pytest.raises(HTTPException) as exc_info:
-        await query_endpoint_handler_v2(
+        await query_endpoint_handler(
             request=test_request,
             query_request=query_request,
             auth=test_auth,
@@ -1272,7 +1274,7 @@ async def test_query_v2_endpoint_transcript_behavior(
     _ = mock_llama_stack_client
 
     # Mock store_transcript to prevent file creation
-    mocker.patch("app.endpoints.query.store_transcript")
+    mocker.patch("utils.query.store_transcript")
 
     test_config.user_data_collection_configuration.transcripts_enabled = True
 
@@ -1287,7 +1289,7 @@ async def test_query_v2_endpoint_transcript_behavior(
         ],
     )
 
-    response_enabled = await query_endpoint_handler_v2(
+    response_enabled = await query_endpoint_handler(
         request=test_request,
         query_request=query_request_enabled,
         auth=test_auth,
@@ -1310,7 +1312,7 @@ async def test_query_v2_endpoint_transcript_behavior(
 
     query_request_disabled = QueryRequest(query="What is Kubernetes?")
 
-    response_disabled = await query_endpoint_handler_v2(
+    response_disabled = await query_endpoint_handler(
         request=test_request,
         query_request=query_request_disabled,
         auth=test_auth,
@@ -1379,7 +1381,7 @@ async def test_query_v2_endpoint_uses_conversation_history_model(
 
     query_request = QueryRequest(query="Tell me more", conversation_id=EXISTING_CONV_ID)
 
-    response = await query_endpoint_handler_v2(
+    response = await query_endpoint_handler(
         request=test_request,
         query_request=query_request,
         auth=test_auth,

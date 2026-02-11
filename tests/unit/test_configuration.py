@@ -142,7 +142,7 @@ def test_init_from_dict() -> None:
     # check for llama_stack_configuration subsection
     assert cfg.llama_stack_configuration.api_key is not None
     assert cfg.llama_stack_configuration.api_key.get_secret_value() == "xyzzy"
-    assert cfg.llama_stack_configuration.url == "http://x.y.com:1234"
+    assert str(cfg.llama_stack_configuration.url) == "http://x.y.com:1234/"
     assert cfg.llama_stack_configuration.use_as_library_client is False
 
     # check for service_configuration subsection

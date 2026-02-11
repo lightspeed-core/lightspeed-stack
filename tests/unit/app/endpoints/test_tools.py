@@ -125,7 +125,7 @@ async def test_tools_endpoint_success(
     mocker.patch("app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda action: lambda func: func)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
     mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
@@ -192,7 +192,7 @@ async def test_tools_endpoint_no_mcp_servers(mocker: MockerFixture) -> None:
     mocker.patch("app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda action: lambda func: func)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
     mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
@@ -228,7 +228,7 @@ async def test_tools_endpoint_api_connection_error(
     mocker.patch("app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda action: lambda func: func)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
     mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
@@ -270,7 +270,7 @@ async def test_tools_endpoint_partial_failure(  # pylint: disable=redefined-oute
     app_config._configuration = mock_configuration
     mocker.patch("app.endpoints.tools.configuration", app_config)
 
-    mocker.patch("app.endpoints.tools.authorize", lambda action: lambda func: func)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
     mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
@@ -309,7 +309,7 @@ async def test_tools_endpoint_toolgroup_not_found(  # pylint: disable=redefined-
     mocker.patch("app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda action: lambda func: func)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
     mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
@@ -365,7 +365,7 @@ async def test_tools_endpoint_builtin_toolgroup(
     mocker.patch("app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda action: lambda func: func)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
     mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
@@ -432,7 +432,7 @@ async def test_tools_endpoint_mixed_toolgroups(mocker: MockerFixture) -> None:
     mocker.patch("app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda action: lambda func: func)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
     mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
@@ -512,7 +512,7 @@ async def test_tools_endpoint_value_attribute_error(
     mocker.patch("app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda action: lambda func: func)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
     mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
@@ -542,7 +542,7 @@ async def test_tools_endpoint_apiconnection_error_toolgroups(  # pylint: disable
     mocker.patch("app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda action: lambda func: func)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
     mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
@@ -579,7 +579,7 @@ async def test_tools_endpoint_client_holder_apiconnection_error(  # pylint: disa
     mocker.patch("app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda action: lambda func: func)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder to raise APIConnectionError
     mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
@@ -613,7 +613,7 @@ async def test_tools_endpoint_general_exception(
     mocker.patch("app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda action: lambda func: func)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder to raise exception
     mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")

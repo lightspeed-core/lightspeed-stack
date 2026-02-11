@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.routing import Mount, Route, WebSocketRoute
+from llama_stack_client import APIConnectionError
 
 from authorization.azure_token_manager import AzureEntraIDManager
 import metrics
@@ -50,10 +51,23 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
                 "Token refresh will be retried on next Azure request."
             )
 
-    await AsyncLlamaStackClientHolder().load(configuration.configuration.llama_stack)
+    llama_stack_config = configuration.configuration.llama_stack
+    await AsyncLlamaStackClientHolder().load(llama_stack_config)
     client = AsyncLlamaStackClientHolder().get_client()
     # check if the Llama Stack version is supported by the service
-    await check_llama_stack_version(client)
+    try:
+        await check_llama_stack_version(client)
+    except APIConnectionError as e:
+        llama_stack_url = llama_stack_config.url
+        logger.error(
+            "Failed to connect to Llama Stack at '%s'. "
+            "Please verify that the 'llama_stack.url' configuration is correct "
+            "and that the Llama Stack service is running and accessible. "
+            "Original error: %s",
+            llama_stack_url,
+            e,
+        )
+        raise
 
     logger.info("Registering MCP servers")
     await register_mcp_servers_async(logger, configuration.configuration)

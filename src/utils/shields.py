@@ -4,11 +4,14 @@ import logging
 from typing import Any, Optional, cast
 
 from fastapi import HTTPException
-from llama_stack_client import AsyncLlamaStackClient, BadRequestError
+from llama_stack_client import AsyncLlamaStackClient
 from llama_stack_client.types import CreateResponse
 
 import metrics
-from models.responses import NotFoundResponse, UnprocessableEntityResponse
+from models.responses import (
+    NotFoundResponse, 
+    UnprocessableEntityResponse,
+)
 from utils.types import ShieldModerationResult
 
 logger = logging.getLogger(__name__)
@@ -117,6 +120,7 @@ async def run_shield_moderation(
             not shield.provider_resource_id
             or shield.provider_resource_id not in available_models
         ):
+            logger.error("Shield model not found: %s", shield.provider_resource_id)
             response = NotFoundResponse(
                 resource="Shield model", resource_id=shield.provider_resource_id or ""
             )
@@ -126,34 +130,32 @@ async def run_shield_moderation(
             moderation = await client.moderations.create(
                 input=input_text, model=shield.provider_resource_id
             )
-            moderation_result = cast(CreateResponse, moderation)
-
-            if moderation_result.results and moderation_result.results[0].flagged:
-                result = moderation_result.results[0]
-                metrics.llm_calls_validation_errors_total.inc()
-                logger.warning(
-                    "Shield '%s' flagged content: categories=%s",
-                    shield.identifier,
-                    result.categories,
-                )
-                violation_message = result.user_message or DEFAULT_VIOLATION_MESSAGE
-                return ShieldModerationResult(
-                    blocked=True,
-                    message=violation_message,
-                    shield_model=shield.provider_resource_id,
-                )
-
         # Known Llama Stack bug: error is raised when violation is present
         # in the shield LLM response but has wrong format that cannot be parsed.
-        except (BadRequestError, ValueError):
+        except ValueError:
             logger.warning(
-                "Shield '%s' violation detected, treating as blocked",
-                shield.identifier,
+                "Shield violation detected, treating as blocked",
             )
             metrics.llm_calls_validation_errors_total.inc()
             return ShieldModerationResult(
                 blocked=True,
                 message=DEFAULT_VIOLATION_MESSAGE,
+                shield_model=shield.provider_resource_id,
+            )
+
+        moderation_result = cast(CreateResponse, moderation)
+        if moderation_result.results and moderation_result.results[0].flagged:
+            result = moderation_result.results[0]
+            metrics.llm_calls_validation_errors_total.inc()
+            logger.warning(
+                "Shield '%s' flagged content: categories=%s",
+                shield.identifier,
+                result.categories,
+            )
+            violation_message = result.user_message or DEFAULT_VIOLATION_MESSAGE
+            return ShieldModerationResult(
+                blocked=True,
+                message=violation_message,
                 shield_model=shield.provider_resource_id,
             )
 

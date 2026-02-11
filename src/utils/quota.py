@@ -1,5 +1,6 @@
 """Quota handling helper functions."""
 
+import sqlite3
 from typing import Optional
 
 import psycopg2
@@ -74,7 +75,7 @@ def check_tokens_available(quota_limiters: list[QuotaLimiter], user_id: str) -> 
         # check available tokens using all configured quota limiters
         for quota_limiter in quota_limiters:
             quota_limiter.ensure_available_quota(subject_id=user_id)
-    except psycopg2.Error as pg_error:
+    except (psycopg2.Error, sqlite3.Error) as pg_error:
         message = "Error communicating with quota database backend"
         logger.error(message)
         response = InternalServerErrorResponse.database_error()
@@ -97,12 +98,20 @@ def get_available_quotas(
 
     Returns:
         Dictionary mapping quota limiter class names to available token counts.
+
+    Raises:
+        HTTPException: With status 500 if database communication fails.
     """
     available_quotas: dict[str, int] = {}
 
     # retrieve available tokens using all configured quota limiters
     for quota_limiter in quota_limiters:
         name = quota_limiter.__class__.__name__
-        available_quota = quota_limiter.available_quota(user_id)
-        available_quotas[name] = available_quota
+        try:
+            available_quota = quota_limiter.available_quota(user_id)
+            available_quotas[name] = available_quota
+        except (psycopg2.Error, sqlite3.Error) as e:
+            logger.exception("Database error getting available quotas.")
+            response = InternalServerErrorResponse.database_error()
+            raise HTTPException(**response.model_dump()) from e
     return available_quotas

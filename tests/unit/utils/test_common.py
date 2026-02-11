@@ -43,6 +43,7 @@ async def test_register_mcp_servers_empty_list(mocker: MockerFixture) -> None:
             url="http://localhost:8321",
             library_client_config_path=None,
             api_key=None,
+            timeout=60,
         ),
         user_data_collection=UserDataCollection(
             feedback_enabled=False,
@@ -103,6 +104,7 @@ async def test_register_mcp_servers_single_server_not_registered(
             url="http://localhost:8321",
             library_client_config_path=None,
             api_key=None,
+            timeout=60,
         ),
         user_data_collection=UserDataCollection(
             feedback_enabled=False,
@@ -165,6 +167,7 @@ async def test_register_mcp_servers_single_server_already_registered(
             url="http://localhost:8321",
             library_client_config_path=None,
             api_key=None,
+            timeout=60,
         ),
         user_data_collection=UserDataCollection(
             feedback_enabled=False,
@@ -236,6 +239,7 @@ async def test_register_mcp_servers_multiple_servers_mixed_registration(
             url="http://localhost:8321",
             library_client_config_path=None,
             api_key=None,
+            timeout=60,
         ),
         user_data_collection=UserDataCollection(
             feedback_enabled=False,
@@ -306,6 +310,7 @@ async def test_register_mcp_servers_with_custom_provider(mocker: MockerFixture) 
             url="http://localhost:8321",
             library_client_config_path=None,
             api_key=None,
+            timeout=60,
         ),
         user_data_collection=UserDataCollection(
             feedback_enabled=False,
@@ -376,6 +381,7 @@ async def test_register_mcp_servers_async_with_library_client(
             library_client_config_path="tests/configuration/run.yaml",
             url=None,
             api_key=None,
+            timeout=60,
         ),
         user_data_collection=UserDataCollection(
             feedback_enabled=False,

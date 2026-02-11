@@ -13,7 +13,7 @@
             "name": "Apache 2.0",
             "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.4.0"
+        "version": "0.4.1"
     },
     "servers": [
         {
@@ -245,8 +245,32 @@
                     "models"
                 ],
                 "summary": "Models Endpoint Handler",
-                "description": "Handle requests to the /models endpoint.\n\nProcess GET requests to the /models endpoint, returning a list of available\nmodels from the Llama Stack service.\n\nRaises:\n    HTTPException: If unable to connect to the Llama Stack server or if\n    model retrieval fails for any reason.\n\nReturns:\n    ModelsResponse: An object containing the list of available models.",
+                "description": "Handle requests to the /models endpoint.\n\nProcess GET requests to the /models endpoint, returning a list of available\nmodels from the Llama Stack service.\n\nParameters:\n    request: The incoming HTTP request.\n    auth: Authentication tuple from the auth dependency.\n    model_type: Optional filter to return only models matching this type.\n\nRaises:\n    HTTPException: If unable to connect to the Llama Stack server or if\n    model retrieval fails for any reason.\n\nReturns:\n    ModelsResponse: An object containing the list of available models.",
                 "operationId": "models_endpoint_handler_v1_models_get",
+                "parameters": [
+                    {
+                        "name": "model_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Optional filter to return only models matching this type",
+                            "examples": [
+                                "llm",
+                                "embeddings"
+                            ],
+                            "title": "Model Type"
+                        },
+                        "description": "Optional filter to return only models matching this type"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful response",
@@ -275,9 +299,6 @@
                         "description": "Unauthorized",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnauthorizedResponse"
-                                },
                                 "examples": {
                                     "missing header": {
                                         "value": {
@@ -295,6 +316,9 @@
                                             }
                                         }
                                     }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
                                 }
                             }
                         }
@@ -303,9 +327,6 @@
                         "description": "Permission denied",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ForbiddenResponse"
-                                },
                                 "examples": {
                                     "endpoint": {
                                         "value": {
@@ -315,6 +336,9 @@
                                             }
                                         }
                                     }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
                                 }
                             }
                         }
@@ -323,9 +347,6 @@
                         "description": "Internal server error",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
-                                },
                                 "examples": {
                                     "configuration": {
                                         "value": {
@@ -335,6 +356,9 @@
                                             }
                                         }
                                     }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
                                 }
                             }
                         }
@@ -343,9 +367,6 @@
                         "description": "Service unavailable",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                },
                                 "examples": {
                                     "llama stack": {
                                         "value": {
@@ -355,6 +376,19 @@
                                             }
                                         }
                                     }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
                                 }
                             }
                         }
@@ -1293,11 +1327,11 @@
         "/v1/query": {
             "post": {
                 "tags": [
-                    "query_v1"
+                    "query"
                 ],
-                "summary": "Query Endpoint Handler V1",
-                "description": "Handle request to the /query endpoint using Responses API.\n\nThis is a wrapper around query_endpoint_handler_base that provides\nthe Responses API specific retrieve_response and get_topic_summary functions.\n\nReturns:\n    QueryResponse: Contains the conversation ID and the LLM-generated response.",
-                "operationId": "query_endpoint_handler_v2_v1_query_post",
+                "summary": "Query Endpoint Handler",
+                "description": "Handle request to the /query endpoint using Responses API.\n\nProcesses a POST request to a query endpoint, forwarding the\nuser's query to a selected Llama Stack LLM and returning the generated response.\n\nReturns:\n    QueryResponse: Contains the conversation ID and the LLM-generated response.\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 413: Prompt too long - Prompt exceeded model's context window size\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Quota limit exceeded - The token quota for model or user has been exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to Llama Stack backend",
+                "operationId": "query_endpoint_handler_v1_query_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1453,6 +1487,26 @@
                             }
                         }
                     },
+                    "413": {
+                        "description": "Prompt is too long",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptTooLongResponse"
+                                },
+                                "examples": {
+                                    "prompt too long": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The prompt exceeds the maximum allowed length.",
+                                                "response": "Prompt is too long"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "description": "Request validation failed",
                         "content": {
@@ -1480,7 +1534,7 @@
                                     "invalid value": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+                                                "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
                                                 "response": "Invalid attribute value"
                                             }
                                         }
@@ -1603,11 +1657,11 @@
         "/v1/streaming_query": {
             "post": {
                 "tags": [
-                    "streaming_query_v1"
+                    "streaming_query"
                 ],
-                "summary": "Streaming Query Endpoint Handler V1",
-                "description": "Handle request to the /streaming_query endpoint using Responses API.\n\nReturns a streaming response using Server-Sent Events (SSE) format with\ncontent type text/event-stream.\n\nReturns:\n    StreamingResponse: An HTTP streaming response yielding\n    SSE-formatted events for the query lifecycle with content type\n    text/event-stream.\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Too Many Requests - Quota limit exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to Llama Stack backend",
-                "operationId": "streaming_query_endpoint_handler_v2_v1_streaming_query_post",
+                "summary": "Streaming Query Endpoint Handler",
+                "description": "Handle request to the /streaming_query endpoint using Responses API.\n\nReturns a streaming response using Server-Sent Events (SSE) format with\ncontent type text/event-stream.\n\nReturns:\n    SSE-formatted events for the query lifecycle.\n\nRaises:\n    HTTPException:\n        - 401: Unauthorized - Missing or invalid credentials\n        - 403: Forbidden - Insufficient permissions or model override not allowed\n        - 404: Not Found - Conversation, model, or provider not found\n        - 413: Prompt too long - Prompt exceeded model's context window size\n        - 422: Unprocessable Entity - Request validation failed\n        - 429: Quota limit exceeded - The token quota for model or user has been exceeded\n        - 500: Internal Server Error - Configuration not loaded or other server errors\n        - 503: Service Unavailable - Unable to connect to Llama Stack backend",
+                "operationId": "streaming_query_endpoint_handler_v1_streaming_query_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1731,6 +1785,26 @@
                             }
                         }
                     },
+                    "413": {
+                        "description": "Prompt is too long",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptTooLongResponse"
+                                },
+                                "examples": {
+                                    "prompt too long": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The prompt exceeds the maximum allowed length.",
+                                                "response": "Prompt is too long"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "description": "Request validation failed",
                         "content": {
@@ -1758,7 +1832,7 @@
                                     "invalid value": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+                                                "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
                                                 "response": "Invalid attribute value"
                                             }
                                         }
@@ -2445,26 +2519,6 @@
                                 }
                             }
                         }
-                    },
-                    "503": {
-                        "description": "Service unavailable",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                },
-                                "examples": {
-                                    "llama stack": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -2510,7 +2564,11 @@
                                                     "type": "assistant"
                                                 }
                                             ],
-                                            "started_at": "2024-01-01T00:01:00Z"
+                                            "model": "gpt-4o-mini",
+                                            "provider": "openai",
+                                            "started_at": "2024-01-01T00:01:00Z",
+                                            "tool_calls": [],
+                                            "tool_results": []
                                         }
                                     ],
                                     "conversation_id": "123e4567-e89b-12d3-a456-426614174000"
@@ -3196,7 +3254,11 @@
                                                     "type": "assistant"
                                                 }
                                             ],
-                                            "started_at": "2024-01-01T00:01:00Z"
+                                            "model": "gpt-4o-mini",
+                                            "provider": "openai",
+                                            "started_at": "2024-01-01T00:01:00Z",
+                                            "tool_calls": [],
+                                            "tool_results": []
                                         }
                                     ],
                                     "conversation_id": "123e4567-e89b-12d3-a456-426614174000"
@@ -3768,7 +3830,7 @@
                                     "invalid value": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+                                                "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
                                                 "response": "Invalid attribute value"
                                             }
                                         }
@@ -5924,8 +5986,7 @@
                     },
                     "chat_history": {
                         "items": {
-                            "additionalProperties": true,
-                            "type": "object"
+                            "$ref": "#/components/schemas/ConversationTurn"
                         },
                         "type": "array",
                         "title": "Chat History",
@@ -5943,7 +6004,11 @@
                                         "type": "assistant"
                                     }
                                 ],
-                                "started_at": "2024-01-01T00:01:00Z"
+                                "model": "gpt-4o-mini",
+                                "provider": "openai",
+                                "started_at": "2024-01-01T00:01:00Z",
+                                "tool_calls": [],
+                                "tool_results": []
                             }
                         ]
                     }
@@ -5954,7 +6019,7 @@
                     "chat_history"
                 ],
                 "title": "ConversationResponse",
-                "description": "Model representing a response for retrieving a conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    chat_history: The simplified chat history as a list of conversation turns.\n\nExample:\n    ```python\n    conversation_response = ConversationResponse(\n        conversation_id=\"123e4567-e89b-12d3-a456-426614174000\",\n        chat_history=[\n            {\n                \"messages\": [\n                    {\"content\": \"Hello\", \"type\": \"user\"},\n                    {\"content\": \"Hi there!\", \"type\": \"assistant\"}\n                ],\n                \"started_at\": \"2024-01-01T00:01:00Z\",\n                \"completed_at\": \"2024-01-01T00:01:05Z\"\n            }\n        ]\n    )\n    ```",
+                "description": "Model representing a response for retrieving a conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    chat_history: The chat history as a list of conversation turns.",
                 "examples": [
                     {
                         "chat_history": [
@@ -5970,12 +6035,85 @@
                                         "type": "assistant"
                                     }
                                 ],
-                                "started_at": "2024-01-01T00:01:00Z"
+                                "model": "gpt-4o-mini",
+                                "provider": "openai",
+                                "started_at": "2024-01-01T00:01:00Z",
+                                "tool_calls": [],
+                                "tool_results": []
                             }
                         ],
                         "conversation_id": "123e4567-e89b-12d3-a456-426614174000"
                     }
                 ]
+            },
+            "ConversationTurn": {
+                "properties": {
+                    "messages": {
+                        "items": {
+                            "$ref": "#/components/schemas/Message"
+                        },
+                        "type": "array",
+                        "title": "Messages",
+                        "description": "List of messages in this turn"
+                    },
+                    "tool_calls": {
+                        "items": {
+                            "$ref": "#/components/schemas/ToolCallSummary"
+                        },
+                        "type": "array",
+                        "title": "Tool Calls",
+                        "description": "List of tool calls made in this turn"
+                    },
+                    "tool_results": {
+                        "items": {
+                            "$ref": "#/components/schemas/ToolResultSummary"
+                        },
+                        "type": "array",
+                        "title": "Tool Results",
+                        "description": "List of tool results from this turn"
+                    },
+                    "provider": {
+                        "type": "string",
+                        "title": "Provider",
+                        "description": "Provider identifier used for this turn",
+                        "examples": [
+                            "openai"
+                        ]
+                    },
+                    "model": {
+                        "type": "string",
+                        "title": "Model",
+                        "description": "Model identifier used for this turn",
+                        "examples": [
+                            "gpt-4o-mini"
+                        ]
+                    },
+                    "started_at": {
+                        "type": "string",
+                        "title": "Started At",
+                        "description": "ISO 8601 timestamp when the turn started",
+                        "examples": [
+                            "2024-01-01T00:01:00Z"
+                        ]
+                    },
+                    "completed_at": {
+                        "type": "string",
+                        "title": "Completed At",
+                        "description": "ISO 8601 timestamp when the turn completed",
+                        "examples": [
+                            "2024-01-01T00:01:05Z"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider",
+                    "model",
+                    "started_at",
+                    "completed_at"
+                ],
+                "title": "ConversationTurn",
+                "description": "Model representing a single conversation turn.\n\nAttributes:\n    messages: List of messages in this turn.\n    tool_calls: List of tool calls made in this turn.\n    tool_results: List of tool results from this turn.\n    provider: Provider identifier used for this turn.\n    model: Model identifier used for this turn.\n    started_at: ISO 8601 timestamp when the turn started.\n    completed_at: ISO 8601 timestamp when the turn completed."
             },
             "ConversationUpdateRequest": {
                 "properties": {
@@ -6911,14 +7049,16 @@
                     "url": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "type": "string",
+                                "minLength": 1,
+                                "format": "uri"
                             },
                             {
                                 "type": "null"
                             }
                         ],
                         "title": "Llama Stack URL",
-                        "description": "URL to Llama Stack service; used when library mode is disabled"
+                        "description": "URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL."
                     },
                     "api_key": {
                         "anyOf": [
@@ -7028,6 +7168,42 @@
                 ],
                 "title": "MCPServerAuthInfo",
                 "description": "Information about MCP server client authentication options."
+            },
+            "Message": {
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "title": "Content",
+                        "description": "The message content",
+                        "examples": [
+                            "Hello, how can I help you?"
+                        ]
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "user",
+                            "assistant",
+                            "system",
+                            "developer"
+                        ],
+                        "title": "Type",
+                        "description": "The type of message",
+                        "examples": [
+                            "user",
+                            "assistant",
+                            "system",
+                            "developer"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "content",
+                    "type"
+                ],
+                "title": "Message",
+                "description": "Model representing a message in a conversation turn.\n\nAttributes:\n    content: The message content.\n    type: The type of message."
             },
             "ModelContextProtocolServer": {
                 "properties": {
@@ -7416,6 +7592,33 @@
                 ],
                 "title": "PostgreSQLDatabaseConfiguration",
                 "description": "PostgreSQL database configuration.\n\nPostgreSQL database is used by Lightspeed Core Stack service for storing\ninformation about conversation IDs. It can also be leveraged to store\nconversation history and information about quota usage.\n\nUseful resources:\n\n- [Psycopg: connection classes](https://www.psycopg.org/psycopg3/docs/api/connections.html)\n- [PostgreSQL connection strings](https://www.connectionstrings.com/postgresql/)\n- [How to Use PostgreSQL in Python](https://www.freecodecamp.org/news/postgresql-in-python/)"
+            },
+            "PromptTooLongResponse": {
+                "properties": {
+                    "status_code": {
+                        "type": "integer",
+                        "title": "Status Code"
+                    },
+                    "detail": {
+                        "$ref": "#/components/schemas/DetailModel"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status_code",
+                    "detail"
+                ],
+                "title": "PromptTooLongResponse",
+                "description": "413 Payload Too Large - Prompt is too long.",
+                "examples": [
+                    {
+                        "detail": {
+                            "cause": "The prompt exceeds the maximum allowed length.",
+                            "response": "Prompt is too long"
+                        },
+                        "label": "prompt too long"
+                    }
+                ]
             },
             "ProviderHealthStatus": {
                 "properties": {
@@ -7865,7 +8068,7 @@
                     "truncated": {
                         "type": "boolean",
                         "title": "Truncated",
-                        "description": "Whether conversation history was truncated",
+                        "description": "Deprecated:Whether conversation history was truncated",
                         "default": false,
                         "examples": [
                             false,
@@ -8779,6 +8982,12 @@
                         "title": "TLS configuration",
                         "description": "Transport Layer Security configuration for HTTPS support"
                     },
+                    "root_path": {
+                        "type": "string",
+                        "title": "Root path",
+                        "description": "ASGI root path for serving behind a reverse proxy on a subpath",
+                        "default": ""
+                    },
                     "cors": {
                         "$ref": "#/components/schemas/CORSConfiguration",
                         "title": "CORS configuration",
@@ -9227,7 +9436,7 @@
                     },
                     {
                         "detail": {
-                            "cause": "Invalid attatchment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+                            "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
                             "response": "Invalid attribute value"
                         },
                         "label": "invalid value"
@@ -9301,6 +9510,13 @@
                     "type": {
                         "type": "string",
                         "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
                     }
                 },
                 "type": "object",

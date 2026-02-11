@@ -1,6 +1,5 @@
 """Common types for the project."""
 
-import json
 from typing import Any, Optional
 
 from llama_stack_client.lib.agents.tool_parser import ToolParser
@@ -14,9 +13,9 @@ from llama_stack_client.types.shared.interleaved_content_item import (
     ImageContentItem,
     TextContentItem,
 )
-from pydantic import BaseModel, Field
+from pydantic import AnyUrl, BaseModel, Field
 
-from constants import DEFAULT_RAG_TOOL
+from utils.token_counter import TokenCounter
 
 
 def content_to_str(content: Any) -> str:
@@ -110,6 +109,22 @@ class ShieldModerationResult(BaseModel):
     shield_model: Optional[str] = None
 
 
+class ResponsesApiParams(BaseModel):
+    """Parameters for a Llama Stack Responses API request."""
+
+    input: str = Field(description="The input text with attachments appended")
+    model: str = Field(description='The full model ID in format "provider/model"')
+    instructions: Optional[str] = Field(
+        default=None, description="The resolved system prompt"
+    )
+    tools: Optional[list[dict[str, Any]]] = Field(
+        default=None, description="Prepared tool groups for Responses API"
+    )
+    conversation: str = Field(description="The conversation ID in llama-stack format")
+    stream: bool = Field(description="Whether to stream the response")
+    store: bool = Field(description="Whether to store the response")
+
+
 class ToolCallSummary(BaseModel):
     """Model representing a tool call made during response generation (for tool_calls list)."""
 
@@ -143,70 +158,29 @@ class RAGChunk(BaseModel):
     score: Optional[float] = Field(None, description="Relevance score")
 
 
+class ReferencedDocument(BaseModel):
+    """Model representing a document referenced in generating a response.
+
+    Attributes:
+        doc_url: Url to the referenced doc.
+        doc_title: Title of the referenced doc.
+    """
+
+    doc_url: Optional[AnyUrl] = Field(
+        None, description="URL of the referenced document"
+    )
+
+    doc_title: Optional[str] = Field(
+        None, description="Title of the referenced document"
+    )
+
+
 class TurnSummary(BaseModel):
     """Summary of a turn in llama stack."""
 
-    llm_response: str
-    tool_calls: list[ToolCallSummary]
-    tool_results: list[ToolResultSummary]
-    rag_chunks: list[RAGChunk]
-
-    def _extract_rag_chunks_from_response(self, response_content: str) -> None:
-        """
-        Parse a tool response string and append extracted RAG chunks to this  rag_chunks list.
-
-        Attempts to parse `response_content` as JSON and extract chunks in either of two formats:
-        - A dict containing a "chunks" list: each item's "content", "source", and "score" are used.
-        - A top-level list of chunk objects: for dict items, "content",
-          "source", and "score" are used; non-dict items are stringified into
-          the chunk content.
-
-        If JSON parsing fails or an unexpected structure/error occurs and
-        `response_content` contains non-whitespace characters, the entire
-        `response_content` is appended as a single RAGChunk with
-        `source=DEFAULT_RAG_TOOL` and `score=None`. Empty or whitespace-only
-        `response_content` is ignored.
-        """
-        try:
-            # Parse the response to get chunks
-            # Try JSON first
-            try:
-                data = json.loads(response_content)
-                if isinstance(data, dict) and "chunks" in data:
-                    for chunk in data["chunks"]:
-                        self.rag_chunks.append(
-                            RAGChunk(
-                                content=chunk.get("content", ""),
-                                source=chunk.get("source"),
-                                score=chunk.get("score"),
-                            )
-                        )
-                elif isinstance(data, list):
-                    # Handle list of chunks
-                    for chunk in data:
-                        if isinstance(chunk, dict):
-                            self.rag_chunks.append(
-                                RAGChunk(
-                                    content=chunk.get("content", str(chunk)),
-                                    source=chunk.get("source"),
-                                    score=chunk.get("score"),
-                                )
-                            )
-            except json.JSONDecodeError:
-                # If not JSON, treat the entire response as a single chunk
-                if response_content.strip():
-                    self.rag_chunks.append(
-                        RAGChunk(
-                            content=response_content,
-                            source=DEFAULT_RAG_TOOL,
-                            score=None,
-                        )
-                    )
-        except (KeyError, AttributeError, TypeError, ValueError):
-            # Treat response as single chunk on data access/structure errors
-            if response_content.strip():
-                self.rag_chunks.append(
-                    RAGChunk(
-                        content=response_content, source=DEFAULT_RAG_TOOL, score=None
-                    )
-                )
+    llm_response: str = ""
+    tool_calls: list[ToolCallSummary] = Field(default_factory=list)
+    tool_results: list[ToolResultSummary] = Field(default_factory=list)
+    rag_chunks: list[RAGChunk] = Field(default_factory=list)
+    referenced_documents: list[ReferencedDocument] = Field(default_factory=list)
+    token_usage: TokenCounter = Field(default_factory=TokenCounter)

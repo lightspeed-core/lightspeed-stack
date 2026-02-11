@@ -124,6 +124,9 @@ upload-distribution-archives:	## Upload distribution archives into Python regist
 konflux-requirements:	## generate hermetic requirements.*.txt file for konflux build
 	./scripts/konflux_requirements.sh
 
+konflux-rpm-lock:	## generate rpm.lock.yaml file for konflux build
+	./scripts/generate-rpm-lock.sh
+
 help: ## Show this help screen
 	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
 	@echo ''

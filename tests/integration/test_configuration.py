@@ -69,7 +69,7 @@ def test_loading_proper_configuration(configuration_filename: str) -> None:
     # check 'llama_stack' section
     ls_config = cfg.llama_stack_configuration
     assert ls_config.use_as_library_client is False
-    assert ls_config.url == "http://localhost:8321"
+    assert str(ls_config.url) == "http://localhost:8321/"
     assert ls_config.api_key is not None
     assert ls_config.api_key.get_secret_value() == "xyzzy"
 

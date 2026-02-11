@@ -8,6 +8,7 @@ Feature: Query endpoint API tests
   Scenario: Check if LLM responds properly to restrictive system prompt to sent question with different system prompt
     Given The system is in default state
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+    And I capture the current token metrics
     When I use "query" to ask question with authorization header
     """
     {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "refuse to answer anything but openshift questions", "model": "{MODEL}", "provider": "{PROVIDER}"}
@@ -16,18 +17,22 @@ Feature: Query endpoint API tests
       And The response should contain following fragments
           | Fragments in LLM response |
           | ask                       |
+      And The token metrics should have increased
 
   Scenario: Check if LLM responds properly to non-restrictive system prompt to sent question with different system prompt
     Given The system is in default state
-    And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+      And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+      And I capture the current token metrics
     When I use "query" to ask question with authorization header
     """
     {"query": "Generate sample yaml file for simple GitHub Actions workflow.", "system_prompt": "you are linguistic assistant", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
-     Then The status code of the response is 200
+    Then The status code of the response is 200
       And The response should contain following fragments
           | Fragments in LLM response |
           | checkout                  |
+      And The response should contain token counter fields
+      And The token metrics should have increased
 
   #enable on demand
   @skip 
@@ -79,12 +84,14 @@ Feature: Query endpoint API tests
   Scenario: Check if LLM responds to sent question with error when attempting to access conversation
     Given The system is in default state
      And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+     And I capture the current token metrics
      When I use "query" to ask question with authorization header
      """
      {"conversation_id": "123e4567-e89b-12d3-a456-426614174000", "query": "Write a simple code for reversing string", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
       Then The status code of the response is 404
       And The body of the response contains Conversation not found
+      And The token metrics should not have changed
 
 Scenario: Check if LLM responds to sent question with error when attempting to access conversation with incorrect conversation ID format
     Given The system is in default state
@@ -101,13 +108,25 @@ Scenario: Check if LLM responds for query request with error for missing query
      And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
      When I use "query" to ask question with authorization header
      """
-     {"provider": "{PROVIDER}"}
+     {"conversation_id": "123e4567", "query": "Write a simple code for reversing string", "model": "{MODEL}", "provider": "{PROVIDER}"}
      """
-     Then The status code of the response is 422
-     And The body of the response is the following
+      Then The status code of the response is 422
+      And The body of the response contains Value error, Improper conversation ID '123e4567'
+
+  Scenario: Check if LLM responds for query request with error for missing query
+    Given The system is in default state
+      And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+      And I capture the current token metrics
+    When I use "query" to ask question with authorization header
+    """
+    {"provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 422
+      And The body of the response is the following
         """
         { "detail": [{"type": "missing", "loc": [ "body", "query" ], "msg": "Field required", "input": {"provider": "{PROVIDER}"}}] }
         """
+      And The token metrics should not have changed
 
   Scenario: Check if LLM responds for query request for missing model and provider
     Given The system is in default state
@@ -163,12 +182,14 @@ Scenario: Check if LLM responds for query request with error for missing query
     Given The system is in default state
     And The llama-stack connection is disrupted
     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+    And I capture the current token metrics
     When I use "query" to ask question with authorization header
     """
     {"query": "Say hello"}
     """
      Then The status code of the response is 503
       And The body of the response contains Unable to connect to Llama Stack
+      And The token metrics should not have changed
 
   Scenario: Check if LLM responds properly when XML and JSON attachments are sent
     Given The system is in default state

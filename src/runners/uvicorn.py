@@ -15,7 +15,7 @@ def start_uvicorn(configuration: ServiceConfiguration) -> None:
 
     Parameters:
         configuration (ServiceConfiguration): Configuration providing host,
-        port, workers, and `tls_config` (including `tls_key_path`,
+        port, workers, `root_path`, and `tls_config` (including `tls_key_path`,
         `tls_certificate_path`, and `tls_key_password`). TLS fields may be None
         and will be forwarded to uvicorn.run as provided.
     """
@@ -30,6 +30,7 @@ def start_uvicorn(configuration: ServiceConfiguration) -> None:
         host=configuration.host,
         port=configuration.port,
         workers=configuration.workers,
+        root_path=configuration.root_path,
         log_level=log_level,
         ssl_keyfile=configuration.tls_config.tls_key_path,
         ssl_certfile=configuration.tls_config.tls_certificate_path,

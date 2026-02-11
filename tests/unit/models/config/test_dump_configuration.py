@@ -119,6 +119,7 @@ def test_dump_configuration(tmp_path: Path) -> None:
                     "tls_key_password": "tests/configuration/password",
                     "tls_key_path": "tests/configuration/server.key",
                 },
+                "root_path": "",
                 "cors": {
                     "allow_credentials": False,
                     "allow_headers": [
@@ -442,6 +443,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                     "tls_key_password": "tests/configuration/password",
                     "tls_key_path": "tests/configuration/server.key",
                 },
+                "root_path": "",
                 "cors": {
                     "allow_credentials": False,
                     "allow_headers": [
@@ -662,6 +664,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
                     "tls_key_password": "tests/configuration/password",
                     "tls_key_path": "tests/configuration/server.key",
                 },
+                "root_path": "",
                 "cors": {
                     "allow_credentials": False,
                     "allow_headers": [
@@ -862,6 +865,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                     "tls_key_password": "tests/configuration/password",
                     "tls_key_path": "tests/configuration/server.key",
                 },
+                "root_path": "",
                 "cors": {
                     "allow_credentials": False,
                     "allow_headers": [
@@ -1051,6 +1055,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                     "tls_key_password": "tests/configuration/password",
                     "tls_key_path": "tests/configuration/server.key",
                 },
+                "root_path": "",
                 "cors": {
                     "allow_credentials": False,
                     "allow_headers": [

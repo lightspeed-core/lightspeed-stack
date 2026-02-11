@@ -56,7 +56,7 @@ async def test_rags_endpoint_connection_error(
     detail = e.value.detail
     assert isinstance(detail, dict)
     assert "response" in detail
-    assert "Unable to connect to Llama Stack" in detail["response"]
+    assert "Unable to connect to Llama Stack" in detail["response"]  # type: ignore[index]
 
 
 @pytest.mark.asyncio
@@ -158,7 +158,7 @@ async def test_rag_info_endpoint_rag_not_found(
     detail = e.value.detail
     assert isinstance(detail, dict)
     assert "response" in detail
-    assert "Rag not found" in detail["response"]
+    assert "Rag not found" in detail["response"]  # type: ignore[index]
 
 
 @pytest.mark.asyncio
@@ -186,7 +186,7 @@ async def test_rag_info_endpoint_connection_error(
     detail = e.value.detail
     assert isinstance(detail, dict)
     assert "response" in detail
-    assert "Unable to connect to Llama Stack" in detail["response"]
+    assert "Unable to connect to Llama Stack" in detail["response"]  # type: ignore[index]
 
 
 @pytest.mark.asyncio

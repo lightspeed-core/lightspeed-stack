@@ -1,6 +1,6 @@
 """Manage authentication flow for FastAPI endpoints with no-op auth."""
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 
 from constants import (
     DEFAULT_USER_NAME,
@@ -50,5 +50,7 @@ class NoopAuthDependency(AuthInterface):  # pylint: disable=too-few-public-metho
         )
         # try to extract user ID from request
         user_id = request.query_params.get("user_id", DEFAULT_USER_UID)
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id cannot be empty")
         logger.debug("Retrieved user ID: %s", user_id)
         return user_id, DEFAULT_USER_NAME, self.skip_userid_check, NO_USER_TOKEN

@@ -7,20 +7,19 @@
 from typing import Any
 
 import pytest
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request
+from llama_stack_api.openai_responses import OpenAIResponseObject
+from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 from pytest_mock import MockerFixture
 
-from app.endpoints.query import (
-    evaluate_model_hints,
-    is_transcripts_enabled,
-    select_model_and_provider_id,
-    validate_attachments_metadata,
-)
+from app.endpoints.query import query_endpoint_handler, retrieve_response
 from configuration import AppConfig
 from models.config import Action
 from models.database.conversations import UserConversation
 from models.requests import Attachment, QueryRequest
+from models.responses import QueryResponse
 from utils.token_counter import TokenCounter
+from utils.types import ResponsesApiParams, TurnSummary
 
 # User ID must be proper UUID
 MOCK_AUTH = (
@@ -31,9 +30,9 @@ MOCK_AUTH = (
 )
 
 
-@pytest.fixture
-def dummy_request() -> Request:
-    """Dummy request fixture for testing.
+@pytest.fixture(name="dummy_request")
+def create_dummy_request() -> Request:
+    """Create dummy request fixture for testing.
 
     Create a minimal FastAPI Request with test-ready authorization state.
 
@@ -53,51 +52,6 @@ def dummy_request() -> Request:
 
     req.state.authorized_actions = set(Action)
     return req
-
-
-def mock_metrics(mocker: MockerFixture) -> None:
-    """Helper function to mock metrics operations for query endpoints.
-
-    Configure the provided pytest-mock `mocker` to stub token metrics and
-    related metrics counters used by query endpoint tests.
-
-    Patches the token metrics extraction helper and the LLM metrics counters so
-    tests can run without emitting real metrics.
-    """
-    mocker.patch(
-        "app.endpoints.query.extract_and_update_token_metrics",
-        return_value=TokenCounter(),
-    )
-    # Mock the metrics that are called inside extract_and_update_token_metrics
-    mocker.patch("metrics.llm_token_sent_total")
-    mocker.patch("metrics.llm_token_received_total")
-    mocker.patch("metrics.llm_calls_total")
-
-
-def mock_database_operations(mocker: MockerFixture) -> None:
-    """Helper function to mock database operations for query endpoints.
-
-    Patch common database operations used by query endpoint tests.
-
-    This applies test-time patches so that conversation ownership checks
-    succeed, persistence of conversation details is stubbed out, and
-    `get_session` returns a context-manager mock whose
-    `query(...).filter_by(...).first()` returns `None`.
-
-    Parameters:
-        mocker (MockerFixture): The pytest-mock fixture used to apply patches.
-    """
-    mocker.patch(
-        "app.endpoints.query.validate_conversation_ownership", return_value=True
-    )
-    mocker.patch("app.endpoints.query.persist_user_conversation_details")
-
-    # Mock the database session and query
-    mock_session = mocker.Mock()
-    mock_session.query.return_value.filter_by.return_value.first.return_value = None
-    mock_session.__enter__ = mocker.Mock(return_value=mock_session)
-    mock_session.__exit__ = mocker.Mock(return_value=None)
-    mocker.patch("app.endpoints.query.get_session", return_value=mock_session)
 
 
 @pytest.fixture(name="setup_configuration")
@@ -145,342 +99,609 @@ def setup_configuration_fixture() -> AppConfig:
     return cfg
 
 
-def test_is_transcripts_enabled(
-    setup_configuration: AppConfig, mocker: MockerFixture
-) -> None:
-    """Test that is_transcripts_enabled returns True when transcripts is not disabled."""
-    # Override the transcripts_enabled setting
-    mocker.patch.object(
-        setup_configuration.user_data_collection_configuration,
-        "transcripts_enabled",
-        True,
-    )
-    mocker.patch("app.endpoints.query.configuration", setup_configuration)
+class TestQueryEndpointHandler:
+    """Tests for query_endpoint_handler function."""
 
-    assert is_transcripts_enabled() is True, "Transcripts should be enabled"
+    @pytest.mark.asyncio
+    async def test_successful_query_no_conversation(
+        self,
+        dummy_request: Request,
+        setup_configuration: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test successful query without existing conversation."""
+        query_request = QueryRequest(
+            query="What is Kubernetes?"
+        )  # pyright: ignore[reportCallIssue]
 
+        mocker.patch("app.endpoints.query.configuration", setup_configuration)
+        mocker.patch("app.endpoints.query.check_configuration_loaded")
+        mocker.patch("app.endpoints.query.check_tokens_available")
+        mocker.patch("app.endpoints.query.validate_model_provider_override")
 
-def test_is_transcripts_disabled(
-    setup_configuration: AppConfig, mocker: MockerFixture
-) -> None:
-    """Test that is_transcripts_enabled returns False when transcripts is disabled."""
-    # Use default transcripts_enabled=False from setup
-    mocker.patch("app.endpoints.query.configuration", setup_configuration)
-
-    assert is_transcripts_enabled() is False, "Transcripts should be disabled"
-
-
-def test_select_model_and_provider_id_from_request(mocker: MockerFixture) -> None:
-    """Test the select_model_and_provider_id function."""
-    mocker.patch(
-        "metrics.utils.configuration.inference.default_provider",
-        "default_provider",
-    )
-    mocker.patch(
-        "metrics.utils.configuration.inference.default_model",
-        "default_model",
-    )
-
-    model_list = [
-        mocker.Mock(
-            id="provider1/model1",
-            custom_metadata={"model_type": "llm", "provider_id": "provider1"},
-        ),
-        mocker.Mock(
-            id="provider2/model2",
-            custom_metadata={"model_type": "llm", "provider_id": "provider2"},
-        ),
-        mocker.Mock(
-            id="default_provider/default_model",
-            custom_metadata={"model_type": "llm", "provider_id": "default_provider"},
-        ),
-    ]
-
-    # Create a query request with model and provider specified
-    query_request = QueryRequest(
-        query="What is OpenStack?", model="model2", provider="provider2"
-    )
-
-    # Assert the model and provider from request take precedence from the configuration one
-    llama_stack_model_id, model_id, provider_id = select_model_and_provider_id(
-        model_list, query_request.model, query_request.provider
-    )
-
-    assert llama_stack_model_id == "provider2/model2"
-    assert model_id == "model2"
-    assert provider_id == "provider2"
-
-
-def test_select_model_and_provider_id_from_configuration(mocker: MockerFixture) -> None:
-    """Test the select_model_and_provider_id function."""
-    mocker.patch(
-        "metrics.utils.configuration.inference.default_provider",
-        "default_provider",
-    )
-    mocker.patch(
-        "metrics.utils.configuration.inference.default_model",
-        "default_model",
-    )
-
-    model_list = [
-        mocker.Mock(
-            id="provider1/model1",
-            custom_metadata={"model_type": "llm", "provider_id": "provider1"},
-        ),
-        mocker.Mock(
-            id="default_provider/default_model",
-            custom_metadata={"model_type": "llm", "provider_id": "default_provider"},
-        ),
-    ]
-
-    # Create a query request without model and provider specified
-    query_request = QueryRequest(
-        query="What is OpenStack?",
-    )
-
-    llama_stack_model_id, model_id, provider_id = select_model_and_provider_id(
-        model_list, query_request.model, query_request.provider
-    )
-
-    # Assert that the default model and provider from the configuration are returned
-    assert llama_stack_model_id == "default_provider/default_model"
-    assert model_id == "default_model"
-    assert provider_id == "default_provider"
-
-
-def test_select_model_and_provider_id_first_from_list(mocker: MockerFixture) -> None:
-    """Test the select_model_and_provider_id function when no model is specified."""
-    model_list = [
-        mocker.Mock(
-            id="not_llm_type",
-            custom_metadata={"model_type": "embedding", "provider_id": "provider1"},
-        ),
-        mocker.Mock(
-            id="first_model",
-            custom_metadata={"model_type": "llm", "provider_id": "provider1"},
-        ),
-        mocker.Mock(
-            id="second_model",
-            custom_metadata={"model_type": "llm", "provider_id": "provider2"},
-        ),
-    ]
-
-    query_request = QueryRequest(query="What is OpenStack?")
-
-    llama_stack_model_id, model_id, provider_id = select_model_and_provider_id(
-        model_list, query_request.model, query_request.provider
-    )
-
-    # Assert return the first available LLM model when no model/provider is
-    # specified in the request or in the configuration
-    assert llama_stack_model_id == "first_model"
-    assert model_id == "first_model"
-    assert provider_id == "provider1"
-
-
-def test_select_model_and_provider_id_invalid_model(mocker: MockerFixture) -> None:
-    """Test the select_model_and_provider_id function with an invalid model."""
-    mock_client = mocker.Mock()
-    mock_client.models.list.return_value = [
-        mocker.Mock(
-            id="model1",
-            custom_metadata={"model_type": "llm", "provider_id": "provider1"},
-        ),
-    ]
-
-    query_request = QueryRequest(
-        query="What is OpenStack?", model="invalid_model", provider="provider1"
-    )
-
-    with pytest.raises(HTTPException) as exc_info:
-        select_model_and_provider_id(
-            mock_client.models.list(), query_request.model, query_request.provider
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_response_obj = mocker.Mock()
+        mock_response_obj.output = []
+        mock_client.responses = mocker.Mock()
+        mock_client.responses.create = mocker.AsyncMock(return_value=mock_response_obj)
+        mock_client_holder = mocker.Mock()
+        mock_client_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            return_value=mock_client_holder,
+        )
+        mocker.patch(
+            "app.endpoints.query.get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
         )
 
-    assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-    detail = exc_info.value.detail
-    assert isinstance(detail, dict)
-    assert detail["response"] == "Model not found"
-    assert "invalid_model" in detail["cause"]
-
-
-def test_select_model_and_provider_id_no_available_models(
-    mocker: MockerFixture,
-) -> None:
-    """Test the select_model_and_provider_id function with no available models."""
-    mock_client = mocker.Mock()
-    # empty list of models
-    mock_client.models.list.return_value = []
-
-    query_request = QueryRequest(query="What is OpenStack?", model=None, provider=None)
-
-    with pytest.raises(HTTPException) as exc_info:
-        select_model_and_provider_id(
-            mock_client.models.list(), query_request.model, query_request.provider
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.model = "provider1/model1"
+        mock_responses_params.conversation = "conv_123"
+        mock_responses_params.model_dump.return_value = {
+            "input": "test",
+            "model": "provider1/model1",
+        }
+        mocker.patch(
+            "app.endpoints.query.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_responses_params),
         )
 
-    assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-    detail = exc_info.value.detail
-    assert isinstance(detail, dict)
-    assert detail["response"] == "Model not found"
-    # The cause may vary, but should indicate no model found
-    assert "Model" in detail["cause"]
+        mock_turn_summary = TurnSummary()
+        mock_turn_summary.llm_response = (
+            "Kubernetes is a container orchestration platform"
+        )
+
+        async def mock_retrieve_response(*_args: Any, **_kwargs: Any) -> TurnSummary:
+            return mock_turn_summary
+
+        mocker.patch(
+            "app.endpoints.query.retrieve_response", side_effect=mock_retrieve_response
+        )
+
+        mocker.patch(
+            "app.endpoints.query.normalize_conversation_id", return_value="123"
+        )
+        mocker.patch("app.endpoints.query.store_query_results")
+        mocker.patch("app.endpoints.query.consume_query_tokens")
+        mocker.patch("app.endpoints.query.get_available_quotas", return_value={})
+
+        response = await query_endpoint_handler(
+            request=dummy_request,
+            query_request=query_request,
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        assert isinstance(response, QueryResponse)
+        assert response.conversation_id == "123"
+        assert response.response == "Kubernetes is a container orchestration platform"
+
+    @pytest.mark.asyncio
+    async def test_successful_query_with_conversation(
+        self,
+        dummy_request: Request,
+        setup_configuration: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test successful query with existing conversation."""
+        query_request = QueryRequest(
+            query="What is Kubernetes?",
+            conversation_id="123e4567-e89b-12d3-a456-426614174000",
+        )  # pyright: ignore[reportCallIssue]
+
+        mocker.patch("app.endpoints.query.configuration", setup_configuration)
+        mocker.patch("app.endpoints.query.check_configuration_loaded")
+        mocker.patch("app.endpoints.query.check_tokens_available")
+        mocker.patch("app.endpoints.query.validate_model_provider_override")
+        mocker.patch(
+            "app.endpoints.query.normalize_conversation_id", return_value="123"
+        )
+        mock_validate_conv = mocker.patch(
+            "app.endpoints.query.validate_and_retrieve_conversation",
+            return_value=mocker.Mock(spec=UserConversation),
+        )
+
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client_holder = mocker.Mock()
+        mock_client_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            return_value=mock_client_holder,
+        )
+
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.model = "provider1/model1"
+        mock_responses_params.conversation = "conv_123"
+        mock_responses_params.model_dump.return_value = {
+            "input": "test",
+            "model": "provider1/model1",
+        }
+        mocker.patch(
+            "app.endpoints.query.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_responses_params),
+        )
+
+        mocker.patch(
+            "app.endpoints.query.retrieve_response",
+            new=mocker.AsyncMock(return_value=TurnSummary()),
+        )
+        mocker.patch("app.endpoints.query.store_query_results")
+        mocker.patch("app.endpoints.query.consume_query_tokens")
+        mocker.patch("app.endpoints.query.get_available_quotas", return_value={})
+
+        response = await query_endpoint_handler(
+            request=dummy_request,
+            query_request=query_request,
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        assert isinstance(response, QueryResponse)
+        mock_validate_conv.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_query_with_attachments(
+        self,
+        dummy_request: Request,
+        setup_configuration: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test query with attachments validation."""
+        query_request = QueryRequest(
+            query="What is Kubernetes?",
+            attachments=[
+                Attachment(
+                    attachment_type="log",
+                    content_type="text/plain",
+                    content="log content",
+                )
+            ],
+        )  # pyright: ignore[reportCallIssue]
+
+        mocker.patch("app.endpoints.query.configuration", setup_configuration)
+        mocker.patch("app.endpoints.query.check_configuration_loaded")
+        mocker.patch("app.endpoints.query.check_tokens_available")
+        mocker.patch("app.endpoints.query.validate_model_provider_override")
+        mock_validate = mocker.patch(
+            "app.endpoints.query.validate_attachments_metadata"
+        )
+
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_response_obj = mocker.Mock()
+        mock_response_obj.output = []
+        mock_client.responses = mocker.Mock()
+        mock_client.responses.create = mocker.AsyncMock(return_value=mock_response_obj)
+        mock_client_holder = mocker.Mock()
+        mock_client_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            return_value=mock_client_holder,
+        )
+        mocker.patch(
+            "app.endpoints.query.get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.model = "provider1/model1"
+        mock_responses_params.conversation = "conv_123"
+        mock_responses_params.model_dump.return_value = {
+            "input": "test",
+            "model": "provider1/model1",
+        }
+        mocker.patch(
+            "app.endpoints.query.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_responses_params),
+        )
+
+        async def mock_retrieve_response(*_args: Any, **_kwargs: Any) -> TurnSummary:
+            return TurnSummary()
+
+        mocker.patch(
+            "app.endpoints.query.retrieve_response", side_effect=mock_retrieve_response
+        )
+        mocker.patch(
+            "app.endpoints.query.normalize_conversation_id", return_value="123"
+        )
+        mocker.patch("app.endpoints.query.store_query_results")
+        mocker.patch("app.endpoints.query.consume_query_tokens")
+        mocker.patch("app.endpoints.query.get_available_quotas", return_value={})
+
+        await query_endpoint_handler(
+            request=dummy_request,
+            query_request=query_request,
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        mock_validate.assert_called_once_with(query_request.attachments)
+
+    @pytest.mark.asyncio
+    async def test_query_with_topic_summary(
+        self,
+        dummy_request: Request,
+        setup_configuration: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test query generates topic summary for new conversation."""
+        query_request = QueryRequest(
+            query="What is Kubernetes?", generate_topic_summary=True
+        )  # pyright: ignore[reportCallIssue]
+
+        mocker.patch("app.endpoints.query.configuration", setup_configuration)
+        mocker.patch("app.endpoints.query.check_configuration_loaded")
+        mocker.patch("app.endpoints.query.check_tokens_available")
+        mocker.patch("app.endpoints.query.validate_model_provider_override")
+
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client_holder = mocker.Mock()
+        mock_client_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            return_value=mock_client_holder,
+        )
+
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.model = "provider1/model1"
+        mock_responses_params.conversation = "conv_123"
+        mock_responses_params.model_dump.return_value = {
+            "input": "test",
+            "model": "provider1/model1",
+        }
+        mocker.patch(
+            "app.endpoints.query.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_responses_params),
+        )
+
+        mocker.patch(
+            "app.endpoints.query.retrieve_response",
+            new=mocker.AsyncMock(return_value=TurnSummary()),
+        )
+        mock_get_topic_summary = mocker.patch(
+            "app.endpoints.query.get_topic_summary",
+            new=mocker.AsyncMock(return_value="Topic: Kubernetes"),
+        )
+        mocker.patch(
+            "app.endpoints.query.normalize_conversation_id", return_value="123"
+        )
+        mocker.patch("app.endpoints.query.store_query_results")
+        mocker.patch("app.endpoints.query.consume_query_tokens")
+        mocker.patch("app.endpoints.query.get_available_quotas", return_value={})
+
+        await query_endpoint_handler(
+            request=dummy_request,
+            query_request=query_request,
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        mock_get_topic_summary.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_query_azure_token_refresh(
+        self,
+        dummy_request: Request,
+        setup_configuration: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test query refreshes Azure token when needed."""
+        query_request = QueryRequest(
+            query="What is Kubernetes?"
+        )  # pyright: ignore[reportCallIssue]
+
+        mocker.patch("app.endpoints.query.configuration", setup_configuration)
+        mocker.patch("app.endpoints.query.check_configuration_loaded")
+        mocker.patch("app.endpoints.query.check_tokens_available")
+        mocker.patch("app.endpoints.query.validate_model_provider_override")
+
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_response_obj = mocker.Mock()
+        mock_response_obj.output = []
+        mock_client.responses = mocker.Mock()
+        mock_client.responses.create = mocker.AsyncMock(return_value=mock_response_obj)
+        mock_client_holder = mocker.Mock()
+        mock_client_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "app.endpoints.query.AsyncLlamaStackClientHolder",
+            return_value=mock_client_holder,
+        )
+        mocker.patch(
+            "app.endpoints.query.get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.model = "azure/model1"
+        mock_responses_params.conversation = "conv_123"
+        mock_responses_params.model_dump.return_value = {
+            "input": "test",
+            "model": "azure/model1",
+        }
+        mocker.patch(
+            "app.endpoints.query.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_responses_params),
+        )
+
+        mock_azure_manager = mocker.Mock()
+        mock_azure_manager.is_entra_id_configured = True
+        mock_azure_manager.is_token_expired = True
+        mock_azure_manager.refresh_token.return_value = True
+        mocker.patch(
+            "app.endpoints.query.AzureEntraIDManager", return_value=mock_azure_manager
+        )
+
+        mock_updated_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_response_obj_updated = mocker.Mock()
+        mock_response_obj_updated.output = []
+        mock_updated_client.responses = mocker.Mock()
+        mock_updated_client.responses.create = mocker.AsyncMock(
+            return_value=mock_response_obj_updated
+        )
+        mock_update_token = mocker.patch(
+            "app.endpoints.query.update_azure_token",
+            new=mocker.AsyncMock(return_value=mock_updated_client),
+        )
+        mocker.patch(
+            "app.endpoints.query.get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+
+        async def mock_retrieve_response(*_args: Any, **_kwargs: Any) -> TurnSummary:
+            return TurnSummary()
+
+        mocker.patch(
+            "app.endpoints.query.retrieve_response", side_effect=mock_retrieve_response
+        )
+        mocker.patch(
+            "app.endpoints.query.normalize_conversation_id", return_value="123"
+        )
+        mocker.patch("app.endpoints.query.store_query_results")
+        mocker.patch("app.endpoints.query.consume_query_tokens")
+        mocker.patch("app.endpoints.query.get_available_quotas", return_value={})
+
+        await query_endpoint_handler(
+            request=dummy_request,
+            query_request=query_request,
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        mock_update_token.assert_called_once()
 
 
-def test_validate_attachments_metadata() -> None:
-    """Test the validate_attachments_metadata function."""
-    attachments = [
-        Attachment(
-            attachment_type="log",
-            content_type="text/plain",
-            content="this is attachment",
-        ),
-        Attachment(
-            attachment_type="configuration",
-            content_type="application/yaml",
-            content="kind: Pod\n metadata:\n name:    private-reg",
-        ),
-    ]
+class TestRetrieveResponse:
+    """Tests for retrieve_response function."""
 
-    # If no exception is raised, the test passes
-    validate_attachments_metadata(attachments)
+    @pytest.mark.asyncio
+    async def test_retrieve_response_success(self, mocker: MockerFixture) -> None:
+        """Test successful response retrieval."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.input = "test query"
+        mock_responses_params.model = "provider1/model1"
+        mock_responses_params.model_dump.return_value = {
+            "input": "test query",
+            "model": "provider1/model1",
+        }
 
+        mock_output_item = mocker.Mock()
+        mock_output_item.type = "message"
+        mock_output_item.content = "Response text"
 
-def test_validate_attachments_metadata_invalid_type() -> None:
-    """Test the validate_attachments_metadata function with invalid attachment type."""
-    attachments = [
-        Attachment(
-            attachment_type="invalid_type",
-            content_type="text/plain",
-            content="this is attachment",
-        ),
-    ]
+        mock_response = mocker.Mock(spec=OpenAIResponseObject)
+        mock_response.output = [mock_output_item]
 
-    with pytest.raises(HTTPException) as exc_info:
-        validate_attachments_metadata(attachments)
-    assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+        mocker.patch(
+            "app.endpoints.query.run_shield_moderation",
+            return_value=mocker.Mock(blocked=False),
+        )
+        mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
+        mocker.patch(
+            "app.endpoints.query.extract_text_from_response_output_item",
+            return_value="Response text",
+        )
+        mocker.patch(
+            "app.endpoints.query.build_tool_call_summary", return_value=(None, None)
+        )
+        mocker.patch("app.endpoints.query.parse_referenced_documents", return_value=[])
+        mocker.patch(
+            "app.endpoints.query.extract_token_usage",
+            return_value=TokenCounter(input_tokens=10, output_tokens=5),
+        )
 
-    detail = exc_info.value.detail
-    assert isinstance(detail, dict)
-    assert detail["response"] == "Invalid attribute value"
-    assert "Invalid attatchment type invalid_type" in detail["cause"]
+        result = await retrieve_response(mock_client, mock_responses_params)
 
+        assert isinstance(result, TurnSummary)
+        assert result.llm_response == "Response text"
+        assert result.token_usage.input_tokens == 10
+        assert result.token_usage.output_tokens == 5
 
-def test_validate_attachments_metadata_invalid_content_type() -> None:
-    """Test the validate_attachments_metadata function with invalid attachment type."""
-    attachments = [
-        Attachment(
-            attachment_type="log",
-            content_type="text/invalid_content_type",
-            content="this is attachment",
-        ),
-    ]
+    @pytest.mark.asyncio
+    async def test_retrieve_response_shield_blocked(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test response retrieval when shield moderation blocks the request."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.input = "test query"
+        mock_responses_params.conversation = "conv_123"
+        mock_responses_params.model_dump.return_value = {
+            "input": "test query",
+            "model": "provider1/model1",
+        }
 
-    with pytest.raises(HTTPException) as exc_info:
-        validate_attachments_metadata(attachments)
-    assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+        mock_moderation_result = mocker.Mock()
+        mock_moderation_result.blocked = True
+        mock_moderation_result.message = "Content blocked by moderation"
+        mocker.patch(
+            "app.endpoints.query.run_shield_moderation",
+            return_value=mock_moderation_result,
+        )
+        mock_append = mocker.patch("app.endpoints.query.append_turn_to_conversation")
 
-    detail = exc_info.value.detail
-    assert isinstance(detail, dict)
-    assert detail["response"] == "Invalid attribute value"
-    assert (
-        "Invalid attatchment content type text/invalid_content_type" in detail["cause"]
-    )
+        result = await retrieve_response(mock_client, mock_responses_params)
 
+        assert isinstance(result, TurnSummary)
+        assert result.llm_response == "Content blocked by moderation"
+        mock_append.assert_called_once()
 
-def test_no_tools_parameter_backward_compatibility() -> None:
-    """Test that default behavior is unchanged when no_tools parameter is not specified."""
-    # This test ensures that existing code that doesn't specify no_tools continues to work
-    query_request = QueryRequest(query="What is OpenStack?")
+    @pytest.mark.asyncio
+    async def test_retrieve_response_connection_error(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test response retrieval raises HTTPException on connection error."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.input = "test query"
+        mock_responses_params.model_dump.return_value = {
+            "input": "test query",
+            "model": "provider1/model1",
+        }
 
-    # Verify default value
-    assert query_request.no_tools is False
+        mocker.patch(
+            "app.endpoints.query.run_shield_moderation",
+            return_value=mocker.Mock(blocked=False),
+        )
+        mock_client.responses.create = mocker.AsyncMock(
+            side_effect=APIConnectionError(
+                message="Connection failed", request=mocker.Mock()
+            )
+        )
 
-    # Test that QueryRequest can be created without no_tools parameter
-    query_request_minimal = QueryRequest(query="Simple query")
-    assert query_request_minimal.no_tools is False
+        with pytest.raises(HTTPException) as exc_info:
+            await retrieve_response(mock_client, mock_responses_params)
 
+        assert exc_info.value.status_code == 503
 
-@pytest.mark.parametrize(
-    "user_conversation,request_values,expected_values",
-    [
-        # No user conversation, no request values
-        (
-            None,
-            (None, None),
-            # Expect no values to be used
-            (None, None),
-        ),
-        # No user conversation, request values provided
-        (
-            None,
-            ("foo", "bar"),
-            # Expect request values to be used
-            ("foo", "bar"),
-        ),
-        # User conversation exists, no request values
-        (
-            UserConversation(
-                id="conv1",
-                user_id="user1",
-                last_used_provider="foo",
-                last_used_model="bar",
-                message_count=1,
+    @pytest.mark.asyncio
+    async def test_retrieve_response_api_status_error(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test response retrieval raises HTTPException on API status error."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.input = "test query"
+        mock_responses_params.model = "provider1/model1"
+        mock_responses_params.model_dump.return_value = {
+            "input": "test query",
+            "model": "provider1/model1",
+        }
+
+        mocker.patch(
+            "app.endpoints.query.run_shield_moderation",
+            return_value=mocker.Mock(blocked=False),
+        )
+        mock_client.responses.create = mocker.AsyncMock(
+            side_effect=APIStatusError(
+                message="API error", response=mocker.Mock(request=None), body=None
+            )
+        )
+        mocker.patch(
+            "app.endpoints.query.handle_known_apistatus_errors",
+            return_value=mocker.Mock(
+                model_dump=lambda: {
+                    "status_code": 500,
+                    "detail": {"response": "Error", "cause": "API error"},
+                }
             ),
-            (
-                None,
-                None,
-            ),
-            # Expect conversation values to be used
-            (
-                "foo",
-                "bar",
-            ),
-        ),
-        # Request matches user conversation
-        (
-            UserConversation(
-                id="conv1",
-                user_id="user1",
-                last_used_provider="foo",
-                last_used_model="bar",
-                message_count=1,
-            ),
-            (
-                "foo",
-                "bar",
-            ),
-            # Expect request values to be used
-            (
-                "foo",
-                "bar",
-            ),
-        ),
-    ],
-    ids=[
-        "No user conversation, no request values",
-        "No user conversation, request values provided",
-        "User conversation exists, no request values",
-        "Request matches user conversation",
-    ],
-)
-def test_evaluate_model_hints(
-    user_conversation: list,
-    request_values: list,
-    expected_values: list,
-) -> None:
-    """Test evaluate_model_hints function with various scenarios."""
-    # Unpack fixtures
-    request_provider, request_model = request_values
-    expected_provider, expected_model = expected_values
+        )
 
-    query_request = QueryRequest(
-        query="What is love?",
-        provider=request_provider,
-        model=request_model,
-    )  # pylint: disable=missing-kwoa
+        with pytest.raises(HTTPException):
+            await retrieve_response(mock_client, mock_responses_params)
 
-    model_id, provider_id = evaluate_model_hints(user_conversation, query_request)
+    @pytest.mark.asyncio
+    async def test_retrieve_response_runtime_error_context_length(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test retrieve_response handles RuntimeError with context_length."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.model = "provider1/model1"
+        mock_responses_params.input = "test query"
+        mock_responses_params.model_dump.return_value = {
+            "input": "test query",
+            "model": "provider1/model1",
+        }
 
-    assert provider_id == expected_provider
-    assert model_id == expected_model
+        mocker.patch(
+            "app.endpoints.query.run_shield_moderation",
+            return_value=mocker.Mock(blocked=False),
+        )
+        mock_client.responses.create = mocker.AsyncMock(
+            side_effect=RuntimeError("context_length exceeded")
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await retrieve_response(mock_client, mock_responses_params)
+
+        assert exc_info.value.status_code == 413
+
+    @pytest.mark.asyncio
+    async def test_retrieve_response_runtime_error_other(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test retrieve_response re-raises RuntimeError without context_length."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.model = "provider1/model1"
+        mock_responses_params.input = "test query"
+        mock_responses_params.model_dump.return_value = {
+            "input": "test query",
+            "model": "provider1/model1",
+        }
+
+        mocker.patch(
+            "app.endpoints.query.run_shield_moderation",
+            return_value=mocker.Mock(blocked=False),
+        )
+        mock_client.responses.create = mocker.AsyncMock(
+            side_effect=RuntimeError("Some other error")
+        )
+
+        with pytest.raises(RuntimeError):
+            await retrieve_response(mock_client, mock_responses_params)
+
+    @pytest.mark.asyncio
+    async def test_retrieve_response_with_tool_calls(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test response retrieval processes tool calls."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.input = "test query"
+        mock_responses_params.model = "provider1/model1"
+        mock_responses_params.model_dump.return_value = {
+            "input": "test query",
+            "model": "provider1/model1",
+        }
+
+        mock_response = mocker.Mock(spec=OpenAIResponseObject)
+        mock_response.output = [mocker.Mock(type="message")]
+
+        mocker.patch(
+            "app.endpoints.query.run_shield_moderation",
+            return_value=mocker.Mock(blocked=False),
+        )
+        mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
+
+        mock_tool_call = mocker.Mock()
+        mock_tool_result = mocker.Mock()
+        mocker.patch(
+            "app.endpoints.query.extract_text_from_response_output_item",
+            return_value="Response text",
+        )
+        mocker.patch(
+            "app.endpoints.query.build_tool_call_summary",
+            return_value=(mock_tool_call, mock_tool_result),
+        )
+        mocker.patch("app.endpoints.query.parse_referenced_documents", return_value=[])
+        mocker.patch(
+            "app.endpoints.query.extract_token_usage",
+            return_value=TokenCounter(input_tokens=10, output_tokens=5),
+        )
+
+        result = await retrieve_response(mock_client, mock_responses_params)
+
+        assert len(result.tool_calls) == 1
+        assert len(result.tool_results) == 1

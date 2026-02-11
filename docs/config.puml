@@ -143,7 +143,7 @@ class "LlamaStackConfiguration" as src.models.config.LlamaStackConfiguration {
   api_key : Optional[SecretStr]
   library_client_config_path : Optional[str]
   timeout
-  url : Optional[str]
+  url : Optional[AnyHttpUrl]
   use_as_library_client : Optional[bool]
   check_llama_stack_model() -> Self
 }

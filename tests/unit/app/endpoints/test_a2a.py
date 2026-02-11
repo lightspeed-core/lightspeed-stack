@@ -164,7 +164,9 @@ class TestConvertResponsesContentToA2AParts:
         mock_output_item = MagicMock()
         result = _convert_responses_content_to_a2a_parts([mock_output_item])
         assert len(result) == 1
-        assert result[0].root.text == "Hello, world!"
+        assert result[0].root is not None
+        text = result[0].root.text  # pyright: ignore[reportAttributeAccessIssue]
+        assert text == "Hello, world!"
 
     def test_convert_multiple_output_items(self, mocker: MockerFixture) -> None:
         """Test converting multiple output items."""
@@ -178,8 +180,12 @@ class TestConvertResponsesContentToA2AParts:
 
         result = _convert_responses_content_to_a2a_parts([mock_item1, mock_item2])
         assert len(result) == 2
-        assert result[0].root.text == "First"
-        assert result[1].root.text == "Second"
+        assert result[0].root is not None
+        assert result[1].root is not None
+        text1 = result[0].root.text  # pyright: ignore[reportAttributeAccessIssue]
+        text2 = result[1].root.text  # pyright: ignore[reportAttributeAccessIssue]
+        assert text1 == "First"
+        assert text2 == "Second"
 
     def test_convert_output_items_with_none_text(self, mocker: MockerFixture) -> None:
         """Test that output items with no text are filtered out."""
@@ -192,8 +198,12 @@ class TestConvertResponsesContentToA2AParts:
 
         result = _convert_responses_content_to_a2a_parts(mock_items)
         assert len(result) == 2
-        assert result[0].root.text == "Valid text"
-        assert result[1].root.text == "Another valid"
+        assert result[0].root is not None
+        assert result[1].root is not None
+        text1 = result[0].root.text  # pyright: ignore[reportAttributeAccessIssue]
+        text2 = result[1].root.text  # pyright: ignore[reportAttributeAccessIssue]
+        assert text1 == "Valid text"
+        assert text2 == "Another valid"
 
 
 # -----------------------------
@@ -703,18 +713,15 @@ class TestA2AAgentExecutor:
             "app.endpoints.a2a.AsyncLlamaStackClientHolder"
         ).return_value.get_client.return_value = mock_client
 
-        await executor._process_task_streaming(
-            context, task_updater, context.task_id, context.context_id
-        )
+        # prepare_responses_params raises HTTPException when APIConnectionError occurs
+        with pytest.raises(HTTPException) as exc_info:
+            await executor._process_task_streaming(
+                context, task_updater, context.task_id, context.context_id
+            )
 
-        # Verify failure status was sent
-        task_updater.update_status.assert_called_once()
-        call_args = task_updater.update_status.call_args
-        assert call_args[0][0] == TaskState.failed
-        assert call_args[1]["final"] is True
-        # Verify error message contains helpful info
-        error_message = call_args[1]["message"]
-        assert "Unable to connect to Llama Stack backend service" in str(error_message)
+        assert exc_info.value.status_code == 503
+        # Verify error detail contains helpful info
+        assert "Unable to connect to Llama Stack" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
     async def test_process_task_streaming_handles_api_connection_error_on_retrieve_response(
@@ -754,31 +761,30 @@ class TestA2AAgentExecutor:
 
         # Mock the client to succeed on models.list()
         mock_client = AsyncMock()
-        mock_models = MagicMock()
-        mock_models.models = []
-        mock_client.models.list.return_value = mock_models
+        mock_models = [MagicMock()]  # Return a list of models
+        mock_client.models.list = mocker.AsyncMock(return_value=mock_models)
+
+        # Mock responses.create to raise APIConnectionError
+        mock_request = httpx.Request("POST", "http://test-llama-stack/responses")
+        mock_client.responses.create = mocker.AsyncMock(
+            side_effect=APIConnectionError(
+                message="Connection timeout during streaming", request=mock_request
+            )
+        )
+
         mocker.patch(
             "app.endpoints.a2a.AsyncLlamaStackClientHolder"
         ).return_value.get_client.return_value = mock_client
 
-        # Mock select_model_and_provider_id
+        # Mock prepare_responses_params to return valid params
+        mock_responses_params = mocker.Mock()
+        mock_responses_params.model_dump.return_value = {
+            "input": "Hello",
+            "model": "test-model",
+        }
         mocker.patch(
-            "app.endpoints.a2a.select_model_and_provider_id",
-            return_value=("model-id", "model-id", "provider-id"),
-        )
-
-        # Mock evaluate_model_hints
-        mocker.patch(
-            "app.endpoints.a2a.evaluate_model_hints", return_value=(None, None)
-        )
-
-        # Mock retrieve_response to raise APIConnectionError
-        mock_request = httpx.Request("POST", "http://test-llama-stack/responses")
-        mocker.patch(
-            "app.endpoints.a2a.retrieve_response",
-            side_effect=APIConnectionError(
-                message="Connection timeout during streaming", request=mock_request
-            ),
+            "app.endpoints.a2a.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_responses_params),
         )
 
         await executor._process_task_streaming(
@@ -823,8 +829,8 @@ class TestContextToConversationMapping:
         import app.endpoints.a2a as a2a_module
         from a2a_storage import A2AStorageFactory
 
-        a2a_module._context_store = None
-        a2a_module._task_store = None
+        a2a_module._context_store = None  # pyright: ignore[reportAttributeAccessIssue]
+        a2a_module._task_store = None  # pyright: ignore[reportAttributeAccessIssue]
         A2AStorageFactory.reset()
 
         store = await _get_context_store()
@@ -842,8 +848,8 @@ class TestContextToConversationMapping:
         import app.endpoints.a2a as a2a_module
         from a2a_storage import A2AStorageFactory
 
-        a2a_module._context_store = None
-        a2a_module._task_store = None
+        a2a_module._context_store = None  # pyright: ignore[reportAttributeAccessIssue]
+        a2a_module._task_store = None  # pyright: ignore[reportAttributeAccessIssue]
         A2AStorageFactory.reset()
 
         store = await _get_task_store()

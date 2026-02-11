@@ -1,6 +1,8 @@
 """Integration tests for the /config endpoint."""
 
+from typing import cast
 import pytest
+
 from fastapi import HTTPException, Request, status
 
 from app.endpoints.config import config_endpoint_handler
@@ -81,6 +83,6 @@ async def test_config_endpoint_fails_without_configuration(
     # Verify error details
     assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
     assert isinstance(exc_info.value.detail, dict)
-    assert (
-        "configuration is not loaded" in exc_info.value.detail["response"].lower()
-    )  # type: ignore
+    assert "response" in exc_info.value.detail
+    detail = cast(dict[str, str], exc_info.value.detail)
+    assert "configuration is not loaded" in detail["response"].lower()

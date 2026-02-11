@@ -1,17 +1,12 @@
 packages:
   [
     gcc,
+    gcc-c++,
     jq,
     patch,
     cmake,
     cargo,
-    libpq,
-    libtiff,
-    openjpeg2,
-    lcms2,
-    libjpeg-turbo,
-    libwebp,
   ]
 contentOrigin:
-  repofiles: ["./ubi.repo"]
+  repofiles: ["./redhat.repo"]
 arches: [x86_64, aarch64]

@@ -12,9 +12,9 @@ from cache.cache_error import CacheError
 from cache.postgres_cache import PostgresCache
 from models.cache_entry import CacheEntry
 from models.config import PostgreSQLDatabaseConfiguration
-from models.responses import ConversationData, ReferencedDocument
+from models.responses import ConversationData
 from utils import suid
-from utils.types import ToolCallSummary, ToolResultSummary
+from utils.types import ReferencedDocument, ToolCallSummary, ToolResultSummary
 
 USER_ID_1 = suid.get_suid()
 USER_ID_2 = suid.get_suid()
@@ -104,7 +104,7 @@ def postgres_cache_config() -> PostgreSQLDatabaseConfiguration:
         db="database",
         user="user",
         password=SecretStr("password"),
-    )
+    )  # pyright: ignore[reportCallIssue]
 
 
 @pytest.fixture(scope="module", name="postgres_cache_config_fixture_wrong_namespace")
@@ -129,7 +129,7 @@ def postgres_cache_config_wrong_namespace() -> PostgreSQLDatabaseConfiguration:
         user="user",
         password=SecretStr("password"),
         namespace="foo bar baz",
-    )
+    )  # pyright: ignore[reportCallIssue]
 
 
 @pytest.fixture(scope="module", name="postgres_cache_config_fixture_too_long_namespace")
@@ -154,7 +154,7 @@ def postgres_cache_config_too_long_namespace() -> PostgreSQLDatabaseConfiguratio
         user="user",
         password=SecretStr("password"),
         namespace="too long namespace that is longer than allowed 63 characters limit",
-    )
+    )  # pyright: ignore[reportCallIssue]
 
 
 def test_cache_initialization(

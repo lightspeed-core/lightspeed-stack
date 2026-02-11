@@ -21,7 +21,16 @@ logger = logging.getLogger("utils.transcripts")
 
 
 def _hash_user_id(user_id: str) -> str:
-    """Hash the user ID using SHA-256."""
+    """Hash the user ID using SHA-256.
+
+    Return the SHA-256 hex digest of the given user_id.
+
+    Parameters:
+        user_id (str): The user identifier to hash.
+
+    Returns:
+        str: Hexadecimal SHA-256 digest of the UTF-8 encoded user_id.
+    """
     return hashlib.sha256(user_id.encode("utf-8")).hexdigest()
 
 

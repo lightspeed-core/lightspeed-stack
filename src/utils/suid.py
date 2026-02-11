@@ -20,6 +20,10 @@ def check_suid(suid: str) -> bool:
     """
     Check if given string is a proper session ID.
 
+    Accepts standard RFC 4122 UUID strings, 48-character
+    hexadecimal llama-stack IDs, or the same hex ID prefixed with
+    "conv_". Non-string inputs are considered invalid.
+
     Returns True if the string is a valid UUID or a llama-stack conversation ID.
 
     Parameters:
@@ -84,7 +88,7 @@ def to_llama_stack_conversation_id(conversation_id: str) -> str:
 
     Adds the 'conv_' prefix if not already present.
 
-    Args:
+    Parameters:
         conversation_id: The conversation ID from database.
 
     Returns:

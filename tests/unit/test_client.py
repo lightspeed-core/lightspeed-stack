@@ -38,6 +38,7 @@ async def test_get_async_llama_stack_library_client() -> None:
         api_key=None,
         use_as_library_client=True,
         library_client_config_path="./tests/configuration/minimal-stack.yaml",
+        timeout=60,
     )
     client = AsyncLlamaStackClientHolder()
     await client.load(cfg)
@@ -57,6 +58,7 @@ async def test_get_async_llama_stack_remote_client() -> None:
         api_key=None,
         use_as_library_client=False,
         library_client_config_path="./tests/configuration/minimal-stack.yaml",
+        timeout=60,
     )
     client = AsyncLlamaStackClientHolder()
     await client.load(cfg)
@@ -73,6 +75,7 @@ async def test_get_async_llama_stack_wrong_configuration() -> None:
         api_key=None,
         use_as_library_client=True,
         library_client_config_path="./tests/configuration/minimal-stack.yaml",
+        timeout=60,
     )
     cfg.library_client_config_path = None
     with pytest.raises(
@@ -91,6 +94,7 @@ async def test_update_provider_data_service_client() -> None:
         api_key=None,
         use_as_library_client=False,
         library_client_config_path=None,
+        timeout=60,
     )
     holder = AsyncLlamaStackClientHolder()
     await holder.load(cfg)
@@ -122,6 +126,7 @@ async def test_update_provider_data_service_client() -> None:
         "X-LlamaStack-Provider-Data"
     )
     assert provider_data_json is not None
+    assert isinstance(provider_data_json, str)
     provider_data = json.loads(provider_data_json)
 
     # Existing fields preserved, new fields updated
@@ -138,6 +143,7 @@ async def test_reload_library_client() -> None:
         api_key=None,
         use_as_library_client=True,
         library_client_config_path="./tests/configuration/minimal-stack.yaml",
+        timeout=60,
     )
     holder = AsyncLlamaStackClientHolder()
     await holder.load(cfg)

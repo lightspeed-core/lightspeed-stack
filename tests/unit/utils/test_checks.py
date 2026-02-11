@@ -146,6 +146,41 @@ def test_import_python_module_success() -> None:
     assert isinstance(result, ModuleType)
 
 
+def test_import_python_module_custom_name() -> None:
+    """Test importing a Python module."""
+    module_path = "tests/profiles/test/profile.py"
+    module_name = "profileX"
+    result = checks.import_python_module(module_name, module_path)
+
+    assert isinstance(result, ModuleType)
+
+
+def test_import_python_empty_file() -> None:
+    """Test importing a Python module that is an empty."""
+    module_path = "tests/profiles/empty.py"
+    module_name = "profile"
+    result = checks.import_python_module(module_name, module_path)
+
+    assert isinstance(result, ModuleType)
+
+
+def test_import_python_syntax_error() -> None:
+    """Test importing a Python module that contains syntax error."""
+    module_path = "tests/profiles/syntax_error.py"
+    module_name = "profile"
+    result = checks.import_python_module(module_name, module_path)
+
+    assert result is None
+
+
+def test_import_python_non_existing_path() -> None:
+    """Test importing a Python module that is a .txt file."""
+    module_path = "foo.py"
+    module_name = "profile"
+    with pytest.raises(FileNotFoundError, match="No such file"):
+        checks.import_python_module(module_name, module_path)
+
+
 def test_import_python_module_error() -> None:
     """Test importing a Python module that is a .txt file."""
     module_path = "tests/profiles/test_two/test.txt"
@@ -172,6 +207,31 @@ def test_invalid_profile() -> None:
     module_path = "tests/profiles/test_three/profile.py"
     module_name = "profile"
     fetched_module = checks.import_python_module(module_name, module_path)
+    result = False
+    if fetched_module:
+        result = checks.is_valid_profile(fetched_module)
+
+    assert result is False
+
+
+def test_no_profile() -> None:
+    """Test if an imported profile is valid (expect invalid)"""
+    module_path = "tests/profiles/empty.py"
+    module_name = "profile"
+    fetched_module = checks.import_python_module(module_name, module_path)
+    result = False
+    if fetched_module:
+        result = checks.is_valid_profile(fetched_module)
+
+    assert result is False
+
+
+def test_no_system_prompts_profile() -> None:
+    """Test if an imported profile contains system prompt if config."""
+    module_path = "tests/profiles/test_four/profile.py"
+    module_name = "profile"
+    fetched_module = checks.import_python_module(module_name, module_path)
+
     result = False
     if fetched_module:
         result = checks.is_valid_profile(fetched_module)

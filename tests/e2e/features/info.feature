@@ -15,7 +15,7 @@ Feature: Info tests
     Given The system is in default state
      When I access REST API endpoint "info" using HTTP GET method
      Then The status code of the response is 200
-      And The body of the response has proper name Lightspeed Core Service (LCS) and version 0.4.0
+      And The body of the response has proper name Lightspeed Core Service (LCS) and version 0.4.1
       And The body of the response has llama-stack version 0.4.3
 
   @skip-in-library-mode

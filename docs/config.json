@@ -275,7 +275,7 @@
             "type": "integer"
           },
           "vector_db_id": {
-            "description": "Vector DB identification.",
+            "description": "Vector database identification.",
             "minLength": 1,
             "title": "Vector DB ID",
             "type": "string"
@@ -794,7 +794,7 @@
             "type": "string",
             "nullable": true,
             "default": null,
-            "description": "URL to Llama Stack service; used when library mode is disabled",
+            "description": "URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.",
             "title": "Llama Stack URL"
           },
           "api_key": {
@@ -817,6 +817,13 @@
             "default": null,
             "description": "Path to configuration file used when Llama Stack is run in library mode",
             "title": "Llama Stack configuration path"
+          },
+          "timeout": {
+            "default": 180,
+            "description": "Timeout in seconds for requests to Llama Stack service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
+            "minimum": 0,
+            "title": "Request timeout",
+            "type": "integer"
           }
         },
         "title": "LlamaStackConfiguration",
@@ -1146,6 +1153,12 @@
             "$ref": "#/components/schemas/TLSConfiguration",
             "description": "Transport Layer Security configuration for HTTPS support",
             "title": "TLS configuration"
+          },
+          "root_path": {
+            "default": "",
+            "description": "ASGI root path for serving behind a reverse proxy on a subpath",
+            "title": "Root path",
+            "type": "string"
           },
           "cors": {
             "$ref": "#/components/schemas/CORSConfiguration",

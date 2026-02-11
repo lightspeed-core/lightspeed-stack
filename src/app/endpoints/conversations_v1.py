@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from llama_stack_client import (
     APIConnectionError,
     APIStatusError,
@@ -16,7 +16,10 @@ from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from models.config import Action
-from models.database.conversations import UserConversation
+from models.database.conversations import (
+    UserTurn,
+    UserConversation,
+)
 from models.requests import ConversationUpdateRequest
 from models.responses import (
     BadRequestResponse,
@@ -36,12 +39,14 @@ from utils.endpoints import (
     check_configuration_loaded,
     delete_conversation,
     retrieve_conversation,
+    validate_and_retrieve_conversation,
 )
 from utils.suid import (
     check_suid,
     normalize_conversation_id,
     to_llama_stack_conversation_id,
 )
+from utils.conversations import build_conversation_turns_from_items
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["conversations_v1"])
@@ -84,7 +89,6 @@ conversations_list_responses: dict[int | str, dict[str, Any]] = {
     500: InternalServerErrorResponse.openapi_response(
         examples=["database", "configuration"]
     ),
-    503: ServiceUnavailableResponse.openapi_response(),
 }
 
 conversation_update_responses: dict[int | str, dict[str, Any]] = {
@@ -100,68 +104,6 @@ conversation_update_responses: dict[int | str, dict[str, Any]] = {
     ),
     503: ServiceUnavailableResponse.openapi_response(),
 }
-
-
-def simplify_conversation_items(items: list[dict]) -> list[dict[str, Any]]:
-    """Simplify conversation items to include only essential information.
-
-    Args:
-        items: The full conversation items list from llama-stack Conversations API
-            (in reverse chronological order, newest first)
-
-    Returns:
-        Simplified items with only essential message and tool call information
-        (in chronological order, oldest first, grouped by turns)
-    """
-    # Filter only message type items
-    message_items = [item for item in items if item.get("type") == "message"]
-
-    # Process from bottom up (reverse to get chronological order)
-    # Assume items are grouped correctly: user input followed by assistant output
-    reversed_messages = list(reversed(message_items))
-
-    chat_history = []
-    i = 0
-    while i < len(reversed_messages):
-        # Extract text content from user message
-        user_item = reversed_messages[i]
-        user_content = user_item.get("content", [])
-        user_text = ""
-        for content_part in user_content:
-            if isinstance(content_part, dict):
-                content_type = content_part.get("type")
-                if content_type == "input_text":
-                    user_text += content_part.get("text", "")
-            elif isinstance(content_part, str):
-                user_text += content_part
-
-        # Extract text content from assistant message (next item)
-        assistant_text = ""
-        if i + 1 < len(reversed_messages):
-            assistant_item = reversed_messages[i + 1]
-            assistant_content = assistant_item.get("content", [])
-            for content_part in assistant_content:
-                if isinstance(content_part, dict):
-                    content_type = content_part.get("type")
-                    if content_type == "output_text":
-                        assistant_text += content_part.get("text", "")
-                elif isinstance(content_part, str):
-                    assistant_text += content_part
-
-        # Create turn with user message first, then assistant message
-        chat_history.append(
-            {
-                "messages": [
-                    {"content": user_text, "type": "user"},
-                    {"content": assistant_text, "type": "assistant"},
-                ]
-            }
-        )
-
-        # Move to next pair (skip both user and assistant)
-        i += 2
-
-    return chat_history
 
 
 @router.get(
@@ -231,7 +173,7 @@ async def get_conversations_list_endpoint_handler(
     summary="Conversation Get Endpoint Handler V1",
 )
 @authorize(Action.GET_CONVERSATION)
-async def get_conversation_endpoint_handler(
+async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,too-many-statements
     request: Request,
     conversation_id: str,
     auth: Any = Depends(get_auth_dependency()),
@@ -273,47 +215,13 @@ async def get_conversation_endpoint_handler(
     )
 
     user_id = auth[0]
-    if not can_access_conversation(
-        normalized_conv_id,
-        user_id,
+    conversation = validate_and_retrieve_conversation(
+        normalized_conv_id=normalized_conv_id,
+        user_id=user_id,
         others_allowed=(
             Action.READ_OTHERS_CONVERSATIONS in request.state.authorized_actions
         ),
-    ):
-        logger.warning(
-            "User %s attempted to read conversation %s they don't have access to",
-            user_id,
-            normalized_conv_id,
-        )
-        response = ForbiddenResponse.conversation(
-            action="read",
-            resource_id=normalized_conv_id,
-            user_id=user_id,
-        ).model_dump()
-        raise HTTPException(**response)
-
-    # If reached this, user is authorized to retrieve this conversation
-    try:
-        conversation = retrieve_conversation(normalized_conv_id)
-        if conversation is None:
-            logger.error(
-                "Conversation %s not found in database.",
-                normalized_conv_id,
-            )
-            response = NotFoundResponse(
-                resource="conversation", resource_id=normalized_conv_id
-            ).model_dump()
-            raise HTTPException(**response)
-
-    except SQLAlchemyError as e:
-        logger.error(
-            "Database error occurred while retrieving conversation %s: %s",
-            normalized_conv_id,
-            str(e),
-        )
-        response = InternalServerErrorResponse.database_error()
-        raise HTTPException(**response.model_dump()) from e
-
+    )
     logger.info(
         "Retrieving conversation %s using Conversations API", normalized_conv_id
     )
@@ -334,28 +242,47 @@ async def get_conversation_endpoint_handler(
             after=None,
             include=None,
             limit=None,
-            order=None,
+            order="asc",  # oldest first
         )
-        items = (
-            conversation_items_response.data
-            if hasattr(conversation_items_response, "data")
-            else []
-        )
-        # Convert items to dict format for processing
-        items_dicts = [
-            item.model_dump() if hasattr(item, "model_dump") else dict(item)
-            for item in items
-        ]
+
+        if not conversation_items_response.data:
+            logger.error("No items found for conversation %s", conversation_id)
+            response = NotFoundResponse(
+                resource="conversation", resource_id=normalized_conv_id
+            ).model_dump()
+            raise HTTPException(**response)
+
+        items = conversation_items_response.data
 
         logger.info(
             "Successfully retrieved %d items for conversation %s",
-            len(items_dicts),
+            len(items),
             conversation_id,
         )
-        # Simplify the conversation items to include only essential information
-        chat_history = simplify_conversation_items(items_dicts)
+        # Retrieve turns metadata from database
+        db_turns: list[UserTurn] = []
+        try:
+            with get_session() as session:
+                db_turns = (
+                    session.query(UserTurn)
+                    .filter_by(conversation_id=normalized_conv_id)
+                    .order_by(UserTurn.turn_number)
+                    .all()
+                )
+        except SQLAlchemyError as e:
+            logger.error(
+                "Database error occurred while retrieving conversation turns for %s.",
+                normalized_conv_id,
+            )
+            response = InternalServerErrorResponse.database_error()
+            raise HTTPException(**response.model_dump()) from e
 
-        # Conversations api has no support for message level timestamps
+        # Build conversation turns from items and populate turns metadata
+        # Use conversation.created_at for legacy conversations without turn metadata
+        chat_history = build_conversation_turns_from_items(
+            items, db_turns, conversation.created_at
+        )
+
         return ConversationResponse(
             conversation_id=normalized_conv_id,
             chat_history=chat_history,
@@ -472,12 +399,8 @@ async def delete_conversation_endpoint_handler(
         )
 
     except APIConnectionError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=ServiceUnavailableResponse(
-                backend_name="Llama Stack", cause=str(e)
-            ).model_dump(),
-        ) from e
+        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
+        raise HTTPException(**response.model_dump()) from e
 
     except APIStatusError:
         logger.warning(

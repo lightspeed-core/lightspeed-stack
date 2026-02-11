@@ -30,6 +30,7 @@ dependencies = [
     # Used to call Llama Stack APIs
     "llama-stack==0.4.3",
     "llama-stack-client==0.4.3",
+    "llama-stack-api==0.4.4",
     # Used by Logger
     "rich>=14.0.0",
     # Used by JWK token auth handler
@@ -78,9 +79,6 @@ exclude = [
   # Agent API v1 endpoints - deprecated API but still supported
   # Type errors due to llama-stack-client not exposing Agent API types
   "src/app/endpoints/conversations.py",
-  "src/app/endpoints/query.py",
-  "src/app/endpoints/streaming_query.py",
-  "src/utils/endpoints.py",
 ]
 extraPaths = ["./src"]
 
@@ -150,7 +148,6 @@ llslibdev = [
     # "pillow>=11.1.0",
     # "pandas>=2.2.3",
     # "scikit-learn>=1.5.2",
-    # "psycopg2-binary>=2.9.10",
     # API eval: inline::meta-reference
     "tree_sitter>=0.24.0",
     "pythainlp>=3.0.10",
@@ -159,8 +156,11 @@ llslibdev = [
     "nltk>=3.8.1",
     # API inference: inline::sentence-transformers
     "sentence-transformers>=5.0.0",
-    # API vector_io: inline::faiss
+    # API vector_io: inline::faiss, inline::sqlite-vec, remote::pgvector
     "faiss-cpu>=1.11.0",
+    "sqlite-vec>=0.1.6",
+    "chardet>=5.2.0",
+    "psycopg2-binary>=2.9.10",
     # API scoring: inline::basic
     "requests>=2.32.4",
     # API datasetio: inline::localfs
@@ -174,11 +174,15 @@ llslibdev = [
     "transformers>=4.34.0",
     "numpy==2.3.5",
     # API tool_runtime: remote::model-context-protocol
-    "mcp>=1.9.4",
+    "mcp>=1.23.0",
     # API post_training: inline::huggingface
     "torch==2.9.0",
     "trl>=0.18.2",
     "peft>=0.15.2",
+    # API inference: remote::vertexai
+    "google-cloud-aiplatform>=1.130.0",
+    # API inference: remote::watsonx
+    "litellm>=1.81.0",
     # Other
     "autoevals>=0.0.129",
     "fire>=0.7.0",
@@ -213,6 +217,8 @@ build-backend = "pdm.backend"
 disable = ["R0801"]
 
 [tool.ruff]
+exclude = ["tests/profiles/syntax_error.py"]
+
 [tool.ruff.lint.flake8-tidy-imports]
 banned-api = { "unittest" = { msg = "use pytest instead of unittest" }, "unittest.mock" = { msg = "use pytest-mock instead of unittest.mock" } }
 
