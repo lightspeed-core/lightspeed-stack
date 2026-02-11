@@ -11,7 +11,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
-from configuration import configuration
+from configuration import LogicError, configuration
 from models.config import Action
 from models.responses import (
     ForbiddenResponse,
@@ -119,7 +119,7 @@ def _resolve_rag_id_to_vector_db_id(rag_id: str) -> str:
     """
     try:
         byok_rags = configuration.configuration.byok_rag
-    except (AttributeError, RuntimeError):
+    except (AttributeError, RuntimeError, LogicError):
         return rag_id
 
     for brag in byok_rags:

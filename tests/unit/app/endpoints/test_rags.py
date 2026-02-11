@@ -292,7 +292,7 @@ def _make_byok_config(tmp_path: Any) -> AppConfig:
 
 @pytest.mark.asyncio
 async def test_rags_endpoint_returns_rag_ids_from_config(
-    mocker: MockerFixture, tmp_path: str
+    mocker: MockerFixture, tmp_path: Path
 ) -> None:
     """Test that /rags endpoint maps llama-stack IDs to user-facing rag_ids."""
     byok_config = _make_byok_config(str(tmp_path))
@@ -333,7 +333,7 @@ async def test_rags_endpoint_returns_rag_ids_from_config(
 
 @pytest.mark.asyncio
 async def test_rag_info_endpoint_accepts_rag_id_from_config(
-    mocker: MockerFixture, tmp_path: str
+    mocker: MockerFixture, tmp_path: Path
 ) -> None:
     """Test that /rags/{rag_id} accepts a user-facing rag_id and resolves it."""
     byok_config = _make_byok_config(str(tmp_path))
@@ -375,7 +375,7 @@ async def test_rag_info_endpoint_accepts_rag_id_from_config(
 
 
 def test_resolve_rag_id_to_vector_db_id_with_mapping(
-    mocker: MockerFixture, tmp_path: str
+    mocker: MockerFixture, tmp_path: Path
 ) -> None:
     """Test that _resolve_rag_id_to_vector_db_id maps rag_id to vector_db_id."""
     byok_config = _make_byok_config(str(tmp_path))
@@ -385,7 +385,7 @@ def test_resolve_rag_id_to_vector_db_id_with_mapping(
 
 
 def test_resolve_rag_id_to_vector_db_id_passthrough(
-    mocker: MockerFixture, tmp_path: str
+    mocker: MockerFixture, tmp_path: Path
 ) -> None:
     """Test that unmapped IDs are passed through unchanged."""
     byok_config = _make_byok_config(str(tmp_path))
