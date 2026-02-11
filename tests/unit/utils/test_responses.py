@@ -31,6 +31,7 @@ from utils.responses import (
     extract_rag_chunks_from_file_search_item,
     extract_text_from_response_output_item,
     extract_token_usage,
+    extract_vector_store_ids_from_tools,
     get_mcp_tools,
     get_rag_tools,
     get_topic_summary,
@@ -38,7 +39,9 @@ from utils.responses import (
     parse_referenced_documents,
     prepare_responses_params,
     prepare_tools,
+    _build_chunk_attributes,
     _increment_llm_call_metric,
+    _resolve_source_for_result,
 )
 from utils.types import RAGChunk
 
@@ -1205,6 +1208,7 @@ class TestBuildToolCallSummary:
         mock_result.text = "chunk text"
         mock_result.filename = "doc.pdf"
         mock_result.score = 0.9
+        mock_result.attributes = None
         mock_result.model_dump = mocker.Mock(
             return_value={"text": "chunk text", "filename": "doc.pdf", "score": 0.9}
         )
@@ -1367,11 +1371,13 @@ class TestExtractRagChunksFromFileSearchItem:
         mock_result1.text = "chunk 1"
         mock_result1.filename = "doc1.pdf"
         mock_result1.score = 0.9
+        mock_result1.attributes = None
 
         mock_result2 = mocker.Mock()
         mock_result2.text = "chunk 2"
         mock_result2.filename = "doc2.pdf"
         mock_result2.score = 0.8
+        mock_result2.attributes = None
 
         mock_item = mocker.Mock(spec=FileSearchCall)
         mock_item.results = [mock_result1, mock_result2]
@@ -1574,3 +1580,346 @@ class TestBuildToolResultFromMCPOutputItemDone:
 
         assert result.status == "success"
         assert result.content == ""
+
+
+class TestResolveSourceForResult:
+    """Tests for _resolve_source_for_result function."""
+
+    def test_single_store_mapped(self, mocker: MockerFixture) -> None:
+        """Test resolution with single vector store that has a mapping."""
+        mock_result = mocker.Mock()
+        mock_result.filename = "file-abc123"
+
+        source = _resolve_source_for_result(
+            mock_result, ["vs-001"], {"vs-001": "ocp-4.18-docs"}
+        )
+        assert source == "ocp-4.18-docs"
+
+    def test_single_store_unmapped(self, mocker: MockerFixture) -> None:
+        """Test resolution with single vector store without mapping falls back to filename."""
+        mock_result = mocker.Mock()
+        mock_result.filename = "file-abc123"
+
+        source = _resolve_source_for_result(mock_result, ["vs-unknown"], {})
+        assert source == "file-abc123"
+
+    def test_multiple_stores_with_attribute(self, mocker: MockerFixture) -> None:
+        """Test resolution with multiple stores using result attributes."""
+        mock_result = mocker.Mock()
+        mock_result.filename = "file-abc123"
+        mock_result.attributes = {"vector_store_id": "vs-002"}
+
+        source = _resolve_source_for_result(
+            mock_result,
+            ["vs-001", "vs-002"],
+            {"vs-001": "ocp-4.18-docs", "vs-002": "rhel-9-docs"},
+        )
+        assert source == "rhel-9-docs"
+
+    def test_multiple_stores_no_attribute(self, mocker: MockerFixture) -> None:
+        """Test resolution with multiple stores and no vector_store_id attribute."""
+        mock_result = mocker.Mock()
+        mock_result.filename = "file-abc123"
+        mock_result.attributes = {}
+
+        source = _resolve_source_for_result(
+            mock_result,
+            ["vs-001", "vs-002"],
+            {"vs-001": "ocp-4.18-docs", "vs-002": "rhel-9-docs"},
+        )
+        assert source == "file-abc123"
+
+    def test_no_stores(self, mocker: MockerFixture) -> None:
+        """Test resolution with no vector stores falls back to filename."""
+        mock_result = mocker.Mock()
+        mock_result.filename = "file-abc123"
+
+        source = _resolve_source_for_result(mock_result, [], {})
+        assert source == "file-abc123"
+
+    def test_multiple_stores_attribute_not_in_mapping(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test resolution when attribute store ID is not in mapping."""
+        mock_result = mocker.Mock()
+        mock_result.filename = "file-abc123"
+        mock_result.attributes = {"vector_store_id": "vs-unknown"}
+
+        source = _resolve_source_for_result(
+            mock_result,
+            ["vs-001", "vs-002"],
+            {"vs-001": "ocp-docs"},
+        )
+        assert source == "file-abc123"
+
+
+class TestBuildChunkAttributes:
+    """Tests for _build_chunk_attributes function."""
+
+    def test_with_dict_attributes(self, mocker: MockerFixture) -> None:
+        """Test extraction of dict attributes."""
+        mock_result = mocker.Mock()
+        mock_result.attributes = {"title": "My Doc", "url": "https://example.com"}
+
+        attrs = _build_chunk_attributes(mock_result)
+        assert attrs == {"title": "My Doc", "url": "https://example.com"}
+
+    def test_with_empty_dict(self, mocker: MockerFixture) -> None:
+        """Test extraction returns None for empty dict."""
+        mock_result = mocker.Mock()
+        mock_result.attributes = {}
+
+        attrs = _build_chunk_attributes(mock_result)
+        assert attrs is None
+
+    def test_with_none_attributes(self, mocker: MockerFixture) -> None:
+        """Test extraction returns None when no attributes."""
+        mock_result = mocker.Mock()
+        mock_result.attributes = None
+
+        attrs = _build_chunk_attributes(mock_result)
+        assert attrs is None
+
+    def test_with_no_attributes_attr(self, mocker: MockerFixture) -> None:
+        """Test extraction returns None when result has no attributes attr."""
+        result = mocker.Mock(spec=[])
+        attrs = _build_chunk_attributes(result)
+        assert attrs is None
+
+
+class TestExtractVectorStoreIdsFromTools:
+    """Tests for extract_vector_store_ids_from_tools function."""
+
+    def test_with_file_search_tool(self) -> None:
+        """Test extraction from file_search tool definition."""
+        tools = [
+            {"type": "file_search", "vector_store_ids": ["vs-1", "vs-2"]},
+            {"type": "mcp", "server_label": "test"},
+        ]
+        result = extract_vector_store_ids_from_tools(tools)
+        assert result == ["vs-1", "vs-2"]
+
+    def test_with_no_file_search(self) -> None:
+        """Test extraction returns empty list when no file_search tool."""
+        tools = [{"type": "mcp", "server_label": "test"}]
+        result = extract_vector_store_ids_from_tools(tools)
+        assert result == []
+
+    def test_with_none_tools(self) -> None:
+        """Test extraction returns empty list for None tools."""
+        result = extract_vector_store_ids_from_tools(None)
+        assert result == []
+
+    def test_with_empty_tools(self) -> None:
+        """Test extraction returns empty list for empty tools list."""
+        result = extract_vector_store_ids_from_tools([])
+        assert result == []
+
+
+class TestExtractRagChunksWithIndexResolution:
+    """Tests for extract_rag_chunks_from_file_search_item with index resolution."""
+
+    def test_chunks_resolved_single_store(self, mocker: MockerFixture) -> None:
+        """Test RAG chunk source is resolved with single vector store."""
+        mock_result = mocker.Mock()
+        mock_result.text = "content"
+        mock_result.filename = "file-6376abcd"
+        mock_result.score = 0.95
+        mock_result.attributes = {"title": "OCP Docs"}
+
+        mock_item = mocker.Mock(spec=FileSearchCall)
+        mock_item.results = [mock_result]
+
+        rag_chunks: list[RAGChunk] = []
+        extract_rag_chunks_from_file_search_item(
+            mock_item,
+            rag_chunks,
+            vector_store_ids=["vs-001"],
+            rag_id_mapping={"vs-001": "ocp-4.18-docs"},
+        )
+
+        assert len(rag_chunks) == 1
+        assert rag_chunks[0].source == "ocp-4.18-docs"
+        assert rag_chunks[0].attributes == {"title": "OCP Docs"}
+        assert rag_chunks[0].content == "content"
+        assert rag_chunks[0].score == 0.95
+
+    def test_chunks_no_mapping_falls_back(self, mocker: MockerFixture) -> None:
+        """Test RAG chunk source falls back to filename when no mapping."""
+        mock_result = mocker.Mock()
+        mock_result.text = "content"
+        mock_result.filename = "file-abc"
+        mock_result.score = 0.5
+        mock_result.attributes = None
+
+        mock_item = mocker.Mock(spec=FileSearchCall)
+        mock_item.results = [mock_result]
+
+        rag_chunks: list[RAGChunk] = []
+        extract_rag_chunks_from_file_search_item(mock_item, rag_chunks)
+
+        assert len(rag_chunks) == 1
+        assert rag_chunks[0].source == "file-abc"
+        assert rag_chunks[0].attributes is None
+
+    def test_chunks_multiple_stores_attribute_resolution(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test RAG chunk source resolved via attributes with multiple stores."""
+        mock_result = mocker.Mock()
+        mock_result.text = "content"
+        mock_result.filename = "file-xyz"
+        mock_result.score = 0.8
+        mock_result.attributes = {"vector_store_id": "vs-002", "title": "RHEL"}
+
+        mock_item = mocker.Mock(spec=FileSearchCall)
+        mock_item.results = [mock_result]
+
+        rag_chunks: list[RAGChunk] = []
+        extract_rag_chunks_from_file_search_item(
+            mock_item,
+            rag_chunks,
+            vector_store_ids=["vs-001", "vs-002"],
+            rag_id_mapping={"vs-001": "ocp-docs", "vs-002": "rhel-9-docs"},
+        )
+
+        assert len(rag_chunks) == 1
+        assert rag_chunks[0].source == "rhel-9-docs"
+        assert rag_chunks[0].attributes == {
+            "vector_store_id": "vs-002",
+            "title": "RHEL",
+        }
+
+
+class TestBuildToolCallSummaryWithIndexResolution:
+    """Tests for build_tool_call_summary with index resolution."""
+
+    def test_file_search_with_mapping(self, mocker: MockerFixture) -> None:
+        """Test that build_tool_call_summary passes mapping to extraction."""
+        mock_result = mocker.Mock()
+        mock_result.text = "chunk text"
+        mock_result.filename = "file-uuid"
+        mock_result.score = 0.9
+        mock_result.attributes = {"title": "Doc Title"}
+        mock_result.model_dump = mocker.Mock(
+            return_value={
+                "text": "chunk text",
+                "filename": "file-uuid",
+                "score": 0.9,
+                "attributes": {"title": "Doc Title"},
+            }
+        )
+
+        mock_item = mocker.Mock(spec=FileSearchCall)
+        mock_item.type = "file_search_call"
+        mock_item.id = "search_456"
+        mock_item.queries = ["what is OCP?"]
+        mock_item.results = [mock_result]
+        mock_item.status = "success"
+
+        rag_chunks: list[RAGChunk] = []
+        call_summary, result_summary = build_tool_call_summary(
+            mock_item,
+            rag_chunks,
+            vector_store_ids=["vs-001"],
+            rag_id_mapping={"vs-001": "ocp-4.18-docs"},
+        )
+
+        assert len(rag_chunks) == 1
+        assert rag_chunks[0].source == "ocp-4.18-docs"
+        assert rag_chunks[0].attributes == {"title": "Doc Title"}
+        assert call_summary is not None
+        assert result_summary is not None
+
+    def test_file_search_without_mapping(self, mocker: MockerFixture) -> None:
+        """Test that build_tool_call_summary works without mapping (backward compat)."""
+        mock_result = mocker.Mock()
+        mock_result.text = "chunk text"
+        mock_result.filename = "doc.pdf"
+        mock_result.score = 0.9
+        mock_result.attributes = None
+        mock_result.model_dump = mocker.Mock(
+            return_value={"text": "chunk text", "filename": "doc.pdf", "score": 0.9}
+        )
+
+        mock_item = mocker.Mock(spec=FileSearchCall)
+        mock_item.type = "file_search_call"
+        mock_item.id = "search_789"
+        mock_item.queries = ["query"]
+        mock_item.results = [mock_result]
+        mock_item.status = "success"
+
+        rag_chunks: list[RAGChunk] = []
+        call_summary, _ = build_tool_call_summary(mock_item, rag_chunks)
+
+        assert len(rag_chunks) == 1
+        assert rag_chunks[0].source == "doc.pdf"
+        assert rag_chunks[0].attributes is None
+        assert call_summary is not None
+
+
+class TestParseReferencedDocumentsWithSource:
+    """Tests for parse_referenced_documents with source resolution."""
+
+    def test_single_store_source_populated(self, mocker: MockerFixture) -> None:
+        """Test that source is populated on referenced documents with single store."""
+        mock_result = mocker.Mock()
+        mock_result.attributes = {
+            "url": "https://docs.example.com/page",
+            "title": "Example Page",
+        }
+
+        mock_output = mocker.Mock()
+        mock_output.type = "file_search_call"
+        mock_output.results = [mock_result]
+
+        mock_response = mocker.Mock()
+        mock_response.output = [mock_output]
+
+        docs = parse_referenced_documents(
+            mock_response,
+            vector_store_ids=["vs-001"],
+            rag_id_mapping={"vs-001": "ocp-4.18-docs"},
+        )
+
+        assert len(docs) == 1
+        assert docs[0].source == "ocp-4.18-docs"
+        assert docs[0].doc_title == "Example Page"
+
+    def test_no_mapping_source_is_none(self, mocker: MockerFixture) -> None:
+        """Test that source is None when no mapping provided."""
+        mock_result = mocker.Mock()
+        mock_result.attributes = {"title": "Doc"}
+
+        mock_output = mocker.Mock()
+        mock_output.type = "file_search_call"
+        mock_output.results = [mock_result]
+
+        mock_response = mocker.Mock()
+        mock_response.output = [mock_output]
+
+        docs = parse_referenced_documents(mock_response)
+
+        assert len(docs) == 1
+        assert docs[0].source is None
+
+    def test_multiple_stores_source_is_none(self, mocker: MockerFixture) -> None:
+        """Test that source is None with multiple stores (ambiguous)."""
+        mock_result = mocker.Mock()
+        mock_result.attributes = {"title": "Doc"}
+
+        mock_output = mocker.Mock()
+        mock_output.type = "file_search_call"
+        mock_output.results = [mock_result]
+
+        mock_response = mocker.Mock()
+        mock_response.output = [mock_output]
+
+        docs = parse_referenced_documents(
+            mock_response,
+            vector_store_ids=["vs-001", "vs-002"],
+            rag_id_mapping={"vs-001": "ocp-docs", "vs-002": "rhel-docs"},
+        )
+
+        assert len(docs) == 1
+        assert docs[0].source is None

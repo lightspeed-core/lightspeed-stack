@@ -181,6 +181,11 @@ class ReferencedDocument(BaseModel):
         None, description="Title of the referenced document"
     )
 
+    source: Optional[str] = Field(
+        default=None,
+        description="Index name identifying the knowledge source from configuration",
+    )
+
 
 class TurnSummary(BaseModel):
     """Summary of a turn in llama stack."""
