@@ -9,7 +9,7 @@ from models.requests import QueryRequest
 
 
 @dataclass
-class ResponseGeneratorContext:
+class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
     """
     Context object for response generator creation.
 
@@ -43,7 +43,7 @@ class ResponseGeneratorContext:
 
     # Dependencies & State
     client: AsyncLlamaStackClient
-    metadata_map: dict[str, dict[str, Any]]
+    metadata_map: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     # RAG index identification
     vector_store_ids: list[str] = field(default_factory=list)
