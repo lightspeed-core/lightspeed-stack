@@ -482,11 +482,12 @@ def _resolve_single_store_source(
         rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
 
     Returns:
-        The resolved rag_id if exactly one store is used, None otherwise.
+        The resolved rag_id (or raw store_id as fallback) if exactly one
+        store is used, None otherwise.
     """
     if len(vector_store_ids) == 1:
         store_id = vector_store_ids[0]
-        return rag_id_mapping.get(store_id)
+        return rag_id_mapping.get(store_id, store_id)
     return None
 
 
@@ -806,15 +807,15 @@ def _resolve_source_for_result(
     """
     if len(vector_store_ids) == 1:
         store_id = vector_store_ids[0]
-        return rag_id_mapping.get(store_id, result.filename)
+        return rag_id_mapping.get(store_id, store_id)
 
     if len(vector_store_ids) > 1:
         attributes = getattr(result, "attributes", {}) or {}
         attr_store_id: Optional[str] = attributes.get("vector_store_id")
-        if attr_store_id and attr_store_id in rag_id_mapping:
-            return rag_id_mapping[attr_store_id]
+        if attr_store_id:
+            return rag_id_mapping.get(attr_store_id, attr_store_id)
 
-    return result.filename
+    return None
 
 
 def _build_chunk_attributes(result: Any) -> Optional[dict[str, Any]]:

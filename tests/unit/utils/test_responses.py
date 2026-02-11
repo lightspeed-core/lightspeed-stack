@@ -1387,7 +1387,7 @@ class TestExtractRagChunksFromFileSearchItem:
 
         assert len(rag_chunks) == 2
         assert rag_chunks[0].content == "chunk 1"
-        assert rag_chunks[0].source == "doc1.pdf"
+        assert rag_chunks[0].source is None
         assert rag_chunks[0].score == 0.9
 
     def test_extract_rag_chunks_no_results(self, mocker: MockerFixture) -> None:
@@ -1596,12 +1596,12 @@ class TestResolveSourceForResult:
         assert source == "ocp-4.18-docs"
 
     def test_single_store_unmapped(self, mocker: MockerFixture) -> None:
-        """Test resolution with single vector store without mapping falls back to filename."""
+        """Test resolution with single vector store without mapping returns raw store ID."""
         mock_result = mocker.Mock()
         mock_result.filename = "file-abc123"
 
         source = _resolve_source_for_result(mock_result, ["vs-unknown"], {})
-        assert source == "file-abc123"
+        assert source == "vs-unknown"
 
     def test_multiple_stores_with_attribute(self, mocker: MockerFixture) -> None:
         """Test resolution with multiple stores using result attributes."""
@@ -1617,7 +1617,7 @@ class TestResolveSourceForResult:
         assert source == "rhel-9-docs"
 
     def test_multiple_stores_no_attribute(self, mocker: MockerFixture) -> None:
-        """Test resolution with multiple stores and no vector_store_id attribute."""
+        """Test resolution with multiple stores and no vector_store_id attribute returns None."""
         mock_result = mocker.Mock()
         mock_result.filename = "file-abc123"
         mock_result.attributes = {}
@@ -1627,20 +1627,20 @@ class TestResolveSourceForResult:
             ["vs-001", "vs-002"],
             {"vs-001": "ocp-4.18-docs", "vs-002": "rhel-9-docs"},
         )
-        assert source == "file-abc123"
+        assert source is None
 
     def test_no_stores(self, mocker: MockerFixture) -> None:
-        """Test resolution with no vector stores falls back to filename."""
+        """Test resolution with no vector stores returns None."""
         mock_result = mocker.Mock()
         mock_result.filename = "file-abc123"
 
         source = _resolve_source_for_result(mock_result, [], {})
-        assert source == "file-abc123"
+        assert source is None
 
     def test_multiple_stores_attribute_not_in_mapping(
         self, mocker: MockerFixture
     ) -> None:
-        """Test resolution when attribute store ID is not in mapping."""
+        """Test resolution when attribute store ID is not in mapping returns raw store ID."""
         mock_result = mocker.Mock()
         mock_result.filename = "file-abc123"
         mock_result.attributes = {"vector_store_id": "vs-unknown"}
@@ -1650,7 +1650,7 @@ class TestResolveSourceForResult:
             ["vs-001", "vs-002"],
             {"vs-001": "ocp-docs"},
         )
-        assert source == "file-abc123"
+        assert source == "vs-unknown"
 
 
 class TestBuildChunkAttributes:
@@ -1759,7 +1759,7 @@ class TestExtractRagChunksWithIndexResolution:
         extract_rag_chunks_from_file_search_item(mock_item, rag_chunks)
 
         assert len(rag_chunks) == 1
-        assert rag_chunks[0].source == "file-abc"
+        assert rag_chunks[0].source is None
         assert rag_chunks[0].attributes is None
 
     def test_chunks_multiple_stores_attribute_resolution(
@@ -1853,7 +1853,7 @@ class TestBuildToolCallSummaryWithIndexResolution:
         call_summary, _ = build_tool_call_summary(mock_item, rag_chunks)
 
         assert len(rag_chunks) == 1
-        assert rag_chunks[0].source == "doc.pdf"
+        assert rag_chunks[0].source is None
         assert rag_chunks[0].attributes is None
         assert call_summary is not None
 

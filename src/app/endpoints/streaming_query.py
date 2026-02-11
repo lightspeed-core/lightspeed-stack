@@ -509,8 +509,8 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
                 tool_call, tool_result = build_tool_call_summary(
                     output_item_done_chunk.item,
                     turn_summary.rag_chunks,
-                    context.vector_store_ids,
-                    context.rag_id_mapping,
+                    vector_store_ids=context.vector_store_ids,
+                    rag_id_mapping=context.rag_id_mapping,
                 )
                 if tool_call:
                     turn_summary.tool_calls.append(tool_call)
@@ -571,7 +571,9 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
         latest_response_object, context.model_id
     )
     turn_summary.referenced_documents = parse_referenced_documents(
-        latest_response_object, context.vector_store_ids, context.rag_id_mapping
+        latest_response_object,
+        vector_store_ids=context.vector_store_ids,
+        rag_id_mapping=context.rag_id_mapping,
     )
 
 
