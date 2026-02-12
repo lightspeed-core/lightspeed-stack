@@ -6,7 +6,7 @@ services:
       dockerfile: dev-tools/mcp-mock-server/Dockerfile
     container_name: mcp-mock-server
     ports:
-      - "3000:3000"
+      - "9000:3000"
     networks:
       - lightspeednet
     healthcheck:
@@ -87,6 +87,11 @@ services:
       - TENANT_ID=${TENANT_ID:-}
       - CLIENT_ID=${CLIENT_ID:-}
       - CLIENT_SECRET=${CLIENT_SECRET:-}
+    entrypoint: >
+      /bin/bash -c "
+      printf %s 'test-secret-token-123' > /tmp/lightspeed-mcp-test-token &&
+      /app-root/.venv/bin/python3.12 /app-root/src/lightspeed_stack.py
+      "
     depends_on:
         llama-stack:
           condition: service_healthy

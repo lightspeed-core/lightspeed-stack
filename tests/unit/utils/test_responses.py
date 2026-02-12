@@ -22,6 +22,7 @@ from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 
 from configuration import AppConfig
+from constants import MCP_AUTHORIZATION_HEADER
 from models.config import ModelContextProtocolServer
 from models.requests import QueryRequest
 from utils.responses import (
@@ -371,7 +372,8 @@ class TestGetMCPTools:
         ]
         tools_k8s = await get_mcp_tools(servers_k8s, token="user-k8s-token")
         assert len(tools_k8s) == 1
-        assert tools_k8s[0]["headers"] == {"Authorization": "Bearer user-k8s-token"}
+        assert tools_k8s[0][MCP_AUTHORIZATION_HEADER] == "Bearer user-k8s-token"
+        assert "headers" not in tools_k8s[0]  # No other headers
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_with_mcp_headers(self) -> None:
@@ -392,8 +394,8 @@ class TestGetMCPTools:
         }
         tools = await get_mcp_tools(servers, token=None, mcp_headers=mcp_headers)
         assert len(tools) == 1
+        assert tools[0][MCP_AUTHORIZATION_HEADER] == "client-provided-token"
         assert tools[0]["headers"] == {
-            "Authorization": "client-provided-token",
             "X-Custom": "custom-value",
         }
 
@@ -455,7 +457,8 @@ class TestGetMCPTools:
 
         tools = await get_mcp_tools(servers, token=None)
         assert len(tools) == 1
-        assert tools[0]["headers"] == {"Authorization": "static-secret-token"}
+        assert tools[0][MCP_AUTHORIZATION_HEADER] == "static-secret-token"
+        assert "headers" not in tools[0]  # No other headers
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_with_mixed_headers(self, tmp_path: Path) -> None:
@@ -483,8 +486,8 @@ class TestGetMCPTools:
 
         tools = await get_mcp_tools(servers, token="k8s-token", mcp_headers=mcp_headers)
         assert len(tools) == 1
+        assert tools[0][MCP_AUTHORIZATION_HEADER] == "Bearer k8s-token"
         assert tools[0]["headers"] == {
-            "Authorization": "Bearer k8s-token",
             "X-API-Key": "secret-api-key",
             "X-Custom": "client-custom-value",
         }
@@ -1371,6 +1374,7 @@ class TestBuildToolCallSummary:
         mock_item.id = "approval_123"
         mock_item.name = "approve_action"
         mock_item.arguments = '{"action": "delete"}'
+        mock_item.server_label = "test-server"
 
         rag_chunks: list[RAGChunk] = []
         mocker.patch(
