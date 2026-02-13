@@ -196,6 +196,27 @@ def check_configuration_loaded(config: AppConfig) -> None:
         raise HTTPException(**response.model_dump()) from e
 
 
+def create_rag_chunks_dict(summary: TurnSummary) -> list[dict[str, Any]]:
+    """
+    Create dictionary representation of RAG chunks for streaming response.
+
+    Args:
+        summary: TurnSummary containing RAG chunks
+
+    Returns:
+        List of dictionaries with content, source, score, and attributes.
+    """
+    return [
+        {
+            "content": chunk.content,
+            "source": chunk.source,
+            "score": chunk.score,
+            "attributes": chunk.attributes,
+        }
+        for chunk in summary.rag_chunks
+    ]
+
+
 def _process_http_source(
     src: str, doc_urls: set[str]
 ) -> Optional[tuple[Optional[AnyUrl], str]]:

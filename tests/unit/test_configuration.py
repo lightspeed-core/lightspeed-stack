@@ -942,3 +942,55 @@ azure_entra_id:
     cfg = AppConfig()
     with pytest.raises(ValidationError):
         cfg.load_configuration(str(cfg_filename))
+
+
+def test_rag_id_mapping_empty_when_no_byok(minimal_config: AppConfig) -> None:
+    """Test that rag_id_mapping returns empty dict when no BYOK RAG configured."""
+    assert minimal_config.rag_id_mapping == {}
+
+
+def test_rag_id_mapping_with_byok(tmp_path: Path) -> None:
+    """Test that rag_id_mapping builds correct mapping from BYOK config."""
+    db_file = tmp_path / "test.db"
+    db_file.touch()
+    cfg = AppConfig()
+    cfg.init_from_dict(
+        {
+            "name": "test",
+            "service": {"host": "localhost", "port": 8080},
+            "llama_stack": {
+                "api_key": "k",
+                "url": "http://test.com:1234",
+                "use_as_library_client": False,
+            },
+            "user_data_collection": {},
+            "authentication": {"module": "noop"},
+            "byok_rag": [
+                {
+                    "rag_id": "my-kb",
+                    "vector_db_id": "vs-001",
+                    "db_path": str(db_file),
+                },
+            ],
+        }
+    )
+    assert cfg.rag_id_mapping == {"vs-001": "my-kb"}
+
+
+def test_resolve_index_name_with_mapping(minimal_config: AppConfig) -> None:
+    """Test resolve_index_name uses mapping when available."""
+    mapping = {"vs-x": "user-friendly-name"}
+    assert minimal_config.resolve_index_name("vs-x", mapping) == "user-friendly-name"
+
+
+def test_resolve_index_name_passthrough(minimal_config: AppConfig) -> None:
+    """Test resolve_index_name passes through unmapped IDs."""
+    assert minimal_config.resolve_index_name("vs-unknown", {}) == "vs-unknown"
+
+
+def test_rag_id_mapping_not_loaded() -> None:
+    """Test that rag_id_mapping raises when config not loaded."""
+    cfg = AppConfig()
+    cfg._configuration = None
+    with pytest.raises(LogicError):
+        _ = cfg.rag_id_mapping

@@ -342,6 +342,7 @@ class TestStreamingQueryEndpointHandler:
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
         mock_responses_params.model_dump.return_value = {
             "input": "test",
             "model": "provider1/model1",
@@ -509,6 +510,7 @@ class TestStreamingQueryEndpointHandler:
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
         mock_responses_params.model_dump.return_value = {
             "input": "test",
             "model": "provider1/model1",
@@ -596,6 +598,7 @@ class TestStreamingQueryEndpointHandler:
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
         mock_responses_params.model_dump.return_value = {
             "input": "test",
             "model": "provider1/model1",
@@ -673,6 +676,7 @@ class TestStreamingQueryEndpointHandler:
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "azure/model1"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
         mock_responses_params.model_dump.return_value = {
             "input": "test",
             "model": "azure/model1",
@@ -758,6 +762,8 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -806,6 +812,8 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test", media_type=MEDIA_TYPE_TEXT
         )  # pyright: ignore[reportCallIssue]
@@ -848,6 +856,8 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -901,6 +911,8 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -951,6 +963,8 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -998,6 +1012,8 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -1029,6 +1045,8 @@ class TestGenerateResponse:
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
         mock_context.user_id = "user_123"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -1080,6 +1098,8 @@ class TestGenerateResponse:
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
         mock_context.user_id = "user_123"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test", generate_topic_summary=True
         )  # pyright: ignore[reportCallIssue]
@@ -1126,6 +1146,8 @@ class TestGenerateResponse:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -1161,6 +1183,8 @@ class TestGenerateResponse:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -1199,6 +1223,8 @@ class TestGenerateResponse:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
@@ -1239,6 +1265,8 @@ class TestGenerateResponse:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
@@ -1286,6 +1314,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1313,6 +1343,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1341,6 +1373,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1379,6 +1413,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1418,6 +1454,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1464,6 +1502,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1512,6 +1552,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
         mock_turn_summary.llm_response = "Response"
@@ -1557,6 +1599,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1600,6 +1644,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1642,6 +1688,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1682,6 +1730,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1723,6 +1773,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1762,6 +1814,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1881,6 +1935,8 @@ class TestResponseGeneratorMCPCalls:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1931,6 +1987,8 @@ class TestResponseGeneratorMCPCalls:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -2001,6 +2059,8 @@ class TestResponseGeneratorMCPCalls:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -2087,6 +2147,8 @@ class TestResponseGeneratorMCPCalls:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 

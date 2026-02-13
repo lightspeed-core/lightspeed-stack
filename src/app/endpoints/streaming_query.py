@@ -74,6 +74,7 @@ from utils.responses import (
     build_tool_call_summary,
     build_tool_result_from_mcp_output_item_done,
     extract_token_usage,
+    extract_vector_store_ids_from_tools,
     get_topic_summary,
     parse_referenced_documents,
     prepare_responses_params,
@@ -192,7 +193,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     ):
         client = await update_azure_token(client)
 
-    # Create context
+    # Create context with index identification mapping for RAG source resolution
     context = ResponseGeneratorContext(
         conversation_id=normalize_conversation_id(responses_params.conversation),
         model_id=responses_params.model,
@@ -201,6 +202,8 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         query_request=query_request,
         started_at=started_at,
         client=client,
+        vector_store_ids=extract_vector_store_ids_from_tools(responses_params.tools),
+        rag_id_mapping=configuration.rag_id_mapping,
     )
 
     # Update metrics for the LLM call
@@ -511,7 +514,10 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
                 # For all other types (and mcp_call when arguments.done didn't happen),
                 # emit both call and result together
                 tool_call, tool_result = build_tool_call_summary(
-                    output_item_done_chunk.item, turn_summary.rag_chunks
+                    output_item_done_chunk.item,
+                    turn_summary.rag_chunks,
+                    vector_store_ids=context.vector_store_ids,
+                    rag_id_mapping=context.rag_id_mapping,
                 )
                 if tool_call:
                     turn_summary.tool_calls.append(tool_call)
@@ -572,7 +578,9 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
         latest_response_object, context.model_id
     )
     turn_summary.referenced_documents = parse_referenced_documents(
-        latest_response_object
+        latest_response_object,
+        vector_store_ids=context.vector_store_ids,
+        rag_id_mapping=context.rag_id_mapping,
     )
 
 
