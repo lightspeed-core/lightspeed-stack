@@ -4,7 +4,7 @@
 
 import logging
 from datetime import UTC, datetime
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from llama_stack_api.openai_responses import OpenAIResponseObject
@@ -61,6 +61,7 @@ from utils.responses import (
 from utils.shields import (
     append_turn_to_conversation,
     run_shield_moderation,
+    validate_shield_ids_override,
 )
 from utils.suid import normalize_conversation_id
 from utils.types import ResponsesApiParams, TurnSummary
@@ -125,6 +126,9 @@ async def query_endpoint_handler(
     # Enforce RBAC: optionally disallow overriding model/provider in requests
     validate_model_provider_override(query_request, request.state.authorized_actions)
 
+    # Validate shield_ids override if provided
+    validate_shield_ids_override(query_request, configuration)
+
     # Validate attachments if provided
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
@@ -166,7 +170,9 @@ async def query_endpoint_handler(
         client = await update_azure_token(client)
 
     # Retrieve response using Responses API
-    turn_summary = await retrieve_response(client, responses_params)
+    turn_summary = await retrieve_response(
+        client, responses_params, query_request.shield_ids
+    )
 
     # Get topic summary for new conversation
     if not user_conversation and query_request.generate_topic_summary:
@@ -225,6 +231,7 @@ async def query_endpoint_handler(
 async def retrieve_response(  # pylint: disable=too-many-locals
     client: AsyncLlamaStackClient,
     responses_params: ResponsesApiParams,
+    shield_ids: Optional[list[str]] = None,
 ) -> TurnSummary:
     """
     Retrieve response from LLMs and agents.
@@ -235,6 +242,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     Parameters:
         client: The AsyncLlamaStackClient to use for the request.
         responses_params: The Responses API parameters.
+        shield_ids: Optional list of shield IDs for moderation.
 
     Returns:
         TurnSummary: Summary of the LLM response content
@@ -242,7 +250,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     summary = TurnSummary()
 
     try:
-        moderation_result = await run_shield_moderation(client, responses_params.input)
+        moderation_result = await run_shield_moderation(
+            client, responses_params.input, shield_ids
+        )
         if moderation_result.blocked:
             # Handle shield moderation blocking
             violation_message = moderation_result.message or ""

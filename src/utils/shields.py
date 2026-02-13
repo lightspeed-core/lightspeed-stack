@@ -8,8 +8,10 @@ from llama_stack_client import AsyncLlamaStackClient
 from llama_stack_client.types import CreateResponse
 
 import metrics
+from configuration import AppConfig
+from models.requests import QueryRequest
 from models.responses import (
-    NotFoundResponse, 
+    NotFoundResponse,
     UnprocessableEntityResponse,
 )
 from utils.types import ShieldModerationResult
@@ -61,6 +63,40 @@ def detect_shield_violations(output_items: list[Any]) -> bool:
                 logger.warning("Shield violation detected: %s", refusal)
                 return True
     return False
+
+
+def validate_shield_ids_override(
+    query_request: QueryRequest, config: AppConfig
+) -> None:
+    """
+    Validate that shield_ids override is allowed by configuration.
+
+    If configuration disables shield_ids override
+    (config.customization.disable_shield_ids_override) and the incoming
+    query_request contains shield_ids, an HTTP 422 Unprocessable Entity
+    is raised instructing the client to remove the field.
+
+    Parameters:
+        query_request: The incoming query payload; may contain shield_ids.
+        config: Application configuration which may include customization flags.
+
+    Raises:
+        HTTPException: If shield_ids override is disabled but shield_ids is provided.
+    """
+    shield_ids_override_disabled = (
+        config.customization is not None
+        and config.customization.disable_shield_ids_override
+    )
+    if shield_ids_override_disabled and query_request.shield_ids is not None:
+        response = UnprocessableEntityResponse(
+            response="Shield IDs customization is disabled",
+            cause=(
+                "This instance does not support customizing shield IDs in the "
+                "query request (disable_shield_ids_override is set). Please remove the "
+                "shield_ids field from your request."
+            ),
+        )
+        raise HTTPException(**response.model_dump())
 
 
 async def run_shield_moderation(
