@@ -6,6 +6,7 @@ main() function.
 
 import logging
 import os
+import sys
 from argparse import ArgumentParser
 
 
@@ -16,10 +17,20 @@ from configuration import configuration
 from runners.uvicorn import start_uvicorn
 from runners.quota_scheduler import start_quota_scheduler
 from utils import schema_dumper
+from constants import LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR, DEFAULT_LOG_LEVEL
 
 FORMAT = "%(message)s"
+# Read log level from environment variable with validation
+log_level_str = os.environ.get(LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR, DEFAULT_LOG_LEVEL)
+log_level = getattr(logging, log_level_str.upper(), None)
+if not isinstance(log_level, int):
+    print(
+        f"WARNING: Invalid log level '{log_level_str}', falling back to {DEFAULT_LOG_LEVEL}",
+        file=sys.stderr,
+    )
+    log_level = getattr(logging, DEFAULT_LOG_LEVEL)
 logging.basicConfig(
-    level="INFO", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+    level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()], force=True
 )
 
 logger = get_logger(__name__)
@@ -83,6 +94,7 @@ def main() -> None:
     Start the Lightspeed Core Stack service process based on CLI flags and configuration.
 
     Parses command-line arguments, loads the configured settings, and then:
+    - If --verbose is provided, sets all loggers to DEBUG level.
     - If --dump-configuration is provided, writes the active configuration to
       configuration.json and exits (exits with status 1 on failure).
     - If --dump-schema is provided, writes the active configuration schema to
@@ -100,6 +112,14 @@ def main() -> None:
     logger.info("Lightspeed Core Stack startup")
     parser = create_argument_parser()
     args = parser.parse_args()
+
+    if args.verbose:
+        os.environ[LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR] = "DEBUG"
+        logging.getLogger().setLevel(logging.DEBUG)
+        for logger_name in logging.Logger.manager.loggerDict:
+            existing_logger = logging.getLogger(logger_name)
+            if isinstance(existing_logger, logging.Logger):
+                existing_logger.setLevel(logging.DEBUG)
 
     configuration.load_configuration(args.config_file)
     logger.info("Configuration: %s", configuration.configuration)

@@ -168,3 +168,9 @@ DEFAULT_EMBEDDING_DIMENSION = 768
 # quota limiters constants
 USER_QUOTA_LIMITER = "user_limiter"
 CLUSTER_QUOTA_LIMITER = "cluster_limiter"
+
+# Logging configuration constants
+# Environment variable name for configurable log level
+LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR = "LIGHTSPEED_STACK_LOG_LEVEL"
+# Default log level when environment variable is not set
+DEFAULT_LOG_LEVEL = "INFO"
