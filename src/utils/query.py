@@ -1,6 +1,5 @@
 """Utility functions for working with queries."""
 
-import logging
 from datetime import UTC, datetime
 from typing import Optional
 
@@ -42,8 +41,9 @@ from utils.quota import consume_tokens
 from utils.suid import normalize_conversation_id
 from utils.token_counter import TokenCounter
 from utils.types import TurnSummary
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def store_conversation_into_cache(

@@ -2,7 +2,6 @@
 
 """Handler for REST API call to provide answer to query using Response API."""
 
-import logging
 from datetime import UTC, datetime
 from typing import Annotated, Any, cast
 
@@ -64,8 +63,9 @@ from utils.shields import (
 )
 from utils.suid import normalize_conversation_id
 from utils.types import ResponsesApiParams, TurnSummary
+from log import get_logger
 
-logger = logging.getLogger("app.endpoints.handlers")
+logger = get_logger(__name__)
 router = APIRouter(tags=["query"])
 
 query_response: dict[int | str, dict[str, Any]] = {

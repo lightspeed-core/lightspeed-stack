@@ -1,6 +1,5 @@
 """Authorization middleware and decorators."""
 
-import logging
 from functools import lru_cache, wraps
 from typing import Any, Callable, Optional, Tuple
 
@@ -17,13 +16,14 @@ from authorization.resolvers import (
     RolesResolver,
 )
 from configuration import configuration
+from log import get_logger
 from models.config import Action
 from models.responses import (
     ForbiddenResponse,
     InternalServerErrorResponse,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @lru_cache(maxsize=1)

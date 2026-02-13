@@ -1,6 +1,5 @@
 """Configuration loader."""
 
-import logging
 from typing import Any, Optional
 
 # We want to support environment variable replacement in the configuration
@@ -32,8 +31,9 @@ from cache.cache_factory import CacheFactory
 from quota.quota_limiter import QuotaLimiter
 from quota.token_usage_history import TokenUsageHistory
 from quota.quota_limiter_factory import QuotaLimiterFactory
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class LogicError(Exception):

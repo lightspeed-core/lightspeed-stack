@@ -1,12 +1,12 @@
 """In-memory implementation of A2A context store."""
 
 import asyncio
-import logging
 from typing import Optional
 
 from a2a_storage.context_store import A2AContextStore
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class InMemoryA2AContextStore(A2AContextStore):

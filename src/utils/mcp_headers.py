@@ -1,14 +1,14 @@
 """MCP headers handling."""
 
 import json
-import logging
 from urllib.parse import urlparse
 
 from fastapi import Request
 
 from configuration import AppConfig
+from log import get_logger
 
-logger = logging.getLogger("app.endpoints.dependencies")
+logger = get_logger(__name__)
 
 type McpHeaders = dict[str, dict[str, str]]
 

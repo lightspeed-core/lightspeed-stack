@@ -1,19 +1,18 @@
 """Check if the Llama Stack version is supported by the LCS."""
 
-import logging
 import re
 
 from semver import Version
 
 from llama_stack_client._client import AsyncLlamaStackClient
 
-
 from constants import (
     MINIMAL_SUPPORTED_LLAMA_STACK_VERSION,
     MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION,
 )
+from log import get_logger
 
-logger = logging.getLogger("utils.llama_stack_version")
+logger = get_logger(__name__)
 
 
 class InvalidLlamaStackVersionException(Exception):

@@ -1,6 +1,5 @@
 """Handler for REST API calls related to MCP server authentication."""
 
-import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
@@ -19,8 +18,9 @@ from models.responses import (
     UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(prefix="/mcp-auth", tags=["mcp-auth"])
 
 

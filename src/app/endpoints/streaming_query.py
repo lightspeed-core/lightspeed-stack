@@ -1,7 +1,6 @@
 """Streaming query handler using Responses API."""
 
 import json
-import logging
 from datetime import UTC, datetime
 from typing import Annotated, Any, AsyncIterator, Optional, cast
 
@@ -85,8 +84,9 @@ from utils.shields import (
 from utils.suid import normalize_conversation_id
 from utils.token_counter import TokenCounter
 from utils.types import ResponsesApiParams, TurnSummary
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["streaming_query"])
 
 streaming_query_responses: dict[int | str, dict[str, Any]] = {

@@ -6,7 +6,6 @@ stored on disk for later analysis
 
 from datetime import UTC, datetime
 import json
-import logging
 import os
 from pathlib import Path
 import hashlib
@@ -16,8 +15,9 @@ from configuration import configuration
 from models.requests import Attachment, QueryRequest
 from utils.suid import get_suid
 from utils.types import TurnSummary
+from log import get_logger
 
-logger = logging.getLogger("utils.transcripts")
+logger = get_logger(__name__)
 
 
 def _hash_user_id(user_id: str) -> str:

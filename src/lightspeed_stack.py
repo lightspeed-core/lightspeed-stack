@@ -94,7 +94,7 @@ def main() -> None:
     Start the Lightspeed Core Stack service process based on CLI flags and configuration.
 
     Parses command-line arguments, loads the configured settings, and then:
-    - If --verbose is provided, sets all loggers to DEBUG level.
+    - If --verbose is provided, sets application loggers to DEBUG level.
     - If --dump-configuration is provided, writes the active configuration to
       configuration.json and exits (exits with status 1 on failure).
     - If --dump-schema is provided, writes the active configuration schema to

@@ -1,6 +1,5 @@
 """Utility functions for working with Llama Stack shields."""
 
-import logging
 from typing import Any, cast
 
 from fastapi import HTTPException
@@ -12,8 +11,9 @@ from models.responses import (
     NotFoundResponse,
 )
 from utils.types import ShieldModerationResult
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DEFAULT_VIOLATION_MESSAGE = "I cannot process this request due to policy restrictions."
 

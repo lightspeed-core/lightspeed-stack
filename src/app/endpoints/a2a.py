@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Any, AsyncIterator, MutableMapping, Optional
@@ -52,8 +51,9 @@ from utils.responses import (
 )
 from utils.suid import normalize_conversation_id
 from version import __version__
+from log import get_logger
 
-logger = logging.getLogger("app.endpoints.handlers")
+logger = get_logger(__name__)
 router = APIRouter(tags=["a2a"])
 
 auth_dependency = get_auth_dependency()
