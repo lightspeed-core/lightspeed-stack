@@ -1,7 +1,6 @@
 """Utility functions for processing Responses API output."""
 
 import json
-import logging
 from typing import Any, Optional, cast
 
 from fastapi import HTTPException
@@ -47,8 +46,9 @@ from utils.types import (
     ToolCallSummary,
     ToolResultSummary,
 )
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def extract_text_from_response_output_item(output_item: Any) -> str:

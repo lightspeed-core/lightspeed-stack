@@ -2,7 +2,6 @@
 
 # pylint: disable=too-many-lines
 
-import logging
 from pathlib import Path
 from typing import Optional, Any, Pattern
 from enum import Enum
@@ -33,8 +32,9 @@ import constants
 
 from utils import checks
 from utils.mcp_auth_headers import resolve_authorization_headers
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ConfigurationBase(BaseModel):

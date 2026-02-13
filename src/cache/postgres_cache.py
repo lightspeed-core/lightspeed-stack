@@ -13,7 +13,7 @@ from utils.connection_decorator import connection
 from utils.types import ReferencedDocument, ToolCallSummary, ToolResultSummary
 from log import get_logger
 
-logger = get_logger("cache.postgres_cache")
+logger = get_logger(__name__)
 
 
 class PostgresCache(Cache):

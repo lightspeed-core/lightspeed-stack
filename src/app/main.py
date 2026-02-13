@@ -71,7 +71,6 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
     logger.info("Registering MCP servers")
     await register_mcp_servers_async(logger, configuration.configuration)
-    get_logger("app.endpoints.handlers")
     logger.info("App startup complete")
 
     initialize_database()

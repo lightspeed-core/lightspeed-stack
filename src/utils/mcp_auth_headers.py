@@ -1,11 +1,11 @@
 """Utilities for resolving MCP server authorization headers."""
 
-import logging
 from pathlib import Path
 
 import constants
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def resolve_authorization_headers(

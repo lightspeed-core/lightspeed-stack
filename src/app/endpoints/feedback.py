@@ -1,7 +1,6 @@
 """Handler for REST API endpoint for user feedback."""
 
 import json
-import logging
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
@@ -26,8 +25,9 @@ from models.responses import (
 )
 from utils.endpoints import check_configuration_loaded, retrieve_conversation
 from utils.suid import get_suid
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 feedback_status_lock = threading.Lock()
 

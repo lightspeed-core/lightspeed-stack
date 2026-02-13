@@ -1,6 +1,5 @@
 """Manage authentication flow for FastAPI endpoints with K8S/OCP."""
 
-import logging
 import os
 from pathlib import Path
 from typing import Optional, Self
@@ -14,6 +13,7 @@ from authentication.interface import NO_AUTH_TUPLE, AuthInterface
 from authentication.utils import extract_user_token
 from configuration import configuration
 from constants import DEFAULT_VIRTUAL_PATH
+from log import get_logger
 from models.responses import (
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -21,7 +21,7 @@ from models.responses import (
     UnauthorizedResponse,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 CLUSTER_ID_LOCAL = "local"

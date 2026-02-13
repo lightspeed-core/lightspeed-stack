@@ -7,7 +7,7 @@ from models.responses import ConversationData
 from log import get_logger
 from utils.connection_decorator import connection
 
-logger = get_logger("cache.in_memory_cache")
+logger = get_logger(__name__)
 
 
 class InMemoryCache(Cache):

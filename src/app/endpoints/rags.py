@@ -1,6 +1,5 @@
 """Handler for REST API calls to list and retrieve available RAGs."""
 
-import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -23,8 +22,9 @@ from models.responses import (
     UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["rags"])
 
 

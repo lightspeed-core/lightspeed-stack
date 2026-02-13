@@ -1,6 +1,5 @@
 """This package contains authentication code and modules."""
 
-import logging
 import os
 
 import constants
@@ -14,8 +13,9 @@ from authentication import (
 )
 from authentication.interface import AuthInterface
 from configuration import LogicError, configuration
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def get_auth_dependency(

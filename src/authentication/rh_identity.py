@@ -6,7 +6,6 @@ User and System identity types with optional entitlement validation.
 
 import base64
 import json
-import logging
 from typing import Optional
 
 from fastapi import HTTPException, Request
@@ -14,8 +13,9 @@ from fastapi import HTTPException, Request
 from authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
 from configuration import configuration
 from constants import DEFAULT_VIRTUAL_PATH, NO_USER_TOKEN
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class RHIdentityData:

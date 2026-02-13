@@ -1,6 +1,5 @@
 """Handler for REST API calls to manage conversation history."""
 
-import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -26,8 +25,9 @@ from models.responses import (
 )
 from utils.endpoints import check_configuration_loaded
 from utils.suid import check_suid
+from log import get_logger
 
-logger = logging.getLogger("app.endpoints.handlers")
+logger = get_logger(__name__)
 router = APIRouter(tags=["conversations_v2"])
 
 
