@@ -15,7 +15,7 @@ apis:
 benchmarks: []
 datasets: []
 image_name: starter
-# external_providers_dir: /opt/app-root/src/.llama/providers.d
+external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR}
 
 providers:
   inference:
@@ -24,7 +24,9 @@ providers:
     config:
       api_key: ${env.OPENAI_API_KEY}
       allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"]
-  - config: {}
+  - config:
+      allowed_models:
+        - ${env.EMBEDDING_MODEL_DIR}
     provider_id: sentence-transformers
     provider_type: inline::sentence-transformers
   files:
@@ -56,6 +58,18 @@ providers:
     provider_id: rag-runtime
     provider_type: inline::rag-runtime
   vector_io:
+  - provider_id: solr-vector
+    provider_type: remote::solr_vector_io
+    config:
+      solr_url: http://localhost:8983/solr
+      collection_name: portal-rag
+      vector_field: chunk_vector
+      content_field: chunk
+      embedding_dimension: 384
+      embedding_model: ${env.EMBEDDING_MODEL_DIR}
+      persistence:
+        namespace: portal-rag
+        backend: kv_default
   - config: # Define the storage backend for RAG
       persistence:
         namespace: vector_io::faiss
@@ -127,7 +141,13 @@ storage:
       namespace: prompts
       backend: kv_default
 registered_resources:
-  models: []
+  models:
+  - model_id: granite-embedding-30m
+    model_type: embedding
+    provider_id: sentence-transformers
+    provider_model_id: ${env.EMBEDDING_MODEL_DIR}
+    metadata:
+      embedding_dimension: 384
   shields:
   - shield_id: llama-guard
     provider_id: llama-guard

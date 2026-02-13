@@ -1,4 +1,5 @@
-"""Unit tests for the /streaming-query REST API endpoint."""
+# pylint: disable=redefined-outer-name,import-error, too-many-function-args
+"""Unit tests for the /streaming_query (v2) endpoint using Responses API."""
 
 # pylint: disable=too-many-lines,too-many-function-args
 import json

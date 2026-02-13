@@ -2,8 +2,8 @@
 
 """Handler for REST API call to provide answer to query using Response API."""
 
+import datetime
 import logging
-from datetime import UTC, datetime
 from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -25,6 +25,7 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from models.config import Action
 from models.requests import QueryRequest
+
 from models.responses import (
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -32,6 +33,7 @@ from models.responses import (
     PromptTooLongResponse,
     QueryResponse,
     QuotaExceededResponse,
+    ReferencedDocument,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
     UnprocessableEntityResponse,
@@ -63,7 +65,11 @@ from utils.shields import (
     run_shield_moderation,
 )
 from utils.suid import normalize_conversation_id
-from utils.types import ResponsesApiParams, TurnSummary
+from utils.types import (
+    ResponsesApiParams,
+    TurnSummary,
+)
+from utils.vector_search import perform_vector_search, format_rag_context_for_injection
 
 logger = logging.getLogger("app.endpoints.handlers")
 router = APIRouter(tags=["query"])
@@ -77,9 +83,9 @@ query_response: dict[int | str, dict[str, Any]] = {
         examples=["endpoint", "conversation read", "model override"]
     ),
     404: NotFoundResponse.openapi_response(
-        examples=["model", "conversation", "provider"]
+        examples=["conversation", "model", "provider"]
     ),
-    413: PromptTooLongResponse.openapi_response(),
+    # 413: PromptTooLongResponse.openapi_response(),
     422: UnprocessableEntityResponse.openapi_response(),
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
@@ -145,6 +151,19 @@ async def query_endpoint_handler(
 
     client = AsyncLlamaStackClientHolder().get_client()
 
+    doc_ids_from_chunks: list[ReferencedDocument] = []
+    pre_rag_chunks: list[Any] = []  # use your RAGChunk type (or the upstream one)
+
+    _, _, doc_ids_from_chunks, pre_rag_chunks = await perform_vector_search(
+        client, query_request, configuration
+    )
+
+    rag_context = format_rag_context_for_injection(pre_rag_chunks)
+    if rag_context:
+        # safest: mutate a local copy so we don't surprise other logic
+        query_request = query_request.model_copy(deep=True)  # pydantic v2
+        query_request.query = query_request.query + rag_context
+
     # Prepare API request parameters
     responses_params = await prepare_responses_params(
         client,
@@ -168,6 +187,14 @@ async def query_endpoint_handler(
     # Retrieve response using Responses API
     turn_summary = await retrieve_response(client, responses_params)
 
+    if pre_rag_chunks:
+        turn_summary.rag_chunks = pre_rag_chunks + (turn_summary.rag_chunks or [])
+
+    if doc_ids_from_chunks:
+        turn_summary.referenced_documents = parse_referenced_docs(
+            doc_ids_from_chunks + (turn_summary.referenced_documents or [])
+        )
+
     # Get topic summary for new conversation
     if not user_conversation and query_request.generate_topic_summary:
         logger.debug("Generating topic summary for new conversation")
@@ -190,7 +217,9 @@ async def query_endpoint_handler(
         quota_limiters=configuration.quota_limiters, user_id=user_id
     )
 
-    completed_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    completed_at = datetime.datetime.now(datetime.timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     conversation_id = normalize_conversation_id(responses_params.conversation)
 
     logger.info("Storing query results")
@@ -221,6 +250,19 @@ async def query_endpoint_handler(
         available_quotas=available_quotas,
     )
 
+
+def parse_referenced_docs(
+    docs: list[ReferencedDocument],
+) -> list[ReferencedDocument]:
+    seen: set[tuple[str | None, str | None]] = set()
+    out: list[ReferencedDocument] = []
+    for d in docs:
+        key = (d.doc_url, d.doc_title)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(d)
+    return out
 
 async def retrieve_response(  # pylint: disable=too-many-locals
     client: AsyncLlamaStackClient,

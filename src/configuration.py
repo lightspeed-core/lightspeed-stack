@@ -23,6 +23,7 @@ from models.config import (
     DatabaseConfiguration,
     ConversationHistoryConfiguration,
     QuotaHandlersConfiguration,
+    SolrConfiguration,
     SplunkConfiguration,
 )
 
@@ -362,6 +363,13 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         return self._configuration.deployment_environment
+
+    @property
+    def solr(self) -> Optional[SolrConfiguration]:
+        """Return Solr configuration, or None if not provided."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.solr
 
 
 configuration: AppConfig = AppConfig()

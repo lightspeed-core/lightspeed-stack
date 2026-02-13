@@ -30,3 +30,7 @@ conversation_cache:
 
 authentication:
   module: "noop"
+
+
+solr:
+  offline: True

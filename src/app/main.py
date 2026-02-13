@@ -23,6 +23,11 @@ from models.responses import InternalServerErrorResponse
 from utils.common import register_mcp_servers_async
 from utils.llama_stack_version import check_llama_stack_version
 
+import faulthandler
+import signal
+
+faulthandler.register(signal.SIGUSR1)
+
 logger = get_logger(__name__)
 
 logger.info("Initializing app")

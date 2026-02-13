@@ -349,7 +349,7 @@ def _process_rag_chunks_for_documents(
 
     for chunk in rag_chunks:
         src = chunk.source
-        if not src or src == constants.DEFAULT_RAG_TOOL:
+        if not src or src == constants.DEFAULT_RAG_TOOL or src.endswith("_search"):
             continue
 
         if src.startswith("http"):
