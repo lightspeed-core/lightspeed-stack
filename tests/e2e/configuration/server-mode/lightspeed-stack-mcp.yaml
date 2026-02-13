@@ -7,21 +7,17 @@ service:
   color_log: true
   access_log: true
 llama_stack:
-  # Library mode - embeds llama-stack as library
-  use_as_library_client: true
-  library_client_config_path: run.yaml
+  # Server mode - connects to separate llama-stack service
+  use_as_library_client: false
+  url: http://llama-stack:8321
+  api_key: xyzzy
 user_data_collection:
   feedback_enabled: true
   feedback_storage: "/tmp/data/feedback"
   transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
 authentication:
-  module: "noop"
-# Conversation cache for storing Q&A history
-conversation_cache:
-  type: "sqlite"
-  sqlite:
-    db_path: "/tmp/data/conversation-cache.db"
+  module: "noop-with-token"
 mcp_servers:
   # Test 1: Static file-based authentication
   - name: "mock-file-auth"
@@ -53,7 +49,3 @@ mcp_servers:
     url: "http://mcp-mock-server:3000"
     authorization_headers:
       X-API-Token: "client"
-  # Legacy: Mock server with no auth - should NOT appear in response
-  - name: "public-api"
-    provider_id: "model-context-protocol"
-    url: "http://mcp-mock-server:3000"

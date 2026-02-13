@@ -16,12 +16,7 @@ user_data_collection:
   transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
 authentication:
-  module: "noop"
-# Conversation cache for storing Q&A history
-conversation_cache:
-  type: "sqlite"
-  sqlite:
-    db_path: "/tmp/data/conversation-cache.db"
+  module: "noop-with-token"
 mcp_servers:
   # Test 1: Static file-based authentication
   - name: "mock-file-auth"
@@ -53,7 +48,3 @@ mcp_servers:
     url: "http://mcp-mock-server:3000"
     authorization_headers:
       X-API-Token: "client"
-  # Legacy: Mock server with no auth - should NOT appear in response
-  - name: "public-api"
-    provider_id: "model-context-protocol"
-    url: "http://mcp-mock-server:3000"

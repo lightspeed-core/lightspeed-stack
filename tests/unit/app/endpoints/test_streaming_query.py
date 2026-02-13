@@ -751,6 +751,7 @@ class TestCreateResponseGenerator:
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.input = "test query"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None  # No tools for this test
         mock_responses_params.model_dump.return_value = {
             "input": "test query",
             "model": "provider1/model1",
@@ -840,6 +841,7 @@ class TestCreateResponseGenerator:
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.input = "test query"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None  # No tools for this test
         mock_responses_params.model_dump.return_value = {
             "input": "test query",
             "model": "provider1/model1",
@@ -893,6 +895,7 @@ class TestCreateResponseGenerator:
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.input = "test query"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None  # No tools for this test
         mock_responses_params.model_dump.return_value = {
             "input": "test query",
             "model": "provider1/model1",
@@ -943,6 +946,7 @@ class TestCreateResponseGenerator:
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.input = "test query"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None  # No tools for this test
         mock_responses_params.model_dump.return_value = {
             "input": "test query",
             "model": "provider1/model1",
@@ -990,6 +994,7 @@ class TestCreateResponseGenerator:
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.input = "test query"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None  # No tools for this test
         mock_responses_params.model_dump.return_value = {
             "input": "test query",
             "model": "provider1/model1",

@@ -125,6 +125,8 @@ DEFAULT_JWT_USER_NAME_CLAIM = "username"
 # MCP authorization header special values
 MCP_AUTH_KUBERNETES = "kubernetes"
 MCP_AUTH_CLIENT = "client"
+# MCP authorization header name (special handling for llama_stack 0.4.x+)
+MCP_AUTHORIZATION_HEADER = "authorization"
 
 # default RAG tool value
 DEFAULT_RAG_TOOL = "knowledge_search"

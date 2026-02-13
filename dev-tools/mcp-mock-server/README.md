@@ -19,9 +19,10 @@ This mock server helps developers:
 - ✅ **HTTP & HTTPS** - Runs both protocols simultaneously for comprehensive testing
 - ✅ **Header Capture** - Captures and displays all request headers
 - ✅ **Debug Endpoints** - Inspect captured headers and request history
-- ✅ **MCP Protocol** - Implements basic MCP endpoints for testing
+- ✅ **MCP Protocol** - Implements MCP endpoints (initialize, tools/list, tools/call)
 - ✅ **Request Logging** - Tracks recent requests with timestamps
 - ✅ **Self-Signed Certs** - Auto-generates certificates for HTTPS testing
+- ✅ **Tool Execution** - Returns mock results for tool/call testing
 
 ## Quick Start
 
@@ -46,8 +47,11 @@ HTTPS: https://localhost:3001
 Debug endpoints:
   • /debug/headers  - View captured headers
   • /debug/requests - View request log
-MCP endpoint:
-  • POST /mcp/v1/list_tools
+MCP endpoints:
+  • POST with JSON-RPC (any path)
+    - method: "initialize"
+    - method: "tools/list"
+    - method: "tools/call"
 ======================================================================
 Note: HTTPS uses a self-signed certificate (for testing only)
 ```
@@ -270,8 +274,9 @@ python dev-tools/mcp-mock-server/server.py 8080
 This is a **development/testing tool only**:
 - ❌ Not for production use
 - ❌ No authentication/security
-- ❌ Limited MCP protocol implementation
+- ❌ Limited MCP protocol implementation (initialize, tools/list, tools/call only)
 - ❌ Single-threaded (one request at a time)
+- ❌ Mock responses only (not real tool execution)
 
 For production, use real MCP servers.
 
