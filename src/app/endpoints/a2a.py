@@ -232,17 +232,15 @@ class A2AAgentExecutor(AgentExecutor):
                 context, task_updater, task_id, context_id
             )
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Error handling A2A request: %s", e, exc_info=True)
+            logger.exception("Error handling A2A request")
             try:
                 await task_updater.update_status(
                     TaskState.failed,
                     message=new_agent_text_message(str(e)),
                     final=True,
                 )
-            except Exception as enqueue_error:  # pylint: disable=broad-exception-caught
-                logger.error(
-                    "Failed to publish failure event: %s", enqueue_error, exc_info=True
-                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                logger.exception("Failed to publish failure event")
 
     async def _process_task_streaming(  # pylint: disable=too-many-locals
         self,
@@ -333,11 +331,7 @@ class A2AAgentExecutor(AgentExecutor):
                 f"Unable to connect to Llama Stack backend service: {str(e)}. "
                 "The service may be temporarily unavailable. Please try again later."
             )
-            logger.error(
-                "APIConnectionError in A2A request: %s",
-                str(e),
-                exc_info=True,
-            )
+            logger.error("APIConnectionError in A2A request: %s", str(e))
             await task_updater.update_status(
                 TaskState.failed,
                 message=new_agent_text_message(
@@ -643,8 +637,8 @@ async def get_agent_card(  # pylint: disable=unused-argument
             "Agent Card capabilities: streaming=%s", agent_card.capabilities.streaming
         )
         return agent_card
-    except Exception as exc:
-        logger.error("Error serving A2A Agent Card: %s", str(exc))
+    except Exception:
+        logger.exception("Error serving A2A Agent Card")
         raise
 
 
@@ -736,8 +730,8 @@ async def handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-statem
                 logger.warning(
                     "Could not parse A2A request body for method detection: %s", str(e)
                 )
-    except Exception as e:  # pylint: disable=broad-except
-        logger.error("Error detecting streaming request: %s", str(e))
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("Error detecting streaming request")
 
     # Setup scope for A2A app
     scope = dict(request.scope)
@@ -781,10 +775,8 @@ async def handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-statem
                 logger.debug("Streaming: Starting A2A app execution")
                 await a2a_app(scope, receive, streaming_send)
                 logger.debug("Streaming: A2A app execution completed")
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.error(
-                    "Error in A2A app during streaming: %s", str(exc), exc_info=True
-                )
+            except Exception:  # pylint: disable=broad-except
+                logger.exception("Error in A2A app during streaming")
                 await chunk_queue.put(None)  # Signal end even on error
 
         # Start the A2A app task

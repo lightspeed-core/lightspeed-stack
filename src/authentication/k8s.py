@@ -181,7 +181,7 @@ class K8sClientSingleton:
             logger.error("API exception during ClusterInfo: %s", e)
             raise ClusterIDUnavailableError("Failed to get cluster ID") from e
         except Exception as e:
-            logger.error("Unexpected error during getting cluster ID: %s", e)
+            logger.exception("Unexpected error during getting cluster ID")
             raise ClusterIDUnavailableError("Failed to get cluster ID") from e
 
     @classmethod
@@ -227,7 +227,7 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
     try:
         auth_api = K8sClientSingleton.get_authn_api()
     except Exception as e:
-        logger.error("Failed to get Kubernetes authentication API: %s", e)
+        logger.exception("Failed to get Kubernetes authentication API")
         response = ServiceUnavailableResponse(
             backend_name="Kubernetes API",
             cause="Unable to initialize Kubernetes client",
@@ -242,8 +242,8 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReview]:
         if response.status.authenticated:
             return response.status
         return None
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.error("API exception during TokenReview: %s", e)
+    except Exception:  # pylint: disable=broad-exception-caught
+        logger.exception("API exception during TokenReview")
         return None
 
 
@@ -332,7 +332,7 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
             response = authorization_api.create_subject_access_review(sar)
 
         except Exception as e:
-            logger.error("API exception during SubjectAccessReview: %s", e)
+            logger.exception("API exception during SubjectAccessReview")
             response = ServiceUnavailableResponse(
                 backend_name="Kubernetes API",
                 cause="Unable to perform authorization check",

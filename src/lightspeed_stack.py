@@ -134,7 +134,7 @@ def main() -> None:
             configuration.configuration.dump()
             logger.info("Configuration dumped to configuration.json")
         except Exception as e:
-            logger.error("Failed to dump configuration: %s", e)
+            logger.exception("Failed to dump configuration")
             raise SystemExit(1) from e
         return
 
@@ -145,7 +145,7 @@ def main() -> None:
             schema_dumper.dump_schema("schema.json")
             logger.info("Configuration schema dumped to schema.json")
         except Exception as e:
-            logger.error("Failed to dump configuration schema: %s", e)
+            logger.exception("Failed to dump configuration schema")
             raise SystemExit(1) from e
         return
 

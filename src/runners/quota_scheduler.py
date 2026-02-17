@@ -108,8 +108,8 @@ def quota_scheduler(config: QuotaHandlersConfiguration) -> bool:
                 quota_revocation(
                     connection, limiter, increase_quota_statement, reset_quota_statement
                 )
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                logger.error("Quota revoke error: %s", e)
+            except Exception:  # pylint: disable=broad-exception-caught
+                logger.exception("Quota revoke error")
         logger.info("Quota scheduler sync finished")
         sleep(period)
     # unreachable code
@@ -136,8 +136,8 @@ def connected(connection: Any) -> bool:
         cursor.close()
         logger.info("Connection to storage is ok")
         return True
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.error("Disconnected from storage: %s", e)
+    except Exception:  # pylint: disable=broad-exception-caught
+        logger.exception("Disconnected from storage")
         return False
 
 
