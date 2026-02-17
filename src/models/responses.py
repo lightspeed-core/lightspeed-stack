@@ -503,7 +503,8 @@ class StreamingQueryResponse(AbstractSuccessfulResponse):
             "examples": [
                 (
                     'data: {"event": "start", "data": {'
-                    '"conversation_id": "123e4567-e89b-12d3-a456-426614174000"}}\n\n'
+                    '"conversation_id": "123e4567-e89b-12d3-a456-426614174000", '
+                    '"request_id": "123e4567-e89b-12d3-a456-426614174001"}}\n\n'
                     'data: {"event": "token", "data": {'
                     '"id": 0, "token": "No Violation"}}\n\n'
                     'data: {"event": "token", "data": {'
@@ -533,6 +534,52 @@ class StreamingQueryResponse(AbstractSuccessfulResponse):
                     '"truncated": null, "input_tokens": 11, "output_tokens": 19}, '
                     '"available_quotas": {}}\n\n'
                 ),
+            ]
+        }
+    }
+
+
+class StreamingInterruptResponse(AbstractSuccessfulResponse):
+    """Model representing a response to a streaming interrupt request.
+
+    Attributes:
+        request_id: The streaming request ID targeted by the interrupt call.
+        interrupted: Whether an in-progress stream was interrupted.
+        message: Human-readable interruption status message.
+
+    Example:
+        ```python
+        response = StreamingInterruptResponse(
+            request_id="123e4567-e89b-12d3-a456-426614174000",
+            interrupted=True,
+            message="Streaming request interrupted",
+        )
+        ```
+    """
+
+    request_id: str = Field(
+        description="The streaming request ID targeted by the interrupt call",
+        examples=["123e4567-e89b-12d3-a456-426614174000"],
+    )
+
+    interrupted: bool = Field(
+        description="Whether an in-progress stream was interrupted",
+        examples=[True],
+    )
+
+    message: str = Field(
+        description="Human-readable interruption status message",
+        examples=["Streaming request interrupted"],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "request_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "interrupted": True,
+                    "message": "Streaming request interrupted",
+                }
             ]
         }
     }
