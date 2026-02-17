@@ -9,7 +9,9 @@ from unittest.mock import Mock
 
 import pytest
 from fastapi import HTTPException, Request
+from pytest_mock import MockerFixture
 
+from authentication.interface import NO_AUTH_TUPLE
 from authentication.rh_identity import RHIdentityAuthDependency, RHIdentityData
 from constants import NO_USER_TOKEN
 
@@ -109,6 +111,7 @@ def create_request_with_header(header_value: Optional[str]) -> Mock:
     """
     request = Mock(spec=Request)
     request.headers = {"x-rh-identity": header_value} if header_value else {}
+    request.url = Mock(path="/test")
     request.state = Mock()
     return request
 
@@ -448,3 +451,78 @@ class TestRHIdentityAuthDependency:
         user_id, username, _, _ = await auth_dep(request)
         assert user_id == "abc123"
         assert username == "user@redhat.com"
+
+
+class TestRHIdentityHealthProbeSkip:
+    """Test suite for health probe skip functionality in RH Identity auth."""
+
+    @staticmethod
+    def _mock_configuration(
+        mocker: MockerFixture, skip_for_health_probes: bool
+    ) -> None:
+        """Patch the configuration singleton with a mock for probe skip tests."""
+        mock_config = mocker.MagicMock()
+        mock_config.authentication_configuration.skip_for_health_probes = (
+            skip_for_health_probes
+        )
+        mocker.patch("authentication.rh_identity.configuration", mock_config)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/readiness",
+            "/liveness",
+            "/api/lightspeed/readiness",
+            "/api/lightspeed/liveness",
+        ],
+    )
+    async def test_probe_paths_skip_auth_when_enabled(
+        self, mocker: MockerFixture, path: str
+    ) -> None:
+        """Test health probe paths bypass auth when skip_for_health_probes is True."""
+        self._mock_configuration(mocker, skip_for_health_probes=True)
+
+        auth_dep = RHIdentityAuthDependency()
+        request = Request(scope={"type": "http", "headers": [], "path": path})
+
+        result = await auth_dep(request)
+        assert result == NO_AUTH_TUPLE
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/readiness",
+            "/liveness",
+            "/api/lightspeed/readiness",
+            "/api/lightspeed/liveness",
+        ],
+    )
+    async def test_probe_paths_require_auth_when_disabled(
+        self, mocker: MockerFixture, path: str
+    ) -> None:
+        """Test health probe paths still require auth when skip_for_health_probes is False."""
+        self._mock_configuration(mocker, skip_for_health_probes=False)
+
+        auth_dep = RHIdentityAuthDependency()
+        request = Request(scope={"type": "http", "headers": [], "path": path})
+
+        with pytest.raises(HTTPException) as exc_info:
+            await auth_dep(request)
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("path", ["/", "/v1/query"])
+    async def test_non_probe_paths_require_auth_when_skip_enabled(
+        self, mocker: MockerFixture, path: str
+    ) -> None:
+        """Test non-probe paths still require auth even when skip_for_health_probes is True."""
+        self._mock_configuration(mocker, skip_for_health_probes=True)
+
+        auth_dep = RHIdentityAuthDependency()
+        request = Request(scope={"type": "http", "headers": [], "path": path})
+
+        with pytest.raises(HTTPException) as exc_info:
+            await auth_dep(request)
+        assert exc_info.value.status_code == 401

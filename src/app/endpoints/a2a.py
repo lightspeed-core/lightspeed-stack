@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Any, AsyncIterator, MutableMapping, Optional
@@ -42,17 +41,19 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from constants import MEDIA_TYPE_EVENT_STREAM
 from models.config import Action
 from models.requests import QueryRequest
-from utils.mcp_headers import mcp_headers_dependency
+from utils.mcp_headers import mcp_headers_dependency, McpHeaders
 from utils.responses import (
     extract_text_from_response_output_item,
     prepare_responses_params,
 )
 from utils.suid import normalize_conversation_id
 from version import __version__
+from log import get_logger
 
-logger = logging.getLogger("app.endpoints.handlers")
+logger = get_logger(__name__)
 router = APIRouter(tags=["a2a"])
 
 auth_dependency = get_auth_dependency()
@@ -183,9 +184,7 @@ class A2AAgentExecutor(AgentExecutor):
     routing queries to the LLM backend using the Responses API.
     """
 
-    def __init__(
-        self, auth_token: str, mcp_headers: Optional[dict[str, dict[str, str]]] = None
-    ):
+    def __init__(self, auth_token: str, mcp_headers: Optional[McpHeaders] = None):
         """Initialize the A2A agent executor.
 
         Args:
@@ -193,7 +192,7 @@ class A2AAgentExecutor(AgentExecutor):
             mcp_headers: MCP headers for context propagation
         """
         self.auth_token: str = auth_token
-        self.mcp_headers: dict[str, dict[str, str]] = mcp_headers or {}
+        self.mcp_headers: McpHeaders = mcp_headers or {}
 
     async def execute(
         self,
@@ -313,6 +312,7 @@ class A2AAgentExecutor(AgentExecutor):
             media_type=None,
             vector_store_ids=vector_store_ids,
             shield_ids=None,
+            solr=None,
         )
 
         # Get LLM client and select model
@@ -649,9 +649,7 @@ async def get_agent_card(  # pylint: disable=unused-argument
         raise
 
 
-async def _create_a2a_app(
-    auth_token: str, mcp_headers: dict[str, dict[str, str]]
-) -> Any:
+async def _create_a2a_app(auth_token: str, mcp_headers: McpHeaders) -> Any:
     """Create an A2A Starlette application instance with auth context.
 
     Args:
@@ -682,7 +680,7 @@ async def _create_a2a_app(
 async def handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-statements
     request: Request,
     auth: Annotated[AuthTuple, Depends(auth_dependency)],
-    mcp_headers: dict[str, dict[str, str]] = Depends(mcp_headers_dependency),
+    mcp_headers: McpHeaders = Depends(mcp_headers_dependency),
 ) -> Response | StreamingResponse:
     """
     Handle A2A JSON-RPC requests following the A2A protocol specification.
@@ -832,7 +830,7 @@ async def handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-statem
         # Return streaming response with SSE content type for A2A protocol
         return StreamingResponse(
             response_generator(),
-            media_type="text/event-stream",
+            media_type=MEDIA_TYPE_EVENT_STREAM,
         )
 
     # Non-streaming mode: Buffer entire response

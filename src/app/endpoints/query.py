@@ -3,7 +3,7 @@
 """Handler for REST API call to provide answer to query using Response API."""
 
 import logging
-from datetime import UTC, datetime
+import datetime
 from typing import Annotated, Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -25,6 +25,7 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from models.config import Action
 from models.requests import QueryRequest
+
 from models.responses import (
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -32,6 +33,7 @@ from models.responses import (
     PromptTooLongResponse,
     QueryResponse,
     QuotaExceededResponse,
+    ReferencedDocument,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
     UnprocessableEntityResponse,
@@ -40,7 +42,7 @@ from utils.endpoints import (
     check_configuration_loaded,
     validate_and_retrieve_conversation,
 )
-from utils.mcp_headers import mcp_headers_dependency
+from utils.mcp_headers import mcp_headers_dependency, McpHeaders
 from utils.query import (
     consume_query_tokens,
     handle_known_apistatus_errors,
@@ -54,6 +56,7 @@ from utils.responses import (
     build_tool_call_summary,
     extract_text_from_response_output_item,
     extract_token_usage,
+    extract_vector_store_ids_from_tools,
     get_topic_summary,
     parse_referenced_documents,
     prepare_responses_params,
@@ -64,9 +67,14 @@ from utils.shields import (
     validate_shield_ids_override,
 )
 from utils.suid import normalize_conversation_id
-from utils.types import ResponsesApiParams, TurnSummary
+from utils.types import (
+    ResponsesApiParams,
+    TurnSummary,
+)
+from utils.vector_search import perform_vector_search, format_rag_context_for_injection
+from log import get_logger
 
-logger = logging.getLogger("app.endpoints.handlers")
+logger = get_logger(__name__)
 router = APIRouter(tags=["query"])
 
 query_response: dict[int | str, dict[str, Any]] = {
@@ -78,9 +86,9 @@ query_response: dict[int | str, dict[str, Any]] = {
         examples=["endpoint", "conversation read", "model override"]
     ),
     404: NotFoundResponse.openapi_response(
-        examples=["model", "conversation", "provider"]
+        examples=["conversation", "model", "provider"]
     ),
-    413: PromptTooLongResponse.openapi_response(),
+    # 413: PromptTooLongResponse.openapi_response(),
     422: UnprocessableEntityResponse.openapi_response(),
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
@@ -94,7 +102,7 @@ async def query_endpoint_handler(
     request: Request,
     query_request: QueryRequest,
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
-    mcp_headers: dict[str, dict[str, str]] = Depends(mcp_headers_dependency),
+    mcp_headers: McpHeaders = Depends(mcp_headers_dependency),
 ) -> QueryResponse:
     """
     Handle request to the /query endpoint using Responses API.
@@ -118,7 +126,7 @@ async def query_endpoint_handler(
     """
     check_configuration_loaded(configuration)
 
-    started_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    started_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     user_id, _, _skip_userid_check, token = auth
     # Check token availability
     check_tokens_available(configuration.quota_limiters, user_id)
@@ -149,6 +157,19 @@ async def query_endpoint_handler(
 
     client = AsyncLlamaStackClientHolder().get_client()
 
+    doc_ids_from_chunks: list[ReferencedDocument] = []
+    pre_rag_chunks: list[Any] = []  # use your RAGChunk type (or the upstream one)
+
+    _, _, doc_ids_from_chunks, pre_rag_chunks = await perform_vector_search(
+        client, query_request, configuration
+    )
+
+    rag_context = format_rag_context_for_injection(pre_rag_chunks)
+    if rag_context:
+        # safest: mutate a local copy so we don't surprise other logic
+        query_request = query_request.model_copy(deep=True)  # pydantic v2
+        query_request.query = query_request.query + rag_context
+
     # Prepare API request parameters
     responses_params = await prepare_responses_params(
         client,
@@ -169,10 +190,22 @@ async def query_endpoint_handler(
     ):
         client = await update_azure_token(client)
 
+    # Build index identification mapping for RAG source resolution
+    vector_store_ids = extract_vector_store_ids_from_tools(responses_params.tools)
+    rag_id_mapping = configuration.rag_id_mapping
+
     # Retrieve response using Responses API
     turn_summary = await retrieve_response(
-        client, responses_params, query_request.shield_ids
+        client, responses_params, query_request.shield_ids, vector_store_ids, rag_id_mapping
     )
+
+    if pre_rag_chunks:
+        turn_summary.rag_chunks = pre_rag_chunks + (turn_summary.rag_chunks or [])
+
+    if doc_ids_from_chunks:
+        turn_summary.referenced_documents = parse_referenced_docs(
+            doc_ids_from_chunks + (turn_summary.referenced_documents or [])
+        )
 
     # Get topic summary for new conversation
     if not user_conversation and query_request.generate_topic_summary:
@@ -196,7 +229,9 @@ async def query_endpoint_handler(
         quota_limiters=configuration.quota_limiters, user_id=user_id
     )
 
-    completed_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    completed_at = datetime.datetime.now(datetime.timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     conversation_id = normalize_conversation_id(responses_params.conversation)
 
     logger.info("Storing query results")
@@ -228,10 +263,27 @@ async def query_endpoint_handler(
     )
 
 
+def parse_referenced_docs(
+    docs: list[ReferencedDocument],
+) -> list[ReferencedDocument]:
+    """Remove duplicate referenced documents based on URL and title."""
+    seen: set[tuple[str | None, str | None]] = set()
+    out: list[ReferencedDocument] = []
+    for d in docs:
+        key = (str(d.doc_url) if d.doc_url else None, d.doc_title)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(d)
+    return out
+
+
 async def retrieve_response(  # pylint: disable=too-many-locals
     client: AsyncLlamaStackClient,
     responses_params: ResponsesApiParams,
     shield_ids: Optional[list[str]] = None,
+    vector_store_ids: Optional[list[str]] = None,
+    rag_id_mapping: Optional[dict[str, str]] = None,
 ) -> TurnSummary:
     """
     Retrieve response from LLMs and agents.
@@ -243,6 +295,8 @@ async def retrieve_response(  # pylint: disable=too-many-locals
         client: The AsyncLlamaStackClient to use for the request.
         responses_params: The Responses API parameters.
         shield_ids: Optional list of shield IDs for moderation.
+        vector_store_ids: Vector store IDs used in the query for source resolution.
+        rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
 
     Returns:
         TurnSummary: Summary of the LLM response content
@@ -289,7 +343,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals
             summary.llm_response += message_text
 
         tool_call, tool_result = build_tool_call_summary(
-            output_item, summary.rag_chunks
+            output_item, summary.rag_chunks, vector_store_ids, rag_id_mapping
         )
         if tool_call:
             summary.tool_calls.append(tool_call)
@@ -303,7 +357,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     )
 
     # Extract referenced documents and token usage from Responses API response
-    summary.referenced_documents = parse_referenced_documents(response)
+    summary.referenced_documents = parse_referenced_documents(
+        response, vector_store_ids, rag_id_mapping
+    )
     summary.token_usage = extract_token_usage(response, responses_params.model)
 
     return summary

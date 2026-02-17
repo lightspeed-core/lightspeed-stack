@@ -60,6 +60,8 @@ services:
       - WATSONX_API_KEY=${WATSONX_API_KEY:-}
       # Enable debug logging if needed
       - LLAMA_STACK_LOGGING=${LLAMA_STACK_LOGGING:-}
+      # FAISS test
+      - FAISS_VECTOR_STORE_ID=${FAISS_VECTOR_STORE_ID:-}
     networks:
       - lightspeednet
     healthcheck:

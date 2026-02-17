@@ -599,7 +599,7 @@ def test_insert_and_get_with_referenced_documents(
     inserted_json_str = sql_params[-3]
 
     assert json.loads(inserted_json_str) == [
-        {"doc_url": "http://example.com/", "doc_title": "Test Doc"}
+        {"doc_url": "http://example.com/", "doc_title": "Test Doc", "source": None}
     ]
 
     # Simulate the database returning that data

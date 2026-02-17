@@ -14,7 +14,7 @@ Feature: FAISS support tests
     """
     {
       "rags": [
-        "vs_503a2261-c256-45ff-90aa-580a80de64b8"
+        "{VECTOR_STORE_ID}"
       ]
     }
     """

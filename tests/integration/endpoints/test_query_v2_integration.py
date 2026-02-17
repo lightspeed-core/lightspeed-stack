@@ -405,7 +405,7 @@ async def test_query_v2_endpoint_with_tool_calls(
 
     assert response.tool_calls is not None
     assert len(response.tool_calls) > 0
-    assert response.tool_calls[0].name == "knowledge_search"
+    assert response.tool_calls[0].name == "file_search"
 
 
 @pytest.mark.asyncio

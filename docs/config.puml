@@ -71,6 +71,7 @@ class "Configuration" as src.models.config.Configuration {
   name : str
   quota_handlers
   service
+  solr : Optional[SolrConfiguration]
   splunk : Optional[SplunkConfiguration]
   user_data_collection
   dump(filename: str | Path) -> None
@@ -201,9 +202,15 @@ class "ServiceConfiguration" as src.models.config.ServiceConfiguration {
   cors
   host : str
   port
+  root_path : str
   tls_config
   workers
   check_service_configuration() -> Self
+  validate_root_path(value: str) -> str
+}
+class "SolrConfiguration" as src.models.config.SolrConfiguration {
+  enabled : bool
+  offline : bool
 }
 class "SplunkConfiguration" as src.models.config.SplunkConfiguration {
   enabled : bool
@@ -254,6 +261,7 @@ src.models.config.QuotaSchedulerConfiguration --|> src.models.config.Configurati
 src.models.config.RHIdentityConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.SQLiteDatabaseConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.ServiceConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.SolrConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.SplunkConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.TLSConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.UserDataCollection --|> src.models.config.ConfigurationBase

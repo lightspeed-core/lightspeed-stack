@@ -1,7 +1,6 @@
 """Manage authentication flow for FastAPI endpoints with JWK based JWT auth."""
 
 import json
-import logging
 from asyncio import Lock
 from typing import Any, Callable
 
@@ -23,8 +22,9 @@ from constants import (
 )
 from models.config import JwkConfiguration
 from models.responses import UnauthorizedResponse
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Global JWK registry to avoid re-fetching JWKs for each request. Cached for 1
 # hour, keys are unlikely to change frequently.

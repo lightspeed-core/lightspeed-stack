@@ -53,7 +53,7 @@ src/
 
 #### Module Standards
 - All modules start with descriptive docstrings explaining purpose
-- Use `logger = logging.getLogger(__name__)` pattern for module logging
+- Use `logger = get_logger(__name__)` from `log.py` for module logging
 - Package `__init__.py` files contain brief package descriptions
 - Central `constants.py` for shared constants with descriptive comments
 - Type aliases defined at module level for clarity
@@ -89,7 +89,7 @@ src/
   - Handle `APIConnectionError` from Llama Stack
 
 #### Logging Standards
-- Use `import logging` and module logger pattern: `logger = logging.getLogger(__name__)`
+- Use `from log import get_logger` and module logger pattern: `logger = get_logger(__name__)`
 - Standard log levels with clear purposes:
   - `logger.debug()` - Detailed diagnostic information
   - `logger.info()` - General information about program execution

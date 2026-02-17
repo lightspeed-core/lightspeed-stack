@@ -5,7 +5,6 @@ This module can be used in two ways:
 2. As a module: `from llama_stack_configuration import generate_configuration`
 """
 
-import logging
 import os
 from argparse import ArgumentParser
 from pathlib import Path
@@ -15,8 +14,9 @@ import yaml
 from azure.core.exceptions import ClientAuthenticationError
 from azure.identity import ClientSecretCredential, CredentialUnavailableError
 from llama_stack.core.stack import replace_env_vars
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class YamlDumper(yaml.Dumper):  # pylint: disable=too-many-ancestors

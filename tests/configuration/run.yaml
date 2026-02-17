@@ -98,7 +98,7 @@ providers:
   - config:
       persistence:
         namespace: vector_io::faiss
-        backend: kv_default
+        backend: kv_rag
     provider_id: faiss
     provider_type: inline::faiss
 scoring_fns: []
@@ -147,4 +147,4 @@ vector_stores:
   default_provider_id: faiss
   default_embedding_model:
     provider_id: sentence-transformers
-    model_id: nomic-ai/nomic-embed-text-v1.5
+    model_id: all-mpnet-base-v2

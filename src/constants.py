@@ -127,11 +127,12 @@ MCP_AUTH_KUBERNETES = "kubernetes"
 MCP_AUTH_CLIENT = "client"
 
 # default RAG tool value
-DEFAULT_RAG_TOOL = "knowledge_search"
+DEFAULT_RAG_TOOL = "file_search"
 
 # Media type constants for streaming responses
 MEDIA_TYPE_JSON = "application/json"
 MEDIA_TYPE_TEXT = "text/plain"
+MEDIA_TYPE_EVENT_STREAM = "text/event-stream"
 
 # Streaming event type constants
 LLM_TOKEN_EVENT = "token"
@@ -167,3 +168,17 @@ DEFAULT_EMBEDDING_DIMENSION = 768
 # quota limiters constants
 USER_QUOTA_LIMITER = "user_limiter"
 CLUSTER_QUOTA_LIMITER = "cluster_limiter"
+
+# Vector search constants
+VECTOR_SEARCH_DEFAULT_K = 5
+VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD = 0.0
+VECTOR_SEARCH_DEFAULT_MODE = "hybrid"
+
+# SOLR OKP RAG
+MIMIR_DOC_URL = "https://mimir.corp.redhat.com"
+
+# Logging configuration constants
+# Environment variable name for configurable log level
+LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR = "LIGHTSPEED_STACK_LOG_LEVEL"
+# Default log level when environment variable is not set
+DEFAULT_LOG_LEVEL = "INFO"

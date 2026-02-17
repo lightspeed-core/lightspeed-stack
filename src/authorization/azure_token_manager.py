@@ -1,6 +1,5 @@
 """Azure Entra ID token manager for Azure OpenAI authentication."""
 
-import logging
 import os
 import time
 from typing import Optional
@@ -12,8 +11,9 @@ from pydantic import SecretStr
 
 from configuration import AzureEntraIdConfiguration
 from utils.types import Singleton
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Refresh token before actual expiration to avoid edge cases
 TOKEN_EXPIRATION_LEEWAY = 30  # seconds

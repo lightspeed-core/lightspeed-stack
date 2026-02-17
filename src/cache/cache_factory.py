@@ -9,7 +9,7 @@ from cache.postgres_cache import PostgresCache
 from cache.sqlite_cache import SQLiteCache
 from log import get_logger
 
-logger = get_logger("cache.cache_factory")
+logger = get_logger(__name__)
 
 
 # pylint: disable=R0903

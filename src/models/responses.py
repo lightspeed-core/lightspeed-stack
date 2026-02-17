@@ -8,6 +8,7 @@ from fastapi import status
 from pydantic import BaseModel, Field
 from pydantic_core import SchemaError
 
+from constants import MEDIA_TYPE_EVENT_STREAM
 from models.config import Action, Configuration
 from quota.quota_exceed_error import QuotaExceedError
 from utils.types import RAGChunk, ReferencedDocument, ToolCallSummary, ToolResultSummary
@@ -485,8 +486,8 @@ class StreamingQueryResponse(AbstractSuccessfulResponse):
             raise SchemaError(f"Examples not found in {cls.__name__}")
         example_value = model_examples[0]
         content = {
-            "text/event-stream": {
-                "schema": {"type": "string", "format": "text/event-stream"},
+            MEDIA_TYPE_EVENT_STREAM: {
+                "schema": {"type": "string", "format": MEDIA_TYPE_EVENT_STREAM},
                 "example": example_value,
             }
         }

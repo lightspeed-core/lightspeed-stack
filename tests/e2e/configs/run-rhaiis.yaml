@@ -58,7 +58,7 @@ providers:
   - config:
       persistence:
         namespace: vector_io::faiss
-        backend: kv_default
+        backend: kv_rag
     provider_id: faiss
     provider_type: inline::faiss
   agents:
@@ -106,7 +106,10 @@ storage:
   backends:
     kv_default:
       type: kv_sqlite
-      db_path: ${env.KV_STORE_PATH:=~/.llama/storage/rag/kv_store.db}
+      db_path: ${env.KV_STORE_PATH:=~/.llama/storage/kv_store.db}
+    kv_rag: # Define the storage backend type for RAG
+      type: kv_sqlite
+      db_path: ${env.KV_RAG_PATH:=~/.llama/storage/rag/kv_store.db}
     sql_default:
       type: sql_sqlite
       db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
@@ -131,10 +134,21 @@ registered_resources:
     provider_id: vllm
     model_type: llm
     provider_model_id: ${env.RHAIIS_MODEL}
+  - model_id: all-mpnet-base-v2
+    model_type: embedding
+    provider_id: sentence-transformers
+    provider_model_id: all-mpnet-base-v2
+    metadata:
+      embedding_dimension: 768
   shields:
   - shield_id: llama-guard
     provider_id: llama-guard
     provider_shield_id: openai/gpt-4o-mini
+  vector_stores: 
+  - embedding_dimension: 768
+    embedding_model: sentence-transformers/all-mpnet-base-v2
+    provider_id: faiss
+    vector_store_id: ${env.FAISS_VECTOR_STORE_ID}
   datasets: []
   scoring_fns: []
   benchmarks: []
@@ -145,6 +159,6 @@ vector_stores:
   default_provider_id: faiss
   default_embedding_model:
     provider_id: sentence-transformers
-    model_id: nomic-ai/nomic-embed-text-v1.5
+    model_id: all-mpnet-base-v2
 safety:
   default_shield_id: llama-guard

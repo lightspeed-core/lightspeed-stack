@@ -1,7 +1,6 @@
 """Utility functions for processing Responses API output."""
 
 import json
-import logging
 from typing import Any, Optional, cast
 
 from fastapi import HTTPException
@@ -37,6 +36,7 @@ from utils.query import (
     prepare_input,
     select_model_and_provider_id,
 )
+from utils.mcp_headers import McpHeaders
 from utils.suid import to_llama_stack_conversation_id
 from utils.token_counter import TokenCounter
 from utils.types import (
@@ -46,8 +46,9 @@ from utils.types import (
     ToolCallSummary,
     ToolResultSummary,
 )
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def extract_text_from_response_output_item(output_item: Any) -> str:
@@ -141,7 +142,7 @@ async def prepare_tools(
     query_request: QueryRequest,
     token: str,
     config: AppConfig,
-    mcp_headers: Optional[dict[str, dict[str, str]]] = None,
+    mcp_headers: Optional[McpHeaders] = None,
 ) -> Optional[list[dict[str, Any]]]:
     """Prepare tools for Responses API including RAG and MCP tools.
 
@@ -202,7 +203,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     query_request: QueryRequest,
     user_conversation: Optional[UserConversation],
     token: str,
-    mcp_headers: Optional[dict[str, dict[str, str]]] = None,
+    mcp_headers: Optional[McpHeaders] = None,
     stream: bool = False,
     store: bool = True,
 ) -> ResponsesApiParams:
@@ -291,6 +292,25 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     )
 
 
+def extract_vector_store_ids_from_tools(
+    tools: Optional[list[dict[str, Any]]],
+) -> list[str]:
+    """Extract vector store IDs from prepared tool configurations.
+
+    Parameters:
+        tools: The prepared tools list from ResponsesApiParams.
+
+    Returns:
+        List of vector store IDs used in file_search tools, or empty list.
+    """
+    if not tools:
+        return []
+    for tool in tools:
+        if tool.get("type") == "file_search":
+            return tool.get("vector_store_ids", [])
+    return []
+
+
 def get_rag_tools(vector_store_ids: list[str]) -> Optional[list[dict[str, Any]]]:
     """Convert vector store IDs to tools format for Responses API.
 
@@ -315,7 +335,7 @@ def get_rag_tools(vector_store_ids: list[str]) -> Optional[list[dict[str, Any]]]
 def get_mcp_tools(
     mcp_servers: list[ModelContextProtocolServer],
     token: str | None = None,
-    mcp_headers: dict[str, dict[str, str]] | None = None,
+    mcp_headers: Optional[McpHeaders] = None,
 ) -> list[dict[str, Any]]:
     """Convert MCP servers to tools format for Responses API.
 
@@ -387,16 +407,20 @@ def get_mcp_tools(
     return tools
 
 
-def parse_referenced_documents(
+def parse_referenced_documents(  # pylint: disable=too-many-locals
     response: Optional[OpenAIResponseObject],
+    vector_store_ids: Optional[list[str]] = None,
+    rag_id_mapping: Optional[dict[str, str]] = None,
 ) -> list[ReferencedDocument]:
     """Parse referenced documents from Responses API response.
 
     Args:
         response: The OpenAI Response API response object
+        vector_store_ids: Vector store IDs used in the query for source resolution.
+        rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
 
     Returns:
-        List of referenced documents with doc_url and doc_title
+        List of referenced documents with doc_url, doc_title, and source
     """
     documents: list[ReferencedDocument] = []
     # Use a set to track unique documents by (doc_url, doc_title) tuple
@@ -406,12 +430,17 @@ def parse_referenced_documents(
     if response is None or not response.output:
         return documents
 
+    vs_ids = vector_store_ids or []
+    id_mapping = rag_id_mapping or {}
+
     for output_item in response.output:
         item_type = getattr(output_item, "type", None)
 
         if item_type == "file_search_call":
             results = getattr(output_item, "results", []) or []
             for result in results:
+                resolved_source = _resolve_source_for_result(result, vs_ids, id_mapping)
+
                 # Handle both object and dict access
                 if isinstance(result, dict):
                     attributes = result.get("attributes", {})
@@ -433,7 +462,11 @@ def parse_referenced_documents(
                     final_url = doc_url if doc_url else None
                     if (final_url, doc_title) not in seen_docs:
                         documents.append(
-                            ReferencedDocument(doc_url=final_url, doc_title=doc_title)
+                            ReferencedDocument(
+                                doc_url=final_url,
+                                doc_title=doc_title,
+                                source=resolved_source,
+                            )
                         )
                         seen_docs.add((final_url, doc_title))
 
@@ -521,15 +554,19 @@ def extract_token_usage(
     return token_counter
 
 
-def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-many-branches
+def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-many-branches,too-many-locals
     output_item: OpenAIResponseOutput,
     rag_chunks: list[RAGChunk],
+    vector_store_ids: Optional[list[str]] = None,
+    rag_id_mapping: Optional[dict[str, str]] = None,
 ) -> tuple[Optional[ToolCallSummary], Optional[ToolResultSummary]]:
     """Translate Responses API tool outputs into ToolCallSummary and ToolResultSummary.
 
     Args:
         output_item: An OpenAIResponseOutput item from the response.output array
         rag_chunks: List to append extracted RAG chunks to (from file_search_call items)
+        vector_store_ids: Vector store IDs used in the query for source resolution.
+        rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
 
     Returns:
         Tuple of (ToolCallSummary, ToolResultSummary), one may be None
@@ -550,7 +587,9 @@ def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-m
 
     if item_type == "file_search_call":
         file_search_item = cast(FileSearchCall, output_item)
-        extract_rag_chunks_from_file_search_item(file_search_item, rag_chunks)
+        extract_rag_chunks_from_file_search_item(
+            file_search_item, rag_chunks, vector_store_ids, rag_id_mapping
+        )
         response_payload: Optional[dict[str, Any]] = None
         if file_search_item.results is not None:
             response_payload = {
@@ -730,20 +769,79 @@ def build_tool_result_from_mcp_output_item_done(
     )
 
 
+def _resolve_source_for_result(
+    result: Any,
+    vector_store_ids: list[str],
+    rag_id_mapping: dict[str, str],
+) -> Optional[str]:
+    """Resolve the human-friendly index name for a file search result.
+
+    Uses the vector store mapping to convert internal llama-stack IDs
+    to user-facing rag_ids from configuration.
+
+    Parameters:
+        result: A file search result object with optional attributes.
+        vector_store_ids: The vector store IDs used in this query.
+        rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
+
+    Returns:
+        The resolved index name, or None if resolution is not possible.
+    """
+    if len(vector_store_ids) == 1:
+        store_id = vector_store_ids[0]
+        return rag_id_mapping.get(store_id, store_id)
+
+    if len(vector_store_ids) > 1:
+        attributes = getattr(result, "attributes", {}) or {}
+        attr_store_id: Optional[str] = attributes.get("vector_store_id")
+        if attr_store_id:
+            return rag_id_mapping.get(attr_store_id, attr_store_id)
+
+    return None
+
+
+def _build_chunk_attributes(result: Any) -> Optional[dict[str, Any]]:
+    """Extract document metadata attributes from a file search result.
+
+    Parameters:
+        result: A file search result object with optional attributes.
+
+    Returns:
+        Dictionary of metadata attributes, or None if no attributes available.
+    """
+    attributes = getattr(result, "attributes", None)
+    if not attributes:
+        return None
+    if isinstance(attributes, dict):
+        return attributes if attributes else None
+    return None
+
+
 def extract_rag_chunks_from_file_search_item(
     item: FileSearchCall,
     rag_chunks: list[RAGChunk],
+    vector_store_ids: Optional[list[str]] = None,
+    rag_id_mapping: Optional[dict[str, str]] = None,
 ) -> None:
     """Extract RAG chunks from a file search tool call item.
 
     Args:
         item: The file search tool call item
         rag_chunks: List to append extracted RAG chunks to
+        vector_store_ids: Vector store IDs used in the query for source resolution.
+        rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
     """
     if item.results is not None:
         for result in item.results:
+            source = _resolve_source_for_result(
+                result, vector_store_ids or [], rag_id_mapping or {}
+            )
+            attributes = _build_chunk_attributes(result)
             rag_chunk = RAGChunk(
-                content=result.text, source=result.filename, score=result.score
+                content=result.text,
+                source=source,
+                score=result.score,
+                attributes=attributes,
             )
             rag_chunks.append(rag_chunk)
 

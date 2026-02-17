@@ -18,6 +18,7 @@ jobs:
       RHAIIS_URL: ${{ secrets.RHAIIS_URL }}
       RHAIIS_API_KEY: ${{ secrets.RHAIIS_API_KEY }}
       RHAIIS_MODEL: ${{ vars.RHAIIS_MODEL }}
+      FAISS_VECTOR_STORE_ID: ${{ vars.FAISS_VECTOR_STORE_ID }}
 
     steps:
       - uses: actions/checkout@v4

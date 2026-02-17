@@ -1,7 +1,7 @@
 """Models for REST API requests."""
 
+from typing import Optional, Self, Any
 from enum import Enum
-from typing import Optional, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -175,6 +175,13 @@ class QueryRequest(BaseModel):
         examples=["llama-guard", "custom-shield"],
     )
 
+    solr: Optional[dict[str, Any]] = Field(
+        None,
+        description="Solr-specific query parameters including filter queries",
+        examples=[
+            {"fq": ["product:*openshift*", "product_version:*4.16*"]},
+        ],
+    )
     # provides examples for /docs endpoint
     model_config = {
         "extra": "forbid",

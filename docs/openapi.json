@@ -1487,26 +1487,6 @@
                             }
                         }
                     },
-                    "413": {
-                        "description": "Prompt is too long",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PromptTooLongResponse"
-                                },
-                                "examples": {
-                                    "prompt too long": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "The prompt exceeds the maximum allowed length.",
-                                                "response": "Prompt is too long"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
                     "422": {
                         "description": "Request validation failed",
                         "content": {
@@ -1778,26 +1758,6 @@
                                             "detail": {
                                                 "cause": "Model with ID gpt-4-turbo is not configured",
                                                 "response": "Model not found"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "413": {
-                        "description": "Prompt is too long",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PromptTooLongResponse"
-                                },
-                                "examples": {
-                                    "prompt too long": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "The prompt exceeds the maximum allowed length.",
-                                                "response": "Prompt is too long"
                                             }
                                         }
                                     }
@@ -5618,6 +5578,18 @@
                         "title": "Deployment environment",
                         "description": "Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events.",
                         "default": "development"
+                    },
+                    "solr": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SolrConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Solr configuration",
+                        "description": "Configuration for Solr vector search operations."
                     }
                 },
                 "additionalProperties": false,
@@ -7593,33 +7565,6 @@
                 "title": "PostgreSQLDatabaseConfiguration",
                 "description": "PostgreSQL database configuration.\n\nPostgreSQL database is used by Lightspeed Core Stack service for storing\ninformation about conversation IDs. It can also be leveraged to store\nconversation history and information about quota usage.\n\nUseful resources:\n\n- [Psycopg: connection classes](https://www.psycopg.org/psycopg3/docs/api/connections.html)\n- [PostgreSQL connection strings](https://www.connectionstrings.com/postgresql/)\n- [How to Use PostgreSQL in Python](https://www.freecodecamp.org/news/postgresql-in-python/)"
             },
-            "PromptTooLongResponse": {
-                "properties": {
-                    "status_code": {
-                        "type": "integer",
-                        "title": "Status Code"
-                    },
-                    "detail": {
-                        "$ref": "#/components/schemas/DetailModel"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "status_code",
-                    "detail"
-                ],
-                "title": "PromptTooLongResponse",
-                "description": "413 Payload Too Large - Prompt is too long.",
-                "examples": [
-                    {
-                        "detail": {
-                            "cause": "The prompt exceeds the maximum allowed length.",
-                            "response": "Prompt is too long"
-                        },
-                        "label": "prompt too long"
-                    }
-                ]
-            },
             "ProviderHealthStatus": {
                 "properties": {
                     "provider_id": {
@@ -7973,6 +7918,27 @@
                             "ocp_docs",
                             "knowledge_base",
                             "vector_db_1"
+                        ]
+                    },
+                    "solr": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Solr",
+                        "description": "Solr-specific query parameters including filter queries",
+                        "examples": [
+                            {
+                                "fq": [
+                                    "product:*openshift*",
+                                    "product_version:*4.16*"
+                                ]
+                            }
                         ]
                     }
                 },
@@ -9057,6 +9023,26 @@
                         ]
                     }
                 ]
+            },
+            "SolrConfiguration": {
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Solr enabled",
+                        "description": "When True, enables Solr vector IO functionality for vector search queries. When False, disables Solr vector search processing.",
+                        "default": false
+                    },
+                    "offline": {
+                        "type": "boolean",
+                        "title": "Offline mode",
+                        "description": "When True, use parent_id for chunk source URLs. When False, use reference_url for chunk source URLs.",
+                        "default": true
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "SolrConfiguration",
+                "description": "Solr configuration for vector search queries.\n\nControls whether to use offline or online mode when building document URLs\nfrom vector search results, and enables/disables Solr vector IO functionality."
             },
             "SplunkConfiguration": {
                 "properties": {

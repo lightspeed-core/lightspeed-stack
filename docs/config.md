@@ -170,6 +170,7 @@ Global service configuration.
 | azure_entra_id |  |  |
 | splunk |  | Splunk HEC configuration for sending telemetry events. |
 | deployment_environment | string | Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events. |
+| solr |  | Configuration for Solr vector search operations. |
 
 
 ## ConversationHistoryConfiguration
@@ -515,6 +516,21 @@ the service can handle requests concurrently.
 | tls_config |  | Transport Layer Security configuration for HTTPS support |
 | root_path | string | ASGI root path for serving behind a reverse proxy on a subpath |
 | cors |  | Cross-Origin Resource Sharing configuration for cross-domain requests |
+
+
+## SolrConfiguration
+
+
+Solr configuration for vector search queries.
+
+Controls whether to use offline or online mode when building document URLs
+from vector search results, and enables/disables Solr vector IO functionality.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| enabled | boolean | When True, enables Solr vector IO functionality for vector search queries. When False, disables Solr vector search processing. |
+| offline | boolean | When True, use parent_id for chunk source URLs. When False, use reference_url for chunk source URLs. |
 
 
 ## SplunkConfiguration

@@ -1,6 +1,5 @@
 """Handler for the / endpoint."""
 
-import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
@@ -11,8 +10,9 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from models.config import Action
 from models.responses import ForbiddenResponse, UnauthorizedResponse
+from log import get_logger
 
-logger = logging.getLogger("app.endpoints.handlers")
+logger = get_logger(__name__)
 router = APIRouter(tags=["root"])
 
 

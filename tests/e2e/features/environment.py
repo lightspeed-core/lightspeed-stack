@@ -83,6 +83,8 @@ def before_all(context: Context) -> None:
     model_override = os.getenv("E2E_DEFAULT_MODEL_OVERRIDE")
     provider_override = os.getenv("E2E_DEFAULT_PROVIDER_OVERRIDE")
 
+    context.faiss_vector_store_id = os.getenv("FAISS_VECTOR_STORE_ID")
+
     # Only override if the variables contain actual values (skip if empty)
     if model_override and provider_override:
         context.default_model = model_override

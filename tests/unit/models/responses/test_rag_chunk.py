@@ -39,16 +39,14 @@ class TestRAGChunk:
         chunk = RAGChunk(
             content="Container orchestration automates deployment",
             source="docs/concepts.md",
-        )  # pyright: ignore[reportCallIssue]
+        )
         assert chunk.content == "Container orchestration automates deployment"
         assert chunk.source == "docs/concepts.md"
         assert chunk.score is None
 
     def test_constructor_with_content_and_score(self) -> None:
         """Test RAGChunk constructor with content and score."""
-        chunk = RAGChunk(
-            content="Pod is the smallest deployable unit", score=0.82
-        )  # pyright: ignore[reportCallIssue]
+        chunk = RAGChunk(content="Pod is the smallest deployable unit", score=0.82)
         assert chunk.content == "Pod is the smallest deployable unit"
         assert chunk.source is None
         assert chunk.score == 0.82
@@ -56,26 +54,20 @@ class TestRAGChunk:
     def test_score_range_validation(self) -> None:
         """Test that RAGChunk accepts valid score ranges."""
         # Test minimum score
-        chunk_min = RAGChunk(
-            content="Test content", score=0.0
-        )  # pyright: ignore[reportCallIssue]
+        chunk_min = RAGChunk(content="Test content", score=0.0)
         assert chunk_min.score == 0.0
 
         # Test maximum score
-        chunk_max = RAGChunk(
-            content="Test content", score=1.0
-        )  # pyright: ignore[reportCallIssue]
+        chunk_max = RAGChunk(content="Test content", score=1.0)
         assert chunk_max.score == 1.0
 
         # Test decimal score
-        chunk_decimal = RAGChunk(
-            content="Test content", score=0.751
-        )  # pyright: ignore[reportCallIssue]
+        chunk_decimal = RAGChunk(content="Test content", score=0.751)
         assert chunk_decimal.score == 0.751
 
     def test_empty_content(self) -> None:
         """Test RAGChunk with empty content."""
-        chunk = RAGChunk(content="")  # pyright: ignore[reportCallIssue]
+        chunk = RAGChunk(content="")
         assert chunk.content == ""
         assert chunk.source is None
         assert chunk.score is None
@@ -107,7 +99,7 @@ class TestRAGChunk:
         )
         chunk = RAGChunk(
             content="Content from deeply nested document", source=long_source
-        )  # pyright: ignore[reportCallIssue]
+        )
         assert chunk.source == long_source
 
     def test_url_as_source(self) -> None:

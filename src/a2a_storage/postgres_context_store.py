@@ -1,6 +1,5 @@
 """PostgreSQL implementation of A2A context store."""
 
-import logging
 from typing import Optional
 
 from sqlalchemy import Column, String, Table, MetaData, select, delete
@@ -8,8 +7,9 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from a2a_storage.context_store import A2AContextStore
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Define the table metadata
 metadata = MetaData()

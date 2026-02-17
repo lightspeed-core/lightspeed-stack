@@ -1,6 +1,5 @@
 """Factory for creating A2A storage backends."""
 
-import logging
 from urllib.parse import quote_plus
 from typing import Optional
 
@@ -13,8 +12,9 @@ from a2a_storage.in_memory_context_store import InMemoryA2AContextStore
 from a2a_storage.sqlite_context_store import SQLiteA2AContextStore
 from a2a_storage.postgres_context_store import PostgresA2AContextStore
 from models.config import A2AStateConfiguration
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class A2AStorageFactory:

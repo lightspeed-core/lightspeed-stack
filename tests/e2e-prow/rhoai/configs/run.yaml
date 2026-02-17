@@ -58,7 +58,7 @@ providers:
   - config:
       persistence:
         namespace: vector_io::faiss
-        backend: kv_default
+        backend: kv_rag
     provider_id: faiss
     provider_type: inline::faiss
   agents:
@@ -131,6 +131,17 @@ registered_resources:
     provider_id: vllm
     model_type: llm
     provider_model_id: null
+  - model_id: all-mpnet-base-v2
+    model_type: embedding
+    provider_id: sentence-transformers
+    provider_model_id: all-mpnet-base-v2
+    metadata:
+      embedding_dimension: 768
+  vector_stores: 
+  - embedding_dimension: 768
+    embedding_model: sentence-transformers/all-mpnet-base-v2
+    provider_id: faiss
+    vector_store_id: vs_8c94967b-81cc-4028-a294-9cfac6fd9ae2 #TODO: parse this from the rag db
   shields:
   - shield_id: llama-guard
     provider_id: llama-guard
@@ -145,6 +156,6 @@ vector_stores:
   default_provider_id: faiss
   default_embedding_model:
     provider_id: sentence-transformers
-    model_id: nomic-ai/nomic-embed-text-v1.5
+    model_id: all-mpnet-base-v2
 safety:
   default_shield_id: llama-guard

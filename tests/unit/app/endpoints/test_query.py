@@ -1,8 +1,6 @@
-"""Unit tests for the /query REST API endpoint."""
-
-# pylint: disable=redefined-outer-name
-# pylint: disable=too-many-lines
-# pylint: disable=ungrouped-imports
+# pylint: disable=redefined-outer-name, import-error,too-many-locals,too-many-lines
+# pyright: reportCallIssue=false
+"""Unit tests for the /query (v2) REST API endpoint using Responses API."""
 
 from typing import Any
 
@@ -14,7 +12,6 @@ from pytest_mock import MockerFixture
 
 from app.endpoints.query import query_endpoint_handler, retrieve_response
 from configuration import AppConfig
-from models.config import Action
 from models.database.conversations import UserConversation
 from models.requests import Attachment, QueryRequest
 from models.responses import QueryResponse
@@ -34,23 +31,13 @@ MOCK_AUTH = (
 def create_dummy_request() -> Request:
     """Create dummy request fixture for testing.
 
-    Create a minimal FastAPI Request with test-ready authorization state.
-
-    The returned Request has a minimal HTTP scope and a
-    `state.authorized_actions` attribute initialized to a set containing all
-    members of the `Action` enum, suitable for use in unit tests that require
-    an authenticated request context.
+    Create a minimal FastAPI Request object suitable for unit tests.
 
     Returns:
-        req (Request): FastAPI Request with `state.authorized_actions` set to `set(Action)`.
+        request (fastapi.Request): A Request constructed with a bare HTTP scope
+        (type "http") for use in tests.
     """
-    req = Request(
-        scope={
-            "type": "http",
-        }
-    )
-
-    req.state.authorized_actions = set(Action)
+    req = Request(scope={"type": "http"})
     return req
 
 
@@ -138,6 +125,7 @@ class TestQueryEndpointHandler:
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
         mock_responses_params.model_dump.return_value = {
             "input": "test",
             "model": "provider1/model1",
@@ -213,6 +201,7 @@ class TestQueryEndpointHandler:
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
         mock_responses_params.model_dump.return_value = {
             "input": "test",
             "model": "provider1/model1",
@@ -286,6 +275,7 @@ class TestQueryEndpointHandler:
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
         mock_responses_params.model_dump.return_value = {
             "input": "test",
             "model": "provider1/model1",
@@ -345,6 +335,7 @@ class TestQueryEndpointHandler:
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
         mock_responses_params.model_dump.return_value = {
             "input": "test",
             "model": "provider1/model1",
@@ -414,6 +405,7 @@ class TestQueryEndpointHandler:
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "azure/model1"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
         mock_responses_params.model_dump.return_value = {
             "input": "test",
             "model": "azure/model1",

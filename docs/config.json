@@ -466,6 +466,19 @@
             "description": "Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events.",
             "title": "Deployment environment",
             "type": "string"
+          },
+          "solr": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SolrConfiguration"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Configuration for Solr vector search operations.",
+            "title": "Solr configuration"
           }
         },
         "required": [
@@ -1167,6 +1180,26 @@
           }
         },
         "title": "ServiceConfiguration",
+        "type": "object"
+      },
+      "SolrConfiguration": {
+        "additionalProperties": false,
+        "description": "Solr configuration for vector search queries.\n\nControls whether to use offline or online mode when building document URLs\nfrom vector search results, and enables/disables Solr vector IO functionality.",
+        "properties": {
+          "enabled": {
+            "default": false,
+            "description": "When True, enables Solr vector IO functionality for vector search queries. When False, disables Solr vector search processing.",
+            "title": "Solr enabled",
+            "type": "boolean"
+          },
+          "offline": {
+            "default": true,
+            "description": "When True, use parent_id for chunk source URLs. When False, use reference_url for chunk source URLs.",
+            "title": "Offline mode",
+            "type": "boolean"
+          }
+        },
+        "title": "SolrConfiguration",
         "type": "object"
       },
       "SplunkConfiguration": {

@@ -65,7 +65,7 @@ dependencies = [
     "einops>=0.8.1",
     # Used for Azure Entra ID token management
     "azure-core>=1.38.0",
-    "azure-identity",
+    "azure-identity>=1.21.0",
     "pyasn1>=0.6.2",
 ]
 
@@ -189,6 +189,8 @@ llslibdev = [
     "opentelemetry-instrumentation>=0.55b0",
     "blobfile>=3.0.0",
     "psutil>=7.0.0",
+    # Azure
+    "azure-identity>=1.21.0",
 ]
 
 build = [

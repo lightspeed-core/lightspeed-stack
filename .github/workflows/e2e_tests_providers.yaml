@@ -24,6 +24,7 @@ jobs:
       CLIENT_ID: ${{ secrets.CLIENT_ID }}
       TENANT_ID: ${{ secrets.TENANT_ID }}
       E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
+      FAISS_VECTOR_STORE_ID: ${{ vars.FAISS_VECTOR_STORE_ID }}
 
     steps:
       - uses: actions/checkout@v4

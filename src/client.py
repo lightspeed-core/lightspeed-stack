@@ -1,7 +1,6 @@
 """Llama Stack client retrieval class."""
 
 import json
-import logging
 import os
 import tempfile
 from typing import Optional
@@ -16,8 +15,9 @@ from llama_stack_configuration import enrich_byok_rag, YamlDumper
 from models.config import LlamaStackConfiguration
 from models.responses import ServiceUnavailableResponse
 from utils.types import Singleton
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class AsyncLlamaStackClientHolder(metaclass=Singleton):

@@ -2,7 +2,6 @@
 
 # pylint: disable=too-many-lines
 
-import logging
 from pathlib import Path
 from typing import Optional, Any, Pattern
 from enum import Enum
@@ -33,8 +32,9 @@ import constants
 
 from utils import checks
 from utils.mcp_auth_headers import resolve_authorization_headers
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ConfigurationBase(BaseModel):
@@ -1655,6 +1655,28 @@ class QuotaHandlersConfiguration(ConfigurationBase):
     )
 
 
+class SolrConfiguration(ConfigurationBase):
+    """Solr configuration for vector search queries.
+
+    Controls whether to use offline or online mode when building document URLs
+    from vector search results, and enables/disables Solr vector IO functionality.
+    """
+
+    enabled: bool = Field(
+        False,
+        title="Solr enabled",
+        description="When True, enables Solr vector IO functionality for vector search queries. "
+        "When False, disables Solr vector search processing.",
+    )
+
+    offline: bool = Field(
+        True,
+        title="Offline mode",
+        description="When True, use parent_id for chunk source URLs. "
+        "When False, use reference_url for chunk source URLs.",
+    )
+
+
 class AzureEntraIdConfiguration(ConfigurationBase):
     """Microsoft Entra ID authentication attributes for Azure."""
 
@@ -1791,6 +1813,12 @@ class Configuration(ConfigurationBase):
         title="Deployment environment",
         description="Deployment environment name (e.g., 'development', 'staging', 'production'). "
         "Used in telemetry events.",
+    )
+
+    solr: Optional[SolrConfiguration] = Field(
+        default=None,
+        title="Solr configuration",
+        description="Configuration for Solr vector search operations.",
     )
 
     @model_validator(mode="after")

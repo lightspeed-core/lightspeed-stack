@@ -1,12 +1,14 @@
 """Database engine management."""
 
+import logging
 from pathlib import Path
 from typing import Any, Optional
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.orm import sessionmaker, Session
-from log import get_logger, logging
+
+from log import get_logger
 from configuration import configuration
 from models.database.base import Base
 from models.config import SQLiteDatabaseConfiguration, PostgreSQLDatabaseConfiguration

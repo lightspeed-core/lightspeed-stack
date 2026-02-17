@@ -1,6 +1,5 @@
 """Async Splunk HEC client for sending telemetry events."""
 
-import logging
 import platform
 import time
 from typing import Any
@@ -9,8 +8,9 @@ import aiohttp
 
 from configuration import configuration
 from version import __version__
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _get_hostname() -> str:

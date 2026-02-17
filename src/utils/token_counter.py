@@ -1,9 +1,9 @@
 """Helper classes to count tokens sent and received by the LLM."""
 
-import logging
 from dataclasses import dataclass
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass

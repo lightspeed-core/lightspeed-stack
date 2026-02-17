@@ -15,8 +15,9 @@ from models.responses import (
     UnprocessableEntityResponse,
 )
 from utils.types import ShieldModerationResult
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DEFAULT_VIOLATION_MESSAGE = "I cannot process this request due to policy restrictions."
 

@@ -154,8 +154,15 @@ class RAGChunk(BaseModel):
     """Model representing a RAG chunk used in the response."""
 
     content: str = Field(description="The content of the chunk")
-    source: Optional[str] = Field(None, description="Source document or URL")
-    score: Optional[float] = Field(None, description="Relevance score")
+    source: Optional[str] = Field(
+        default=None,
+        description="Index name identifying the knowledge source from configuration",
+    )
+    score: Optional[float] = Field(default=None, description="Relevance score")
+    attributes: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Document metadata from the RAG provider (e.g., url, title, author)",
+    )
 
 
 class ReferencedDocument(BaseModel):
@@ -174,6 +181,11 @@ class ReferencedDocument(BaseModel):
         None, description="Title of the referenced document"
     )
 
+    source: Optional[str] = Field(
+        default=None,
+        description="Index name identifying the knowledge source from configuration",
+    )
+
 
 class TurnSummary(BaseModel):
     """Summary of a turn in llama stack."""
@@ -183,4 +195,5 @@ class TurnSummary(BaseModel):
     tool_results: list[ToolResultSummary] = Field(default_factory=list)
     rag_chunks: list[RAGChunk] = Field(default_factory=list)
     referenced_documents: list[ReferencedDocument] = Field(default_factory=list)
+    pre_rag_documents: list[ReferencedDocument] = Field(default_factory=list)
     token_usage: TokenCounter = Field(default_factory=TokenCounter)

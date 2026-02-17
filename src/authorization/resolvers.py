@@ -1,7 +1,6 @@
 """Authorization resolvers for role evaluation and access control."""
 
 from abc import ABC, abstractmethod
-import logging
 import base64
 import json
 from typing import Any
@@ -11,8 +10,9 @@ from jsonpath_ng import parse
 from authentication.interface import AuthTuple
 from models.config import JwtRoleRule, AccessRule, JsonPathOperator, Action
 import constants
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 UserRoles = set[str]

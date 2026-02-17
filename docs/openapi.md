@@ -1275,23 +1275,6 @@ Examples
 }
 ```
  |
-| 413 | Prompt is too long | [PromptTooLongResponse](#prompttoolongresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "The prompt exceeds the maximum allowed length.",
-    "response": "Prompt is too long"
-  }
-}
-```
- |
 | 422 | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse)
 
 Examples
@@ -1599,23 +1582,6 @@ Examples
   "detail": {
     "cause": "Model with ID gpt-4-turbo is not configured",
     "response": "Model not found"
-  }
-}
-```
- |
-| 413 | Prompt is too long | [PromptTooLongResponse](#prompttoolongresponse)
-
-Examples
-
-
-
-
-
-```json
-{
-  "detail": {
-    "cause": "The prompt exceeds the maximum allowed length.",
-    "response": "Prompt is too long"
   }
 }
 ```
@@ -4290,6 +4256,7 @@ Global service configuration.
 | azure_entra_id |  |  |
 | splunk |  | Splunk HEC configuration for sending telemetry events. |
 | deployment_environment | string | Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events. |
+| solr |  | Configuration for Solr vector search operations. |
 
 
 ## ConfigurationResponse
@@ -5096,18 +5063,6 @@ Useful resources:
 | ca_cert_path |  | Path to CA certificate |
 
 
-## PromptTooLongResponse
-
-
-413 Payload Too Large - Prompt is too long.
-
-
-| Field | Type | Description |
-|-------|------|-------------|
-| status_code | integer |  |
-| detail |  |  |
-
-
 ## ProviderHealthStatus
 
 
@@ -5187,6 +5142,7 @@ Example:
 | generate_topic_summary |  | Whether to generate topic summary for new conversations |
 | media_type |  | Media type for the response format |
 | vector_store_ids |  | Optional list of specific vector store IDs to query for RAG. If not provided, all available vector stores will be queried. |
+| solr |  | Solr-specific query parameters including filter queries |
 
 
 ## QueryResponse
@@ -5612,6 +5568,21 @@ Model representing a response to shields request.
 | Field | Type | Description |
 |-------|------|-------------|
 | shields | array | List of shields available |
+
+
+## SolrConfiguration
+
+
+Solr configuration for vector search queries.
+
+Controls whether to use offline or online mode when building document URLs
+from vector search results, and enables/disables Solr vector IO functionality.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| enabled | boolean | When True, enables Solr vector IO functionality for vector search queries. When False, disables Solr vector search processing. |
+| offline | boolean | When True, use parent_id for chunk source URLs. When False, use reference_url for chunk source URLs. |
 
 
 ## SplunkConfiguration

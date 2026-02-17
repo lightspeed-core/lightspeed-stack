@@ -383,5 +383,6 @@ def check_response_partially(context: Context) -> None:
     """
     assert context.response is not None, "Request needs to be performed first"
     body = context.response.json()
-    expected = json.loads(context.text or "{}")
+    json_str = replace_placeholders(context, context.text or "{}")
+    expected = json.loads(json_str)
     validate_json_partially(body, expected)

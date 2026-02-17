@@ -4,7 +4,6 @@ This module provides the /infer endpoint for stateless inference requests
 from the RHEL Lightspeed Command Line Assistant (CLA).
 """
 
-import logging
 import time
 from typing import Annotated, Any, cast
 
@@ -34,8 +33,9 @@ from models.rlsapi.responses import RlsapiV1InferData, RlsapiV1InferResponse
 from observability import InferenceEventData, build_inference_event, send_splunk_event
 from utils.responses import extract_text_from_response_output_item, get_mcp_tools
 from utils.suid import get_suid
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["rlsapi-v1"])
 
 # Default values when RH Identity auth is not configured

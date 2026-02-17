@@ -1,6 +1,5 @@
 """Handler for REST API call to authorized endpoint."""
 
-import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
@@ -8,8 +7,9 @@ from fastapi import APIRouter, Depends
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from models.responses import AuthorizedResponse, ForbiddenResponse, UnauthorizedResponse
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["authorized"])
 
 authorized_responses: dict[int | str, dict[str, Any]] = {

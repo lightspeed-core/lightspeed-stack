@@ -1,9 +1,9 @@
 """Utility functions for formatting and parsing MCP tool descriptions."""
 
-import logging
 from typing import Any
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def format_tool_response(tool_dict: dict[str, Any]) -> dict[str, Any]:

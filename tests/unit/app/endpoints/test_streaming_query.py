@@ -1,4 +1,5 @@
-"""Unit tests for the /streaming-query REST API endpoint."""
+# pylint: disable=redefined-outer-name,import-error, too-many-function-args
+"""Unit tests for the /streaming_query (v2) endpoint using Responses API."""
 
 # pylint: disable=too-many-lines,too-many-function-args
 import json
@@ -131,14 +132,12 @@ class TestOLSStreamEventFormatting:
         """Test tool call event formatting for text media type."""
         data = {
             "id": 0,
-            "token": {"tool_name": "search", "arguments": {"query": "test"}},
+            "function_name": "search",
+            "arguments": {"query": "test"},
         }
         result = stream_event(data, LLM_TOOL_CALL_EVENT, MEDIA_TYPE_TEXT)
 
-        expected = (
-            '\nTool call: {"id": 0, "token": '
-            '{"tool_name": "search", "arguments": {"query": "test"}}}\n'
-        )
+        expected = "[Tool Call: search]\n"
         assert result == expected
 
     def test_stream_event_json_tool_result(self) -> None:
@@ -159,14 +158,12 @@ class TestOLSStreamEventFormatting:
         """Test tool result event formatting for text media type."""
         data = {
             "id": 0,
-            "token": {"tool_name": "search", "response": "Found results"},
+            "tool_name": "search",
+            "response": "Found results",
         }
         result = stream_event(data, LLM_TOOL_RESULT_EVENT, MEDIA_TYPE_TEXT)
 
-        expected = (
-            '\nTool result: {"id": 0, "token": '
-            '{"tool_name": "search", "response": "Found results"}}\n'
-        )
+        expected = "[Tool Result]\n"
         assert result == expected
 
     def test_stream_event_unknown_type(self) -> None:
@@ -330,6 +327,14 @@ class TestStreamingQueryEndpointHandler:
         mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
         mocker.patch("app.endpoints.streaming_query.check_tokens_available")
         mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
+        mocker.patch(
+            "app.endpoints.streaming_query.perform_vector_search",
+            new=mocker.AsyncMock(return_value=([], [], [], [])),
+        )
+        mocker.patch(
+            "app.endpoints.streaming_query.perform_vector_search",
+            new=mocker.AsyncMock(return_value=([], [], [], [])),
+        )
 
         mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
         mock_client_holder = mocker.Mock()
@@ -342,6 +347,7 @@ class TestStreamingQueryEndpointHandler:
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
         mock_responses_params.model_dump.return_value = {
             "input": "test",
             "model": "provider1/model1",
@@ -390,6 +396,90 @@ class TestStreamingQueryEndpointHandler:
         )
 
         assert isinstance(response, StreamingResponse)
+        assert response.media_type == "text/event-stream"
+
+    @pytest.mark.asyncio
+    async def test_streaming_query_text_media_type_header(
+        self,
+        dummy_request: Request,  # pylint: disable=redefined-outer-name
+        setup_configuration: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test streaming query uses plain text header when requested."""
+        query_request = QueryRequest(
+            query="What is Kubernetes?", media_type=MEDIA_TYPE_TEXT
+        )  # pyright: ignore[reportCallIssue]
+
+        mocker.patch("app.endpoints.streaming_query.configuration", setup_configuration)
+        mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
+        mocker.patch("app.endpoints.streaming_query.check_tokens_available")
+        mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
+        mocker.patch(
+            "app.endpoints.streaming_query.perform_vector_search",
+            new=mocker.AsyncMock(return_value=([], [], [], [])),
+        )
+
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_client_holder = mocker.Mock()
+        mock_client_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "app.endpoints.streaming_query.AsyncLlamaStackClientHolder",
+            return_value=mock_client_holder,
+        )
+
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.model = "provider1/model1"
+        mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
+        mock_responses_params.model_dump.return_value = {
+            "input": "test",
+            "model": "provider1/model1",
+        }
+        mocker.patch(
+            "app.endpoints.streaming_query.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_responses_params),
+        )
+
+        mocker.patch("app.endpoints.streaming_query.AzureEntraIDManager")
+        mocker.patch(
+            "app.endpoints.streaming_query.extract_provider_and_model_from_model_id",
+            return_value=("provider1", "model1"),
+        )
+        mocker.patch("app.endpoints.streaming_query.metrics.llm_calls_total")
+
+        async def mock_generator() -> AsyncIterator[str]:
+            yield "data: test\n\n"
+
+        mock_turn_summary = TurnSummary()
+        mocker.patch(
+            "app.endpoints.streaming_query.retrieve_response_generator",
+            return_value=(mock_generator(), mock_turn_summary),
+        )
+
+        async def mock_generate_response(
+            *_args: Any, **_kwargs: Any
+        ) -> AsyncIterator[str]:
+            async for item in mock_generator():
+                yield item
+
+        mocker.patch(
+            "app.endpoints.streaming_query.generate_response",
+            side_effect=mock_generate_response,
+        )
+        mocker.patch(
+            "app.endpoints.streaming_query.normalize_conversation_id",
+            return_value="123",
+        )
+
+        response = await streaming_query_endpoint_handler(
+            request=dummy_request,
+            query_request=query_request,
+            auth=MOCK_AUTH_STREAMING,
+            mcp_headers={},
+        )
+
+        assert isinstance(response, StreamingResponse)
+        assert response.media_type == MEDIA_TYPE_TEXT
 
     @pytest.mark.asyncio
     async def test_streaming_query_with_conversation(
@@ -411,6 +501,10 @@ class TestStreamingQueryEndpointHandler:
         mocker.patch("app.endpoints.streaming_query.check_tokens_available")
         mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
         mocker.patch(
+            "app.endpoints.streaming_query.perform_vector_search",
+            new=mocker.AsyncMock(return_value=([], [], [], [])),
+        )
+        mocker.patch(
             "app.endpoints.streaming_query.normalize_conversation_id",
             return_value="normalized_123",
         )
@@ -430,6 +524,7 @@ class TestStreamingQueryEndpointHandler:
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
         mock_responses_params.model_dump.return_value = {
             "input": "test",
             "model": "provider1/model1",
@@ -502,6 +597,10 @@ class TestStreamingQueryEndpointHandler:
         mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
         mocker.patch("app.endpoints.streaming_query.check_tokens_available")
         mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
+        mocker.patch(
+            "app.endpoints.streaming_query.perform_vector_search",
+            new=mocker.AsyncMock(return_value=([], [], [], [])),
+        )
         mock_validate = mocker.patch(
             "app.endpoints.streaming_query.validate_attachments_metadata"
         )
@@ -517,6 +616,7 @@ class TestStreamingQueryEndpointHandler:
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
         mock_responses_params.model_dump.return_value = {
             "input": "test",
             "model": "provider1/model1",
@@ -582,6 +682,10 @@ class TestStreamingQueryEndpointHandler:
         mocker.patch("app.endpoints.streaming_query.check_configuration_loaded")
         mocker.patch("app.endpoints.streaming_query.check_tokens_available")
         mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
+        mocker.patch(
+            "app.endpoints.streaming_query.perform_vector_search",
+            new=mocker.AsyncMock(return_value=([], [], [], [])),
+        )
 
         mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
         mock_client_holder = mocker.Mock()
@@ -594,6 +698,7 @@ class TestStreamingQueryEndpointHandler:
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "azure/model1"
         mock_responses_params.conversation = "conv_123"
+        mock_responses_params.tools = None
         mock_responses_params.model_dump.return_value = {
             "input": "test",
             "model": "azure/model1",
@@ -679,6 +784,8 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -707,7 +814,7 @@ class TestCreateResponseGenerator:
         )
 
         generator, turn_summary = await retrieve_response_generator(
-            mock_responses_params, mock_context
+            mock_responses_params, mock_context, []
         )
 
         assert isinstance(turn_summary, TurnSummary)
@@ -727,6 +834,8 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test", media_type=MEDIA_TYPE_TEXT
         )  # pyright: ignore[reportCallIssue]
@@ -744,7 +853,7 @@ class TestCreateResponseGenerator:
         )
 
         _generator, turn_summary = await retrieve_response_generator(
-            mock_responses_params, mock_context
+            mock_responses_params, mock_context, []
         )
 
         assert isinstance(turn_summary, TurnSummary)
@@ -769,6 +878,8 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -799,7 +910,7 @@ class TestCreateResponseGenerator:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await retrieve_response_generator(mock_responses_params, mock_context)
+            await retrieve_response_generator(mock_responses_params, mock_context, [])
 
         assert exc_info.value.status_code == 503
 
@@ -822,6 +933,8 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -849,7 +962,7 @@ class TestCreateResponseGenerator:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await retrieve_response_generator(mock_responses_params, mock_context)
+            await retrieve_response_generator(mock_responses_params, mock_context, [])
 
         assert exc_info.value.status_code == 500
 
@@ -872,6 +985,8 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -896,7 +1011,7 @@ class TestCreateResponseGenerator:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await retrieve_response_generator(mock_responses_params, mock_context)
+            await retrieve_response_generator(mock_responses_params, mock_context, [])
 
         assert exc_info.value.status_code == 413
 
@@ -919,6 +1034,8 @@ class TestCreateResponseGenerator:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.client = mock_client
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -933,7 +1050,7 @@ class TestCreateResponseGenerator:
         )
 
         with pytest.raises(RuntimeError):
-            await retrieve_response_generator(mock_responses_params, mock_context)
+            await retrieve_response_generator(mock_responses_params, mock_context, [])
 
 
 class TestGenerateResponse:
@@ -950,6 +1067,8 @@ class TestGenerateResponse:
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
         mock_context.user_id = "user_123"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -1001,6 +1120,8 @@ class TestGenerateResponse:
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
         mock_context.user_id = "user_123"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test", generate_topic_summary=True
         )  # pyright: ignore[reportCallIssue]
@@ -1047,6 +1168,8 @@ class TestGenerateResponse:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -1082,6 +1205,8 @@ class TestGenerateResponse:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test"
         )  # pyright: ignore[reportCallIssue]
@@ -1120,6 +1245,8 @@ class TestGenerateResponse:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
@@ -1160,6 +1287,8 @@ class TestGenerateResponse:
 
         mock_context = mocker.Mock(spec=ResponseGeneratorContext)
         mock_context.conversation_id = "conv_123"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
         mock_context.query_request = QueryRequest(
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
@@ -1207,6 +1336,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1234,6 +1365,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1262,6 +1395,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1300,6 +1435,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1339,6 +1476,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1385,6 +1524,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1433,6 +1574,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
         mock_turn_summary.llm_response = "Response"
@@ -1478,6 +1621,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1521,6 +1666,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1563,6 +1710,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1603,6 +1752,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1644,6 +1795,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1683,6 +1836,8 @@ class TestResponseGenerator:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1802,6 +1957,8 @@ class TestResponseGeneratorMCPCalls:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1852,6 +2009,8 @@ class TestResponseGeneratorMCPCalls:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -1922,6 +2081,8 @@ class TestResponseGeneratorMCPCalls:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 
@@ -2008,6 +2169,8 @@ class TestResponseGeneratorMCPCalls:
             query="test", media_type=MEDIA_TYPE_JSON
         )  # pyright: ignore[reportCallIssue]
         mock_context.model_id = "provider1/model1"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
 
         mock_turn_summary = TurnSummary()
 

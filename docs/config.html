@@ -602,6 +602,11 @@ reconfigure Llama Stack through its run.yaml configuration file</td>
           <td>Deployment environment name (e.g., &#x2018;development&#x2019;, &#x2018;staging&#x2019;,
 &#x2018;production&#x2019;). Used in telemetry events.</td>
         </tr>
+        <tr class="even">
+          <td>solr</td>
+          <td/>
+          <td>Configuration for Solr vector search operations.</td>
+        </tr>
       </tbody>
     </table>
     <h2 id="conversationhistoryconfiguration">ConversationHistoryConfiguration</h2>
@@ -1403,6 +1408,39 @@ support.</td>
           <td/>
           <td>Cross-Origin Resource Sharing configuration for cross-domain
 requests</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="solrconfiguration">SolrConfiguration</h2>
+    <p>Solr configuration for vector search queries.</p>
+    <p>Controls whether to use offline or online mode when building document
+URLs from vector search results, and enables/disables Solr vector IO
+functionality.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>enabled</td>
+          <td>boolean</td>
+          <td>When True, enables Solr vector IO functionality for vector search
+queries. When False, disables Solr vector search processing.</td>
+        </tr>
+        <tr class="even">
+          <td>offline</td>
+          <td>boolean</td>
+          <td>When True, use parent_id for chunk source URLs. When False, use
+reference_url for chunk source URLs.</td>
         </tr>
       </tbody>
     </table>
