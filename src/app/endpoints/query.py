@@ -2,7 +2,6 @@
 
 """Handler for REST API call to provide answer to query using Response API."""
 
-import logging
 import datetime
 from typing import Annotated, Any, Optional, cast
 
@@ -196,7 +195,11 @@ async def query_endpoint_handler(
 
     # Retrieve response using Responses API
     turn_summary = await retrieve_response(
-        client, responses_params, query_request.shield_ids, vector_store_ids, rag_id_mapping
+        client,
+        responses_params,
+        query_request.shield_ids,
+        vector_store_ids,
+        rag_id_mapping,
     )
 
     if pre_rag_chunks:

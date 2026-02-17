@@ -307,19 +307,22 @@ class TestRunShieldModeration:
         mock_metric.inc.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_shield_ids_empty_list_skips_all_shields(
+    async def test_shield_ids_empty_list_raises_422(
         self, mocker: MockerFixture
     ) -> None:
-        """Test that shield_ids=[] explicitly skips all shields (intentional bypass)."""
+        """Test that shield_ids=[] raises HTTPException 422 (prevents bypass)."""
         mock_client = mocker.Mock()
         shield = mocker.Mock()
         shield.identifier = "shield-1"
         mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
 
-        result = await run_shield_moderation(mock_client, "test input", shield_ids=[])
+        with pytest.raises(HTTPException) as exc_info:
+            await run_shield_moderation(mock_client, "test input", shield_ids=[])
 
-        assert result.blocked is False
-        mock_client.shields.list.assert_called_once()
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert "shield_ids provided but no shields selected" in str(
+            exc_info.value.detail
+        )
 
     @pytest.mark.asyncio
     async def test_shield_ids_raises_exception_when_no_shields_found(

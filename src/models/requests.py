@@ -171,7 +171,7 @@ class QueryRequest(BaseModel):
         None,
         description="Optional list of safety shield IDs to apply. "
         "If None, all configured shields are used. "
-        "If empty list, all shields are skipped.",
+        "If provided, must contain at least one valid shield ID (empty list raises 422 error).",
         examples=["llama-guard", "custom-shield"],
     )
 

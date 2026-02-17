@@ -1,6 +1,5 @@
 """Utility functions for working with Llama Stack shields."""
 
-import logging
 from typing import Any, Optional, cast
 
 from fastapi import HTTPException
@@ -128,8 +127,14 @@ async def run_shield_moderation(
     # Filter shields based on shield_ids parameter
     if shield_ids is not None:
         if len(shield_ids) == 0:
-            logger.info("shield_ids=[] provided, skipping all shields")
-            return ShieldModerationResult(blocked=False)
+            response = UnprocessableEntityResponse(
+                response="Invalid shield configuration",
+                cause=(
+                    "shield_ids provided but no shields selected. "
+                    "Remove the parameter to use default shields."
+                ),
+            )
+            raise HTTPException(**response.model_dump())
 
         shields_to_run = [s for s in all_shields if s.identifier in shield_ids]
 
