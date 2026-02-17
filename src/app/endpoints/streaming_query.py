@@ -1,5 +1,6 @@
 """Streaming query handler using Responses API."""
 
+import asyncio
 import datetime
 import json
 
@@ -83,7 +84,8 @@ from utils.shields import (
     append_turn_to_conversation,
     run_shield_moderation,
 )
-from utils.suid import normalize_conversation_id
+from utils.stream_interrupts import stream_interrupt_registry
+from utils.suid import get_suid, normalize_conversation_id
 from utils.token_counter import TokenCounter
 from utils.types import ResponsesApiParams, TurnSummary
 from utils.vector_search import format_rag_context_for_injection, perform_vector_search
@@ -208,6 +210,8 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     ):
         client = await update_azure_token(client)
 
+    request_id = get_suid()
+
     # Create context with index identification mapping for RAG source resolution
     context = ResponseGeneratorContext(
         conversation_id=normalize_conversation_id(responses_params.conversation),
@@ -245,6 +249,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
             context=context,
             responses_params=responses_params,
             turn_summary=turn_summary,
+            request_id=request_id,
         ),
         media_type=response_media_type,
     )
@@ -320,27 +325,49 @@ async def generate_response(
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
     turn_summary: TurnSummary,
+    request_id: str,
 ) -> AsyncIterator[str]:
     """Wrap a generator with cleanup logic.
 
     Re-yields events from the generator, handles errors, and ensures
-    persistence and token consumption after completion.
+    persistence and token consumption after completion.  When the
+    stream is interrupted via ``CancelledError``, all post-stream side
+    effects (token consumption, result storage) are skipped and the
+    request is deregistered from the interrupt registry.
 
     Args:
         generator: The base generator to wrap
         context: The response generator context
         responses_params: The Responses API parameters
         turn_summary: TurnSummary populated during streaming
+        request_id: Unique SUID for this streaming request, used for
+            interrupt registry tracking
 
     Yields:
         SSE-formatted strings from the wrapped generator
     """
-    yield stream_start_event(context.conversation_id)
+    user_id = context.user_id
 
-    # Re-yield all events from the generator
+    current_task = asyncio.current_task()
+    if current_task is not None:
+        stream_interrupt_registry.register_stream(
+            request_id=request_id,
+            user_id=user_id,
+            task=current_task,
+        )
+
+    stream_completed = False
     try:
+        yield stream_start_event(
+            conversation_id=context.conversation_id,
+            request_id=request_id,
+        )
+
+        # Re-yield all events from the generator
         async for event in generator:
             yield event
+
+        stream_completed = True
 
     # Handle known LLS client errors during response generation time
     except RuntimeError as e:  # library mode wraps 413 into runtime error
@@ -350,18 +377,25 @@ async def generate_response(
             else InternalServerErrorResponse.generic()
         )
         yield stream_http_error_event(error_response, context.query_request.media_type)
-        return
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
             backend_name="Llama Stack",
             cause=str(e),
         )
         yield stream_http_error_event(error_response, context.query_request.media_type)
-        return
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         error_response = handle_known_apistatus_errors(e, responses_params.model)
         yield stream_http_error_event(error_response, context.query_request.media_type)
+    except asyncio.CancelledError:
+        logger.info("Streaming request %s interrupted by user", request_id)
+        yield stream_interrupted_event(request_id)
+    finally:
+        stream_interrupt_registry.deregister_stream(request_id)
+
+    if not stream_completed:
         return
+
+    # Post-stream side effects: only run when streaming finished successfully
 
     # Get topic summary for new conversations if needed
     topic_summary = None
@@ -662,16 +696,17 @@ def format_stream_data(d: dict) -> str:
     return f"data: {data}\n\n"
 
 
-def stream_start_event(conversation_id: str) -> str:
-    """
-    Yield the start of the data stream.
+def stream_start_event(conversation_id: str, request_id: str) -> str:
+    """Format an SSE start event for a streaming response.
 
-    Format a Server-Sent Events (SSE) start event containing the
-    conversation ID.
+    The payload contains both the conversation ID and the request ID
+    so the client can correlate the stream with a conversation and
+    use the request ID to issue an interrupt if needed.
 
     Parameters:
-        conversation_id (str): Unique identifier for the
-        conversation.
+        conversation_id (str): Unique identifier for the conversation.
+        request_id (str): Unique SUID for this streaming request,
+            returned to the client for interrupt support.
 
     Returns:
         str: SSE-formatted string representing the start event.
@@ -681,6 +716,30 @@ def stream_start_event(conversation_id: str) -> str:
             "event": "start",
             "data": {
                 "conversation_id": conversation_id,
+                "request_id": request_id,
+            },
+        }
+    )
+
+
+def stream_interrupted_event(request_id: str) -> str:
+    """Format an SSE event indicating the stream was interrupted.
+
+    Emitted to the client just before the generator closes so the
+    frontend can distinguish an intentional user-initiated interruption
+    from an unexpected connection drop.
+
+    Parameters:
+        request_id (str): Unique identifier for the interrupted request.
+
+    Returns:
+        str: SSE-formatted string representing the interrupted event.
+    """
+    return format_stream_data(
+        {
+            "event": "interrupted",
+            "data": {
+                "request_id": request_id,
             },
         }
     )
