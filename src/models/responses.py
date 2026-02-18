@@ -10,6 +10,7 @@ from pydantic_core import SchemaError
 
 from constants import MEDIA_TYPE_EVENT_STREAM
 from models.config import Action, Configuration
+from models.requests import Attachment
 from quota.quota_exceed_error import QuotaExceedError
 from utils.types import RAGChunk, ReferencedDocument, ToolCallSummary, ToolResultSummary
 
@@ -810,6 +811,7 @@ class Message(BaseModel):
     Attributes:
         content: The message content.
         type: The type of message.
+        attachments: Optional list of attachments included with the message.
     """
 
     content: str = Field(
@@ -821,6 +823,10 @@ class Message(BaseModel):
         ...,
         description="The type of message",
         examples=["user", "assistant", "system", "developer"],
+    )
+    attachments: Optional[list[Attachment]] = Field(
+        default=None,
+        description="Optional attachments included with this message",
     )
 
 

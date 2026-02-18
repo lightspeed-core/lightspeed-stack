@@ -420,6 +420,7 @@ def store_query_results(  # pylint: disable=too-many-arguments,too-many-locals
             referenced_documents=summary.referenced_documents,
             tool_calls=summary.tool_calls,
             tool_results=summary.tool_results,
+            attachments=query_request.attachments,
         )
 
         logger.info("Storing conversation in cache")
