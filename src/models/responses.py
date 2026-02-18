@@ -2,7 +2,7 @@
 
 """Models for REST API responses."""
 
-from typing import Any, ClassVar, Literal, Optional, Union
+from typing import Any, ClassVar, Literal, Optional, Union, TYPE_CHECKING
 
 from fastapi import status
 from pydantic import BaseModel, Field
@@ -12,6 +12,9 @@ from constants import MEDIA_TYPE_EVENT_STREAM
 from models.config import Action, Configuration
 from quota.quota_exceed_error import QuotaExceedError
 from utils.types import RAGChunk, ReferencedDocument, ToolCallSummary, ToolResultSummary
+
+if TYPE_CHECKING:
+    from models.requests import Attachment
 
 SUCCESSFUL_RESPONSE_DESCRIPTION = "Successful response"
 BAD_REQUEST_DESCRIPTION = "Invalid request format"
@@ -810,6 +813,7 @@ class Message(BaseModel):
     Attributes:
         content: The message content.
         type: The type of message.
+        attachments: Optional list of attachments included with the message.
     """
 
     content: str = Field(
@@ -821,6 +825,10 @@ class Message(BaseModel):
         ...,
         description="The type of message",
         examples=["user", "assistant", "system", "developer"],
+    )
+    attachments: Optional[list["Attachment"]] = Field(
+        default=None,
+        description="Optional attachments included with this message",
     )
 
 
