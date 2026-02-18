@@ -355,6 +355,11 @@ async def generate_response(
             user_id=user_id,
             task=current_task,
         )
+    else:
+        logger.warning(
+            "No current asyncio task for request %s; stream interruption will not be available",
+            request_id,
+        )
 
     stream_completed = False
     try:
