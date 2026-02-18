@@ -1,10 +1,9 @@
 """In-memory registry for interrupting active streaming requests."""
 
 import asyncio
-from log import get_logger
 from dataclasses import dataclass
 from threading import Lock
-from typing import Any
+from log import get_logger
 
 logger = get_logger(__name__)
 
