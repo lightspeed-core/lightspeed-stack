@@ -124,16 +124,24 @@ Feature: Info tests
          {"detail": {"response": "Unable to connect to Llama Stack", "cause": "Connection error."}}
       """
 
+  Scenario: Check if tools endpoint reports error when mcp requires authentication
+    Given The system is in default state
+    When I access REST API endpoint "tools" using HTTP GET method
+    Then The status code of the response is 401
+    And The body of the response is the following
+    """
+        {
+            "detail": {
+                "response": "Missing or invalid credentials provided by client",
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
+            }
+        }
+    """
+    And The headers of the response contains the following "www-authenticate"
+
   Scenario: Check if metrics endpoint is working
     Given The system is in default state
      When I access endpoint "metrics" using HTTP GET method
      Then The status code of the response is 200
       And The body of the response contains ls_provider_model_configuration
 
-  Scenario: Check if MCP client auth options endpoint is working
-    Given The system is in default state
-     When I access REST API endpoint "mcp-auth/client-options" using HTTP GET method
-     Then The status code of the response is 200
-      And The body of the response has proper client auth options structure
-      And The response contains server "github-api" with client auth header "Authorization"
-      And The response contains server "gitlab-api" with client auth header "X-API-Token"

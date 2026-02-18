@@ -9,7 +9,7 @@ service:
 llama_stack:
   # Server mode - connects to separate llama-stack service
   use_as_library_client: false
-  url: http://llama-stack:8321
+  url: http://localhost:8321
   api_key: xyzzy
 user_data_collection:
   feedback_enabled: true
@@ -19,19 +19,8 @@ user_data_collection:
 authentication:
   module: "noop"
 mcp_servers:
-  # Mock server with client-provided auth - should appear in mcp-auth/client-options response
-  - name: "github-api"
+  - name: "mcp-oauth"
     provider_id: "model-context-protocol"
-    url: "http://mcp-mock-server:3000"
+    url: "http://localhost:3000"
     authorization_headers:
-      Authorization: "client"
-  # Mock server with client-provided auth (different header) - should appear in response
-  - name: "gitlab-api"
-    provider_id: "model-context-protocol"
-    url: "http://mcp-mock-server:3000"
-    authorization_headers:
-      X-API-Token: "client"
-  # Mock server with no auth - should NOT appear in response
-  - name: "public-api"
-    provider_id: "model-context-protocol"
-    url: "http://mcp-mock-server:3000"
+      Authorization: "oauth"
