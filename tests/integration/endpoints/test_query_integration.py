@@ -71,6 +71,11 @@ def mock_llama_stack_client_fixture(
     # Mock tool calls (empty by default)
     mock_response.tool_calls = []
 
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 10
+    mock_usage.output_tokens = 5
+    mock_response.usage = mock_usage
+
     mock_client.responses.create.return_value = mock_response
 
     # Mock models list (required for model selection)
@@ -392,6 +397,12 @@ async def test_query_v2_endpoint_with_tool_calls(
     mock_response.output = [mock_tool_output, mock_message_output]
     mock_response.stop_reason = "end_turn"
 
+    # Mock usage object
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 10
+    mock_usage.output_tokens = 5
+    mock_response.usage = mock_usage
+
     mock_llama_stack_client.responses.create.return_value = mock_response
 
     query_request = QueryRequest(query="What is Ansible?")
@@ -458,7 +469,10 @@ async def test_query_v2_endpoint_with_mcp_list_tools(
 
     mock_response.output = [mock_mcp_list, mock_message]
     mock_response.tool_calls = []
-    mock_response.usage = {"input_tokens": 15, "output_tokens": 20}
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 15
+    mock_usage.output_tokens = 20
+    mock_response.usage = mock_usage
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
@@ -525,7 +539,10 @@ async def test_query_v2_endpoint_with_multiple_tool_types(
 
     mock_response.output = [mock_file_search, mock_function, mock_message]
     mock_response.tool_calls = []
-    mock_response.usage = {"input_tokens": 40, "output_tokens": 60}
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 40
+    mock_usage.output_tokens = 60
+    mock_response.usage = mock_usage
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
@@ -989,7 +1006,10 @@ async def test_query_v2_endpoint_with_shield_violation(
 
     mock_response.output = [mock_output_item]
     mock_response.tool_calls = []
-    mock_response.usage = {"input_tokens": 10, "output_tokens": 5}
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 10
+    mock_usage.output_tokens = 5
+    mock_response.usage = mock_usage
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
@@ -1097,7 +1117,10 @@ async def test_query_v2_endpoint_handles_empty_llm_response(
 
     mock_response.output = [mock_output_item]
     mock_response.stop_reason = "end_turn"
-    mock_response.usage = {"input_tokens": 10, "output_tokens": 0}
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 10
+    mock_usage.output_tokens = 0
+    mock_response.usage = mock_usage
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
@@ -1150,7 +1173,10 @@ async def test_query_v2_endpoint_quota_integration(
     mock_response = mocker.MagicMock()
     mock_response.id = "response-quota"
     mock_response.output = []
-    mock_response.usage = {"input_tokens": 100, "output_tokens": 50}
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 100
+    mock_usage.output_tokens = 50
+    mock_response.usage = mock_usage
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 

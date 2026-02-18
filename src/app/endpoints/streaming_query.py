@@ -8,8 +8,6 @@ from typing import Annotated, Any, AsyncIterator, Optional, cast
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from llama_stack_api.openai_responses import (
-    OpenAIResponseObject,
-    OpenAIResponseObjectStream,
     OpenAIResponseObjectStreamResponseMcpCallArgumentsDone as MCPArgsDoneChunk,
     OpenAIResponseObjectStreamResponseOutputItemAdded as OutputItemAddedChunk,
     OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
@@ -21,6 +19,8 @@ from llama_stack_client import (
     APIConnectionError,
     APIStatusError as LLSApiStatusError,
 )
+from llama_stack_client.types import ResponseObject, ResponseObjectStream
+from llama_stack_client.types.response_object import Output
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 import metrics
 from authentication import get_auth_dependency
@@ -103,7 +103,7 @@ streaming_query_responses: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(
         examples=["conversation", "model", "provider"]
     ),
-    # 413: PromptTooLongResponse.openapi_response(),
+    413: PromptTooLongResponse.openapi_response(),
     422: UnprocessableEntityResponse.openapi_response(),
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
@@ -412,7 +412,7 @@ async def generate_response(
 
 
 async def response_generator(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
-    turn_response: AsyncIterator[OpenAIResponseObjectStream],
+    turn_response: AsyncIterator[ResponseObjectStream],
     context: ResponseGeneratorContext,
     turn_summary: TurnSummary,
 ) -> AsyncIterator[str]:
@@ -437,7 +437,7 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
     mcp_calls: dict[int, tuple[str, str]] = (
         {}
     )  # output_index -> (mcp_call_id, mcp_call_name)
-    latest_response_object: Optional[OpenAIResponseObject] = None
+    latest_response_object: Optional[ResponseObject] = None
 
     logger.debug("Starting streaming response (Responses API) processing")
 
@@ -531,7 +531,7 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
                 # For all other types (and mcp_call when arguments.done didn't happen),
                 # emit both call and result together
                 tool_call, tool_result = build_tool_call_summary(
-                    output_item_done_chunk.item,
+                    cast(Output, output_item_done_chunk.item),
                     turn_summary.rag_chunks,
                     vector_store_ids=context.vector_store_ids,
                     rag_id_mapping=context.rag_id_mapping,
@@ -553,9 +553,7 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
 
         # Completed response - capture final text and response object
         elif event_type == "response.completed":
-            latest_response_object = cast(
-                OpenAIResponseObject, getattr(chunk, "response")
-            )
+            latest_response_object = cast(ResponseObject, getattr(chunk, "response"))
             turn_summary.llm_response = turn_summary.llm_response or "".join(text_parts)
             yield stream_event(
                 {
@@ -569,9 +567,7 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
 
         # Incomplete or failed response - emit error
         elif event_type in ("response.incomplete", "response.failed"):
-            latest_response_object = cast(
-                OpenAIResponseObject, getattr(chunk, "response")
-            )
+            latest_response_object = cast(ResponseObject, getattr(chunk, "response"))
             error_message = (
                 latest_response_object.error.message
                 if latest_response_object.error
@@ -592,7 +588,8 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
 
     # Extract token usage and referenced documents from the final response object
     turn_summary.token_usage = extract_token_usage(
-        latest_response_object, context.model_id
+        latest_response_object.usage if latest_response_object else None,
+        context.model_id,
     )
     tool_based_documents = parse_referenced_documents(
         latest_response_object,

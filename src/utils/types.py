@@ -2,6 +2,9 @@
 
 from typing import Any, Optional
 
+from llama_stack_api.openai_responses import (
+    OpenAIResponseMessage,
+)
 from llama_stack_client.lib.agents.tool_parser import ToolParser
 from llama_stack_client.lib.agents.types import (
     CompletionMessage as AgentCompletionMessage,
@@ -107,6 +110,8 @@ class ShieldModerationResult(BaseModel):
     blocked: bool
     message: Optional[str] = None
     shield_model: Optional[str] = None
+    moderation_id: Optional[str] = None
+    refusal_response: Optional[OpenAIResponseMessage] = None
 
 
 class ResponsesApiParams(BaseModel):

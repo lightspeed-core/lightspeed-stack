@@ -28,16 +28,17 @@ from models.responses import (
 from tests.unit import config_dict
 from utils.query import (
     consume_query_tokens,
-    evaluate_model_hints,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     is_input_shield,
     is_output_shield,
     is_transcripts_enabled,
     persist_user_conversation_details,
+    persist_user_conversation_details_from_responses,
     prepare_input,
     select_model_and_provider_id,
     store_conversation_into_cache,
+    store_conversation_into_cache_from_responses,
     store_query_results,
     update_azure_token,
     validate_attachments_metadata,
@@ -339,48 +340,6 @@ class TestShieldFunctions:
         """Test is_input_shield returns False for output_ prefix."""
         shield = type("Shield", (), {"identifier": "output_test"})()
         assert is_input_shield(shield) is False
-
-
-class TestEvaluateModelHints:
-    """Tests for evaluate_model_hints function."""
-
-    def test_with_user_conversation_no_request_hints(self) -> None:
-        """Test using hints from user conversation when request has none."""
-        user_conv = UserConversation(
-            id="conv1",
-            user_id="user1",
-            last_used_model="model1",
-            last_used_provider="provider1",
-        )
-        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
-
-        model_id, provider_id = evaluate_model_hints(user_conv, query_request)
-        assert model_id == "model1"
-        assert provider_id == "provider1"
-
-    def test_with_user_conversation_and_request_hints(self) -> None:
-        """Test request hints take precedence over conversation hints."""
-        user_conv = UserConversation(
-            id="conv1",
-            user_id="user1",
-            last_used_model="model1",
-            last_used_provider="provider1",
-        )
-        query_request = QueryRequest(
-            query="test", model="model2", provider="provider2"
-        )  # pyright: ignore[reportCallIssue]
-
-        model_id, provider_id = evaluate_model_hints(user_conv, query_request)
-        assert model_id == "model2"
-        assert provider_id == "provider2"
-
-    def test_without_user_conversation(self) -> None:
-        """Test without user conversation returns request hints or None."""
-        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
-
-        model_id, provider_id = evaluate_model_hints(None, query_request)
-        assert model_id is None
-        assert provider_id is None
 
 
 class TestPrepareInput:
@@ -1023,5 +982,187 @@ class TestStoreQueryResults:
                 configuration=mock_config,
                 skip_userid_check=False,
                 topic_summary=None,
+            )
+        assert exc_info.value.status_code == 500
+
+
+class TestPersistUserConversationDetailsFromResponses:
+    """Tests for persist_user_conversation_details_from_responses function."""
+
+    def test_persists_successfully(self, mocker: MockerFixture) -> None:
+        """Test successful persistence."""
+        mocker.patch("utils.query.logger")
+        mock_persist = mocker.patch("utils.query.persist_user_conversation_details")
+
+        persist_user_conversation_details_from_responses(
+            user_id="user1",
+            conversation_id="conv1",
+            model="provider1/model1",
+            started_at="2024-01-01T00:00:00Z",
+            completed_at="2024-01-01T00:00:05Z",
+            topic_summary=None,
+        )
+
+        mock_persist.assert_called_once()
+
+    def test_raises_http_exception_on_sqlalchemy_error(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that SQLAlchemyError raises HTTPException."""
+        mocker.patch("utils.query.logger")
+        mocker.patch(
+            "utils.query.persist_user_conversation_details",
+            side_effect=SQLAlchemyError("Database error"),
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            persist_user_conversation_details_from_responses(
+                user_id="user1",
+                conversation_id="conv1",
+                model="provider1/model1",
+                started_at="2024-01-01T00:00:00Z",
+                completed_at="2024-01-01T00:00:05Z",
+                topic_summary=None,
+            )
+        assert exc_info.value.status_code == 500
+
+
+class TestStoreConversationIntoCacheFromResponses:
+    """Tests for store_conversation_into_cache_from_responses function."""
+
+    def test_stores_successfully(
+        self, mock_config: AppConfig, mocker: MockerFixture
+    ) -> None:
+        """Test successful cache storage."""
+        mocker.patch("utils.query.logger")
+        mock_store = mocker.patch("utils.query.store_conversation_into_cache")
+
+        store_conversation_into_cache_from_responses(
+            config=mock_config,
+            user_id="user1",
+            conversation_id="conv1",
+            model="provider1/model1",
+            query="query",
+            response="response",
+            started_at="2024-01-01T00:00:00Z",
+            completed_at="2024-01-01T00:00:05Z",
+            _skip_userid_check=False,
+            topic_summary=None,
+            referenced_documents=[],
+            tool_calls=[],
+            tool_results=[],
+        )
+
+        mock_store.assert_called_once()
+
+    def test_raises_http_exception_on_cache_error(
+        self, mock_config: AppConfig, mocker: MockerFixture
+    ) -> None:
+        """Test that CacheError raises HTTPException."""
+        mocker.patch("utils.query.logger")
+        mocker.patch(
+            "utils.query.store_conversation_into_cache",
+            side_effect=CacheError("Cache error"),
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            store_conversation_into_cache_from_responses(
+                config=mock_config,
+                user_id="user1",
+                conversation_id="conv1",
+                model="provider1/model1",
+                query="query",
+                response="response",
+                started_at="2024-01-01T00:00:00Z",
+                completed_at="2024-01-01T00:00:05Z",
+                _skip_userid_check=False,
+                topic_summary=None,
+                referenced_documents=[],
+                tool_calls=[],
+                tool_results=[],
+            )
+        assert exc_info.value.status_code == 500
+
+    def test_raises_http_exception_on_value_error(
+        self, mock_config: AppConfig, mocker: MockerFixture
+    ) -> None:
+        """Test that ValueError raises HTTPException."""
+        mocker.patch("utils.query.logger")
+        mocker.patch(
+            "utils.query.store_conversation_into_cache",
+            side_effect=ValueError("Value error"),
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            store_conversation_into_cache_from_responses(
+                config=mock_config,
+                user_id="user1",
+                conversation_id="conv1",
+                model="provider1/model1",
+                query="query",
+                response="response",
+                started_at="2024-01-01T00:00:00Z",
+                completed_at="2024-01-01T00:00:05Z",
+                _skip_userid_check=False,
+                topic_summary=None,
+                referenced_documents=[],
+                tool_calls=[],
+                tool_results=[],
+            )
+        assert exc_info.value.status_code == 500
+
+    def test_raises_http_exception_on_psycopg2_error(
+        self, mock_config: AppConfig, mocker: MockerFixture
+    ) -> None:
+        """Test that psycopg2.Error raises HTTPException."""
+        mocker.patch("utils.query.logger")
+        mocker.patch(
+            "utils.query.store_conversation_into_cache",
+            side_effect=psycopg2.Error("PostgreSQL error"),
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            store_conversation_into_cache_from_responses(
+                config=mock_config,
+                user_id="user1",
+                conversation_id="conv1",
+                model="provider1/model1",
+                query="query",
+                response="response",
+                started_at="2024-01-01T00:00:00Z",
+                completed_at="2024-01-01T00:00:05Z",
+                _skip_userid_check=False,
+                topic_summary=None,
+                referenced_documents=[],
+                tool_calls=[],
+                tool_results=[],
+            )
+        assert exc_info.value.status_code == 500
+
+    def test_raises_http_exception_on_sqlite3_error(
+        self, mock_config: AppConfig, mocker: MockerFixture
+    ) -> None:
+        """Test that sqlite3.Error raises HTTPException."""
+        mocker.patch("utils.query.logger")
+        mocker.patch(
+            "utils.query.store_conversation_into_cache",
+            side_effect=sqlite3.Error("SQLite error"),
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            store_conversation_into_cache_from_responses(
+                config=mock_config,
+                user_id="user1",
+                conversation_id="conv1",
+                model="provider1/model1",
+                query="query",
+                response="response",
+                started_at="2024-01-01T00:00:00Z",
+                completed_at="2024-01-01T00:00:05Z",
+                _skip_userid_check=False,
+                topic_summary=None,
+                referenced_documents=[],
+                tool_calls=[],
+                tool_results=[],
             )
         assert exc_info.value.status_code == 500

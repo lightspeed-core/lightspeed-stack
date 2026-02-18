@@ -1,3 +1,4 @@
+features/responses.feature
 features/faiss.feature
 features/smoketests.feature
 features/authorized_noop.feature

@@ -18,17 +18,21 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
 )
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
+from llama_stack_client.types.response_object import ResponseObject
 from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 
 from configuration import AppConfig
-from models.config import ModelContextProtocolServer
+from models.config import Action, ModelContextProtocolServer
+from models.database.conversations import UserConversation
 from models.requests import QueryRequest
 from utils.responses import (
     build_mcp_tool_call_from_arguments_done,
     build_tool_call_summary,
     build_tool_result_from_mcp_output_item_done,
     extract_rag_chunks_from_file_search_item,
+    extract_response_metadata,
+    extract_text_from_input,
     extract_text_from_response_output_item,
     extract_token_usage,
     extract_vector_store_ids_from_tools,
@@ -37,9 +41,12 @@ from utils.responses import (
     get_topic_summary,
     parse_arguments_string,
     parse_referenced_documents,
+    persist_response_metadata,
     prepare_responses_params,
     prepare_tools,
     _build_chunk_attributes,
+    select_model_for_responses,
+    validate_model_override_permissions,
     _increment_llm_call_metric,
     _resolve_source_for_result,
 )
@@ -322,6 +329,130 @@ def test_extract_text_handles_missing_attributes(missing_attr: str) -> None:
 
     # Should return empty string when critical attributes are missing
     assert result == ""
+
+
+class TestExtractTextFromInput:
+    """Test cases for extract_text_from_input function."""
+
+    def test_extract_text_from_none(self) -> None:
+        """Test extracting text from None input."""
+        result = extract_text_from_input(None)
+        assert result == ""
+
+    def test_extract_text_from_string(self) -> None:
+        """Test extracting text from string input."""
+        result = extract_text_from_input("Simple text")
+        assert result == "Simple text"
+
+    def test_extract_text_from_list_of_dicts_with_string_content(self) -> None:
+        """Test extracting text from list of dicts with string content."""
+        input_value = [
+            {"content": "Hello"},
+            {"content": "world"},
+        ]
+        result = extract_text_from_input(input_value)
+        assert result == "Hello world"
+
+    def test_extract_text_from_list_of_dicts_with_list_content(self) -> None:
+        """Test extracting text from list of dicts with list content."""
+        input_value = [
+            {"content": ["Part", "1"]},
+            {"content": ["Part", "2"]},
+        ]
+        result = extract_text_from_input(input_value)
+        assert result == "Part 1 Part 2"
+
+    def test_extract_text_from_list_of_dicts_with_dict_content_parts(self) -> None:
+        """Test extracting text from list of dicts with dict content parts."""
+        input_value = [
+            {"content": [{"text": "Text"}, {"refusal": "Refusal"}]},
+        ]
+        result = extract_text_from_input(input_value)
+        assert result == "Text Refusal"
+
+    def test_extract_text_from_list_of_objects_with_string_content(self) -> None:
+        """Test extracting text from list of objects with string content."""
+
+        # pylint: disable=too-few-public-methods
+        class MockMessage:
+            """Mock message class for testing."""
+
+            def __init__(self, content: str) -> None:
+                self.content = content
+
+        input_value = [MockMessage("Hello"), MockMessage("world")]
+        result = extract_text_from_input(input_value)
+        assert result == "Hello world"
+
+    def test_extract_text_from_list_of_objects_with_list_content(self) -> None:
+        """Test extracting text from list of objects with list content."""
+
+        # pylint: disable=too-few-public-methods
+        class MockMessage:
+            """Mock message class for testing."""
+
+            def __init__(self, content: list) -> None:
+                self.content = content
+
+        input_value = [MockMessage(["Part", "1"]), MockMessage(["Part", "2"])]
+        result = extract_text_from_input(input_value)
+        assert result == "Part 1 Part 2"
+
+    def test_extract_text_from_list_of_objects_with_object_content_parts(self) -> None:
+        """Test extracting text from list of objects with object content parts."""
+
+        # pylint: disable=too-few-public-methods
+        class MockContentPartLocal:
+            """Mock content part class for testing."""
+
+            def __init__(self, text: str) -> None:
+                self.text = text
+
+        class MockMessage:
+            """Mock message class for testing."""
+
+            def __init__(self, content: list) -> None:
+                self.content = content
+
+        input_value = [MockMessage([MockContentPartLocal("Text")])]
+        result = extract_text_from_input(input_value)
+        assert result == "Text"
+
+    def test_extract_text_from_list_of_objects_with_dict_content_parts(self) -> None:
+        """Test extracting text from list of objects with dict content parts."""
+
+        # pylint: disable=too-few-public-methods
+        class MockMessage:
+            """Mock message class for testing."""
+
+            def __init__(self, content: list) -> None:
+                self.content = content
+
+        input_value = [MockMessage([{"text": "Text"}, {"refusal": "Refusal"}])]
+        result = extract_text_from_input(input_value)
+        assert result == "Text Refusal"
+
+    def test_extract_text_from_empty_list(self) -> None:
+        """Test extracting text from empty list."""
+        result = extract_text_from_input([])
+        assert result == ""
+
+    def test_extract_text_from_mixed_dict_and_object_messages(self) -> None:
+        """Test extracting text from mixed dict and object messages."""
+
+        # pylint: disable=too-few-public-methods
+        class MockMessage:
+            """Mock message class for testing."""
+
+            def __init__(self, content: str) -> None:
+                self.content = content
+
+        input_value = [
+            {"content": "Dict message"},
+            MockMessage("Object message"),
+        ]
+        result = extract_text_from_input(input_value)
+        assert result == "Dict message Object message"
 
 
 class TestGetRAGTools:
@@ -757,7 +888,6 @@ class TestPrepareResponsesParams:
             "utils.responses.select_model_and_provider_id",
             return_value=("provider1/model1", "model1", "provider1"),
         )
-        mocker.patch("utils.responses.evaluate_model_hints", return_value=(None, None))
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
         mocker.patch("utils.responses.prepare_input", return_value="test")
@@ -796,7 +926,6 @@ class TestPrepareResponsesParams:
             "utils.responses.select_model_and_provider_id",
             return_value=("provider1/model1", "model1", "provider1"),
         )
-        mocker.patch("utils.responses.evaluate_model_hints", return_value=(None, None))
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
         mocker.patch("utils.responses.prepare_input", return_value="test")
@@ -849,7 +978,6 @@ class TestPrepareResponsesParams:
             "utils.responses.select_model_and_provider_id",
             return_value=("provider1/model1", "model1", "provider1"),
         )
-        mocker.patch("utils.responses.evaluate_model_hints", return_value=(None, None))
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
         mocker.patch("utils.responses.prepare_input", return_value="test")
@@ -900,7 +1028,6 @@ class TestPrepareResponsesParams:
             "utils.responses.select_model_and_provider_id",
             return_value=("provider1/model1", "model1", "provider1"),
         )
-        mocker.patch("utils.responses.evaluate_model_hints", return_value=(None, None))
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
         mocker.patch("utils.responses.prepare_input", return_value="test")
@@ -1033,8 +1160,9 @@ class TestExtractTokenUsage:
 
     def test_extract_token_usage_with_dict_usage(self, mocker: MockerFixture) -> None:
         """Test extracting token usage from dict format."""
-        mock_response = mocker.Mock()
-        mock_response.usage = {"input_tokens": 100, "output_tokens": 50}
+        mock_usage = mocker.Mock()
+        mock_usage.input_tokens = 100
+        mock_usage.output_tokens = 50
 
         mocker.patch(
             "utils.responses.extract_provider_and_model_from_model_id",
@@ -1044,7 +1172,7 @@ class TestExtractTokenUsage:
         mocker.patch("utils.responses.metrics.llm_token_received_total")
         mocker.patch("utils.responses._increment_llm_call_metric")
 
-        result = extract_token_usage(mock_response, "provider1/model1")
+        result = extract_token_usage(mock_usage, "provider1/model1")
         assert result.input_tokens == 100
         assert result.output_tokens == 50
         assert result.llm_calls == 1
@@ -1055,9 +1183,6 @@ class TestExtractTokenUsage:
         mock_usage.input_tokens = 200
         mock_usage.output_tokens = 100
 
-        mock_response = mocker.Mock()
-        mock_response.usage = mock_usage
-
         mocker.patch(
             "utils.responses.extract_provider_and_model_from_model_id",
             return_value=("provider1", "model1"),
@@ -1066,22 +1191,19 @@ class TestExtractTokenUsage:
         mocker.patch("utils.responses.metrics.llm_token_received_total")
         mocker.patch("utils.responses._increment_llm_call_metric")
 
-        result = extract_token_usage(mock_response, "provider1/model1")
+        result = extract_token_usage(mock_usage, "provider1/model1")
         assert result.input_tokens == 200
         assert result.output_tokens == 100
 
     def test_extract_token_usage_no_usage(self, mocker: MockerFixture) -> None:
         """Test extracting token usage when usage is None."""
-        mock_response = mocker.Mock()
-        mock_response.usage = None
-
         mocker.patch(
             "utils.responses.extract_provider_and_model_from_model_id",
             return_value=("provider1", "model1"),
         )
         mocker.patch("utils.responses._increment_llm_call_metric")
 
-        result = extract_token_usage(mock_response, "provider1/model1")
+        result = extract_token_usage(None, "provider1/model1")
         assert result.input_tokens == 0
         assert result.output_tokens == 0
         assert result.llm_calls == 1
@@ -1092,16 +1214,13 @@ class TestExtractTokenUsage:
         mock_usage.input_tokens = 0
         mock_usage.output_tokens = 0
 
-        mock_response = mocker.Mock()
-        mock_response.usage = mock_usage
-
         mocker.patch(
             "utils.responses.extract_provider_and_model_from_model_id",
             return_value=("provider1", "model1"),
         )
         mocker.patch("utils.responses._increment_llm_call_metric")
 
-        result = extract_token_usage(mock_response, "provider1/model1")
+        result = extract_token_usage(mock_usage, "provider1/model1")
         assert result.input_tokens == 0
         assert result.output_tokens == 0
 
@@ -1123,9 +1242,6 @@ class TestExtractTokenUsage:
         mock_usage.input_tokens = 100
         mock_usage.output_tokens = 50
 
-        mock_response = mocker.Mock()
-        mock_response.usage = mock_usage
-
         mocker.patch(
             "utils.responses.extract_provider_and_model_from_model_id",
             return_value=("provider1", "model1"),
@@ -1141,7 +1257,7 @@ class TestExtractTokenUsage:
         mocker.patch("utils.responses._increment_llm_call_metric")
 
         # Should not raise, just log warning
-        result = extract_token_usage(mock_response, "provider1/model1")
+        result = extract_token_usage(mock_usage, "provider1/model1")
         assert result.input_tokens == 100
         assert result.output_tokens == 50
 
@@ -1160,8 +1276,6 @@ class TestExtractTokenUsage:
                 return super().__getattribute__(name)
 
         mock_usage = ErrorUsage()
-        mock_response = mocker.Mock()
-        mock_response.usage = mock_usage
 
         mocker.patch(
             "utils.responses.extract_provider_and_model_from_model_id",
@@ -1173,7 +1287,7 @@ class TestExtractTokenUsage:
         # getattr with default catches AttributeError but not TypeError
         # TypeError will propagate to exception handler at line 611
         # Should not raise, just log warning and return 0 tokens
-        result = extract_token_usage(mock_response, "provider1/model1")
+        result = extract_token_usage(mock_usage, "provider1/model1")
         assert result.input_tokens == 0
         assert result.output_tokens == 0
 
@@ -1923,3 +2037,307 @@ class TestParseReferencedDocumentsWithSource:
 
         assert len(docs) == 1
         assert docs[0].source is None
+
+
+class TestValidateModelOverridePermissions:
+    """Tests for validate_model_override_permissions function."""
+
+    def test_allows_when_model_id_none(self) -> None:
+        """Test that None model_id is allowed without permission check."""
+        # Should not raise
+        validate_model_override_permissions(None, set())
+
+    def test_allows_with_model_override_permission(self) -> None:
+        """Test that model override is allowed when user has MODEL_OVERRIDE action."""
+        # Should not raise
+        validate_model_override_permissions("openai/gpt-4", {Action.MODEL_OVERRIDE})
+
+    def test_rejects_without_model_override_permission(self) -> None:
+        """Test that model override is rejected when user lacks MODEL_OVERRIDE action."""
+        with pytest.raises(HTTPException) as exc_info:
+            validate_model_override_permissions("openai/gpt-4", set())
+        assert exc_info.value.status_code == 403
+
+
+class TestSelectModelForResponses:
+    """Tests for select_model_for_responses function."""
+
+    @pytest.mark.asyncio
+    async def test_selects_last_used_model_from_conversation(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that last used model from conversation is selected."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_conversation = mocker.Mock(spec=UserConversation)
+        mock_conversation.last_used_model = "model1"
+        mock_conversation.last_used_provider = "provider1"
+
+        mock_model = mocker.Mock()
+        mock_client.models.retrieve = mocker.AsyncMock(return_value=mock_model)
+
+        result = await select_model_for_responses(mock_client, mock_conversation)
+
+        assert result == "provider1/model1"
+        mock_client.models.retrieve.assert_called_once_with("provider1/model1")
+
+    @pytest.mark.asyncio
+    async def test_falls_back_when_last_used_model_not_found(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that function falls back when last used model returns 404."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_conversation = mocker.Mock(spec=UserConversation)
+        mock_conversation.last_used_model = "model1"
+        mock_conversation.last_used_provider = "provider1"
+
+        # Mock 404 error for retrieve
+        mock_error_404 = APIStatusError(
+            message="Not found",
+            response=mocker.Mock(request=None),
+            body=None,
+        )
+        mock_error_404.status_code = 404
+        mock_client.models.retrieve = mocker.AsyncMock(side_effect=mock_error_404)
+
+        # Mock models.list to return a model
+        mock_model = mocker.Mock()
+        mock_model.id = "provider2/model2"
+        mock_model.custom_metadata = {"model_type": "llm"}
+        mock_client.models.list = mocker.AsyncMock(return_value=[mock_model])
+
+        result = await select_model_for_responses(mock_client, mock_conversation)
+
+        assert result == "provider2/model2"
+
+    @pytest.mark.asyncio
+    async def test_raises_on_non_404_error_from_retrieve(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that non-404 errors from retrieve raise HTTPException."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_conversation = mocker.Mock(spec=UserConversation)
+        mock_conversation.last_used_model = "model1"
+        mock_conversation.last_used_provider = "provider1"
+
+        # Mock 500 error for retrieve
+        mock_error_500 = APIStatusError(
+            message="Server error",
+            response=mocker.Mock(request=None),
+            body=None,
+        )
+        mock_error_500.status_code = 500
+        mock_client.models.retrieve = mocker.AsyncMock(side_effect=mock_error_500)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await select_model_for_responses(mock_client, mock_conversation)
+        assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_raises_on_connection_error_from_retrieve(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that connection errors from retrieve raise HTTPException."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_conversation = mocker.Mock(spec=UserConversation)
+        mock_conversation.last_used_model = "model1"
+        mock_conversation.last_used_provider = "provider1"
+
+        mock_client.models.retrieve = mocker.AsyncMock(
+            side_effect=APIConnectionError(
+                message="Connection failed", request=mocker.Mock()
+            )
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await select_model_for_responses(mock_client, mock_conversation)
+        assert exc_info.value.status_code == 503
+
+    @pytest.mark.asyncio
+    async def test_selects_first_llm_from_models_list(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that first LLM model is selected from models list."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+
+        mock_model1 = mocker.Mock()
+        mock_model1.id = "provider1/model1"
+        mock_model1.custom_metadata = {"model_type": "embedding"}
+
+        mock_model2 = mocker.Mock()
+        mock_model2.id = "provider2/model2"
+        mock_model2.custom_metadata = {"model_type": "llm"}
+
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=[mock_model1, mock_model2]
+        )
+
+        result = await select_model_for_responses(mock_client, None)
+
+        assert result == "provider2/model2"
+
+    @pytest.mark.asyncio
+    async def test_raises_when_no_llm_model_found(self, mocker: MockerFixture) -> None:
+        """Test that NotFoundResponse is raised when no LLM model is found."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+
+        mock_model = mocker.Mock()
+        mock_model.custom_metadata = {"model_type": "embedding"}
+        mock_client.models.list = mocker.AsyncMock(return_value=[mock_model])
+
+        with pytest.raises(HTTPException) as exc_info:
+            await select_model_for_responses(mock_client, None)
+        assert exc_info.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_raises_on_connection_error_from_list(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that connection errors from list raise HTTPException."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+
+        mock_client.models.list = mocker.AsyncMock(
+            side_effect=APIConnectionError(
+                message="Connection failed", request=mocker.Mock()
+            )
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await select_model_for_responses(mock_client, None)
+        assert exc_info.value.status_code == 503
+
+    @pytest.mark.asyncio
+    async def test_raises_on_api_status_error_from_list(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that API status errors from list raise HTTPException."""
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+
+        mock_client.models.list = mocker.AsyncMock(
+            side_effect=APIStatusError(
+                message="API error",
+                response=mocker.Mock(request=None),
+                body=None,
+            )
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await select_model_for_responses(mock_client, None)
+        assert exc_info.value.status_code == 500
+
+
+class TestExtractResponseMetadata:
+    """Tests for extract_response_metadata function."""
+
+    def test_returns_empty_when_response_none(self) -> None:
+        """Test that None response returns empty values."""
+        result = extract_response_metadata(None)
+        assert result == ("", [], [], [])
+
+    def test_returns_empty_when_output_empty(self, mocker: MockerFixture) -> None:
+        """Test that empty output returns empty values."""
+        mock_response = mocker.Mock(spec=ResponseObject)
+        mock_response.output = []
+
+        mocker.patch(
+            "utils.responses.extract_text_from_response_output_item", return_value=""
+        )
+        mocker.patch("utils.responses.parse_referenced_documents", return_value=[])
+        mocker.patch(
+            "utils.responses.build_tool_call_summary", return_value=(None, None)
+        )
+
+        result = extract_response_metadata(mock_response)
+        assert result == ("", [], [], [])
+
+    def test_extracts_metadata_from_response_with_output(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that metadata is extracted from response with output."""
+        mock_output_item = mocker.Mock()
+        mock_response = mocker.Mock(spec=ResponseObject)
+        mock_response.output = [mock_output_item]
+
+        mocker.patch(
+            "utils.responses.extract_text_from_response_output_item",
+            return_value="Response text",
+        )
+        mocker.patch(
+            "utils.responses.parse_referenced_documents",
+            return_value=[mocker.Mock()],
+        )
+        mocker.patch(
+            "utils.responses.build_tool_call_summary",
+            return_value=(mocker.Mock(), mocker.Mock()),
+        )
+
+        result = extract_response_metadata(mock_response)
+        assert result[0] == "Response text"
+        assert len(result[1]) == 1
+        assert len(result[2]) == 1
+        assert len(result[3]) == 1
+
+
+class TestPersistResponseMetadata:
+    """Tests for persist_response_metadata function."""
+
+    @pytest.mark.asyncio
+    async def test_persists_metadata(self, mocker: MockerFixture) -> None:
+        """Test that persist_response_metadata calls persistence functions."""
+        mocker.patch("utils.responses.logger")
+        mock_persist = mocker.patch(
+            "utils.responses.persist_user_conversation_details_from_responses"
+        )
+        mock_store = mocker.patch(
+            "utils.responses.store_conversation_into_cache_from_responses"
+        )
+        mocker.patch("utils.responses.configuration", mocker.Mock())
+
+        await persist_response_metadata(
+            user_id="user1",
+            conversation_id="conv1",
+            model_id="provider1/model1",
+            input_text="input",
+            response_text="response",
+            started_at="2024-01-01T00:00:00Z",
+            completed_at="2024-01-01T00:01:00Z",
+            topic_summary=None,
+            referenced_documents=[],
+            tool_calls=[],
+            tool_results=[],
+            _skip_userid_check=False,
+        )
+
+        mock_persist.assert_called_once()
+        mock_store.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_persists_metadata_with_topic_summary(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that persist_response_metadata handles topic summary."""
+        mocker.patch("utils.responses.logger")
+        mock_persist = mocker.patch(
+            "utils.responses.persist_user_conversation_details_from_responses"
+        )
+        mock_store = mocker.patch(
+            "utils.responses.store_conversation_into_cache_from_responses"
+        )
+        mocker.patch("utils.responses.configuration", mocker.Mock())
+
+        await persist_response_metadata(
+            user_id="user1",
+            conversation_id="conv1",
+            model_id="provider1/model1",
+            input_text="input",
+            response_text="response",
+            started_at="2024-01-01T00:00:00Z",
+            completed_at="2024-01-01T00:01:00Z",
+            topic_summary="Test topic",
+            referenced_documents=[],
+            tool_calls=[],
+            tool_results=[],
+            _skip_userid_check=False,
+        )
+
+        mock_persist.assert_called_once()
+        mock_store.assert_called_once()

@@ -483,6 +483,7 @@ class TestRetrieveResponse:
 
         mock_response = mocker.Mock(spec=OpenAIResponseObject)
         mock_response.output = [mock_output_item]
+        mock_response.usage = mocker.Mock()
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
@@ -670,6 +671,7 @@ class TestRetrieveResponse:
 
         mock_response = mocker.Mock(spec=OpenAIResponseObject)
         mock_response.output = [mocker.Mock(type="message")]
+        mock_response.usage = mocker.Mock()
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",

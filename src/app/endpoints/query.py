@@ -6,12 +6,12 @@ import datetime
 from typing import Annotated, Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client import (
     APIConnectionError,
     AsyncLlamaStackClient,
     APIStatusError as LLSApiStatusError,
 )
+from llama_stack_client.types import ResponseObject
 from openai._exceptions import (
     APIStatusError as OpenAIAPIStatusError,
 )
@@ -86,7 +86,7 @@ query_response: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(
         examples=["conversation", "model", "provider"]
     ),
-    # 413: PromptTooLongResponse.openapi_response(),
+    413: PromptTooLongResponse.openapi_response(),
     422: UnprocessableEntityResponse.openapi_response(),
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
@@ -310,7 +310,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals
             summary.llm_response = violation_message
             return summary
         response = await client.responses.create(**responses_params.model_dump())
-        response = cast(OpenAIResponseObject, response)
+        response = cast(ResponseObject, response)
 
     except RuntimeError as e:  # library mode wraps 413 into runtime error
         if "context_length" in str(e).lower():
@@ -351,6 +351,6 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     summary.referenced_documents = parse_referenced_documents(
         response, vector_store_ids, rag_id_mapping
     )
-    summary.token_usage = extract_token_usage(response, responses_params.model)
+    summary.token_usage = extract_token_usage(response.usage, responses_params.model)
 
     return summary

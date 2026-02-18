@@ -40,7 +40,12 @@ from utils.transcripts import store_transcript
 from utils.quota import consume_tokens
 from utils.suid import normalize_conversation_id
 from utils.token_counter import TokenCounter
-from utils.types import TurnSummary
+from utils.types import (
+    ReferencedDocument,
+    ToolCallSummary,
+    ToolResultSummary,
+    TurnSummary,
+)
 from log import get_logger
 
 logger = get_logger(__name__)
@@ -224,48 +229,6 @@ def is_input_shield(shield: Shield) -> bool:
     return _is_inout_shield(shield) or not is_output_shield(shield)
 
 
-def evaluate_model_hints(
-    user_conversation: Optional[UserConversation],
-    query_request: QueryRequest,
-) -> tuple[Optional[str], Optional[str]]:
-    """Evaluate model hints from user conversation."""
-    model_id: Optional[str] = query_request.model
-    provider_id: Optional[str] = query_request.provider
-
-    if user_conversation is not None:
-        if query_request.model is not None:
-            if query_request.model != user_conversation.last_used_model:
-                logger.debug(
-                    "Model specified in request: %s, preferring it over user conversation model %s",
-                    query_request.model,
-                    user_conversation.last_used_model,
-                )
-        else:
-            logger.debug(
-                "No model specified in request, using latest model from user conversation: %s",
-                user_conversation.last_used_model,
-            )
-            model_id = user_conversation.last_used_model
-
-        if query_request.provider is not None:
-            if query_request.provider != user_conversation.last_used_provider:
-                logger.debug(
-                    "Provider specified in request: %s, "
-                    "preferring it over user conversation provider %s",
-                    query_request.provider,
-                    user_conversation.last_used_provider,
-                )
-        else:
-            logger.debug(
-                "No provider specified in request, "
-                "using latest provider from user conversation: %s",
-                user_conversation.last_used_provider,
-            )
-            provider_id = user_conversation.last_used_provider
-
-    return model_id, provider_id
-
-
 async def update_azure_token(
     client: AsyncLlamaStackClient,
 ) -> AsyncLlamaStackClient:
@@ -421,7 +384,7 @@ def store_query_results(  # pylint: disable=too-many-arguments,too-many-locals
             tool_calls=summary.tool_calls,
             tool_results=summary.tool_results,
         )
-
+        logger.debug("cache_entry for query: %s", cache_entry.model_dump())
         logger.info("Storing conversation in cache")
         store_conversation_into_cache(
             config=configuration,
@@ -569,6 +532,120 @@ def persist_user_conversation_details(
         logger.debug(
             "Successfully committed conversation %s to database", normalized_id
         )
+
+
+def persist_user_conversation_details_from_responses(
+    user_id: str,
+    conversation_id: str,
+    model: str,
+    started_at: str,
+    completed_at: str,
+    topic_summary: Optional[str] = None,
+) -> None:
+    """Persist user conversation details from Responses API format.
+
+    This is a convenience wrapper that handles format conversion from Responses API
+    (where model is in "provider/model" format) to the storage format (separate
+    model_id and provider_id).
+
+    Args:
+        user_id: The authenticated user ID
+        conversation_id: The conversation ID
+        model: Model identifier in "provider/model" format (e.g., "openai/gpt-4")
+        started_at: The timestamp when the conversation started (ISO format string)
+        completed_at: The timestamp when the conversation completed (ISO format string)
+        topic_summary: Optional topic summary for the conversation
+
+    Raises:
+        HTTPException: If a database error occurs during persistence
+    """
+    try:
+        # Extract provider_id and model_id from model (format: "provider/model")
+        provider_id, model_id = extract_provider_and_model_from_model_id(model)
+
+        persist_user_conversation_details(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            started_at=started_at,
+            completed_at=completed_at,
+            model_id=model_id,
+            provider_id=provider_id,
+            topic_summary=topic_summary,
+        )
+    except SQLAlchemyError as e:
+        logger.exception("Error persisting conversation details.")
+        error_response = InternalServerErrorResponse.database_error()
+        raise HTTPException(**error_response.model_dump()) from e
+
+
+def store_conversation_into_cache_from_responses(
+    config: AppConfig,
+    user_id: str,
+    conversation_id: str,
+    model: str,
+    query: str,
+    response: str,
+    started_at: str,
+    completed_at: str,
+    _skip_userid_check: bool,
+    topic_summary: Optional[str] = None,
+    referenced_documents: Optional[list[ReferencedDocument]] = None,
+    tool_calls: Optional[list[ToolCallSummary]] = None,
+    tool_results: Optional[list[ToolResultSummary]] = None,
+) -> None:
+    """Store conversation into cache from Responses API format.
+
+    This is a convenience wrapper that handles format conversion from Responses API
+    (where model is in "provider/model" format) to the storage format (separate
+    provider and model fields in CacheEntry).
+
+    Args:
+        config: Application configuration
+        user_id: Owner identifier used as the cache key
+        conversation_id: Conversation identifier used as the cache key
+        model: Model identifier in "provider/model" format (e.g., "openai/gpt-4")
+        query: The query string
+        response: The response string
+        started_at: The timestamp when the conversation started (ISO format string)
+        completed_at: The timestamp when the conversation completed (ISO format string)
+        _skip_userid_check: When true, bypasses enforcing that the cache operation
+                           must match the user id
+        topic_summary: Optional topic summary to store alongside the conversation
+        referenced_documents: Optional list of referenced documents
+        tool_calls: Optional list of tool calls
+        tool_results: Optional list of tool results
+
+    Raises:
+        HTTPException: If a cache or database error occurs during storage
+    """
+    try:
+        # Extract provider_id and model_id from model (format: "provider/model")
+        provider_id, model_id = extract_provider_and_model_from_model_id(model)
+
+        cache_entry = CacheEntry(
+            query=query,
+            response=response,
+            provider=provider_id,
+            model=model_id,
+            started_at=started_at,
+            completed_at=completed_at,
+            referenced_documents=referenced_documents,
+            tool_calls=tool_calls,
+            tool_results=tool_results,
+        )
+        logger.debug("cache_entry for responses: %s", cache_entry.model_dump())
+        store_conversation_into_cache(
+            config=config,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            cache_entry=cache_entry,
+            _skip_userid_check=_skip_userid_check,
+            topic_summary=topic_summary,
+        )
+    except (CacheError, ValueError, psycopg2.Error, sqlite3.Error) as e:
+        logger.exception("Error storing conversation in cache: %s", e)
+        error_response = InternalServerErrorResponse.database_error()
+        raise HTTPException(**error_response.model_dump()) from e
 
 
 def validate_attachments_metadata(attachments: list[Attachment]) -> None:
