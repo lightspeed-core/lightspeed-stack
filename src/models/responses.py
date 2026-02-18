@@ -19,6 +19,7 @@ from pydantic_core import SchemaError
 
 from constants import MEDIA_TYPE_EVENT_STREAM
 from models.config import Action, Configuration
+from models.requests import Attachment
 from quota.quota_exceed_error import QuotaExceedError
 from utils.types import RAGChunk, ReferencedDocument, ToolCallSummary, ToolResultSummary
 
@@ -867,6 +868,7 @@ class Message(BaseModel):
         content: The message content.
         type: The type of message.
         referenced_documents: Optional list of documents referenced in an assistant response.
+        attachments: Optional list of attachments included with the message.
     """
 
     content: str = Field(
@@ -878,10 +880,6 @@ class Message(BaseModel):
         ...,
         description="The type of message",
         examples=["user", "assistant", "system", "developer"],
-    )
-    referenced_documents: Optional[list[ReferencedDocument]] = Field(
-        None,
-        description="List of documents referenced in the response (assistant messages only)",
     )
 
 
