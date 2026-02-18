@@ -9,7 +9,7 @@ service:
 llama_stack:
   # Server mode - connects to separate llama-stack service
   use_as_library_client: false
-  url: http://localhost:8321
+  url: http://llama-stack:8321
   api_key: xyzzy
 user_data_collection:
   feedback_enabled: true
