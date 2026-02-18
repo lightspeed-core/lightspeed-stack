@@ -45,7 +45,19 @@ async def stream_interrupt_endpoint_handler(
         StreamInterruptRegistry, Depends(get_stream_interrupt_registry)
     ],
 ) -> StreamingInterruptResponse:
-    """Interrupt an in-progress streaming query by request identifier."""
+    """Interrupt an in-progress streaming query by request identifier.
+
+    Parameters:
+        interrupt_request: Request payload containing the stream request ID.
+        auth: Auth context tuple resolved from the authentication dependency.
+        registry: Stream interrupt registry dependency used to cancel streams.
+
+    Returns:
+        StreamingInterruptResponse: Confirmation payload when interruption succeeds.
+
+    Raises:
+        HTTPException: If no active stream for the given request ID can be interrupted.
+    """
     user_id, _, _, _ = auth
     request_id = interrupt_request.request_id
     interrupted = registry.cancel_stream(request_id, user_id)
