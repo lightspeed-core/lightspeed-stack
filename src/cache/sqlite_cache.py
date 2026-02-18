@@ -37,6 +37,7 @@ class SQLiteCache(Cache):
      referenced_documents  | text                        |          |
      tool_calls            | text                        |          |
      tool_results          | text                        |          |
+     attachments           | text                        |          |
     Indexes:
         "cache_pkey" PRIMARY KEY, btree (user_id, conversation_id, created_at)
         "cache_key_key" UNIQUE CONSTRAINT, btree (key)
@@ -59,6 +60,7 @@ class SQLiteCache(Cache):
             referenced_documents text,
             tool_calls           text,
             tool_results         text,
+            attachments          text,
             PRIMARY KEY(user_id, conversation_id, created_at)
         );
         """
@@ -80,7 +82,7 @@ class SQLiteCache(Cache):
 
     SELECT_CONVERSATION_HISTORY_STATEMENT = """
         SELECT query, response, provider, model, started_at, completed_at,
-               referenced_documents, tool_calls, tool_results
+               referenced_documents, tool_calls, tool_results, attachments
           FROM cache
          WHERE user_id=? AND conversation_id=?
          ORDER BY created_at
@@ -89,8 +91,8 @@ class SQLiteCache(Cache):
     INSERT_CONVERSATION_HISTORY_STATEMENT = """
         INSERT INTO cache(user_id, conversation_id, created_at, started_at, completed_at,
                           query, response, provider, model, referenced_documents,
-                          tool_calls, tool_results)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          tool_calls, tool_results, attachments)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
     QUERY_CACHE_SIZE = """
@@ -301,6 +303,24 @@ class SQLiteCache(Cache):
                         e,
                     )
 
+            # Parse attachments back into Attachment objects
+            attachments_json_str = conversation_entry[9]
+            attachments_obj = None
+            if attachments_json_str:
+                try:
+                    from models.requests import Attachment
+
+                    attachments_data = json.loads(attachments_json_str)
+                    attachments_obj = [
+                        Attachment.model_validate(att) for att in attachments_data
+                    ]
+                except (json.JSONDecodeError, ValueError) as e:
+                    logger.warning(
+                        "Failed to deserialize attachments for conversation %s: %s",
+                        conversation_id,
+                        e,
+                    )
+
             cache_entry = CacheEntry(
                 query=conversation_entry[0],
                 response=conversation_entry[1],
@@ -311,6 +331,7 @@ class SQLiteCache(Cache):
                 referenced_documents=docs_obj,
                 tool_calls=tool_calls_obj,
                 tool_results=tool_results_obj,
+                attachments=attachments_obj,
             )
             result.append(cache_entry)
 
@@ -386,6 +407,20 @@ class SQLiteCache(Cache):
                     e,
                 )
 
+        attachments_json = None
+        if cache_entry.attachments:
+            try:
+                attachments_as_dicts = [
+                    att.model_dump(mode="json") for att in cache_entry.attachments
+                ]
+                attachments_json = json.dumps(attachments_as_dicts)
+            except (TypeError, ValueError) as e:
+                logger.warning(
+                    "Failed to serialize attachments for conversation %s: %s",
+                    conversation_id,
+                    e,
+                )
+
         cursor.execute(
             self.INSERT_CONVERSATION_HISTORY_STATEMENT,
             (
@@ -401,6 +436,7 @@ class SQLiteCache(Cache):
                 referenced_documents_json,
                 tool_calls_json,
                 tool_results_json,
+                attachments_json,
             ),
         )
 
