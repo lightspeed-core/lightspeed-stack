@@ -257,7 +257,7 @@ def build_conversation_turn_from_cache_entry(entry: CacheEntry) -> ConversationT
     """
     # Create Message objects for user and assistant
     messages = [
-        Message(content=entry.query, type="user"),
+        Message(content=entry.query, type="user", attachments=entry.attachments),
         Message(content=entry.response, type="assistant"),
     ]
 
