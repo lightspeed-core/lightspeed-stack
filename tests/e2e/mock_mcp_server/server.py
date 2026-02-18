@@ -44,14 +44,14 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:  # pylint: disable=invalid-name
-        """OAuth probe: always 401 with WWW-Authenticate."""
+        """Handle GET requests."""
         if self.path == "/health":
             self._json_response({"status": "ok"})
         else:
             self._require_oauth()
 
     def do_POST(self) -> None:  # pylint: disable=invalid-name
-        """MCP JSON-RPC: 401 without valid Bearer; 200 with minimal responses otherwise."""
+        """Handle POST requests."""
         if self._parse_auth() is None:
             self._require_oauth()
             return
