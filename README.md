@@ -73,6 +73,7 @@ The service includes comprehensive user data collection capabilities for various
     * [OpenAPI specification](#openapi-specification)
     * [Readiness Endpoint](#readiness-endpoint)
     * [Liveness Endpoint](#liveness-endpoint)
+    * [Models endpoint](#models-endpoint)
 * [Database structure](#database-structure)
 * [Publish the service as Python package on PyPI](#publish-the-service-as-python-package-on-pypi)
     * [Generate distribution archives to be uploaded into Python registry](#generate-distribution-archives-to-be-uploaded-into-python-registry)
@@ -1054,7 +1055,9 @@ Stack service. It is possible to specify "model_type" query parameter that is
 used as a filter. For example, if model type is set to "llm", only LLM models
 will be returned:
 
+```bash
 curl http://localhost:8080/v1/models?model_type=llm
+```
 
 The "model_type" query parameter is optional. When not specified, all models
 will be returned.

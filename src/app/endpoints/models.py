@@ -92,16 +92,16 @@ async def models_endpoint_handler(
     The "model_type" query parameter is optional. When not specified, all models
     will be returned.
 
-    ## Parameters:
+    ### Parameters:
         request: The incoming HTTP request.
         auth: Authentication tuple from the auth dependency.
         model_type: Optional filter to return only models matching this type.
 
-    ## Raises:
+    ### Raises:
         HTTPException: If unable to connect to the Llama Stack server or if
         model retrieval fails for any reason.
 
-    ## Returns:
+    ### Returns:
         ModelsResponse: An object containing the list of available models.
     """
     # Used only by the middleware
