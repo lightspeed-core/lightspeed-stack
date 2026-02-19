@@ -133,10 +133,11 @@ def _get_default_model_id() -> str:
     if configuration.inference is None:
         msg = "No inference configuration available"
         logger.error(msg)
-        raise HTTPException(
-            status_code=503,
-            detail={"response": "Service configuration error", "cause": msg},
+        error_response = ServiceUnavailableResponse(
+            backend_name="inference service (configuration)",
+            cause=msg,
         )
+        raise HTTPException(**error_response.model_dump())
 
     model_id = configuration.inference.default_model
     provider_id = configuration.inference.default_provider
@@ -146,10 +147,11 @@ def _get_default_model_id() -> str:
 
     msg = "No default model configured for rlsapi v1 inference"
     logger.error(msg)
-    raise HTTPException(
-        status_code=503,
-        detail={"response": "Service configuration error", "cause": msg},
+    error_response = ServiceUnavailableResponse(
+        backend_name="inference service (configuration)",
+        cause=msg,
     )
+    raise HTTPException(**error_response.model_dump())
 
 
 async def retrieve_simple_response(
