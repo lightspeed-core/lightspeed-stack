@@ -7,7 +7,10 @@ from behave.runner import Context
 
 
 def get_test_tokens() -> dict[str, str]:
-    """Fetch test tokens from the mock JWKS server."""
+    """Fetch test tokens from the mock JWKS server.
+
+    In Prow environment, mock-jwks is port-forwarded to localhost:8000.
+    """
     jwks_host = os.getenv("E2E_JWKS_HOSTNAME", "localhost")
     jwks_port = os.getenv("E2E_JWKS_PORT", "8000")
     tokens_url = f"http://{jwks_host}:{jwks_port}/tokens"

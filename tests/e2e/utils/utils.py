@@ -9,6 +9,19 @@ from typing import Any
 import jsonschema
 from behave.runner import Context
 
+from tests.e2e.utils.prow_utils import (
+    backup_configmap_to_memory,
+    remove_configmap_backup,
+    restart_pod,
+    update_config_configmap,
+    wait_for_pod_health,
+)
+
+
+def is_prow_environment() -> bool:
+    """Check if running in Prow/OpenShift environment."""
+    return os.getenv("RUNNING_PROW") is not None
+
 
 def normalize_endpoint(endpoint: str) -> str:
     """Normalize endpoint to be added into the URL.
@@ -78,6 +91,10 @@ def wait_for_container_health(container_name: str, max_attempts: int = 3) -> Non
         container_name (str): Docker container name or ID to check.
         max_attempts (int): Maximum number of health check attempts (default 3).
     """
+    if is_prow_environment():
+        wait_for_pod_health(container_name, max_attempts)
+        return
+
     for attempt in range(max_attempts):
         try:
             result = subprocess.run(
@@ -167,6 +184,10 @@ def switch_config(
                          written due to permissions.
         OSError: For other OS-related failures during the copy operation.
     """
+    if is_prow_environment():
+        update_config_configmap(source_path)
+        return
+
     try:
         shutil.copy(source_path, destination_path)
     except (FileNotFoundError, PermissionError, OSError) as e:
@@ -188,6 +209,9 @@ def create_config_backup(config_path: str) -> str:
         PermissionError: If the process lacks permission to read or write the files.
         OSError: For other OS-level errors encountered while copying.
     """
+    if is_prow_environment():
+        return backup_configmap_to_memory()
+
     backup_file = f"{config_path}.backup"
     if not os.path.exists(backup_file):
         try:
@@ -211,6 +235,10 @@ def remove_config_backup(backup_path: str) -> None:
     Parameters:
         backup_path (str): Filesystem path to the backup file to remove.
     """
+    if is_prow_environment():
+        remove_configmap_backup(backup_path)
+        return
+
     if os.path.exists(backup_path):
         try:
             os.remove(backup_path)
@@ -228,6 +256,10 @@ def restart_container(container_name: str) -> None:
         subprocess.CalledProcessError: if the `docker restart` command fails.
         subprocess.TimeoutExpired: if the `docker restart` command times out.
     """
+    if is_prow_environment():
+        restart_pod(container_name)
+        return
+
     try:
         subprocess.run(
             ["docker", "restart", container_name],

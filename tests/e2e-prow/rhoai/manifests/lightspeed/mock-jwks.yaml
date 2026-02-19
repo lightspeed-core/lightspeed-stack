@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mock-jwks
+  namespace: e2e-rhoai-dsc
+  labels:
+    app: mock-jwks
+spec:
+  containers:
+    - name: mock-jwks
+      image: python:3.12-slim
+      command: ["python", "/app/server.py"]
+      ports:
+        - containerPort: 8000
+      volumeMounts:
+        - name: server-script
+          mountPath: /app/server.py
+          subPath: server.py
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: 8000
+        initialDelaySeconds: 2
+        periodSeconds: 5
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: 8000
+        initialDelaySeconds: 5
+        periodSeconds: 10
+  volumes:
+    - name: server-script
+      configMap:
+        name: mock-jwks-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mock-jwks
+  namespace: e2e-rhoai-dsc
+spec:
+  selector:
+    app: mock-jwks
+  ports:
+    - port: 8000
+      targetPort: 8000

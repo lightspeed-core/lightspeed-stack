@@ -1,0 +1,94 @@
+name: Lightspeed Core Service (RBAC E2E Tests)
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: true
+  workers: 1
+  color_log: true
+  access_log: true
+
+llama_stack:
+  use_as_library_client: false
+  url: http://${env.E2E_LLAMA_HOSTNAME}:8321
+  api_key: xyzzy
+
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+
+# Conversation cache for storing Q&A history
+conversation_cache:
+  type: "sqlite"
+  sqlite:
+    db_path: "/tmp/data/conversation-cache.db"
+
+# JWK token authentication with role extraction
+authentication:
+  module: "jwk-token"
+  jwk_config:
+    url: "http://mock-jwks:8000/.well-known/jwks.json"
+    jwt_configuration:
+      user_id_claim: "sub"
+      username_claim: "name"
+      # Role rules: extract roles from JWT claims
+      role_rules:
+        # Grant 'admin' role to users with admin=true in JWT
+        - jsonpath: "$.admin"
+          operator: "equals"
+          value: [true]
+          roles: ["admin"]
+        # Grant 'user' role to users with role=user in JWT
+        - jsonpath: "$.role"
+          operator: "equals"
+          value: ["user"]
+          roles: ["user"]
+        # Grant 'viewer' role to users with role=viewer in JWT
+        - jsonpath: "$.role"
+          operator: "equals"
+          value: ["viewer"]
+          roles: ["viewer"]
+        # Grant 'query_only' role based on permissions array containing 'query'
+        - jsonpath: "$.permissions[*]"
+          operator: "contains"
+          value: "query"
+          roles: ["query_only"]
+
+# Authorization: map roles to actions
+authorization:
+  access_rules:
+    # Admin role gets full access
+    - role: "admin"
+      actions: ["admin"]
+    # User role can query, access conversations, and provide feedback
+    - role: "user"
+      actions:
+        - "query"
+        - "streaming_query"
+        - "get_conversation"
+        - "list_conversations"
+        - "delete_conversation"
+        - "update_conversation"
+        - "feedback"
+        - "get_models"
+        - "get_tools"
+        - "info"
+        - "model_override"
+    # Viewer role can only read (no mutations)
+    - role: "viewer"
+      actions:
+        - "get_conversation"
+        - "list_conversations"
+        - "get_models"
+        - "get_tools"
+        - "info"
+    # Query-only role can only query (no model_override - must use defaults)
+    - role: "query_only"
+      actions:
+        - "query"
+        - "streaming_query"
+    # Everyone (*) role gets basic info access
+    - role: "*"
+      actions:
+        - "info"
