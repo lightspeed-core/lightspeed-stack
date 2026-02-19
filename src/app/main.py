@@ -84,6 +84,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
+    root_path=configuration.service_configuration.root_path,
     title=f"{service_name} service - OpenAPI",
     summary=f"{service_name} service API specification.",
     description=f"{service_name} service API specification.",
