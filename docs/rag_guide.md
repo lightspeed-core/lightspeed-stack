@@ -349,7 +349,7 @@ Note: Solr does not currently work with RAG tools. You will need to specify "no_
 
 To filter the Solr context edit the *chunk_filter_query* field in the
 Solr **vector_io** provider in the `run.yaml`. Filters should follow the key:value format:
-ex. `"product:*openshift*`"
+ex. `"product:*openshift*"`
 
 Note: This static filter is a temporary work-around. 
 
