@@ -18,7 +18,7 @@ class ActiveStream:
     """
 
     user_id: str
-    task: asyncio.Task
+    task: asyncio.Task[None]
 
 
 class StreamInterruptRegistry:
