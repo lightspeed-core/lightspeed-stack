@@ -123,6 +123,10 @@ class ResponsesApiParams(BaseModel):
     conversation: str = Field(description="The conversation ID in llama-stack format")
     stream: bool = Field(description="Whether to stream the response")
     store: bool = Field(description="Whether to store the response")
+    extra_headers: Optional[dict[str, str]] = Field(
+        default=None,
+        description="Extra HTTP headers to send with the request (e.g. x-llamastack-provider-data)",
+    )
 
 
 class ToolCallSummary(BaseModel):
