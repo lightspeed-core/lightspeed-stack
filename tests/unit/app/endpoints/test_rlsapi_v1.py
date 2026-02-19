@@ -30,6 +30,7 @@ from models.rlsapi.requests import (
     RlsapiV1SystemInfo,
     RlsapiV1Terminal,
 )
+from models.responses import ServiceUnavailableResponse
 from models.rlsapi.responses import RlsapiV1InferResponse
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 from utils.suid import check_suid
@@ -235,7 +236,7 @@ def test_get_default_model_id_success(mock_configuration: AppConfig) -> None:
 
 
 @pytest.mark.parametrize(
-    ("config_setup", "expected_message"),
+    ("config_setup", "expected_cause"),
     [
         pytest.param(
             "missing_model",
@@ -253,9 +254,9 @@ def test_get_default_model_id_errors(
     mocker: MockerFixture,
     minimal_config: AppConfig,
     config_setup: str,
-    expected_message: str,
+    expected_cause: str,
 ) -> None:
-    """Test _get_default_model_id raises HTTPException for invalid configs."""
+    """Test _get_default_model_id raises HTTPException with ServiceUnavailableResponse shape."""
     if config_setup == "missing_model":
         # Config exists but no model/provider defaults
         mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
@@ -269,7 +270,40 @@ def test_get_default_model_id_errors(
         _get_default_model_id()
 
     assert exc_info.value.status_code == 503
-    assert expected_message in str(exc_info.value.detail)
+    assert expected_cause in str(exc_info.value.detail)
+    # Verify ServiceUnavailableResponse produces dict with response+cause keys
+    detail: dict[str, str] = exc_info.value.detail  # type: ignore[assignment]
+    assert set(detail.keys()) == {"response", "cause"}
+
+
+def test_config_error_503_matches_llm_error_503_shape(
+    mocker: MockerFixture,
+) -> None:
+    """Test that configuration error 503s have the same shape as LLM error 503s.
+
+    Both _get_default_model_id() configuration errors and APIConnectionError
+    handlers use ServiceUnavailableResponse, producing identical detail shapes
+    with 'response' and 'cause' keys.
+    """
+    # Trigger a configuration error 503
+    mock_config = mocker.Mock()
+    mock_config.inference = None
+    mocker.patch("app.endpoints.rlsapi_v1.configuration", mock_config)
+
+    with pytest.raises(HTTPException) as config_exc:
+        _get_default_model_id()
+
+    # Build an LLM connection error 503 using the same response model
+    llm_response = ServiceUnavailableResponse(
+        backend_name="Llama Stack",
+        cause="Unable to connect to the inference backend",
+    )
+    llm_detail = llm_response.model_dump()["detail"]
+
+    config_detail: dict[str, str] = config_exc.value.detail  # type: ignore[assignment]
+
+    # Both must have identical key sets: {"response", "cause"}
+    assert set(config_detail.keys()) == set(llm_detail.keys()) == {"response", "cause"}
 
 
 # --- Test retrieve_simple_response ---
