@@ -18,6 +18,7 @@ from app.endpoints import (
     health,
     config,
     feedback,
+    stream_interrupt,
     streaming_query,
     authorized,
     metrics,
@@ -106,7 +107,7 @@ def test_include_routers() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 19
+    assert len(app.routers) == 20
     assert root.router in app.get_routers()
     assert info.router in app.get_routers()
     assert models.router in app.get_routers()
@@ -126,6 +127,7 @@ def test_include_routers() -> None:
     assert metrics.router in app.get_routers()
     assert rlsapi_v1.router in app.get_routers()
     assert a2a.router in app.get_routers()
+    assert stream_interrupt.router in app.get_routers()
 
 
 def test_check_prefixes() -> None:
@@ -142,7 +144,7 @@ def test_check_prefixes() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 19
+    assert len(app.routers) == 20
     assert app.get_router_prefix(root.router) == ""
     assert app.get_router_prefix(info.router) == "/v1"
     assert app.get_router_prefix(models.router) == "/v1"
@@ -163,3 +165,4 @@ def test_check_prefixes() -> None:
     assert app.get_router_prefix(metrics.router) == ""
     assert app.get_router_prefix(rlsapi_v1.router) == "/v1"
     assert app.get_router_prefix(a2a.router) == ""
+    assert app.get_router_prefix(stream_interrupt.router) == "/v1"
