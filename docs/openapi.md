@@ -247,18 +247,25 @@ Examples
 Handle requests to the /models endpoint.
 
 Process GET requests to the /models endpoint, returning a list of available
-models from the Llama Stack service.
+models from the Llama Stack service. It is possible to specify "model_type"
+query parameter that is used as a filter. For example, if model type is set
+to "llm", only LLM models will be returned:
 
-Parameters:
+    curl http://localhost:8080/v1/models?model_type=llm
+
+The "model_type" query parameter is optional. When not specified, all models
+will be returned.
+
+## Parameters:
     request: The incoming HTTP request.
     auth: Authentication tuple from the auth dependency.
     model_type: Optional filter to return only models matching this type.
 
-Raises:
+## Raises:
     HTTPException: If unable to connect to the Llama Stack server or if
     model retrieval fails for any reason.
 
-Returns:
+## Returns:
     ModelsResponse: An object containing the list of available models.
 
 
@@ -275,13 +282,13 @@ Returns:
 | Status Code | Description | Component |
 |-------------|-------------|-----------|
 | 200 | Successful response | [ModelsResponse](#modelsresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse) |
+| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse) |
+| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse) |
+| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
 
 Examples
-
-
-
-
 
 ```json
 {
@@ -292,9 +299,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -303,14 +307,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -320,14 +316,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -337,14 +325,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -354,8 +334,7 @@ Examples
   }
 }
 ```
- |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+
 ## GET `/v1/tools`
 
 > **Tools Endpoint Handler**
@@ -3277,6 +3256,23 @@ Examples
 }
 ```
  |
+| 413 | Prompt is too long | [PromptTooLongResponse](#prompttoolongresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "The prompt exceeds the maximum allowed length.",
+    "response": "Prompt is too long"
+  }
+}
+```
+ |
 | 422 | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse)
 
 Examples
@@ -4945,7 +4941,7 @@ Useful resources:
 | name | string | MCP server name that must be unique |
 | provider_id | string | MCP provider identification |
 | url | string | URL of the MCP server |
-| authorization_headers | object | Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 2 special cases: 1. Usage of the kubernetes token in the header. To specify this use a string 'kubernetes' instead of the file path. 2. Usage of the client provided token in the header. To specify this use a string 'client' instead of the file path. |
+| authorization_headers | object | Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 3 special cases: 1. Usage of the kubernetes token in the header. To specify this use a string 'kubernetes' instead of the file path. 2. Usage of the client-provided token in the header. To specify this use a string 'client' instead of the file path. 3. Usage of the oauth token in the header. To specify this use a string 'oauth' instead of the file path.  |
 | timeout |  | Timeout in seconds for requests to the MCP server. If not specified, the default timeout from Llama Stack will be used. Note: This field is reserved for future use when Llama Stack adds timeout support. |
 
 
@@ -5065,6 +5061,18 @@ Useful resources:
 | ssl_mode | string | SSL mode |
 | gss_encmode | string | This option determines whether or with what priority a secure GSS TCP/IP connection will be negotiated with the server. |
 | ca_cert_path |  | Path to CA certificate |
+
+
+## PromptTooLongResponse
+
+
+413 Payload Too Large - Prompt is too long.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer |  |
+| detail |  |  |
 
 
 ## ProviderHealthStatus

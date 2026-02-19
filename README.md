@@ -1045,6 +1045,60 @@ The liveness endpoint performs a basic health check to verify the service is ali
 }
 ```
 
+## Models endpoint
+
+**Endpoint:** `GET /v1/models`
+
+Process GET requests and returns a list of available models from the Llama
+Stack service. It is possible to specify "model_type" query parameter that is
+used as a filter. For example, if model type is set to "llm", only LLM models
+will be returned:
+
+curl http://localhost:8080/v1/models?model_type=llm
+
+The "model_type" query parameter is optional. When not specified, all models
+will be returned.
+
+**Response Body:**
+```json
+{
+  "models": [
+    {
+      "identifier": "sentence-transformers/.llama",
+      "metadata": {
+        "embedding_dimension": 384
+      },
+      "api_model_type": "embedding",
+      "provider_id": "sentence-transformers",
+      "type": "model",
+      "provider_resource_id": ".llama",
+      "model_type": "embedding"
+    },
+    {
+      "identifier": "openai/gpt-4o-mini",
+      "metadata": {},
+      "api_model_type": "llm",
+      "provider_id": "openai",
+      "type": "model",
+      "provider_resource_id": "gpt-4o-mini",
+      "model_type": "llm"
+    },
+    {
+      "identifier": "sentence-transformers/nomic-ai/nomic-embed-text-v1.5",
+      "metadata": {
+        "embedding_dimension": 768
+      },
+      "api_model_type": "embedding",
+      "provider_id": "sentence-transformers",
+      "type": "model",
+      "provider_resource_id": "nomic-ai/nomic-embed-text-v1.5",
+      "model_type": "embedding"
+    }
+  ]
+}
+```
+
+
 # Database structure
 
 Database structure is described on [this page](https://lightspeed-core.github.io/lightspeed-stack/DB/index.html)
