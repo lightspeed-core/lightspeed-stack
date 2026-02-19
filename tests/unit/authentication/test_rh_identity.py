@@ -195,12 +195,12 @@ class TestRHIdentityData:
             (
                 ["openshift"],
                 True,
-                "Missing required entitlement: openshift",
+                "Insufficient entitlements",
             ),  # Single missing
             (
                 ["rhel", "ansible", "openshift"],
                 True,
-                "Missing required entitlement: openshift",
+                "Insufficient entitlements",
             ),  # Multiple with one missing
         ],
     )
@@ -236,11 +236,11 @@ class TestRHIdentityData:
     @pytest.mark.parametrize(
         "missing_field,expected_error",
         [
-            ({"identity": None}, "Missing 'identity' field"),
-            ({"identity": {"org_id": "123"}}, "Missing identity 'type' field"),
+            ({"identity": None}, "Invalid identity data"),
+            ({"identity": {"org_id": "123"}}, "Invalid identity data"),
             (
                 {"identity": {"type": "User", "org_id": "123"}},
-                "Missing 'user' field for User type",
+                "Invalid identity data",
             ),
             (
                 {
@@ -250,7 +250,7 @@ class TestRHIdentityData:
                         "user": {"username": "test"},
                     }
                 },
-                "Missing 'user_id' in user data",
+                "Invalid identity data",
             ),
             (
                 {
@@ -260,15 +260,15 @@ class TestRHIdentityData:
                         "user": {"user_id": "123"},
                     }
                 },
-                "Missing 'username' in user data",
+                "Invalid identity data",
             ),
             (
                 {"identity": {"type": "System", "org_id": "123"}},
-                "Missing 'system' field for System type",
+                "Invalid identity data",
             ),
             (
                 {"identity": {"type": "System", "org_id": "123", "system": {}}},
-                "Missing 'cn' in system data",
+                "Invalid identity data",
             ),
             (
                 {
@@ -278,29 +278,39 @@ class TestRHIdentityData:
                         "system": {"cn": "test"},
                     }
                 },
-                "Missing 'account_number' for System type",
+                "Invalid identity data",
             ),
         ],
     )
     def test_validation_failures(
-        self, missing_field: dict, expected_error: str
+        self,
+        missing_field: dict,
+        expected_error: str,
+        mocker: MockerFixture,
     ) -> None:
         """Test validation failures for various missing fields."""
+        mock_warning = mocker.patch("authentication.rh_identity.logger.warning")
+
         with pytest.raises(HTTPException) as exc_info:
             RHIdentityData(missing_field)
 
         assert exc_info.value.status_code == 400
         assert expected_error in str(exc_info.value.detail)
+        mock_warning.assert_called_once()
+        assert "Identity validation failed" in mock_warning.call_args[0][0]
 
-    def test_unsupported_identity_type(self) -> None:
+    def test_unsupported_identity_type(self, mocker: MockerFixture) -> None:
         """Test validation fails with unsupported identity type."""
+        mock_warning = mocker.patch("authentication.rh_identity.logger.warning")
         invalid_data = {"identity": {"type": "Unknown", "org_id": "123"}}
 
         with pytest.raises(HTTPException) as exc_info:
             RHIdentityData(invalid_data)
 
         assert exc_info.value.status_code == 400
-        assert "Unsupported identity type: Unknown" in str(exc_info.value.detail)
+        assert "Invalid identity data" in str(exc_info.value.detail)
+        mock_warning.assert_called_once()
+        assert "Identity validation failed" in mock_warning.call_args[0][0]
 
 
 class TestRHIdentityAuthDependency:
@@ -406,12 +416,12 @@ class TestRHIdentityAuthDependency:
             (
                 ["openshift"],
                 True,
-                "Missing required entitlement: openshift",
+                "Insufficient entitlements",
             ),  # Single missing
             (
                 ["rhel", "ansible", "openshift"],
                 True,
-                "Missing required entitlement: openshift",
+                "Insufficient entitlements",
             ),  # Multiple with one missing
         ],
     )
