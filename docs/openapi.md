@@ -29,15 +29,13 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful Response | string |
-| 401 | Unauthorized | ...
+| Status Code | Description         | Component                                     |
+|-------------|---------------------|-----------------------------------------------|
+| 200         | Successful Response | string                                        |
+| 401         | Unauthorized        | [UnauthorizedResponse](#unauthorizedresponse) |
+| 403         | Permission denied   | [ForbiddenResponse](#forbiddenresponse)       |
+
 Examples
-
-
-
-
 
 ```json
 {
@@ -48,9 +46,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -59,14 +54,6 @@ Examples
   }
 }
 ```
-
-[UnauthorizedResponse](#unauthorizedresponse) |
-| 403 | Permission denied | ...
-Examples
-
-
-
-
 
 ```json
 {
@@ -77,7 +64,6 @@ Examples
 }
 ```
 
-[ForbiddenResponse](#forbiddenresponse) |
 ## GET `/v1/info`
 
 > **Info Endpoint Handler**
@@ -102,16 +88,14 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [InfoResponse](#inforesponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description         | Component                                                 |
+|-------------|---------------------|-----------------------------------------------------------|
+| 200         | Successful response | [InfoResponse](#inforesponse)                             |
+| 401         | Unauthorized        | [UnauthorizedResponse](#unauthorizedresponse)             |
+| 403         | Permission denied   | [ForbiddenResponse](#forbiddenresponse)                   |
+| 503         | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse) |
 
 Examples
-
-
-
-
 
 ```json
 {
@@ -122,9 +106,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -133,9 +114,6 @@ Examples
   }
 }
 ```
-
-
-
 
 ```json
 {
@@ -146,9 +124,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -157,9 +132,6 @@ Examples
   }
 }
 ```
-
-
-
 
 ```json
 {
@@ -170,9 +142,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -181,9 +150,6 @@ Examples
   }
 }
 ```
-
-
-
 
 ```json
 {
@@ -194,9 +160,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -205,14 +168,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -222,14 +177,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -239,7 +186,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/v1/models`
 
 > **Models Endpoint Handler**
@@ -272,21 +219,21 @@ will be returned.
 
 ### 🔗 Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| model_type |  | False | Optional filter to return only models matching this type |
+| Name       | Type | Required | Description                                              |
+|------------|------|----------|----------------------------------------------------------|
+| model_type |      | False    | Optional filter to return only models matching this type |
 
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ModelsResponse](#modelsresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse) |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse) |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse) |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [ModelsResponse](#modelsresponse)                           |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                 |
 
 Examples
 
@@ -358,16 +305,15 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ToolsResponse](#toolsresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [ToolsResponse](#toolsresponse)                             |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
 
 Examples
-
-
-
-
 
 ```json
 {
@@ -378,9 +324,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -389,14 +332,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -406,13 +341,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -423,14 +351,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -440,7 +360,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/v1/mcp-auth/client-options`
 
 > **Get Mcp Client Auth Options**
