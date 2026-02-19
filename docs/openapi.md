@@ -708,7 +708,7 @@ Examples
 
 > **Get Provider Endpoint Handler**
 
-Retrieve a single provider by its unique ID.
+Retrieve a single provider identified by its unique ID.
 
 Returns:
     ProviderResponse: Provider details.
@@ -942,7 +942,7 @@ Examples
 
 > **Get Rag Endpoint Handler**
 
-Retrieve a single RAG by its unique ID.
+Retrieve a single RAG identified by its unique ID.
 
 Accepts both user-facing rag_id (from LCORE config) and llama-stack
 vector_store_id. If a rag_id from config is provided, it is resolved
@@ -2126,7 +2126,7 @@ Examples
 
 > **Conversation Get Endpoint Handler V1**
 
-Handle request to retrieve a conversation by ID using Conversations API.
+Handle request to retrieve a conversation identified by ID using Conversations API.
 
 Retrieve a conversation's chat history by its ID using the LlamaStack
 Conversations API. This endpoint fetches the conversation items from
@@ -2735,7 +2735,7 @@ Examples
 
 > **Get Conversation Endpoint Handler**
 
-Handle request to retrieve a conversation by ID.
+Handle request to retrieve a conversation identified by its ID.
 
 
 

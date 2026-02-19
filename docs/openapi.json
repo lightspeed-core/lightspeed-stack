@@ -890,7 +890,7 @@
                     "providers"
                 ],
                 "summary": "Get Provider Endpoint Handler",
-                "description": "Retrieve a single provider by its unique ID.\n\nReturns:\n    ProviderResponse: Provider details.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Provider not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "Retrieve a single provider identified by its unique ID.\n\nReturns:\n    ProviderResponse: Provider details.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Provider not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
                 "operationId": "get_provider_endpoint_handler_v1_providers__provider_id__get",
                 "parameters": [
                     {
@@ -1170,7 +1170,7 @@
                     "rags"
                 ],
                 "summary": "Get Rag Endpoint Handler",
-                "description": "Retrieve a single RAG by its unique ID.\n\nAccepts both user-facing rag_id (from LCORE config) and llama-stack\nvector_store_id. If a rag_id from config is provided, it is resolved\nto the underlying vector_store_id for the llama-stack lookup.\n\nReturns:\n    RAGInfoResponse: A single RAG's details.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: RAG with the given ID not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "Retrieve a single RAG identified by its unique ID.\n\nAccepts both user-facing rag_id (from LCORE config) and llama-stack\nvector_store_id. If a rag_id from config is provided, it is resolved\nto the underlying vector_store_id for the llama-stack lookup.\n\nReturns:\n    RAGInfoResponse: A single RAG's details.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: RAG with the given ID not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
                 "operationId": "get_rag_endpoint_handler_v1_rags__rag_id__get",
                 "parameters": [
                     {
@@ -2489,7 +2489,7 @@
                     "conversations_v1"
                 ],
                 "summary": "Conversation Get Endpoint Handler V1",
-                "description": "Handle request to retrieve a conversation by ID using Conversations API.\n\nRetrieve a conversation's chat history by its ID using the LlamaStack\nConversations API. This endpoint fetches the conversation items from\nthe backend, simplifies them to essential chat history, and returns\nthem in a structured response. Raises HTTP 400 for invalid IDs, 404\nif not found, 503 if the backend is unavailable, and 500 for\nunexpected errors.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to retrieve\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationResponse: Structured response containing the conversation\n    ID and simplified chat history",
+                "description": "Handle request to retrieve a conversation identified by ID using Conversations API.\n\nRetrieve a conversation's chat history by its ID using the LlamaStack\nConversations API. This endpoint fetches the conversation items from\nthe backend, simplifies them to essential chat history, and returns\nthem in a structured response. Raises HTTP 400 for invalid IDs, 404\nif not found, 503 if the backend is unavailable, and 500 for\nunexpected errors.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to retrieve\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationResponse: Structured response containing the conversation\n    ID and simplified chat history",
                 "operationId": "get_conversation_endpoint_handler_v1_conversations__conversation_id__get",
                 "parameters": [
                     {
@@ -3179,7 +3179,7 @@
                     "conversations_v2"
                 ],
                 "summary": "Get Conversation Endpoint Handler",
-                "description": "Handle request to retrieve a conversation by ID.",
+                "description": "Handle request to retrieve a conversation identified by its ID.",
                 "operationId": "get_conversation_endpoint_handler_v2_conversations__conversation_id__get",
                 "parameters": [
                     {
