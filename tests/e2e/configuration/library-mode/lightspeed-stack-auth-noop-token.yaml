@@ -23,3 +23,6 @@ conversation_cache:
 
 authentication:
   module: "noop-with-token"
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
