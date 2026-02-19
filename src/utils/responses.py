@@ -198,6 +198,37 @@ async def prepare_tools(
     return toolgroups
 
 
+def _build_provider_data_headers(
+    tools: Optional[list[dict[str, Any]]],
+) -> Optional[dict[str, str]]:
+    """Build extra HTTP headers containing MCP provider data for Llama Stack.
+
+    Extracts per-server auth headers from MCP tool definitions and encodes
+    them as a JSON ``x-llamastack-provider-data`` header that Llama Stack
+    uses to authenticate with downstream MCP servers.
+
+    Args:
+        tools: Prepared tool definitions (may include MCP and non-MCP tools).
+
+    Returns:
+        Dict with a single ``x-llamastack-provider-data`` key, or None when
+        no MCP tools carry headers.
+    """
+    if not tools:
+        return None
+
+    mcp_headers: McpHeaders = {
+        tool["server_url"]: tool["headers"]
+        for tool in tools
+        if tool.get("type") == "mcp" and tool.get("headers") and tool.get("server_url")
+    }
+
+    if not mcp_headers:
+        return None
+
+    return {"x-llamastack-provider-data": json.dumps({"mcp_headers": mcp_headers})}
+
+
 async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-many-locals,too-many-positional-arguments
     client: AsyncLlamaStackClient,
     query_request: QueryRequest,
@@ -281,6 +312,9 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
             llama_stack_conv_id,
         )
 
+    # Build x-llamastack-provider-data header from MCP tool headers
+    extra_headers = _build_provider_data_headers(tools)
+
     return ResponsesApiParams(
         input=input_text,
         model=llama_stack_model_id,
@@ -289,6 +323,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
         conversation=llama_stack_conv_id,
         stream=stream,
         store=store,
+        extra_headers=extra_headers,
     )
 
 

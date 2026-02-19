@@ -875,6 +875,111 @@ class TestPrepareResponsesParams:
         assert exc_info.value.status_code == 500
 
     @pytest.mark.asyncio
+    async def test_prepare_responses_params_includes_mcp_provider_data_headers(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that extra_headers with x-llamastack-provider-data is set when MCP tools have headers."""
+        mock_client = mocker.AsyncMock()
+        mock_model = mocker.Mock()
+        mock_model.id = "provider1/model1"
+        mock_model.custom_metadata = {"model_type": "llm", "provider_id": "provider1"}
+        mock_client.models.list = mocker.AsyncMock(return_value=[mock_model])
+
+        mock_conversation = mocker.Mock()
+        mock_conversation.id = "new_conv_id"
+        mock_client.conversations.create = mocker.AsyncMock(
+            return_value=mock_conversation
+        )
+
+        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
+
+        # Simulate MCP tools with headers (as returned by prepare_tools/get_mcp_tools)
+        mcp_tools_with_headers = [
+            {
+                "type": "mcp",
+                "server_label": "mcp::aap-controller",
+                "server_url": "http://aap.foo.redhat.com:8004/sse",
+                "require_approval": "never",
+                "headers": {"X-Authorization": "client-token"},
+            },
+            {
+                "type": "mcp",
+                "server_label": "mcp::aap-lightspeed",
+                "server_url": "http://aap.foo.redhat.com:8005/sse",
+                "require_approval": "never",
+                "headers": {"X-Authorization": "client-token-2"},
+            },
+        ]
+
+        mocker.patch("utils.responses.configuration", mocker.Mock())
+        mocker.patch(
+            "utils.responses.select_model_and_provider_id",
+            return_value=("provider1/model1", "model1", "provider1"),
+        )
+        mocker.patch("utils.responses.evaluate_model_hints", return_value=(None, None))
+        mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
+        mocker.patch(
+            "utils.responses.prepare_tools", return_value=mcp_tools_with_headers
+        )
+        mocker.patch("utils.responses.prepare_input", return_value="test")
+
+        result = await prepare_responses_params(
+            mock_client, query_request, None, "token"
+        )
+
+        # The result should contain extra_headers with x-llamastack-provider-data
+        dumped = result.model_dump()
+        assert (
+            dumped["extra_headers"] is not None
+        ), "extra_headers should not be None when MCP tools have headers"
+        assert "x-llamastack-provider-data" in dumped["extra_headers"]
+
+        provider_data = json.loads(
+            dumped["extra_headers"]["x-llamastack-provider-data"]
+        )
+        assert "mcp_headers" in provider_data
+        assert provider_data["mcp_headers"] == {
+            "http://aap.foo.redhat.com:8004/sse": {"X-Authorization": "client-token"},
+            "http://aap.foo.redhat.com:8005/sse": {"X-Authorization": "client-token-2"},
+        }
+
+    @pytest.mark.asyncio
+    async def test_prepare_responses_params_no_extra_headers_without_mcp_tools(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that extra_headers is None when no MCP tools have headers."""
+        mock_client = mocker.AsyncMock()
+        mock_model = mocker.Mock()
+        mock_model.id = "provider1/model1"
+        mock_model.custom_metadata = {"model_type": "llm", "provider_id": "provider1"}
+        mock_client.models.list = mocker.AsyncMock(return_value=[mock_model])
+
+        mock_conversation = mocker.Mock()
+        mock_conversation.id = "new_conv_id"
+        mock_client.conversations.create = mocker.AsyncMock(
+            return_value=mock_conversation
+        )
+
+        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
+
+        mocker.patch("utils.responses.configuration", mocker.Mock())
+        mocker.patch(
+            "utils.responses.select_model_and_provider_id",
+            return_value=("provider1/model1", "model1", "provider1"),
+        )
+        mocker.patch("utils.responses.evaluate_model_hints", return_value=(None, None))
+        mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
+        mocker.patch("utils.responses.prepare_tools", return_value=None)
+        mocker.patch("utils.responses.prepare_input", return_value="test")
+
+        result = await prepare_responses_params(
+            mock_client, query_request, None, "token"
+        )
+
+        dumped = result.model_dump()
+        assert dumped.get("extra_headers") is None
+
+    @pytest.mark.asyncio
     async def test_prepare_responses_params_api_status_error_on_conversation(
         self, mocker: MockerFixture
     ) -> None:
