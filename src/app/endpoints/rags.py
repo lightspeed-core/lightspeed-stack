@@ -131,7 +131,7 @@ async def get_rag_endpoint_handler(
     rag_id: str,
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
 ) -> RAGInfoResponse:
-    """Retrieve a single RAG by its unique ID.
+    """Retrieve a single RAG identified by its unique ID.
 
     Accepts both user-facing rag_id (from LCORE config) and llama-stack
     vector_store_id. If a rag_id from config is provided, it is resolved
