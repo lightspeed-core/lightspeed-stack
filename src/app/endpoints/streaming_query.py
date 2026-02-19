@@ -82,6 +82,7 @@ from utils.responses import (
 from utils.shields import (
     append_turn_to_conversation,
     run_shield_moderation,
+    validate_shield_ids_override,
 )
 from utils.suid import normalize_conversation_id
 from utils.token_counter import TokenCounter
@@ -154,6 +155,9 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
 
     # Enforce RBAC: optionally disallow overriding model/provider in requests
     validate_model_provider_override(query_request, request.state.authorized_actions)
+
+    # Validate shield_ids override if provided
+    validate_shield_ids_override(query_request, configuration)
 
     # Validate attachments if provided
     if query_request.attachments:
@@ -271,7 +275,7 @@ async def retrieve_response_generator(
     turn_summary = TurnSummary()
     try:
         moderation_result = await run_shield_moderation(
-            context.client, responses_params.input
+            context.client, responses_params.input, context.query_request.shield_ids
         )
         if moderation_result.blocked:
             violation_message = moderation_result.message or ""

@@ -63,6 +63,7 @@ from utils.responses import (
 from utils.shields import (
     append_turn_to_conversation,
     run_shield_moderation,
+    validate_shield_ids_override,
 )
 from utils.suid import normalize_conversation_id
 from utils.types import (
@@ -132,6 +133,9 @@ async def query_endpoint_handler(
     # Enforce RBAC: optionally disallow overriding model/provider in requests
     validate_model_provider_override(query_request, request.state.authorized_actions)
 
+    # Validate shield_ids override if provided
+    validate_shield_ids_override(query_request, configuration)
+
     # Validate attachments if provided
     if query_request.attachments:
         validate_attachments_metadata(query_request.attachments)
@@ -191,7 +195,11 @@ async def query_endpoint_handler(
 
     # Retrieve response using Responses API
     turn_summary = await retrieve_response(
-        client, responses_params, vector_store_ids, rag_id_mapping
+        client,
+        responses_params,
+        query_request.shield_ids,
+        vector_store_ids,
+        rag_id_mapping,
     )
 
     if pre_rag_chunks:
@@ -276,6 +284,7 @@ def parse_referenced_docs(
 async def retrieve_response(  # pylint: disable=too-many-locals
     client: AsyncLlamaStackClient,
     responses_params: ResponsesApiParams,
+    shield_ids: Optional[list[str]] = None,
     vector_store_ids: Optional[list[str]] = None,
     rag_id_mapping: Optional[dict[str, str]] = None,
 ) -> TurnSummary:
@@ -288,6 +297,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     Parameters:
         client: The AsyncLlamaStackClient to use for the request.
         responses_params: The Responses API parameters.
+        shield_ids: Optional list of shield IDs for moderation.
         vector_store_ids: Vector store IDs used in the query for source resolution.
         rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
 
@@ -297,7 +307,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     summary = TurnSummary()
 
     try:
-        moderation_result = await run_shield_moderation(client, responses_params.input)
+        moderation_result = await run_shield_moderation(
+            client, responses_params.input, shield_ids
+        )
         if moderation_result.blocked:
             # Handle shield moderation blocking
             violation_message = moderation_result.message or ""
