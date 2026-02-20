@@ -288,6 +288,22 @@ async def retrieve_response_generator(
                 turn_summary,
             )
         # Retrieve response stream (may raise exceptions)
+        # Log request details before calling Llama Stack (MCP debugging)
+        if responses_params.tools is not None and len(responses_params.tools) > 0:
+            # Filter MCP tools once for efficiency
+            mcp_tools = [t for t in responses_params.tools if t.get("type") == "mcp"]
+            if len(mcp_tools) > 0:
+                logger.debug(
+                    "Calling Llama Stack Responses API (streaming) with %d MCP tool(s)",
+                    len(mcp_tools),
+                )
+                # Log MCP server endpoints that may be called
+                logger.debug("MCP server endpoints that may be called:")
+                for tool in mcp_tools:
+                    logger.debug(
+                        "  - %s: %s", tool.get("server_label"), tool.get("server_url")
+                    )
+
         response = await context.client.responses.create(
             **responses_params.model_dump()
         )

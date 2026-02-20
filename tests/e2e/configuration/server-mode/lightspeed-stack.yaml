@@ -18,20 +18,8 @@ user_data_collection:
   transcripts_storage: "/tmp/data/transcripts"
 authentication:
   module: "noop"
-mcp_servers:
-  # Mock server with client-provided auth - should appear in mcp-auth/client-options response
-  - name: "github-api"
-    provider_id: "model-context-protocol"
-    url: "http://mcp-mock-server:3000"
-    authorization_headers:
-      Authorization: "client"
-  # Mock server with client-provided auth (different header) - should appear in response
-  - name: "gitlab-api"
-    provider_id: "model-context-protocol"
-    url: "http://mcp-mock-server:3000"
-    authorization_headers:
-      X-API-Token: "client"
-  # Mock server with no auth - should NOT appear in response
-  - name: "public-api"
-    provider_id: "model-context-protocol"
-    url: "http://mcp-mock-server:3000"
+# Conversation cache for storing Q&A history
+conversation_cache:
+  type: "sqlite"
+  sqlite:
+    db_path: "/tmp/data/conversation-cache.db"

@@ -6,7 +6,7 @@ services:
       dockerfile: dev-tools/mcp-mock-server/Dockerfile
     container_name: mcp-mock-server
     ports:
-      - "3000:3000"
+      - "9000:3000"
     networks:
       - lightspeednet
     healthcheck:
@@ -67,6 +67,11 @@ services:
       - WATSONX_API_KEY=${WATSONX_API_KEY:-}
       # Enable debug logging if needed
       - LLAMA_STACK_LOGGING=${LLAMA_STACK_LOGGING:-}
+    entrypoint: >
+      /bin/bash -c "
+      printf %s 'test-secret-token-123' > /tmp/lightspeed-mcp-test-token &&
+      /app-root/.venv/bin/python3.12 /app-root/src/lightspeed_stack.py
+      "
       # FAISS test
       - FAISS_VECTOR_STORE_ID=${FAISS_VECTOR_STORE_ID:-}
     healthcheck:
