@@ -216,3 +216,24 @@ Scenario: Check if LLM responds for query request with error for missing query
     }
     """
     Then The status code of the response is 200
+
+    Scenario: Check if LLM responds to sent question with error when not authenticated
+    Given The system is in default state
+    And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+    When I use "query" to ask question with authorization header
+    """
+    {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 401
+    And The body of the response is the following
+    """
+        {
+            "detail": {
+                "response": "Missing or invalid credentials provided by client",
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
+            }
+        }
+    """
+    And The headers of the response contains the following "www-authenticate"
+
+

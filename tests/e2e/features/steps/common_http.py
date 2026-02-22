@@ -193,7 +193,7 @@ def check_response_headers_contains(context: Context, substring: str) -> None:
     """Check that response body contains a substring."""
     assert context.response is not None, "Request needs to be performed first"
     assert (
-        substring in context.response.headers
+        substring in context.response.headers.keys()
     ), f"The response headers '{context.response.headers}' doesn't contain '{substring}'"
 
 

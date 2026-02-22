@@ -4,6 +4,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from llama_stack_client import APIConnectionError, BadRequestError, AuthenticationError
+from llama_stack.core.datatypes import AuthenticationRequiredError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -90,8 +91,7 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
         except BadRequestError:
             logger.error("Toolgroup %s is not found", toolgroup.identifier)
             continue
-        except AuthenticationError as e:
-            logger.error("Authentication error: %s", e)
+        except (AuthenticationError, AuthenticationRequiredError) as e:
             if toolgroup.mcp_endpoint:
                 await probe_mcp_oauth_and_raise_401(
                     toolgroup.mcp_endpoint.uri, chain_from=e
