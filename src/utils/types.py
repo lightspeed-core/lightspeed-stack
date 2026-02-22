@@ -174,11 +174,11 @@ class ReferencedDocument(BaseModel):
     """
 
     doc_url: Optional[AnyUrl] = Field(
-        None, description="URL of the referenced document"
+        default=None, description="URL of the referenced document"
     )
 
     doc_title: Optional[str] = Field(
-        None, description="Title of the referenced document"
+        default=None, description="Title of the referenced document"
     )
 
     source: Optional[str] = Field(
