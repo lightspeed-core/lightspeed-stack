@@ -1059,7 +1059,7 @@ class ConversationDetails(BaseModel):
     Example:
         ```python
         conversation = ConversationDetails(
-            conversation_id="123e4567-e89b-12d3-a456-426614174000"
+            conversation_id="123e4567-e89b-12d3-a456-426614174000",
             created_at="2024-01-01T00:00:00Z",
             last_message_at="2024-01-01T00:05:00Z",
             message_count=5,
