@@ -196,5 +196,5 @@ Feature: streaming_query endpoint API tests
             }
         }
     """
-    And The headers of the response contains the following "www-authenticate"
+    And The headers of the response contains the following header "www-authenticate"
 

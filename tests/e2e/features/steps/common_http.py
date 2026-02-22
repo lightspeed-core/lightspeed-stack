@@ -188,13 +188,13 @@ def check_prediction_result(context: Context) -> None:
     assert result == expected_body, f"got:\n{result}\nwant:\n{expected_body}"
 
 
-@then("The headers of the response contains {substring}")
-def check_response_headers_contains(context: Context, substring: str) -> None:
-    """Check that response body contains a substring."""
+@then('The headers of the response contains the following header "{header_name}"')
+def check_response_headers_contains(context: Context, header_name: str) -> None:
+    """Check that response contains a header whose name matches."""
     assert context.response is not None, "Request needs to be performed first"
     assert (
-        substring in context.response.headers.keys()
-    ), f"The response headers '{context.response.headers}' doesn't contain '{substring}'"
+        header_name in context.response.headers.keys()
+    ), f"The response headers '{context.response.headers}' doesn't contain header '{header_name}'"
 
 
 @then('The body of the response, ignoring the "{field}" field, is the following')

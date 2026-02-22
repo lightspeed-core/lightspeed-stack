@@ -137,7 +137,7 @@ Feature: Info tests
             }
         }
     """
-    And The headers of the response contains the following "www-authenticate"
+    And The headers of the response contains the following header "www-authenticate"
 
   Scenario: Check if metrics endpoint is working
     Given The system is in default state

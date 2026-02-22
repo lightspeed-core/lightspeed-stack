@@ -234,6 +234,6 @@ Scenario: Check if LLM responds for query request with error for missing query
             }
         }
     """
-    And The headers of the response contains the following "www-authenticate"
+    And The headers of the response contains the following header "www-authenticate"
 
 
