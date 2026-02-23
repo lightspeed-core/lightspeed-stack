@@ -43,6 +43,7 @@ async def test_stream_interrupt_endpoint_success(
     registry: StreamInterruptRegistry,
 ) -> None:
     """Interrupt endpoint cancels an active stream for the same user."""
+
     async def pending_stream() -> None:
         await asyncio.sleep(10)
 
@@ -70,7 +71,9 @@ async def test_stream_interrupt_endpoint_not_found(
     """Interrupt endpoint returns 404 for unknown request id."""
     with pytest.raises(HTTPException) as exc_info:
         await stream_interrupt_endpoint_handler(
-            interrupt_request=StreamingInterruptRequest(request_id=REQUEST_ID_NOT_FOUND),
+            interrupt_request=StreamingInterruptRequest(
+                request_id=REQUEST_ID_NOT_FOUND
+            ),
             auth=(
                 OWNER_USER_ID,
                 "mock_username",
@@ -88,6 +91,7 @@ async def test_stream_interrupt_endpoint_wrong_user(
     registry: StreamInterruptRegistry,
 ) -> None:
     """Interrupt endpoint does not cancel streams owned by other users."""
+
     async def pending_stream() -> None:
         await asyncio.sleep(10)
 
@@ -100,7 +104,9 @@ async def test_stream_interrupt_endpoint_wrong_user(
 
     with pytest.raises(HTTPException) as exc_info:
         await stream_interrupt_endpoint_handler(
-            interrupt_request=StreamingInterruptRequest(request_id=REQUEST_ID_WRONG_USER),
+            interrupt_request=StreamingInterruptRequest(
+                request_id=REQUEST_ID_WRONG_USER
+            ),
             auth=(
                 NON_OWNER_USER_ID,
                 "mock_username",
@@ -123,6 +129,7 @@ async def test_stream_interrupt_endpoint_already_completed(
     registry: StreamInterruptRegistry,
 ) -> None:
     """Interrupt endpoint reports already-completed streams without error."""
+
     async def completed_stream() -> None:
         return None
 
