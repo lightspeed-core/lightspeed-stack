@@ -22,7 +22,6 @@ def test_start_uvicorn(mocker: MockerFixture) -> None:
         host="localhost",
         port=8080,
         workers=1,
-        root_path="",
         log_level=20,
         ssl_certfile=None,
         ssl_keyfile=None,
@@ -46,7 +45,6 @@ def test_start_uvicorn_different_host_port(mocker: MockerFixture) -> None:
         host="x.y.com",
         port=1234,
         workers=10,
-        root_path="",
         log_level=20,
         ssl_certfile=None,
         ssl_keyfile=None,
@@ -71,7 +69,6 @@ def test_start_uvicorn_empty_tls_configuration(mocker: MockerFixture) -> None:
         host="x.y.com",
         port=1234,
         workers=10,
-        root_path="",
         log_level=20,
         ssl_certfile=None,
         ssl_keyfile=None,
@@ -100,7 +97,6 @@ def test_start_uvicorn_tls_configuration(mocker: MockerFixture) -> None:
         host="x.y.com",
         port=1234,
         workers=10,
-        root_path="",
         log_level=20,
         ssl_certfile=Path("tests/configuration/server.crt"),
         ssl_keyfile=Path("tests/configuration/server.key"),
@@ -111,7 +107,7 @@ def test_start_uvicorn_tls_configuration(mocker: MockerFixture) -> None:
 
 
 def test_start_uvicorn_with_root_path(mocker: MockerFixture) -> None:
-    """Test the function to start Uvicorn server with a custom root path."""
+    """Test that root_path is not passed to uvicorn (it belongs on the FastAPI constructor)."""
     configuration = ServiceConfiguration(
         host="localhost", port=8080, workers=1, root_path="/api/lightspeed"
     )  # pyright: ignore[reportCallIssue]
@@ -124,7 +120,6 @@ def test_start_uvicorn_with_root_path(mocker: MockerFixture) -> None:
         host="localhost",
         port=8080,
         workers=1,
-        root_path="/api/lightspeed",
         log_level=20,
         ssl_certfile=None,
         ssl_keyfile=None,

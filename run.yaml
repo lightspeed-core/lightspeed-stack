@@ -67,6 +67,14 @@ providers:
       content_field: chunk
       embedding_dimension: 384
       embedding_model: ${env.EMBEDDING_MODEL_DIR}
+      chunk_window_config:
+        chunk_parent_id_field: "parent_id"
+        chunk_content_field: "chunk_field"
+        chunk_index_field: "chunk_index"
+        chunk_token_count_field: "num_tokens"
+        parent_total_chunks_field: "total_chunks"
+        parent_total_tokens_field: "total_tokens"
+        chunk_filter_query: "is_chunk:true" 
       persistence:
         namespace: portal-rag
         backend: kv_default
@@ -152,7 +160,11 @@ registered_resources:
   - shield_id: llama-guard
     provider_id: llama-guard
     provider_shield_id: openai/gpt-4o-mini
-  vector_stores: []
+  vector_stores:
+    - embedding_dimension: 384
+      embedding_model: sentence-transformers/${env.EMBEDDING_MODEL_DIR}
+      provider_id: solr-vector
+      vector_store_id: portal-rag
   datasets: []
   scoring_fns: []
   benchmarks: []
@@ -166,3 +178,4 @@ vector_stores:
     model_id: nomic-ai/nomic-embed-text-v1.5
 safety:
   default_shield_id: llama-guard
+

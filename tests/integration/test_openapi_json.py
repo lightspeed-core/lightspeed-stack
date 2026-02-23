@@ -42,7 +42,7 @@ def _load_openapi_spec_from_file() -> dict[str, Any]:
             return json.load(f)
 
     pytest.fail("OpenAPI spec not found")
-    return {}
+    return {}  # pragma: no cover
 
 
 def _load_openapi_spec_from_url() -> dict[str, Any]:
