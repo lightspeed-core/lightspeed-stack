@@ -28,6 +28,7 @@ async def test_stream_interrupt_full_round_trip(
     registry: StreamInterruptRegistry,
 ) -> None:
     """Full lifecycle: register, interrupt, then verify deregistration."""
+
     async def pending_stream() -> None:
         await asyncio.sleep(10)
 
