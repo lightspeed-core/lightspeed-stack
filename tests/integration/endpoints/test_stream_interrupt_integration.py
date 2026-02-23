@@ -1,6 +1,7 @@
 """Integration tests for the streaming query interrupt lifecycle."""
 
 import asyncio
+from collections.abc import Generator
 
 import pytest
 from fastapi import HTTPException
@@ -11,9 +12,12 @@ from utils.stream_interrupts import StreamInterruptRegistry
 
 
 @pytest.fixture(name="registry")
-def registry_fixture() -> StreamInterruptRegistry:
-    """Provide a fresh, isolated registry for each test."""
-    return StreamInterruptRegistry()
+def registry_fixture() -> Generator[StreamInterruptRegistry, None, None]:
+    """Provide the shared registry, cleared before and after each test."""
+    registry = StreamInterruptRegistry()
+    registry._streams.clear()
+    yield registry
+    registry._streams.clear()
 
 
 @pytest.mark.asyncio
