@@ -52,7 +52,7 @@ from models.requests import Attachment, QueryRequest
 from models.responses import InternalServerErrorResponse
 from utils.token_counter import TokenCounter
 from utils.stream_interrupts import StreamInterruptRegistry
-from utils.types import ReferencedDocument, ResponsesApiParams, TurnSummary
+from utils.types import RAGContext, ReferencedDocument, ResponsesApiParams, TurnSummary
 
 MOCK_AUTH_STREAMING = (
     "00000001-0001-0001-0001-000000000001",
@@ -330,12 +330,8 @@ class TestStreamingQueryEndpointHandler:
         mocker.patch("app.endpoints.streaming_query.check_tokens_available")
         mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
         mocker.patch(
-            "app.endpoints.streaming_query.perform_vector_search",
-            new=mocker.AsyncMock(return_value=([], [], [], [])),
-        )
-        mocker.patch(
-            "app.endpoints.streaming_query.perform_vector_search",
-            new=mocker.AsyncMock(return_value=([], [], [], [])),
+            "app.endpoints.streaming_query.build_rag_context",
+            new=mocker.AsyncMock(return_value=RAGContext()),
         )
 
         mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
@@ -417,8 +413,8 @@ class TestStreamingQueryEndpointHandler:
         mocker.patch("app.endpoints.streaming_query.check_tokens_available")
         mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
         mocker.patch(
-            "app.endpoints.streaming_query.perform_vector_search",
-            new=mocker.AsyncMock(return_value=([], [], [], [])),
+            "app.endpoints.streaming_query.build_rag_context",
+            new=mocker.AsyncMock(return_value=RAGContext()),
         )
 
         mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
@@ -503,8 +499,8 @@ class TestStreamingQueryEndpointHandler:
         mocker.patch("app.endpoints.streaming_query.check_tokens_available")
         mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
         mocker.patch(
-            "app.endpoints.streaming_query.perform_vector_search",
-            new=mocker.AsyncMock(return_value=([], [], [], [])),
+            "app.endpoints.streaming_query.build_rag_context",
+            new=mocker.AsyncMock(return_value=RAGContext()),
         )
         mocker.patch(
             "app.endpoints.streaming_query.normalize_conversation_id",
@@ -600,8 +596,8 @@ class TestStreamingQueryEndpointHandler:
         mocker.patch("app.endpoints.streaming_query.check_tokens_available")
         mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
         mocker.patch(
-            "app.endpoints.streaming_query.perform_vector_search",
-            new=mocker.AsyncMock(return_value=([], [], [], [])),
+            "app.endpoints.streaming_query.build_rag_context",
+            new=mocker.AsyncMock(return_value=RAGContext()),
         )
         mock_validate = mocker.patch(
             "app.endpoints.streaming_query.validate_attachments_metadata"
@@ -685,8 +681,8 @@ class TestStreamingQueryEndpointHandler:
         mocker.patch("app.endpoints.streaming_query.check_tokens_available")
         mocker.patch("app.endpoints.streaming_query.validate_model_provider_override")
         mocker.patch(
-            "app.endpoints.streaming_query.perform_vector_search",
-            new=mocker.AsyncMock(return_value=([], [], [], [])),
+            "app.endpoints.streaming_query.build_rag_context",
+            new=mocker.AsyncMock(return_value=RAGContext()),
         )
 
         mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)

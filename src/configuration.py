@@ -14,6 +14,7 @@ from models.config import (
     Configuration,
     Customization,
     LlamaStackConfiguration,
+    RagConfiguration,
     UserDataCollection,
     ServiceConfiguration,
     ModelContextProtocolServer,
@@ -22,7 +23,6 @@ from models.config import (
     DatabaseConfiguration,
     ConversationHistoryConfiguration,
     QuotaHandlersConfiguration,
-    SolrConfiguration,
     SplunkConfiguration,
 )
 
@@ -365,11 +365,11 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         return self._configuration.deployment_environment
 
     @property
-    def solr(self) -> Optional[SolrConfiguration]:
-        """Return Solr configuration, or None if not provided."""
+    def rag(self) -> "RagConfiguration":
+        """Return RAG configuration."""
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
-        return self._configuration.solr
+        return self._configuration.rag
 
     @property
     def rag_id_mapping(self) -> dict[str, str]:
@@ -385,6 +385,24 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         return {brag.vector_db_id: brag.rag_id for brag in self._configuration.byok_rag}
+
+    @property
+    def score_multiplier_mapping(self) -> dict[str, float]:
+        """Return mapping from vector_db_id to score_multiplier from BYOK RAG config.
+
+        Returns:
+            dict[str, float]: Mapping where keys are llama-stack vector_db_ids
+            and values are score multipliers from configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return {
+            brag.vector_db_id: brag.score_multiplier
+            for brag in self._configuration.byok_rag
+        }
 
     def resolve_index_name(
         self, vector_store_id: str, rag_id_mapping: Optional[dict[str, str]] = None

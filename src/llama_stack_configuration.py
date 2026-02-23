@@ -14,6 +14,8 @@ import yaml
 from azure.core.exceptions import ClientAuthenticationError
 from azure.identity import ClientSecretCredential, CredentialUnavailableError
 from llama_stack.core.stack import replace_env_vars
+
+import constants
 from log import get_logger
 
 logger = get_logger(__name__)
@@ -137,11 +139,11 @@ def construct_storage_backends_section(
 
     # add new backends for each BYOK RAG
     for brag in byok_rag:
-        vector_db_id = brag.get("vector_db_id", "")
-        backend_name = f"byok_{vector_db_id}_storage"
+        rag_id = brag.get("rag_id", "")
+        backend_name = f"byok_{rag_id}_storage"
         output[backend_name] = {
             "type": "kv_sqlite",
-            "db_path": brag.get("db_path", f".llama/{vector_db_id}.db"),
+            "db_path": brag.get("db_path", f".llama/{rag_id}.db"),
         }
     logger.info(
         "Added %s backends into storage.backends section, total backends %s",
@@ -183,16 +185,18 @@ def construct_vector_stores_section(
     existing_store_ids = {vs.get("vector_store_id") for vs in output}
     added = 0
     for brag in byok_rag:
+        rag_id = brag.get("rag_id", "")
         vector_db_id = brag.get("vector_db_id", "")
         if vector_db_id in existing_store_ids:
             continue
         existing_store_ids.add(vector_db_id)
         added += 1
+        embedding_model = brag.get("embedding_model", constants.DEFAULT_EMBEDDING_MODEL)
         output.append(
             {
                 "vector_store_id": vector_db_id,
-                "provider_id": f"byok_{vector_db_id}",
-                "embedding_model": brag.get("embedding_model", ""),
+                "provider_id": f"byok_{rag_id}",
+                "embedding_model": embedding_model,
                 "embedding_dimension": brag.get("embedding_dimension"),
             }
         )
@@ -227,9 +231,13 @@ def construct_models_section(
 
     # add embedding models for each BYOK RAG
     for brag in byok_rag:
-        embedding_model = brag.get("embedding_model", "")
-        vector_db_id = brag.get("vector_db_id", "")
+        embedding_model = brag.get("embedding_model", constants.DEFAULT_EMBEDDING_MODEL)
+        rag_id = brag.get("rag_id", "")
         embedding_dimension = brag.get("embedding_dimension")
+
+        # Skip if no embedding model specified
+        if not embedding_model:
+            continue
 
         # Strip sentence-transformers/ prefix if present
         provider_model_id = embedding_model
@@ -243,7 +251,7 @@ def construct_models_section(
 
         output.append(
             {
-                "model_id": f"byok_{vector_db_id}_embedding",
+                "model_id": f"byok_{rag_id}_embedding",
                 "model_type": "embedding",
                 "provider_id": "sentence-transformers",
                 "provider_model_id": provider_model_id,
@@ -290,9 +298,9 @@ def construct_vector_io_providers_section(
 
     # append new vector_io entries
     for brag in byok_rag:
-        vector_db_id = brag.get("vector_db_id", "")
-        backend_name = f"byok_{vector_db_id}_storage"
-        provider_id = f"byok_{vector_db_id}"
+        rag_id = brag.get("rag_id", "")
+        backend_name = f"byok_{rag_id}_storage"
+        provider_id = f"byok_{rag_id}"
         output.append(
             {
                 "provider_id": provider_id,
@@ -354,6 +362,133 @@ def enrich_byok_rag(ls_config: dict[str, Any], byok_rag: list[dict[str, Any]]) -
 
 
 # =============================================================================
+# Enrichment: Solr
+# =============================================================================
+
+
+def enrich_solr(ls_config: dict[str, Any], solr_config: dict[str, Any]) -> None:
+    """Enrich Llama Stack config with Solr settings.
+
+    Args:
+        ls_config: Llama Stack configuration dict (modified in place)
+        solr_config: Solr configuration dict
+    """
+    if not solr_config or not solr_config.get("enabled"):
+        logger.info("Solr is not enabled: skipping")
+        return
+
+    logger.info("Enriching Llama Stack config with Solr")
+
+    # Add vector_io provider for Solr
+    if "providers" not in ls_config:
+        ls_config["providers"] = {}
+    if "vector_io" not in ls_config["providers"]:
+        ls_config["providers"]["vector_io"] = []
+
+    # Add Solr provider if not already present
+    existing_providers = [
+        p.get("provider_id") for p in ls_config["providers"]["vector_io"]
+    ]
+    if constants.SOLR_PROVIDER_ID not in existing_providers:
+        # Build environment variable expressions
+        solr_url_env = "${env.SOLR_URL:=http://localhost:8081/solr}"
+        collection_env = (
+            f"${{env.SOLR_COLLECTION:={constants.SOLR_DEFAULT_VECTOR_STORE_ID}}}"
+        )
+        vector_field_env = (
+            f"${{env.SOLR_VECTOR_FIELD:={constants.SOLR_DEFAULT_VECTOR_FIELD}}}"
+        )
+        content_field_env = (
+            f"${{env.SOLR_CONTENT_FIELD:={constants.SOLR_DEFAULT_CONTENT_FIELD}}}"
+        )
+        embedding_model_env = (
+            f"${{env.SOLR_EMBEDDING_MODEL:={constants.SOLR_DEFAULT_EMBEDDING_MODEL}}}"
+        )
+        embedding_dim_env = (
+            f"${{env.SOLR_EMBEDDING_DIM:={constants.SOLR_DEFAULT_EMBEDDING_DIMENSION}}}"
+        )
+
+        ls_config["providers"]["vector_io"].append(
+            {
+                "provider_id": constants.SOLR_PROVIDER_ID,
+                "provider_type": "remote::solr_vector_io",
+                "config": {
+                    "solr_url": solr_url_env,
+                    "collection_name": collection_env,
+                    "vector_field": vector_field_env,
+                    "content_field": content_field_env,
+                    "embedding_model": embedding_model_env,
+                    "embedding_dimension": embedding_dim_env,
+                    "persistence": {
+                        "namespace": constants.SOLR_DEFAULT_VECTOR_STORE_ID,
+                        "backend": "kv_default",
+                    },
+                },
+            }
+        )
+        logger.info("Added Solr provider to providers/vector_io")
+
+    # Add vector store registration for Solr
+    if "registered_resources" not in ls_config:
+        ls_config["registered_resources"] = {}
+    if "vector_stores" not in ls_config["registered_resources"]:
+        ls_config["registered_resources"]["vector_stores"] = []
+
+    # Add Solr vector store if not already present
+    existing_stores = [
+        vs.get("vector_store_id")
+        for vs in ls_config["registered_resources"]["vector_stores"]
+    ]
+    if constants.SOLR_DEFAULT_VECTOR_STORE_ID not in existing_stores:
+        # Build environment variable expression
+        embedding_model_env = (
+            f"${{env.SOLR_EMBEDDING_MODEL:={constants.SOLR_DEFAULT_EMBEDDING_MODEL}}}"
+        )
+
+        ls_config["registered_resources"]["vector_stores"].append(
+            {
+                "vector_store_id": constants.SOLR_DEFAULT_VECTOR_STORE_ID,
+                "provider_id": constants.SOLR_PROVIDER_ID,
+                "embedding_model": embedding_model_env,
+                "embedding_dimension": constants.SOLR_DEFAULT_EMBEDDING_DIMENSION,
+            }
+        )
+        logger.info(
+            "Added %s vector store to registered_resources",
+            constants.SOLR_DEFAULT_VECTOR_STORE_ID,
+        )
+
+    # Add Solr embedding model to registered_resources.models if not already present
+    if "models" not in ls_config["registered_resources"]:
+        ls_config["registered_resources"]["models"] = []
+
+    # Strip sentence-transformers/ prefix from constant for provider_model_id
+    provider_model_id = constants.SOLR_DEFAULT_EMBEDDING_MODEL
+    if provider_model_id.startswith("sentence-transformers/"):
+        provider_model_id = provider_model_id[len("sentence-transformers/") :]
+
+    # Check if already registered
+    registered_models = ls_config["registered_resources"]["models"]
+    existing_model_ids = [m.get("provider_model_id") for m in registered_models]
+    if provider_model_id not in existing_model_ids:
+        # Build environment variable expression
+        provider_model_env = f"${{env.SOLR_EMBEDDING_MODEL:={provider_model_id}}}"
+
+        ls_config["registered_resources"]["models"].append(
+            {
+                "model_id": "solr_embedding",
+                "model_type": "embedding",
+                "provider_id": "sentence-transformers",
+                "provider_model_id": provider_model_env,
+                "metadata": {
+                    "embedding_dimension": constants.SOLR_DEFAULT_EMBEDDING_DIMENSION,
+                },
+            }
+        )
+        logger.info("Added Solr embedding model to registered_resources.models")
+
+
+# =============================================================================
 # Main Generation Function (service/container mode only)
 # =============================================================================
 
@@ -382,6 +517,10 @@ def generate_configuration(
 
     # Enrichment: BYOK RAG
     enrich_byok_rag(ls_config, config.get("byok_rag", []))
+
+    # Enrichment: Solr
+    solr_config = config.get("rag", {}).get("always", {}).get("solr", {})
+    enrich_solr(ls_config, solr_config)
 
     logger.info("Writing Llama Stack configuration into file %s", output_file)
 
