@@ -18,3 +18,9 @@ user_data_collection:
   transcripts_storage: "/tmp/data/transcripts"
 authentication:
   module: "noop"
+mcp_servers:
+  - name: "mcp-oauth"
+    provider_id: "model-context-protocol"
+    url: "http://mock-mcp:3000"
+    authorization_headers:
+      Authorization: "oauth"
