@@ -84,7 +84,7 @@ from utils.shields import (
     append_turn_to_conversation,
     run_shield_moderation,
 )
-from utils.stream_interrupts import stream_interrupt_registry
+from utils.stream_interrupts import get_stream_interrupt_registry
 from utils.suid import get_suid, normalize_conversation_id
 from utils.token_counter import TokenCounter
 from utils.types import ResponsesApiParams, TurnSummary
@@ -213,6 +213,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     # Create context with index identification mapping for RAG source resolution
     context = ResponseGeneratorContext(
         conversation_id=normalize_conversation_id(responses_params.conversation),
+        request_id=request_id,
         model_id=responses_params.model,
         user_id=user_id,
         skip_userid_check=_skip_userid_check,
@@ -247,7 +248,6 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
             context=context,
             responses_params=responses_params,
             turn_summary=turn_summary,
-            request_id=request_id,
         ),
         media_type=response_media_type,
     )
@@ -323,7 +323,6 @@ async def generate_response(
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
     turn_summary: TurnSummary,
-    request_id: str,
 ) -> AsyncIterator[str]:
     """Wrap a generator with cleanup logic.
 
@@ -338,8 +337,6 @@ async def generate_response(
         context: The response generator context
         responses_params: The Responses API parameters
         turn_summary: TurnSummary populated during streaming
-        request_id: Unique SUID for this streaming request, used for
-            interrupt registry tracking
 
     Yields:
         SSE-formatted strings from the wrapped generator
@@ -348,22 +345,22 @@ async def generate_response(
 
     current_task = asyncio.current_task()
     if current_task is not None:
-        stream_interrupt_registry.register_stream(
-            request_id=request_id,
+        get_stream_interrupt_registry().register_stream(
+            request_id=context.request_id,
             user_id=user_id,
             task=current_task,
         )
     else:
         logger.warning(
             "No current asyncio task for request %s; stream interruption will not be available",
-            request_id,
+            context.request_id,
         )
 
     stream_completed = False
     try:
         yield stream_start_event(
             conversation_id=context.conversation_id,
-            request_id=request_id,
+            request_id=context.request_id,
         )
 
         # Re-yield all events from the generator
@@ -390,10 +387,10 @@ async def generate_response(
         error_response = handle_known_apistatus_errors(e, responses_params.model)
         yield stream_http_error_event(error_response, context.query_request.media_type)
     except asyncio.CancelledError:
-        logger.info("Streaming request %s interrupted by user", request_id)
-        yield stream_interrupted_event(request_id)
+        logger.info("Streaming request %s interrupted by user", context.request_id)
+        yield stream_interrupted_event(context.request_id)
     finally:
-        stream_interrupt_registry.deregister_stream(request_id)
+        get_stream_interrupt_registry().deregister_stream(context.request_id)
 
     if not stream_completed:
         return

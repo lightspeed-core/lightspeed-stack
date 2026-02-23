@@ -16,6 +16,7 @@ class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
 
     Attributes:
         conversation_id: The conversation identifier
+        request_id: Unique identifier for the streaming request
         user_id: The user identifier
         skip_userid_check: Whether to skip user ID validation
         model_id: The model identifier
@@ -28,6 +29,7 @@ class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
 
     # Conversation & User context
     conversation_id: str
+    request_id: str
     user_id: str
     skip_userid_check: bool
 
