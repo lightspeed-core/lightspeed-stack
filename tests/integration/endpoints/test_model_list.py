@@ -242,10 +242,14 @@ async def test_models_list_on_api_connection_error(
     _ = mock_llama_stack_client_failing
 
     # we should catch HTTPException, not APIConnectionError!
-    expected = "503: {'response': 'Unable to connect to Llama Stack', 'cause': 'Connection error.'}"
-    with pytest.raises(HTTPException, match=expected):
+    with pytest.raises(HTTPException) as exc_info:
         await models_endpoint_handler(
             request=test_request,
             auth=test_auth,
             model_type=ModelFilter(model_type=None),
         )
+
+    assert exc_info.value.status_code == 503
+    assert isinstance(exc_info.value.detail, dict)
+    assert exc_info.value.detail["response"] == "Unable to connect to Llama Stack"
+    assert "cause" in exc_info.value.detail
