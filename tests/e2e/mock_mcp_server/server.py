@@ -102,6 +102,6 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    server = HTTPServer(("0.0.0.0", 3000), Handler)
-    print("Mock MCP server on :3000")
+    server = HTTPServer(("0.0.0.0", 3001), Handler)
+    print("Mock MCP server on :3001")
     server.serve_forever()
