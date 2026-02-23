@@ -179,9 +179,15 @@ def construct_vector_stores_section(
         if "vector_stores" in ls_config["registered_resources"]:
             output = ls_config["registered_resources"]["vector_stores"].copy()
 
-    # append new vector_stores entries
+    # append new vector_stores entries, skipping duplicates
+    existing_store_ids = {vs.get("vector_store_id") for vs in output}
+    added = 0
     for brag in byok_rag:
         vector_db_id = brag.get("vector_db_id", "")
+        if vector_db_id in existing_store_ids:
+            continue
+        existing_store_ids.add(vector_db_id)
+        added += 1
         output.append(
             {
                 "vector_store_id": vector_db_id,
@@ -192,7 +198,7 @@ def construct_vector_stores_section(
         )
     logger.info(
         "Added %s items into registered_resources.vector_stores, total items %s",
-        len(byok_rag),
+        added,
         len(output),
     )
     return output
