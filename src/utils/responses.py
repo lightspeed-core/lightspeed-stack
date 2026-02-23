@@ -422,6 +422,10 @@ async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-
             )
             continue
 
+        # Build Authorization header
+        if headers.get("Authorization"):
+            tool_def["authorization"] = headers.pop("Authorization")
+
         if len(headers) > 0:
             # add headers to tool definition
             tool_def["headers"] = headers  # type: ignore[index]
