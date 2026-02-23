@@ -85,11 +85,19 @@ class Handler(BaseHTTPRequestHandler):
                     "id": req_id,
                     "result": {
                         "tools": [
-                            {
-                                "name": "mock_tool",
-                                "description": "Mock tool for E2E",
-                                "inputSchema": {"type": "object"},
-                            }
+                        {
+                            "name": "mock_tool_e2e",
+                            "description": "Mock tool for E2E",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "message": {
+                                        "type": "string",
+                                        "description": "Test message",
+                                    }
+                                },
+                            },
+                        }
                         ],
                     },
                 }

@@ -20,10 +20,9 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
-  Scenario: Check if query endpoint reports error error when mcp requires authentication
+  Scenario: Check if query endpoint reports error when mcp requires authentication
     Given The system is in default state
-    And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
-    When I use "query" to ask question with authorization header
+    When I use "query" to ask question
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
@@ -39,10 +38,9 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
-  Scenario: Check if streaming_query endpoint reports error error when mcp requires authentication
+  Scenario: Check if streaming_query endpoint reports error when mcp requires authentication
     Given The system is in default state
-    And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
-    When I use "streaming_query" to ask question with authorization header
+    When I use "streaming_query" to ask question
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
