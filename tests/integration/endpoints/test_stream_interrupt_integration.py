@@ -42,6 +42,13 @@ async def test_stream_interrupt_full_round_trip(
     with pytest.raises(asyncio.CancelledError):
         await task
 
+    completed_response = await stream_interrupt_endpoint_handler(
+        interrupt_request=StreamingInterruptRequest(request_id=request_id),
+        auth=(user_id, "mock_username", False, "mock_token"),
+        registry=registry,
+    )
+    assert completed_response.interrupted is False
+
     registry.deregister_stream(request_id)
     assert registry.get_stream(request_id) is None
 
