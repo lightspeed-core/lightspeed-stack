@@ -1753,16 +1753,20 @@ class NotFoundResponse(AbstractErrorResponse):
         }
     }
 
-    def __init__(self, *, resource: str, resource_id: str):
+    def __init__(self, *, resource: str, resource_id: str | None = None):
         """
         Create a NotFoundResponse for a missing resource and set the HTTP status to 404.
 
         Parameters:
             resource (str): Resource type that was not found (e.g., "conversation", "model").
-            resource_id (str): Identifier of the missing resource.
+            resource_id (str | None): Identifier of the missing resource. If None, indicates
+                the resource type is not configured (e.g., no model selected).
         """
         response = f"{resource.title()} not found"
-        cause = f"{resource.title()} with ID {resource_id} does not exist"
+        if resource_id is None:
+            cause = f"No {resource.title()} is configured"
+        else:
+            cause = f"{resource.title()} with ID {resource_id} does not exist"
         super().__init__(
             response=response, cause=cause, status_code=status.HTTP_404_NOT_FOUND
         )

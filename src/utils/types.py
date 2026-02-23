@@ -197,3 +197,29 @@ class TurnSummary(BaseModel):
     referenced_documents: list[ReferencedDocument] = Field(default_factory=list)
     pre_rag_documents: list[ReferencedDocument] = Field(default_factory=list)
     token_usage: TokenCounter = Field(default_factory=TokenCounter)
+
+
+class TranscriptMetadata(BaseModel):
+    """Metadata for a transcript entry."""
+
+    provider: str | None = None
+    model: str
+    query_provider: str | None = None
+    query_model: str | None = None
+    user_id: str
+    conversation_id: str
+    timestamp: str
+
+
+class Transcript(BaseModel):
+    """Model representing a transcript entry to be stored."""
+
+    metadata: TranscriptMetadata
+    redacted_query: str
+    query_is_valid: bool
+    llm_response: str
+    rag_chunks: list[dict[str, Any]] = Field(default_factory=list)
+    truncated: bool
+    attachments: list[dict[str, Any]] = Field(default_factory=list)
+    tool_calls: list[dict[str, Any]] = Field(default_factory=list)
+    tool_results: list[dict[str, Any]] = Field(default_factory=list)

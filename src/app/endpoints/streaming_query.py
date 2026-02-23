@@ -153,7 +153,9 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     check_tokens_available(configuration.quota_limiters, user_id)
 
     # Enforce RBAC: optionally disallow overriding model/provider in requests
-    validate_model_provider_override(query_request, request.state.authorized_actions)
+    validate_model_provider_override(
+        query_request.model, query_request.provider, request.state.authorized_actions
+    )
 
     # Validate attachments if provided
     if query_request.attachments:
@@ -379,7 +381,6 @@ async def generate_response(
         user_id=context.user_id,
         model_id=responses_params.model,
         token_usage=turn_summary.token_usage,
-        configuration=configuration,
     )
     # Get available quotas
     logger.info("Getting available quotas")
@@ -405,7 +406,6 @@ async def generate_response(
         started_at=context.started_at,
         summary=turn_summary,
         query_request=context.query_request,
-        configuration=configuration,
         skip_userid_check=context.skip_userid_check,
         topic_summary=topic_summary,
     )
@@ -591,8 +591,11 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
     )
 
     # Extract token usage and referenced documents from the final response object
+    if not latest_response_object:
+        return
+
     turn_summary.token_usage = extract_token_usage(
-        latest_response_object, context.model_id
+        latest_response_object.usage, context.model_id
     )
     tool_based_documents = parse_referenced_documents(
         latest_response_object,

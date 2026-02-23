@@ -149,7 +149,7 @@ class TestConvertResponsesContentToA2AParts:
     def test_convert_empty_output(self, mocker: MockerFixture) -> None:
         """Test converting empty output returns empty list."""
         mocker.patch(
-            "app.endpoints.a2a.extract_text_from_response_output_item",
+            "app.endpoints.a2a.extract_text_from_output_item",
             return_value=None,
         )
         result = _convert_responses_content_to_a2a_parts([])
@@ -158,7 +158,7 @@ class TestConvertResponsesContentToA2AParts:
     def test_convert_single_output_item(self, mocker: MockerFixture) -> None:
         """Test converting single output item with text."""
         mocker.patch(
-            "app.endpoints.a2a.extract_text_from_response_output_item",
+            "app.endpoints.a2a.extract_text_from_output_item",
             return_value="Hello, world!",
         )
         mock_output_item = MagicMock()
@@ -171,7 +171,7 @@ class TestConvertResponsesContentToA2AParts:
     def test_convert_multiple_output_items(self, mocker: MockerFixture) -> None:
         """Test converting multiple output items."""
         extract_mock = mocker.patch(
-            "app.endpoints.a2a.extract_text_from_response_output_item",
+            "app.endpoints.a2a.extract_text_from_output_item",
         )
         extract_mock.side_effect = ["First", "Second"]
 
@@ -190,7 +190,7 @@ class TestConvertResponsesContentToA2AParts:
     def test_convert_output_items_with_none_text(self, mocker: MockerFixture) -> None:
         """Test that output items with no text are filtered out."""
         extract_mock = mocker.patch(
-            "app.endpoints.a2a.extract_text_from_response_output_item",
+            "app.endpoints.a2a.extract_text_from_output_item",
         )
         extract_mock.side_effect = ["Valid text", None, "Another valid"]
 

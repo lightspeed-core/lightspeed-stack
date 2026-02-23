@@ -3,7 +3,7 @@
 """Handler for REST API call to provide answer to query using Response API."""
 
 import datetime
-from typing import Annotated, Any, Optional, cast
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from llama_stack_api.openai_responses import OpenAIResponseObject
@@ -52,12 +52,10 @@ from utils.query import (
 )
 from utils.quota import check_tokens_available, get_available_quotas
 from utils.responses import (
-    build_tool_call_summary,
-    extract_text_from_response_output_item,
-    extract_token_usage,
+    build_turn_summary,
+    deduplicate_referenced_documents,
     extract_vector_store_ids_from_tools,
     get_topic_summary,
-    parse_referenced_documents,
     prepare_responses_params,
 )
 from utils.shields import (
@@ -66,6 +64,7 @@ from utils.shields import (
 )
 from utils.suid import normalize_conversation_id
 from utils.types import (
+    RAGChunk,
     ResponsesApiParams,
     TurnSummary,
 )
@@ -130,7 +129,9 @@ async def query_endpoint_handler(
     check_tokens_available(configuration.quota_limiters, user_id)
 
     # Enforce RBAC: optionally disallow overriding model/provider in requests
-    validate_model_provider_override(query_request, request.state.authorized_actions)
+    validate_model_provider_override(
+        query_request.model, query_request.provider, request.state.authorized_actions
+    )
 
     # Validate attachments if provided
     if query_request.attachments:
@@ -153,7 +154,7 @@ async def query_endpoint_handler(
     client = AsyncLlamaStackClientHolder().get_client()
 
     doc_ids_from_chunks: list[ReferencedDocument] = []
-    pre_rag_chunks: list[Any] = []  # use your RAGChunk type (or the upstream one)
+    pre_rag_chunks: list[RAGChunk] = []
 
     _, _, doc_ids_from_chunks, pre_rag_chunks = await perform_vector_search(
         client, query_request, configuration
@@ -198,7 +199,7 @@ async def query_endpoint_handler(
         turn_summary.rag_chunks = pre_rag_chunks + (turn_summary.rag_chunks or [])
 
     if doc_ids_from_chunks:
-        turn_summary.referenced_documents = parse_referenced_docs(
+        turn_summary.referenced_documents = deduplicate_referenced_documents(
             doc_ids_from_chunks + (turn_summary.referenced_documents or [])
         )
 
@@ -216,7 +217,6 @@ async def query_endpoint_handler(
         user_id=user_id,
         model_id=responses_params.model,
         token_usage=turn_summary.token_usage,
-        configuration=configuration,
     )
 
     logger.info("Getting available quotas")
@@ -238,7 +238,6 @@ async def query_endpoint_handler(
         completed_at=completed_at,
         summary=turn_summary,
         query_request=query_request,
-        configuration=configuration,
         skip_userid_check=_skip_userid_check,
         topic_summary=topic_summary,
     )
@@ -258,26 +257,11 @@ async def query_endpoint_handler(
     )
 
 
-def parse_referenced_docs(
-    docs: list[ReferencedDocument],
-) -> list[ReferencedDocument]:
-    """Remove duplicate referenced documents based on URL and title."""
-    seen: set[tuple[str | None, str | None]] = set()
-    out: list[ReferencedDocument] = []
-    for d in docs:
-        key = (str(d.doc_url) if d.doc_url else None, d.doc_title)
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(d)
-    return out
-
-
 async def retrieve_response(  # pylint: disable=too-many-locals
     client: AsyncLlamaStackClient,
     responses_params: ResponsesApiParams,
-    vector_store_ids: Optional[list[str]] = None,
-    rag_id_mapping: Optional[dict[str, str]] = None,
+    vector_store_ids: list[str] | None = None,
+    rag_id_mapping: dict[str, str] | None = None,
 ) -> TurnSummary:
     """
     Retrieve response from LLMs and agents.
@@ -294,8 +278,6 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     Returns:
         TurnSummary: Summary of the LLM response content
     """
-    summary = TurnSummary()
-
     try:
         moderation_result = await run_shield_moderation(client, responses_params.input)
         if moderation_result.blocked:
@@ -307,8 +289,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals
                 responses_params.input,
                 violation_message,
             )
-            summary.llm_response = violation_message
-            return summary
+            return TurnSummary(llm_response=violation_message)
         response = await client.responses.create(**responses_params.model_dump())
         response = cast(OpenAIResponseObject, response)
 
@@ -327,30 +308,6 @@ async def retrieve_response(  # pylint: disable=too-many-locals
         error_response = handle_known_apistatus_errors(e, responses_params.model)
         raise HTTPException(**error_response.model_dump()) from e
 
-    # Process OpenAI response format
-    for output_item in response.output:
-        message_text = extract_text_from_response_output_item(output_item)
-        if message_text:
-            summary.llm_response += message_text
-
-        tool_call, tool_result = build_tool_call_summary(
-            output_item, summary.rag_chunks, vector_store_ids, rag_id_mapping
-        )
-        if tool_call:
-            summary.tool_calls.append(tool_call)
-        if tool_result:
-            summary.tool_results.append(tool_result)
-
-    logger.info(
-        "Response processing complete - Tool calls: %d, Response length: %d chars",
-        len(summary.tool_calls),
-        len(summary.llm_response),
+    return build_turn_summary(
+        response, responses_params.model, vector_store_ids, rag_id_mapping
     )
-
-    # Extract referenced documents and token usage from Responses API response
-    summary.referenced_documents = parse_referenced_documents(
-        response, vector_store_ids, rag_id_mapping
-    )
-    summary.token_usage = extract_token_usage(response, responses_params.model)
-
-    return summary

@@ -46,7 +46,7 @@ from models.config import Action
 from models.requests import QueryRequest
 from utils.mcp_headers import mcp_headers_dependency, McpHeaders
 from utils.responses import (
-    extract_text_from_response_output_item,
+    extract_text_from_output_item,
     prepare_responses_params,
 )
 from utils.suid import normalize_conversation_id
@@ -107,7 +107,7 @@ def _convert_responses_content_to_a2a_parts(output: list[Any]) -> list[Part]:
     parts: list[Part] = []
 
     for output_item in output:
-        text = extract_text_from_response_output_item(output_item)
+        text = extract_text_from_output_item(output_item)
         if text:
             parts.append(Part(root=TextPart(text=text)))
 
