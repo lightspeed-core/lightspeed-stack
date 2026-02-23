@@ -1,4 +1,20 @@
 services:
+  # Mock MCP server for testing
+  mcp-mock-server:
+    build:
+      context: .
+      dockerfile: dev-tools/mcp-mock-server/Dockerfile
+    container_name: mcp-mock-server
+    ports:
+      - "3000:3000"
+    networks:
+      - lightspeednet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
   # Lightspeed Stack with embedded llama-stack (library mode)
   lightspeed-stack:
@@ -10,6 +26,8 @@ services:
     ports:
       - "8080:8080"
     depends_on:
+      mcp-mock-server:
+        condition: service_healthy
       mock-mcp:
         condition: service_healthy
     networks:
