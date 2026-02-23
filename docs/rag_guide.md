@@ -282,6 +282,14 @@ providers:
       content_field: chunk
       embedding_dimension: 384
       embedding_model: ${env.EMBEDDING_MODEL_DIR}
+      chunk_window_config:
+        chunk_parent_id_field: "parent_id"
+        chunk_content_field: "chunk_field"
+        chunk_index_field: "chunk_index"
+        chunk_token_count_field: "num_tokens"
+        parent_total_chunks_field: "total_chunks"
+        parent_total_tokens_field: "total_tokens"
+        chunk_filter_query: "is_chunk:true" 
       persistence:
         namespace: portal-rag
         backend: kv_default
@@ -293,6 +301,19 @@ registered_resources:
     embedding_model: granite-embedding-30m
     embedding_dimension: 384
 ```
+
+Note: if the vector database (portal-rag) is not in the persistent data store within the vector_io provider
+(e.g. after deleting the llama stack cache) you will need to register the vector database under registered resources:
+
+
+```yaml
+  vector_stores:
+    - embedding_dimension: 384
+      embedding_model: sentence-transformers/${env.EMBEDDING_MODEL_DIR}
+      provider_id: solr-vector
+      vector_store_id: portal-rag
+```
+
 
 **2. Configure Lightspeed Stack (`lightspeed-stack.yaml`):**
 
@@ -323,6 +344,14 @@ Note: Solr does not currently work with RAG tools. You will need to specify "no_
 4. Document URLs are built based on the `offline` setting:
    - **Offline mode**: Uses `parent_id` with Mimir base URL
    - **Online mode**: Uses `reference_url` from document metadata
+
+**Query Filtering:**
+
+To filter the Solr context edit the *chunk_filter_query* field in the
+Solr **vector_io** provider in the `run.yaml`. Filters should follow the key:value format:
+ex. `"product:*openshift*"`
+
+Note: This static filter is a temporary work-around. 
 
 **Prerequisites:**
 

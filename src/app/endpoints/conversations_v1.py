@@ -178,7 +178,7 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
     conversation_id: str,
     auth: Any = Depends(get_auth_dependency()),
 ) -> ConversationResponse:
-    """Handle request to retrieve a conversation by ID using Conversations API.
+    """Handle request to retrieve a conversation identified by ID using Conversations API.
 
     Retrieve a conversation's chat history by its ID using the LlamaStack
     Conversations API. This endpoint fetches the conversation items from

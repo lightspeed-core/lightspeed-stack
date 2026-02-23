@@ -28,7 +28,7 @@ Feature: Authorized endpoint API tests for the rh-identity authentication module
      {"placeholder":"abc"}
      """
      Then The status code of the response is 400
-      And The body of the response contains Missing 'identity' field
+      And The body of the response contains Invalid identity data
 
   Scenario: Request succeeds with valid User identity and required entitlements
     Given The system is in default state
@@ -79,7 +79,7 @@ Feature: Authorized endpoint API tests for the rh-identity authentication module
      {"placeholder":"abc"}
      """
      Then The status code of the response is 403
-      And The body of the response contains Missing required entitlement
+      And The body of the response contains Insufficient entitlements
 
   Scenario: Request fails when entitlement exists but is_entitled is false
     Given The system is in default state
@@ -99,7 +99,7 @@ Feature: Authorized endpoint API tests for the rh-identity authentication module
      {"placeholder":"abc"}
      """
      Then The status code of the response is 403
-      And The body of the response contains Missing required entitlement
+      And The body of the response contains Insufficient entitlements
 
   Scenario: Request fails when User identity is missing user_id
     Given The system is in default state
@@ -119,7 +119,7 @@ Feature: Authorized endpoint API tests for the rh-identity authentication module
      {"placeholder":"abc"}
      """
      Then The status code of the response is 400
-      And The body of the response contains Missing 'user_id' in user data
+      And The body of the response contains Invalid identity data
 
   Scenario: Request fails when User identity is missing username
     Given The system is in default state
@@ -139,7 +139,7 @@ Feature: Authorized endpoint API tests for the rh-identity authentication module
      {"placeholder":"abc"}
      """
      Then The status code of the response is 400
-      And The body of the response contains Missing 'username' in user data
+      And The body of the response contains Invalid identity data
 
   Scenario: Request fails when System identity is missing cn
     Given The system is in default state
@@ -160,4 +160,4 @@ Feature: Authorized endpoint API tests for the rh-identity authentication module
      {"placeholder":"abc"}
      """
      Then The status code of the response is 400
-      And The body of the response contains Missing 'cn' in system data
+      And The body of the response contains Invalid identity data
