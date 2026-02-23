@@ -96,9 +96,35 @@ async def test_stream_interrupt_endpoint_wrong_user(
             registry=registry,
         )
 
-    assert exc_info.value.status_code == 404
+    assert exc_info.value.status_code == 403
     assert task.done() is False
 
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
+
+
+@pytest.mark.asyncio
+async def test_stream_interrupt_endpoint_already_completed(
+    registry: StreamInterruptRegistry,
+) -> None:
+    """Interrupt endpoint reports already-completed streams without error."""
+    request_id = "123e4567-e89b-12d3-a456-426614174004"
+    user_id = "00000001-0001-0001-0001-000000000001"
+
+    async def completed_stream() -> None:
+        return None
+
+    task = asyncio.create_task(completed_stream())
+    await task
+    registry.register_stream(request_id, user_id, task)
+
+    response = await stream_interrupt_endpoint_handler(
+        interrupt_request=StreamingInterruptRequest(request_id=request_id),
+        auth=(user_id, "mock_username", False, "mock_token"),
+        registry=registry,
+    )
+
+    assert isinstance(response, StreamingInterruptResponse)
+    assert response.request_id == request_id
+    assert response.interrupted is False
