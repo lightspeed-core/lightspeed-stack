@@ -350,7 +350,12 @@ async def test_rlsapi_v1_infer_input_source_combination(
     call_args = mock_responses.create.call_args
     input_content = call_args.kwargs["input"]
 
-    for expected in ["My question", "stdin content", "attachment content", "terminal"]:
+    for expected in [
+        "My question",
+        "stdin content",
+        "attachment content",
+        "terminal output",
+    ]:
         assert expected in input_content
 
 
