@@ -40,7 +40,7 @@ def client() -> Generator[TestClient, None, None]:
     yield TestClient(app)
 
     # Restore original env var
-    if original_config:
+    if original_config is not None:
         os.environ["LIGHTSPEED_STACK_CONFIG_PATH"] = original_config
     else:
         os.environ.pop("LIGHTSPEED_STACK_CONFIG_PATH", None)
