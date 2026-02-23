@@ -6281,6 +6281,11 @@
                         "title": "Disable Query System Prompt",
                         "default": false
                     },
+                    "disable_shield_ids_override": {
+                        "type": "boolean",
+                        "title": "Disable Shield Ids Override",
+                        "default": false
+                    },
                     "system_prompt_path": {
                         "anyOf": [
                             {
@@ -7967,6 +7972,25 @@
                             "vector_db_1"
                         ]
                     },
+                    "shield_ids": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Shield Ids",
+                        "description": "Optional list of safety shield IDs to apply. If None, all configured shields are used. If provided, must contain at least one valid shield ID (empty list raises 422 error).",
+                        "examples": [
+                            "llama-guard",
+                            "custom-shield"
+                        ]
+                    },
                     "solr": {
                         "anyOf": [
                             {
@@ -7995,7 +8019,7 @@
                     "query"
                 ],
                 "title": "QueryRequest",
-                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    system_prompt: The optional system prompt.\n    attachments: The optional attachments.\n    no_tools: Whether to bypass all tools and MCP servers (default: False).\n    generate_topic_summary: Whether to generate topic summary for new conversations.\n    media_type: The optional media type for response format (application/json or text/plain).\n    vector_store_ids: The optional list of specific vector store IDs to query for RAG.\n\nExample:\n    ```python\n    query_request = QueryRequest(query=\"Tell me about Kubernetes\")\n    ```",
+                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    system_prompt: The optional system prompt.\n    attachments: The optional attachments.\n    no_tools: Whether to bypass all tools and MCP servers (default: False).\n    generate_topic_summary: Whether to generate topic summary for new conversations.\n    media_type: The optional media type for response format (application/json or text/plain).\n    vector_store_ids: The optional list of specific vector store IDs to query for RAG.\n    shield_ids: The optional list of safety shield IDs to apply.\n\nExample:\n    ```python\n    query_request = QueryRequest(query=\"Tell me about Kubernetes\")\n    ```",
                 "examples": [
                     {
                         "attachments": [
