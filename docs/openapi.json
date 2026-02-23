@@ -1918,7 +1918,7 @@
                     "streaming_query_interrupt"
                 ],
                 "summary": "Streaming Query Interrupt Endpoint Handler",
-                "description": "Interrupt an in-progress streaming query by request identifier.",
+                "description": "Interrupt an in-progress streaming query by request identifier.\n\nParameters:\n    interrupt_request: Request payload containing the stream request ID.\n    auth: Auth context tuple resolved from the authentication dependency.\n    registry: Stream interrupt registry dependency used to cancel streams.\n\nReturns:\n    StreamingInterruptResponse: Confirmation payload when interruption succeeds.\n\nRaises:\n    HTTPException: If no active stream for the given request ID can be interrupted.",
                 "operationId": "stream_interrupt_endpoint_handler_v1_streaming_query_interrupt_post",
                 "requestBody": {
                     "content": {
@@ -2000,6 +2000,16 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/NotFoundResponse"
+                                },
+                                "examples": {
+                                    "streaming request": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Streaming Request with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                                "response": "Streaming Request not found"
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -7454,6 +7464,13 @@
                             "response": "Rag not found"
                         },
                         "label": "rag"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Streaming Request with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                            "response": "Streaming Request not found"
+                        },
+                        "label": "streaming request"
                     }
                 ]
             },
@@ -9346,7 +9363,7 @@
                     "request_id"
                 ],
                 "title": "StreamingInterruptRequest",
-                "description": "Model representing a request to interrupt an active streaming query.",
+                "description": "Model representing a request to interrupt an active streaming query.\n\nAttributes:\n    request_id: Unique ID of the active streaming request to interrupt.",
                 "examples": [
                     {
                         "request_id": "123e4567-e89b-12d3-a456-426614174000"
@@ -9387,7 +9404,7 @@
                     "message"
                 ],
                 "title": "StreamingInterruptResponse",
-                "description": "Model representing a response to a streaming interrupt request.",
+                "description": "Model representing a response to a streaming interrupt request.\n\nAttributes:\n    request_id: The streaming request ID targeted by the interrupt call.\n    interrupted: Whether an in-progress stream was interrupted.\n    message: Human-readable interruption status message.\n\nExample:\n    ```python\n    response = StreamingInterruptResponse(\n        request_id=\"123e4567-e89b-12d3-a456-426614174000\",\n        interrupted=True,\n        message=\"Streaming request interrupted\",\n    )\n    ```",
                 "examples": [
                     {
                         "interrupted": true,

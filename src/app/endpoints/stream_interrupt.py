@@ -16,6 +16,7 @@ from models.responses import (
     UnauthorizedResponse,
 )
 from utils.stream_interrupts import (
+    CancelStreamResult,
     StreamInterruptRegistry,
     get_stream_interrupt_registry,
 )
@@ -60,13 +61,28 @@ async def stream_interrupt_endpoint_handler(
     """
     user_id, _, _, _ = auth
     request_id = interrupt_request.request_id
-    interrupted = registry.cancel_stream(request_id, user_id)
-    if not interrupted:
+    cancel_result = registry.cancel_stream(request_id, user_id)
+    if cancel_result == CancelStreamResult.NOT_FOUND:
         response = NotFoundResponse(
             resource="streaming request",
             resource_id=request_id,
         )
         raise HTTPException(**response.model_dump())
+    if cancel_result == CancelStreamResult.FORBIDDEN:
+        response = ForbiddenResponse(
+            response="User does not have permission to interrupt this streaming request",
+            cause=(
+                f"User {user_id} does not own streaming request "
+                f"with ID {request_id}"
+            ),
+        )
+        raise HTTPException(**response.model_dump())
+    if cancel_result == CancelStreamResult.ALREADY_DONE:
+        return StreamingInterruptResponse(
+            request_id=request_id,
+            interrupted=False,
+            message="Streaming request already completed; nothing to interrupt",
+        )
 
     return StreamingInterruptResponse(
         request_id=request_id,
