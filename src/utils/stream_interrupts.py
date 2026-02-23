@@ -41,7 +41,7 @@ class StreamInterruptRegistry(metaclass=Singleton):
         self._lock = Lock()
 
     def register_stream(
-        self, request_id: str, user_id: str, task: asyncio.Task
+        self, request_id: str, user_id: str, task: asyncio.Task[None]
     ) -> None:
         """Register an active stream task for interrupt support.
 
