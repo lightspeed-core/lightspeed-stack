@@ -19,7 +19,6 @@ from runners.quota_scheduler import start_quota_scheduler
 from utils import schema_dumper
 from constants import LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR, DEFAULT_LOG_LEVEL
 
-FORMAT = "%(message)s"
 # Read log level from environment variable with validation
 log_level_str = os.environ.get(LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR, DEFAULT_LOG_LEVEL)
 log_level = getattr(logging, log_level_str.upper(), None)
@@ -29,9 +28,24 @@ if not isinstance(log_level, int):
         file=sys.stderr,
     )
     log_level = getattr(logging, DEFAULT_LOG_LEVEL)
-logging.basicConfig(
-    level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()], force=True
-)
+
+# RichHandler's columnar layout produces very narrow log output in containers
+# without a TTY (Rich falls back to 80 columns, columns consume ~40 of those).
+# Use a plain format when there's no terminal attached.
+if sys.stderr.isatty():
+    logging.basicConfig(
+        level=log_level,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler()],
+        force=True,
+    )
+else:
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s %(levelname)-8s %(name)s:%(lineno)d %(message)s",
+        force=True,
+    )
 
 logger = get_logger(__name__)
 

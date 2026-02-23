@@ -2,6 +2,8 @@
 
 import logging
 import os
+import sys
+
 from rich.logging import RichHandler
 
 from constants import LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR, DEFAULT_LOG_LEVEL
@@ -24,12 +26,24 @@ def get_logger(name: str) -> logging.Logger:
     """
     logger = logging.getLogger(name)
 
-    # Skip reconfiguration if logger already has a RichHandler from a prior call
-    if any(isinstance(h, RichHandler) for h in logger.handlers):
+    # Skip reconfiguration if logger already has handlers from a prior call
+    if logger.handlers:
         return logger
 
-    # Attach RichHandler before any log calls so warnings use consistent formatting
-    logger.handlers = [RichHandler()]
+    # RichHandler's columnar layout (timestamp, level, right-aligned filename) assumes
+    # a real terminal. In containers without a TTY, Rich falls back to 80 columns and
+    # the columns consume most of that width, leaving ~40 chars for the actual message.
+    # Tracebacks become nearly unreadable. Use a plain StreamHandler when there's no TTY.
+    if sys.stderr.isatty():
+        logger.handlers = [RichHandler()]
+    else:
+        handler = logging.StreamHandler()
+        handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s %(levelname)-8s %(name)s:%(lineno)d %(message)s"
+            )
+        )
+        logger.handlers = [handler]
     logger.propagate = False
 
     # Read log level from environment variable with default fallback
