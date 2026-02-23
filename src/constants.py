@@ -125,6 +125,7 @@ DEFAULT_JWT_USER_NAME_CLAIM = "username"
 # MCP authorization header special values
 MCP_AUTH_KUBERNETES = "kubernetes"
 MCP_AUTH_CLIENT = "client"
+MCP_AUTH_OAUTH = "oauth"
 
 # default RAG tool value
 DEFAULT_RAG_TOOL = "file_search"

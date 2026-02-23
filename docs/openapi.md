@@ -12,6 +12,46 @@ Lightspeed Core Service (LCS) service API specification.
 
 # 🛠️ APIs
 
+## List of REST API endpoints
+
+| Method | Path                                  | Description |
+|--------|---------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| GET    | `/`                                   | Returns the static HTML index page                                                                                                                   |
+| GET    | `/v1/info`                            | Returns the service name, version and Llama-stack version                                                                                            |
+| GET    | `/v1/models`                          | List of available models                                                                                                                             |
+| GET    | `/v1/tools`                           | Consolidated list of available tools from all configured MCP servers                                                                                 |
+| GET    | `/v1/mcp-auth/client-options`         | List of MCP servers configured to accept client-provided authorization tokens, along with the header names where clients should provide these tokens |
+| GET    | `/v1/shields`                         | List of available shields from the Llama Stack service                                                                                               |
+| GET    | `/v1/providers`                       | List all available providers grouped by API type                                                                                                     |
+| GET    | `/v1/providers/{provider_id}`         | Retrieve a single provider identified by its unique ID                                                                                               |
+| GET    | `/v1/rags`                            | List all available RAGs                                                                                                                              |
+| GET    | `/v1/rags/{rag_id}`                   | Retrieve a single RAG identified by its unique ID                                                                                                    |
+| POST   | `/v1/query`                           | Processes a POST request to a query endpoint, forwarding the user's query to a selected Llama Stack LLM and returning the generated response         |
+| POST   | `/v1/streaming_query`                 | Streaming response using Server-Sent Events (SSE) format with content type text/event-stream                                                         |
+| GET    | `/v1/config`                          | Returns the current service configuration                                                                                                            |
+| POST   | `/v1/feedback`                        | Processes a user feedback submission, storing the feedback and returning a confirmation response                                                     |
+| GET    | `/v1/feedback/status`                 | Return the current enabled status of the feedback functionality                                                                                      |
+| PUT    | `/v1/feedback/status`                 | Change the feedback status: enables or disables it                                                                                                   |
+| GET    | `/v1/conversations`                   | Retrieve all conversations for the authenticated user                                                                                                |
+| GET    | `/v1/conversations/{conversation_id}` | Retrieve a conversation by ID using Conversations API                                                                                                |
+| DELETE | `/v1/conversations/{conversation_id}` | Delete a conversation by ID using Conversations API                                                                                                  |
+| PUT    | `/v1/conversations/{conversation_id}` | Update a conversation metadata using Conversations API                                                                                               |
+| GET    | `/v2/conversations`                   | Retrieve all conversations for the authenticated user                                                                                                |
+| GET    | `/v2/conversations/{conversation_id}` | Retrieve a conversation identified by its ID                                                                                                         |
+| DELETE | `/v2/conversations/{conversation_id}` | Delete a conversation identified by its ID                                                                                                           |
+| PUT    | `/v2/conversations/{conversation_id}` | Update a conversation topic summary by ID                                                                                                            |
+| POST   | `/v1/infer`                           | Serves requests from the RHEL Lightspeed Command Line Assistant (CLA)                                                                                |
+| GET    | `/readiness`                          | Returns service readiness state                                                                                                                      |
+| GET    | `/liveness`                           | Returns liveness status of the service                                                                                                               |
+| POST   | `/authorized`                         | Returns the authenticated user's ID and username                                                                                                     |
+| GET    | `/metrics`                            | Returns the latest Prometheus metrics in a form of plain text                                                                                        |
+| GET    | `/.well-known/agent-card.json`        | Serve the A2A Agent Card at the well-known location                                                                                                  |
+| GET    | `/.well-known/agent.json`             | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
+| GET    | `/a2a`                                | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
+| POST   | `/a2a`                                | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
+| GET    | `/a2a/health`                         | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
+
+
 ## GET `/`
 
 > **Root Endpoint Handler**
@@ -29,15 +69,13 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful Response | string |
-| 401 | Unauthorized | ...
+| Status Code | Description         | Component                                     |
+|-------------|---------------------|-----------------------------------------------|
+| 200         | Successful Response | string                                        |
+| 401         | Unauthorized        | [UnauthorizedResponse](#unauthorizedresponse) |
+| 403         | Permission denied   | [ForbiddenResponse](#forbiddenresponse)       |
+
 Examples
-
-
-
-
 
 ```json
 {
@@ -48,9 +86,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -59,14 +94,6 @@ Examples
   }
 }
 ```
-
-[UnauthorizedResponse](#unauthorizedresponse) |
-| 403 | Permission denied | ...
-Examples
-
-
-
-
 
 ```json
 {
@@ -77,15 +104,14 @@ Examples
 }
 ```
 
-[ForbiddenResponse](#forbiddenresponse) |
 ## GET `/v1/info`
 
 > **Info Endpoint Handler**
 
 Handle request to the /info endpoint.
 
-Process GET requests to the /info endpoint, returning the
-service name, version and Llama-stack version.
+Process GET requests to the /info endpoint, returning the service name, version
+and Llama-stack version.
 
 Raises:
     HTTPException: with status 500 and a detail object
@@ -102,16 +128,14 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [InfoResponse](#inforesponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description         | Component                                                 |
+|-------------|---------------------|-----------------------------------------------------------|
+| 200         | Successful response | [InfoResponse](#inforesponse)                             |
+| 401         | Unauthorized        | [UnauthorizedResponse](#unauthorizedresponse)             |
+| 403         | Permission denied   | [ForbiddenResponse](#forbiddenresponse)                   |
+| 503         | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse) |
 
 Examples
-
-
-
-
 
 ```json
 {
@@ -122,9 +146,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -133,9 +154,6 @@ Examples
   }
 }
 ```
-
-
-
 
 ```json
 {
@@ -146,9 +164,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -157,9 +172,6 @@ Examples
   }
 }
 ```
-
-
-
 
 ```json
 {
@@ -170,9 +182,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -181,9 +190,6 @@ Examples
   }
 }
 ```
-
-
-
 
 ```json
 {
@@ -194,9 +200,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -205,14 +208,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -222,14 +217,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -239,7 +226,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/v1/models`
 
 > **Models Endpoint Handler**
@@ -247,41 +234,48 @@ Examples
 Handle requests to the /models endpoint.
 
 Process GET requests to the /models endpoint, returning a list of available
-models from the Llama Stack service.
+models from the Llama Stack service. It is possible to specify "model_type"
+query parameter that is used as a filter. For example, if model type is set
+to "llm", only LLM models will be returned:
 
-Parameters:
+    curl http://localhost:8080/v1/models?model_type=llm
+
+The "model_type" query parameter is optional. When not specified, all models
+will be returned.
+
+### Parameters:
     request: The incoming HTTP request.
     auth: Authentication tuple from the auth dependency.
     model_type: Optional filter to return only models matching this type.
 
-Raises:
+### Raises:
     HTTPException: If unable to connect to the Llama Stack server or if
     model retrieval fails for any reason.
 
-Returns:
+### Returns:
     ModelsResponse: An object containing the list of available models.
 
 
 
 ### 🔗 Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| model_type |  | False | Optional filter to return only models matching this type |
+| Name       | Type | Required | Description                                              |
+|------------|------|----------|----------------------------------------------------------|
+| model_type |      | False    | Optional filter to return only models matching this type |
 
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ModelsResponse](#modelsresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [ModelsResponse](#modelsresponse)                           |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                 |
 
 Examples
-
-
-
-
 
 ```json
 {
@@ -292,9 +286,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -303,14 +294,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -320,14 +303,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -337,14 +312,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -354,8 +321,7 @@ Examples
   }
 }
 ```
- |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+
 ## GET `/v1/tools`
 
 > **Tools Endpoint Handler**
@@ -379,16 +345,15 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ToolsResponse](#toolsresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [ToolsResponse](#toolsresponse)                             |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
 
 Examples
-
-
-
-
 
 ```json
 {
@@ -399,9 +364,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -410,14 +372,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -427,13 +381,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -444,14 +391,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -461,7 +400,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/v1/mcp-auth/client-options`
 
 > **Get Mcp Client Auth Options**
@@ -769,7 +708,7 @@ Examples
 
 > **Get Provider Endpoint Handler**
 
-Retrieve a single provider by its unique ID.
+Retrieve a single provider identified by its unique ID.
 
 Returns:
     ProviderResponse: Provider details.
@@ -1003,7 +942,11 @@ Examples
 
 > **Get Rag Endpoint Handler**
 
-Retrieve a single RAG by its unique ID.
+Retrieve a single RAG identified by its unique ID.
+
+Accepts both user-facing rag_id (from LCORE config) and llama-stack
+vector_store_id. If a rag_id from config is provided, it is resolved
+to the underlying vector_store_id for the llama-stack lookup.
 
 Returns:
     RAGInfoResponse: A single RAG's details.
@@ -2183,7 +2126,7 @@ Examples
 
 > **Conversation Get Endpoint Handler V1**
 
-Handle request to retrieve a conversation by ID using Conversations API.
+Handle request to retrieve a conversation identified by ID using Conversations API.
 
 Retrieve a conversation's chat history by its ID using the LlamaStack
 Conversations API. This endpoint fetches the conversation items from
@@ -2792,7 +2735,7 @@ Examples
 
 > **Get Conversation Endpoint Handler**
 
-Handle request to retrieve a conversation by ID.
+Handle request to retrieve a conversation identified by its ID.
 
 
 
@@ -3269,6 +3212,23 @@ Examples
   "detail": {
     "cause": "User 6789 is not authorized to access this endpoint.",
     "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+ |
+| 413 | Prompt is too long | [PromptTooLongResponse](#prompttoolongresponse)
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "The prompt exceeds the maximum allowed length.",
+    "response": "Prompt is too long"
   }
 }
 ```
@@ -4323,7 +4283,7 @@ Attributes:
 Example:
     ```python
     conversation = ConversationDetails(
-        conversation_id="123e4567-e89b-12d3-a456-426614174000"
+        conversation_id="123e4567-e89b-12d3-a456-426614174000",
         created_at="2024-01-01T00:00:00Z",
         last_message_at="2024-01-01T00:05:00Z",
         message_count=5,
@@ -4941,7 +4901,7 @@ Useful resources:
 | name | string | MCP server name that must be unique |
 | provider_id | string | MCP provider identification |
 | url | string | URL of the MCP server |
-| authorization_headers | object | Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 2 special cases: 1. Usage of the kubernetes token in the header. To specify this use a string 'kubernetes' instead of the file path. 2. Usage of the client provided token in the header. To specify this use a string 'client' instead of the file path. |
+| authorization_headers | object | Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 3 special cases: 1. Usage of the kubernetes token in the header. To specify this use a string 'kubernetes' instead of the file path. 2. Usage of the client-provided token in the header. To specify this use a string 'client' instead of the file path. 3. Usage of the oauth token in the header. To specify this use a string 'oauth' instead of the file path.  |
 | timeout |  | Timeout in seconds for requests to the MCP server. If not specified, the default timeout from Llama Stack will be used. Note: This field is reserved for future use when Llama Stack adds timeout support. |
 
 
@@ -5061,6 +5021,18 @@ Useful resources:
 | ssl_mode | string | SSL mode |
 | gss_encmode | string | This option determines whether or with what priority a secure GSS TCP/IP connection will be negotiated with the server. |
 | ca_cert_path |  | Path to CA certificate |
+
+
+## PromptTooLongResponse
+
+
+413 Payload Too Large - Prompt is too long.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer |  |
+| detail |  |  |
 
 
 ## ProviderHealthStatus
@@ -5265,8 +5237,9 @@ Model representing a RAG chunk used in the response.
 | Field | Type | Description |
 |-------|------|-------------|
 | content | string | The content of the chunk |
-| source |  | Source document or URL |
+| source |  | Index name identifying the knowledge source from configuration |
 | score |  | Relevance score |
+| attributes |  | Document metadata from the RAG provider (e.g., url, title, author) |
 
 
 ## RAGInfoResponse
@@ -5356,6 +5329,7 @@ Attributes:
 |-------|------|-------------|
 | doc_url |  | URL of the referenced document |
 | doc_title |  | Title of the referenced document |
+| source |  | Index name identifying the knowledge source from configuration |
 
 
 ## RlsapiV1Attachment

@@ -1,6 +1,6 @@
 """Database engine management."""
 
-import logging
+from logging import DEBUG
 from pathlib import Path
 from typing import Any, Optional
 
@@ -175,7 +175,7 @@ def initialize_database() -> None:
     global engine, session_local  # pylint: disable=global-statement
 
     # Debug print all SQL statements if our logger is at-least DEBUG level
-    echo = bool(logger.isEnabledFor(logging.DEBUG))
+    echo = bool(logger.isEnabledFor(DEBUG))
 
     create_engine_kwargs = {
         "echo": echo,

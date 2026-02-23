@@ -4,7 +4,7 @@
 
 import pytest
 from fastapi import HTTPException
-from llama_stack_client import APIConnectionError, BadRequestError
+from llama_stack_client import APIConnectionError, AuthenticationError, BadRequestError
 from pytest_mock import MockerFixture, MockType
 
 # Import the function directly to bypass decorators
@@ -628,3 +628,95 @@ async def test_tools_endpoint_general_exception(
     # Call the endpointt and expect the exception to propagate (not caught)
     with pytest.raises(Exception, match="Unexpected error"):
         await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)  # type: ignore
+
+
+@pytest.mark.asyncio
+async def test_tools_endpoint_authentication_error_with_mcp_endpoint(
+    mocker: MockerFixture,
+    mock_configuration: Configuration,  # pylint: disable=redefined-outer-name
+) -> None:
+    """Test tools endpoint raises 401 with WWW-Authenticate when MCP server requires OAuth."""
+    app_config = AppConfig()
+    app_config._configuration = mock_configuration
+    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client = mocker.AsyncMock()
+    mock_client_holder.return_value.get_client.return_value = mock_client
+
+    mock_toolgroup = mocker.Mock()
+    mock_toolgroup.identifier = "mcp-tools"
+    mock_toolgroup.mcp_endpoint = mocker.Mock()
+    mock_toolgroup.mcp_endpoint.uri = "http://localhost:3000"
+    mock_client.toolgroups.list.return_value = [mock_toolgroup]
+
+    auth_error = AuthenticationError(
+        message="MCP server requires OAuth",
+        response=mocker.Mock(request=None),
+        body=None,
+    )
+    mock_client.tools.list.side_effect = auth_error
+
+    expected_headers = {"WWW-Authenticate": 'Bearer error="invalid_token"'}
+    probe_exception = HTTPException(
+        status_code=401,
+        detail={"cause": "MCP server at http://localhost:3000 requires OAuth"},
+        headers=expected_headers,
+    )
+    mocker.patch(
+        "app.endpoints.tools.probe_mcp_oauth_and_raise_401",
+        new_callable=mocker.AsyncMock,
+        side_effect=probe_exception,
+    )
+
+    mock_request = mocker.Mock()
+    mock_auth = MOCK_AUTH
+
+    with pytest.raises(HTTPException) as exc_info:
+        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.headers is not None
+    assert (
+        exc_info.value.headers.get("WWW-Authenticate") == 'Bearer error="invalid_token"'
+    )
+
+
+@pytest.mark.asyncio
+async def test_tools_endpoint_authentication_error_without_mcp_endpoint(
+    mocker: MockerFixture,
+    mock_configuration: Configuration,  # pylint: disable=redefined-outer-name
+) -> None:
+    """Test tools endpoint raises 401 without WWW-Authenticate when no mcp_endpoint."""
+    app_config = AppConfig()
+    app_config._configuration = mock_configuration
+    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client = mocker.AsyncMock()
+    mock_client_holder.return_value.get_client.return_value = mock_client
+
+    mock_toolgroup = mocker.Mock()
+    mock_toolgroup.identifier = "mcp-tools"
+    mock_toolgroup.mcp_endpoint = None
+    mock_client.toolgroups.list.return_value = [mock_toolgroup]
+
+    auth_error = AuthenticationError(
+        message="Authentication failed",
+        response=mocker.Mock(request=None),
+        body=None,
+    )
+    mock_client.tools.list.side_effect = auth_error
+
+    mock_request = mocker.Mock()
+    mock_auth = MOCK_AUTH
+
+    with pytest.raises(HTTPException) as exc_info:
+        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)
+
+    assert exc_info.value.status_code == 401
+    detail = exc_info.value.detail
+    assert isinstance(detail, dict)
+    assert detail.get("cause") == "Authentication failed"

@@ -505,11 +505,13 @@ class ModelContextProtocolServer(ConfigurationBase):
             "Headers to send to the MCP server. "
             "The map contains the header name and the path to a file containing "
             "the header value (secret). "
-            "There are 2 special cases: "
+            "There are 3 special cases: "
             "1. Usage of the kubernetes token in the header. "
             "To specify this use a string 'kubernetes' instead of the file path. "
-            "2. Usage of the client provided token in the header. "
-            "To specify this use a string 'client' instead of the file path."
+            "2. Usage of the client-provided token in the header. "
+            "To specify this use a string 'client' instead of the file path. "
+            "3. Usage of the oauth token in the header. "
+            "To specify this use a string 'oauth' instead of the file path. "
         ),
     )
 

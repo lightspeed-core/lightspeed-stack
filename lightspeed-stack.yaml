@@ -32,6 +32,7 @@ authentication:
   module: "noop"
 
 
+# OKP Solr for supplementary RAG
 solr:
-  enabled: true
+  enabled: false
   offline: true

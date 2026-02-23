@@ -16,8 +16,10 @@ def resolve_authorization_headers(
 
     Parameters:
         authorization_headers: Map of header names to secret locations or special keywords.
-            - If value is "kubernetes": leave is unchanged. We substitute it during request.
-            - If value is "client": leave it unchanged. . We substitute it during request.
+            - If value is "kubernetes": leave unchanged. We substitute it during request.
+            - If value is "client": leave unchanged. We substitute it during request.
+            - If value is "oauth": leave unchanged; if no token is provided, a 401 with
+              WWW-Authenticate may be forwarded from the MCP server.
             - Otherwise: Treat as file path and read the secret from that file
 
     Returns:
@@ -53,6 +55,14 @@ def resolve_authorization_headers(
                 resolved[header_name] = constants.MCP_AUTH_CLIENT
                 logger.debug(
                     "Header %s will use client-provided token (resolved at request time)",
+                    header_name,
+                )
+            elif value == constants.MCP_AUTH_OAUTH:
+                # Special case: Keep oauth keyword; if no token provided, probe endpoint
+                # and forward 401 WWW-Authenticate for client-driven OAuth flow
+                resolved[header_name] = constants.MCP_AUTH_OAUTH
+                logger.debug(
+                    "Header %s will use OAuth token (resolved at request time or 401)",
                     header_name,
                 )
             else:

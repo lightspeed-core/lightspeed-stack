@@ -121,7 +121,7 @@ async def get_provider_endpoint_handler(
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
 ) -> ProviderResponse:
     """
-    Retrieve a single provider by its unique ID.
+    Retrieve a single provider identified by its unique ID.
 
     Returns:
         ProviderResponse: Provider details.

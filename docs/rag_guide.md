@@ -261,6 +261,108 @@ Currently, tool calling is not supported out of the box. Some experimental patch
 
 The RAG tool calls where not working properly when experimenting with `mistralai/Mistral-7B-Instruct-v0.3` on vLLM.
 
+### Solr Vector IO
+
+The OKP (Offline Knowledge Portal) Solr Vector IO is a read-only vector search provider that integrates with Apache Solr for enhanced vector search capabilities. It enables retrieving contextual information from Solr-indexed Red Hat documents to enhance query responses with support for hybrid search and chunk window expansion.
+
+
+#### How to Enable Solr Vector IO
+
+**1. Configure Llama Stack (`run.yaml`):**
+
+```yaml
+providers:
+  vector_io:
+  - provider_id: solr-vector
+    provider_type: remote::solr_vector_io
+    config:
+      solr_url: http://localhost:8983/solr
+      collection_name: portal-rag
+      vector_field: chunk_vector
+      content_field: chunk
+      embedding_dimension: 384
+      embedding_model: ${env.EMBEDDING_MODEL_DIR}
+      chunk_window_config:
+        chunk_parent_id_field: "parent_id"
+        chunk_content_field: "chunk_field"
+        chunk_index_field: "chunk_index"
+        chunk_token_count_field: "num_tokens"
+        parent_total_chunks_field: "total_chunks"
+        parent_total_tokens_field: "total_tokens"
+        chunk_filter_query: "is_chunk:true" 
+      persistence:
+        namespace: portal-rag
+        backend: kv_default
+
+registered_resources:
+  vector_stores:
+  - vector_store_id: portal-rag
+    provider_id: solr-vector
+    embedding_model: granite-embedding-30m
+    embedding_dimension: 384
+```
+
+Note: if the vector database (portal-rag) is not in the persistent data store within the vector_io provider
+(e.g. after deleting the llama stack cache) you will need to register the vector database under registered resources:
+
+
+```yaml
+  vector_stores:
+    - embedding_dimension: 384
+      embedding_model: sentence-transformers/${env.EMBEDDING_MODEL_DIR}
+      provider_id: solr-vector
+      vector_store_id: portal-rag
+```
+
+
+**2. Configure Lightspeed Stack (`lightspeed-stack.yaml`):**
+
+```yaml
+solr:
+  enabled: true     # Enable Solr vector IO functionality
+  offline: true     # Use parent_id for document URLs (offline mode)
+                   # Set to false to use reference_url (online mode)
+```
+
+**Query Request Example:**
+```
+curl -sX POST http://localhost:8080/v1/query \
+    -H "Content-Type: application/json" \
+    -d '{"query" : "how do I secure a nodejs application with keycloak?", "no_tools":true}' | jq .
+```
+Note: Solr does not currently work with RAG tools. You will need to specify "no_tools": true in request.
+
+
+**Query Processing:**
+
+1. When Solr is enabled, queries use the `portal-rag` vector store
+2. Vector search is performed with configurable parameters:
+   - `k`: Number of results (default: 5)
+   - `score_threshold`: Minimum similarity score (default: 0.0)  
+   - `mode`: Search mode (default: "hybrid")
+3. Results include document metadata and source URLs
+4. Document URLs are built based on the `offline` setting:
+   - **Offline mode**: Uses `parent_id` with Mimir base URL
+   - **Online mode**: Uses `reference_url` from document metadata
+
+**Query Filtering:**
+
+To filter the Solr context edit the *chunk_filter_query* field in the
+Solr **vector_io** provider in the `run.yaml`. Filters should follow the key:value format:
+ex. `"product:*openshift*"`
+
+Note: This static filter is a temporary work-around. 
+
+**Prerequisites:**
+
+- Solr must be running and accessible at the configured URL
+  for instructions on how to pull and run the OKP Solr image visit: https://github.com/lightspeed-core/lightspeed-providers/lightspeed_stack_providers/providers/remote/solr_vector_io/solr_vector_io/README.md
+
+
+**Limitations:**
+
+- This is a **read-only** provider - no insert/delete operations
+
 ---
 
 # Complete Configuration Reference

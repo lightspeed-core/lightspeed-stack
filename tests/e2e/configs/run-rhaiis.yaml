@@ -22,14 +22,10 @@ providers:
   - provider_id: vllm
     provider_type: remote::vllm
     config:
-      url: http://${env.RHAIIS_URL}:8000/v1/
+      base_url: http://${env.RHAIIS_URL}:${env.RHAIIS_PORT}/v1/
       api_token: ${env.RHAIIS_API_KEY}
       tls_verify: false
       max_tokens: 2048
-  - provider_id: openai
-    provider_type: remote::openai
-    config:
-      api_key: ${env.OPENAI_API_KEY}
   - config: {}
     provider_id: sentence-transformers
     provider_type: inline::sentence-transformers
@@ -54,6 +50,9 @@ providers:
   - config: {}
     provider_id: rag-runtime
     provider_type: inline::rag-runtime
+  - config: {} # Enable MCP (Model Context Protocol) support
+    provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
   vector_io:
   - config:
       persistence:
@@ -143,7 +142,7 @@ registered_resources:
   shields:
   - shield_id: llama-guard
     provider_id: llama-guard
-    provider_shield_id: openai/gpt-4o-mini
+    provider_shield_id: vllm/${env.RHAIIS_MODEL}
   vector_stores: 
   - embedding_dimension: 768
     embedding_model: sentence-transformers/all-mpnet-base-v2

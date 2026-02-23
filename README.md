@@ -34,6 +34,7 @@ The service includes comprehensive user data collection capabilities for various
                 * [1. Static Tokens from Files (Recommended for Service Credentials)](#1-static-tokens-from-files-recommended-for-service-credentials)
                 * [2. Kubernetes Service Account Tokens (For K8s Deployments)](#2-kubernetes-service-account-tokens-for-k8s-deployments)
                 * [3. Client-Provided Tokens (For Per-User Authentication)](#3-client-provided-tokens-for-per-user-authentication)
+                * [4. OAuth (For MCP Servers Requiring OAuth)](#4-oauth-for-mcp-servers-requiring-oauth)
                 * [Client-Authenticated MCP Servers Discovery](#client-authenticated-mcp-servers-discovery)
                 * [Combining Authentication Methods](#combining-authentication-methods)
                 * [Authentication Method Comparison](#authentication-method-comparison)
@@ -72,6 +73,7 @@ The service includes comprehensive user data collection capabilities for various
     * [OpenAPI specification](#openapi-specification)
     * [Readiness Endpoint](#readiness-endpoint)
     * [Liveness Endpoint](#liveness-endpoint)
+    * [Models endpoint](#models-endpoint)
 * [Database structure](#database-structure)
 * [Publish the service as Python package on PyPI](#publish-the-service-as-python-package-on-pypi)
     * [Generate distribution archives to be uploaded into Python registry](#generate-distribution-archives-to-be-uploaded-into-python-registry)
@@ -355,7 +357,7 @@ In addition to the basic configuration above, you can configure authentication h
 
 #### Configuring MCP Server Authentication
 
-Lightspeed Core Stack supports three methods for authenticating with MCP servers, each suited for different use cases:
+Lightspeed Core Stack supports four methods for authenticating with MCP servers, each suited for different use cases:
 
 ##### 1. Static Tokens from Files (Recommended for Service Credentials)
 
@@ -392,7 +394,7 @@ mcp_servers:
       Authorization: "kubernetes"    # Uses user's k8s token from request auth
 ```
 
-**Note:** Kubernetes token-based MCP authorization only works when Lightspeed Core Stack is configured with Kubernetes authentication (`authentication.k8s`). For any other authentication types, MCP servers configured with `Authorization: "kubernetes"` are removed from the available MCP servers list.
+**Note:** Kubernetes token-based MCP authorization only works when Lightspeed Core Stack is configured with Kubernetes authentication (`authentication.module` is `k8s`) or `noop-with-token`. For any other authentication types, MCP servers configured with `Authorization: "kubernetes"` are removed from the available MCP servers list.
 
 ##### 3. Client-Provided Tokens (For Per-User Authentication)
 
@@ -419,6 +421,20 @@ curl -X POST "http://localhost:8080/v1/query" \
 **Note**: `MCP-HEADERS` is an **HTTP request header** containing a JSON-encoded dictionary. The dictionary is keyed by **server name** (not URL), matching the `name` field in your MCP server configuration. Each server name maps to another dictionary containing the HTTP headers to forward to that specific MCP server.
 
 **Structure**: `MCP-HEADERS: {"<server-name>": {"<header-name>": "<header-value>", ...}, ...}`
+
+##### 4. OAuth (For MCP Servers Requiring OAuth)
+
+Use the special `"oauth"` keyword when the MCP server requires OAuth and the client will supply a token (e.g. via `MCP-HEADERS` after obtaining it from an OAuth flow):
+
+```yaml
+mcp_servers:
+  - name: "oauth-protected-service"
+    url: "https://mcp.example.com"
+    authorization_headers:
+      Authorization: "oauth"    # Token provided via MCP-HEADERS (from OAuth flow)
+```
+
+When no token is provided for an OAuth-configured server, the service may respond with **401 Unauthorized** and a **`WWW-Authenticate`** header (probed from the MCP server). Clients can use this to drive an OAuth flow and then retry with the token in `MCP-HEADERS`.
 
 ##### Client-Authenticated MCP Servers Discovery
 
@@ -481,6 +497,7 @@ mcp_servers:
 | **Static File** | Service tokens, API keys | File path in config | Global (all users) | `"/var/secrets/token"` |
 | **Kubernetes** | K8s service accounts | `"kubernetes"` keyword | Per-user (from auth) | `"kubernetes"` |
 | **Client** | User-specific tokens | `"client"` keyword + HTTP header | Per-request | `"client"` |
+| **OAuth** | OAuth-protected MCP servers | `"oauth"` keyword + HTTP header | Per-request (from OAuth flow) | `"oauth"` |
 
 ##### Important: Automatic Server Skipping
 
@@ -489,6 +506,7 @@ mcp_servers:
 **Examples:**
 - A server with `Authorization: "kubernetes"` will be skipped if the user's request doesn't include a Kubernetes token
 - A server with `Authorization: "client"` will be skipped if no `MCP-HEADERS` are provided in the request
+- A server with `Authorization: "oauth"` and no token in `MCP-HEADERS` may cause the API to return **401 Unauthorized** with a **`WWW-Authenticate`** header (so the client can perform OAuth and retry)
 - A server with multiple headers will be skipped if **any** required header cannot be resolved
 
 Skipped servers are logged as warnings. Check Lightspeed Core logs to see which servers were skipped and why.
@@ -1034,6 +1052,62 @@ The liveness endpoint performs a basic health check to verify the service is ali
   "alive": true
 }
 ```
+
+## Models endpoint
+
+**Endpoint:** `GET /v1/models`
+
+Process GET requests and returns a list of available models from the Llama
+Stack service. It is possible to specify "model_type" query parameter that is
+used as a filter. For example, if model type is set to "llm", only LLM models
+will be returned:
+
+```bash
+curl http://localhost:8080/v1/models?model_type=llm
+```
+
+The "model_type" query parameter is optional. When not specified, all models
+will be returned.
+
+**Response Body:**
+```json
+{
+  "models": [
+    {
+      "identifier": "sentence-transformers/.llama",
+      "metadata": {
+        "embedding_dimension": 384
+      },
+      "api_model_type": "embedding",
+      "provider_id": "sentence-transformers",
+      "type": "model",
+      "provider_resource_id": ".llama",
+      "model_type": "embedding"
+    },
+    {
+      "identifier": "openai/gpt-4o-mini",
+      "metadata": {},
+      "api_model_type": "llm",
+      "provider_id": "openai",
+      "type": "model",
+      "provider_resource_id": "gpt-4o-mini",
+      "model_type": "llm"
+    },
+    {
+      "identifier": "sentence-transformers/nomic-ai/nomic-embed-text-v1.5",
+      "metadata": {
+        "embedding_dimension": 768
+      },
+      "api_model_type": "embedding",
+      "provider_id": "sentence-transformers",
+      "type": "model",
+      "provider_resource_id": "nomic-ai/nomic-embed-text-v1.5",
+      "model_type": "embedding"
+    }
+  ]
+}
+```
+
 
 # Database structure
 

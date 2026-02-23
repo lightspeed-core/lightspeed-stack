@@ -27,6 +27,9 @@ Utilities for resolving MCP server authorization headers.
 ## [mcp_headers.py](mcp_headers.py)
 MCP headers handling.
 
+## [mcp_oauth_probe.py](mcp_oauth_probe.py)
+Probe MCP server for OAuth and raise 401 with WWW-Authenticate when required.
+
 ## [prompts.py](prompts.py)
 Utility functions for system prompts.
 
@@ -59,4 +62,7 @@ Transcript handling.
 
 ## [types.py](types.py)
 Common types for the project.
+
+## [vector_search.py](vector_search.py)
+Vector search utilities for query endpoints.
 

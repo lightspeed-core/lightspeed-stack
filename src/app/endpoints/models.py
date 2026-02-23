@@ -83,18 +83,25 @@ async def models_endpoint_handler(
     Handle requests to the /models endpoint.
 
     Process GET requests to the /models endpoint, returning a list of available
-    models from the Llama Stack service.
+    models from the Llama Stack service. It is possible to specify "model_type"
+    query parameter that is used as a filter. For example, if model type is set
+    to "llm", only LLM models will be returned:
 
-    Parameters:
+        curl http://localhost:8080/v1/models?model_type=llm
+
+    The "model_type" query parameter is optional. When not specified, all models
+    will be returned.
+
+    ### Parameters:
         request: The incoming HTTP request.
         auth: Authentication tuple from the auth dependency.
         model_type: Optional filter to return only models matching this type.
 
-    Raises:
+    ### Raises:
         HTTPException: If unable to connect to the Llama Stack server or if
         model retrieval fails for any reason.
 
-    Returns:
+    ### Returns:
         ModelsResponse: An object containing the list of available models.
     """
     # Used only by the middleware

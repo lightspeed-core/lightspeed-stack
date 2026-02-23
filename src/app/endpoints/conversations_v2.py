@@ -97,7 +97,7 @@ async def get_conversations_list_endpoint_handler(
     skip_userid_check = auth[2]
 
     if configuration.conversation_cache_configuration.type is None:
-        logger.warning("Converastion cache is not configured")
+        logger.warning("Conversation cache is not configured")
         response = InternalServerErrorResponse.cache_unavailable()
         raise HTTPException(**response.model_dump())
 
@@ -114,7 +114,7 @@ async def get_conversation_endpoint_handler(
     conversation_id: str,
     auth: Any = Depends(get_auth_dependency()),
 ) -> ConversationResponse:
-    """Handle request to retrieve a conversation by ID."""
+    """Handle request to retrieve a conversation identified by its ID."""
     check_configuration_loaded(configuration)
     check_valid_conversation_id(conversation_id)
 
@@ -124,7 +124,7 @@ async def get_conversation_endpoint_handler(
     skip_userid_check = auth[2]
 
     if configuration.conversation_cache_configuration.type is None:
-        logger.warning("Converastion cache is not configured")
+        logger.warning("Conversation cache is not configured")
         response = InternalServerErrorResponse.cache_unavailable()
         raise HTTPException(**response.model_dump())
 
@@ -162,7 +162,7 @@ async def delete_conversation_endpoint_handler(
     skip_userid_check = auth[2]
 
     if configuration.conversation_cache_configuration.type is None:
-        logger.warning("Converastion cache is not configured")
+        logger.warning("Conversation cache is not configured")
         response = InternalServerErrorResponse.cache_unavailable()
         raise HTTPException(**response.model_dump())
 

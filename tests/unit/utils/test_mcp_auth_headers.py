@@ -64,6 +64,15 @@ def test_resolve_authorization_headers_kubernetes_token() -> None:
     assert result == {"Authorization": "kubernetes"}
 
 
+def test_resolve_authorization_headers_oauth_token() -> None:
+    """Test that oauth keyword is preserved."""
+    headers = {"Authorization": "oauth"}
+    result = resolve_authorization_headers(headers)
+
+    # Should keep "oauth" as-is for later substitution or 401 WWW-Authenticate flow
+    assert result == {"Authorization": "oauth"}
+
+
 def test_resolve_authorization_headers_multiple_headers(tmp_path: Path) -> None:
     """Test resolving multiple authorization headers."""
     # Create multiple secret files

@@ -10,7 +10,6 @@ No integration with ingress is provided here — only methods to build the JSON.
 """
 
 import asyncio
-import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import PurePath
@@ -19,9 +18,10 @@ from typing import Any, Literal, Optional
 import yaml
 from pydantic import SecretStr
 
+from log import get_logger
 from models.config import Configuration
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Masking output constants
 CONFIGURED: Literal["configured"] = "configured"

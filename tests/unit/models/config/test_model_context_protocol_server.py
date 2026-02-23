@@ -196,6 +196,17 @@ def test_model_context_protocol_server_client_special_case() -> None:
     assert mcp.authorization_headers == {"Authorization": "client"}
 
 
+def test_model_context_protocol_server_oauth_special_case() -> None:
+    """Test ModelContextProtocolServer with oauth special case."""
+    mcp = ModelContextProtocolServer(
+        name="oauth-server",
+        url="http://localhost:8080",
+        authorization_headers={"Authorization": "oauth"},
+    )
+    assert mcp is not None
+    assert mcp.authorization_headers == {"Authorization": "oauth"}
+
+
 def test_configuration_mcp_servers_with_mixed_auth_headers(tmp_path: Path) -> None:
     """
     Test Configuration with MCP servers having mixed authorization headers.

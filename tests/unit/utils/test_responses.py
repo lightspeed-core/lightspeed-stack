@@ -344,21 +344,23 @@ class TestGetRAGTools:
 class TestGetMCPTools:
     """Test cases for get_mcp_tools utility function."""
 
-    def test_get_mcp_tools_without_auth(self) -> None:
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_without_auth(self) -> None:
         """Test get_mcp_tools with servers without authorization headers."""
         servers_no_auth = [
             ModelContextProtocolServer(name="fs", url="http://localhost:3000"),
             ModelContextProtocolServer(name="git", url="https://git.example.com/mcp"),
         ]
 
-        tools_no_auth = get_mcp_tools(servers_no_auth, token=None)
+        tools_no_auth = await get_mcp_tools(servers_no_auth, token=None)
         assert len(tools_no_auth) == 2
         assert tools_no_auth[0]["type"] == "mcp"
         assert tools_no_auth[0]["server_label"] == "fs"
         assert tools_no_auth[0]["server_url"] == "http://localhost:3000"
         assert "headers" not in tools_no_auth[0]
 
-    def test_get_mcp_tools_with_kubernetes_auth(self) -> None:
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_with_kubernetes_auth(self) -> None:
         """Test get_mcp_tools with kubernetes auth."""
         servers_k8s = [
             ModelContextProtocolServer(
@@ -367,11 +369,12 @@ class TestGetMCPTools:
                 authorization_headers={"Authorization": "kubernetes"},
             ),
         ]
-        tools_k8s = get_mcp_tools(servers_k8s, token="user-k8s-token")
+        tools_k8s = await get_mcp_tools(servers_k8s, token="user-k8s-token")
         assert len(tools_k8s) == 1
         assert tools_k8s[0]["headers"] == {"Authorization": "Bearer user-k8s-token"}
 
-    def test_get_mcp_tools_with_mcp_headers(self) -> None:
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_with_mcp_headers(self) -> None:
         """Test get_mcp_tools with client-provided headers."""
         servers = [
             ModelContextProtocolServer(
@@ -387,7 +390,7 @@ class TestGetMCPTools:
                 "X-Custom": "custom-value",
             }
         }
-        tools = get_mcp_tools(servers, token=None, mcp_headers=mcp_headers)
+        tools = await get_mcp_tools(servers, token=None, mcp_headers=mcp_headers)
         assert len(tools) == 1
         assert tools[0]["headers"] == {
             "Authorization": "client-provided-token",
@@ -395,10 +398,11 @@ class TestGetMCPTools:
         }
 
         # Test with mcp_headers=None (server should be skipped)
-        tools_no_headers = get_mcp_tools(servers, token=None, mcp_headers=None)
+        tools_no_headers = await get_mcp_tools(servers, token=None, mcp_headers=None)
         assert len(tools_no_headers) == 0
 
-    def test_get_mcp_tools_client_auth_no_mcp_headers(self) -> None:
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_client_auth_no_mcp_headers(self) -> None:
         """Test get_mcp_tools skips server when mcp_headers is None and server requires client auth."""  # noqa: E501
         servers = [
             ModelContextProtocolServer(
@@ -411,11 +415,14 @@ class TestGetMCPTools:
         # When mcp_headers is None and server requires client auth,
         # should return None for that header
         # This tests the specific path at line 391
-        tools = get_mcp_tools(servers, token=None, mcp_headers=None)
+        tools = await get_mcp_tools(servers, token=None, mcp_headers=None)
         # Server should be skipped because it requires client auth but mcp_headers is None
         assert len(tools) == 0
 
-    def test_get_mcp_tools_client_auth_missing_server_in_headers(self) -> None:
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_client_auth_missing_server_in_headers(
+        self,
+    ) -> None:
         """Test get_mcp_tools skips server when mcp_headers doesn't contain server name."""
         servers = [
             ModelContextProtocolServer(
@@ -428,11 +435,12 @@ class TestGetMCPTools:
         # mcp_headers exists but doesn't contain this server name
         # This tests the specific path at line 394
         mcp_headers = {"other-server": {"X-Custom": "value"}}
-        tools = get_mcp_tools(servers, token=None, mcp_headers=mcp_headers)
+        tools = await get_mcp_tools(servers, token=None, mcp_headers=mcp_headers)
         # Server should be skipped because mcp_headers doesn't contain this server
         assert len(tools) == 0
 
-    def test_get_mcp_tools_with_static_headers(self, tmp_path: Path) -> None:
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_with_static_headers(self, tmp_path: Path) -> None:
         """Test get_mcp_tools with static headers from config files."""
         secret_file = tmp_path / "token.txt"
         secret_file.write_text("static-secret-token")
@@ -445,11 +453,12 @@ class TestGetMCPTools:
             ),
         ]
 
-        tools = get_mcp_tools(servers, token=None)
+        tools = await get_mcp_tools(servers, token=None)
         assert len(tools) == 1
         assert tools[0]["headers"] == {"Authorization": "static-secret-token"}
 
-    def test_get_mcp_tools_with_mixed_headers(self, tmp_path: Path) -> None:
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_with_mixed_headers(self, tmp_path: Path) -> None:
         """Test get_mcp_tools with mixed header types."""
         secret_file = tmp_path / "api-key.txt"
         secret_file.write_text("secret-api-key")
@@ -472,7 +481,7 @@ class TestGetMCPTools:
             }
         }
 
-        tools = get_mcp_tools(servers, token="k8s-token", mcp_headers=mcp_headers)
+        tools = await get_mcp_tools(servers, token="k8s-token", mcp_headers=mcp_headers)
         assert len(tools) == 1
         assert tools[0]["headers"] == {
             "Authorization": "Bearer k8s-token",
@@ -480,7 +489,8 @@ class TestGetMCPTools:
             "X-Custom": "client-custom-value",
         }
 
-    def test_get_mcp_tools_skips_server_with_missing_auth(self) -> None:
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_skips_server_with_missing_auth(self) -> None:
         """Test that servers with required but unavailable auth headers are skipped."""
         servers = [
             ModelContextProtocolServer(
@@ -495,10 +505,11 @@ class TestGetMCPTools:
             ),
         ]
 
-        tools = get_mcp_tools(servers, token=None, mcp_headers=None)
+        tools = await get_mcp_tools(servers, token=None, mcp_headers=None)
         assert len(tools) == 0
 
-    def test_get_mcp_tools_includes_server_without_auth(self) -> None:
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_includes_server_without_auth(self) -> None:
         """Test that servers without auth config are always included."""
         servers = [
             ModelContextProtocolServer(
@@ -508,10 +519,48 @@ class TestGetMCPTools:
             ),
         ]
 
-        tools = get_mcp_tools(servers, token=None, mcp_headers=None)
+        tools = await get_mcp_tools(servers, token=None, mcp_headers=None)
         assert len(tools) == 1
         assert tools[0]["server_label"] == "public-server"
         assert "headers" not in tools[0]
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_oauth_no_headers_raises_401_with_www_authenticate(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test get_mcp_tools raises 401 with WWW-Authenticate when OAuth required and no headers."""
+        servers = [
+            ModelContextProtocolServer(
+                name="oauth-server",
+                url="http://localhost:3000",
+                authorization_headers={"Authorization": "oauth"},
+            ),
+        ]
+
+        mock_resp = mocker.Mock()
+        mock_resp.headers = {"WWW-Authenticate": 'Bearer error="invalid_token"'}
+        mock_session = mocker.MagicMock()
+        mock_get_cm = mocker.AsyncMock()
+        mock_get_cm.__aenter__.return_value = mock_resp
+        mock_get_cm.__aexit__.return_value = None
+        mock_session.get.return_value = mock_get_cm
+        mock_session_cm = mocker.AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+        mocker.patch(
+            "utils.mcp_oauth_probe.aiohttp.ClientSession",
+            return_value=mock_session_cm,
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await get_mcp_tools(servers, token=None, mcp_headers=None)
+
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.headers is not None
+        assert (
+            exc_info.value.headers.get("WWW-Authenticate")
+            == 'Bearer error="invalid_token"'
+        )
 
 
 class TestGetTopicSummary:

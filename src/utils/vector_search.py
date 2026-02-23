@@ -4,7 +4,6 @@ This module contains common functionality for performing vector searches
 and processing RAG chunks that is shared between query_v2.py and streaming_query_v2.py.
 """
 
-import logging
 import traceback
 from typing import Any, Optional
 from urllib.parse import urljoin
@@ -15,11 +14,12 @@ from llama_stack_client import AsyncLlamaStackClient
 
 import constants
 from configuration import AppConfig
+from log import get_logger
 from models.requests import QueryRequest
 from models.responses import ReferencedDocument
 from utils.types import RAGChunk
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _is_solr_enabled(configuration: AppConfig) -> bool:

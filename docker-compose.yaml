@@ -43,6 +43,7 @@ services:
       - CLIENT_SECRET=${CLIENT_SECRET:-}
       # RHAIIS
       - RHAIIS_URL=${RHAIIS_URL}
+      - RHAIIS_PORT=${RHAIIS_PORT}
       - RHAIIS_API_KEY=${RHAIIS_API_KEY}
       - RHAIIS_MODEL=${RHAIIS_MODEL}
       # RHEL AI

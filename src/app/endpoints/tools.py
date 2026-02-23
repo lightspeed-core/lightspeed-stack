@@ -3,7 +3,7 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from llama_stack_client import APIConnectionError, BadRequestError
+from llama_stack_client import APIConnectionError, BadRequestError, AuthenticationError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -19,6 +19,7 @@ from models.responses import (
     UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
+from utils.mcp_oauth_probe import probe_mcp_oauth_and_raise_401
 from utils.tool_formatter import format_tools_list
 from log import get_logger
 
@@ -39,7 +40,7 @@ tools_responses: dict[int | str, dict[str, Any]] = {
 
 @router.get("/tools", responses=tools_responses)
 @authorize(Action.GET_TOOLS)
-async def tools_endpoint_handler(  # pylint: disable=too-many-locals
+async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-statements
     request: Request,
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
 ) -> ToolsResponse:
@@ -89,6 +90,14 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals
         except BadRequestError:
             logger.error("Toolgroup %s is not found", toolgroup.identifier)
             continue
+        except AuthenticationError as e:
+            logger.error("Authentication error: %s", e)
+            if toolgroup.mcp_endpoint:
+                await probe_mcp_oauth_and_raise_401(
+                    toolgroup.mcp_endpoint.uri, chain_from=e
+                )
+            error_response = UnauthorizedResponse(cause=str(e))
+            raise HTTPException(**error_response.model_dump()) from e
         except APIConnectionError as e:
             logger.error("Unable to connect to Llama Stack: %s", e)
             response = ServiceUnavailableResponse(
