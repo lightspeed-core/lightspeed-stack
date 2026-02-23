@@ -285,6 +285,26 @@ class ReferencedDocument(BaseModel):
     )
 
 
+class RAGContext(BaseModel):
+    """Result of building RAG context from all enabled pre-query RAG sources.
+
+    Attributes:
+        context_text: Formatted RAG context string for injection into the query.
+        rag_chunks: RAG chunks from pre-query sources (BYOK + Solr).
+        referenced_documents: Referenced documents from pre-query sources.
+    """
+
+    context_text: str = Field(default="", description="Formatted context for injection")
+    rag_chunks: list[RAGChunk] = Field(
+        default_factory=list,
+        description="RAG chunks from pre-query sources",
+    )
+    referenced_documents: list[ReferencedDocument] = Field(
+        default_factory=list,
+        description="Documents from pre-query sources",
+    )
+
+
 class TurnSummary(BaseModel):
     """Summary of a turn in llama stack."""
 

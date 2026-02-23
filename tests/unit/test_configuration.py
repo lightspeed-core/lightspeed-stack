@@ -1,5 +1,7 @@
 """Unit tests for functions defined in src/configuration.py."""
 
+# pylint: disable=too-many-lines
+
 from pathlib import Path
 from typing import Any, Generator
 from pydantic import ValidationError
@@ -994,3 +996,81 @@ def test_rag_id_mapping_not_loaded() -> None:
     cfg._configuration = None
     with pytest.raises(LogicError):
         _ = cfg.rag_id_mapping
+
+
+def test_score_multiplier_mapping_empty_when_no_byok(minimal_config: AppConfig) -> None:
+    """Test that score_multiplier_mapping returns empty dict when no BYOK RAG configured."""
+    assert minimal_config.score_multiplier_mapping == {}
+
+
+def test_score_multiplier_mapping_with_byok_defaults(tmp_path: Path) -> None:
+    """Test that score_multiplier_mapping uses default multiplier when not specified."""
+    db_file = tmp_path / "test.db"
+    db_file.touch()
+    cfg = AppConfig()
+    cfg.init_from_dict(
+        {
+            "name": "test",
+            "service": {"host": "localhost", "port": 8080},
+            "llama_stack": {
+                "api_key": "k",
+                "url": "http://test.com:1234",
+                "use_as_library_client": False,
+            },
+            "user_data_collection": {},
+            "authentication": {"module": "noop"},
+            "byok_rag": [
+                {
+                    "rag_id": "my-kb",
+                    "vector_db_id": "vs-001",
+                    "db_path": str(db_file),
+                },
+            ],
+        }
+    )
+    assert cfg.score_multiplier_mapping == {"vs-001": 1.0}
+
+
+def test_score_multiplier_mapping_with_custom_values(tmp_path: Path) -> None:
+    """Test that score_multiplier_mapping builds correct mapping with custom values."""
+    db_file1 = tmp_path / "test1.db"
+    db_file1.touch()
+    db_file2 = tmp_path / "test2.db"
+    db_file2.touch()
+    cfg = AppConfig()
+    cfg.init_from_dict(
+        {
+            "name": "test",
+            "service": {"host": "localhost", "port": 8080},
+            "llama_stack": {
+                "api_key": "k",
+                "url": "http://test.com:1234",
+                "use_as_library_client": False,
+            },
+            "user_data_collection": {},
+            "authentication": {"module": "noop"},
+            "byok_rag": [
+                {
+                    "rag_id": "kb1",
+                    "vector_db_id": "vs-001",
+                    "db_path": str(db_file1),
+                    "score_multiplier": 1.5,
+                },
+                {
+                    "rag_id": "kb2",
+                    "vector_db_id": "vs-002",
+                    "db_path": str(db_file2),
+                    "score_multiplier": 0.75,
+                },
+            ],
+        }
+    )
+    assert cfg.score_multiplier_mapping == {"vs-001": 1.5, "vs-002": 0.75}
+
+
+def test_score_multiplier_mapping_not_loaded() -> None:
+    """Test that score_multiplier_mapping raises when config not loaded."""
+    cfg = AppConfig()
+    cfg._configuration = None
+    with pytest.raises(LogicError):
+        _ = cfg.score_multiplier_mapping

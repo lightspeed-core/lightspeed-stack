@@ -2,37 +2,35 @@
 
 # pylint: disable=too-many-lines
 
-from pathlib import Path
-from typing import Optional, Any, Pattern
+import re
 from enum import Enum
 from functools import cached_property
-import re
-import yaml
+from pathlib import Path
+from typing import Any, Optional, Pattern
 
 import jsonpath_ng
+import yaml
 from jsonpath_ng.exceptions import JSONPathError
 from pydantic import (
+    AnyHttpUrl,
     BaseModel,
     ConfigDict,
     Field,
+    FilePath,
+    NonNegativeInt,
+    PositiveInt,
+    PrivateAttr,
+    SecretStr,
     field_validator,
     model_validator,
-    FilePath,
-    AnyHttpUrl,
-    PositiveInt,
-    NonNegativeInt,
-    SecretStr,
-    PrivateAttr,
 )
-
 from pydantic.dataclasses import dataclass
-from typing_extensions import Self, Literal
+from typing_extensions import Literal, Self
 
 import constants
-
+from log import get_logger
 from utils import checks
 from utils.mcp_auth_headers import resolve_authorization_headers
-from log import get_logger
 
 logger = get_logger(__name__)
 
@@ -1565,6 +1563,15 @@ class ByokRag(ConfigurationBase):
         description="Path to RAG database.",
     )
 
+    score_multiplier: float = Field(
+        constants.DEFAULT_SCORE_MULTIPLIER,
+        gt=0,
+        title="Score multiplier",
+        description="Multiplier applied to relevance scores from this vector store. "
+        "Used to weight results when querying multiple knowledge sources. "
+        "Values > 1 boost this store's results; values < 1 reduce them.",
+    )
+
 
 class QuotaLimiterConfiguration(ConfigurationBase):
     """Configuration for one quota limiter.
@@ -1687,25 +1694,83 @@ class QuotaHandlersConfiguration(ConfigurationBase):
     )
 
 
-class SolrConfiguration(ConfigurationBase):
-    """Solr configuration for vector search queries.
-
-    Controls whether to use offline or online mode when building document URLs
-    from vector search results, and enables/disables Solr vector IO functionality.
-    """
+class ByokRagConfiguration(ConfigurationBase):
+    """BYOK RAG configuration."""
 
     enabled: bool = Field(
-        False,
-        title="Solr enabled",
-        description="When True, enables Solr vector IO functionality for vector search queries. "
-        "When False, disables Solr vector search processing.",
+        default=False,
+        title="BYOK RAG enabled",
+        description="When True, queries BYOK vector stores for RAG context.",
+    )
+
+
+class SolrRagConfiguration(ConfigurationBase):
+    """Solr RAG configuration."""
+
+    enabled: bool = Field(
+        default=False,
+        title="Solr RAG enabled",
+        description="When True, queries Solr OKP for RAG context.",
     )
 
     offline: bool = Field(
-        True,
+        default=True,
         title="Offline mode",
         description="When True, use parent_id for chunk source URLs. "
         "When False, use reference_url for chunk source URLs.",
+    )
+
+
+class AlwaysRagConfiguration(ConfigurationBase):
+    """Always RAG configuration.
+
+    Controls pre-query RAG from Solr and BYOK vector stores.
+    """
+
+    solr: SolrRagConfiguration = Field(
+        default_factory=lambda: SolrRagConfiguration(),  # pylint: disable=unnecessary-lambda
+        title="Solr RAG configuration",
+        description="Configuration for Solr RAG (pre-query).",
+    )
+
+    byok: ByokRagConfiguration = Field(
+        default_factory=lambda: ByokRagConfiguration(),  # pylint: disable=unnecessary-lambda
+        title="BYOK RAG configuration",
+        description="Configuration for BYOK RAG (pre-query).",
+    )
+
+
+class ToolRagConfiguration(ConfigurationBase):
+    """Tool RAG configuration.
+
+    Controls whether RAG functionality is exposed as a tool that the LLM can call.
+    """
+
+    byok: ByokRagConfiguration = Field(
+        default_factory=lambda: ByokRagConfiguration(
+            enabled=True
+        ),  # defaults True for backward compatibility
+        title="BYOK RAG configuration",
+        description="Configuration for BYOK RAG as a tool.",
+    )
+
+
+class RagConfiguration(ConfigurationBase):
+    """RAG strategy configuration.
+
+    Controls different RAG strategies: pre-query (always) and tool-based.
+    """
+
+    always: AlwaysRagConfiguration = Field(
+        default_factory=lambda: AlwaysRagConfiguration(),  # pylint: disable=unnecessary-lambda
+        title="Always RAG configuration",
+        description="Configuration for pre-query RAG from Solr and BYOK vector stores.",
+    )
+
+    tool: ToolRagConfiguration = Field(
+        default_factory=lambda: ToolRagConfiguration(),  # pylint: disable=unnecessary-lambda
+        title="Tool RAG configuration",
+        description="Configuration for exposing RAG as a tool that the LLM can call.",
     )
 
 
@@ -1847,10 +1912,10 @@ class Configuration(ConfigurationBase):
         "Used in telemetry events.",
     )
 
-    solr: Optional[SolrConfiguration] = Field(
-        default=None,
-        title="Solr configuration",
-        description="Configuration for Solr vector search operations.",
+    rag: RagConfiguration = Field(
+        default_factory=RagConfiguration,
+        title="RAG configuration",
+        description="Configuration for all RAG strategies (pre-query and tool-based).",
     )
 
     @model_validator(mode="after")

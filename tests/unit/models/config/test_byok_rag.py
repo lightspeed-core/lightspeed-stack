@@ -3,16 +3,15 @@
 from pathlib import Path
 
 import pytest
-
 from pydantic import ValidationError
 
-from models.config import ByokRag
-
 from constants import (
-    DEFAULT_RAG_TYPE,
-    DEFAULT_EMBEDDING_MODEL,
     DEFAULT_EMBEDDING_DIMENSION,
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_RAG_TYPE,
+    DEFAULT_SCORE_MULTIPLIER,
 )
+from models.config import ByokRag
 
 
 def test_byok_rag_configuration_default_values() -> None:
@@ -29,7 +28,8 @@ def test_byok_rag_configuration_default_values() -> None:
     assert byok_rag.embedding_model == DEFAULT_EMBEDDING_MODEL
     assert byok_rag.embedding_dimension == DEFAULT_EMBEDDING_DIMENSION
     assert byok_rag.vector_db_id == "vector_db_id"
-    assert byok_rag.db_path == "tests/configuration/rag.txt"
+    assert byok_rag.db_path == Path("tests/configuration/rag.txt")
+    assert byok_rag.score_multiplier == DEFAULT_SCORE_MULTIPLIER
 
 
 def test_byok_rag_configuration_nondefault_values() -> None:
@@ -141,4 +141,28 @@ def test_byok_rag_configuration_empty_vector_db_id() -> None:
             embedding_dimension=1024,
             vector_db_id="",
             db_path=Path("tests/configuration/rag.txt"),
+        )
+
+
+def test_byok_rag_configuration_custom_score_multiplier() -> None:
+    """Test ByokRag with custom score_multiplier."""
+
+    byok_rag = ByokRag(
+        rag_id="rag_id",
+        vector_db_id="vector_db_id",
+        db_path="tests/configuration/rag.txt",
+        score_multiplier=2.5,
+    )
+    assert byok_rag.score_multiplier == 2.5
+
+
+def test_byok_rag_configuration_score_multiplier_must_be_positive() -> None:
+    """Test that score_multiplier must be greater than 0."""
+
+    with pytest.raises(ValidationError, match="greater than 0"):
+        _ = ByokRag(
+            rag_id="rag_id",
+            vector_db_id="vector_db_id",
+            db_path="tests/configuration/rag.txt",
+            score_multiplier=0.0,
         )

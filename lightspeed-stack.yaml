@@ -32,7 +32,18 @@ authentication:
   module: "noop"
 
 
-# OKP Solr for supplementary RAG
-solr:
-  enabled: false
-  offline: true
+# RAG configuration
+rag:
+  # Always RAG (inject context pre-query with RAG from Solr and BYOK vector stores)
+  always:
+    solr:
+      enabled: false
+      offline: false
+    # Supports weighted scoring
+    byok:
+      enabled: false
+  # Tool RAG (LLM can call file_search tool during generation)
+  tool:
+    byok:
+      # Default is true for backward compatibility
+      enabled: false

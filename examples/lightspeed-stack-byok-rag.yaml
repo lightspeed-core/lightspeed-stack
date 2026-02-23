@@ -38,10 +38,28 @@ byok_rag:
   - rag_id: ocp_docs
     rag_type: inline::faiss
     embedding_dimension: 1024
-    vector_db_id: vector_byok_1
+    vector_db_id: vs_123 # Llama-stack vector_store_id
     db_path: /tmp/ocp.faiss
+    score_multiplier: 1.0  # Weight for this vector store's results
   - rag_id: knowledge_base
     rag_type: inline::faiss
     embedding_dimension: 384
-    vector_db_id: vector_byok_2
+    vector_db_id: vs_456 # Llama-stack vector_store_id
     db_path: /tmp/kb.faiss
+    score_multiplier: 1.2  # Weight for this vector store's results
+
+# RAG configuration
+rag:
+  # Always RAG: context injected before every LLM response (no tool calls needed)
+  # Supports both Solr and BYOK sources. Score multipliers apply here only.
+  always:
+    solr:
+      enabled: false # Enable Solr OKP pre-query context injection
+      offline: false # Controls how document URLs are built from Solr results
+    byok:
+      enabled: false # Enable BYOK pre-query context injection (weighted by score_multiplier)
+  # Tool RAG: LLM calls file_search on demand to retrieve BYOK context
+  # Note: Solr is not available in Tool RAG; score_multiplier does not apply here
+  tool:
+    byok:
+      enabled: true # Enable BYOK vector stores as the file_search tool (default: true)

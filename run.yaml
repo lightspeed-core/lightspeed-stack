@@ -171,6 +171,9 @@ registered_resources:
   tool_groups:
   - toolgroup_id: builtin::rag # Register the RAG tool
     provider_id: rag-runtime
+# REQUIRED: This section is necessary for file_search tool calls to work.
+# Without it, llama-stack's rag-runtime silently fails all file_search operations
+# with no error logged.
 vector_stores:
   default_provider_id: faiss
   default_embedding_model: # Define the default embedding model for RAG
