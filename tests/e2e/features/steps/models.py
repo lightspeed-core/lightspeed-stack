@@ -7,6 +7,7 @@ from behave.runner import Context
 
 
 def model_rest_api_call(context: Context, parameters: dict) -> None:
+    """Call the REST API /models endpoint."""
     # initial value
     context.response = None
 
@@ -16,7 +17,7 @@ def model_rest_api_call(context: Context, parameters: dict) -> None:
     path = f"{context.api_prefix}/{endpoint}".replace("//", "/")
     url = base + path
     headers = context.auth_headers if hasattr(context, "auth_headers") else {}
-    response = requests.get(url, headers=headers, params=parameters)
+    response = requests.get(url, headers=headers, params=parameters, timeout=30)
     context.response = response
 
 
@@ -48,13 +49,14 @@ def check_model_list_is_empty(context: Context) -> None:
 
 @then('The models list should contain only models of type "{model_type}"')
 def check_all_models_are_of_expected_type(context: Context, model_type: str) -> None:
+    """Check if all models returned from REST API have the expected model type."""
     models = get_model_list_from_response(context)
     for model in models:
         assert (
             "api_model_type" in model
         ), "Model does not contain 'api_model_type' attribute"
-        model = model["api_model_type"]
-        assert model == model_type, f"Unexpected model returned: {model}"
+        actual_model = model["api_model_type"]
+        assert actual_model == model_type, f"Unexpected model returned: {actual_model}"
 
 
 def get_model_list_from_response(context: Context) -> list:
