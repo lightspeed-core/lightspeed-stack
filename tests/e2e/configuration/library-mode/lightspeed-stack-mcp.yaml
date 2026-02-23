@@ -20,6 +20,6 @@ authentication:
 mcp_servers:
   - name: "mcp-oauth"
     provider_id: "model-context-protocol"
-    url: "http://mock-mcp:3000"
+    url: "http://mock-mcp:3001"
     authorization_headers:
       Authorization: "oauth"

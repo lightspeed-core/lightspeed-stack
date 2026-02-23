@@ -126,11 +126,11 @@ services:
       dockerfile: Dockerfile
     container_name: mock-mcp
     ports:
-      - "3000:3000"
+      - "3001:3001"
     networks:
       - lightspeednet
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3001/health')"]
       interval: 5s
       timeout: 3s
       retries: 3
