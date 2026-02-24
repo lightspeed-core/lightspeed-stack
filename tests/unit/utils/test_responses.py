@@ -983,12 +983,9 @@ class TestPrepareResponsesParams:
             },
         ]
 
-        mocker.patch("utils.responses.configuration", mocker.Mock())
-        mocker.patch(
-            "utils.responses.select_model_and_provider_id",
-            return_value=("provider1/model1", "model1", "provider1"),
-        )
-        mocker.patch("utils.responses.evaluate_model_hints", return_value=(None, None))
+        mock_config = mocker.Mock()
+        mock_config.inference = None
+        mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch(
             "utils.responses.prepare_tools", return_value=mcp_tools_with_headers
@@ -1034,12 +1031,9 @@ class TestPrepareResponsesParams:
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("utils.responses.configuration", mocker.Mock())
-        mocker.patch(
-            "utils.responses.select_model_and_provider_id",
-            return_value=("provider1/model1", "model1", "provider1"),
-        )
-        mocker.patch("utils.responses.evaluate_model_hints", return_value=(None, None))
+        mock_config = mocker.Mock()
+        mock_config.inference = None
+        mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
         mocker.patch("utils.responses.prepare_input", return_value="test")
