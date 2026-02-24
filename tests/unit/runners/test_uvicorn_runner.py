@@ -7,8 +7,9 @@ import pytest
 from pytest_mock import MockerFixture
 
 from constants import LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR
+from log import resolve_log_level
 from models.config import ServiceConfiguration, TLSConfiguration
-from runners.uvicorn import _resolve_log_level, start_uvicorn
+from runners.uvicorn import start_uvicorn
 
 
 def test_start_uvicorn(mocker: MockerFixture) -> None:
@@ -146,17 +147,17 @@ def test_start_uvicorn_with_root_path(mocker: MockerFixture) -> None:
 def test_resolve_log_level_from_env(
     monkeypatch: pytest.MonkeyPatch, env_value: str, expected_level: int
 ) -> None:
-    """Test that _resolve_log_level resolves env var values to logging constants."""
+    """Test that resolve_log_level resolves env var values to logging constants."""
     monkeypatch.setenv(LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR, env_value)
-    assert _resolve_log_level() == expected_level
+    assert resolve_log_level() == expected_level
 
 
 def test_resolve_log_level_defaults_to_info(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Test that _resolve_log_level falls back to INFO when the env var is unset."""
+    """Test that resolve_log_level falls back to INFO when the env var is unset."""
     monkeypatch.delenv(LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR, raising=False)
-    assert _resolve_log_level() == logging.INFO
+    assert resolve_log_level() == logging.INFO
 
 
 def test_start_uvicorn_respects_debug_log_level(
