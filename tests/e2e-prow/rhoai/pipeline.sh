@@ -21,10 +21,10 @@ export LLAMA_STACK_IMAGE
 # 2. ENVIRONMENT SETUP
 #========================================
 echo "===== Setting up environment variables ====="
-export HUGGING_FACE_HUB_TOKEN=$(cat /var/run/huggingface/hf-token-ces-lcore-test || true)
-export VLLM_API_KEY=$(cat /var/run/vllm/vllm-api-key-lcore-test || true)
-export QUAY_ROBOT_NAME=$(cat /var/run/quay-aipcc-name/lcore-quay-name-lcore-test || true)
-export QUAY_ROBOT_PASSWORD=$(cat /var/run/quay-aipcc-password/lcore-quay-password-lcore-test || true)
+# export HUGGING_FACE_HUB_TOKEN=$(cat /var/run/huggingface/hf-token-ces-lcore-test || true)
+# export VLLM_API_KEY=$(cat /var/run/vllm/vllm-api-key-lcore-test || true)
+# export QUAY_ROBOT_NAME=$(cat /var/run/quay-aipcc-name/lcore-quay-name-lcore-test || true)
+# export QUAY_ROBOT_PASSWORD=$(cat /var/run/quay-aipcc-password/lcore-quay-password-lcore-test || true)
 
 
 [[ -n "$HUGGING_FACE_HUB_TOKEN" ]] && echo "✅ HUGGING_FACE_HUB_TOKEN is set" || { echo "❌ Missing HUGGING_FACE_HUB_TOKEN"; exit 1; }
@@ -301,7 +301,27 @@ echo "Starting port-forward for mock-jwks..."
 oc port-forward svc/mock-jwks 8000:8000 -n $NAMESPACE &
 PF_JWKS_PID=$!
 
-sleep 10
+# Wait for port-forward to be usable (app may not be listening immediately; port-forward can drop)
+echo "Waiting for port-forward to lightspeed-stack to be ready..."
+for i in $(seq 1 36); do
+  if curl -sf http://localhost:8080/v1/models > /dev/null 2>&1; then
+    echo "✅ Port-forward ready after $(( i * 5 ))s"
+    break
+  fi
+  if [ $i -eq 36 ]; then
+    echo "❌ Port-forward to lightspeed-stack never became ready (3 min)"
+    kill $PF_LCS_PID 2>/dev/null || true
+    kill $PF_JWKS_PID 2>/dev/null || true
+    exit 1
+  fi
+  # If port-forward process died, restart it (e.g. "connection refused" / "lost connection to pod")
+  if ! kill -0 $PF_LCS_PID 2>/dev/null; then
+    echo "Port-forward died, restarting (attempt $i)..."
+    oc port-forward svc/lightspeed-stack-service-svc 8080:8080 -n $NAMESPACE &
+    PF_LCS_PID=$!
+  fi
+  sleep 5
+done
 
 export E2E_LSC_HOSTNAME="localhost"
 export E2E_JWKS_HOSTNAME="localhost"
