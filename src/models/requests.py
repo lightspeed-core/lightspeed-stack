@@ -1,13 +1,22 @@
 """Models for REST API requests."""
 
-from typing import Optional, Self, Any
 from enum import Enum
+from typing import Optional, Any
+from typing_extensions import Self
 
+from llama_stack_api.openai_responses import (
+    OpenAIResponseInputToolChoice as ToolChoice,
+    OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
+    OpenAIResponseInputTool as InputTool,
+    OpenAIResponsePrompt as Prompt,
+    OpenAIResponseText as Text,
+)
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
 from log import get_logger
 from utils import suid
+from utils.types import IncludeParameter, ResponseInput
 
 logger = get_logger(__name__)
 
@@ -543,3 +552,133 @@ class ModelFilter(BaseModel):
         description="Optional filter to return only models matching this type",
         examples=["llm", "embeddings"],
     )
+
+
+class ResponsesRequest(BaseModel):
+    """Model representing a request for the Responses API following LCORE specification.
+
+    Attributes:
+        input: Input text or structured input items containing the query.
+        model: Model identifier in format "provider/model". Auto-selected if not provided.
+        conversation: Conversation ID linking to an existing conversation. Accepts both
+            OpenAI and LCORE formats. Mutually exclusive with previous_response_id.
+        include: Explicitly specify output item types that are excluded by default but
+            should be included in the response.
+        instructions: System instructions or guidelines provided to the model (acts as
+            the system prompt).
+        max_infer_iters: Maximum number of inference iterations the model can perform.
+        max_tool_calls: Maximum number of tool calls allowed in a single response.
+        metadata: Custom metadata dictionary with key-value pairs for tracking or logging.
+        parallel_tool_calls: Whether the model can make multiple tool calls in parallel.
+        previous_response_id: Identifier of the previous response in a multi-turn
+            conversation. Mutually exclusive with conversation.
+        prompt: Prompt object containing a template with variables for dynamic
+            substitution.
+        store: Whether to store the response in conversation history. Defaults to True.
+        stream: Whether to stream the response as it is generated. Defaults to False.
+        temperature: Sampling temperature controlling randomness (typically 0.0–2.0).
+        text: Text response configuration specifying output format constraints (JSON
+            schema, JSON object, or plain text).
+        tool_choice: Tool selection strategy ("auto", "required", "none", or specific
+            tool configuration). Defaults to "auto".
+        tools: List of tools available to the model (file search, web search, function
+            calls, MCP tools). Defaults to all tools available to the model.
+        generate_topic_summary: LCORE-specific flag indicating whether to generate a
+            topic summary for new conversations. Defaults to True.
+        solr: LCORE-specific Solr vector_io provider query parameters (e.g. filter
+            queries). Optional.
+    """
+
+    input: ResponseInput
+    model: Optional[str] = None
+    conversation: Optional[str] = None
+    include: Optional[list[IncludeParameter]] = None
+    instructions: Optional[str] = None
+    max_infer_iters: Optional[int] = None
+    max_tool_calls: Optional[int] = None
+    metadata: Optional[dict[str, str]] = None
+    parallel_tool_calls: Optional[bool] = None
+    previous_response_id: Optional[str] = None
+    prompt: Optional[Prompt] = None
+    store: bool = True
+    stream: bool = False
+    temperature: Optional[float] = None
+    text: Optional[Text] = None
+    tool_choice: Optional[ToolChoice] = ToolChoiceMode.auto
+    tools: Optional[list[InputTool]] = None
+    generate_topic_summary: Optional[bool] = True
+    solr: Optional[dict[str, Any]] = None
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "input": "What is Kubernetes?",
+                    "model": "openai/gpt-4o-mini",
+                    "conversation": "conv_0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e",
+                    "instructions": "You are a helpful assistant",
+                    "include": ["message.output_text.logprobs"],
+                    "max_tool_calls": 5,
+                    "metadata": {"source": "api"},
+                    "parallel_tool_calls": True,
+                    "prompt": {
+                        "id": "prompt_123",
+                        "variables": {
+                            "topic": {"type": "input_text", "text": "Kubernetes"}
+                        },
+                        "version": "1.0",
+                    },
+                    "store": True,
+                    "stream": False,
+                    "temperature": 0.7,
+                    "text": {
+                        "format": {
+                            "type": "json_schema",
+                            "schema": {
+                                "type": "object",
+                                "properties": {"answer": {"type": "string"}},
+                            },
+                        }
+                    },
+                    "tool_choice": "auto",
+                    "tools": [
+                        {
+                            "type": "file_search",
+                            "vector_store_ids": ["vs_123"],
+                        }
+                    ],
+                    "generate_topic_summary": True,
+                }
+            ]
+        },
+    }
+
+    @model_validator(mode="after")
+    def validate_conversation_and_previous_response_id_mutually_exclusive(self) -> Self:
+        """
+        Ensure `conversation` and `previous_response_id` are mutually exclusive.
+
+        These two parameters cannot be provided together as they represent
+        different ways of referencing conversation context.
+
+        Raises:
+            ValueError: If both `conversation` and `previous_response_id` are provided.
+
+        Returns:
+            Self: The validated model instance.
+        """
+        if self.conversation and self.previous_response_id:
+            raise ValueError(
+                "`conversation` and `previous_response_id` are mutually exclusive. "
+                "Only one can be provided at a time."
+            )
+        return self
+
+    @field_validator("conversation")
+    @classmethod
+    def check_suid(cls, value: Optional[str]) -> Optional[str]:
+        """Validate that a conversation identifier matches the expected SUID format."""
+        if value and not suid.check_suid(value):
+            raise ValueError(f"Improper conversation ID '{value}'")
+        return value
