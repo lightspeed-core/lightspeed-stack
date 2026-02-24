@@ -31,6 +31,7 @@ from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import (
+    INTERRUPTED_RESPONSE_MESSAGE,
     LLM_TOKEN_EVENT,
     LLM_TOOL_CALL_EVENT,
     LLM_TOOL_RESULT_EVENT,
@@ -324,6 +325,110 @@ async def retrieve_response_generator(
         raise HTTPException(**error_response.model_dump()) from e
 
 
+async def _persist_interrupted_turn(
+    context: ResponseGeneratorContext,
+    responses_params: ResponsesApiParams,
+    turn_summary: TurnSummary,
+) -> None:
+    """Persist the user query and an interrupted response into the conversation.
+
+    Called when a streaming request is cancelled so the exchange is not lost.
+    All errors are caught and logged to avoid masking the original
+    cancellation.
+
+    Parameters:
+        context: The response generator context.
+        responses_params: The Responses API parameters.
+        turn_summary: TurnSummary with llm_response already set to the
+            interrupted message.
+    """
+    try:
+        await append_turn_to_conversation(
+            context.client,
+            responses_params.conversation,
+            responses_params.input,
+            INTERRUPTED_RESPONSE_MESSAGE,
+        )
+    except Exception:  # pylint: disable=broad-except
+        logger.exception(
+            "Failed to append interrupted turn to conversation for request %s",
+            context.request_id,
+        )
+
+    try:
+        completed_at = datetime.datetime.now(datetime.UTC).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        store_query_results(
+            user_id=context.user_id,
+            conversation_id=context.conversation_id,
+            model=responses_params.model,
+            completed_at=completed_at,
+            started_at=context.started_at,
+            summary=turn_summary,
+            query_request=context.query_request,
+            skip_userid_check=context.skip_userid_check,
+            topic_summary=None,
+        )
+    except Exception:  # pylint: disable=broad-except
+        logger.exception(
+            "Failed to store interrupted query results for request %s",
+            context.request_id,
+        )
+
+
+def _register_interrupt_callback(
+    context: ResponseGeneratorContext,
+    responses_params: ResponsesApiParams,
+    turn_summary: TurnSummary,
+) -> list[bool]:
+    """Build an interrupt callback and register the stream for cancellation.
+
+    The callback is scheduled as a **separate** asyncio task by
+    ``cancel_stream`` so it executes regardless of where the
+    ``CancelledError`` is raised in the ASGI stack.
+
+    A mutable one-element list is used as a shared guard so the
+    callback and the in-generator ``CancelledError`` handler never
+    both persist the same turn.
+
+    Parameters:
+        context: The response generator context.
+        responses_params: The Responses API parameters.
+        turn_summary: TurnSummary populated during streaming.
+
+    Returns:
+        A mutable list ``[False]`` used as a persist-done guard; the
+        caller should check ``guard[0]`` before persisting and set
+        it to ``True`` afterwards.
+    """
+    guard: list[bool] = [False]
+
+    async def _on_interrupt() -> None:
+        if guard[0]:
+            return
+        guard[0] = True
+        turn_summary.llm_response = INTERRUPTED_RESPONSE_MESSAGE
+        await _persist_interrupted_turn(context, responses_params, turn_summary)
+
+    current_task = asyncio.current_task()
+    if current_task is not None:
+        get_stream_interrupt_registry().register_stream(
+            request_id=context.request_id,
+            user_id=context.user_id,
+            task=current_task,
+            on_interrupt=_on_interrupt,
+        )
+    else:
+        logger.warning(
+            "No current asyncio task for request %s; "
+            "stream interruption will not be available",
+            context.request_id,
+        )
+
+    return guard
+
+
 async def generate_response(
     generator: AsyncIterator[str],
     context: ResponseGeneratorContext,
@@ -334,9 +439,9 @@ async def generate_response(
 
     Re-yields events from the generator, handles errors, and ensures
     persistence and token consumption after completion.  When the
-    stream is interrupted via ``CancelledError``, all post-stream side
-    effects (token consumption, result storage) are skipped and the
-    request is deregistered from the interrupt registry.
+    stream is interrupted via ``CancelledError``, the user query and
+    an interrupted response are persisted to the conversation, but
+    token consumption is skipped (no usage data is available).
 
     Args:
         generator: The base generator to wrap
@@ -347,20 +452,9 @@ async def generate_response(
     Yields:
         SSE-formatted strings from the wrapped generator
     """
-    user_id = context.user_id
-
-    current_task = asyncio.current_task()
-    if current_task is not None:
-        get_stream_interrupt_registry().register_stream(
-            request_id=context.request_id,
-            user_id=user_id,
-            task=current_task,
-        )
-    else:
-        logger.warning(
-            "No current asyncio task for request %s; stream interruption will not be available",
-            context.request_id,
-        )
+    persist_guard = _register_interrupt_callback(
+        context, responses_params, turn_summary
+    )
 
     stream_completed = False
     try:
@@ -394,6 +488,13 @@ async def generate_response(
         yield stream_http_error_event(error_response, context.query_request.media_type)
     except asyncio.CancelledError:
         logger.info("Streaming request %s interrupted by user", context.request_id)
+        current_task = asyncio.current_task()
+        if current_task is not None:
+            current_task.uncancel()
+        if not persist_guard[0]:
+            persist_guard[0] = True
+            turn_summary.llm_response = INTERRUPTED_RESPONSE_MESSAGE
+            await _persist_interrupted_turn(context, responses_params, turn_summary)
         yield stream_interrupted_event(context.request_id)
     finally:
         get_stream_interrupt_registry().deregister_stream(context.request_id)

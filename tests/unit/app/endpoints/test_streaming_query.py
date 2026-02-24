@@ -1358,12 +1358,12 @@ class TestGenerateResponse:
         assert any("error" in item for item in result)
 
     @pytest.mark.asyncio
-    async def test_generate_response_cancelled_skips_side_effects(
+    async def test_generate_response_cancelled_persists_interrupted_turn(
         self,
         mocker: MockerFixture,
         isolate_stream_interrupt_registry: Any,
     ) -> None:
-        """Test cancelled stream exits without quota consumption and persistence."""
+        """Test cancelled stream persists user query with interrupted response."""
 
         async def mock_generator() -> AsyncIterator[str]:
             yield "data: token\n\n"
@@ -1377,9 +1377,12 @@ class TestGenerateResponse:
         )  # pyright: ignore[reportCallIssue]
         mock_context.started_at = "2024-01-01T00:00:00Z"
         mock_context.skip_userid_check = False
+        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
 
         mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
         mock_responses_params.model = "provider1/model1"
+        mock_responses_params.conversation = "conv_123"
+        mock_responses_params.input = "test"
 
         mock_turn_summary = TurnSummary()
         mock_turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
@@ -1389,6 +1392,10 @@ class TestGenerateResponse:
         )
         store_query_results_mock = mocker.patch(
             "app.endpoints.streaming_query.store_query_results"
+        )
+        append_turn_mock = mocker.patch(
+            "app.endpoints.streaming_query.append_turn_to_conversation",
+            new_callable=mocker.AsyncMock,
         )
 
         test_request_id = "123e4567-e89b-12d3-a456-426614174000"
@@ -1407,10 +1414,182 @@ class TestGenerateResponse:
         assert any('"event": "interrupted"' in item for item in result)
         assert not any('"event": "end"' in item for item in result)
         consume_query_tokens_mock.assert_not_called()
-        store_query_results_mock.assert_not_called()
+
+        append_turn_mock.assert_called_once_with(
+            mock_context.client,
+            "conv_123",
+            "test",
+            "You interrupted this request.",
+        )
+        store_query_results_mock.assert_called_once()
+        call_kwargs = store_query_results_mock.call_args[1]
+        assert call_kwargs["user_id"] == "user_123"
+        assert call_kwargs["conversation_id"] == "conv_123"
+        assert call_kwargs["summary"].llm_response == "You interrupted this request."
+        assert call_kwargs["topic_summary"] is None
+
         isolate_stream_interrupt_registry.deregister_stream.assert_called_once_with(
             test_request_id
         )
+
+    @pytest.mark.asyncio
+    async def test_generate_response_cancelled_stores_results_when_append_fails(
+        self,
+        mocker: MockerFixture,
+        isolate_stream_interrupt_registry: Any,
+    ) -> None:
+        """Test store_query_results still runs when append_turn_to_conversation fails."""
+
+        async def mock_generator() -> AsyncIterator[str]:
+            yield "data: token\n\n"
+            raise asyncio.CancelledError()
+
+        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
+        mock_context.conversation_id = "conv_123"
+        mock_context.user_id = "user_123"
+        mock_context.query_request = QueryRequest(
+            query="test", media_type=MEDIA_TYPE_JSON
+        )  # pyright: ignore[reportCallIssue]
+        mock_context.started_at = "2024-01-01T00:00:00Z"
+        mock_context.skip_userid_check = False
+        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.model = "provider1/model1"
+        mock_responses_params.conversation = "conv_123"
+        mock_responses_params.input = "test"
+
+        mock_turn_summary = TurnSummary()
+
+        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
+        store_query_results_mock = mocker.patch(
+            "app.endpoints.streaming_query.store_query_results"
+        )
+        mocker.patch(
+            "app.endpoints.streaming_query.append_turn_to_conversation",
+            new_callable=mocker.AsyncMock,
+            side_effect=RuntimeError("Llama Stack unavailable"),
+        )
+
+        test_request_id = "123e4567-e89b-12d3-a456-426614174000"
+        mock_context.request_id = test_request_id
+
+        result = []
+        async for item in generate_response(
+            mock_generator(),
+            mock_context,
+            mock_responses_params,
+            mock_turn_summary,
+        ):
+            result.append(item)
+
+        assert any('"event": "interrupted"' in item for item in result)
+        store_query_results_mock.assert_called_once()
+        isolate_stream_interrupt_registry.deregister_stream.assert_called_once_with(
+            test_request_id
+        )
+
+    @pytest.mark.asyncio
+    async def test_generate_response_task_cancel_persists_results(
+        self,
+        mocker: MockerFixture,
+        isolate_stream_interrupt_registry: Any,
+    ) -> None:
+        """Test that real task.cancel() persists via CancelledError handler."""
+        cancel_event = asyncio.Event()
+
+        async def slow_generator() -> AsyncIterator[str]:
+            yield "data: token\n\n"
+            await cancel_event.wait()
+            yield "data: should not reach\n\n"
+
+        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
+        mock_context.conversation_id = "conv_123"
+        mock_context.user_id = "user_123"
+        mock_context.query_request = QueryRequest(
+            query="test", media_type=MEDIA_TYPE_JSON
+        )  # pyright: ignore[reportCallIssue]
+        mock_context.started_at = "2024-01-01T00:00:00Z"
+        mock_context.skip_userid_check = False
+        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.model = "provider1/model1"
+        mock_responses_params.conversation = "conv_123"
+        mock_responses_params.input = "test"
+
+        mock_turn_summary = TurnSummary()
+
+        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
+        store_query_results_mock = mocker.patch(
+            "app.endpoints.streaming_query.store_query_results"
+        )
+        append_turn_mock = mocker.patch(
+            "app.endpoints.streaming_query.append_turn_to_conversation",
+            new_callable=mocker.AsyncMock,
+        )
+
+        test_request_id = "123e4567-e89b-12d3-a456-426614174000"
+        mock_context.request_id = test_request_id
+
+        result: list[str] = []
+
+        async def consume_generator() -> None:
+            async for item in generate_response(
+                slow_generator(),
+                mock_context,
+                mock_responses_params,
+                mock_turn_summary,
+            ):
+                result.append(item)
+
+        task = asyncio.create_task(consume_generator())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        await asyncio.sleep(0.05)
+
+        assert any('"event": "interrupted"' in item for item in result)
+        append_turn_mock.assert_called_once()
+        store_query_results_mock.assert_called_once()
+        isolate_stream_interrupt_registry.deregister_stream.assert_called_once_with(
+            test_request_id
+        )
+
+    @pytest.mark.asyncio
+    async def test_cancel_stream_callback_persists_when_error_hits_outside_generator(
+        self,
+    ) -> None:
+        """Test on_interrupt callback runs via cancel_stream as a separate task."""
+        registry = StreamInterruptRegistry()
+        test_request_id = "123e4567-e89b-12d3-a456-426614174099"
+        registry.deregister_stream(test_request_id)
+
+        callback_ran = False
+
+        async def mock_callback() -> None:
+            nonlocal callback_ran
+            callback_ran = True
+
+        async def pending_stream() -> None:
+            await asyncio.sleep(10)
+
+        task = asyncio.create_task(pending_stream())
+        registry.register_stream(
+            test_request_id, "user_123", task, on_interrupt=mock_callback
+        )
+
+        result = registry.cancel_stream(test_request_id, "user_123")
+        assert result.value == "cancelled"
+
+        # Let the scheduled callback task execute
+        await asyncio.sleep(0.01)
+
+        assert callback_ran is True
+
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        registry.deregister_stream(test_request_id)
 
 
 class TestResponseGenerator:
