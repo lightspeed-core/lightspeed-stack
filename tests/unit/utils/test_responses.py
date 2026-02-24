@@ -348,8 +348,12 @@ class TestGetMCPTools:
     async def test_get_mcp_tools_without_auth(self) -> None:
         """Test get_mcp_tools with servers without authorization headers."""
         servers_no_auth = [
-            ModelContextProtocolServer(name="fs", url="http://localhost:3000"),
-            ModelContextProtocolServer(name="git", url="https://git.example.com/mcp"),
+            ModelContextProtocolServer(
+                name="fs", url="http://localhost:3000", provider_id="x"
+            ),
+            ModelContextProtocolServer(
+                name="git", url="https://git.example.com/mcp", provider_id="y"
+            ),
         ]
 
         tools_no_auth = await get_mcp_tools(servers_no_auth, token=None)
@@ -367,6 +371,7 @@ class TestGetMCPTools:
                 name="k8s-server",
                 url="http://localhost:3000",
                 authorization_headers={"Authorization": "kubernetes"},
+                provider_id="x",
             ),
         ]
         tools_k8s = await get_mcp_tools(servers_k8s, token="user-k8s-token")
@@ -381,6 +386,7 @@ class TestGetMCPTools:
                 name="fs",
                 url="http://localhost:3000",
                 authorization_headers={"Authorization": "client", "X-Custom": "client"},
+                provider_id="x",
             ),
         ]
 
@@ -409,6 +415,7 @@ class TestGetMCPTools:
                 name="client-auth-server",
                 url="http://localhost:3000",
                 authorization_headers={"X-Custom": "client"},
+                provider_id="x",
             ),
         ]
 
@@ -429,6 +436,7 @@ class TestGetMCPTools:
                 name="client-auth-server",
                 url="http://localhost:3000",
                 authorization_headers={"X-Custom": "client"},
+                provider_id="x",
             ),
         ]
 
@@ -450,6 +458,7 @@ class TestGetMCPTools:
                 name="server1",
                 url="http://localhost:3000",
                 authorization_headers={"Authorization": str(secret_file)},
+                provider_id="x",
             ),
         ]
 
@@ -472,6 +481,7 @@ class TestGetMCPTools:
                     "X-API-Key": str(secret_file),
                     "X-Custom": "client",
                 },
+                provider_id="x",
             ),
         ]
 
@@ -497,11 +507,13 @@ class TestGetMCPTools:
                 name="missing-k8s-auth",
                 url="http://localhost:3001",
                 authorization_headers={"Authorization": "kubernetes"},
+                provider_id="x",
             ),
             ModelContextProtocolServer(
                 name="missing-client-auth",
                 url="http://localhost:3002",
                 authorization_headers={"X-Token": "client"},
+                provider_id="x",
             ),
         ]
 
@@ -516,6 +528,7 @@ class TestGetMCPTools:
                 name="public-server",
                 url="http://localhost:3000",
                 authorization_headers={},
+                provider_id="x",
             ),
         ]
 
@@ -534,6 +547,7 @@ class TestGetMCPTools:
                 name="oauth-server",
                 url="http://localhost:3000",
                 authorization_headers={"Authorization": "oauth"},
+                provider_id="x",
             ),
         ]
 
@@ -739,7 +753,9 @@ class TestPrepareTools:
         )  # pyright: ignore[reportCallIssue]
         mock_config = mocker.Mock(spec=AppConfig)
         mock_config.mcp_servers = [
-            ModelContextProtocolServer(name="test-server", url="http://localhost:3000")
+            ModelContextProtocolServer(
+                name="test-server", url="http://localhost:3000", provider_id="x"
+            )
         ]
 
         result = await prepare_tools(mock_client, query_request, "token", mock_config)
