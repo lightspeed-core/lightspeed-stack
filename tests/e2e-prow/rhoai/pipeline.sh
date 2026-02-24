@@ -338,15 +338,21 @@ echo "===== Running E2E tests ====="
 # Ensure run-tests.sh is executable
 chmod +x ./run-tests.sh
 
-# Disable exit on error to capture test exit code
+# Run tests and cleanup port-forwards. Disable ERR trap so we can capture test exit code and reap
+# killed port-forwards without the trap firing (ERR fires on any non-zero exit, not only when set -e would exit).
+trap - ERR
 set +e
+export E2E_EXIT_CODE_FILE="${PIPELINE_DIR}/.e2e_exit_code"
 ./run-tests.sh
-TEST_EXIT_CODE=$?
-set -e
-
-# Cleanup port-forwards
+# Read exit code from file so we get the real test result (shell can overwrite $? with "PID Killed" before we use it)
+TEST_EXIT_CODE=$(cat "$E2E_EXIT_CODE_FILE" 2>/dev/null || echo 1)
+# Kill first so wait doesn't block (if a port-forward is still running, wait would hang)
 kill $PF_LCS_PID 2>/dev/null || true
 kill $PF_JWKS_PID 2>/dev/null || true
+wait $PF_LCS_PID 2>/dev/null || true
+wait $PF_JWKS_PID 2>/dev/null || true
+set -e
+trap 'echo "❌ Pipeline failed at line $LINENO"; exit 1' ERR
 
 echo "===== E2E COMPLETE ====="
 
