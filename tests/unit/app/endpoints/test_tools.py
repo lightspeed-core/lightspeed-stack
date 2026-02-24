@@ -2,7 +2,10 @@
 
 """Unit tests for tools endpoint."""
 
+from pathlib import Path
+
 import pytest
+from pydantic import SecretStr, AnyHttpUrl
 from fastapi import HTTPException
 from llama_stack_client import APIConnectionError, AuthenticationError, BadRequestError
 from pytest_mock import MockerFixture, MockType
@@ -17,6 +20,8 @@ from models.config import (
     ModelContextProtocolServer,
     ServiceConfiguration,
     UserDataCollection,
+    TLSConfiguration,
+    CORSConfiguration,
 )
 from models.responses import ToolsResponse
 
@@ -29,9 +34,40 @@ def mock_configuration() -> Configuration:
     """Create a mock configuration with MCP servers."""
     return Configuration(
         name="test",
-        service=ServiceConfiguration(),
-        llama_stack=LlamaStackConfiguration(url="http://localhost:8321"),
-        user_data_collection=UserDataCollection(feedback_enabled=False),
+        service=ServiceConfiguration(
+            tls_config=TLSConfiguration(
+                tls_certificate_path=Path("tests/configuration/server.crt"),
+                tls_key_path=Path("tests/configuration/server.key"),
+                tls_key_password=Path("tests/configuration/password"),
+            ),
+            cors=CORSConfiguration(
+                allow_origins=["foo_origin", "bar_origin", "baz_origin"],
+                allow_credentials=False,
+                allow_methods=["foo_method", "bar_method", "baz_method"],
+                allow_headers=["foo_header", "bar_header", "baz_header"],
+            ),
+            host="localhost",
+            port=1234,
+            base_url=".",
+            auth_enabled=False,
+            workers=1,
+            color_log=True,
+            access_log=True,
+            root_path="/.",
+        ),
+        llama_stack=LlamaStackConfiguration(
+            url=AnyHttpUrl("http://localhost:8321"),
+            api_key=SecretStr("xyzzy"),
+            use_as_library_client=False,
+            library_client_config_path=".",
+            timeout=10,
+        ),
+        user_data_collection=UserDataCollection(
+            transcripts_enabled=False,
+            feedback_enabled=False,
+            transcripts_storage=".",
+            feedback_storage=".",
+        ),
         mcp_servers=[
             ModelContextProtocolServer(
                 name="filesystem-tools",
@@ -44,7 +80,10 @@ def mock_configuration() -> Configuration:
                 url="http://localhost:3001",
             ),
         ],
-    )  # type: ignore
+        customization=None,
+        authorization=None,
+        deployment_environment=".",
+    )
 
 
 @pytest.fixture
@@ -150,7 +189,9 @@ async def test_tools_endpoint_success(
     mock_auth = MOCK_AUTH
 
     # Call the endpoint
-    response = await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+        mock_request, mock_auth
+    )
 
     # Verify response
     assert isinstance(response, ToolsResponse)
@@ -182,10 +223,44 @@ async def test_tools_endpoint_no_mcp_servers(mocker: MockerFixture) -> None:
     # Mock configuration with no MCP servers - wrap in AppConfig
     mock_config = Configuration(
         name="test",
-        service=ServiceConfiguration(),
-        llama_stack=LlamaStackConfiguration(url="http://localhost:8321"),
-        user_data_collection=UserDataCollection(feedback_enabled=False),
+        service=ServiceConfiguration(
+            tls_config=TLSConfiguration(
+                tls_certificate_path=Path("tests/configuration/server.crt"),
+                tls_key_path=Path("tests/configuration/server.key"),
+                tls_key_password=Path("tests/configuration/password"),
+            ),
+            cors=CORSConfiguration(
+                allow_origins=["foo_origin", "bar_origin", "baz_origin"],
+                allow_credentials=False,
+                allow_methods=["foo_method", "bar_method", "baz_method"],
+                allow_headers=["foo_header", "bar_header", "baz_header"],
+            ),
+            host="localhost",
+            port=1234,
+            base_url=".",
+            auth_enabled=False,
+            workers=1,
+            color_log=True,
+            access_log=True,
+            root_path="/.",
+        ),
+        llama_stack=LlamaStackConfiguration(
+            url=AnyHttpUrl("http://localhost:8321"),
+            api_key=SecretStr("xyzzy"),
+            use_as_library_client=False,
+            library_client_config_path=".",
+            timeout=10,
+        ),
+        user_data_collection=UserDataCollection(
+            transcripts_enabled=False,
+            feedback_enabled=False,
+            transcripts_storage=".",
+            feedback_storage=".",
+        ),
         mcp_servers=[],
+        customization=None,
+        authorization=None,
+        deployment_environment=".",
     )
     app_config = AppConfig()
     app_config._configuration = mock_config
@@ -207,9 +282,9 @@ async def test_tools_endpoint_no_mcp_servers(mocker: MockerFixture) -> None:
     mock_auth = MOCK_AUTH
 
     # Call the endpoint
-    response = await tools.tools_endpoint_handler.__wrapped__(
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
         mock_request, mock_auth
-    )  # type: ignore
+    )
 
     # Verify response
     assert isinstance(response, ToolsResponse)
@@ -252,7 +327,9 @@ async def test_tools_endpoint_api_connection_error(
 
     # Call the endpoint - should raise HTTPException when APIConnectionError occurs
     with pytest.raises(HTTPException) as exc_info:
-        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)
+        await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+            mock_request, mock_auth
+        )
 
     assert exc_info.value.status_code == 503
     detail = exc_info.value.detail
@@ -288,7 +365,9 @@ async def test_tools_endpoint_partial_failure(  # pylint: disable=redefined-oute
     mock_auth = MOCK_AUTH
 
     with pytest.raises(HTTPException) as exc_info:
-        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)
+        await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+            mock_request, mock_auth
+        )
 
     assert exc_info.value.status_code == 503
     detail = exc_info.value.detail
@@ -339,7 +418,9 @@ async def test_tools_endpoint_toolgroup_not_found(  # pylint: disable=redefined-
     mock_auth = MOCK_AUTH
 
     # Call the endpoint - should continue processing and return tools from successful toolgroups
-    response = await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+        mock_request, mock_auth
+    )
 
     # Verify response - should have only one tool from the first successful toolgroup
     assert isinstance(response, ToolsResponse)
@@ -401,7 +482,9 @@ async def test_tools_endpoint_builtin_toolgroup(
     mock_auth = MOCK_AUTH
 
     # Call the endpoint
-    response = await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+        mock_request, mock_auth
+    )
 
     # Verify response
     assert isinstance(response, ToolsResponse)
@@ -416,9 +499,40 @@ async def test_tools_endpoint_mixed_toolgroups(mocker: MockerFixture) -> None:
     # Mock configuration with MCP servers - wrap in AppConfig
     mock_config = Configuration(
         name="test",
-        service=ServiceConfiguration(),
-        llama_stack=LlamaStackConfiguration(url="http://localhost:8321"),
-        user_data_collection=UserDataCollection(feedback_enabled=False),
+        service=ServiceConfiguration(
+            tls_config=TLSConfiguration(
+                tls_certificate_path=Path("tests/configuration/server.crt"),
+                tls_key_path=Path("tests/configuration/server.key"),
+                tls_key_password=Path("tests/configuration/password"),
+            ),
+            cors=CORSConfiguration(
+                allow_origins=["foo_origin", "bar_origin", "baz_origin"],
+                allow_credentials=False,
+                allow_methods=["foo_method", "bar_method", "baz_method"],
+                allow_headers=["foo_header", "bar_header", "baz_header"],
+            ),
+            host="localhost",
+            port=1234,
+            base_url=".",
+            auth_enabled=False,
+            workers=1,
+            color_log=True,
+            access_log=True,
+            root_path="/.",
+        ),
+        llama_stack=LlamaStackConfiguration(
+            url=AnyHttpUrl("http://localhost:8321"),
+            api_key=SecretStr("xyzzy"),
+            use_as_library_client=False,
+            library_client_config_path=".",
+            timeout=10,
+        ),
+        user_data_collection=UserDataCollection(
+            transcripts_enabled=False,
+            feedback_enabled=False,
+            transcripts_storage=".",
+            feedback_storage=".",
+        ),
         mcp_servers=[
             ModelContextProtocolServer(
                 name="filesystem-tools",
@@ -426,6 +540,9 @@ async def test_tools_endpoint_mixed_toolgroups(mocker: MockerFixture) -> None:
                 url="http://localhost:3000",
             ),
         ],
+        customization=None,
+        authorization=None,
+        deployment_environment=".",
     )
     app_config = AppConfig()
     app_config._configuration = mock_config
@@ -486,7 +603,9 @@ async def test_tools_endpoint_mixed_toolgroups(mocker: MockerFixture) -> None:
     mock_auth = MOCK_AUTH
 
     # Call the endpoint
-    response = await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+        mock_request, mock_auth
+    )
 
     # Verify response - should have both tools with correct server sources
     assert isinstance(response, ToolsResponse)
@@ -674,7 +793,9 @@ async def test_tools_endpoint_authentication_error_with_mcp_endpoint(
     mock_auth = MOCK_AUTH
 
     with pytest.raises(HTTPException) as exc_info:
-        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)
+        await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+            mock_request, mock_auth
+        )
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.headers is not None
@@ -714,7 +835,9 @@ async def test_tools_endpoint_authentication_error_without_mcp_endpoint(
     mock_auth = MOCK_AUTH
 
     with pytest.raises(HTTPException) as exc_info:
-        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)
+        await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+            mock_request, mock_auth
+        )
 
     assert exc_info.value.status_code == 401
     detail = exc_info.value.detail
