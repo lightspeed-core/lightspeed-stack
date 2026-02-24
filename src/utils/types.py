@@ -1,17 +1,25 @@
 """Common types for the project."""
 
-from typing import Any, Optional
+from typing import Any, Literal, Optional, TypeAlias
 
+from llama_stack_api import ImageContentItem, TextContentItem
+from llama_stack_api.openai_responses import (
+    OpenAIResponseInputFunctionToolCallOutput as FunctionToolCallOutput,
+    OpenAIResponseMCPApprovalRequest as McpApprovalRequest,
+    OpenAIResponseMCPApprovalResponse as McpApprovalResponse,
+    OpenAIResponseMessage as ResponseMessage,
+    OpenAIResponseOutputMessageFileSearchToolCall as FileSearchToolCall,
+    OpenAIResponseOutputMessageFunctionToolCall as FunctionToolCall,
+    OpenAIResponseOutputMessageMCPCall as McpCall,
+    OpenAIResponseOutputMessageMCPListTools as McpListTools,
+    OpenAIResponseOutputMessageWebSearchToolCall as WebSearchToolCall,
+)
 from llama_stack_client.lib.agents.tool_parser import ToolParser
 from llama_stack_client.lib.agents.types import (
     CompletionMessage as AgentCompletionMessage,
 )
 from llama_stack_client.lib.agents.types import (
     ToolCall as AgentToolCall,
-)
-from llama_stack_client.types.shared.interleaved_content_item import (
-    ImageContentItem,
-    TextContentItem,
 )
 from pydantic import AnyUrl, BaseModel, Field
 
@@ -227,3 +235,28 @@ class Transcript(BaseModel):
     attachments: list[dict[str, Any]] = Field(default_factory=list)
     tool_calls: list[dict[str, Any]] = Field(default_factory=list)
     tool_results: list[dict[str, Any]] = Field(default_factory=list)
+
+
+ResponseInputItem: TypeAlias = (
+    ResponseMessage
+    | WebSearchToolCall
+    | FileSearchToolCall
+    | FunctionToolCallOutput
+    | McpCall
+    | McpListTools
+    | McpApprovalRequest
+    | FunctionToolCall
+    | McpApprovalResponse
+)
+
+ResponseInput: TypeAlias = str | list[ResponseInputItem]
+
+IncludeParameter: TypeAlias = Literal[
+    "web_search_call.action.sources",
+    "code_interpreter_call.outputs",
+    "computer_call_output.output.image_url",
+    "file_search_call.results",
+    "message.input_image.image_url",
+    "message.output_text.logprobs",
+    "reasoning.encrypted_content",
+]
