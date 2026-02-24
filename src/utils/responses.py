@@ -159,8 +159,8 @@ async def prepare_tools(
 
 
 def _build_provider_data_headers(
-    tools: Optional[list[dict[str, Any]]],
-) -> Optional[dict[str, str]]:
+    tools: list[dict[str, Any]] | None,
+) -> dict[str, str] | None:
     """Build extra HTTP headers containing MCP provider data for Llama Stack.
 
     Extracts per-server auth headers from MCP tool definitions and encodes
