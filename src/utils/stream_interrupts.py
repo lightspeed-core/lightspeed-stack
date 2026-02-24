@@ -1,7 +1,9 @@
 """In-memory registry for interrupting active streaming requests."""
 
 import asyncio
-from dataclasses import dataclass
+from collections.abc import Callable, Coroutine
+from typing import Any
+from dataclasses import dataclass, field
 from enum import Enum
 from threading import Lock
 from log import get_logger
@@ -17,10 +19,16 @@ class ActiveStream:
     Attributes:
         user_id: Owner of the streaming request.
         task: Asyncio task producing the stream response.
+        on_interrupt: Optional async callback invoked when the stream
+            is cancelled, scheduled as a separate task so it runs
+            regardless of where the ``CancelledError`` lands.
     """
 
     user_id: str
     task: asyncio.Task[None]
+    on_interrupt: Callable[[], Coroutine[Any, Any, None]] | None = field(
+        default=None, repr=False
+    )
 
 
 class CancelStreamResult(str, Enum):
@@ -41,7 +49,11 @@ class StreamInterruptRegistry(metaclass=Singleton):
         self._lock = Lock()
 
     def register_stream(
-        self, request_id: str, user_id: str, task: asyncio.Task[None]
+        self,
+        request_id: str,
+        user_id: str,
+        task: asyncio.Task[None],
+        on_interrupt: Callable[[], Coroutine[Any, Any, None]] | None = None,
     ) -> None:
         """Register an active stream task for interrupt support.
 
@@ -49,9 +61,13 @@ class StreamInterruptRegistry(metaclass=Singleton):
             request_id: Unique streaming request identifier.
             user_id: User identifier that owns the stream.
             task: Asyncio task associated with the stream.
+            on_interrupt: Optional async callback to run when the stream
+                is cancelled, executed in a separate task.
         """
         with self._lock:
-            self._streams[request_id] = ActiveStream(user_id=user_id, task=task)
+            self._streams[request_id] = ActiveStream(
+                user_id=user_id, task=task, on_interrupt=on_interrupt
+            )
 
     def cancel_stream(self, request_id: str, user_id: str) -> CancelStreamResult:
         """Cancel an active stream owned by user.
@@ -60,6 +76,11 @@ class StreamInterruptRegistry(metaclass=Singleton):
         lock so that a concurrent ``deregister_stream`` cannot remove
         the entry between the ownership check and the cancel call.
 
+        When an ``on_interrupt`` callback was registered, it is
+        scheduled as a **separate** asyncio task after the cancel so
+        persistence runs regardless of where the ``CancelledError``
+        is raised (inside the generator or in Starlette's send).
+
         Parameters:
             request_id: Unique streaming request identifier.
             user_id: User identifier attempting the interruption.
@@ -67,6 +88,7 @@ class StreamInterruptRegistry(metaclass=Singleton):
         Returns:
             CancelStreamResult: Structured cancellation result.
         """
+        on_interrupt = None
         with self._lock:
             stream = self._streams.get(request_id)
             if stream is None:
@@ -81,7 +103,12 @@ class StreamInterruptRegistry(metaclass=Singleton):
             if stream.task.done():
                 return CancelStreamResult.ALREADY_DONE
             stream.task.cancel()
-            return CancelStreamResult.CANCELLED
+            on_interrupt = stream.on_interrupt
+
+        if on_interrupt is not None:
+            asyncio.get_running_loop().create_task(on_interrupt())
+
+        return CancelStreamResult.CANCELLED
 
     def deregister_stream(self, request_id: str) -> None:
         """Remove stream task from registry once completed/cancelled.
