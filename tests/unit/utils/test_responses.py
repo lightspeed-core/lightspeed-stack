@@ -379,6 +379,7 @@ class TestGetMCPTools:
                 name="k8s-server",
                 url="http://localhost:3000",
                 authorization_headers={"Authorization": "kubernetes"},
+                provider_id="x",
             ),
         ]
         mock_config = mocker.Mock()
@@ -396,6 +397,7 @@ class TestGetMCPTools:
                 name="fs",
                 url="http://localhost:3000",
                 authorization_headers={"Authorization": "client", "X-Custom": "client"},
+                provider_id="x",
             ),
         ]
         mock_config = mocker.Mock()
@@ -429,6 +431,7 @@ class TestGetMCPTools:
                 name="client-auth-server",
                 url="http://localhost:3000",
                 authorization_headers={"X-Custom": "client"},
+                provider_id="x",
             ),
         ]
         mock_config = mocker.Mock()
@@ -452,6 +455,7 @@ class TestGetMCPTools:
                 name="client-auth-server",
                 url="http://localhost:3000",
                 authorization_headers={"X-Custom": "client"},
+                provider_id="x",
             ),
         ]
         mock_config = mocker.Mock()
@@ -478,6 +482,7 @@ class TestGetMCPTools:
                 name="server1",
                 url="http://localhost:3000",
                 authorization_headers={"Authorization": str(secret_file)},
+                provider_id="x",
             ),
         ]
         mock_config = mocker.Mock()
@@ -505,6 +510,7 @@ class TestGetMCPTools:
                     "X-API-Key": str(secret_file),
                     "X-Custom": "client",
                 },
+                provider_id="x",
             ),
         ]
         mock_config = mocker.Mock()
@@ -535,11 +541,13 @@ class TestGetMCPTools:
                 name="missing-k8s-auth",
                 url="http://localhost:3001",
                 authorization_headers={"Authorization": "kubernetes"},
+                provider_id="x",
             ),
             ModelContextProtocolServer(
                 name="missing-client-auth",
                 url="http://localhost:3002",
                 authorization_headers={"X-Token": "client"},
+                provider_id="x",
             ),
         ]
         mock_config = mocker.Mock()
@@ -559,6 +567,7 @@ class TestGetMCPTools:
                 name="public-server",
                 url="http://localhost:3000",
                 authorization_headers={},
+                provider_id="x",
             ),
         ]
         mock_config = mocker.Mock()
@@ -580,6 +589,7 @@ class TestGetMCPTools:
                 name="oauth-server",
                 url="http://localhost:3000",
                 authorization_headers={"Authorization": "oauth"},
+                provider_id="x",
             ),
         ]
         mock_config = mocker.Mock()
