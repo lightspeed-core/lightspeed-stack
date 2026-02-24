@@ -3,7 +3,12 @@
 import json
 
 import requests
-from behave import then, when, step  # pyright: ignore[reportAttributeAccessIssue]
+from behave import (
+    then,
+    when,
+    step,
+    given,
+)  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 from tests.e2e.utils.utils import (
     normalize_endpoint,
@@ -395,6 +400,7 @@ def check_response_partially(context: Context) -> None:
     json_str = replace_placeholders(context, context.text or "{}")
     expected = json.loads(json_str)
     validate_json_partially(body, expected)
+
 
 @given('I set the "{header_name}" header to')
 def set_header(context: Context, header_name: str) -> None:
