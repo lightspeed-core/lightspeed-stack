@@ -30,7 +30,7 @@ class Handler(BaseHTTPRequestHandler):
     def _parse_auth(self) -> str | None:
         """Return Bearer token if present, else None."""
         auth = self.headers.get("Authorization")
-        if auth and auth.startswith("Bearer "):
+        if auth and auth.startswith("Bearer ") and "invalid" not in auth:
             return auth[7:].strip()
         return None
 

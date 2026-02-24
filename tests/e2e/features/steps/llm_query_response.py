@@ -33,6 +33,7 @@ def ask_question(context: Context, endpoint: str) -> None:
     context.response = requests.post(url, json=data, timeout=DEFAULT_LLM_TIMEOUT)
 
 
+@step('I use "{endpoint}" to ask question with headers')
 @step('I use "{endpoint}" to ask question with authorization header')
 def ask_question_authorized(context: Context, endpoint: str) -> None:
     """Call the service REST API endpoint with question."""

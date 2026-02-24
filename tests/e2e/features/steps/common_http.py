@@ -395,3 +395,12 @@ def check_response_partially(context: Context) -> None:
     json_str = replace_placeholders(context, context.text or "{}")
     expected = json.loads(json_str)
     validate_json_partially(body, expected)
+
+@given('I set the "{header_name}" header to')
+def set_header(context: Context, header_name: str) -> None:
+    """Set a header in the request."""
+    assert context.text is not None, "Header value needs to be specified"
+
+    if not hasattr(context, "auth_headers"):
+        context.auth_headers = {}
+    context.auth_headers[header_name] = context.text
