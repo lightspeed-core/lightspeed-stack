@@ -3,7 +3,7 @@
 """Handler for REST API call to provide answer to query using Response API."""
 
 import datetime
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from llama_stack_api.openai_responses import OpenAIResponseObject
@@ -237,7 +237,8 @@ async def query_endpoint_handler(
         started_at=started_at,
         completed_at=completed_at,
         summary=turn_summary,
-        query_request=query_request,
+        query=query_request.query,
+        attachments=query_request.attachments,
         skip_userid_check=_skip_userid_check,
         topic_summary=topic_summary,
     )
@@ -278,11 +279,12 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     Returns:
         TurnSummary: Summary of the LLM response content
     """
+    response: Optional[OpenAIResponseObject] = None
     try:
         moderation_result = await run_shield_moderation(client, responses_params.input)
-        if moderation_result.blocked:
+        if moderation_result.decision == "blocked":
             # Handle shield moderation blocking
-            violation_message = moderation_result.message or ""
+            violation_message = moderation_result.message
             await append_turn_to_conversation(
                 client,
                 responses_params.conversation,

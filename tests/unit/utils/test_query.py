@@ -669,7 +669,7 @@ class TestStoreQueryResults:
             started_at="2024-01-01T00:00:00Z",
             completed_at="2024-01-01T00:00:05Z",
             summary=summary,
-            query_request=query_request,
+            query=query_request.query,
             skip_userid_check=False,
             topic_summary="Topic",
         )
@@ -701,7 +701,7 @@ class TestStoreQueryResults:
                 started_at="2024-01-01T00:00:00Z",
                 completed_at="2024-01-01T00:00:05Z",
                 summary=summary,
-                query_request=query_request,
+                query=query_request.query,
                 skip_userid_check=False,
                 topic_summary=None,
             )
@@ -729,7 +729,7 @@ class TestStoreQueryResults:
                 started_at="2024-01-01T00:00:00Z",
                 completed_at="2024-01-01T00:00:05Z",
                 summary=summary,
-                query_request=query_request,
+                query=query_request.query,
                 skip_userid_check=False,
                 topic_summary=None,
             )
@@ -758,7 +758,7 @@ class TestStoreQueryResults:
                 started_at="2024-01-01T00:00:00Z",
                 completed_at="2024-01-01T00:00:05Z",
                 summary=summary,
-                query_request=query_request,
+                query=query_request.query,
                 skip_userid_check=False,
                 topic_summary=None,
             )
@@ -787,7 +787,7 @@ class TestStoreQueryResults:
                 started_at="2024-01-01T00:00:00Z",
                 completed_at="2024-01-01T00:00:05Z",
                 summary=summary,
-                query_request=query_request,
+                query=query_request.query,
                 skip_userid_check=False,
                 topic_summary=None,
             )
@@ -816,7 +816,7 @@ class TestStoreQueryResults:
                 started_at="2024-01-01T00:00:00Z",
                 completed_at="2024-01-01T00:00:05Z",
                 summary=summary,
-                query_request=query_request,
+                query=query_request.query,
                 skip_userid_check=False,
                 topic_summary=None,
             )
@@ -845,7 +845,7 @@ class TestStoreQueryResults:
                 started_at="2024-01-01T00:00:00Z",
                 completed_at="2024-01-01T00:00:05Z",
                 summary=summary,
-                query_request=query_request,
+                query=query_request.query,
                 skip_userid_check=False,
                 topic_summary=None,
             )

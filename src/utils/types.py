@@ -1,6 +1,6 @@
 """Common types for the project."""
 
-from typing import Any, Literal, Optional, TypeAlias
+from typing import Annotated, Any, Literal, Optional, TypeAlias
 
 from llama_stack_api import ImageContentItem, TextContentItem
 from llama_stack_api.openai_responses import (
@@ -109,12 +109,25 @@ class GraniteToolParser(ToolParser):
         return None
 
 
-class ShieldModerationResult(BaseModel):
-    """Result of shield moderation check."""
+class ShieldModerationPassed(BaseModel):
+    """Shield moderation passed; no refusal."""
 
-    blocked: bool
-    message: Optional[str] = None
-    shield_model: Optional[str] = None
+    decision: Literal["passed"] = "passed"
+
+
+class ShieldModerationBlocked(BaseModel):
+    """Shield moderation blocked the content; refusal details are present."""
+
+    decision: Literal["blocked"] = "blocked"
+    message: str
+    moderation_id: str
+    refusal_response: ResponseMessage
+
+
+ShieldModerationResult = Annotated[
+    ShieldModerationPassed | ShieldModerationBlocked,
+    Field(discriminator="decision"),
+]
 
 
 class ResponsesApiParams(BaseModel):
@@ -237,7 +250,7 @@ class Transcript(BaseModel):
     tool_results: list[dict[str, Any]] = Field(default_factory=list)
 
 
-ResponseInputItem: TypeAlias = (
+ResponseItem: TypeAlias = (
     ResponseMessage
     | WebSearchToolCall
     | FileSearchToolCall
@@ -249,7 +262,7 @@ ResponseInputItem: TypeAlias = (
     | McpApprovalResponse
 )
 
-ResponseInput: TypeAlias = str | list[ResponseInputItem]
+ResponseInput: TypeAlias = str | list[ResponseItem]
 
 IncludeParameter: TypeAlias = Literal[
     "web_search_call.action.sources",

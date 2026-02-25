@@ -214,16 +214,17 @@ def prepare_input(query_request: QueryRequest) -> str:
     return input_text
 
 
-def store_query_results(  # pylint: disable=too-many-arguments,too-many-locals
+def store_query_results(  # pylint: disable=too-many-arguments
     user_id: str,
     conversation_id: str,
     model: str,
     started_at: str,
     completed_at: str,
     summary: TurnSummary,
-    query_request: QueryRequest,
+    query: str,
     skip_userid_check: bool,
-    topic_summary: Optional[str],
+    attachments: list[Attachment] | None = None,
+    topic_summary: Optional[str] = None,
 ) -> None:
     """
     Store query results: transcript, conversation details, and cache.
@@ -236,12 +237,13 @@ def store_query_results(  # pylint: disable=too-many-arguments,too-many-locals
     Args:
         user_id: The authenticated user ID
         conversation_id: The conversation ID
-        model: The model identifier
+        model: The model identifier (provider/model format)
         started_at: ISO formatted timestamp when the request started
         completed_at: ISO formatted timestamp when the request completed
         summary: Summary of the turn including LLM response and tool calls
-        query_request: The original query request
+        query: The query text (persisted to transcript and cache)
         skip_userid_check: Whether to skip user ID validation
+        attachments: Optional list of attachments (for transcript only)
         topic_summary: Optional topic summary for the conversation
 
     Raises:
@@ -256,14 +258,14 @@ def store_query_results(  # pylint: disable=too-many-arguments,too-many-locals
             conversation_id=conversation_id,
             model_id=model_id,
             provider_id=provider_id,
-            query_provider=query_request.provider,
-            query_model=query_request.model,
+            query_provider=provider_id,
+            query_model=model_id,
         )
         transcript = create_transcript(
             metadata=metadata,
-            redacted_query=query_request.query,
+            redacted_query=query,
             summary=summary,
-            attachments=query_request.attachments or [],
+            attachments=attachments or [],
         )
         store_transcript(transcript)
     else:
@@ -272,7 +274,6 @@ def store_query_results(  # pylint: disable=too-many-arguments,too-many-locals
     # Persist conversation details
     try:
         logger.info("Persisting conversation details")
-        # Extract provider_id from model_id (format: "provider/model")
         persist_user_conversation_details(
             user_id=user_id,
             conversation_id=conversation_id,
@@ -289,7 +290,7 @@ def store_query_results(  # pylint: disable=too-many-arguments,too-many-locals
 
     # Store conversation in cache
     cache_entry = CacheEntry(
-        query=query_request.query,
+        query=query,
         response=summary.llm_response,
         provider=provider_id,
         model=model_id,
