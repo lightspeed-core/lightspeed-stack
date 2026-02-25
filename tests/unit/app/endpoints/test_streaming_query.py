@@ -305,7 +305,7 @@ class TestOLSCompatibilityIntegration:
 @pytest.fixture(name="dummy_request")
 def dummy_request() -> Request:
     """Dummy request fixture for testing."""
-    req = Request(scope={"type": "http"})
+    req = Request(scope={"type": "http", "headers": []})
     req.state.authorized_actions = set(Action)
     return req
 
@@ -843,7 +843,7 @@ class TestCreateResponseGenerator:
         )  # pyright: ignore[reportCallIssue]
 
         mock_moderation_result = mocker.Mock()
-        mock_moderation_result.blocked = True
+        mock_moderation_result.decision = "blocked"
         mock_moderation_result.message = "Content blocked"
         mocker.patch(
             "app.endpoints.streaming_query.run_shield_moderation",

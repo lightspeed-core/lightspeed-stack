@@ -1,20 +1,27 @@
 """Utility functions for working with Llama Stack shields."""
 
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from fastapi import HTTPException
-from llama_stack_client import AsyncLlamaStackClient
-from llama_stack_client.types import CreateResponse
+from llama_stack_api import OpenAIResponseContentPartRefusal, OpenAIResponseMessage
+from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
 import metrics
 from configuration import AppConfig
 from log import get_logger
 from models.requests import QueryRequest
 from models.responses import (
+    InternalServerErrorResponse,
     NotFoundResponse,
     UnprocessableEntityResponse,
+    ServiceUnavailableResponse,
 )
-from utils.types import ShieldModerationResult
+from utils.suid import get_suid
+from utils.types import (
+    ShieldModerationBlocked,
+    ShieldModerationPassed,
+    ShieldModerationResult,
+)
 
 logger = get_logger(__name__)
 
@@ -174,7 +181,7 @@ async def run_shield_moderation(
             raise HTTPException(**response.model_dump())
 
         try:
-            moderation = await client.moderations.create(
+            moderation_result = await client.moderations.create(
                 input=input_text, model=shield.provider_resource_id
             )
         # Known Llama Stack bug: error is raised when violation is present
@@ -184,13 +191,12 @@ async def run_shield_moderation(
                 "Shield violation detected, treating as blocked",
             )
             metrics.llm_calls_validation_errors_total.inc()
-            return ShieldModerationResult(
-                blocked=True,
+            return ShieldModerationBlocked(
                 message=DEFAULT_VIOLATION_MESSAGE,
-                shield_model=shield.provider_resource_id,
+                moderation_id=f"modr_{get_suid()}",
+                refusal_response=create_refusal_response(DEFAULT_VIOLATION_MESSAGE),
             )
 
-        moderation_result = cast(CreateResponse, moderation)
         if moderation_result.results and moderation_result.results[0].flagged:
             result = moderation_result.results[0]
             metrics.llm_calls_validation_errors_total.inc()
@@ -200,13 +206,13 @@ async def run_shield_moderation(
                 result.categories,
             )
             violation_message = result.user_message or DEFAULT_VIOLATION_MESSAGE
-            return ShieldModerationResult(
-                blocked=True,
+            return ShieldModerationBlocked(
                 message=violation_message,
-                shield_model=shield.provider_resource_id,
+                moderation_id=moderation_result.id,
+                refusal_response=create_refusal_response(violation_message),
             )
 
-    return ShieldModerationResult(blocked=False)
+    return ShieldModerationPassed()
 
 
 async def append_turn_to_conversation(
@@ -227,10 +233,40 @@ async def append_turn_to_conversation(
         user_message: The user's input message.
         assistant_message: The shield violation response message.
     """
-    await client.conversations.items.create(
-        conversation_id,
-        items=[
-            {"type": "message", "role": "user", "content": user_message},
-            {"type": "message", "role": "assistant", "content": assistant_message},
-        ],
+    try:
+        await client.conversations.items.create(
+            conversation_id,
+            items=[
+                {"type": "message", "role": "user", "content": user_message},
+                {"type": "message", "role": "assistant", "content": assistant_message},
+            ],
+        )
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="Llama Stack",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+    except APIStatusError as e:
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump()) from e
+
+
+def create_refusal_response(refusal_message: str) -> OpenAIResponseMessage:
+    """Create a refusal response message object.
+
+    Creates an OpenAIResponseMessage with assistant role containing a refusal
+    content part. This can be used for both conversation items and response output.
+
+    Args:
+        refusal_message: The refusal message text.
+
+    Returns:
+        OpenAIResponseMessage with refusal content.
+    """
+    refusal_content = OpenAIResponseContentPartRefusal(refusal=refusal_message)
+    return OpenAIResponseMessage(
+        type="message",
+        role="assistant",
+        content=[refusal_content],
     )

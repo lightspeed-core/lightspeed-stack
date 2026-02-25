@@ -190,6 +190,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     _, _, doc_ids_from_chunks, pre_rag_chunks = await perform_vector_search(
         client, query_request, configuration
     )
+
     rag_context = format_rag_context_for_injection(pre_rag_chunks)
     if rag_context:
         query_request = query_request.model_copy(deep=True)
@@ -204,6 +205,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         mcp_headers=mcp_headers,
         stream=True,
         store=True,
+        request_headers=request.headers,
     )
 
     # Handle Azure token refresh if needed
@@ -285,18 +287,17 @@ async def retrieve_response_generator(
         moderation_result = await run_shield_moderation(
             context.client, responses_params.input, context.query_request.shield_ids
         )
-        if moderation_result.blocked:
-            violation_message = moderation_result.message or ""
-            turn_summary.llm_response = violation_message
+        if moderation_result.decision == "blocked":
+            turn_summary.llm_response = moderation_result.message
             await append_turn_to_conversation(
                 context.client,
                 responses_params.conversation,
                 responses_params.input,
-                violation_message,
+                moderation_result.message,
             )
             media_type = context.query_request.media_type or MEDIA_TYPE_JSON
             return (
-                shield_violation_generator(violation_message, media_type),
+                shield_violation_generator(moderation_result.message, media_type),
                 turn_summary,
             )
         # Retrieve response stream (may raise exceptions)
@@ -366,7 +367,7 @@ async def _persist_interrupted_turn(
             completed_at=completed_at,
             started_at=context.started_at,
             summary=turn_summary,
-            query_request=context.query_request,
+            query=context.query_request.query,
             skip_userid_check=context.skip_userid_check,
             topic_summary=None,
         )
@@ -546,7 +547,8 @@ async def generate_response(
         completed_at=completed_at,
         started_at=context.started_at,
         summary=turn_summary,
-        query_request=context.query_request,
+        query=context.query_request.query,
+        attachments=context.query_request.attachments,
         skip_userid_check=context.skip_userid_check,
         topic_summary=topic_summary,
     )

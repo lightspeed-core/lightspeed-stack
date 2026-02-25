@@ -28,8 +28,8 @@ from utils.responses import (
     build_tool_call_summary,
     build_tool_result_from_mcp_output_item_done,
     extract_rag_chunks_from_file_search_item,
-    extract_text_from_output_item,
-    extract_text_from_output_items,
+    extract_text_from_response_item,
+    extract_text_from_response_items,
     extract_token_usage,
     extract_vector_store_ids_from_tools,
     get_mcp_tools,
@@ -149,7 +149,7 @@ def test_extract_text_basic_cases(
         expected: Expected extracted text
     """
     output_item = make_output_item(item_type=item_type, role=role, content=content)
-    result = extract_text_from_output_item(output_item)  # type: ignore[arg-type]
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
     assert result == expected
 
 
@@ -195,7 +195,7 @@ def test_extract_text_list_content(content_parts: list[Any], expected: str) -> N
     output_item = make_output_item(
         item_type="message", role="assistant", content=content_parts
     )
-    result = extract_text_from_output_item(output_item)  # type: ignore[arg-type]
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
     assert result == expected
 
 
@@ -215,7 +215,7 @@ def test_extract_text_with_real_world_structure() -> None:
     output_item = make_output_item(
         item_type="message", role="assistant", content=content
     )
-    result = extract_text_from_output_item(output_item)  # type: ignore[arg-type]
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
 
     expected = "I can help you with that. Here's the information you requested: The answer is 42."
     assert result == expected
@@ -236,7 +236,7 @@ def test_extract_text_preserves_order() -> None:
     output_item = make_output_item(
         item_type="message", role="assistant", content=content
     )
-    result = extract_text_from_output_item(output_item)  # type: ignore[arg-type]
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
 
     assert result == "First Second Third Fourth"
 
@@ -254,68 +254,68 @@ def test_extract_text_with_refusal_content() -> None:
     output_item = make_output_item(
         item_type="message", role="assistant", content=content
     )
-    result = extract_text_from_output_item(output_item)  # type: ignore[arg-type]
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
 
     assert result == "I understand your request, but I cannot help with that."
 
 
-class TestExtractTextFromOutputItems:
-    """Test cases for extract_text_from_output_items function."""
+class TestExtractTextFromResponseItems:
+    """Test cases for extract_text_from_response_items function."""
 
-    def test_extract_text_from_output_items_none(self) -> None:
-        """Test extract_text_from_output_items returns empty string for None."""
-        result = extract_text_from_output_items(None)
+    def test_extract_text_from_response_items_none(self) -> None:
+        """Test extract_text_from_response_items returns empty string for None."""
+        result = extract_text_from_response_items(None)
         assert result == ""
 
-    def test_extract_text_from_output_items_empty_list(self) -> None:
-        """Test extract_text_from_output_items returns empty string for empty list."""
-        result = extract_text_from_output_items([])
+    def test_extract_text_from_response_items_empty_list(self) -> None:
+        """Test extract_text_from_response_items returns empty string for empty list."""
+        result = extract_text_from_response_items([])
         assert result == ""
 
-    def test_extract_text_from_output_items_single_item(self) -> None:
-        """Test extract_text_from_output_items with a single message item."""
+    def test_extract_text_from_response_items_single_item(self) -> None:
+        """Test extract_text_from_response_items with a single message item."""
         output_item = make_output_item(
             item_type="message", role="assistant", content="Hello world"
         )
-        result = extract_text_from_output_items([output_item])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([output_item])  # type: ignore[arg-type]
         assert result == "Hello world"
 
-    def test_extract_text_from_output_items_multiple_items(self) -> None:
-        """Test extract_text_from_output_items with multiple message items."""
+    def test_extract_text_from_response_items_multiple_items(self) -> None:
+        """Test extract_text_from_response_items with multiple message items."""
         item1 = make_output_item(
             item_type="message", role="assistant", content="First message"
         )
         item2 = make_output_item(
             item_type="message", role="assistant", content="Second message"
         )
-        result = extract_text_from_output_items([item1, item2])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
         assert result == "First message Second message"
 
-    def test_extract_text_from_output_items_filters_non_messages(self) -> None:
-        """Test extract_text_from_output_items filters out non-message items."""
+    def test_extract_text_from_response_items_filters_non_messages(self) -> None:
+        """Test extract_text_from_response_items filters out non-message items."""
         item1 = make_output_item(
             item_type="message", role="assistant", content="Valid message"
         )
         item2 = make_output_item(
             item_type="function_call", role="assistant", content="Should be ignored"
         )
-        result = extract_text_from_output_items([item1, item2])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
         assert result == "Valid message"
 
-    def test_extract_text_from_output_items_filters_user_messages(self) -> None:
-        """Test extract_text_from_output_items filters out user role messages."""
+    def test_extract_text_from_response_items_filters_user_messages(self) -> None:
+        """Test extract_text_from_response_items filters out user role messages."""
         item1 = make_output_item(
             item_type="message", role="assistant", content="Assistant message"
         )
         item2 = make_output_item(
             item_type="message", role="user", content="User message"
         )
-        result = extract_text_from_output_items([item1, item2])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
         # User messages are filtered out - only assistant message is included
         assert result == "Assistant message"
 
-    def test_extract_text_from_output_items_with_list_content(self) -> None:
-        """Test extract_text_from_output_items with list-based content."""
+    def test_extract_text_from_response_items_with_list_content(self) -> None:
+        """Test extract_text_from_response_items with list-based content."""
         content = [
             make_content_part(text="Part 1"),
             make_content_part(text="Part 2"),
@@ -323,7 +323,7 @@ class TestExtractTextFromOutputItems:
         output_item = make_output_item(
             item_type="message", role="assistant", content=content
         )
-        result = extract_text_from_output_items([output_item])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([output_item])  # type: ignore[arg-type]
         assert result == "Part 1 Part 2"
 
 
@@ -620,6 +620,178 @@ class TestGetMCPTools:
             exc_info.value.headers.get("WWW-Authenticate")
             == 'Bearer error="invalid_token"'
         )
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_with_propagated_headers(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test get_mcp_tools propagates allowlisted headers from the incoming request."""
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                headers=["x-rh-identity", "x-request-id"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {
+            "x-rh-identity": "encoded-identity",
+            "x-request-id": "req-456",
+            "content-type": "application/json",
+        }
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        assert tools[0]["headers"] == {
+            "x-rh-identity": "encoded-identity",
+            "x-request-id": "req-456",
+        }
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_headers_do_not_overwrite_auth_headers(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        """Test that propagated headers do not overwrite authorization_headers."""
+        secret_file = tmp_path / "token.txt"
+        secret_file.write_text("secret-token")
+
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                authorization_headers={"Authorization": str(secret_file)},
+                headers=["Authorization", "x-rh-identity"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {
+            "authorization": "request-auth-value",
+            "x-rh-identity": "identity-value",
+        }
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        # Authorization from authorization_headers should win
+        assert tools[0]["headers"]["Authorization"] == "secret-token"
+        # x-rh-identity from propagated headers should be included
+        assert tools[0]["headers"]["x-rh-identity"] == "identity-value"
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_headers_missing_from_request(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that missing allowlisted headers are simply skipped, server not skipped."""
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                headers=["x-rh-identity", "x-missing"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {
+            "x-rh-identity": "identity-value",
+        }
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        assert tools[0]["headers"] == {"x-rh-identity": "identity-value"}
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_headers_no_request_headers(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that propagated headers are skipped when request_headers is None."""
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                headers=["x-rh-identity"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        tools = await get_mcp_tools(token=None, mcp_headers=None, request_headers=None)
+        assert len(tools) == 1
+        assert "headers" not in tools[0]
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_headers_additive_with_mcp_headers(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that propagated headers work alongside MCP-HEADERS (client mechanism)."""
+        servers = [
+            ModelContextProtocolServer(
+                name="server1",
+                url="http://server1:8080",
+                authorization_headers={"Authorization": "client"},
+                headers=["x-rh-identity"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        mcp_hdrs = {"server1": {"Authorization": "Bearer client-token"}}
+        request_headers = {"x-rh-identity": "identity-value"}
+
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=mcp_hdrs, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        assert tools[0]["headers"] == {
+            "Authorization": "Bearer client-token",
+            "x-rh-identity": "identity-value",
+        }
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_mixed_case_precedence(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        """Test case-insensitive precedence: auth header wins over propagated variant."""
+        secret_file = tmp_path / "token.txt"
+        secret_file.write_text("file-secret")
+
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                authorization_headers={"Authorization": str(secret_file)},
+                headers=["authorization", "x-rh-identity"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {
+            "authorization": "request-value",
+            "x-rh-identity": "identity-value",
+        }
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        # Auth header should win (case-insensitive)
+        assert tools[0]["headers"]["Authorization"] == "file-secret"
+        # Propagated header should be included
+        assert tools[0]["headers"]["x-rh-identity"] == "identity-value"
+        # No duplicate "authorization" key
+        assert len(tools[0]["headers"]) == 2
 
 
 class TestGetTopicSummary:

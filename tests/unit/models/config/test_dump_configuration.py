@@ -257,6 +257,7 @@ def test_dump_configuration_with_one_mcp_server(tmp_path: Path) -> None:
                 "url": "http://localhost:8080",
                 "provider_id": "model-context-protocol",
                 "authorization_headers": {},
+                "headers": [],
                 "timeout": None,
             }
         ]
@@ -316,6 +317,7 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path: Path) -> None:
                 "provider_id": "model-context-protocol",
                 "url": "http://localhost:8081",
                 "authorization_headers": {},
+                "headers": [],
                 "timeout": None,
             },
             {
@@ -323,6 +325,7 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path: Path) -> None:
                 "provider_id": "model-context-protocol",
                 "url": "http://localhost:8082",
                 "authorization_headers": {},
+                "headers": [],
                 "timeout": None,
             },
             {
@@ -330,6 +333,7 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path: Path) -> None:
                 "provider_id": "model-context-protocol",
                 "url": "http://localhost:8083",
                 "authorization_headers": {},
+                "headers": [],
                 "timeout": None,
             },
         ]

@@ -373,6 +373,7 @@ Useful resources:
 | provider_id | string | MCP provider identification |
 | url | string | URL of the MCP server |
 | authorization_headers | object | Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 3 special cases: 1. Usage of the kubernetes token in the header — use the string 'kubernetes' instead of the file path. 2. Usage of the client-provided token in the header — use the string 'client' instead of the file path. 3. Usage of OAuth token (resolved at request time or 401 with WWW-Authenticate) — use the string 'oauth' instead of the file path. |
+| headers | array | List of HTTP header names to automatically forward from the incoming request to this MCP server. Headers listed here are extracted from the original client request and included when calling the MCP server. This is useful when infrastructure components (e.g. API gateways) inject headers that MCP servers need, such as x-rh-identity in HCC. Header matching is case-insensitive. These headers are additive with authorization_headers and MCP-HEADERS. |
 | timeout | integer | Timeout in seconds for requests to the MCP server. If not specified, the default timeout from Llama Stack will be used. Note: This field is reserved for future use when Llama Stack adds timeout support. |
 
 

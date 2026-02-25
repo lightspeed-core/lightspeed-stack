@@ -35,7 +35,7 @@ from models.rlsapi.responses import RlsapiV1InferData, RlsapiV1InferResponse
 from observability import InferenceEventData, build_inference_event, send_splunk_event
 from utils.query import handle_known_apistatus_errors
 from utils.responses import (
-    extract_text_from_output_items,
+    extract_text_from_response_items,
     get_mcp_tools,
 )
 from utils.suid import get_suid
@@ -192,7 +192,7 @@ async def retrieve_simple_response(
     )
     response = cast(OpenAIResponseObject, response)
 
-    return extract_text_from_output_items(response.output)
+    return extract_text_from_response_items(response.output)
 
 
 def _get_cla_version(request: Request) -> str:
@@ -307,7 +307,7 @@ async def infer_endpoint(
     input_source = infer_request.get_input_source()
     instructions = _build_instructions(infer_request.context.systeminfo)
     model_id = _get_default_model_id()
-    mcp_tools = await get_mcp_tools()
+    mcp_tools = await get_mcp_tools(request_headers=request.headers)
     logger.debug(
         "Request %s: Combined input source length: %d", request_id, len(input_source)
     )

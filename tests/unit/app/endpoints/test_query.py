@@ -42,7 +42,7 @@ def create_dummy_request() -> Request:
         request (fastapi.Request): A Request constructed with a bare HTTP scope
         (type "http") for use in tests.
     """
-    req = Request(scope={"type": "http"})
+    req = Request(scope={"type": "http", "headers": []})
     return req
 
 
@@ -495,7 +495,7 @@ class TestRetrieveResponse:
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mocker.Mock(blocked=False),
+            return_value=mocker.Mock(decision="passed"),
         )
         mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
 
@@ -529,13 +529,16 @@ class TestRetrieveResponse:
         }
 
         mock_moderation_result = mocker.Mock()
-        mock_moderation_result.blocked = True
+        mock_moderation_result.decision = "blocked"
         mock_moderation_result.message = "Content blocked by moderation"
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mock_moderation_result,
+            new=mocker.AsyncMock(return_value=mock_moderation_result),
         )
-        mock_append = mocker.patch("app.endpoints.query.append_turn_to_conversation")
+        mock_append = mocker.patch(
+            "app.endpoints.query.append_turn_to_conversation",
+            new=mocker.AsyncMock(),
+        )
 
         result = await retrieve_response(mock_client, mock_responses_params)
 
@@ -558,7 +561,7 @@ class TestRetrieveResponse:
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mocker.Mock(blocked=False),
+            return_value=mocker.Mock(decision="passed"),
         )
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=APIConnectionError(
@@ -587,7 +590,7 @@ class TestRetrieveResponse:
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mocker.Mock(blocked=False),
+            return_value=mocker.Mock(decision="passed"),
         )
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=APIStatusError(
@@ -623,7 +626,7 @@ class TestRetrieveResponse:
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mocker.Mock(blocked=False),
+            return_value=mocker.Mock(decision="passed"),
         )
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=RuntimeError("context_length exceeded")
@@ -650,7 +653,7 @@ class TestRetrieveResponse:
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mocker.Mock(blocked=False),
+            return_value=mocker.Mock(decision="passed"),
         )
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=RuntimeError("Some other error")
@@ -682,7 +685,7 @@ class TestRetrieveResponse:
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mocker.Mock(blocked=False),
+            return_value=mocker.Mock(decision="passed"),
         )
         mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
 

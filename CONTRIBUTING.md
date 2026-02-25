@@ -22,6 +22,12 @@
     * [Pylint](#pylint)
     * [Security checks](#security-checks)
 * [Code style](#code-style)
+    * [Function Standards](#function-standards)
+        * [Documentation](#documentation)
+        * [Type annotations](#type-annotations)
+        * [Naming conventions](#naming-conventions)
+        * [Async functions](#async-functions)
+        * [Error handling](#error-handling)
     * [Formatting rules](#formatting-rules)
     * [Docstrings style](#docstrings-style)
 
@@ -226,6 +232,33 @@ make security-check
 
 
 ## Code style
+
+### Function Standards
+
+#### Documentation
+
+All functions require docstrings with brief descriptions
+
+#### Type annotations
+
+Use complete type annotations for parameters and return types
+
+- Use `typing_extensions.Self` for model validators
+- Union types: `str | int` (modern syntax)
+- Optional: `Optional[Type]`
+
+#### Naming conventions
+
+Use snake_case with descriptive, action-oriented names (get_, validate_, check_)
+
+#### Async functions
+
+Use `async def` for I/O operations and external API calls
+
+#### Error handling
+
+- Use FastAPI `HTTPException` with appropriate status codes for API endpoints
+- Handle `APIConnectionError` from Llama Stack where appropriate
 
 ### Formatting rules
 
