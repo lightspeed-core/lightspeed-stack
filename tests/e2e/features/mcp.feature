@@ -108,7 +108,7 @@ Feature: MCP tests
     {"mcp-oauth": {"Authorization": "Bearer test-token"}}
     """
     And I capture the current token metrics
-    When I use "query" to ask question with headers
+    When I use "query" to ask question with authorization header
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
@@ -126,7 +126,7 @@ Feature: MCP tests
     {"mcp-oauth": {"Authorization": "Bearer test-token"}}
     """
     And I capture the current token metrics
-    When I use "streaming_query" to ask question with headers
+    When I use "streaming_query" to ask question with authorization header
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
@@ -164,7 +164,7 @@ Feature: MCP tests
     """
     {"mcp-oauth": {"Authorization": "Bearer invalid-token"}}
     """
-    When I use "query" to ask question with headers
+    When I use "query" to ask question with authorization header
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
@@ -187,7 +187,7 @@ Feature: MCP tests
     """
     {"mcp-oauth": {"Authorization": "Bearer invalid-token"}}
     """
-    When I use "streaming_query" to ask question with headers
+    When I use "streaming_query" to ask question with authorization header
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
