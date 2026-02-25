@@ -3,6 +3,7 @@
 import asyncio
 import json
 import uuid
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Annotated, Any, AsyncIterator, MutableMapping, Optional
 
@@ -184,15 +185,22 @@ class A2AAgentExecutor(AgentExecutor):
     routing queries to the LLM backend using the Responses API.
     """
 
-    def __init__(self, auth_token: str, mcp_headers: Optional[McpHeaders] = None):
+    def __init__(
+        self,
+        auth_token: str,
+        mcp_headers: Optional[McpHeaders] = None,
+        request_headers: Optional[Mapping[str, str]] = None,
+    ):
         """Initialize the A2A agent executor.
 
         Args:
             auth_token: Authentication token for the request
             mcp_headers: MCP headers for context propagation
+            request_headers: Incoming HTTP request headers for allowlist propagation
         """
         self.auth_token: str = auth_token
         self.mcp_headers: McpHeaders = mcp_headers or {}
+        self.request_headers: Optional[Mapping[str, str]] = request_headers
 
     async def execute(
         self,
@@ -325,6 +333,7 @@ class A2AAgentExecutor(AgentExecutor):
                 self.mcp_headers,
                 stream=True,
                 store=True,
+                request_headers=self.request_headers,
             )
             # Stream response from LLM using the Responses API
             stream = await client.responses.create(**responses_params.model_dump())
@@ -648,17 +657,26 @@ async def get_agent_card(  # pylint: disable=unused-argument
         raise
 
 
-async def _create_a2a_app(auth_token: str, mcp_headers: McpHeaders) -> Any:
+async def _create_a2a_app(
+    auth_token: str,
+    mcp_headers: McpHeaders,
+    request_headers: Optional[Mapping[str, str]] = None,
+) -> Any:
     """Create an A2A Starlette application instance with auth context.
 
     Args:
         auth_token: Authentication token for the request
         mcp_headers: MCP headers for context propagation
+        request_headers: Incoming HTTP request headers for allowlist propagation
 
     Returns:
         A2A Starlette ASGI application
     """
-    agent_executor = A2AAgentExecutor(auth_token=auth_token, mcp_headers=mcp_headers)
+    agent_executor = A2AAgentExecutor(
+        auth_token=auth_token,
+        mcp_headers=mcp_headers,
+        request_headers=request_headers,
+    )
     task_store = await _get_task_store()
 
     request_handler = DefaultRequestHandler(
@@ -712,7 +730,7 @@ async def handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-statem
         auth_token = ""
 
     # Create A2A app with auth context
-    a2a_app = await _create_a2a_app(auth_token, mcp_headers)
+    a2a_app = await _create_a2a_app(auth_token, mcp_headers, request.headers)
 
     # Detect if this is a streaming request by checking the JSON-RPC method
     is_streaming_request = False

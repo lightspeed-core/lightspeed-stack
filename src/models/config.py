@@ -522,6 +522,20 @@ class ModelContextProtocolServer(ConfigurationBase):
         """Resolved authorization headers (computed from authorization_headers)."""
         return self._resolved_authorization_headers
 
+    headers: list[str] = Field(
+        default_factory=list,
+        title="Propagated headers",
+        description=(
+            "List of HTTP header names to automatically forward from the incoming "
+            "request to this MCP server. Headers listed here are extracted from "
+            "the original client request and included when calling the MCP server. "
+            "This is useful when infrastructure components (e.g. API gateways) "
+            "inject headers that MCP servers need, such as x-rh-identity in HCC. "
+            "Header matching is case-insensitive. "
+            "These headers are additive with authorization_headers and MCP-HEADERS."
+        ),
+    )
+
     timeout: Optional[PositiveInt] = Field(
         default=None,
         title="Request timeout",

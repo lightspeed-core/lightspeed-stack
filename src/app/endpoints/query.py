@@ -175,6 +175,7 @@ async def query_endpoint_handler(
         mcp_headers,
         stream=False,
         store=True,
+        request_headers=request.headers,
     )
 
     # Handle Azure token refresh if needed

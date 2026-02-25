@@ -3,7 +3,7 @@
 # pylint: disable=too-many-lines
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from fastapi import HTTPException
@@ -45,7 +45,7 @@ from utils.query import (
     handle_known_apistatus_errors,
     prepare_input,
 )
-from utils.mcp_headers import McpHeaders
+from utils.mcp_headers import McpHeaders, extract_propagated_headers
 from utils.suid import to_llama_stack_conversation_id
 from utils.token_counter import TokenCounter
 from utils.types import (
@@ -98,12 +98,13 @@ async def get_topic_summary(
     return extract_text_from_output_items(response.output)
 
 
-async def prepare_tools(
+async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     client: AsyncLlamaStackClient,
     vector_store_ids: list[str] | None,
     no_tools: bool | None,
     token: str,
     mcp_headers: McpHeaders | None = None,
+    request_headers: Mapping[str, str] | None = None,
 ) -> list[dict[str, Any]] | None:
     """Prepare tools for Responses API including RAG and MCP tools.
 
@@ -114,6 +115,7 @@ async def prepare_tools(
         no_tools: Whether to skip tool preparation
         token: Authentication token for MCP tools
         mcp_headers: Per-request headers for MCP servers
+        request_headers: Incoming HTTP request headers for allowlist propagation
 
     Returns:
         List of tool configurations, or None if no tools available
@@ -143,7 +145,7 @@ async def prepare_tools(
         toolgroups.extend(rag_tools)
 
     # Add MCP server tools
-    mcp_tools = await get_mcp_tools(token, mcp_headers)
+    mcp_tools = await get_mcp_tools(token, mcp_headers, request_headers)
     if mcp_tools:
         toolgroups.extend(mcp_tools)
         logger.debug(
@@ -197,6 +199,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     mcp_headers: McpHeaders | None = None,
     stream: bool = False,
     store: bool = True,
+    request_headers: Mapping[str, str] | None = None,
 ) -> ResponsesApiParams:
     """Prepare API request parameters for Responses API.
 
@@ -208,6 +211,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
         mcp_headers: Optional MCP headers for multi-component processing
         stream: Whether to stream the response
         store: Whether to store the response
+        request_headers: Incoming HTTP request headers for allowlist propagation
 
     Returns:
         ResponsesApiParams containing all prepared parameters for the API request
@@ -233,6 +237,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
         query_request.no_tools,
         token,
         mcp_headers,
+        request_headers,
     )
 
     # Prepare input for Responses API
@@ -323,12 +328,14 @@ def get_rag_tools(vector_store_ids: list[str]) -> list[dict[str, Any]] | None:
 async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-locals
     token: str | None = None,
     mcp_headers: McpHeaders | None = None,
+    request_headers: Mapping[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """Convert MCP servers to tools format for Responses API.
 
     Args:
         token: Optional authentication token for MCP server authorization
         mcp_headers: Optional per-request headers for MCP servers, keyed by server URL
+        request_headers: Optional incoming HTTP request headers for allowlist propagation
 
     Returns:
         List of MCP tool definitions with server details and optional auth headers
@@ -406,6 +413,13 @@ async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-
                 len(headers),
             )
             continue
+
+        # Propagate allowlisted headers from the incoming request
+        if mcp_server.headers and request_headers is not None:
+            propagated = extract_propagated_headers(mcp_server, request_headers)
+            for h_name, h_value in propagated.items():
+                if h_name not in headers:
+                    headers[h_name] = h_value
 
         if len(headers) > 0:
             # add headers to tool definition
