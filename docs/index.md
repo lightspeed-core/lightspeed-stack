@@ -37,7 +37,7 @@ Lightspeed Core Stack (LCS) is an AI powered assistant that provides answers to 
 
 ## Info for developers
 
-[Contributing guide](https://lightspeed-core.github.io/lightspeed-stack/CONTRIBUTING.html)
+[Contributing guide](https://lightspeed-core.github.io/lightspeed-stack/contributing_guide.html)
 
 
 ## API
