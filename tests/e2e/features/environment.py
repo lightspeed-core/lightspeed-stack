@@ -331,16 +331,10 @@ def after_feature(context: Context, feature: Feature) -> None:
     if "Feedback" in feature.tags:
         for conversation_id in context.feedback_conversations:
             url = f"http://{context.hostname}:{context.port}/v1/conversations/{conversation_id}"
-<<<<<<< lcore-1247
-            headers = context.auth_headers if hasattr(context, "auth_headers") else {}
-            response = requests.delete(url, headers=headers)
-            assert response.status_code == 200, url
+            response = requests.delete(url, timeout=10)
+            assert response.status_code == 200, f"{url} returned {response.status_code}"
 
     if "MCP" in feature.tags:
         switch_config(context.default_config_backup)
         restart_container("lightspeed-stack")
         remove_config_backup(context.default_config_backup)
-=======
-            response = requests.delete(url, timeout=10)
-            assert response.status_code == 200, f"{url} returned {response.status_code}"
->>>>>>> main
