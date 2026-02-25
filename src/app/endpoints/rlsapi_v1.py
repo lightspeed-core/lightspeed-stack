@@ -34,7 +34,10 @@ from models.rlsapi.requests import RlsapiV1InferRequest, RlsapiV1SystemInfo
 from models.rlsapi.responses import RlsapiV1InferData, RlsapiV1InferResponse
 from observability import InferenceEventData, build_inference_event, send_splunk_event
 from utils.query import handle_known_apistatus_errors
-from utils.responses import extract_text_from_response_output_item, get_mcp_tools
+from utils.responses import (
+    extract_text_from_output_items,
+    get_mcp_tools,
+)
 from utils.suid import get_suid
 from log import get_logger
 
@@ -133,10 +136,11 @@ def _get_default_model_id() -> str:
     if configuration.inference is None:
         msg = "No inference configuration available"
         logger.error(msg)
-        raise HTTPException(
-            status_code=503,
-            detail={"response": "Service configuration error", "cause": msg},
+        error_response = ServiceUnavailableResponse(
+            backend_name="inference service (configuration)",
+            cause=msg,
         )
+        raise HTTPException(**error_response.model_dump())
 
     model_id = configuration.inference.default_model
     provider_id = configuration.inference.default_provider
@@ -146,10 +150,11 @@ def _get_default_model_id() -> str:
 
     msg = "No default model configured for rlsapi v1 inference"
     logger.error(msg)
-    raise HTTPException(
-        status_code=503,
-        detail={"response": "Service configuration error", "cause": msg},
+    error_response = ServiceUnavailableResponse(
+        backend_name="inference service (configuration)",
+        cause=msg,
     )
+    raise HTTPException(**error_response.model_dump())
 
 
 async def retrieve_simple_response(
@@ -187,10 +192,7 @@ async def retrieve_simple_response(
     )
     response = cast(OpenAIResponseObject, response)
 
-    return "".join(
-        extract_text_from_response_output_item(output_item)
-        for output_item in response.output
-    )
+    return extract_text_from_output_items(response.output)
 
 
 def _get_cla_version(request: Request) -> str:
@@ -305,7 +307,7 @@ async def infer_endpoint(
     input_source = infer_request.get_input_source()
     instructions = _build_instructions(infer_request.context.systeminfo)
     model_id = _get_default_model_id()
-    mcp_tools = await get_mcp_tools(configuration.mcp_servers)
+    mcp_tools = await get_mcp_tools()
     logger.debug(
         "Request %s: Combined input source length: %d", request_id, len(input_source)
     )

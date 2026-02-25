@@ -42,7 +42,7 @@ def _load_openapi_spec_from_file() -> dict[str, Any]:
             return json.load(f)
 
     pytest.fail("OpenAPI spec not found")
-    return {}
+    return {}  # pragma: no cover
 
 
 def _load_openapi_spec_from_url() -> dict[str, Any]:
@@ -223,6 +223,11 @@ def test_servers_section_present_from_url(spec_from_url: dict[str, Any]) -> None
             "post",
             {"200", "401", "403", "404", "422", "429", "500", "503"},
         ),
+        (
+            "/v1/streaming_query/interrupt",
+            "post",
+            {"200", "401", "403", "404"},
+        ),
         ("/v1/config", "get", {"200", "401", "403", "500"}),
         ("/v1/feedback", "post", {"200", "401", "403", "404", "500"}),
         ("/v1/feedback/status", "get", {"200"}),
@@ -304,6 +309,11 @@ def test_paths_and_responses_exist_from_file(
             "/v1/streaming_query",
             "post",
             {"200", "401", "403", "404", "422", "429", "500", "503"},
+        ),
+        (
+            "/v1/streaming_query/interrupt",
+            "post",
+            {"200", "401", "403", "404"},
         ),
         ("/v1/config", "get", {"200", "401", "403", "500"}),
         ("/v1/feedback", "post", {"200", "401", "403", "404", "500"}),

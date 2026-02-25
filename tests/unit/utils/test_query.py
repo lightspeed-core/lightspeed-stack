@@ -28,7 +28,6 @@ from models.responses import (
 from tests.unit import config_dict
 from utils.query import (
     consume_query_tokens,
-    evaluate_model_hints,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     is_input_shield,
@@ -36,7 +35,6 @@ from utils.query import (
     is_transcripts_enabled,
     persist_user_conversation_details,
     prepare_input,
-    select_model_and_provider_id,
     store_conversation_into_cache,
     store_query_results,
     update_azure_token,
@@ -87,6 +85,7 @@ class TestStoreConversationIntoCache:
         mock_config.conversation_cache = mock_cache
         mock_config.conversation_cache_configuration = mocker.Mock()
         mock_config.conversation_cache_configuration.type = "sqlite"
+        mocker.patch("utils.query.configuration", mock_config)
 
         cache_entry = CacheEntry(
             query="test query",
@@ -98,11 +97,10 @@ class TestStoreConversationIntoCache:
         )
 
         store_conversation_into_cache(
-            config=mock_config,
             user_id="test_user",
             conversation_id="test_conv",
             cache_entry=cache_entry,
-            _skip_userid_check=False,
+            skip_userid_check=False,
             topic_summary="Test topic",
         )
 
@@ -130,12 +128,12 @@ class TestStoreConversationIntoCache:
             completed_at="2024-01-01T00:00:05Z",
         )
 
+        mocker.patch("utils.query.configuration", mock_config)
         store_conversation_into_cache(
-            config=mock_config,
             user_id="test_user",
             conversation_id="test_conv",
             cache_entry=cache_entry,
-            _skip_userid_check=False,
+            skip_userid_check=False,
             topic_summary=None,
         )
 
@@ -159,127 +157,14 @@ class TestStoreConversationIntoCache:
         )
 
         # Should not raise an exception, just log a warning
+        mocker.patch("utils.query.configuration", mock_config)
         store_conversation_into_cache(
-            config=mock_config,
             user_id="test_user",
             conversation_id="test_conv",
             cache_entry=cache_entry,
-            _skip_userid_check=False,
+            skip_userid_check=False,
             topic_summary=None,
         )
-
-
-class TestSelectModelAndProviderId:
-    """Tests for select_model_and_provider_id function."""
-
-    def test_select_from_request(self, mock_models: ModelListResponse) -> None:
-        """Test selecting model and provider from request."""
-        result = select_model_and_provider_id(
-            models=mock_models,
-            model_id="model1",
-            provider_id="provider1",
-        )
-        assert result == ("provider1/model1", "model1", "provider1")
-
-    def test_select_first_available_llm(self, mock_models: ModelListResponse) -> None:
-        """Test selecting first available LLM when no model specified."""
-        result = select_model_and_provider_id(
-            models=mock_models,
-            model_id=None,
-            provider_id=None,
-        )
-        assert result[0] in ("provider1/model1", "provider2/model2")
-        assert result[1] in ("model1", "model2")
-        assert result[2] in ("provider1", "provider2")
-
-    def test_select_model_not_found(self, mock_models: ModelListResponse) -> None:
-        """Test selecting non-existent model raises HTTPException."""
-        with pytest.raises(HTTPException) as exc_info:
-            select_model_and_provider_id(
-                models=mock_models,
-                model_id="nonexistent",
-                provider_id="provider1",
-            )
-        assert exc_info.value.status_code == 404
-
-    def test_select_model_no_llm_models_available(self, mocker: MockerFixture) -> None:
-        """Test selecting model when no LLM models are available raises HTTPException."""
-        # Mock configuration to have no default model/provider
-        mocker.patch("utils.query.configuration.inference.default_model", None)
-        mocker.patch("utils.query.configuration.inference.default_provider", None)
-
-        # Empty models list
-        empty_models: ModelListResponse = []
-        with pytest.raises(HTTPException) as exc_info:
-            select_model_and_provider_id(
-                models=empty_models,
-                model_id=None,
-                provider_id=None,
-            )
-        assert exc_info.value.status_code == 404
-        # Verify it's a NotFoundResponse for model resource
-        detail = exc_info.value.detail
-        assert isinstance(detail, dict)
-        assert detail.get("response") == "Model not found"
-        assert "Model with ID" in detail.get("cause", "")
-
-    def test_select_model_no_llm_models_with_non_llm_only(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test selecting model when only non-LLM models are available raises HTTPException."""
-        # Mock configuration to have no default model/provider
-        mocker.patch("utils.query.configuration.inference.default_model", None)
-        mocker.patch("utils.query.configuration.inference.default_provider", None)
-
-        # Models list with only non-LLM models
-        non_llm_models = [
-            type(
-                "Model",
-                (),
-                {
-                    "id": "provider1/model1",
-                    "custom_metadata": {
-                        "model_type": "embeddings",
-                        "provider_id": "provider1",
-                    },
-                },
-            )(),
-        ]
-        with pytest.raises(HTTPException) as exc_info:
-            select_model_and_provider_id(
-                models=non_llm_models,
-                model_id=None,
-                provider_id=None,
-            )
-        assert exc_info.value.status_code == 404
-        # Verify it's a NotFoundResponse for model resource
-        detail = exc_info.value.detail
-        assert isinstance(detail, dict)
-        assert detail.get("response") == "Model not found"
-        assert "Model with ID" in detail.get("cause", "")
-
-    def test_select_model_attribute_error(self, mocker: MockerFixture) -> None:
-        """Test selecting model when model lacks custom_metadata raises HTTPException."""
-        # Mock configuration to have no default model/provider
-        mocker.patch("utils.query.configuration.inference.default_model", None)
-        mocker.patch("utils.query.configuration.inference.default_provider", None)
-
-        # Models list with model that has no custom_metadata attribute
-        models_without_metadata = [
-            type("Model", (), {"id": "provider1/model1"})(),
-        ]
-        with pytest.raises(HTTPException) as exc_info:
-            select_model_and_provider_id(
-                models=models_without_metadata,
-                model_id=None,
-                provider_id=None,
-            )
-        assert exc_info.value.status_code == 404
-        # Verify it's a NotFoundResponse for model resource
-        detail = exc_info.value.detail
-        assert isinstance(detail, dict)
-        assert detail.get("response") == "Model not found"
-        assert "Model with ID" in detail.get("cause", "")
 
 
 class TestValidateModelProviderOverride:
@@ -287,24 +172,29 @@ class TestValidateModelProviderOverride:
 
     def test_allowed_with_action(self) -> None:
         """Test that override is allowed when user has MODEL_OVERRIDE action."""
-        query_request = QueryRequest(
-            query="test", model="model1", provider="provider1"
-        )  # pyright: ignore[reportCallIssue]
-        validate_model_provider_override(query_request, {Action.MODEL_OVERRIDE})
+        validate_model_provider_override("model1", "provider1", {Action.MODEL_OVERRIDE})
 
     def test_rejected_without_action(self) -> None:
         """Test that override is rejected when user lacks MODEL_OVERRIDE action."""
-        query_request = QueryRequest(
-            query="test", model="model1", provider="provider1"
-        )  # pyright: ignore[reportCallIssue]
         with pytest.raises(HTTPException) as exc_info:
-            validate_model_provider_override(query_request, set())
+            validate_model_provider_override("model1", "provider1", set())
         assert exc_info.value.status_code == 403
 
     def test_no_override_allowed(self) -> None:
         """Test that request without override is allowed regardless of permissions."""
-        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
-        validate_model_provider_override(query_request, set())
+        validate_model_provider_override(None, None, set())
+
+    def test_responses_api_format_with_action(self) -> None:
+        """Test that Responses API format (provider/model) is allowed with action."""
+        validate_model_provider_override(
+            "provider1/model1", None, {Action.MODEL_OVERRIDE}
+        )
+
+    def test_responses_api_format_without_action(self) -> None:
+        """Test that Responses API format (provider/model) is rejected without action."""
+        with pytest.raises(HTTPException) as exc_info:
+            validate_model_provider_override("provider1/model1", None, set())
+        assert exc_info.value.status_code == 403
 
 
 class TestShieldFunctions:
@@ -339,48 +229,6 @@ class TestShieldFunctions:
         """Test is_input_shield returns False for output_ prefix."""
         shield = type("Shield", (), {"identifier": "output_test"})()
         assert is_input_shield(shield) is False
-
-
-class TestEvaluateModelHints:
-    """Tests for evaluate_model_hints function."""
-
-    def test_with_user_conversation_no_request_hints(self) -> None:
-        """Test using hints from user conversation when request has none."""
-        user_conv = UserConversation(
-            id="conv1",
-            user_id="user1",
-            last_used_model="model1",
-            last_used_provider="provider1",
-        )
-        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
-
-        model_id, provider_id = evaluate_model_hints(user_conv, query_request)
-        assert model_id == "model1"
-        assert provider_id == "provider1"
-
-    def test_with_user_conversation_and_request_hints(self) -> None:
-        """Test request hints take precedence over conversation hints."""
-        user_conv = UserConversation(
-            id="conv1",
-            user_id="user1",
-            last_used_model="model1",
-            last_used_provider="provider1",
-        )
-        query_request = QueryRequest(
-            query="test", model="model2", provider="provider2"
-        )  # pyright: ignore[reportCallIssue]
-
-        model_id, provider_id = evaluate_model_hints(user_conv, query_request)
-        assert model_id == "model2"
-        assert provider_id == "provider2"
-
-    def test_without_user_conversation(self) -> None:
-        """Test without user conversation returns request hints or None."""
-        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
-
-        model_id, provider_id = evaluate_model_hints(None, query_request)
-        assert model_id is None
-        assert provider_id is None
 
 
 class TestPrepareInput:
@@ -673,9 +521,7 @@ class TestPersistUserConversationDetails:
 class TestConsumeQueryTokens:
     """Tests for consume_query_tokens function."""
 
-    def test_consume_tokens_success(
-        self, mock_config: AppConfig, mocker: MockerFixture
-    ) -> None:
+    def test_consume_tokens_success(self, mocker: MockerFixture) -> None:
         """Test successful token consumption."""
         mock_consume = mocker.patch("utils.query.consume_tokens")
 
@@ -684,15 +530,12 @@ class TestConsumeQueryTokens:
             user_id="user1",
             model_id="provider1/model1",
             token_usage=token_usage,
-            configuration=mock_config,
         )
 
         # Verify consume_tokens was called
         mock_consume.assert_called_once()
 
-    def test_consume_tokens_database_error(
-        self, mock_config: AppConfig, mocker: MockerFixture
-    ) -> None:
+    def test_consume_tokens_database_error(self, mocker: MockerFixture) -> None:
         """Test token consumption raises HTTPException on database error."""
         mocker.patch(
             "utils.query.consume_tokens", side_effect=sqlite3.Error("DB error")
@@ -704,7 +547,6 @@ class TestConsumeQueryTokens:
                 user_id="user1",
                 model_id="provider1/model1",
                 token_usage=token_usage,
-                configuration=mock_config,
             )
         assert exc_info.value.status_code == 500
 
@@ -808,9 +650,7 @@ class TestUpdateAzureToken:
 class TestStoreQueryResults:
     """Tests for store_query_results function."""
 
-    def test_store_query_results_success(
-        self, mock_config: AppConfig, mocker: MockerFixture
-    ) -> None:
+    def test_store_query_results_success(self, mocker: MockerFixture) -> None:
         """Test successful storage of query results."""
         mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
         mock_persist = mocker.patch("utils.query.persist_user_conversation_details")
@@ -830,7 +670,6 @@ class TestStoreQueryResults:
             completed_at="2024-01-01T00:00:05Z",
             summary=summary,
             query_request=query_request,
-            configuration=mock_config,
             skip_userid_check=False,
             topic_summary="Topic",
         )
@@ -839,12 +678,14 @@ class TestStoreQueryResults:
         mock_persist.assert_called_once()
         mock_store_cache.assert_called_once()
 
-    def test_store_query_results_transcript_error(
-        self, mock_config: AppConfig, mocker: MockerFixture
-    ) -> None:
+    def test_store_query_results_transcript_error(self, mocker: MockerFixture) -> None:
         """Test storage raises HTTPException on transcript error."""
         mocker.patch("utils.query.is_transcripts_enabled", return_value=True)
-        mocker.patch("utils.query.store_transcript", side_effect=IOError("IO error"))
+        error_response = InternalServerErrorResponse.generic()
+        mocker.patch(
+            "utils.query.store_transcript",
+            side_effect=HTTPException(**error_response.model_dump()),
+        )
 
         summary = TurnSummary()
         summary.llm_response = "response"
@@ -861,15 +702,12 @@ class TestStoreQueryResults:
                 completed_at="2024-01-01T00:00:05Z",
                 summary=summary,
                 query_request=query_request,
-                configuration=mock_config,
                 skip_userid_check=False,
                 topic_summary=None,
             )
         assert exc_info.value.status_code == 500
 
-    def test_store_query_results_sqlalchemy_error(
-        self, mock_config: AppConfig, mocker: MockerFixture
-    ) -> None:
+    def test_store_query_results_sqlalchemy_error(self, mocker: MockerFixture) -> None:
         """Test storage raises HTTPException on SQLAlchemy error."""
         mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
         mocker.patch(
@@ -892,15 +730,12 @@ class TestStoreQueryResults:
                 completed_at="2024-01-01T00:00:05Z",
                 summary=summary,
                 query_request=query_request,
-                configuration=mock_config,
                 skip_userid_check=False,
                 topic_summary=None,
             )
         assert exc_info.value.status_code == 500
 
-    def test_store_query_results_cache_error(
-        self, mock_config: AppConfig, mocker: MockerFixture
-    ) -> None:
+    def test_store_query_results_cache_error(self, mocker: MockerFixture) -> None:
         """Test storage raises HTTPException on cache error."""
         mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
         mocker.patch("utils.query.persist_user_conversation_details")
@@ -924,15 +759,12 @@ class TestStoreQueryResults:
                 completed_at="2024-01-01T00:00:05Z",
                 summary=summary,
                 query_request=query_request,
-                configuration=mock_config,
                 skip_userid_check=False,
                 topic_summary=None,
             )
         assert exc_info.value.status_code == 500
 
-    def test_store_query_results_value_error(
-        self, mock_config: AppConfig, mocker: MockerFixture
-    ) -> None:
+    def test_store_query_results_value_error(self, mocker: MockerFixture) -> None:
         """Test storage raises HTTPException on ValueError."""
         mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
         mocker.patch("utils.query.persist_user_conversation_details")
@@ -956,15 +788,12 @@ class TestStoreQueryResults:
                 completed_at="2024-01-01T00:00:05Z",
                 summary=summary,
                 query_request=query_request,
-                configuration=mock_config,
                 skip_userid_check=False,
                 topic_summary=None,
             )
         assert exc_info.value.status_code == 500
 
-    def test_store_query_results_psycopg2_error(
-        self, mock_config: AppConfig, mocker: MockerFixture
-    ) -> None:
+    def test_store_query_results_psycopg2_error(self, mocker: MockerFixture) -> None:
         """Test storage raises HTTPException on psycopg2 error."""
         mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
         mocker.patch("utils.query.persist_user_conversation_details")
@@ -988,15 +817,12 @@ class TestStoreQueryResults:
                 completed_at="2024-01-01T00:00:05Z",
                 summary=summary,
                 query_request=query_request,
-                configuration=mock_config,
                 skip_userid_check=False,
                 topic_summary=None,
             )
         assert exc_info.value.status_code == 500
 
-    def test_store_query_results_sqlite_error(
-        self, mock_config: AppConfig, mocker: MockerFixture
-    ) -> None:
+    def test_store_query_results_sqlite_error(self, mocker: MockerFixture) -> None:
         """Test storage raises HTTPException on sqlite3 error."""
         mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
         mocker.patch("utils.query.persist_user_conversation_details")
@@ -1020,7 +846,6 @@ class TestStoreQueryResults:
                 completed_at="2024-01-01T00:00:05Z",
                 summary=summary,
                 query_request=query_request,
-                configuration=mock_config,
                 skip_userid_check=False,
                 topic_summary=None,
             )

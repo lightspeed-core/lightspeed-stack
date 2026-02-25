@@ -2,13 +2,14 @@
 
 import os
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, Awaitable, Callable
+from typing import AsyncIterator
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from llama_stack_client import APIConnectionError
 from starlette.routing import Mount, Route, WebSocketRoute
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 import metrics
 import version
@@ -84,6 +85,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
+    root_path=configuration.service_configuration.root_path,
     title=f"{service_name} service - OpenAPI",
     summary=f"{service_name} service API specification.",
     description=f"{service_name} service API specification.",
@@ -114,66 +116,103 @@ app.add_middleware(
 )
 
 
-@app.middleware("")
-async def rest_api_metrics(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    """Middleware with REST API counter update logic.
+class RestApiMetricsMiddleware:  # pylint: disable=too-few-public-methods
+    """Pure ASGI middleware for REST API metrics.
 
     Record REST API request metrics for application routes and forward the
-    request to the next REST API handler.
+    request to the next ASGI handler.
 
-    Only requests whose path is listed in the application's `app_routes_paths`
-    are measured. For measured requests, this middleware records request
-    duration and increments a per-path/per-status counter; it does not
-    increment counters for the `/metrics` endpoint.
+    Only requests whose path is listed in the application's routes are
+    measured.  For measured requests, this middleware records request duration
+    and increments a per-path / per-status counter; it does not increment
+    counters for the ``/metrics`` endpoint.
 
-    Parameters:
-        request (Request): The incoming HTTP request.
-        call_next (Callable[[Request], Awaitable[Response]]): Callable that
-        forwards the request to the next ASGI/route handler and returns a
-        Response.
-
-    Returns:
-        Response: The HTTP response produced by the next handler.
+    This is implemented as a pure ASGI middleware (instead of using Starlette's
+    ``BaseHTTPMiddleware``) to avoid the ``RuntimeError: No response returned``
+    bug that occurs when ``call_next`` is used with long-running handlers such
+    as LLM inference.  See https://issues.redhat.com/browse/RSPEED-2413.
     """
-    path = request.url.path
-    logger.debug("Received request for path: %s", path)
 
-    # ignore paths that are not part of the app routes
-    if path not in app_routes_paths:
-        return await call_next(request)
+    def __init__(self, app: ASGIApp) -> None:  # pylint: disable=redefined-outer-name
+        """Initialize the middleware."""
+        self.app = app
 
-    logger.debug("Processing API request for path: %s", path)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Process an ASGI request."""
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
 
-    # measure time to handle duration + update histogram
-    with metrics.response_duration_seconds.labels(path).time():
-        response = await call_next(request)
+        path = scope["path"]
+        logger.debug("Received request for path: %s", path)
 
-    # ignore /metrics endpoint that will be called periodically
-    if not path.endswith("/metrics"):
-        # just update metrics
-        metrics.rest_api_calls_total.labels(path, response.status_code).inc()
-    return response
+        # Ignore paths that are not part of the app routes.
+        if path not in app_routes_paths:
+            await self.app(scope, receive, send)
+            return
+
+        logger.debug("Processing API request for path: %s", path)
+
+        status_code = 500
+
+        async def send_wrapper(message: Message) -> None:
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message["status"]
+            await send(message)
+
+        # Measure duration and forward the request.  Use try/finally so the
+        # call counter is always incremented, even when the inner app raises.
+        try:
+            with metrics.response_duration_seconds.labels(path).time():
+                await self.app(scope, receive, send_wrapper)
+        finally:
+            # Ignore /metrics endpoint that will be called periodically.
+            if not path.endswith("/metrics"):
+                metrics.rest_api_calls_total.labels(path, status_code).inc()
 
 
-@app.middleware("http")
-async def global_exception_middleware(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    """Middleware to handle uncaught exceptions from all endpoints."""
-    try:
-        response = await call_next(request)
-        return response
-    except HTTPException:
-        raise
-    except Exception as exc:  # pylint: disable=broad-exception-caught
-        logger.exception("Uncaught exception in endpoint: %s", exc)
-        error_response = InternalServerErrorResponse.generic()
-        return JSONResponse(
-            status_code=error_response.status_code,
-            content={"detail": error_response.detail.model_dump()},
-        )
+class GlobalExceptionMiddleware:  # pylint: disable=too-few-public-methods
+    """Pure ASGI middleware to handle uncaught exceptions from all endpoints.
+
+    This is implemented as a pure ASGI middleware (instead of using Starlette's
+    ``BaseHTTPMiddleware``) to avoid the ``RuntimeError: No response returned``
+    bug that occurs when ``call_next`` is used with long-running handlers such
+    as LLM inference.  See https://issues.redhat.com/browse/RSPEED-2413.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:  # pylint: disable=redefined-outer-name
+        """Initialize the middleware."""
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Process an ASGI request."""
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        response_started = False
+
+        async def send_wrapper(message: Message) -> None:
+            nonlocal response_started
+            if message["type"] == "http.response.start":
+                response_started = True
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_wrapper)
+        except HTTPException:
+            raise
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logger.exception("Uncaught exception in endpoint: %s", exc)
+            if response_started:
+                raise
+            error_response = InternalServerErrorResponse.generic()
+            response = JSONResponse(
+                status_code=error_response.status_code,
+                content={"detail": error_response.detail.model_dump()},
+            )
+            await response(scope, receive, send)
 
 
 logger.info("Including routers")
@@ -184,3 +223,11 @@ app_routes_paths = [
     for route in app.routes
     if isinstance(route, (Mount, Route, WebSocketRoute))
 ]
+
+# Register pure ASGI middlewares.  Middleware execution order is the reverse of
+# registration order: GlobalExceptionMiddleware (registered first) is innermost,
+# RestApiMetricsMiddleware (registered last) is outermost.  This ensures metrics
+# always observe a status code — including 500s synthesised by the exception
+# middleware — rather than seeing a raw exception with no response.
+app.add_middleware(GlobalExceptionMiddleware)
+app.add_middleware(RestApiMetricsMiddleware)

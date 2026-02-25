@@ -183,3 +183,5 @@ MIMIR_DOC_URL = "https://mimir.corp.redhat.com"
 LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR = "LIGHTSPEED_STACK_LOG_LEVEL"
 # Default log level when environment variable is not set
 DEFAULT_LOG_LEVEL = "INFO"
+# Default log format for plain-text logging in non-TTY environments
+DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)-8s %(name)s:%(lineno)d %(message)s"

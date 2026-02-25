@@ -114,7 +114,7 @@ async def get_conversation_endpoint_handler(
     conversation_id: str,
     auth: Any = Depends(get_auth_dependency()),
 ) -> ConversationResponse:
-    """Handle request to retrieve a conversation by ID."""
+    """Handle request to retrieve a conversation identified by its ID."""
     check_configuration_loaded(configuration)
     check_valid_conversation_id(conversation_id)
 

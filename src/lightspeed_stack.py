@@ -9,29 +9,33 @@ import os
 import sys
 from argparse import ArgumentParser
 
-
-from rich.logging import RichHandler
-
-from log import get_logger
+from log import get_logger, resolve_log_level, create_log_handler
 from configuration import configuration
 from runners.uvicorn import start_uvicorn
 from runners.quota_scheduler import start_quota_scheduler
 from utils import schema_dumper
-from constants import LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR, DEFAULT_LOG_LEVEL
+from constants import LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR
 
-FORMAT = "%(message)s"
-# Read log level from environment variable with validation
-log_level_str = os.environ.get(LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR, DEFAULT_LOG_LEVEL)
-log_level = getattr(logging, log_level_str.upper(), None)
-if not isinstance(log_level, int):
-    print(
-        f"WARNING: Invalid log level '{log_level_str}', falling back to {DEFAULT_LOG_LEVEL}",
-        file=sys.stderr,
+# Resolve log level and handler from centralized logging utilities
+log_level = resolve_log_level()
+
+# Configure root logger. basicConfig(force=True) is intentionally root-logger-specific.
+# RichHandler needs format="%(message)s" to prevent double-formatting by the root Formatter.
+handler = create_log_handler()
+if sys.stderr.isatty():
+    logging.basicConfig(
+        level=log_level,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[handler],
+        force=True,
     )
-    log_level = getattr(logging, DEFAULT_LOG_LEVEL)
-logging.basicConfig(
-    level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()], force=True
-)
+else:
+    logging.basicConfig(
+        level=log_level,
+        handlers=[handler],
+        force=True,
+    )
 
 logger = get_logger(__name__)
 
