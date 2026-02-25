@@ -117,8 +117,7 @@ class TestRunShieldModeration:
 
         result = await run_shield_moderation(mock_client, "test input")
 
-        assert result.blocked is False
-        assert result.shield_model is None
+        assert result.decision == "passed"
 
     @pytest.mark.asyncio
     async def test_returns_not_blocked_when_moderation_passes(
@@ -147,8 +146,7 @@ class TestRunShieldModeration:
 
         result = await run_shield_moderation(mock_client, "safe input")
 
-        assert result.blocked is False
-        assert result.shield_model is None
+        assert result.decision == "passed"
         mock_client.moderations.create.assert_called_once_with(
             input="safe input", model="moderation-model"
         )
@@ -180,6 +178,7 @@ class TestRunShieldModeration:
         flagged_result.categories = ["violence"]
         flagged_result.user_message = "Content blocked for violence"
         moderation_result = mocker.Mock()
+        moderation_result.id = "mod_123"
         moderation_result.results = [flagged_result]
         mock_client.moderations.create = mocker.AsyncMock(
             return_value=moderation_result
@@ -187,9 +186,8 @@ class TestRunShieldModeration:
 
         result = await run_shield_moderation(mock_client, "violent content")
 
-        assert result.blocked is True
+        assert result.decision == "blocked"
         assert result.message == "Content blocked for violence"
-        assert result.shield_model == "moderation-model"
         mock_metric.inc.assert_called_once()
 
     @pytest.mark.asyncio
@@ -217,6 +215,7 @@ class TestRunShieldModeration:
         flagged_result.categories = ["spam"]
         flagged_result.user_message = None
         moderation_result = mocker.Mock()
+        moderation_result.id = "mod_456"
         moderation_result.results = [flagged_result]
         mock_client.moderations.create = mocker.AsyncMock(
             return_value=moderation_result
@@ -224,9 +223,8 @@ class TestRunShieldModeration:
 
         result = await run_shield_moderation(mock_client, "spam content")
 
-        assert result.blocked is True
+        assert result.decision == "blocked"
         assert result.message == DEFAULT_VIOLATION_MESSAGE
-        assert result.shield_model == "moderation-model"
 
     @pytest.mark.asyncio
     async def test_skips_model_check_for_non_llama_guard_shields(
@@ -254,7 +252,7 @@ class TestRunShieldModeration:
 
         result = await run_shield_moderation(mock_client, "test input")
 
-        assert result.blocked is False
+        assert result.decision == "passed"
         mock_client.moderations.create.assert_called_once_with(
             input="test input", model="not-a-model-id"
         )
@@ -333,9 +331,8 @@ class TestRunShieldModeration:
 
         result = await run_shield_moderation(mock_client, "test input")
 
-        assert result.blocked is True
+        assert result.decision == "blocked"
         assert result.message == DEFAULT_VIOLATION_MESSAGE
-        assert result.shield_model == "moderation-model"
         mock_metric.inc.assert_called_once()
 
 

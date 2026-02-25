@@ -28,8 +28,8 @@ from utils.responses import (
     build_tool_call_summary,
     build_tool_result_from_mcp_output_item_done,
     extract_rag_chunks_from_file_search_item,
-    extract_text_from_output_item,
-    extract_text_from_output_items,
+    extract_text_from_response_item,
+    extract_text_from_response_items,
     extract_token_usage,
     extract_vector_store_ids_from_tools,
     get_mcp_tools,
@@ -149,7 +149,7 @@ def test_extract_text_basic_cases(
         expected: Expected extracted text
     """
     output_item = make_output_item(item_type=item_type, role=role, content=content)
-    result = extract_text_from_output_item(output_item)  # type: ignore[arg-type]
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
     assert result == expected
 
 
@@ -195,7 +195,7 @@ def test_extract_text_list_content(content_parts: list[Any], expected: str) -> N
     output_item = make_output_item(
         item_type="message", role="assistant", content=content_parts
     )
-    result = extract_text_from_output_item(output_item)  # type: ignore[arg-type]
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
     assert result == expected
 
 
@@ -215,7 +215,7 @@ def test_extract_text_with_real_world_structure() -> None:
     output_item = make_output_item(
         item_type="message", role="assistant", content=content
     )
-    result = extract_text_from_output_item(output_item)  # type: ignore[arg-type]
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
 
     expected = "I can help you with that. Here's the information you requested: The answer is 42."
     assert result == expected
@@ -236,7 +236,7 @@ def test_extract_text_preserves_order() -> None:
     output_item = make_output_item(
         item_type="message", role="assistant", content=content
     )
-    result = extract_text_from_output_item(output_item)  # type: ignore[arg-type]
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
 
     assert result == "First Second Third Fourth"
 
@@ -254,68 +254,68 @@ def test_extract_text_with_refusal_content() -> None:
     output_item = make_output_item(
         item_type="message", role="assistant", content=content
     )
-    result = extract_text_from_output_item(output_item)  # type: ignore[arg-type]
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
 
     assert result == "I understand your request, but I cannot help with that."
 
 
-class TestExtractTextFromOutputItems:
-    """Test cases for extract_text_from_output_items function."""
+class TestExtractTextFromResponseItems:
+    """Test cases for extract_text_from_response_items function."""
 
-    def test_extract_text_from_output_items_none(self) -> None:
-        """Test extract_text_from_output_items returns empty string for None."""
-        result = extract_text_from_output_items(None)
+    def test_extract_text_from_response_items_none(self) -> None:
+        """Test extract_text_from_response_items returns empty string for None."""
+        result = extract_text_from_response_items(None)
         assert result == ""
 
-    def test_extract_text_from_output_items_empty_list(self) -> None:
-        """Test extract_text_from_output_items returns empty string for empty list."""
-        result = extract_text_from_output_items([])
+    def test_extract_text_from_response_items_empty_list(self) -> None:
+        """Test extract_text_from_response_items returns empty string for empty list."""
+        result = extract_text_from_response_items([])
         assert result == ""
 
-    def test_extract_text_from_output_items_single_item(self) -> None:
-        """Test extract_text_from_output_items with a single message item."""
+    def test_extract_text_from_response_items_single_item(self) -> None:
+        """Test extract_text_from_response_items with a single message item."""
         output_item = make_output_item(
             item_type="message", role="assistant", content="Hello world"
         )
-        result = extract_text_from_output_items([output_item])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([output_item])  # type: ignore[arg-type]
         assert result == "Hello world"
 
-    def test_extract_text_from_output_items_multiple_items(self) -> None:
-        """Test extract_text_from_output_items with multiple message items."""
+    def test_extract_text_from_response_items_multiple_items(self) -> None:
+        """Test extract_text_from_response_items with multiple message items."""
         item1 = make_output_item(
             item_type="message", role="assistant", content="First message"
         )
         item2 = make_output_item(
             item_type="message", role="assistant", content="Second message"
         )
-        result = extract_text_from_output_items([item1, item2])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
         assert result == "First message Second message"
 
-    def test_extract_text_from_output_items_filters_non_messages(self) -> None:
-        """Test extract_text_from_output_items filters out non-message items."""
+    def test_extract_text_from_response_items_filters_non_messages(self) -> None:
+        """Test extract_text_from_response_items filters out non-message items."""
         item1 = make_output_item(
             item_type="message", role="assistant", content="Valid message"
         )
         item2 = make_output_item(
             item_type="function_call", role="assistant", content="Should be ignored"
         )
-        result = extract_text_from_output_items([item1, item2])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
         assert result == "Valid message"
 
-    def test_extract_text_from_output_items_filters_user_messages(self) -> None:
-        """Test extract_text_from_output_items filters out user role messages."""
+    def test_extract_text_from_response_items_filters_user_messages(self) -> None:
+        """Test extract_text_from_response_items filters out user role messages."""
         item1 = make_output_item(
             item_type="message", role="assistant", content="Assistant message"
         )
         item2 = make_output_item(
             item_type="message", role="user", content="User message"
         )
-        result = extract_text_from_output_items([item1, item2])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
         # User messages are filtered out - only assistant message is included
         assert result == "Assistant message"
 
-    def test_extract_text_from_output_items_with_list_content(self) -> None:
-        """Test extract_text_from_output_items with list-based content."""
+    def test_extract_text_from_response_items_with_list_content(self) -> None:
+        """Test extract_text_from_response_items with list-based content."""
         content = [
             make_content_part(text="Part 1"),
             make_content_part(text="Part 2"),
@@ -323,7 +323,7 @@ class TestExtractTextFromOutputItems:
         output_item = make_output_item(
             item_type="message", role="assistant", content=content
         )
-        result = extract_text_from_output_items([output_item])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([output_item])  # type: ignore[arg-type]
         assert result == "Part 1 Part 2"
 
 
