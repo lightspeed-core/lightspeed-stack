@@ -1,8 +1,5 @@
 """Integration tests for the /streaming_query endpoint."""
 
-# pylint: disable=too-many-arguments
-# pylint: disable=too-many-positional-arguments
-
 from typing import Any, Generator
 
 import pytest
@@ -92,3 +89,50 @@ async def test_streaming_query_endpoint_returns_401_with_www_authenticate_when_m
     assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
     assert exc_info.value.headers is not None
     assert exc_info.value.headers.get("WWW-Authenticate") == expected_www_auth
+
+
+@pytest.mark.asyncio
+async def test_streaming_query_returns_401_when_oauth_probe_times_out(
+    test_config: AppConfig,
+    mock_llama_stack_streaming: Any,
+    test_request: Request,
+    test_auth: AuthTuple,
+    mocker: MockerFixture,
+) -> None:
+    """Test streaming_query returns 401 when OAuth probe times out.
+
+    When prepare_responses_params calls get_mcp_tools and the MCP OAuth probe
+    times out (TimeoutError), get_mcp_tools raises 401 without a
+    WWW-Authenticate header. This test verifies the streaming handler
+    propagates that response.
+    """
+    _ = test_config
+    _ = mock_llama_stack_streaming
+
+    # Probe timed out: 401 without WWW-Authenticate (same as real probe on TimeoutError)
+    oauth_probe_timeout_401 = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"cause": "MCP server at http://example.com requires OAuth"},
+        headers=None,
+    )
+    mocker.patch(
+        "utils.responses.get_mcp_tools",
+        new_callable=mocker.AsyncMock,
+        side_effect=oauth_probe_timeout_401,
+    )
+
+    query_request = QueryRequest(query="What is Ansible?")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await streaming_query_endpoint_handler(
+            request=test_request,
+            query_request=query_request,
+            auth=test_auth,
+            mcp_headers={},
+        )
+
+    assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
+    assert (
+        exc_info.value.headers is None
+        or exc_info.value.headers.get("WWW-Authenticate") is None
+    )
