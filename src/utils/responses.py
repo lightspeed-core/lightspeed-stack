@@ -1,12 +1,21 @@
 """Utility functions for processing Responses API output."""
 
+# pylint: disable=too-many-lines
+
 import json
-from typing import Any, Optional, cast
+from collections.abc import Sequence
+from typing import Any, cast
 
 from fastapi import HTTPException
 from llama_stack_api.openai_responses import (
-    OpenAIResponseObject,
-    OpenAIResponseOutput,
+    OpenAIResponseContentPartRefusal as ContentPartRefusal,
+    OpenAIResponseInputMessageContent as InputMessageContent,
+    OpenAIResponseInputMessageContentText as InputTextPart,
+    OpenAIResponseMessage as ResponseMessage,
+    OpenAIResponseObject as ResponseObject,
+    OpenAIResponseOutput as ResponseOutput,
+    OpenAIResponseOutputMessageContent as OutputMessageContent,
+    OpenAIResponseOutputMessageContentOutputText as OutputTextPart,
     OpenAIResponseOutputMessageFileSearchToolCall as FileSearchCall,
     OpenAIResponseOutputMessageFunctionToolCall as FunctionCall,
     OpenAIResponseOutputMessageMCPCall as MCPCall,
@@ -14,28 +23,27 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
     OpenAIResponseMCPApprovalRequest as MCPApprovalRequest,
     OpenAIResponseMCPApprovalResponse as MCPApprovalResponse,
+    OpenAIResponseUsage as ResponseUsage,
 )
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
 import constants
 import metrics
-from configuration import AppConfig, configuration
+from configuration import configuration
 from constants import DEFAULT_RAG_TOOL
-from models.config import ModelContextProtocolServer
 from models.database.conversations import UserConversation
 from models.requests import QueryRequest
 from models.responses import (
     InternalServerErrorResponse,
+    NotFoundResponse,
     ServiceUnavailableResponse,
 )
 from utils.mcp_oauth_probe import probe_mcp_oauth_and_raise_401
 from utils.prompts import get_system_prompt, get_topic_summary_system_prompt
 from utils.query import (
-    evaluate_model_hints,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     prepare_input,
-    select_model_and_provider_id,
 )
 from utils.mcp_headers import McpHeaders
 from utils.suid import to_llama_stack_conversation_id
@@ -46,53 +54,14 @@ from utils.types import (
     ResponsesApiParams,
     ToolCallSummary,
     ToolResultSummary,
+    TurnSummary,
 )
 from log import get_logger
 
 logger = get_logger(__name__)
 
 
-def extract_text_from_response_output_item(output_item: Any) -> str:
-    """Extract assistant message text from a Responses API output item.
-
-    Args:
-        output_item: A Responses API output item from response.output array.
-
-    Returns:
-        Extracted text content, or empty string if not an assistant message.
-    """
-    if getattr(output_item, "type", None) != "message":
-        return ""
-    if getattr(output_item, "role", None) != "assistant":
-        return ""
-
-    content = getattr(output_item, "content", None)
-    if isinstance(content, str):
-        return content
-
-    text_fragments: list[str] = []
-    if isinstance(content, list):
-        for part in content:
-            if isinstance(part, str):
-                text_fragments.append(part)
-                continue
-            text_value = getattr(part, "text", None)
-            if text_value:
-                text_fragments.append(text_value)
-                continue
-            refusal = getattr(part, "refusal", None)
-            if refusal:
-                text_fragments.append(refusal)
-                continue
-            if isinstance(part, dict):
-                dict_text = part.get("text") or part.get("refusal")
-                if dict_text:
-                    text_fragments.append(str(dict_text))
-
-    return "".join(text_fragments)
-
-
-async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
+async def get_topic_summary(
     question: str, client: AsyncLlamaStackClient, model_id: str
 ) -> str:
     """Get a topic summary for a question using Responses API.
@@ -105,16 +74,13 @@ async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
     Returns:
         The topic summary for the question
     """
-    topic_summary_system_prompt = get_topic_summary_system_prompt(configuration)
-
-    # Use Responses API to generate topic summary
     try:
         response = cast(
-            OpenAIResponseObject,
+            ResponseObject,
             await client.responses.create(
                 input=question,
                 model=model_id,
-                instructions=topic_summary_system_prompt,
+                instructions=get_topic_summary_system_prompt(),
                 stream=False,
                 store=False,  # Don't store topic summary requests
             ),
@@ -129,42 +95,35 @@ async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
         error_response = handle_known_apistatus_errors(e, model_id)
         raise HTTPException(**error_response.model_dump()) from e
 
-    # Extract text from response output
-    summary_text = "".join(
-        extract_text_from_response_output_item(output_item)
-        for output_item in response.output
-    )
-
-    return summary_text.strip() if summary_text else ""
+    return extract_text_from_output_items(response.output)
 
 
 async def prepare_tools(
     client: AsyncLlamaStackClient,
-    query_request: QueryRequest,
+    vector_store_ids: list[str] | None,
+    no_tools: bool | None,
     token: str,
-    config: AppConfig,
-    mcp_headers: Optional[McpHeaders] = None,
-) -> Optional[list[dict[str, Any]]]:
+    mcp_headers: McpHeaders | None = None,
+) -> list[dict[str, Any]] | None:
     """Prepare tools for Responses API including RAG and MCP tools.
 
     Args:
         client: The Llama Stack client instance
-        query_request: The user's query request
+        vector_store_ids: The list of vector store IDs to use for RAG tools
+            or None if all vector stores should be used
+        no_tools: Whether to skip tool preparation
         token: Authentication token for MCP tools
-        config: Configuration object containing MCP server settings
         mcp_headers: Per-request headers for MCP servers
 
     Returns:
-        List of tool configurations, or None if no_tools is True or no tools available
+        List of tool configurations, or None if no tools available
     """
-    if query_request.no_tools:
+    if no_tools:
         return None
 
     toolgroups = []
-    # Get vector stores for RAG tools - use specified ones or fetch all
-    if query_request.vector_store_ids:
-        vector_store_ids = query_request.vector_store_ids
-    else:
+    # Get all vector stores if vector stores are not restricted by request
+    if vector_store_ids is None:
         try:
             vector_stores = await client.vector_stores.list()
             vector_store_ids = [vector_store.id for vector_store in vector_stores.data]
@@ -184,7 +143,7 @@ async def prepare_tools(
         toolgroups.extend(rag_tools)
 
     # Add MCP server tools
-    mcp_tools = await get_mcp_tools(config.mcp_servers, token, mcp_headers)
+    mcp_tools = await get_mcp_tools(token, mcp_headers)
     if mcp_tools:
         toolgroups.extend(mcp_tools)
         logger.debug(
@@ -199,12 +158,43 @@ async def prepare_tools(
     return toolgroups
 
 
+def _build_provider_data_headers(
+    tools: list[dict[str, Any]] | None,
+) -> dict[str, str] | None:
+    """Build extra HTTP headers containing MCP provider data for Llama Stack.
+
+    Extracts per-server auth headers from MCP tool definitions and encodes
+    them as a JSON ``x-llamastack-provider-data`` header that Llama Stack
+    uses to authenticate with downstream MCP servers.
+
+    Args:
+        tools: Prepared tool definitions (may include MCP and non-MCP tools).
+
+    Returns:
+        Dict with a single ``x-llamastack-provider-data`` key, or None when
+        no MCP tools carry headers.
+    """
+    if not tools:
+        return None
+
+    mcp_headers: McpHeaders = {
+        tool["server_url"]: tool["headers"]
+        for tool in tools
+        if tool.get("type") == "mcp" and tool.get("headers") and tool.get("server_url")
+    }
+
+    if not mcp_headers:
+        return None
+
+    return {"x-llamastack-provider-data": json.dumps({"mcp_headers": mcp_headers})}
+
+
 async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-many-locals,too-many-positional-arguments
     client: AsyncLlamaStackClient,
     query_request: QueryRequest,
-    user_conversation: Optional[UserConversation],
+    user_conversation: UserConversation | None,
     token: str,
-    mcp_headers: Optional[McpHeaders] = None,
+    mcp_headers: McpHeaders | None = None,
     stream: bool = False,
     store: bool = True,
 ) -> ResponsesApiParams:
@@ -222,40 +212,33 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     Returns:
         ResponsesApiParams containing all prepared parameters for the API request
     """
-    # Select model and provider
-    try:
-        models = await client.models.list()
-    except APIConnectionError as e:
-        error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
-            cause=str(e),
-        )
-        raise HTTPException(**error_response.model_dump()) from e
-    except APIStatusError as e:
-        error_response = InternalServerErrorResponse.generic()
-        raise HTTPException(**error_response.model_dump()) from e
+    if query_request.model and query_request.provider:
+        model = f"{query_request.provider}/{query_request.model}"
+    else:
+        model = await select_model_for_responses(client, user_conversation)
 
-    llama_stack_model_id, _model_id, _provider_id = select_model_and_provider_id(
-        models,
-        *evaluate_model_hints(
-            user_conversation=user_conversation, query_request=query_request
-        ),
-    )
+    if not await check_model_configured(client, model):
+        _, model_id = extract_provider_and_model_from_model_id(model)
+        error_response = NotFoundResponse(resource="model", resource_id=model_id)
+        raise HTTPException(**error_response.model_dump())
 
     # Use system prompt from request or default one
-    system_prompt = get_system_prompt(query_request, configuration)
+    system_prompt = get_system_prompt(query_request.system_prompt)
     logger.debug("Using system prompt: %s", system_prompt)
 
     # Prepare tools for responses API
     tools = await prepare_tools(
-        client, query_request, token, configuration, mcp_headers
+        client,
+        query_request.vector_store_ids,
+        query_request.no_tools,
+        token,
+        mcp_headers,
     )
 
     # Prepare input for Responses API
     input_text = prepare_input(query_request)
 
     # Handle conversation ID for Responses API
-    # Create conversation upfront if not provided
     conversation_id = query_request.conversation_id
     if conversation_id:
         # Conversation ID was provided - convert to llama-stack format
@@ -282,19 +265,23 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
             llama_stack_conv_id,
         )
 
+    # Build x-llamastack-provider-data header from MCP tool headers
+    extra_headers = _build_provider_data_headers(tools)
+
     return ResponsesApiParams(
         input=input_text,
-        model=llama_stack_model_id,
+        model=model,
         instructions=system_prompt,
         tools=tools,
         conversation=llama_stack_conv_id,
         stream=stream,
         store=store,
+        extra_headers=extra_headers,
     )
 
 
 def extract_vector_store_ids_from_tools(
-    tools: Optional[list[dict[str, Any]]],
+    tools: list[dict[str, Any]] | None,
 ) -> list[str]:
     """Extract vector store IDs from prepared tool configurations.
 
@@ -312,7 +299,7 @@ def extract_vector_store_ids_from_tools(
     return []
 
 
-def get_rag_tools(vector_store_ids: list[str]) -> Optional[list[dict[str, Any]]]:
+def get_rag_tools(vector_store_ids: list[str]) -> list[dict[str, Any]] | None:
     """Convert vector store IDs to tools format for Responses API.
 
     Args:
@@ -334,14 +321,12 @@ def get_rag_tools(vector_store_ids: list[str]) -> Optional[list[dict[str, Any]]]
 
 
 async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-locals
-    mcp_servers: list[ModelContextProtocolServer],
     token: str | None = None,
-    mcp_headers: Optional[McpHeaders] = None,
+    mcp_headers: McpHeaders | None = None,
 ) -> list[dict[str, Any]]:
     """Convert MCP servers to tools format for Responses API.
 
     Args:
-        mcp_servers: List of MCP server configurations
         token: Optional authentication token for MCP server authorization
         mcp_headers: Optional per-request headers for MCP servers, keyed by server URL
 
@@ -382,7 +367,7 @@ async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-
                 return original
 
     tools = []
-    for mcp_server in mcp_servers:
+    for mcp_server in configuration.mcp_servers:
         # Base tool definition
         tool_def = {
             "type": "mcp",
@@ -431,9 +416,9 @@ async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-
 
 
 def parse_referenced_documents(  # pylint: disable=too-many-locals
-    response: Optional[OpenAIResponseObject],
-    vector_store_ids: Optional[list[str]] = None,
-    rag_id_mapping: Optional[dict[str, str]] = None,
+    response: ResponseObject | None,
+    vector_store_ids: list[str] | None = None,
+    rag_id_mapping: dict[str, str] | None = None,
 ) -> list[ReferencedDocument]:
     """Parse referenced documents from Responses API response.
 
@@ -447,7 +432,7 @@ def parse_referenced_documents(  # pylint: disable=too-many-locals
     """
     documents: list[ReferencedDocument] = []
     # Use a set to track unique documents by (doc_url, doc_title) tuple
-    seen_docs: set[tuple[Optional[str], Optional[str]]] = set()
+    seen_docs: set[tuple[str | None, str | None]] = set()
 
     # Handle None response (e.g., when agent fails)
     if response is None or not response.output:
@@ -481,7 +466,7 @@ def parse_referenced_documents(  # pylint: disable=too-many-locals
                 doc_title = attributes.get("title")
 
                 if doc_title or doc_url:
-                    # Treat empty string as None for URL to satisfy Optional[AnyUrl]
+                    # Treat empty string as None for URL to satisfy AnyUrl | None
                     final_url = doc_url if doc_url else None
                     if (final_url, doc_title) not in seen_docs:
                         documents.append(
@@ -496,97 +481,58 @@ def parse_referenced_documents(  # pylint: disable=too-many-locals
     return documents
 
 
-def extract_token_usage(
-    response: Optional[OpenAIResponseObject], model_id: str
-) -> TokenCounter:
-    """Extract token usage from Responses API response and update metrics.
+def extract_token_usage(usage: ResponseUsage | None, model: str) -> TokenCounter:
+    """Extract token usage from Responses API usage object and update metrics.
 
     Args:
-        response: The OpenAI Response API response object
-        model_id: The model identifier for metrics labeling
+        usage: ResponseUsage from the Responses API response, or None if not available.
+        model: The model identifier in "provider/model" format
 
     Returns:
         TokenCounter with input_tokens and output_tokens
     """
-    token_counter = TokenCounter()
-    token_counter.llm_calls = 1
-    provider, model = extract_provider_and_model_from_model_id(model_id)
-
-    # Extract usage from the response if available
-    # Note: usage attribute exists at runtime but may not be in type definitions
-    usage = getattr(response, "usage", None) if response else None
-    if usage:
-        try:
-            # Handle both dict and object cases due to llama_stack inconsistency:
-            # - When llama_stack converts to chat_completions internally, usage is a dict
-            # - When using proper Responses API, usage should be an object
-            # TODO: Remove dict handling once llama_stack standardizes on object type  # pylint: disable=fixme
-            if isinstance(usage, dict):
-                input_tokens = usage.get("input_tokens", 0)
-                output_tokens = usage.get("output_tokens", 0)
-            else:
-                # Object with attributes (expected final behavior)
-                input_tokens = getattr(usage, "input_tokens", 0)
-                output_tokens = getattr(usage, "output_tokens", 0)
-            # Only set if we got valid values
-            if input_tokens or output_tokens:
-                token_counter.input_tokens = input_tokens or 0
-                token_counter.output_tokens = output_tokens or 0
-
-                logger.debug(
-                    "Extracted token usage from Responses API: input=%d, output=%d",
-                    token_counter.input_tokens,
-                    token_counter.output_tokens,
-                )
-
-                # Update Prometheus metrics only when we have actual usage data
-                try:
-                    metrics.llm_token_sent_total.labels(provider, model).inc(
-                        token_counter.input_tokens
-                    )
-                    metrics.llm_token_received_total.labels(provider, model).inc(
-                        token_counter.output_tokens
-                    )
-                except (AttributeError, TypeError, ValueError) as e:
-                    logger.warning("Failed to update token metrics: %s", e)
-                _increment_llm_call_metric(provider, model)
-            else:
-                logger.debug(
-                    "Usage object exists but tokens are 0 or None, treating as no usage info"
-                )
-                # Still increment the call counter
-                _increment_llm_call_metric(provider, model)
-        except (AttributeError, KeyError, TypeError) as e:
-            logger.warning(
-                "Failed to extract token usage from response.usage: %s. Usage value: %s",
-                e,
-                usage,
-            )
-            # Still increment the call counter
-            _increment_llm_call_metric(provider, model)
-    else:
-        # No usage information available - this is expected when llama stack
-        # internally converts to chat_completions
+    provider_id, model_id = extract_provider_and_model_from_model_id(model)
+    if usage is None:
         logger.debug(
             "No usage information in Responses API response, token counts will be 0"
         )
-        # token_counter already initialized with 0 values
-        # Still increment the call counter
-        _increment_llm_call_metric(provider, model)
+        _increment_llm_call_metric(provider_id, model_id)
+        return TokenCounter(llm_calls=1)
 
+    token_counter = TokenCounter(
+        input_tokens=usage.input_tokens, output_tokens=usage.output_tokens, llm_calls=1
+    )
+    logger.debug(
+        "Extracted token usage from Responses API: input=%d, output=%d",
+        token_counter.input_tokens,
+        token_counter.output_tokens,
+    )
+
+    # Update Prometheus metrics only when we have actual usage data
+    try:
+        metrics.llm_token_sent_total.labels(provider_id, model_id).inc(
+            token_counter.input_tokens
+        )
+        metrics.llm_token_received_total.labels(provider_id, model_id).inc(
+            token_counter.output_tokens
+        )
+    except (AttributeError, TypeError, ValueError) as e:
+        logger.warning("Failed to update token metrics: %s", e)
+
+    _increment_llm_call_metric(provider_id, model_id)
     return token_counter
 
 
 def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-many-branches,too-many-locals
-    output_item: OpenAIResponseOutput,
+    output_item: ResponseOutput,
     rag_chunks: list[RAGChunk],
-    vector_store_ids: Optional[list[str]] = None,
-    rag_id_mapping: Optional[dict[str, str]] = None,
-) -> tuple[Optional[ToolCallSummary], Optional[ToolResultSummary]]:
+    vector_store_ids: list[str] | None = None,
+    rag_id_mapping: dict[str, str] | None = None,
+) -> tuple[ToolCallSummary | None, ToolResultSummary | None]:
     """Translate Responses API tool outputs into ToolCallSummary and ToolResultSummary.
 
     Args:
-        output_item: An OpenAIResponseOutput item from the response.output array
+        output_item: A ResponseOutput item from the response.output array
         rag_chunks: List to append extracted RAG chunks to (from file_search_call items)
         vector_store_ids: Vector store IDs used in the query for source resolution.
         rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
@@ -613,7 +559,7 @@ def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-m
         extract_rag_chunks_from_file_search_item(
             file_search_item, rag_chunks, vector_store_ids, rag_id_mapping
         )
-        response_payload: Optional[dict[str, Any]] = None
+        response_payload: dict[str, Any] | None = None
         if file_search_item.results is not None:
             response_payload = {
                 "results": [result.model_dump() for result in file_search_item.results]
@@ -740,7 +686,7 @@ def build_mcp_tool_call_from_arguments_done(
     output_index: int,
     arguments: str,
     mcp_call_items: dict[int, tuple[str, str]],
-) -> Optional[ToolCallSummary]:
+) -> ToolCallSummary | None:
     """Build ToolCallSummary from MCP call arguments completion event.
 
     Args:
@@ -796,7 +742,7 @@ def _resolve_source_for_result(
     result: Any,
     vector_store_ids: list[str],
     rag_id_mapping: dict[str, str],
-) -> Optional[str]:
+) -> str | None:
     """Resolve the human-friendly index name for a file search result.
 
     Uses the vector store mapping to convert internal llama-stack IDs
@@ -816,14 +762,14 @@ def _resolve_source_for_result(
 
     if len(vector_store_ids) > 1:
         attributes = getattr(result, "attributes", {}) or {}
-        attr_store_id: Optional[str] = attributes.get("vector_store_id")
+        attr_store_id: str | None = attributes.get("vector_store_id")
         if attr_store_id:
             return rag_id_mapping.get(attr_store_id, attr_store_id)
 
     return None
 
 
-def _build_chunk_attributes(result: Any) -> Optional[dict[str, Any]]:
+def _build_chunk_attributes(result: Any) -> dict[str, Any] | None:
     """Extract document metadata attributes from a file search result.
 
     Parameters:
@@ -843,8 +789,8 @@ def _build_chunk_attributes(result: Any) -> Optional[dict[str, Any]]:
 def extract_rag_chunks_from_file_search_item(
     item: FileSearchCall,
     rag_chunks: list[RAGChunk],
-    vector_store_ids: Optional[list[str]] = None,
-    rag_id_mapping: Optional[dict[str, str]] = None,
+    vector_store_ids: list[str] | None = None,
+    rag_id_mapping: dict[str, str] | None = None,
 ) -> None:
     """Extract RAG chunks from a file search tool call item.
 
@@ -908,3 +854,237 @@ def parse_arguments_string(arguments_str: str) -> dict[str, Any]:
 
     # Fallback: return wrapped in arguments key
     return {"args": arguments_str}
+
+
+async def check_model_configured(
+    client: AsyncLlamaStackClient,
+    model_id: str,
+) -> bool:
+    """Validate that a model is configured and available.
+
+    Args:
+        client: The AsyncLlamaStackClient instance
+        model_id: The model identifier in "provider/model" format
+
+    Returns:
+        True if the model is available, False if not found (404)
+
+    Raises:
+        HTTPException: If there's a connection error or other API error
+    """
+    try:
+        models = await client.models.list()
+        for model in models:
+            if model.id == model_id:
+                return True
+        return False
+    except APIStatusError as e:
+        response = InternalServerErrorResponse.generic()
+        raise HTTPException(**response.model_dump()) from e
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="Llama Stack",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+
+
+async def select_model_for_responses(
+    client: AsyncLlamaStackClient,
+    user_conversation: UserConversation | None,
+) -> str:
+    """Select model for Responses API if not explicitly specified in the request.
+
+    Model selection precedence:
+    1. If conversation is provided and has last_used_model, use it
+    2. If default model is configured, use it
+    3. Otherwise, fetch available models and select the first LLM model (model_type="llm")
+    4. Raise HTTPException if no LLM model is found
+
+    Args:
+        client: The AsyncLlamaStackClient instance
+        user_conversation: The user conversation if conversation_id was provided, None otherwise
+
+    Returns:
+        The llama_stack_model_id in "provider/model" format
+
+    Raises:
+        HTTPException: If models cannot be fetched or an error occurs, or if no LLM model is found
+    """
+    # 1. Conversation has existing last_used_model
+    if (
+        user_conversation is not None
+        and user_conversation.last_used_model
+        and user_conversation.last_used_provider
+    ):
+        model_id = f"{user_conversation.last_used_provider}/{user_conversation.last_used_model}"
+        return model_id
+
+    # 2. Select default model from configuration
+    if configuration.inference is not None:
+        default_model = configuration.inference.default_model
+        default_provider = configuration.inference.default_provider
+        if default_model and default_provider:
+            return f"{default_provider}/{default_model}"
+
+    # 3. Fetch models list and select the first LLM model (model_type="llm")
+    try:
+        models = await client.models.list()
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="Llama Stack",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+    except APIStatusError as e:
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump()) from e
+
+    llm_models = [
+        m
+        for m in models
+        if m.custom_metadata and m.custom_metadata.get("model_type") == "llm"
+    ]
+    if not llm_models:
+        logger.error("No LLM model found in available models")
+        response = NotFoundResponse(resource="model", resource_id=None)
+        raise HTTPException(**response.model_dump())
+
+    model = llm_models[0]
+    logger.info("Selected first LLM model: %s", model.id)
+    return model.id
+
+
+def build_turn_summary(
+    response: ResponseObject | None,
+    model: str,
+    vector_store_ids: list[str] | None = None,
+    rag_id_mapping: dict[str, str] | None = None,
+) -> TurnSummary:
+    """Build a TurnSummary from a ResponseObject.
+
+    Args:
+        response: The ResponseObject to build the turn summary from, or None
+        model: The model identifier in "provider/model" format
+        vector_store_ids: Vector store IDs used in the query for source resolution.
+        rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
+    Returns:
+        TurnSummary with extracted response text, referenced_documents, rag_chunks,
+        tool_calls, and tool_results. All fields are empty/default if response is None
+        or has no output.
+    """
+    summary = TurnSummary()
+
+    if response is None or response.output is None:
+        return summary
+
+    # Extract text from output items
+    summary.llm_response = extract_text_from_output_items(response.output)
+
+    # Extract referenced documents and tool calls/results
+    summary.referenced_documents = parse_referenced_documents(
+        response, vector_store_ids, rag_id_mapping
+    )
+
+    for item in response.output:
+        tool_call, tool_result = build_tool_call_summary(
+            item, summary.rag_chunks, vector_store_ids, rag_id_mapping
+        )
+        if tool_call:
+            summary.tool_calls.append(tool_call)
+        if tool_result:
+            summary.tool_results.append(tool_result)
+
+    summary.token_usage = extract_token_usage(response.usage, model)
+    return summary
+
+
+def extract_text_from_output_items(
+    output_items: Sequence[ResponseOutput] | None,
+) -> str:
+    """Extract text from response output items recursively.
+
+    Args:
+        output_items: Sequence of output items from response.output, or None.
+
+    Returns:
+        Extracted text content concatenated from all items, or empty string if None.
+    """
+    if output_items is None:
+        return ""
+
+    text_fragments: list[str] = []
+    for item in output_items:
+        text = extract_text_from_output_item(item)
+        if text:
+            text_fragments.append(text)
+
+    return " ".join(text_fragments)
+
+
+def extract_text_from_output_item(output_item: ResponseOutput) -> str:
+    """Extract text from a single output item.
+
+    Args:
+        output_item: A single output item from response.output.
+
+    Returns:
+        Extracted text content, or empty string if not a message or role is user.
+    """
+    if output_item.type != "message":
+        return ""
+
+    message_item = cast(ResponseMessage, output_item)
+    if message_item.role == "user":
+        return ""
+
+    return _extract_text_from_content(message_item.content)
+
+
+def _extract_text_from_content(
+    content: str | Sequence[InputMessageContent] | Sequence[OutputMessageContent],
+) -> str:
+    """Extract text from message content.
+
+    Args:
+        content: Content from ResponseMessage.content which can be
+                str or sequence of content parts (input or output).
+
+    Returns:
+        Extracted text content. Only extracts text from input_text, output_text,
+        or refusal types. Other content types (images, files, etc.) are ignored.
+    """
+    if isinstance(content, str):
+        return content
+
+    text_fragments: list[str] = []
+    for part in content:
+        if part.type == "input_text":
+            input_text_part = cast(InputTextPart, part)
+            if input_text_part.text:
+                text_fragments.append(input_text_part.text.strip())
+        elif part.type == "output_text":
+            output_text_part = cast(OutputTextPart, part)
+            if output_text_part.text:
+                text_fragments.append(output_text_part.text.strip())
+        elif part.type == "refusal":
+            refusal_part = cast(ContentPartRefusal, part)
+            if refusal_part.refusal:
+                text_fragments.append(refusal_part.refusal.strip())
+
+    return " ".join(text_fragments)
+
+
+def deduplicate_referenced_documents(
+    docs: list[ReferencedDocument],
+) -> list[ReferencedDocument]:
+    """Remove duplicate referenced documents based on URL and title."""
+    seen: set[tuple[str | None, str | None]] = set()
+    out: list[ReferencedDocument] = []
+    for d in docs:
+        key = (str(d.doc_url) if d.doc_url else None, d.doc_title)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(d)
+    return out

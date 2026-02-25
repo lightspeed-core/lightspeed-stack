@@ -3,41 +3,40 @@
 from fastapi import HTTPException
 
 import constants
-from configuration import AppConfig
-from models.requests import QueryRequest
+from configuration import configuration
 from models.responses import UnprocessableEntityResponse
 
 
-def get_system_prompt(query_request: QueryRequest, config: AppConfig) -> str:
+def get_system_prompt(system_prompt: str | None) -> str:
     """
     Resolve which system prompt to use for a query.
 
-    Precedence (highest to lowest):
-    1. Per-request `system_prompt` from `query_request.system_prompt`.
-    2. The `custom_profile`'s "default" prompt (when present), accessed via
-       `config.customization.custom_profile.get_prompts().get("default")`.
-    3. `config.customization.system_prompt` from application configuration.
+    get_system_prompt resolves the system prompt with the following precedence
+    (highest to lowest):
+    1. Per-request system prompt from the `system_prompt` argument (when allowed).
+    2. The custom profile's "default" prompt (when present), from application
+       configuration.
+    3. The application configuration system prompt.
     4. The module default `constants.DEFAULT_SYSTEM_PROMPT` (lowest precedence).
 
-    If configuration disables per-request system prompts
-    (config.customization.disable_query_system_prompt) and the incoming
-    `query_request` contains a `system_prompt`, an HTTP 422 Unprocessable
-    Entity is raised instructing the client to remove the field.
-
     Parameters:
-        query_request (QueryRequest): The incoming query payload; may contain a
-        per-request `system_prompt`.
-        config (AppConfig): Application configuration which may include
-        customization flags, a custom profile, and a default `system_prompt`.
+        system_prompt: Optional per-request system prompt from the query; may be
+            None.
 
     Returns:
-        str: The resolved system prompt to apply to the request.
+        The resolved system prompt string to apply to the request.
+
+    Raises:
+        HTTPException: 422 Unprocessable Entity when per-request system prompts
+            are disabled (disable_query_system_prompt) and a non-None
+            `system_prompt` is provided; the response instructs the client to
+            remove the system_prompt field from the request.
     """
     system_prompt_disabled = (
-        config.customization is not None
-        and config.customization.disable_query_system_prompt
+        configuration.customization is not None
+        and configuration.customization.disable_query_system_prompt
     )
-    if system_prompt_disabled and query_request.system_prompt:
+    if system_prompt_disabled and system_prompt:
         response = UnprocessableEntityResponse(
             response="System prompt customization is disabled",
             cause=(
@@ -48,38 +47,34 @@ def get_system_prompt(query_request: QueryRequest, config: AppConfig) -> str:
         )
         raise HTTPException(**response.model_dump())
 
-    if query_request.system_prompt:
+    if system_prompt:
         # Query taking precedence over configuration is the only behavior that
         # makes sense here - if the configuration wants precedence, it can
         # disable query system prompt altogether with disable_query_system_prompt.
-        return query_request.system_prompt
+        return system_prompt
 
     # profile takes precedence for setting prompt
     if (
-        config.customization is not None
-        and config.customization.custom_profile is not None
+        configuration.customization is not None
+        and configuration.customization.custom_profile is not None
     ):
-        prompt = config.customization.custom_profile.get_prompts().get("default")
+        prompt = configuration.customization.custom_profile.get_prompts().get("default")
         if prompt:
             return prompt
 
     if (
-        config.customization is not None
-        and config.customization.system_prompt is not None
+        configuration.customization is not None
+        and configuration.customization.system_prompt is not None
     ):
-        return config.customization.system_prompt
+        return configuration.customization.system_prompt
 
     # default system prompt has the lowest precedence
     return constants.DEFAULT_SYSTEM_PROMPT
 
 
-def get_topic_summary_system_prompt(config: AppConfig) -> str:
+def get_topic_summary_system_prompt() -> str:
     """
     Get the topic summary system prompt.
-
-    Parameters:
-        config (AppConfig): Application configuration from which to read
-                            customization/profile settings.
 
     Returns:
         str: The topic summary system prompt from the active custom profile if
@@ -87,10 +82,12 @@ def get_topic_summary_system_prompt(config: AppConfig) -> str:
     """
     # profile takes precedence for setting prompt
     if (
-        config.customization is not None
-        and config.customization.custom_profile is not None
+        configuration.customization is not None
+        and configuration.customization.custom_profile is not None
     ):
-        prompt = config.customization.custom_profile.get_prompts().get("topic_summary")
+        prompt = configuration.customization.custom_profile.get_prompts().get(
+            "topic_summary"
+        )
         if prompt:
             return prompt
 

@@ -13,10 +13,12 @@ import time
 
 import requests
 from behave.model import Feature, Scenario
+from tests.e2e.utils.prow_utils import restore_llama_stack_pod
 from behave.runner import Context
 
 from tests.e2e.utils.utils import (
     create_config_backup,
+    is_prow_environment,
     remove_config_backup,
     restart_container,
     switch_config,
@@ -24,6 +26,38 @@ from tests.e2e.utils.utils import (
 
 FALLBACK_MODEL = "gpt-4o-mini"
 FALLBACK_PROVIDER = "openai"
+
+# Config file mappings: config_name -> (docker_path, prow_path)
+_CONFIG_PATHS = {
+    "no-cache": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-no-cache.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-no-cache.yaml",
+    ),
+    "auth-noop-token": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-auth-noop-token.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-auth-noop-token.yaml",
+    ),
+    "rbac": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-rbac.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-rbac.yaml",
+    ),
+    "invalid-feedback-storage": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-invalid-feedback-storage.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-invalid-feedback-storage.yaml",
+    ),
+    "rh-identity": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-auth-rh-identity.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-auth-rh-identity.yaml",
+    ),
+}
+
+
+def _get_config_path(config_name: str, mode_dir: str) -> str:
+    """Get the appropriate config path based on environment."""
+    docker_path_template, prow_path = _CONFIG_PATHS[config_name]
+    if is_prow_environment():
+        return prow_path
+    return docker_path_template.format(mode_dir=mode_dir)
 
 
 def _fetch_models_from_service() -> dict:
@@ -138,11 +172,11 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     mode_dir = "library-mode" if context.is_library_mode else "server-mode"
 
     if "InvalidFeedbackStorageConfig" in scenario.effective_tags:
-        context.scenario_config = f"tests/e2e/configuration/{mode_dir}/lightspeed-stack-invalid-feedback-storage.yaml"
+        context.scenario_config = _get_config_path("invalid-feedback-storage", mode_dir)
     if "NoCacheConfig" in scenario.effective_tags:
-        context.scenario_config = (
-            f"tests/e2e/configuration/{mode_dir}/lightspeed-stack-no-cache.yaml"
-        )
+        context.scenario_config = _get_config_path("no-cache", mode_dir)
+        switch_config(context.scenario_config)
+        restart_container("lightspeed-stack")
 
 
 def after_scenario(context: Context, scenario: Scenario) -> None:
@@ -171,63 +205,67 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
         scenario-specific teardown actions to run (e.g.,
         "InvalidFeedbackStorageConfig", "NoCacheConfig").
     """
-    if "InvalidFeedbackStorageConfig" in scenario.effective_tags:
+    # Restore Llama Stack FIRST (before any lightspeed-stack restart)
+    llama_was_running = getattr(context, "llama_stack_was_running", False)
+    if llama_was_running:
+        _restore_llama_stack(context)
+        context.llama_stack_was_running = False
+
+    # Tags that require config restoration after scenario
+    config_restore_tags = {"InvalidFeedbackStorageConfig", "NoCacheConfig"}
+    if config_restore_tags & set(scenario.effective_tags):
         switch_config(context.feature_config)
         restart_container("lightspeed-stack")
-    if "NoCacheConfig" in scenario.effective_tags:
-        switch_config(context.feature_config)
-        restart_container("lightspeed-stack")
 
-    # Restore Llama Stack connection if it was disrupted (only in server mode)
-    if (
-        not context.is_library_mode
-        and hasattr(context, "llama_stack_was_running")
-        and context.llama_stack_was_running
-    ):
-        try:
-            # Start the llama-stack container again
-            subprocess.run(
-                ["docker", "start", "llama-stack"], check=True, capture_output=True
-            )
 
-            # Wait for the service to be healthy
-            print("Restoring Llama Stack connection...")
-            time.sleep(20)
+def _restore_llama_stack(context: Context) -> None:
+    """Restore Llama Stack connection after disruption."""
+    if is_prow_environment():
+        restore_llama_stack_pod()
+        return
 
-            # Check if it's healthy
-            for attempt in range(6):  # Try for 30 seconds
-                try:
-                    result = subprocess.run(
-                        [
-                            "docker",
-                            "exec",
-                            "llama-stack",
-                            "curl",
-                            "-f",
-                            f"http://{context.hostname_llama}:{context.port_llama}/v1/health",
-                        ],
-                        capture_output=True,
-                        timeout=5,
-                        check=True,
-                    )
-                    if result.returncode == 0:
-                        print("✓ Llama Stack connection restored successfully")
-                        break
-                except subprocess.TimeoutExpired:
-                    print(f"⏱Health check timed out on attempt {attempt + 1}/6")
+    try:
+        # Start the llama-stack container again
+        subprocess.run(
+            ["docker", "start", "llama-stack"], check=True, capture_output=True
+        )
 
-                if attempt < 5:
-                    print(
-                        f"Waiting for Llama Stack to be healthy... (attempt {attempt + 1}/6)"
-                    )
-                    time.sleep(5)
-                else:
-                    print(
-                        "Warning: Llama Stack may not be fully healthy after restoration"
-                    )
+        # Wait for the service to be healthy
+        print("Restoring Llama Stack connection...")
+        time.sleep(20)
 
-        except subprocess.CalledProcessError as e:
-            print(f"Warning: Could not restore Llama Stack connection: {e}")
+        # Check if it's healthy
+        for attempt in range(6):  # Try for 30 seconds
+            try:
+                result = subprocess.run(
+                    [
+                        "docker",
+                        "exec",
+                        "llama-stack",
+                        "curl",
+                        "-f",
+                        f"http://{context.hostname_llama}:{context.port_llama}/v1/health",
+                    ],
+                    capture_output=True,
+                    timeout=5,
+                    check=True,
+                )
+                if result.returncode == 0:
+                    print("✓ Llama Stack connection restored successfully")
+                    break
+            except subprocess.TimeoutExpired:
+                print(f"⏱ Health check timed out on attempt {attempt + 1}/6")
+
+            if attempt < 5:
+                print(
+                    f"Waiting for Llama Stack to be healthy... (attempt {attempt + 1}/6)"
+                )
+                time.sleep(5)
+            else:
+                print("Warning: Llama Stack may not be fully healthy after restoration")
+
+    except subprocess.CalledProcessError as e:
+        print(f"Warning: Could not restore Llama Stack connection: {e}")
 
 
 def before_feature(context: Context, feature: Feature) -> None:
@@ -235,29 +273,21 @@ def before_feature(context: Context, feature: Feature) -> None:
 
     Prepare per-feature test environment and apply feature-specific configuration.
     """
+    mode_dir = "library-mode" if context.is_library_mode else "server-mode"
     if "Authorized" in feature.tags:
-        mode_dir = "library-mode" if context.is_library_mode else "server-mode"
-        context.feature_config = (
-            f"tests/e2e/configuration/{mode_dir}/lightspeed-stack-auth-noop-token.yaml"
-        )
+        context.feature_config = _get_config_path("auth-noop-token", mode_dir)
         context.default_config_backup = create_config_backup("lightspeed-stack.yaml")
         switch_config(context.feature_config)
         restart_container("lightspeed-stack")
 
     if "RBAC" in feature.tags:
-        mode_dir = "library-mode" if context.is_library_mode else "server-mode"
-        context.feature_config = (
-            f"tests/e2e/configuration/{mode_dir}/lightspeed-stack-rbac.yaml"
-        )
+        context.feature_config = _get_config_path("rbac", mode_dir)
         context.default_config_backup = create_config_backup("lightspeed-stack.yaml")
         switch_config(context.feature_config)
         restart_container("lightspeed-stack")
 
     if "RHIdentity" in feature.tags:
-        mode_dir = "library-mode" if context.is_library_mode else "server-mode"
-        context.feature_config = (
-            f"tests/e2e/configuration/{mode_dir}/lightspeed-stack-auth-rh-identity.yaml"
-        )
+        context.feature_config = _get_config_path("rh-identity", mode_dir)
         context.default_config_backup = create_config_backup("lightspeed-stack.yaml")
         switch_config(context.feature_config)
         restart_container("lightspeed-stack")
@@ -301,6 +331,7 @@ def after_feature(context: Context, feature: Feature) -> None:
     if "Feedback" in feature.tags:
         for conversation_id in context.feedback_conversations:
             url = f"http://{context.hostname}:{context.port}/v1/conversations/{conversation_id}"
+<<<<<<< lcore-1247
             headers = context.auth_headers if hasattr(context, "auth_headers") else {}
             response = requests.delete(url, headers=headers)
             assert response.status_code == 200, url
@@ -309,3 +340,7 @@ def after_feature(context: Context, feature: Feature) -> None:
         switch_config(context.default_config_backup)
         restart_container("lightspeed-stack")
         remove_config_backup(context.default_config_backup)
+=======
+            response = requests.delete(url, timeout=10)
+            assert response.status_code == 200, f"{url} returned {response.status_code}"
+>>>>>>> main
