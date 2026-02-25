@@ -346,7 +346,9 @@ async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-
         mcp_headers: Optional per-request headers for MCP servers, keyed by server URL
 
     Returns:
-        List of MCP tool definitions with server details and optional auth headers
+        List of MCP tool definitions with server details and optional auth. When
+        present, the Authorization header is set as the tool's "authorization"
+        field; any other resolved headers are set in "headers".
 
     Raises:
         HTTPException: 401 with WWW-Authenticate header when an MCP server uses OAuth,
