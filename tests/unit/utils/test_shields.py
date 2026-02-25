@@ -117,8 +117,7 @@ class TestRunShieldModeration:
 
         result = await run_shield_moderation(mock_client, "test input")
 
-        assert result.blocked is False
-        assert result.shield_model is None
+        assert result.decision == "passed"
 
     @pytest.mark.asyncio
     async def test_returns_not_blocked_when_moderation_passes(
@@ -147,8 +146,7 @@ class TestRunShieldModeration:
 
         result = await run_shield_moderation(mock_client, "safe input")
 
-        assert result.blocked is False
-        assert result.shield_model is None
+        assert result.decision == "passed"
         mock_client.moderations.create.assert_called_once_with(
             input="safe input", model="moderation-model"
         )
@@ -180,6 +178,7 @@ class TestRunShieldModeration:
         flagged_result.categories = ["violence"]
         flagged_result.user_message = "Content blocked for violence"
         moderation_result = mocker.Mock()
+        moderation_result.id = "mod_123"
         moderation_result.results = [flagged_result]
         mock_client.moderations.create = mocker.AsyncMock(
             return_value=moderation_result
@@ -187,9 +186,8 @@ class TestRunShieldModeration:
 
         result = await run_shield_moderation(mock_client, "violent content")
 
-        assert result.blocked is True
+        assert result.decision == "blocked"
         assert result.message == "Content blocked for violence"
-        assert result.shield_model == "moderation-model"
         mock_metric.inc.assert_called_once()
 
     @pytest.mark.asyncio
@@ -217,6 +215,7 @@ class TestRunShieldModeration:
         flagged_result.categories = ["spam"]
         flagged_result.user_message = None
         moderation_result = mocker.Mock()
+        moderation_result.id = "mod_456"
         moderation_result.results = [flagged_result]
         mock_client.moderations.create = mocker.AsyncMock(
             return_value=moderation_result
@@ -224,9 +223,39 @@ class TestRunShieldModeration:
 
         result = await run_shield_moderation(mock_client, "spam content")
 
-        assert result.blocked is True
+        assert result.decision == "blocked"
         assert result.message == DEFAULT_VIOLATION_MESSAGE
-        assert result.shield_model == "moderation-model"
+
+    @pytest.mark.asyncio
+    async def test_skips_model_check_for_non_llama_guard_shields(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that non-llama-guard shields skip model validation and proceed to moderation."""
+        mock_client = mocker.Mock()
+
+        # Setup custom shield (not llama-guard) with provider_resource_id not in models
+        shield = mocker.Mock()
+        shield.identifier = "custom-shield"
+        shield.provider_id = "lightspeed_question_validity"
+        shield.provider_resource_id = "not-a-model-id"
+        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
+
+        # No matching models - should NOT raise for non-llama-guard
+        mock_client.models.list = mocker.AsyncMock(return_value=[])
+
+        # Setup moderation result (not flagged)
+        moderation_result = mocker.Mock()
+        moderation_result.results = [mocker.Mock(flagged=False)]
+        mock_client.moderations.create = mocker.AsyncMock(
+            return_value=moderation_result
+        )
+
+        result = await run_shield_moderation(mock_client, "test input")
+
+        assert result.decision == "passed"
+        mock_client.moderations.create.assert_called_once_with(
+            input="test input", model="not-a-model-id"
+        )
 
     @pytest.mark.asyncio
     async def test_raises_http_exception_when_shield_model_not_found(
@@ -235,9 +264,10 @@ class TestRunShieldModeration:
         """Test that run_shield_moderation raises HTTPException when shield model not in models."""
         mock_client = mocker.Mock()
 
-        # Setup shield with provider_resource_id
+        # Setup llama-guard shield with provider_resource_id not in models
         shield = mocker.Mock()
         shield.identifier = "test-shield"
+        shield.provider_id = "llama-guard"
         shield.provider_resource_id = "missing-model"
         mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
 
@@ -259,9 +289,10 @@ class TestRunShieldModeration:
         """Test that run_shield_moderation raises HTTPException when no provider_resource_id."""
         mock_client = mocker.Mock()
 
-        # Setup shield without provider_resource_id
+        # Setup llama-guard shield without provider_resource_id
         shield = mocker.Mock()
         shield.identifier = "test-shield"
+        shield.provider_id = "llama-guard"
         shield.provider_resource_id = None
         mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
 
@@ -300,9 +331,8 @@ class TestRunShieldModeration:
 
         result = await run_shield_moderation(mock_client, "test input")
 
-        assert result.blocked is True
+        assert result.decision == "blocked"
         assert result.message == DEFAULT_VIOLATION_MESSAGE
-        assert result.shield_model == "moderation-model"
         mock_metric.inc.assert_called_once()
 
 

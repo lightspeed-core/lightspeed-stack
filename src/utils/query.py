@@ -9,11 +9,11 @@ from llama_stack_client import (
     AsyncLlamaStackClient,
 )
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
-from llama_stack_client.types import ModelListResponse, Shield
+from llama_stack_client.types import Shield
 
 from fastapi import HTTPException
 from sqlalchemy import func
-from configuration import AppConfig, configuration
+from configuration import configuration
 from models.cache_entry import CacheEntry
 from models.config import Action
 from models.database.conversations import UserConversation, UserTurn
@@ -23,7 +23,6 @@ from models.responses import (
     AbstractErrorResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
-    NotFoundResponse,
     PromptTooLongResponse,
     QuotaExceededResponse,
     ServiceUnavailableResponse,
@@ -36,7 +35,11 @@ import sqlite3
 from sqlalchemy.exc import SQLAlchemyError
 from app.database import get_session
 from client import AsyncLlamaStackClientHolder
-from utils.transcripts import store_transcript
+from utils.transcripts import (
+    create_transcript,
+    create_transcript_metadata,
+    store_transcript,
+)
 from utils.quota import consume_tokens
 from utils.suid import normalize_conversation_id
 from utils.token_counter import TokenCounter
@@ -47,11 +50,10 @@ logger = get_logger(__name__)
 
 
 def store_conversation_into_cache(
-    config: AppConfig,
     user_id: str,
     conversation_id: str,
     cache_entry: CacheEntry,
-    _skip_userid_check: bool,
+    skip_userid_check: bool,
     topic_summary: Optional[str],
 ) -> None:
     """
@@ -62,122 +64,48 @@ def store_conversation_into_cache(
     anything.
 
     Parameters:
-        config (AppConfig): Application configuration that may contain
-                            conversation cache settings and instance.
         user_id (str): Owner identifier used as the cache key.
         conversation_id (str): Conversation identifier used as the cache key.
         cache_entry (CacheEntry): Entry to insert or append to the conversation history.
-        _skip_userid_check (bool): When true, bypasses enforcing that the cache
+        skip_userid_check (bool): When true, bypasses enforcing that the cache
                                    operation must match the user id.
         topic_summary (Optional[str]): Optional topic summary to store alongside
                                     the conversation; ignored if None or empty.
     """
-    if config.conversation_cache_configuration.type is not None:
-        cache = config.conversation_cache
-        if cache is None:
-            logger.warning("Conversation cache configured but not initialized")
-            return
-        cache.insert_or_append(
-            user_id, conversation_id, cache_entry, _skip_userid_check
+    if configuration.conversation_cache_configuration.type is None:
+        logger.warning("Conversation cache is not configured")
+        return
+
+    cache = configuration.conversation_cache
+    if cache is None:
+        logger.warning("Conversation cache configured but not initialized")
+        return
+
+    cache.insert_or_append(user_id, conversation_id, cache_entry, skip_userid_check)
+    if topic_summary:
+        cache.set_topic_summary(
+            user_id, conversation_id, topic_summary, skip_userid_check
         )
-        if topic_summary:
-            cache.set_topic_summary(
-                user_id, conversation_id, topic_summary, _skip_userid_check
-            )
-
-
-def select_model_and_provider_id(
-    models: ModelListResponse, model_id: Optional[str], provider_id: Optional[str]
-) -> tuple[str, str, str]:
-    """
-    Select the model ID and provider ID based on the request or available models.
-
-    Determine and return the appropriate model and provider IDs for
-    a query request.
-
-    If the request specifies both model and provider IDs, those are used.
-    Otherwise, defaults from configuration are applied. If neither is
-    available, selects the first available LLM model from the provided model
-    list. Validates that the selected model exists among the available models.
-
-    Returns:
-        A tuple containing the combined model ID (in the format
-        "provider/model"), and its separated parts: the model label and the provider ID.
-
-    Raises:
-        HTTPException: If no suitable LLM model is found or the selected model is not available.
-    """
-    # If model_id and provider_id are provided in the request, use them
-
-    # If model_id is not provided in the request, check the configuration
-    if not model_id or not provider_id:
-        logger.debug(
-            "No model ID or provider ID specified in request, checking configuration"
-        )
-        model_id = configuration.inference.default_model  # type: ignore[reportAttributeAccessIssue]
-        provider_id = (
-            configuration.inference.default_provider  # type: ignore[reportAttributeAccessIssue]
-        )
-
-    # If no model is specified in the request or configuration, use the first available LLM
-    if not model_id or not provider_id:
-        logger.debug(
-            "No model ID or provider ID specified in request or configuration, "
-            "using the first available LLM"
-        )
-        try:
-            model = next(
-                m
-                for m in models
-                if m.custom_metadata and m.custom_metadata.get("model_type") == "llm"
-            )
-            model_id = model.id
-            # Extract provider_id from custom_metadata
-            provider_id = (
-                str(model.custom_metadata.get("provider_id", ""))
-                if model.custom_metadata
-                else ""
-            )
-            logger.info("Selected model: %s", model)
-            model_label = model_id.split("/", 1)[1] if "/" in model_id else model_id
-            return model_id, model_label, provider_id
-        except (StopIteration, AttributeError) as e:
-            message = "No LLM model found in available models"
-            logger.error(message)
-            response = NotFoundResponse(resource="model", resource_id=model_id or "")
-            raise HTTPException(**response.model_dump()) from e
-
-    llama_stack_model_id = f"{provider_id}/{model_id}"
-    # Validate that the model_id and provider_id are in the available models
-    logger.debug("Searching for model: %s, provider: %s", model_id, provider_id)
-    # TODO: Create separate validation of provider
-    if not any(
-        m.id in (llama_stack_model_id, model_id)
-        and (
-            m.custom_metadata
-            and str(m.custom_metadata.get("provider_id", "")) == provider_id
-        )
-        for m in models
-    ):
-        message = f"Model {model_id} from provider {provider_id} not found in available models"
-        logger.error(message)
-        response = NotFoundResponse(resource="model", resource_id=model_id)
-        raise HTTPException(**response.model_dump())
-    return llama_stack_model_id, model_id, provider_id
 
 
 def validate_model_provider_override(
-    query_request: QueryRequest, authorized_actions: set[Action] | frozenset[Action]
+    model: str | None,
+    provider: str | None,
+    authorized_actions: set[Action] | frozenset[Action],
 ) -> None:
     """Validate whether model/provider overrides are allowed by RBAC.
 
+    Args:
+        model: Model identifier. In Responses API format, may be "provider/model".
+        provider: Provider identifier (specified only when used in query endpoint).
+        authorized_actions: Set of authorized actions for the caller.
+
     Raises:
-        HTTPException: HTTP 403 if the request includes model or provider and
+        HTTPException: HTTP 403 if the request includes model/provider override and
         the caller lacks Action.MODEL_OVERRIDE permission.
     """
-    if (query_request.model is not None or query_request.provider is not None) and (
-        Action.MODEL_OVERRIDE not in authorized_actions
-    ):
+    has_override = provider is not None or (model is not None and "/" in model)
+    if has_override and Action.MODEL_OVERRIDE not in authorized_actions:
         response = ForbiddenResponse.model_override()
         raise HTTPException(**response.model_dump())
 
@@ -222,48 +150,6 @@ def is_input_shield(shield: Shield) -> bool:
         bool: True if the shield is for input or both input/output monitoring; False otherwise.
     """
     return _is_inout_shield(shield) or not is_output_shield(shield)
-
-
-def evaluate_model_hints(
-    user_conversation: Optional[UserConversation],
-    query_request: QueryRequest,
-) -> tuple[Optional[str], Optional[str]]:
-    """Evaluate model hints from user conversation."""
-    model_id: Optional[str] = query_request.model
-    provider_id: Optional[str] = query_request.provider
-
-    if user_conversation is not None:
-        if query_request.model is not None:
-            if query_request.model != user_conversation.last_used_model:
-                logger.debug(
-                    "Model specified in request: %s, preferring it over user conversation model %s",
-                    query_request.model,
-                    user_conversation.last_used_model,
-                )
-        else:
-            logger.debug(
-                "No model specified in request, using latest model from user conversation: %s",
-                user_conversation.last_used_model,
-            )
-            model_id = user_conversation.last_used_model
-
-        if query_request.provider is not None:
-            if query_request.provider != user_conversation.last_used_provider:
-                logger.debug(
-                    "Provider specified in request: %s, "
-                    "preferring it over user conversation provider %s",
-                    query_request.provider,
-                    user_conversation.last_used_provider,
-                )
-        else:
-            logger.debug(
-                "No provider specified in request, "
-                "using latest provider from user conversation: %s",
-                user_conversation.last_used_provider,
-            )
-            provider_id = user_conversation.last_used_provider
-
-    return model_id, provider_id
 
 
 async def update_azure_token(
@@ -328,17 +214,17 @@ def prepare_input(query_request: QueryRequest) -> str:
     return input_text
 
 
-def store_query_results(  # pylint: disable=too-many-arguments,too-many-locals
+def store_query_results(  # pylint: disable=too-many-arguments
     user_id: str,
     conversation_id: str,
     model: str,
     started_at: str,
     completed_at: str,
     summary: TurnSummary,
-    query_request: QueryRequest,
-    configuration: AppConfig,
+    query: str,
     skip_userid_check: bool,
-    topic_summary: Optional[str],
+    attachments: list[Attachment] | None = None,
+    topic_summary: Optional[str] = None,
 ) -> None:
     """
     Store query results: transcript, conversation details, and cache.
@@ -351,13 +237,13 @@ def store_query_results(  # pylint: disable=too-many-arguments,too-many-locals
     Args:
         user_id: The authenticated user ID
         conversation_id: The conversation ID
-        model: The model identifier
+        model: The model identifier (provider/model format)
         started_at: ISO formatted timestamp when the request started
         completed_at: ISO formatted timestamp when the request completed
         summary: Summary of the turn including LLM response and tool calls
-        query_request: The original query request
-        configuration: Application configuration
+        query: The query text (persisted to transcript and cache)
         skip_userid_check: Whether to skip user ID validation
+        attachments: Optional list of attachments (for transcript only)
         topic_summary: Optional topic summary for the conversation
 
     Raises:
@@ -366,34 +252,28 @@ def store_query_results(  # pylint: disable=too-many-arguments,too-many-locals
     provider_id, model_id = extract_provider_and_model_from_model_id(model)
     # Store transcript if enabled
     if is_transcripts_enabled():
-        try:
-            # Convert RAG chunks to dictionary format once for reuse
-            logger.info("Storing transcript")
-            rag_chunks_dict = [chunk.model_dump() for chunk in summary.rag_chunks]
-            store_transcript(
-                user_id=user_id,
-                conversation_id=conversation_id,
-                model_id=model_id,
-                provider_id=provider_id,
-                query_is_valid=True,  # TODO(lucasagomes): implement as part of query validation
-                query=query_request.query,
-                query_request=query_request,
-                summary=summary,
-                rag_chunks=rag_chunks_dict,
-                truncated=False,  # TODO(lucasagomes): implement truncation as part of quota work
-                attachments=query_request.attachments or [],
-            )
-        except (IOError, OSError) as e:
-            logger.exception("Error storing transcript: %s", e)
-            response = InternalServerErrorResponse.generic()
-            raise HTTPException(**response.model_dump()) from e
+        logger.info("Storing transcript")
+        metadata = create_transcript_metadata(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            model_id=model_id,
+            provider_id=provider_id,
+            query_provider=provider_id,
+            query_model=model_id,
+        )
+        transcript = create_transcript(
+            metadata=metadata,
+            redacted_query=query,
+            summary=summary,
+            attachments=attachments or [],
+        )
+        store_transcript(transcript)
     else:
         logger.debug("Transcript collection is disabled in the configuration")
 
     # Persist conversation details
     try:
         logger.info("Persisting conversation details")
-        # Extract provider_id from model_id (format: "provider/model")
         persist_user_conversation_details(
             user_id=user_id,
             conversation_id=conversation_id,
@@ -409,26 +289,24 @@ def store_query_results(  # pylint: disable=too-many-arguments,too-many-locals
         raise HTTPException(**response.model_dump()) from e
 
     # Store conversation in cache
+    cache_entry = CacheEntry(
+        query=query,
+        response=summary.llm_response,
+        provider=provider_id,
+        model=model_id,
+        started_at=started_at,
+        completed_at=completed_at,
+        referenced_documents=summary.referenced_documents,
+        tool_calls=summary.tool_calls,
+        tool_results=summary.tool_results,
+    )
     try:
-        cache_entry = CacheEntry(
-            query=query_request.query,
-            response=summary.llm_response,
-            provider=provider_id,
-            model=model_id,
-            started_at=started_at,
-            completed_at=completed_at,
-            referenced_documents=summary.referenced_documents,
-            tool_calls=summary.tool_calls,
-            tool_results=summary.tool_results,
-        )
-
         logger.info("Storing conversation in cache")
         store_conversation_into_cache(
-            config=configuration,
             user_id=user_id,
             conversation_id=conversation_id,
             cache_entry=cache_entry,
-            _skip_userid_check=skip_userid_check,
+            skip_userid_check=skip_userid_check,
             topic_summary=topic_summary,
         )
     except (CacheError, ValueError, psycopg2.Error, sqlite3.Error) as e:
@@ -441,7 +319,6 @@ def consume_query_tokens(
     user_id: str,
     model_id: str,
     token_usage: TokenCounter,
-    configuration: AppConfig,
 ) -> None:
     """Consume tokens from quota limiters for a query.
 
@@ -453,7 +330,6 @@ def consume_query_tokens(
         user_id: The authenticated user ID
         model_id: The full model identifier in "provider/model" format
         token_usage: TokenCounter object with input and output token counts
-        configuration: Application configuration
 
     Raises:
         HTTPException: On database errors during token consumption

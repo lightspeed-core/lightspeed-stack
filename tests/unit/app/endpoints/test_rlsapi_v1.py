@@ -699,7 +699,9 @@ async def test_infer_endpoint_calls_get_mcp_tools(
         auth=MOCK_AUTH,
     )
 
-    mock_get_mcp_tools.assert_called_once_with(mock_configuration.mcp_servers)
+    mock_get_mcp_tools.assert_called_once_with(
+        request_headers=mock_request.headers,
+    )
 
 
 @pytest.mark.asyncio

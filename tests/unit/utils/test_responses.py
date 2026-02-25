@@ -21,7 +21,6 @@ from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaSta
 from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 
-from configuration import AppConfig
 from models.config import ModelContextProtocolServer
 from models.requests import QueryRequest
 from utils.responses import (
@@ -29,7 +28,8 @@ from utils.responses import (
     build_tool_call_summary,
     build_tool_result_from_mcp_output_item_done,
     extract_rag_chunks_from_file_search_item,
-    extract_text_from_response_output_item,
+    extract_text_from_response_item,
+    extract_text_from_response_items,
     extract_token_usage,
     extract_vector_store_ids_from_tools,
     get_mcp_tools,
@@ -65,10 +65,19 @@ class MockContentPart:  # pylint: disable=too-few-public-methods
     """Mock content part for message content."""
 
     def __init__(
-        self, text: Optional[str] = None, refusal: Optional[str] = None
+        self,
+        text: Optional[str] = None,
+        refusal: Optional[str] = None,
+        part_type: Optional[str] = None,
     ) -> None:
         self.text = text
         self.refusal = refusal
+        if part_type:
+            self.type = part_type
+        elif text:
+            self.type = "output_text"
+        elif refusal:
+            self.type = "refusal"
 
 
 def make_output_item(
@@ -89,18 +98,21 @@ def make_output_item(
 
 
 def make_content_part(
-    text: Optional[str] = None, refusal: Optional[str] = None
+    text: Optional[str] = None,
+    refusal: Optional[str] = None,
+    part_type: Optional[str] = None,
 ) -> MockContentPart:
     """Create a mock content part for message content.
 
     Args:
         text: Text content of the part
         refusal: Refusal message content
+        part_type: Type of the content part ("output_text" or "refusal")
 
     Returns:
         MockContentPart: Mock object with text and/or refusal attributes
     """
-    return MockContentPart(text=text, refusal=refusal)
+    return MockContentPart(text=text, refusal=refusal, part_type=part_type)
 
 
 @pytest.mark.parametrize(
@@ -110,26 +122,19 @@ def make_content_part(
         ("function_call", "assistant", "some text", ""),
         ("file_search_call", "assistant", "some text", ""),
         (None, "assistant", "some text", ""),
-        # Non-assistant roles should return empty string
+        # User role messages are filtered out - return empty string
         ("message", "user", "some text", ""),
-        ("message", "system", "some text", ""),
-        ("message", None, "some text", ""),
         # Valid assistant message with string content
         ("message", "assistant", "Hello, world!", "Hello, world!"),
         ("message", "assistant", "", ""),
-        # No content attribute
-        ("message", "assistant", None, ""),
     ],
     ids=[
         "function_call_type_returns_empty",
         "file_search_call_type_returns_empty",
         "none_type_returns_empty",
         "user_role_returns_empty",
-        "system_role_returns_empty",
-        "none_role_returns_empty",
         "valid_string_content",
         "empty_string_content",
-        "none_content",
     ],
 )
 def test_extract_text_basic_cases(
@@ -144,24 +149,22 @@ def test_extract_text_basic_cases(
         expected: Expected extracted text
     """
     output_item = make_output_item(item_type=item_type, role=role, content=content)
-    result = extract_text_from_response_output_item(output_item)
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
     assert result == expected
 
 
 @pytest.mark.parametrize(
     "content_parts,expected",
     [
-        # List with string items
-        (["Hello", " ", "world"], "Hello world"),
-        (["Single string"], "Single string"),
+        # Empty list
         ([], ""),
-        # List with make_content_part objects containing text
+        # List with make_content_part objects containing text (with type="output_text")
         (
             [make_content_part(text="Part 1"), make_content_part(text=" Part 2")],
             "Part 1 Part 2",
         ),
         ([make_content_part(text="Only text")], "Only text"),
-        # List with make_content_part objects containing refusal
+        # List with make_content_part objects containing refusal (with type="refusal")
         (
             [make_content_part(refusal="I cannot help with that")],
             "I cannot help with that",
@@ -173,49 +176,13 @@ def test_extract_text_basic_cases(
             ],
             "Some text but I refuse",
         ),
-        # List with dict items
-        ([{"text": "Dict text 1"}, {"text": "Dict text 2"}], "Dict text 1Dict text 2"),
-        ([{"refusal": "Dict refusal"}], "Dict refusal"),
-        ([{"text": "Text"}, {"refusal": "Refusal"}], "TextRefusal"),
-        # Mixed content types
-        (
-            [
-                "String part",
-                make_content_part(text=" Object part"),
-                {"text": " Dict part"},
-            ],
-            "String part Object part Dict part",
-        ),
-        (
-            [
-                make_content_part(text="Text"),
-                make_content_part(refusal=" Refusal"),
-                {"text": " DictText"},
-                " String",
-            ],
-            "Text Refusal DictText String",
-        ),
-        # Content parts with None or missing attributes
-        ([make_content_part(text=None), make_content_part(refusal=None)], ""),
-        ([{"other_key": "value"}], ""),
-        ([make_content_part(text="Valid"), {"invalid": "key"}], "Valid"),
     ],
     ids=[
-        "list_of_strings",
-        "list_single_string",
         "empty_list",
         "list_of_objects_with_text",
         "single_object_with_text",
         "object_with_refusal",
         "mixed_text_and_refusal_objects",
-        "list_of_dicts_with_text",
-        "dict_with_refusal",
-        "dict_mixed_text_refusal",
-        "mixed_string_object_dict",
-        "complex_mixed_content",
-        "none_attributes",
-        "dict_without_text_or_refusal",
-        "valid_mixed_with_invalid",
     ],
 )
 def test_extract_text_list_content(content_parts: list[Any], expected: str) -> None:
@@ -228,7 +195,7 @@ def test_extract_text_list_content(content_parts: list[Any], expected: str) -> N
     output_item = make_output_item(
         item_type="message", role="assistant", content=content_parts
     )
-    result = extract_text_from_response_output_item(output_item)
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
     assert result == expected
 
 
@@ -242,33 +209,16 @@ def test_extract_text_with_real_world_structure() -> None:
     content = [
         make_content_part(text="I can help you with that. "),
         make_content_part(text="Here's the information you requested: "),
-        "The answer is 42.",
+        make_content_part(text="The answer is 42."),
     ]
 
     output_item = make_output_item(
         item_type="message", role="assistant", content=content
     )
-    result = extract_text_from_response_output_item(output_item)
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
 
     expected = "I can help you with that. Here's the information you requested: The answer is 42."
     assert result == expected
-
-
-def test_extract_text_with_numeric_dict_values() -> None:
-    """Test that numeric values in dicts are properly converted to strings.
-
-    Ensures that when dict values are numeric, they're converted to strings
-    during extraction.
-    """
-    content = [{"text": 123}, {"refusal": 456}]
-
-    output_item = make_output_item(
-        item_type="message", role="assistant", content=content
-    )
-    result = extract_text_from_response_output_item(output_item)
-
-    # Numbers should be converted to strings
-    assert result == "123456"
 
 
 def test_extract_text_preserves_order() -> None:
@@ -277,51 +227,104 @@ def test_extract_text_preserves_order() -> None:
     Verifies that the order of content parts is preserved during extraction.
     """
     content = [
-        "First",
+        make_content_part(text="First"),
         make_content_part(text=" Second"),
-        {"text": " Third"},
-        " Fourth",
+        make_content_part(text=" Third"),
+        make_content_part(text=" Fourth"),
     ]
 
     output_item = make_output_item(
         item_type="message", role="assistant", content=content
     )
-    result = extract_text_from_response_output_item(output_item)
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
 
     assert result == "First Second Third Fourth"
 
 
-@pytest.mark.parametrize(
-    "missing_attr",
-    ["type", "role", "content"],
-    ids=["missing_type", "missing_role", "missing_content"],
-)
-def test_extract_text_handles_missing_attributes(missing_attr: str) -> None:
-    """Test graceful handling when expected attributes are missing.
+def test_extract_text_with_refusal_content() -> None:
+    """Test extraction with refusal content parts.
 
-    Args:
-        missing_attr: The attribute to omit from the mock object
+    Verifies that refusal type content parts are properly extracted.
     """
+    content = [
+        make_content_part(refusal="I understand your request, "),
+        make_content_part(refusal="but I cannot help with that."),
+    ]
 
-    # Create a basic dict-like object without using make_output_item
-    # pylint: disable=too-few-public-methods,missing-class-docstring,attribute-defined-outside-init
-    class PartialMock:
-        pass
+    output_item = make_output_item(
+        item_type="message", role="assistant", content=content
+    )
+    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
 
-    output_item = PartialMock()
+    assert result == "I understand your request, but I cannot help with that."
 
-    # Add only the attributes we want
-    if missing_attr != "type":
-        output_item.type = "message"  # type: ignore
-    if missing_attr != "role":
-        output_item.role = "assistant"  # type: ignore
-    if missing_attr != "content":
-        output_item.content = "Some text"  # type: ignore
 
-    result = extract_text_from_response_output_item(output_item)
+class TestExtractTextFromResponseItems:
+    """Test cases for extract_text_from_response_items function."""
 
-    # Should return empty string when critical attributes are missing
-    assert result == ""
+    def test_extract_text_from_response_items_none(self) -> None:
+        """Test extract_text_from_response_items returns empty string for None."""
+        result = extract_text_from_response_items(None)
+        assert result == ""
+
+    def test_extract_text_from_response_items_empty_list(self) -> None:
+        """Test extract_text_from_response_items returns empty string for empty list."""
+        result = extract_text_from_response_items([])
+        assert result == ""
+
+    def test_extract_text_from_response_items_single_item(self) -> None:
+        """Test extract_text_from_response_items with a single message item."""
+        output_item = make_output_item(
+            item_type="message", role="assistant", content="Hello world"
+        )
+        result = extract_text_from_response_items([output_item])  # type: ignore[arg-type]
+        assert result == "Hello world"
+
+    def test_extract_text_from_response_items_multiple_items(self) -> None:
+        """Test extract_text_from_response_items with multiple message items."""
+        item1 = make_output_item(
+            item_type="message", role="assistant", content="First message"
+        )
+        item2 = make_output_item(
+            item_type="message", role="assistant", content="Second message"
+        )
+        result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
+        assert result == "First message Second message"
+
+    def test_extract_text_from_response_items_filters_non_messages(self) -> None:
+        """Test extract_text_from_response_items filters out non-message items."""
+        item1 = make_output_item(
+            item_type="message", role="assistant", content="Valid message"
+        )
+        item2 = make_output_item(
+            item_type="function_call", role="assistant", content="Should be ignored"
+        )
+        result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
+        assert result == "Valid message"
+
+    def test_extract_text_from_response_items_filters_user_messages(self) -> None:
+        """Test extract_text_from_response_items filters out user role messages."""
+        item1 = make_output_item(
+            item_type="message", role="assistant", content="Assistant message"
+        )
+        item2 = make_output_item(
+            item_type="message", role="user", content="User message"
+        )
+        result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
+        # User messages are filtered out - only assistant message is included
+        assert result == "Assistant message"
+
+    def test_extract_text_from_response_items_with_list_content(self) -> None:
+        """Test extract_text_from_response_items with list-based content."""
+        content = [
+            make_content_part(text="Part 1"),
+            make_content_part(text="Part 2"),
+        ]
+        output_item = make_output_item(
+            item_type="message", role="assistant", content=content
+        )
+        result = extract_text_from_response_items([output_item])  # type: ignore[arg-type]
+        assert result == "Part 1 Part 2"
 
 
 class TestGetRAGTools:
@@ -345,14 +348,21 @@ class TestGetMCPTools:
     """Test cases for get_mcp_tools utility function."""
 
     @pytest.mark.asyncio
-    async def test_get_mcp_tools_without_auth(self) -> None:
+    async def test_get_mcp_tools_without_auth(self, mocker: MockerFixture) -> None:
         """Test get_mcp_tools with servers without authorization headers."""
         servers_no_auth = [
-            ModelContextProtocolServer(name="fs", url="http://localhost:3000"),
-            ModelContextProtocolServer(name="git", url="https://git.example.com/mcp"),
+            ModelContextProtocolServer(
+                name="fs", url="http://localhost:3000", provider_id="mcp"
+            ),
+            ModelContextProtocolServer(
+                name="git", url="https://git.example.com/mcp", provider_id="mcp"
+            ),
         ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers_no_auth
+        mocker.patch("utils.responses.configuration", mock_config)
 
-        tools_no_auth = await get_mcp_tools(servers_no_auth, token=None)
+        tools_no_auth = await get_mcp_tools(token=None)
         assert len(tools_no_auth) == 2
         assert tools_no_auth[0]["type"] == "mcp"
         assert tools_no_auth[0]["server_label"] == "fs"
@@ -360,29 +370,39 @@ class TestGetMCPTools:
         assert "headers" not in tools_no_auth[0]
 
     @pytest.mark.asyncio
-    async def test_get_mcp_tools_with_kubernetes_auth(self) -> None:
+    async def test_get_mcp_tools_with_kubernetes_auth(
+        self, mocker: MockerFixture
+    ) -> None:
         """Test get_mcp_tools with kubernetes auth."""
         servers_k8s = [
             ModelContextProtocolServer(
                 name="k8s-server",
                 url="http://localhost:3000",
                 authorization_headers={"Authorization": "kubernetes"},
+                provider_id="x",
             ),
         ]
-        tools_k8s = await get_mcp_tools(servers_k8s, token="user-k8s-token")
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers_k8s
+        mocker.patch("utils.responses.configuration", mock_config)
+        tools_k8s = await get_mcp_tools(token="user-k8s-token")
         assert len(tools_k8s) == 1
         assert tools_k8s[0]["authorization"] == "Bearer user-k8s-token"
 
     @pytest.mark.asyncio
-    async def test_get_mcp_tools_with_mcp_headers(self) -> None:
+    async def test_get_mcp_tools_with_mcp_headers(self, mocker: MockerFixture) -> None:
         """Test get_mcp_tools with client-provided headers."""
         servers = [
             ModelContextProtocolServer(
                 name="fs",
                 url="http://localhost:3000",
                 authorization_headers={"Authorization": "client", "X-Custom": "client"},
+                provider_id="x",
             ),
         ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
 
         mcp_headers = {
             "fs": {
@@ -390,7 +410,7 @@ class TestGetMCPTools:
                 "X-Custom": "custom-value",
             }
         }
-        tools = await get_mcp_tools(servers, token=None, mcp_headers=mcp_headers)
+        tools = await get_mcp_tools(token=None, mcp_headers=mcp_headers)
         assert len(tools) == 1
         assert tools[0]["headers"] == {
             "X-Custom": "custom-value",
@@ -398,30 +418,36 @@ class TestGetMCPTools:
         assert tools[0]["authorization"] == "client-provided-token"
 
         # Test with mcp_headers=None (server should be skipped)
-        tools_no_headers = await get_mcp_tools(servers, token=None, mcp_headers=None)
+        tools_no_headers = await get_mcp_tools(token=None, mcp_headers=None)
         assert len(tools_no_headers) == 0
 
     @pytest.mark.asyncio
-    async def test_get_mcp_tools_client_auth_no_mcp_headers(self) -> None:
+    async def test_get_mcp_tools_client_auth_no_mcp_headers(
+        self, mocker: MockerFixture
+    ) -> None:
         """Test get_mcp_tools skips server when mcp_headers is None and server requires client auth."""  # noqa: E501
         servers = [
             ModelContextProtocolServer(
                 name="client-auth-server",
                 url="http://localhost:3000",
                 authorization_headers={"X-Custom": "client"},
+                provider_id="x",
             ),
         ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
 
         # When mcp_headers is None and server requires client auth,
         # should return None for that header
         # This tests the specific path at line 391
-        tools = await get_mcp_tools(servers, token=None, mcp_headers=None)
+        tools = await get_mcp_tools(token=None, mcp_headers=None)
         # Server should be skipped because it requires client auth but mcp_headers is None
         assert len(tools) == 0
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_client_auth_missing_server_in_headers(
-        self,
+        self, mocker: MockerFixture
     ) -> None:
         """Test get_mcp_tools skips server when mcp_headers doesn't contain server name."""
         servers = [
@@ -429,18 +455,24 @@ class TestGetMCPTools:
                 name="client-auth-server",
                 url="http://localhost:3000",
                 authorization_headers={"X-Custom": "client"},
+                provider_id="x",
             ),
         ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
 
         # mcp_headers exists but doesn't contain this server name
         # This tests the specific path at line 394
         mcp_headers = {"other-server": {"X-Custom": "value"}}
-        tools = await get_mcp_tools(servers, token=None, mcp_headers=mcp_headers)
+        tools = await get_mcp_tools(token=None, mcp_headers=mcp_headers)
         # Server should be skipped because mcp_headers doesn't contain this server
         assert len(tools) == 0
 
     @pytest.mark.asyncio
-    async def test_get_mcp_tools_with_static_headers(self, tmp_path: Path) -> None:
+    async def test_get_mcp_tools_with_static_headers(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
         """Test get_mcp_tools with static headers from config files."""
         secret_file = tmp_path / "token.txt"
         secret_file.write_text("static-secret-token")
@@ -450,15 +482,21 @@ class TestGetMCPTools:
                 name="server1",
                 url="http://localhost:3000",
                 authorization_headers={"Authorization": str(secret_file)},
+                provider_id="x",
             ),
         ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
 
-        tools = await get_mcp_tools(servers, token=None)
+        tools = await get_mcp_tools(token=None)
         assert len(tools) == 1
         assert tools[0]["authorization"] == "static-secret-token"
 
     @pytest.mark.asyncio
-    async def test_get_mcp_tools_with_mixed_headers(self, tmp_path: Path) -> None:
+    async def test_get_mcp_tools_with_mixed_headers(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
         """Test get_mcp_tools with mixed header types."""
         secret_file = tmp_path / "api-key.txt"
         secret_file.write_text("secret-api-key")
@@ -472,8 +510,12 @@ class TestGetMCPTools:
                     "X-API-Key": str(secret_file),
                     "X-Custom": "client",
                 },
+                provider_id="x",
             ),
         ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
 
         mcp_headers = {
             "mixed-server": {
@@ -481,7 +523,7 @@ class TestGetMCPTools:
             }
         }
 
-        tools = await get_mcp_tools(servers, token="k8s-token", mcp_headers=mcp_headers)
+        tools = await get_mcp_tools(token="k8s-token", mcp_headers=mcp_headers)
         assert len(tools) == 1
         assert tools[0]["authorization"] == "Bearer k8s-token"
         assert tools[0]["headers"] == {
@@ -490,36 +532,49 @@ class TestGetMCPTools:
         }
 
     @pytest.mark.asyncio
-    async def test_get_mcp_tools_skips_server_with_missing_auth(self) -> None:
+    async def test_get_mcp_tools_skips_server_with_missing_auth(
+        self, mocker: MockerFixture
+    ) -> None:
         """Test that servers with required but unavailable auth headers are skipped."""
         servers = [
             ModelContextProtocolServer(
                 name="missing-k8s-auth",
                 url="http://localhost:3001",
                 authorization_headers={"Authorization": "kubernetes"},
+                provider_id="x",
             ),
             ModelContextProtocolServer(
                 name="missing-client-auth",
                 url="http://localhost:3002",
                 authorization_headers={"X-Token": "client"},
+                provider_id="x",
             ),
         ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
 
-        tools = await get_mcp_tools(servers, token=None, mcp_headers=None)
+        tools = await get_mcp_tools(token=None, mcp_headers=None)
         assert len(tools) == 0
 
     @pytest.mark.asyncio
-    async def test_get_mcp_tools_includes_server_without_auth(self) -> None:
+    async def test_get_mcp_tools_includes_server_without_auth(
+        self, mocker: MockerFixture
+    ) -> None:
         """Test that servers without auth config are always included."""
         servers = [
             ModelContextProtocolServer(
                 name="public-server",
                 url="http://localhost:3000",
                 authorization_headers={},
+                provider_id="x",
             ),
         ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
 
-        tools = await get_mcp_tools(servers, token=None, mcp_headers=None)
+        tools = await get_mcp_tools(token=None, mcp_headers=None)
         assert len(tools) == 1
         assert tools[0]["server_label"] == "public-server"
         assert "headers" not in tools[0]
@@ -534,8 +589,12 @@ class TestGetMCPTools:
                 name="oauth-server",
                 url="http://localhost:3000",
                 authorization_headers={"Authorization": "oauth"},
+                provider_id="x",
             ),
         ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
 
         mock_resp = mocker.Mock()
         mock_resp.headers = {"WWW-Authenticate": 'Bearer error="invalid_token"'}
@@ -553,7 +612,7 @@ class TestGetMCPTools:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_mcp_tools(servers, token=None, mcp_headers=None)
+            await get_mcp_tools(token=None, mcp_headers=None)
 
         assert exc_info.value.status_code == 401
         assert exc_info.value.headers is not None
@@ -561,6 +620,178 @@ class TestGetMCPTools:
             exc_info.value.headers.get("WWW-Authenticate")
             == 'Bearer error="invalid_token"'
         )
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_with_propagated_headers(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test get_mcp_tools propagates allowlisted headers from the incoming request."""
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                headers=["x-rh-identity", "x-request-id"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {
+            "x-rh-identity": "encoded-identity",
+            "x-request-id": "req-456",
+            "content-type": "application/json",
+        }
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        assert tools[0]["headers"] == {
+            "x-rh-identity": "encoded-identity",
+            "x-request-id": "req-456",
+        }
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_headers_do_not_overwrite_auth_headers(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        """Test that propagated headers do not overwrite authorization_headers."""
+        secret_file = tmp_path / "token.txt"
+        secret_file.write_text("secret-token")
+
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                authorization_headers={"Authorization": str(secret_file)},
+                headers=["Authorization", "x-rh-identity"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {
+            "authorization": "request-auth-value",
+            "x-rh-identity": "identity-value",
+        }
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        # Authorization from authorization_headers should win
+        assert tools[0]["headers"]["Authorization"] == "secret-token"
+        # x-rh-identity from propagated headers should be included
+        assert tools[0]["headers"]["x-rh-identity"] == "identity-value"
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_headers_missing_from_request(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that missing allowlisted headers are simply skipped, server not skipped."""
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                headers=["x-rh-identity", "x-missing"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {
+            "x-rh-identity": "identity-value",
+        }
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        assert tools[0]["headers"] == {"x-rh-identity": "identity-value"}
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_headers_no_request_headers(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that propagated headers are skipped when request_headers is None."""
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                headers=["x-rh-identity"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        tools = await get_mcp_tools(token=None, mcp_headers=None, request_headers=None)
+        assert len(tools) == 1
+        assert "headers" not in tools[0]
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_headers_additive_with_mcp_headers(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that propagated headers work alongside MCP-HEADERS (client mechanism)."""
+        servers = [
+            ModelContextProtocolServer(
+                name="server1",
+                url="http://server1:8080",
+                authorization_headers={"Authorization": "client"},
+                headers=["x-rh-identity"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        mcp_hdrs = {"server1": {"Authorization": "Bearer client-token"}}
+        request_headers = {"x-rh-identity": "identity-value"}
+
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=mcp_hdrs, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        assert tools[0]["headers"] == {
+            "Authorization": "Bearer client-token",
+            "x-rh-identity": "identity-value",
+        }
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_mixed_case_precedence(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        """Test case-insensitive precedence: auth header wins over propagated variant."""
+        secret_file = tmp_path / "token.txt"
+        secret_file.write_text("file-secret")
+
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                authorization_headers={"Authorization": str(secret_file)},
+                headers=["authorization", "x-rh-identity"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {
+            "authorization": "request-value",
+            "x-rh-identity": "identity-value",
+        }
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        # Auth header should win (case-insensitive)
+        assert tools[0]["headers"]["Authorization"] == "file-secret"
+        # Propagated header should be included
+        assert tools[0]["headers"]["x-rh-identity"] == "identity-value"
+        # No duplicate "authorization" key
+        assert len(tools[0]["headers"]) == 2
 
 
 class TestGetTopicSummary:
@@ -657,31 +888,14 @@ class TestPrepareTools:
     """Tests for prepare_tools function."""
 
     @pytest.mark.asyncio
-    async def test_prepare_tools_no_tools(self, mocker: MockerFixture) -> None:
-        """Test prepare_tools returns None when no_tools is True."""
-        mock_client = mocker.AsyncMock()
-        query_request = QueryRequest(
-            query="test", no_tools=True
-        )  # pyright: ignore[reportCallIssue]
-        mock_config = mocker.Mock(spec=AppConfig)
-        mock_config.mcp_servers = []
-
-        result = await prepare_tools(mock_client, query_request, "token", mock_config)
-        assert result is None
-
-    @pytest.mark.asyncio
     async def test_prepare_tools_with_vector_store_ids(
         self, mocker: MockerFixture
     ) -> None:
         """Test prepare_tools with specified vector store IDs."""
         mock_client = mocker.AsyncMock()
-        query_request = QueryRequest(
-            query="test", vector_store_ids=["vs1", "vs2"]
-        )  # pyright: ignore[reportCallIssue]
-        mock_config = mocker.Mock(spec=AppConfig)
-        mock_config.mcp_servers = []
+        mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
-        result = await prepare_tools(mock_client, query_request, "token", mock_config)
+        result = await prepare_tools(mock_client, ["vs1", "vs2"], False, "token")
         assert result is not None
         assert len(result) == 1
         assert result[0]["type"] == "file_search"
@@ -702,12 +916,9 @@ class TestPrepareTools:
         mock_client.vector_stores.list = mocker.AsyncMock(
             return_value=mock_vector_stores
         )
+        mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
-        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
-        mock_config = mocker.Mock(spec=AppConfig)
-        mock_config.mcp_servers = []
-
-        result = await prepare_tools(mock_client, query_request, "token", mock_config)
+        result = await prepare_tools(mock_client, None, False, "token")
         assert result is not None
         assert len(result) == 1
         assert result[0]["vector_store_ids"] == ["vs1", "vs2"]
@@ -722,27 +933,18 @@ class TestPrepareTools:
             )
         )
 
-        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
-        mock_config = mocker.Mock(spec=AppConfig)
-        mock_config.mcp_servers = []
-
         with pytest.raises(HTTPException) as exc_info:
-            await prepare_tools(mock_client, query_request, "token", mock_config)
+            await prepare_tools(mock_client, None, False, "token")
         assert exc_info.value.status_code == 503
 
     @pytest.mark.asyncio
     async def test_prepare_tools_with_mcp_servers(self, mocker: MockerFixture) -> None:
         """Test prepare_tools includes MCP tools."""
         mock_client = mocker.AsyncMock()
-        query_request = QueryRequest(
-            query="test", vector_store_ids=["vs1"]
-        )  # pyright: ignore[reportCallIssue]
-        mock_config = mocker.Mock(spec=AppConfig)
-        mock_config.mcp_servers = [
-            ModelContextProtocolServer(name="test-server", url="http://localhost:3000")
-        ]
+        mock_mcp_tool = {"type": "mcp", "server_label": "test-server"}
+        mocker.patch("utils.responses.get_mcp_tools", return_value=[mock_mcp_tool])
 
-        result = await prepare_tools(mock_client, query_request, "token", mock_config)
+        result = await prepare_tools(mock_client, ["vs1"], False, "token")
         assert result is not None
         assert len(result) == 2  # RAG tool + MCP tool
         assert any(tool.get("type") == "mcp" for tool in result)
@@ -757,12 +959,8 @@ class TestPrepareTools:
             )
         )
 
-        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
-        mock_config = mocker.Mock(spec=AppConfig)
-        mock_config.mcp_servers = []
-
         with pytest.raises(HTTPException) as exc_info:
-            await prepare_tools(mock_client, query_request, "token", mock_config)
+            await prepare_tools(mock_client, None, False, "token")
         assert exc_info.value.status_code == 500
 
     @pytest.mark.asyncio
@@ -774,13 +972,22 @@ class TestPrepareTools:
         mock_client.vector_stores.list = mocker.AsyncMock(
             return_value=mock_vector_stores
         )
+        mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
-        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
-        mock_config = mocker.Mock(spec=AppConfig)
-        mock_config.mcp_servers = []  # No MCP servers
-
-        result = await prepare_tools(mock_client, query_request, "token", mock_config)
+        result = await prepare_tools(mock_client, None, False, "token")
         assert result is None
+
+    @pytest.mark.asyncio
+    async def test_prepare_tools_no_tools_true(self, mocker: MockerFixture) -> None:
+        """Test prepare_tools returns None when no_tools=True."""
+        mock_client = mocker.AsyncMock()
+
+        # Should return None immediately without fetching vector stores or MCP tools
+        result = await prepare_tools(mock_client, ["vs1", "vs2"], True, "token")
+
+        assert result is None
+        # Verify that vector_stores.list was not called
+        mock_client.vector_stores.list.assert_not_called()
 
 
 class TestPrepareResponsesParams:
@@ -801,12 +1008,9 @@ class TestPrepareResponsesParams:
             query="test", conversation_id="123e4567-e89b-12d3-a456-426614174000"
         )  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("utils.responses.configuration", mocker.Mock())
-        mocker.patch(
-            "utils.responses.select_model_and_provider_id",
-            return_value=("provider1/model1", "model1", "provider1"),
-        )
-        mocker.patch("utils.responses.evaluate_model_hints", return_value=(None, None))
+        mock_config = mocker.Mock()
+        mock_config.inference = None
+        mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
         mocker.patch("utils.responses.prepare_input", return_value="test")
@@ -840,12 +1044,9 @@ class TestPrepareResponsesParams:
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("utils.responses.configuration", mocker.Mock())
-        mocker.patch(
-            "utils.responses.select_model_and_provider_id",
-            return_value=("provider1/model1", "model1", "provider1"),
-        )
-        mocker.patch("utils.responses.evaluate_model_hints", return_value=(None, None))
+        mock_config = mocker.Mock()
+        mock_config.inference = None
+        mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
         mocker.patch("utils.responses.prepare_input", return_value="test")
@@ -869,7 +1070,9 @@ class TestPrepareResponsesParams:
         )
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
-        mocker.patch("utils.responses.configuration", mocker.Mock())
+        mock_config = mocker.Mock()
+        mock_config.inference = None
+        mocker.patch("utils.responses.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
             await prepare_responses_params(mock_client, query_request, None, "token")
@@ -893,12 +1096,9 @@ class TestPrepareResponsesParams:
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("utils.responses.configuration", mocker.Mock())
-        mocker.patch(
-            "utils.responses.select_model_and_provider_id",
-            return_value=("provider1/model1", "model1", "provider1"),
-        )
-        mocker.patch("utils.responses.evaluate_model_hints", return_value=(None, None))
+        mock_config = mocker.Mock()
+        mock_config.inference = None
+        mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
         mocker.patch("utils.responses.prepare_input", return_value="test")
@@ -920,11 +1120,112 @@ class TestPrepareResponsesParams:
         )
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
-        mocker.patch("utils.responses.configuration", mocker.Mock())
+        mock_config = mocker.Mock()
+        mock_config.inference = None
+        mocker.patch("utils.responses.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
             await prepare_responses_params(mock_client, query_request, None, "token")
         assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_prepare_responses_params_includes_mcp_provider_data_headers(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that extra_headers with x-llamastack-provider-data is set when MCP tools have headers."""
+        mock_client = mocker.AsyncMock()
+        mock_model = mocker.Mock()
+        mock_model.id = "provider1/model1"
+        mock_model.custom_metadata = {"model_type": "llm", "provider_id": "provider1"}
+        mock_client.models.list = mocker.AsyncMock(return_value=[mock_model])
+
+        mock_conversation = mocker.Mock()
+        mock_conversation.id = "new_conv_id"
+        mock_client.conversations.create = mocker.AsyncMock(
+            return_value=mock_conversation
+        )
+
+        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
+
+        # Simulate MCP tools with headers (as returned by prepare_tools/get_mcp_tools)
+        mcp_tools_with_headers = [
+            {
+                "type": "mcp",
+                "server_label": "mcp::aap-controller",
+                "server_url": "http://aap.foo.redhat.com:8004/sse",
+                "require_approval": "never",
+                "headers": {"X-Authorization": "client-token"},
+            },
+            {
+                "type": "mcp",
+                "server_label": "mcp::aap-lightspeed",
+                "server_url": "http://aap.foo.redhat.com:8005/sse",
+                "require_approval": "never",
+                "headers": {"X-Authorization": "client-token-2"},
+            },
+        ]
+
+        mock_config = mocker.Mock()
+        mock_config.inference = None
+        mocker.patch("utils.responses.configuration", mock_config)
+        mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
+        mocker.patch(
+            "utils.responses.prepare_tools", return_value=mcp_tools_with_headers
+        )
+        mocker.patch("utils.responses.prepare_input", return_value="test")
+
+        result = await prepare_responses_params(
+            mock_client, query_request, None, "token"
+        )
+
+        # The result should contain extra_headers with x-llamastack-provider-data
+        dumped = result.model_dump()
+        assert (
+            dumped["extra_headers"] is not None
+        ), "extra_headers should not be None when MCP tools have headers"
+        assert "x-llamastack-provider-data" in dumped["extra_headers"]
+
+        provider_data = json.loads(
+            dumped["extra_headers"]["x-llamastack-provider-data"]
+        )
+        assert "mcp_headers" in provider_data
+        assert provider_data["mcp_headers"] == {
+            "http://aap.foo.redhat.com:8004/sse": {"X-Authorization": "client-token"},
+            "http://aap.foo.redhat.com:8005/sse": {"X-Authorization": "client-token-2"},
+        }
+
+    @pytest.mark.asyncio
+    async def test_prepare_responses_params_no_extra_headers_without_mcp_tools(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that extra_headers is None when no MCP tools have headers."""
+        mock_client = mocker.AsyncMock()
+        mock_model = mocker.Mock()
+        mock_model.id = "provider1/model1"
+        mock_model.custom_metadata = {"model_type": "llm", "provider_id": "provider1"}
+        mock_client.models.list = mocker.AsyncMock(return_value=[mock_model])
+
+        mock_conversation = mocker.Mock()
+        mock_conversation.id = "new_conv_id"
+        mock_client.conversations.create = mocker.AsyncMock(
+            return_value=mock_conversation
+        )
+
+        query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
+
+        mock_config = mocker.Mock()
+        mock_config.inference = None
+        mocker.patch("utils.responses.configuration", mock_config)
+        mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
+        mocker.patch("utils.responses.prepare_tools", return_value=None)
+        mocker.patch("utils.responses.prepare_input", return_value="test")
+
+        result = await prepare_responses_params(
+            mock_client, query_request, None, "token"
+        )
+
+        dumped = result.model_dump()
+        assert dumped.get("extra_headers") is None
 
     @pytest.mark.asyncio
     async def test_prepare_responses_params_api_status_error_on_conversation(
@@ -944,12 +1245,9 @@ class TestPrepareResponsesParams:
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
 
-        mocker.patch("utils.responses.configuration", mocker.Mock())
-        mocker.patch(
-            "utils.responses.select_model_and_provider_id",
-            return_value=("provider1/model1", "model1", "provider1"),
-        )
-        mocker.patch("utils.responses.evaluate_model_hints", return_value=(None, None))
+        mock_config = mocker.Mock()
+        mock_config.inference = None
+        mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
         mocker.patch("utils.responses.prepare_input", return_value="test")
@@ -1080,32 +1378,21 @@ class TestParseReferencedDocuments:
 class TestExtractTokenUsage:
     """Tests for extract_token_usage function."""
 
-    def test_extract_token_usage_with_dict_usage(self, mocker: MockerFixture) -> None:
-        """Test extracting token usage from dict format."""
-        mock_response = mocker.Mock()
-        mock_response.usage = {"input_tokens": 100, "output_tokens": 50}
-
-        mocker.patch(
-            "utils.responses.extract_provider_and_model_from_model_id",
-            return_value=("provider1", "model1"),
-        )
-        mocker.patch("utils.responses.metrics.llm_token_sent_total")
-        mocker.patch("utils.responses.metrics.llm_token_received_total")
-        mocker.patch("utils.responses._increment_llm_call_metric")
-
-        result = extract_token_usage(mock_response, "provider1/model1")
-        assert result.input_tokens == 100
-        assert result.output_tokens == 50
-        assert result.llm_calls == 1
-
-    def test_extract_token_usage_with_object_usage(self, mocker: MockerFixture) -> None:
-        """Test extracting token usage from object format."""
+    @pytest.mark.parametrize(
+        "input_tokens,output_tokens",
+        [(100, 50), (200, 100)],
+        ids=["usage_100_50", "usage_200_100"],
+    )
+    def test_extract_token_usage_with_usage_object(
+        self,
+        mocker: MockerFixture,
+        input_tokens: int,
+        output_tokens: int,
+    ) -> None:
+        """Test extracting token usage from usage object (mock with input/output tokens)."""
         mock_usage = mocker.Mock()
-        mock_usage.input_tokens = 200
-        mock_usage.output_tokens = 100
-
-        mock_response = mocker.Mock()
-        mock_response.usage = mock_usage
+        mock_usage.input_tokens = input_tokens
+        mock_usage.output_tokens = output_tokens
 
         mocker.patch(
             "utils.responses.extract_provider_and_model_from_model_id",
@@ -1115,22 +1402,20 @@ class TestExtractTokenUsage:
         mocker.patch("utils.responses.metrics.llm_token_received_total")
         mocker.patch("utils.responses._increment_llm_call_metric")
 
-        result = extract_token_usage(mock_response, "provider1/model1")
-        assert result.input_tokens == 200
-        assert result.output_tokens == 100
+        result = extract_token_usage(mock_usage, "provider1/model1")
+        assert result.input_tokens == input_tokens
+        assert result.output_tokens == output_tokens
+        assert result.llm_calls == 1
 
     def test_extract_token_usage_no_usage(self, mocker: MockerFixture) -> None:
         """Test extracting token usage when usage is None."""
-        mock_response = mocker.Mock()
-        mock_response.usage = None
-
         mocker.patch(
             "utils.responses.extract_provider_and_model_from_model_id",
             return_value=("provider1", "model1"),
         )
         mocker.patch("utils.responses._increment_llm_call_metric")
 
-        result = extract_token_usage(mock_response, "provider1/model1")
+        result = extract_token_usage(None, "provider1/model1")
         assert result.input_tokens == 0
         assert result.output_tokens == 0
         assert result.llm_calls == 1
@@ -1141,16 +1426,13 @@ class TestExtractTokenUsage:
         mock_usage.input_tokens = 0
         mock_usage.output_tokens = 0
 
-        mock_response = mocker.Mock()
-        mock_response.usage = mock_usage
-
         mocker.patch(
             "utils.responses.extract_provider_and_model_from_model_id",
             return_value=("provider1", "model1"),
         )
         mocker.patch("utils.responses._increment_llm_call_metric")
 
-        result = extract_token_usage(mock_response, "provider1/model1")
+        result = extract_token_usage(mock_usage, "provider1/model1")
         assert result.input_tokens == 0
         assert result.output_tokens == 0
 
@@ -1172,9 +1454,6 @@ class TestExtractTokenUsage:
         mock_usage.input_tokens = 100
         mock_usage.output_tokens = 50
 
-        mock_response = mocker.Mock()
-        mock_response.usage = mock_usage
-
         mocker.patch(
             "utils.responses.extract_provider_and_model_from_model_id",
             return_value=("provider1", "model1"),
@@ -1190,41 +1469,9 @@ class TestExtractTokenUsage:
         mocker.patch("utils.responses._increment_llm_call_metric")
 
         # Should not raise, just log warning
-        result = extract_token_usage(mock_response, "provider1/model1")
+        result = extract_token_usage(mock_usage, "provider1/model1")
         assert result.input_tokens == 100
         assert result.output_tokens == 50
-
-    def test_extract_token_usage_extraction_error(self, mocker: MockerFixture) -> None:
-        """Test extracting token usage handles errors when extracting usage."""
-
-        # Create a usage object that raises TypeError when attributes are accessed
-        # getattr catches AttributeError but not TypeError, so TypeError will propagate
-        class ErrorUsage:  # pylint: disable=too-few-public-methods
-            """Mock usage object that raises TypeError."""
-
-            def __getattribute__(self, name: str) -> Any:
-                if name in ("input_tokens", "output_tokens"):
-                    # Raise TypeError which getattr won't catch (only catches AttributeError)
-                    raise TypeError(f"Cannot access {name}")
-                return super().__getattribute__(name)
-
-        mock_usage = ErrorUsage()
-        mock_response = mocker.Mock()
-        mock_response.usage = mock_usage
-
-        mocker.patch(
-            "utils.responses.extract_provider_and_model_from_model_id",
-            return_value=("provider1", "model1"),
-        )
-        mocker.patch("utils.responses.logger")
-        mocker.patch("utils.responses._increment_llm_call_metric")
-
-        # getattr with default catches AttributeError but not TypeError
-        # TypeError will propagate to exception handler at line 611
-        # Should not raise, just log warning and return 0 tokens
-        result = extract_token_usage(mock_response, "provider1/model1")
-        assert result.input_tokens == 0
-        assert result.output_tokens == 0
 
 
 class TestBuildToolCallSummary:

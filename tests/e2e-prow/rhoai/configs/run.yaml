@@ -1,5 +1,5 @@
 version: 2
-image_name: rhoai-configuration
+image_name: starter
 
 apis:
 - agents
@@ -12,24 +12,19 @@ apis:
 - scoring
 - tool_runtime
 - vector_io
-      
+
 benchmarks: []
 datasets: []
-# external_providers_dir: /opt/app-root/src/.llama/providers.d
 
 providers:
   inference:
   - provider_id: vllm
     provider_type: remote::vllm
     config:
-      url: ${env.KSVC_URL}/v1/
+      base_url: ${env.KSVC_URL}/v1/
       api_token: ${env.VLLM_API_KEY}
       tls_verify: false
-      max_tokens: 1024
-  # - provider_id: openai
-  #   provider_type: remote::openai
-  #   config:
-  #     api_key: ${env.OPENAI_API_KEY}
+      max_tokens: 512
   - config: {}
     provider_id: sentence-transformers
     provider_type: inline::sentence-transformers
@@ -38,24 +33,34 @@ providers:
       metadata_store:
         table_name: files_metadata
         backend: sql_default
-      storage_dir: ~/.llama/storage/files
+      storage_dir: /opt/app-root/src/.llama/storage/files
     provider_id: meta-reference-files
     provider_type: inline::localfs
   safety:
-  - provider_id: llama-guard
-    provider_type: inline::llama-guard
-    config:
-      excluded_categories: []
+   - config:
+       excluded_categories: []
+     provider_id: llama-guard
+     provider_type: inline::llama-guard
   scoring:
-  - config: {}
-    provider_id: basic
+  - provider_id: basic
     provider_type: inline::basic
+    config: {}
+  - provider_id: llm-as-judge
+    provider_type: inline::llm-as-judge
+    config: {}
+  - provider_id: braintrust
+    provider_type: inline::braintrust
+    config:
+      openai_api_key: '********'
   tool_runtime:
-  - config: {}
+  - config: {} # Enable the RAG tool
     provider_id: rag-runtime
     provider_type: inline::rag-runtime
+  - config: {} # Enable MCP (Model Context Protocol) support
+    provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
   vector_io:
-  - config:
+  - config: # Define the storage backend for RAG
       persistence:
         namespace: vector_io::faiss
         backend: kv_rag
@@ -104,12 +109,15 @@ server:
   port: 8321
 storage:
   backends:
-    kv_default:
+    kv_default:  # Single database for registry AND RAG data
       type: kv_sqlite
-      db_path: ${env.KV_STORE_PATH:=~/.llama/storage/rag/kv_store.db}
+      db_path: /opt/app-root/src/.llama/storage/rag/kv_store.db
+    kv_rag:
+      type: kv_sqlite
+      db_path: /opt/app-root/src/.llama/storage/rag/kv_store.db
     sql_default:
       type: sql_sqlite
-      db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
+      db_path: ${env.SQL_STORE_PATH:=/opt/app-root/src/.llama/storage/sql_store.db}
   stores:
     metadata:
       namespace: registry
@@ -127,7 +135,7 @@ storage:
       backend: kv_default
 registered_resources:
   models:
-  - model_id: meta-llama/Llama-3.2-1B-Instruct
+  - model_id: meta-llama/Llama-3.1-8B-Instruct
     provider_id: vllm
     model_type: llm
     provider_model_id: null
@@ -141,20 +149,20 @@ registered_resources:
   - embedding_dimension: 768
     embedding_model: sentence-transformers/all-mpnet-base-v2
     provider_id: faiss
-    vector_store_id: vs_8c94967b-81cc-4028-a294-9cfac6fd9ae2 #TODO: parse this from the rag db
+    vector_store_id: ${env.FAISS_VECTOR_STORE_ID}
   shields:
   - shield_id: llama-guard
     provider_id: llama-guard
-    provider_shield_id: vllm/meta-llama/Llama-3.2-1B-Instruct
+    provider_shield_id: vllm/meta-llama/Llama-3.1-8B-Instruct
   datasets: []
   scoring_fns: []
   benchmarks: []
   tool_groups:
-  - toolgroup_id: builtin::rag
-    provider_id: rag-runtime
+  - provider_id: rag-runtime
+    toolgroup_id: builtin::rag
 vector_stores:
   default_provider_id: faiss
-  default_embedding_model:
+  default_embedding_model: # Define the default embedding model for RAG
     provider_id: sentence-transformers
     model_id: all-mpnet-base-v2
 safety:

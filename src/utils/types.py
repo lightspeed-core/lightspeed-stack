@@ -1,17 +1,25 @@
 """Common types for the project."""
 
-from typing import Any, Optional
+from typing import Annotated, Any, Literal, Optional, TypeAlias
 
+from llama_stack_api import ImageContentItem, TextContentItem
+from llama_stack_api.openai_responses import (
+    OpenAIResponseInputFunctionToolCallOutput as FunctionToolCallOutput,
+    OpenAIResponseMCPApprovalRequest as McpApprovalRequest,
+    OpenAIResponseMCPApprovalResponse as McpApprovalResponse,
+    OpenAIResponseMessage as ResponseMessage,
+    OpenAIResponseOutputMessageFileSearchToolCall as FileSearchToolCall,
+    OpenAIResponseOutputMessageFunctionToolCall as FunctionToolCall,
+    OpenAIResponseOutputMessageMCPCall as McpCall,
+    OpenAIResponseOutputMessageMCPListTools as McpListTools,
+    OpenAIResponseOutputMessageWebSearchToolCall as WebSearchToolCall,
+)
 from llama_stack_client.lib.agents.tool_parser import ToolParser
 from llama_stack_client.lib.agents.types import (
     CompletionMessage as AgentCompletionMessage,
 )
 from llama_stack_client.lib.agents.types import (
     ToolCall as AgentToolCall,
-)
-from llama_stack_client.types.shared.interleaved_content_item import (
-    ImageContentItem,
-    TextContentItem,
 )
 from pydantic import AnyUrl, BaseModel, Field
 
@@ -101,12 +109,25 @@ class GraniteToolParser(ToolParser):
         return None
 
 
-class ShieldModerationResult(BaseModel):
-    """Result of shield moderation check."""
+class ShieldModerationPassed(BaseModel):
+    """Shield moderation passed; no refusal."""
 
-    blocked: bool
-    message: Optional[str] = None
-    shield_model: Optional[str] = None
+    decision: Literal["passed"] = "passed"
+
+
+class ShieldModerationBlocked(BaseModel):
+    """Shield moderation blocked the content; refusal details are present."""
+
+    decision: Literal["blocked"] = "blocked"
+    message: str
+    moderation_id: str
+    refusal_response: ResponseMessage
+
+
+ShieldModerationResult = Annotated[
+    ShieldModerationPassed | ShieldModerationBlocked,
+    Field(discriminator="decision"),
+]
 
 
 class ResponsesApiParams(BaseModel):
@@ -123,6 +144,10 @@ class ResponsesApiParams(BaseModel):
     conversation: str = Field(description="The conversation ID in llama-stack format")
     stream: bool = Field(description="Whether to stream the response")
     store: bool = Field(description="Whether to store the response")
+    extra_headers: Optional[dict[str, str]] = Field(
+        default=None,
+        description="Extra HTTP headers to send with the request (e.g. x-llamastack-provider-data)",
+    )
 
 
 class ToolCallSummary(BaseModel):
@@ -197,3 +222,54 @@ class TurnSummary(BaseModel):
     referenced_documents: list[ReferencedDocument] = Field(default_factory=list)
     pre_rag_documents: list[ReferencedDocument] = Field(default_factory=list)
     token_usage: TokenCounter = Field(default_factory=TokenCounter)
+
+
+class TranscriptMetadata(BaseModel):
+    """Metadata for a transcript entry."""
+
+    provider: str | None = None
+    model: str
+    query_provider: str | None = None
+    query_model: str | None = None
+    user_id: str
+    conversation_id: str
+    timestamp: str
+
+
+class Transcript(BaseModel):
+    """Model representing a transcript entry to be stored."""
+
+    metadata: TranscriptMetadata
+    redacted_query: str
+    query_is_valid: bool
+    llm_response: str
+    rag_chunks: list[dict[str, Any]] = Field(default_factory=list)
+    truncated: bool
+    attachments: list[dict[str, Any]] = Field(default_factory=list)
+    tool_calls: list[dict[str, Any]] = Field(default_factory=list)
+    tool_results: list[dict[str, Any]] = Field(default_factory=list)
+
+
+ResponseItem: TypeAlias = (
+    ResponseMessage
+    | WebSearchToolCall
+    | FileSearchToolCall
+    | FunctionToolCallOutput
+    | McpCall
+    | McpListTools
+    | McpApprovalRequest
+    | FunctionToolCall
+    | McpApprovalResponse
+)
+
+ResponseInput: TypeAlias = str | list[ResponseItem]
+
+IncludeParameter: TypeAlias = Literal[
+    "web_search_call.action.sources",
+    "code_interpreter_call.outputs",
+    "computer_call_output.output.image_url",
+    "file_search_call.results",
+    "message.input_image.image_url",
+    "message.output_text.logprobs",
+    "reasoning.encrypted_content",
+]

@@ -6,6 +6,9 @@ MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION = "0.4.3"
 
 UNABLE_TO_PROCESS_RESPONSE = "Unable to process this request"
 
+# Response stored in the conversation when the user interrupts a streaming request
+INTERRUPTED_RESPONSE_MESSAGE = "You interrupted this request."
+
 # Supported attachment types
 ATTACHMENT_TYPES = frozenset(
     {
@@ -183,3 +186,5 @@ MIMIR_DOC_URL = "https://mimir.corp.redhat.com"
 LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR = "LIGHTSPEED_STACK_LOG_LEVEL"
 # Default log level when environment variable is not set
 DEFAULT_LOG_LEVEL = "INFO"
+# Default log format for plain-text logging in non-TTY environments
+DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)-8s %(name)s:%(lineno)d %(message)s"

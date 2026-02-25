@@ -13,6 +13,7 @@ from app.endpoints import (
     config,
     feedback,
     streaming_query,
+    stream_interrupt,
     authorized,
     conversations_v2,
     conversations_v1,
@@ -52,6 +53,7 @@ def include_routers(app: FastAPI) -> None:
     # Query endpoints
     app.include_router(query.router, prefix="/v1")
     app.include_router(streaming_query.router, prefix="/v1")
+    app.include_router(stream_interrupt.router, prefix="/v1")
     app.include_router(config.router, prefix="/v1")
     app.include_router(feedback.router, prefix="/v1")
     app.include_router(conversations_v1.router, prefix="/v1")

@@ -130,14 +130,14 @@ Lightspeed Core Stack is based on the FastAPI framework (Uvicorn). The service i
 
   Lightspeed Stack supports multiple LLM providers.
 
-  | Provider       | Setup Documentation                                                   |
-  |----------------|-----------------------------------------------------------------------|
-  | OpenAI         | https://platform.openai.com                                           |
-  | Azure OpenAI   | https://azure.microsoft.com/en-us/products/ai-services/openai-service |
-  | Google VertexAI| https://cloud.google.com/vertex-ai |
-  | IBM WatsonX | https://www.ibm.com/products/watsonx |
-  | RHOAI (vLLM)   | See tests/e2e-prow/rhoai/configs/run.yaml                             |
-  | RHEL AI (vLLM) | See tests/e2e/configs/run-rhelai.yaml                                 |
+  | Provider        | Setup Documentation                                                   |
+  |-----------------|-----------------------------------------------------------------------|
+  | OpenAI          | https://platform.openai.com                                           |
+  | Azure OpenAI    | https://azure.microsoft.com/en-us/products/ai-services/openai-service |
+  | Google VertexAI | https://cloud.google.com/vertex-ai                                    |
+  | IBM WatsonX     | https://www.ibm.com/products/watsonx                                  |
+  | RHOAI (vLLM)    | See tests/e2e-prow/rhoai/configs/run.yaml                             |
+  | RHEL AI (vLLM)  | See tests/e2e/configs/run-rhelai.yaml                                 |
 
   See `docs/providers.md` for configuration details.
 
@@ -200,17 +200,17 @@ To quickly get hands on LCS, we can run it using the default configurations prov
 Lightspeed Core Stack (LCS) provides support for Large Language Model providers. The models listed in the table below represent specific examples that have been tested within LCS.
 __Note__: Support for individual models is dependent on the specific inference provider's implementation within the currently supported version of Llama Stack.
 
-| Provider | Model                                          | Tool Calling | provider_type  | Example                                                                    |
-| -------- | ---------------------------------------------- | ------------ | -------------- | -------------------------------------------------------------------------- |
-| OpenAI   | gpt-5, gpt-4o, gpt4-turbo, gpt-4.1, o1, o3, o4 | Yes          | remote::openai | [1](examples/openai-faiss-run.yaml) [2](examples/openai-pgvector-run.yaml) |
-| OpenAI   | gpt-3.5-turbo, gpt-4                           | No           | remote::openai |                                                                            |
-| RHOAI (vLLM)| meta-llama/Llama-3.2-1B-Instruct           | Yes          | remote::vllm   | [1](tests/e2e-prow/rhoai/configs/run.yaml)                                     |
-| RHAIIS (vLLM)| meta-llama/Llama-3.1-8B-Instruct           | Yes          | remote::vllm   | [1](tests/e2e/configs/run-rhaiis.yaml)                                     |
-| RHEL AI (vLLM)| meta-llama/Llama-3.1-8B-Instruct           | Yes          | remote::vllm   | [1](tests/e2e/configs/run-rhelai.yaml)                                     |
-| Azure    | gpt-5, gpt-5-mini, gpt-5-nano, gpt-4o-mini, o3-mini, o4-mini, o1| Yes          | remote::azure  | [1](examples/azure-run.yaml)                                               |
-| Azure    |  gpt-5-chat, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano,  o1-mini | No or limited         | remote::azure  |  |
-| VertexAI    | google/gemini-2.0-flash, google/gemini-2.5-flash, google/gemini-2.5-pro [^1] | Yes          | remote::vertexai  | [1](examples/vertexai-run.yaml)                                               |
-| WatsonX    | meta-llama/llama-3-3-70b-instruct | Yes          | remote::watsonx  | [1](examples/watsonx-run.yaml)                                               |
+| Provider       | Model                                                                        | Tool Calling  | provider_type    | Example                                                                    |
+|----------------|------------------------------------------------------------------------------|---------------|------------------|----------------------------------------------------------------------------|
+| OpenAI         | gpt-5, gpt-4o, gpt-4-turbo, gpt-4.1, o1, o3, o4                               | Yes           | remote::openai   | [1](examples/openai-faiss-run.yaml) [2](examples/openai-pgvector-run.yaml) |
+| OpenAI         | gpt-3.5-turbo, gpt-4                                                         | No            | remote::openai   |                                                                            |
+| RHOAI (vLLM)   | meta-llama/Llama-3.2-1B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e-prow/rhoai/configs/run.yaml)                                 |
+| RHAIIS (vLLM)  | meta-llama/Llama-3.1-8B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e/configs/run-rhaiis.yaml)                                     |
+| RHEL AI (vLLM) | meta-llama/Llama-3.1-8B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e/configs/run-rhelai.yaml)                                     |
+| Azure          | gpt-5, gpt-5-mini, gpt-5-nano, gpt-4o-mini, o3-mini, o4-mini, o1             | Yes           | remote::azure    | [1](examples/azure-run.yaml)                                               |
+| Azure          | gpt-5-chat, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano,  o1-mini                    | No or limited | remote::azure    |                                                                            |
+| VertexAI       | google/gemini-2.0-flash, google/gemini-2.5-flash, google/gemini-2.5-pro [^1] | Yes           | remote::vertexai | [1](examples/vertexai-run.yaml)                                            |
+| WatsonX        | meta-llama/llama-3-3-70b-instruct                                            | Yes           | remote::watsonx  | [1](examples/watsonx-run.yaml)                                             |
 
 [^1]: List of models is limited by design in llama-stack, future versions will probably allow to use more models (see [here](https://github.com/llamastack/llama-stack/blob/release-0.3.x/llama_stack/providers/remote/inference/vertexai/vertexai.py#L54))
 
@@ -340,8 +340,9 @@ Each MCP server requires two fields:
 - `name`: Unique identifier for the MCP server
 - `url`: The endpoint where the MCP server is running
 
-And one optional field:
+And optional fields:
 - `provider_id`: MCP provider identification (defaults to `"model-context-protocol"`)
+- `headers`: List of HTTP header names to automatically forward from the incoming request to this MCP server (see [Automatic Header Propagation](#5-automatic-header-propagation-for-gateway-injected-headers))
 
 **Minimal Example:**
 
@@ -436,6 +437,41 @@ mcp_servers:
 
 When no token is provided for an OAuth-configured server, the service may respond with **401 Unauthorized** and a **`WWW-Authenticate`** header (probed from the MCP server). Clients can use this to drive an OAuth flow and then retry with the token in `MCP-HEADERS`.
 
+##### 5. Automatic Header Propagation (For Gateway-Injected Headers)
+
+Use the `headers` field to automatically forward specific headers from the incoming HTTP request to an MCP server. This is designed for environments where infrastructure components (e.g. API gateways) inject headers that MCP servers need but clients cannot provide.
+
+**HCC Use Case:** In Hybrid Cloud Console (HCC), the gateway strips the client's `Authorization` header and replaces it with `x-rh-identity` (a base64-encoded user identity). Backend services use `x-rh-identity` to identify users. Since clients never see this header, the existing `MCP-HEADERS` mechanism cannot be used. Instead, configure `headers` to automatically forward it:
+
+```yaml
+mcp_servers:
+  - name: "rbac"
+    url: "http://rbac-service:8080"
+    headers:
+      - x-rh-identity
+      - x-rh-insights-request-id
+```
+
+When a request arrives at Lightspeed with these headers, they are automatically extracted and forwarded to the `rbac` MCP server. No client-side configuration is needed.
+
+**Key behaviors:**
+
+- **Case-insensitive matching**: Header names in the allowlist are matched case-insensitively against the incoming request.
+- **Missing headers are skipped**: If a header in the allowlist is not present on the incoming request, it is silently skipped. The MCP server is **not** skipped (unlike `authorization_headers` behavior).
+- **Additive with other methods**: Propagated headers can be combined with `authorization_headers` and `MCP-HEADERS`. If the same header name appears in both `authorization_headers` and `headers`, the `authorization_headers` value takes precedence.
+
+**Combined example:**
+
+```yaml
+mcp_servers:
+  - name: "notifications"
+    url: "http://notifications-service:8080"
+    headers:
+      - x-rh-identity                              # From incoming request
+    authorization_headers:
+      X-API-Key: "/var/secrets/notifications-key"   # Static service credential
+```
+
 ##### Client-Authenticated MCP Servers Discovery
 
 To help clients determine which MCP servers require client-provided tokens, use the **MCP Client Auth Options** endpoint:
@@ -492,12 +528,13 @@ mcp_servers:
 
 ##### Authentication Method Comparison
 
-| Method | Use Case | Configuration | Token Scope | Example |
-|--------|----------|---------------|-------------|---------|
-| **Static File** | Service tokens, API keys | File path in config | Global (all users) | `"/var/secrets/token"` |
-| **Kubernetes** | K8s service accounts | `"kubernetes"` keyword | Per-user (from auth) | `"kubernetes"` |
-| **Client** | User-specific tokens | `"client"` keyword + HTTP header | Per-request | `"client"` |
-| **OAuth** | OAuth-protected MCP servers | `"oauth"` keyword + HTTP header | Per-request (from OAuth flow) | `"oauth"` |
+| Method                 | Use Case                         | Configuration                    | Token Scope                        | Example                       |
+|------------------------|----------------------------------|----------------------------------|------------------------------------|-------------------------------|
+| **Static File**        | Service tokens, API keys         | File path in config              | Global (all users)                 | `"/var/secrets/token"`        |
+| **Kubernetes**         | K8s service accounts             | `"kubernetes"` keyword           | Per-user (from auth)               | `"kubernetes"`                |
+| **Client**             | User-specific tokens             | `"client"` keyword + HTTP header | Per-request                        | `"client"`                    |
+| **OAuth**              | OAuth-protected MCP servers      | `"oauth"` keyword + HTTP header  | Per-request (from OAuth flow)      | `"oauth"`                     |
+| **Header Propagation** | Gateway-injected headers (HCC)   | `headers` list                   | Per-request (from incoming request)| `headers: [x-rh-identity]`   |
 
 ##### Important: Automatic Server Skipping
 
@@ -804,7 +841,7 @@ verify                            Run all linters
 distribution-archives             Generate distribution archives to be uploaded into Python registry
 upload-distribution-archives      Upload distribution archives into Python registry
 konflux-requirements              generate hermetic requirements.*.txt file for konflux build
-konflux-rpm-lock 	                generate rpm.lock.yaml file for konflux build
+konflux-rpm-lock 	              generate rpm.lock.yaml file for konflux build
 ```
 
 ## Running Linux container image

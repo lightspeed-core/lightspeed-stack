@@ -16,7 +16,12 @@ from models.database.conversations import UserConversation
 from models.requests import Attachment, QueryRequest
 from models.responses import QueryResponse
 from utils.token_counter import TokenCounter
-from utils.types import ResponsesApiParams, TurnSummary
+from utils.types import (
+    ResponsesApiParams,
+    ToolCallSummary,
+    ToolResultSummary,
+    TurnSummary,
+)
 
 # User ID must be proper UUID
 MOCK_AUTH = (
@@ -37,7 +42,7 @@ def create_dummy_request() -> Request:
         request (fastapi.Request): A Request constructed with a bare HTTP scope
         (type "http") for use in tests.
     """
-    req = Request(scope={"type": "http"})
+    req = Request(scope={"type": "http", "headers": []})
     return req
 
 
@@ -481,25 +486,25 @@ class TestRetrieveResponse:
         mock_output_item.type = "message"
         mock_output_item.content = "Response text"
 
+        mock_usage = mocker.Mock()
+        mock_usage.input_tokens = 10
+        mock_usage.output_tokens = 5
         mock_response = mocker.Mock(spec=OpenAIResponseObject)
         mock_response.output = [mock_output_item]
+        mock_response.usage = mock_usage
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mocker.Mock(blocked=False),
+            return_value=mocker.Mock(decision="passed"),
         )
         mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
+
+        mock_summary = TurnSummary()
+        mock_summary.llm_response = "Response text"
+        mock_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
         mocker.patch(
-            "app.endpoints.query.extract_text_from_response_output_item",
-            return_value="Response text",
-        )
-        mocker.patch(
-            "app.endpoints.query.build_tool_call_summary", return_value=(None, None)
-        )
-        mocker.patch("app.endpoints.query.parse_referenced_documents", return_value=[])
-        mocker.patch(
-            "app.endpoints.query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=10, output_tokens=5),
+            "app.endpoints.query.build_turn_summary",
+            return_value=mock_summary,
         )
 
         result = await retrieve_response(mock_client, mock_responses_params)
@@ -524,13 +529,16 @@ class TestRetrieveResponse:
         }
 
         mock_moderation_result = mocker.Mock()
-        mock_moderation_result.blocked = True
+        mock_moderation_result.decision = "blocked"
         mock_moderation_result.message = "Content blocked by moderation"
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mock_moderation_result,
+            new=mocker.AsyncMock(return_value=mock_moderation_result),
         )
-        mock_append = mocker.patch("app.endpoints.query.append_turn_to_conversation")
+        mock_append = mocker.patch(
+            "app.endpoints.query.append_turn_to_conversation",
+            new=mocker.AsyncMock(),
+        )
 
         result = await retrieve_response(mock_client, mock_responses_params)
 
@@ -553,7 +561,7 @@ class TestRetrieveResponse:
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mocker.Mock(blocked=False),
+            return_value=mocker.Mock(decision="passed"),
         )
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=APIConnectionError(
@@ -582,7 +590,7 @@ class TestRetrieveResponse:
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mocker.Mock(blocked=False),
+            return_value=mocker.Mock(decision="passed"),
         )
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=APIStatusError(
@@ -618,7 +626,7 @@ class TestRetrieveResponse:
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mocker.Mock(blocked=False),
+            return_value=mocker.Mock(decision="passed"),
         )
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=RuntimeError("context_length exceeded")
@@ -645,7 +653,7 @@ class TestRetrieveResponse:
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mocker.Mock(blocked=False),
+            return_value=mocker.Mock(decision="passed"),
         )
         mock_client.responses.create = mocker.AsyncMock(
             side_effect=RuntimeError("Some other error")
@@ -668,32 +676,40 @@ class TestRetrieveResponse:
             "model": "provider1/model1",
         }
 
+        mock_usage = mocker.Mock()
+        mock_usage.input_tokens = 10
+        mock_usage.output_tokens = 5
         mock_response = mocker.Mock(spec=OpenAIResponseObject)
         mock_response.output = [mocker.Mock(type="message")]
+        mock_response.usage = mock_usage
 
         mocker.patch(
             "app.endpoints.query.run_shield_moderation",
-            return_value=mocker.Mock(blocked=False),
+            return_value=mocker.Mock(decision="passed"),
         )
         mock_client.responses.create = mocker.AsyncMock(return_value=mock_response)
 
-        mock_tool_call = mocker.Mock()
-        mock_tool_result = mocker.Mock()
-        mocker.patch(
-            "app.endpoints.query.extract_text_from_response_output_item",
-            return_value="Response text",
+        mock_tool_call = ToolCallSummary(id="1", name="test", args={})
+        mock_tool_result = ToolResultSummary(
+            id="1", status="success", content="result", round=1
         )
+        mock_summary = TurnSummary()
+        mock_summary.llm_response = "Response text"
+        mock_summary.tool_calls = [mock_tool_call]
+        mock_summary.tool_results = [mock_tool_result]
+        mock_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
         mocker.patch(
-            "app.endpoints.query.build_tool_call_summary",
-            return_value=(mock_tool_call, mock_tool_result),
-        )
-        mocker.patch("app.endpoints.query.parse_referenced_documents", return_value=[])
-        mocker.patch(
-            "app.endpoints.query.extract_token_usage",
-            return_value=TokenCounter(input_tokens=10, output_tokens=5),
+            "app.endpoints.query.build_turn_summary",
+            return_value=mock_summary,
         )
 
         result = await retrieve_response(mock_client, mock_responses_params)
 
+        assert result.llm_response == "Response text"
         assert len(result.tool_calls) == 1
         assert len(result.tool_results) == 1
+        assert result.token_usage.input_tokens == 10
+        assert result.token_usage.output_tokens == 5
+        assert result.rag_chunks == []
+        assert result.referenced_documents == []
+        assert result.pre_rag_documents == []

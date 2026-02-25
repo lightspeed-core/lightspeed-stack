@@ -6,8 +6,25 @@ metadata:
 spec:
   imagePullSecrets:
     - name: quay-lightspeed-pull-secret
+  initContainers:
+    - name: setup-rag-data
+      image: busybox:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          mkdir -p /data/storage/rag
+          gunzip -c /rag-data/kv_store.db.gz > /data/storage/rag/kv_store.db
+          echo "RAG data extracted successfully"
+          ls -la /data/storage/rag/
+      volumeMounts:
+        - name: app-root
+          mountPath: /data
+        - name: rag-data
+          mountPath: /rag-data
   containers:
     - name: llama-stack-container
+      command: ["llama", "stack", "run", "/opt/app-root/run.yaml"]
       env:
         - name: KSVC_URL
           valueFrom:
@@ -19,6 +36,13 @@ spec:
             secretKeyRef:
               name: vllm-api-key-secret
               key: key
+        - name: INFERENCE_MODEL
+          value: "meta-llama/Llama-3.1-8B-Instruct"
+        - name: FAISS_VECTOR_STORE_ID
+          valueFrom:
+            secretKeyRef:
+              name: faiss-vector-store-secret
+              key: id
       image: ${LLAMA_STACK_IMAGE}
       ports:
         - containerPort: 8321
@@ -34,3 +58,6 @@ spec:
     - name: config
       configMap:
         name: llama-stack-config
+    - name: rag-data
+      configMap:
+        name: rag-data
