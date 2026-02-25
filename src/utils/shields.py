@@ -8,8 +8,8 @@ from llama_stack_client.types import CreateResponse
 
 import metrics
 from configuration import AppConfig
-from models.requests import QueryRequest
 from log import get_logger
+from models.requests import QueryRequest
 from models.responses import (
     NotFoundResponse,
     UnprocessableEntityResponse,
