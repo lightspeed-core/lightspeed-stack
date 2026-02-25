@@ -621,6 +621,178 @@ class TestGetMCPTools:
             == 'Bearer error="invalid_token"'
         )
 
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_with_propagated_headers(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test get_mcp_tools propagates allowlisted headers from the incoming request."""
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                headers=["x-rh-identity", "x-request-id"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {
+            "x-rh-identity": "encoded-identity",
+            "x-request-id": "req-456",
+            "content-type": "application/json",
+        }
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        assert tools[0]["headers"] == {
+            "x-rh-identity": "encoded-identity",
+            "x-request-id": "req-456",
+        }
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_headers_do_not_overwrite_auth_headers(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        """Test that propagated headers do not overwrite authorization_headers."""
+        secret_file = tmp_path / "token.txt"
+        secret_file.write_text("secret-token")
+
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                authorization_headers={"Authorization": str(secret_file)},
+                headers=["Authorization", "x-rh-identity"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {
+            "authorization": "request-auth-value",
+            "x-rh-identity": "identity-value",
+        }
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        # Authorization from authorization_headers should win
+        assert tools[0]["headers"]["Authorization"] == "secret-token"
+        # x-rh-identity from propagated headers should be included
+        assert tools[0]["headers"]["x-rh-identity"] == "identity-value"
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_headers_missing_from_request(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that missing allowlisted headers are simply skipped, server not skipped."""
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                headers=["x-rh-identity", "x-missing"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {
+            "x-rh-identity": "identity-value",
+        }
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        assert tools[0]["headers"] == {"x-rh-identity": "identity-value"}
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_headers_no_request_headers(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that propagated headers are skipped when request_headers is None."""
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                headers=["x-rh-identity"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        tools = await get_mcp_tools(token=None, mcp_headers=None, request_headers=None)
+        assert len(tools) == 1
+        assert "headers" not in tools[0]
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_propagated_headers_additive_with_mcp_headers(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that propagated headers work alongside MCP-HEADERS (client mechanism)."""
+        servers = [
+            ModelContextProtocolServer(
+                name="server1",
+                url="http://server1:8080",
+                authorization_headers={"Authorization": "client"},
+                headers=["x-rh-identity"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        mcp_hdrs = {"server1": {"Authorization": "Bearer client-token"}}
+        request_headers = {"x-rh-identity": "identity-value"}
+
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=mcp_hdrs, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        assert tools[0]["headers"] == {
+            "Authorization": "Bearer client-token",
+            "x-rh-identity": "identity-value",
+        }
+
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_mixed_case_precedence(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        """Test case-insensitive precedence: auth header wins over propagated variant."""
+        secret_file = tmp_path / "token.txt"
+        secret_file.write_text("file-secret")
+
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                authorization_headers={"Authorization": str(secret_file)},
+                headers=["authorization", "x-rh-identity"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {
+            "authorization": "request-value",
+            "x-rh-identity": "identity-value",
+        }
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        # Auth header should win (case-insensitive)
+        assert tools[0]["headers"]["Authorization"] == "file-secret"
+        # Propagated header should be included
+        assert tools[0]["headers"]["x-rh-identity"] == "identity-value"
+        # No duplicate "authorization" key
+        assert len(tools[0]["headers"]) == 2
+
 
 class TestGetTopicSummary:
     """Tests for get_topic_summary function."""

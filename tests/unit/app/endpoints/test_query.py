@@ -42,7 +42,7 @@ def create_dummy_request() -> Request:
         request (fastapi.Request): A Request constructed with a bare HTTP scope
         (type "http") for use in tests.
     """
-    req = Request(scope={"type": "http"})
+    req = Request(scope={"type": "http", "headers": []})
     return req
 
 

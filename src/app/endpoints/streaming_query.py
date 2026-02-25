@@ -201,6 +201,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         mcp_headers=mcp_headers,
         stream=True,
         store=True,
+        request_headers=request.headers,
     )
 
     # Handle Azure token refresh if needed

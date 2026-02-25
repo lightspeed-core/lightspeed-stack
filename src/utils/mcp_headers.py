@@ -1,12 +1,14 @@
 """MCP headers handling."""
 
 import json
+from collections.abc import Mapping
 from urllib.parse import urlparse
 
 from fastapi import Request
 
 from configuration import AppConfig
 from log import get_logger
+from models.config import ModelContextProtocolServer
 
 logger = get_logger(__name__)
 
@@ -92,3 +94,30 @@ def handle_mcp_headers_with_toolgroups(
                     break
 
     return converted_mcp_headers
+
+
+def extract_propagated_headers(
+    mcp_server: ModelContextProtocolServer,
+    request_headers: Mapping[str, str],
+) -> dict[str, str]:
+    """Extract headers from the incoming request based on the server's allowlist.
+
+    For each header name in the MCP server's ``headers`` allowlist, looks up
+    the corresponding value in the incoming request headers (case-insensitive)
+    and returns the matches.
+
+    Args:
+        mcp_server: MCP server configuration containing the headers allowlist.
+        request_headers: Headers from the incoming HTTP request.
+
+    Returns:
+        Dictionary of header names to values extracted from the request.
+        Only headers present in both the allowlist and the request are included.
+    """
+    lower_request_headers = {k.lower(): v for k, v in request_headers.items()}
+    propagated: dict[str, str] = {}
+    for header_name in mcp_server.headers:
+        value = lower_request_headers.get(header_name.lower())
+        if value is not None:
+            propagated[header_name] = value
+    return propagated

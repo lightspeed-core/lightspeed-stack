@@ -307,7 +307,7 @@ async def infer_endpoint(
     input_source = infer_request.get_input_source()
     instructions = _build_instructions(infer_request.context.systeminfo)
     model_id = _get_default_model_id()
-    mcp_tools = await get_mcp_tools()
+    mcp_tools = await get_mcp_tools(request_headers=request.headers)
     logger.debug(
         "Request %s: Combined input source length: %d", request_id, len(input_source)
     )
