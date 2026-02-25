@@ -305,7 +305,7 @@ class TestOLSCompatibilityIntegration:
 @pytest.fixture(name="dummy_request")
 def dummy_request() -> Request:
     """Dummy request fixture for testing."""
-    req = Request(scope={"type": "http"})
+    req = Request(scope={"type": "http", "headers": []})
     req.state.authorized_actions = set(Action)
     return req
 
