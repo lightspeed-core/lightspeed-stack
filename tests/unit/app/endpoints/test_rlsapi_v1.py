@@ -229,69 +229,88 @@ def test_build_instructions_no_customization(mocker: MockerFixture) -> None:
 # --- Test _get_default_model_id ---
 
 
-def test_get_default_model_id_success(mock_configuration: AppConfig) -> None:
+@pytest.mark.asyncio
+async def test_get_default_model_id_success(mock_configuration: AppConfig) -> None:
     """Test _get_default_model_id returns properly formatted model ID."""
-    model_id = _get_default_model_id()
+    model_id = await _get_default_model_id()
     assert model_id == "openai/gpt-4-turbo"
 
 
 @pytest.mark.parametrize(
-    ("config_setup", "expected_cause"),
+    "failure_mode",
     [
-        pytest.param(
-            "missing_model",
-            "No default model configured",
-            id="missing_model_config",
-        ),
-        pytest.param(
-            "none_inference",
-            "No inference configuration available",
-            id="none_inference_config",
-        ),
+        pytest.param("no_llm_models", id="no_llm_models_found"),
+        pytest.param("connection_error", id="connection_error"),
     ],
 )
-def test_get_default_model_id_errors(
+@pytest.mark.asyncio
+async def test_get_default_model_id_errors(
     mocker: MockerFixture,
     minimal_config: AppConfig,
-    config_setup: str,
-    expected_cause: str,
+    failure_mode: str,
 ) -> None:
-    """Test _get_default_model_id raises HTTPException with ServiceUnavailableResponse shape."""
-    if config_setup == "missing_model":
-        # Config exists but no model/provider defaults
-        mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
+    """Test _get_default_model_id fallback failures raise 503 responses."""
+    mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
+
+    mock_embedding_model = mocker.Mock()
+    mock_embedding_model.custom_metadata = {"model_type": "embedding"}
+    mock_embedding_model.id = "sentence-transformers/all-mpnet-base-v2"
+
+    mock_client = mocker.Mock()
+    mock_client.models = mocker.Mock()
+
+    if failure_mode == "no_llm_models":
+        mock_client.models.list = mocker.AsyncMock(return_value=[mock_embedding_model])
     else:
-        # inference is None
-        mock_config = mocker.Mock()
-        mock_config.inference = None
-        mocker.patch("app.endpoints.rlsapi_v1.configuration", mock_config)
+        mock_client.models.list = mocker.AsyncMock(
+            side_effect=APIConnectionError(request=mocker.Mock())
+        )
+
+    mock_client_holder = mocker.Mock()
+    mock_client_holder.get_client.return_value = mock_client
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder",
+        return_value=mock_client_holder,
+    )
 
     with pytest.raises(HTTPException) as exc_info:
-        _get_default_model_id()
+        await _get_default_model_id()
 
     assert exc_info.value.status_code == 503
-    assert expected_cause in str(exc_info.value.detail)
-    # Verify ServiceUnavailableResponse produces dict with response+cause keys
     detail: dict[str, str] = exc_info.value.detail  # type: ignore[assignment]
     assert set(detail.keys()) == {"response", "cause"}
 
 
-def test_config_error_503_matches_llm_error_503_shape(
+@pytest.mark.asyncio
+async def test_config_error_503_matches_llm_error_503_shape(
     mocker: MockerFixture,
+    minimal_config: AppConfig,
 ) -> None:
-    """Test that configuration error 503s have the same shape as LLM error 503s.
+    """Test that auto-discovery 503s have the same shape as LLM error 503s.
 
-    Both _get_default_model_id() configuration errors and APIConnectionError
+    Both _get_default_model_id() no-LLM auto-discovery errors and APIConnectionError
     handlers use ServiceUnavailableResponse, producing identical detail shapes
     with 'response' and 'cause' keys.
     """
-    # Trigger a configuration error 503
-    mock_config = mocker.Mock()
-    mock_config.inference = None
-    mocker.patch("app.endpoints.rlsapi_v1.configuration", mock_config)
+    mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
+
+    mock_embedding_model = mocker.Mock()
+    mock_embedding_model.custom_metadata = {"model_type": "embedding"}
+    mock_embedding_model.id = "sentence-transformers/all-mpnet-base-v2"
+
+    mock_client = mocker.Mock()
+    mock_client.models = mocker.Mock()
+    mock_client.models.list = mocker.AsyncMock(return_value=[mock_embedding_model])
+
+    mock_client_holder = mocker.Mock()
+    mock_client_holder.get_client.return_value = mock_client
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder",
+        return_value=mock_client_holder,
+    )
 
     with pytest.raises(HTTPException) as config_exc:
-        _get_default_model_id()
+        await _get_default_model_id()
 
     # Build an LLM connection error 503 using the same response model
     llm_response = ServiceUnavailableResponse(
@@ -304,6 +323,39 @@ def test_config_error_503_matches_llm_error_503_shape(
 
     # Both must have identical key sets: {"response", "cause"}
     assert set(config_detail.keys()) == set(llm_detail.keys()) == {"response", "cause"}
+
+
+@pytest.mark.asyncio
+async def test_get_default_model_id_auto_discovery_success(
+    mocker: MockerFixture, minimal_config: AppConfig
+) -> None:
+    """Test _get_default_model_id returns first discovered LLM model ID."""
+    mocker.patch("app.endpoints.rlsapi_v1.configuration", minimal_config)
+
+    mock_llm_model = mocker.Mock()
+    mock_llm_model.custom_metadata = {"model_type": "llm"}
+    mock_llm_model.id = "openai/gpt-4o-mini"
+
+    mock_embedding_model = mocker.Mock()
+    mock_embedding_model.custom_metadata = {"model_type": "embedding"}
+    mock_embedding_model.id = "sentence-transformers/all-mpnet-base-v2"
+
+    mock_client = mocker.Mock()
+    mock_client.models = mocker.Mock()
+    mock_client.models.list = mocker.AsyncMock(
+        return_value=[mock_embedding_model, mock_llm_model]
+    )
+
+    mock_client_holder = mocker.Mock()
+    mock_client_holder.get_client.return_value = mock_client
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder",
+        return_value=mock_client_holder,
+    )
+
+    model_id = await _get_default_model_id()
+
+    assert model_id == "openai/gpt-4o-mini"
 
 
 # --- Test retrieve_simple_response ---
