@@ -314,34 +314,35 @@ class TestRlsapiV1InferRequest:
 # ---------------------------------------------------------------------------
 
 
-class TestGetInputSource:
+@pytest.fixture(name="make_request")
+def make_request_fixture() -> Any:
+    """Factory fixture to build requests with specific context values."""
+
+    class _RequestBuilder:  # pylint: disable=too-few-public-methods
+        """Helper to construct requests with variable context."""
+
+        @staticmethod
+        def build(
+            question: str = "q",
+            stdin: str = "",
+            attachment: str = "",
+            terminal: str = "",
+        ) -> RlsapiV1InferRequest:
+            """Build an RlsapiV1InferRequest with specified context values."""
+            return RlsapiV1InferRequest(
+                question=question,
+                context=RlsapiV1Context(
+                    stdin=stdin,
+                    attachments=RlsapiV1Attachment(contents=attachment),
+                    terminal=RlsapiV1Terminal(output=terminal),
+                ),
+            )
+
+    return _RequestBuilder
+
+
+class TestGetInputSource:  # pylint: disable=too-few-public-methods
     """Test cases for RlsapiV1InferRequest.get_input_source() method."""
-
-    @pytest.fixture(name="make_request")
-    def make_request_fixture(self) -> Any:
-        """Factory fixture to build requests with specific context values."""
-
-        class _RequestBuilder:  # pylint: disable=too-few-public-methods
-            """Helper to construct requests with variable context."""
-
-            @staticmethod
-            def build(
-                question: str = "q",
-                stdin: str = "",
-                attachment: str = "",
-                terminal: str = "",
-            ) -> RlsapiV1InferRequest:
-                """Build an RlsapiV1InferRequest with specified context values."""
-                return RlsapiV1InferRequest(
-                    question=question,
-                    context=RlsapiV1Context(
-                        stdin=stdin,
-                        attachments=RlsapiV1Attachment(contents=attachment),
-                        terminal=RlsapiV1Terminal(output=terminal),
-                    ),
-                )
-
-        return _RequestBuilder
 
     # -------------------------------------------------------------------------
     # Parameterized tests for input combinations
@@ -431,9 +432,147 @@ class TestGetInputSource:
         )
         assert request.get_input_source() == expected
 
-    # -------------------------------------------------------------------------
-    # Edge cases
-    # -------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Character pattern validation tests — RlsapiV1SystemInfo
+# ---------------------------------------------------------------------------
+
+
+class TestSystemInfoCharacterValidation:
+    """Test character pattern validation for RlsapiV1SystemInfo fields."""
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            pytest.param("os", "RHEL", id="os-simple"),
+            pytest.param("os", "Red Hat Enterprise Linux", id="os-with-spaces"),
+            pytest.param("os", "CentOS-Stream", id="os-with-hyphen"),
+            pytest.param("os", "RHEL_9", id="os-with-underscore"),
+            pytest.param("os", "", id="os-empty-default"),
+            pytest.param("version", "9.3", id="version-major-minor"),
+            pytest.param("version", "8.10", id="version-two-digit-minor"),
+            pytest.param("version", "9.3.0", id="version-three-part"),
+            pytest.param("arch", "x86_64", id="arch-x86"),
+            pytest.param("arch", "aarch64", id="arch-arm"),
+            pytest.param("arch", "ppc64le", id="arch-ppc"),
+            pytest.param("arch", "s390x", id="arch-s390"),
+        ],
+    )
+    def test_valid_values_accepted(self, field: str, value: str) -> None:
+        """Test that valid system info values are accepted."""
+        sysinfo = RlsapiV1SystemInfo(**{field: value})
+        assert getattr(sysinfo, field) == value
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            pytest.param("os", "<script>alert('xss')</script>", id="os-html-script"),
+            pytest.param("os", "RHEL\n", id="os-newline"),
+            pytest.param("os", "RHEL\t", id="os-tab"),
+            pytest.param("os", "RHEL\x00", id="os-null-byte"),
+            pytest.param("version", "9.3<br>", id="version-html-tag"),
+            pytest.param("version", "9.3\r\n", id="version-crlf"),
+            pytest.param("arch", "x86_64; rm -rf /", id="arch-semicolon"),
+            pytest.param("arch", "x86_64\x0b", id="arch-vertical-tab"),
+        ],
+    )
+    def test_invalid_values_rejected(self, field: str, value: str) -> None:
+        """Test that invalid characters are rejected in system info fields."""
+        with pytest.raises(ValidationError, match="String should match pattern"):
+            RlsapiV1SystemInfo(**{field: value})
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            pytest.param("01JDKR8N7QW9ZMXVGK3PB5TQWZ", id="ulid"),
+            pytest.param("550e8400-e29b-41d4-a716-446655440000", id="uuid"),
+            pytest.param("machine-001", id="hostname-style"),
+            pytest.param("", id="empty-default"),
+        ],
+    )
+    def test_valid_system_id(self, value: str) -> None:
+        """Test that valid machine IDs are accepted."""
+        sysinfo = RlsapiV1SystemInfo(
+            system_id=value  # pyright: ignore[reportCallIssue]
+        )
+        assert sysinfo.system_id == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            pytest.param("machine id with spaces", id="spaces"),
+            pytest.param("id<script>", id="html-tag"),
+            pytest.param("id\ninjection", id="newline"),
+        ],
+    )
+    def test_invalid_system_id(self, value: str) -> None:
+        """Test that invalid characters are rejected in system_id."""
+        with pytest.raises(ValidationError, match="String should match pattern"):
+            RlsapiV1SystemInfo(system_id=value)  # pyright: ignore[reportCallIssue]
+
+
+# ---------------------------------------------------------------------------
+# Character pattern validation tests — RlsapiV1CLA
+# ---------------------------------------------------------------------------
+
+
+class TestCLACharacterValidation:
+    """Test character pattern validation for RlsapiV1CLA fields."""
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            pytest.param(
+                "nevra",
+                "command-line-assistant-0:0.2.0-1.el9.noarch",
+                id="nevra-with-epoch",
+            ),
+            pytest.param(
+                "nevra",
+                "command-line-assistant-0.1.0-1.el9.noarch",
+                id="nevra-without-epoch",
+            ),
+            pytest.param(
+                "nevra",
+                "pkg~pre1+post1-0:1.0-1.el9.x86_64",
+                id="nevra-tilde-plus",
+            ),
+            pytest.param("nevra", "", id="nevra-empty-default"),
+            pytest.param("version", "0.2.0", id="version-semver"),
+            pytest.param("version", "1.0.0-rc1", id="version-prerelease"),
+            pytest.param("version", "0.2.0.dev1", id="version-dev"),
+            pytest.param("version", "", id="version-empty-default"),
+        ],
+    )
+    def test_valid_values_accepted(self, field: str, value: str) -> None:
+        """Test that valid CLA values are accepted."""
+        cla = RlsapiV1CLA(**{field: value})
+        assert getattr(cla, field) == value
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            pytest.param("nevra", "pkg<script>", id="nevra-html-tag"),
+            pytest.param("nevra", "pkg\nnewline", id="nevra-newline"),
+            pytest.param("nevra", "pkg name spaces", id="nevra-spaces"),
+            pytest.param("version", "0.2.0\x00", id="version-null-byte"),
+            pytest.param("version", "0.2.0<br>", id="version-html"),
+            pytest.param("version", "0.2.0\t", id="version-tab"),
+        ],
+    )
+    def test_invalid_values_rejected(self, field: str, value: str) -> None:
+        """Test that invalid characters are rejected in CLA fields."""
+        with pytest.raises(ValidationError, match="String should match pattern"):
+            RlsapiV1CLA(**{field: value})
+
+
+# ---------------------------------------------------------------------------
+# get_input_source() tests (continued edge cases)
+# ---------------------------------------------------------------------------
+
+
+class TestGetInputSourceEdgeCases:
+    """Edge case tests for RlsapiV1InferRequest.get_input_source()."""
 
     def test_preserves_content_formatting(self, make_request: Any) -> None:
         """Test that content formatting (newlines, special chars) is preserved."""
@@ -455,10 +594,3 @@ class TestGetInputSource:
         )
         result = request.get_input_source()
         assert result == "Q\n\nS\n\nA\n\nT"
-        # Verify order by checking positions
-        assert (
-            result.index("Q")
-            < result.index("S")
-            < result.index("A")
-            < result.index("T")
-        )
