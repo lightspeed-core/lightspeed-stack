@@ -33,7 +33,7 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 ## Info for developers
 
-[Contributing guide](https://lightspeed-core.github.io/lightspeed-stack/CONTRIBUTING.html)
+[Contributing guide](https://lightspeed-core.github.io/lightspeed-stack/contributing_guide.html)
 
 
 ## API
