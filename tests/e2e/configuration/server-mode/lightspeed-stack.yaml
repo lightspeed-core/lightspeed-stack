@@ -18,6 +18,9 @@ user_data_collection:
   transcripts_storage: "/tmp/data/transcripts"
 authentication:
   module: "noop"
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
 mcp_servers:
   # Mock server with client-provided auth - should appear in mcp-auth/client-options response
   - name: "github-api"
