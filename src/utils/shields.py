@@ -9,12 +9,12 @@ from llama_stack_client.types import CreateResponse
 import metrics
 from configuration import AppConfig
 from models.requests import QueryRequest
+from log import get_logger
 from models.responses import (
     NotFoundResponse,
     UnprocessableEntityResponse,
 )
 from utils.types import ShieldModerationResult
-from log import get_logger
 
 logger = get_logger(__name__)
 
@@ -158,7 +158,12 @@ async def run_shield_moderation(
     available_models = {model.id for model in await client.models.list()}
 
     for shield in shields_to_run:
-        if (
+        # Only validate provider_resource_id against models for llama-guard.
+        # Llama Stack does not verify that the llama-guard model is registered,
+        # so we check it here to fail fast with a clear error.
+        # Custom shield providers (e.g. lightspeed_question_validity) configure
+        # their model internally, so provider_resource_id is not a model ID.
+        if shield.provider_id == "llama-guard" and (
             not shield.provider_resource_id
             or shield.provider_resource_id not in available_models
         ):
