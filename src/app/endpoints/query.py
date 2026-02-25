@@ -3,7 +3,7 @@
 """Handler for REST API call to provide answer to query using Response API."""
 
 import datetime
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from llama_stack_api.openai_responses import OpenAIResponseObject
