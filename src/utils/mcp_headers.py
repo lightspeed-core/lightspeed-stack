@@ -114,9 +114,10 @@ def extract_propagated_headers(
         Dictionary of header names to values extracted from the request.
         Only headers present in both the allowlist and the request are included.
     """
+    lower_request_headers = {k.lower(): v for k, v in request_headers.items()}
     propagated: dict[str, str] = {}
     for header_name in mcp_server.headers:
-        value = request_headers.get(header_name.lower())
+        value = lower_request_headers.get(header_name.lower())
         if value is not None:
             propagated[header_name] = value
     return propagated

@@ -4,7 +4,7 @@
 
 import json
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from fastapi import HTTPException
 from llama_stack_api.openai_responses import (
@@ -104,7 +104,7 @@ async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-position
     no_tools: bool | None,
     token: str,
     mcp_headers: McpHeaders | None = None,
-    request_headers: Mapping[str, str] | None = None,
+    request_headers: Optional[Mapping[str, str]] = None,
 ) -> list[dict[str, Any]] | None:
     """Prepare tools for Responses API including RAG and MCP tools.
 
@@ -199,7 +199,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     mcp_headers: McpHeaders | None = None,
     stream: bool = False,
     store: bool = True,
-    request_headers: Mapping[str, str] | None = None,
+    request_headers: Optional[Mapping[str, str]] = None,
 ) -> ResponsesApiParams:
     """Prepare API request parameters for Responses API.
 
@@ -328,7 +328,7 @@ def get_rag_tools(vector_store_ids: list[str]) -> list[dict[str, Any]] | None:
 async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-locals
     token: str | None = None,
     mcp_headers: McpHeaders | None = None,
-    request_headers: Mapping[str, str] | None = None,
+    request_headers: Optional[Mapping[str, str]] = None,
 ) -> list[dict[str, Any]]:
     """Convert MCP servers to tools format for Responses API.
 
@@ -417,9 +417,11 @@ async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-
         # Propagate allowlisted headers from the incoming request
         if mcp_server.headers and request_headers is not None:
             propagated = extract_propagated_headers(mcp_server, request_headers)
+            existing_lower = {name.lower() for name in headers}
             for h_name, h_value in propagated.items():
-                if h_name not in headers:
+                if h_name.lower() not in existing_lower:
                     headers[h_name] = h_value
+                    existing_lower.add(h_name.lower())
 
         if len(headers) > 0:
             # add headers to tool definition

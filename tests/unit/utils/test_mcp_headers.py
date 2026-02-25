@@ -261,6 +261,18 @@ class TestExtractPropagatedHeaders:
         result = extract_propagated_headers(server, request_headers)
         assert result == {"X-Rh-Identity": "identity-value"}
 
+    def test_case_insensitive_lookup_mixed_case_request(self) -> None:
+        """Test allowlist lowercase matches uppercase request header in plain dict."""
+        server = ModelContextProtocolServer(
+            name="rbac",
+            url="http://rbac:8080",
+            headers=["x-rh-identity"],
+        )
+        # Plain dict with mixed-case keys (not Starlette Headers)
+        request_headers = {"X-RH-Identity": "identity-value"}
+        result = extract_propagated_headers(server, request_headers)
+        assert result == {"x-rh-identity": "identity-value"}
+
     def test_no_headers_field_configured(self) -> None:
         """Test server with no headers allowlist configured (default empty)."""
         server = ModelContextProtocolServer(

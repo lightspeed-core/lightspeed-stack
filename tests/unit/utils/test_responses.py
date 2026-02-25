@@ -758,6 +758,41 @@ class TestGetMCPTools:
             "x-rh-identity": "identity-value",
         }
 
+    @pytest.mark.asyncio
+    async def test_get_mcp_tools_mixed_case_precedence(
+        self, tmp_path: Path, mocker: MockerFixture
+    ) -> None:
+        """Test case-insensitive precedence: auth header wins over propagated variant."""
+        secret_file = tmp_path / "token.txt"
+        secret_file.write_text("file-secret")
+
+        servers = [
+            ModelContextProtocolServer(
+                name="rbac",
+                url="http://rbac:8080",
+                authorization_headers={"Authorization": str(secret_file)},
+                headers=["authorization", "x-rh-identity"],
+            ),
+        ]
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = servers
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        request_headers = {
+            "authorization": "request-value",
+            "x-rh-identity": "identity-value",
+        }
+        tools = await get_mcp_tools(
+            token=None, mcp_headers=None, request_headers=request_headers
+        )
+        assert len(tools) == 1
+        # Auth header should win (case-insensitive)
+        assert tools[0]["headers"]["Authorization"] == "file-secret"
+        # Propagated header should be included
+        assert tools[0]["headers"]["x-rh-identity"] == "identity-value"
+        # No duplicate "authorization" key
+        assert len(tools[0]["headers"]) == 2
+
 
 class TestGetTopicSummary:
     """Tests for get_topic_summary function."""

@@ -536,6 +536,22 @@ class ModelContextProtocolServer(ConfigurationBase):
         ),
     )
 
+    @field_validator("headers")
+    @classmethod
+    def validate_headers(cls, value: list[str]) -> list[str]:
+        """Validate propagated headers: no empty strings, no case-insensitive duplicates."""
+        seen: set[str] = set()
+        for header in value:
+            if not header.strip():
+                msg = "Header names must not be empty"
+                raise ValueError(msg)
+            lower = header.lower()
+            if lower in seen:
+                msg = f"Duplicate header name (case-insensitive): '{header}'"
+                raise ValueError(msg)
+            seen.add(lower)
+        return value
+
     timeout: Optional[PositiveInt] = Field(
         default=None,
         title="Request timeout",

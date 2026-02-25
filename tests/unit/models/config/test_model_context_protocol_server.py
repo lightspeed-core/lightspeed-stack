@@ -318,3 +318,43 @@ def test_model_context_protocol_server_resolved_headers_empty() -> None:
     )
     assert mcp is not None
     assert not mcp.resolved_authorization_headers
+
+
+def test_model_context_protocol_server_headers_valid() -> None:
+    """Test that a valid headers list is accepted."""
+    mcp = ModelContextProtocolServer(
+        name="test-server",
+        url="http://localhost:8080",
+        headers=["x-rh-identity", "x-request-id"],
+    )
+    assert mcp.headers == ["x-rh-identity", "x-request-id"]
+
+
+def test_model_context_protocol_server_headers_empty_string_rejected() -> None:
+    """Test that an empty string in headers is rejected."""
+    with pytest.raises(ValidationError, match="Header names must not be empty"):
+        ModelContextProtocolServer(
+            name="test-server",
+            url="http://localhost:8080",
+            headers=["x-rh-identity", ""],
+        )
+
+
+def test_model_context_protocol_server_headers_whitespace_only_rejected() -> None:
+    """Test that a whitespace-only string in headers is rejected."""
+    with pytest.raises(ValidationError, match="Header names must not be empty"):
+        ModelContextProtocolServer(
+            name="test-server",
+            url="http://localhost:8080",
+            headers=["  "],
+        )
+
+
+def test_model_context_protocol_server_headers_duplicate_rejected() -> None:
+    """Test that case-insensitive duplicate headers are rejected."""
+    with pytest.raises(ValidationError, match="Duplicate header name"):
+        ModelContextProtocolServer(
+            name="test-server",
+            url="http://localhost:8080",
+            headers=["X-Rh-Identity", "x-rh-identity"],
+        )
