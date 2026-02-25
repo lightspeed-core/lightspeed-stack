@@ -679,9 +679,9 @@ class TestGetMCPTools:
             token=None, mcp_headers=None, request_headers=request_headers
         )
         assert len(tools) == 1
-        # Authorization from authorization_headers should win
-        assert tools[0]["headers"]["Authorization"] == "secret-token"
-        # x-rh-identity from propagated headers should be included
+        # Authorization from authorization_headers goes to tool's authorization field
+        assert tools[0]["authorization"] == "secret-token"
+        # x-rh-identity from propagated headers should be in headers
         assert tools[0]["headers"]["x-rh-identity"] == "identity-value"
 
     @pytest.mark.asyncio
@@ -753,10 +753,8 @@ class TestGetMCPTools:
             token=None, mcp_headers=mcp_hdrs, request_headers=request_headers
         )
         assert len(tools) == 1
-        assert tools[0]["headers"] == {
-            "Authorization": "Bearer client-token",
-            "x-rh-identity": "identity-value",
-        }
+        assert tools[0]["authorization"] == "Bearer client-token"
+        assert tools[0]["headers"] == {"x-rh-identity": "identity-value"}
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_mixed_case_precedence(
@@ -786,12 +784,11 @@ class TestGetMCPTools:
             token=None, mcp_headers=None, request_headers=request_headers
         )
         assert len(tools) == 1
-        # Auth header should win (case-insensitive)
-        assert tools[0]["headers"]["Authorization"] == "file-secret"
-        # Propagated header should be included
+        # Auth header goes to tool's authorization field
+        assert tools[0]["authorization"] == "file-secret"
+        # Propagated header should be in headers (Authorization not in headers)
         assert tools[0]["headers"]["x-rh-identity"] == "identity-value"
-        # No duplicate "authorization" key
-        assert len(tools[0]["headers"]) == 2
+        assert len(tools[0]["headers"]) == 1
 
 
 class TestGetTopicSummary:
