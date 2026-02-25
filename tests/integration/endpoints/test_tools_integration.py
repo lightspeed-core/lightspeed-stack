@@ -120,7 +120,9 @@ async def test_tools_endpoint_returns_401_when_oauth_probe_times_out(
     mock_session_cm = mocker.AsyncMock()
     mock_session_cm.__aenter__.return_value = mock_session
     mock_session_cm.__aexit__.return_value = None
-    mocker.patch("utils.mcp_oauth_probe.aiohttp.ClientSession", return_value=mock_session_cm)
+    mocker.patch(
+        "utils.mcp_oauth_probe.aiohttp.ClientSession", return_value=mock_session_cm
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         await tools.tools_endpoint_handler(request=test_request, auth=test_auth)
