@@ -1,12 +1,14 @@
 """LLM query and response steps."""
 
 import json
+import os
 import requests
 from behave import then, step  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 from tests.e2e.utils.utils import replace_placeholders
 
-DEFAULT_LLM_TIMEOUT = 60
+# Longer timeout for Prow/OpenShift with CPU-based vLLM
+DEFAULT_LLM_TIMEOUT = 180 if os.getenv("RUNNING_PROW") else 60
 
 
 @step("I wait for the response to be completed")

@@ -6,16 +6,19 @@ for testing purposes. It captures and logs authorization headers, making it
 useful for validating that Lightspeed Core Stack correctly sends auth headers
 to MCP servers.
 
-The server runs both HTTP and HTTPS simultaneously on consecutive ports.
+The server runs HTTP and optionally HTTPS on consecutive ports.
+Set MCP_HTTP_ONLY=true to disable HTTPS (useful when openssl is unavailable).
 
 Usage:
     python server.py [http_port]
 
 Example:
     python server.py 3000  # HTTP on 3000, HTTPS on 3001
+    MCP_HTTP_ONLY=true python server.py 3000  # HTTP only on 3000
 """
 
 import json
+import os
 import ssl
 import subprocess
 import sys
@@ -268,31 +271,43 @@ def run_https_server(port: int, httpd: HTTPServer) -> None:
 
 
 def main() -> None:
-    """Start the mock MCP server with both HTTP and HTTPS."""
+    """Start the mock MCP server with HTTP and optionally HTTPS."""
     http_port = int(sys.argv[1]) if len(sys.argv) > 1 else 3000
-    https_port = http_port + 1
+    http_only = os.environ.get("MCP_HTTP_ONLY", "").lower() in ("true", "1", "yes")
 
     # Create HTTP server
     http_server = HTTPServer(("", http_port), MCPMockHandler)
 
-    # Create HTTPS server with self-signed certificate
-    https_server = HTTPServer(("", https_port), MCPMockHandler)
+    https_server = None
+    if not http_only:
+        try:
+            https_port = http_port + 1
+            https_server = HTTPServer(("", https_port), MCPMockHandler)
 
-    # Generate or load self-signed certificate
-    script_dir = Path(__file__).parent
-    cert_dir = script_dir / ".certs"
-    cert_file, key_file = generate_self_signed_cert(cert_dir)
+            # Generate or load self-signed certificate
+            script_dir = Path(__file__).parent
+            cert_dir = script_dir / ".certs"
+            cert_file, key_file = generate_self_signed_cert(cert_dir)
 
-    # Wrap socket with SSL
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    context.load_cert_chain(cert_file, key_file)
-    https_server.socket = context.wrap_socket(https_server.socket, server_side=True)
+            # Wrap socket with SSL
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(cert_file, key_file)
+            https_server.socket = context.wrap_socket(
+                https_server.socket, server_side=True
+            )
+        except (subprocess.CalledProcessError, FileNotFoundError, OSError) as e:
+            print(f"HTTPS setup failed ({e}), running HTTP only")
+            https_server = None
 
     print("=" * 70)
-    print("MCP Mock Server starting with HTTP and HTTPS")
+    if https_server:
+        print("MCP Mock Server starting with HTTP and HTTPS")
+    else:
+        print("MCP Mock Server starting (HTTP only)")
     print("=" * 70)
     print(f"HTTP:  http://localhost:{http_port}")
-    print(f"HTTPS: https://localhost:{https_port}")
+    if https_server:
+        print(f"HTTPS: https://localhost:{https_port}")
     print("=" * 70)
     print("Debug endpoints:")
     print("  • /debug/headers  - View captured headers")
@@ -300,29 +315,35 @@ def main() -> None:
     print("MCP endpoint:")
     print("  • POST to any path (e.g., / or /mcp/v1/list_tools)")
     print("=" * 70)
-    print("Note: HTTPS uses a self-signed certificate (for testing only)")
+    if https_server:
+        print("Note: HTTPS uses a self-signed certificate (for testing only)")
     print("Press Ctrl+C to stop")
     print()
 
-    # Start servers in separate threads
+    # Start HTTP server in a thread
     http_thread = threading.Thread(
         target=run_http_server, args=(http_port, http_server), daemon=True
     )
-    https_thread = threading.Thread(
-        target=run_https_server, args=(https_port, https_server), daemon=True
-    )
-
     http_thread.start()
-    https_thread.start()
+
+    # Start HTTPS server if available
+    https_thread = None
+    if https_server:
+        https_thread = threading.Thread(
+            target=run_https_server, args=(https_port, https_server), daemon=True
+        )
+        https_thread.start()
 
     try:
         # Keep main thread alive
         http_thread.join()
-        https_thread.join()
+        if https_thread:
+            https_thread.join()
     except KeyboardInterrupt:
         print("\nShutting down mock servers...")
         http_server.shutdown()
-        https_server.shutdown()
+        if https_server:
+            https_server.shutdown()
 
 
 if __name__ == "__main__":
