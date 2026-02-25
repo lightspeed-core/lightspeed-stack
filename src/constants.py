@@ -6,6 +6,9 @@ MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION = "0.4.3"
 
 UNABLE_TO_PROCESS_RESPONSE = "Unable to process this request"
 
+# Response stored in the conversation when the user interrupts a streaming request
+INTERRUPTED_RESPONSE_MESSAGE = "You interrupted this request."
+
 # Supported attachment types
 ATTACHMENT_TYPES = frozenset(
     {
