@@ -339,7 +339,9 @@ async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-
         request_headers: Optional incoming HTTP request headers for allowlist propagation
 
     Returns:
-        List of MCP tool definitions with server details and optional auth headers
+        List of MCP tool definitions with server details and optional auth. When
+        present, the Authorization header is set as the tool's "authorization"
+        field; any other resolved headers are set in "headers".
 
     Raises:
         HTTPException: 401 with WWW-Authenticate header when an MCP server uses OAuth,
@@ -423,6 +425,10 @@ async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-
                 if h_name.lower() not in existing_lower:
                     headers[h_name] = h_value
                     existing_lower.add(h_name.lower())
+
+        # Build Authorization header
+        if headers.get("Authorization"):
+            tool_def["authorization"] = headers.pop("Authorization")
 
         if len(headers) > 0:
             # add headers to tool definition

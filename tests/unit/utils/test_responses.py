@@ -387,7 +387,7 @@ class TestGetMCPTools:
         mocker.patch("utils.responses.configuration", mock_config)
         tools_k8s = await get_mcp_tools(token="user-k8s-token")
         assert len(tools_k8s) == 1
-        assert tools_k8s[0]["headers"] == {"Authorization": "Bearer user-k8s-token"}
+        assert tools_k8s[0]["authorization"] == "Bearer user-k8s-token"
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_with_mcp_headers(self, mocker: MockerFixture) -> None:
@@ -413,9 +413,9 @@ class TestGetMCPTools:
         tools = await get_mcp_tools(token=None, mcp_headers=mcp_headers)
         assert len(tools) == 1
         assert tools[0]["headers"] == {
-            "Authorization": "client-provided-token",
             "X-Custom": "custom-value",
         }
+        assert tools[0]["authorization"] == "client-provided-token"
 
         # Test with mcp_headers=None (server should be skipped)
         tools_no_headers = await get_mcp_tools(token=None, mcp_headers=None)
@@ -491,7 +491,7 @@ class TestGetMCPTools:
 
         tools = await get_mcp_tools(token=None)
         assert len(tools) == 1
-        assert tools[0]["headers"] == {"Authorization": "static-secret-token"}
+        assert tools[0]["authorization"] == "static-secret-token"
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_with_mixed_headers(
@@ -525,8 +525,8 @@ class TestGetMCPTools:
 
         tools = await get_mcp_tools(token="k8s-token", mcp_headers=mcp_headers)
         assert len(tools) == 1
+        assert tools[0]["authorization"] == "Bearer k8s-token"
         assert tools[0]["headers"] == {
-            "Authorization": "Bearer k8s-token",
             "X-API-Key": "secret-api-key",
             "X-Custom": "client-custom-value",
         }
@@ -679,9 +679,9 @@ class TestGetMCPTools:
             token=None, mcp_headers=None, request_headers=request_headers
         )
         assert len(tools) == 1
-        # Authorization from authorization_headers should win
-        assert tools[0]["headers"]["Authorization"] == "secret-token"
-        # x-rh-identity from propagated headers should be included
+        # Authorization from authorization_headers goes to tool's authorization field
+        assert tools[0]["authorization"] == "secret-token"
+        # x-rh-identity from propagated headers should be in headers
         assert tools[0]["headers"]["x-rh-identity"] == "identity-value"
 
     @pytest.mark.asyncio
@@ -753,10 +753,8 @@ class TestGetMCPTools:
             token=None, mcp_headers=mcp_hdrs, request_headers=request_headers
         )
         assert len(tools) == 1
-        assert tools[0]["headers"] == {
-            "Authorization": "Bearer client-token",
-            "x-rh-identity": "identity-value",
-        }
+        assert tools[0]["authorization"] == "Bearer client-token"
+        assert tools[0]["headers"] == {"x-rh-identity": "identity-value"}
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_mixed_case_precedence(
@@ -786,12 +784,11 @@ class TestGetMCPTools:
             token=None, mcp_headers=None, request_headers=request_headers
         )
         assert len(tools) == 1
-        # Auth header should win (case-insensitive)
-        assert tools[0]["headers"]["Authorization"] == "file-secret"
-        # Propagated header should be included
+        # Auth header goes to tool's authorization field
+        assert tools[0]["authorization"] == "file-secret"
+        # Propagated header should be in headers (Authorization not in headers)
         assert tools[0]["headers"]["x-rh-identity"] == "identity-value"
-        # No duplicate "authorization" key
-        assert len(tools[0]["headers"]) == 2
+        assert len(tools[0]["headers"]) == 1
 
 
 class TestGetTopicSummary:
