@@ -130,14 +130,14 @@ Lightspeed Core Stack is based on the FastAPI framework (Uvicorn). The service i
 
   Lightspeed Stack supports multiple LLM providers.
 
-  | Provider       | Setup Documentation                                                   |
-  |----------------|-----------------------------------------------------------------------|
-  | OpenAI         | https://platform.openai.com                                           |
-  | Azure OpenAI   | https://azure.microsoft.com/en-us/products/ai-services/openai-service |
-  | Google VertexAI| https://cloud.google.com/vertex-ai |
-  | IBM WatsonX | https://www.ibm.com/products/watsonx |
-  | RHOAI (vLLM)   | See tests/e2e-prow/rhoai/configs/run.yaml                             |
-  | RHEL AI (vLLM) | See tests/e2e/configs/run-rhelai.yaml                                 |
+  | Provider        | Setup Documentation                                                   |
+  |-----------------|-----------------------------------------------------------------------|
+  | OpenAI          | https://platform.openai.com                                           |
+  | Azure OpenAI    | https://azure.microsoft.com/en-us/products/ai-services/openai-service |
+  | Google VertexAI | https://cloud.google.com/vertex-ai                                    |
+  | IBM WatsonX     | https://www.ibm.com/products/watsonx                                  |
+  | RHOAI (vLLM)    | See tests/e2e-prow/rhoai/configs/run.yaml                             |
+  | RHEL AI (vLLM)  | See tests/e2e/configs/run-rhelai.yaml                                 |
 
   See `docs/providers.md` for configuration details.
 
@@ -200,17 +200,17 @@ To quickly get hands on LCS, we can run it using the default configurations prov
 Lightspeed Core Stack (LCS) provides support for Large Language Model providers. The models listed in the table below represent specific examples that have been tested within LCS.
 __Note__: Support for individual models is dependent on the specific inference provider's implementation within the currently supported version of Llama Stack.
 
-| Provider | Model                                          | Tool Calling | provider_type  | Example                                                                    |
-| -------- | ---------------------------------------------- | ------------ | -------------- | -------------------------------------------------------------------------- |
-| OpenAI   | gpt-5, gpt-4o, gpt4-turbo, gpt-4.1, o1, o3, o4 | Yes          | remote::openai | [1](examples/openai-faiss-run.yaml) [2](examples/openai-pgvector-run.yaml) |
-| OpenAI   | gpt-3.5-turbo, gpt-4                           | No           | remote::openai |                                                                            |
-| RHOAI (vLLM)| meta-llama/Llama-3.2-1B-Instruct           | Yes          | remote::vllm   | [1](tests/e2e-prow/rhoai/configs/run.yaml)                                     |
-| RHAIIS (vLLM)| meta-llama/Llama-3.1-8B-Instruct           | Yes          | remote::vllm   | [1](tests/e2e/configs/run-rhaiis.yaml)                                     |
-| RHEL AI (vLLM)| meta-llama/Llama-3.1-8B-Instruct           | Yes          | remote::vllm   | [1](tests/e2e/configs/run-rhelai.yaml)                                     |
-| Azure    | gpt-5, gpt-5-mini, gpt-5-nano, gpt-4o-mini, o3-mini, o4-mini, o1| Yes          | remote::azure  | [1](examples/azure-run.yaml)                                               |
-| Azure    |  gpt-5-chat, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano,  o1-mini | No or limited         | remote::azure  |  |
-| VertexAI    | google/gemini-2.0-flash, google/gemini-2.5-flash, google/gemini-2.5-pro [^1] | Yes          | remote::vertexai  | [1](examples/vertexai-run.yaml)                                               |
-| WatsonX    | meta-llama/llama-3-3-70b-instruct | Yes          | remote::watsonx  | [1](examples/watsonx-run.yaml)                                               |
+| Provider       | Model                                                                        | Tool Calling  | provider_type    | Example                                                                    |
+|----------------|------------------------------------------------------------------------------|---------------|------------------|----------------------------------------------------------------------------|
+| OpenAI         | gpt-5, gpt-4o, gpt-4-turbo, gpt-4.1, o1, o3, o4                               | Yes           | remote::openai   | [1](examples/openai-faiss-run.yaml) [2](examples/openai-pgvector-run.yaml) |
+| OpenAI         | gpt-3.5-turbo, gpt-4                                                         | No            | remote::openai   |                                                                            |
+| RHOAI (vLLM)   | meta-llama/Llama-3.2-1B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e-prow/rhoai/configs/run.yaml)                                 |
+| RHAIIS (vLLM)  | meta-llama/Llama-3.1-8B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e/configs/run-rhaiis.yaml)                                     |
+| RHEL AI (vLLM) | meta-llama/Llama-3.1-8B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e/configs/run-rhelai.yaml)                                     |
+| Azure          | gpt-5, gpt-5-mini, gpt-5-nano, gpt-4o-mini, o3-mini, o4-mini, o1             | Yes           | remote::azure    | [1](examples/azure-run.yaml)                                               |
+| Azure          | gpt-5-chat, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano,  o1-mini                    | No or limited | remote::azure    |                                                                            |
+| VertexAI       | google/gemini-2.0-flash, google/gemini-2.5-flash, google/gemini-2.5-pro [^1] | Yes           | remote::vertexai | [1](examples/vertexai-run.yaml)                                            |
+| WatsonX        | meta-llama/llama-3-3-70b-instruct                                            | Yes           | remote::watsonx  | [1](examples/watsonx-run.yaml)                                             |
 
 [^1]: List of models is limited by design in llama-stack, future versions will probably allow to use more models (see [here](https://github.com/llamastack/llama-stack/blob/release-0.3.x/llama_stack/providers/remote/inference/vertexai/vertexai.py#L54))
 
@@ -492,12 +492,13 @@ mcp_servers:
 
 ##### Authentication Method Comparison
 
-| Method | Use Case | Configuration | Token Scope | Example |
-|--------|----------|---------------|-------------|---------|
-| **Static File** | Service tokens, API keys | File path in config | Global (all users) | `"/var/secrets/token"` |
-| **Kubernetes** | K8s service accounts | `"kubernetes"` keyword | Per-user (from auth) | `"kubernetes"` |
-| **Client** | User-specific tokens | `"client"` keyword + HTTP header | Per-request | `"client"` |
-| **OAuth** | OAuth-protected MCP servers | `"oauth"` keyword + HTTP header | Per-request (from OAuth flow) | `"oauth"` |
+| Method          | Use Case                    | Configuration                    | Token Scope                   | Example                |
+|-----------------|-----------------------------|----------------------------------|-------------------------------|------------------------|
+| **Static File** | Service tokens, API keys    | File path in config              | Global (all users)            | `"/var/secrets/token"` |
+| **Kubernetes**  | K8s service accounts        | `"kubernetes"` keyword           | Per-user (from auth)          | `"kubernetes"`         |
+| **Client**      | User-specific tokens        | `"client"` keyword + HTTP header | Per-request                   | `"client"`             |
+| **OAuth**       | OAuth-protected MCP servers | `"oauth"` keyword + HTTP header  | Per-request (from OAuth flow) | `"oauth"`              |
+
 
 ##### Important: Automatic Server Skipping
 
@@ -811,7 +812,7 @@ verify                            Run all linters
 distribution-archives             Generate distribution archives to be uploaded into Python registry
 upload-distribution-archives      Upload distribution archives into Python registry
 konflux-requirements              generate hermetic requirements.*.txt file for konflux build
-konflux-rpm-lock 	                generate rpm.lock.yaml file for konflux build
+konflux-rpm-lock 	              generate rpm.lock.yaml file for konflux build
 ```
 
 ## Running Linux container image

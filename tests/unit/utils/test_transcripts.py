@@ -4,10 +4,12 @@ import hashlib
 from pytest_mock import MockerFixture
 
 from configuration import AppConfig
-from models.requests import Attachment, QueryRequest
+from models.requests import QueryRequest
 
 from utils.transcripts import (
     construct_transcripts_path,
+    create_transcript,
+    create_transcript_metadata,
     store_transcript,
 )
 from utils.types import ToolCallSummary, ToolResultSummary, TurnSummary
@@ -44,7 +46,7 @@ def test_construct_transcripts_path(mocker: MockerFixture) -> None:
     conversation_id = "123e4567-e89b-12d3-a456-426614174000"
     hashed_user_id = hashlib.sha256(user_id.encode("utf-8")).hexdigest()
 
-    path = construct_transcripts_path(user_id, conversation_id)
+    path = construct_transcripts_path(hashed_user_id, conversation_id)
 
     assert (
         str(path)
@@ -52,7 +54,9 @@ def test_construct_transcripts_path(mocker: MockerFixture) -> None:
     ), "Path should be constructed correctly"
 
 
-def test_store_transcript(mocker: MockerFixture) -> None:
+def test_store_transcript(  # pylint: disable=too-many-locals
+    mocker: MockerFixture,
+) -> None:
     """Test the store_transcript function."""
 
     mocker.patch("builtins.open", mocker.mock_open())
@@ -95,60 +99,46 @@ def test_store_transcript(mocker: MockerFixture) -> None:
         rag_chunks=[],
     )
     query_is_valid = True
-    rag_chunks: list[dict] = []
     truncated = False
-    attachments: list[Attachment] = []
 
-    store_transcript(
-        user_id,
-        conversation_id,
-        model,
-        provider,
-        query_is_valid,
-        query,
-        query_request,
-        summary,
-        rag_chunks,
-        truncated,
-        attachments,
+    metadata = create_transcript_metadata(
+        user_id=user_id,
+        conversation_id=conversation_id,
+        model_id=model,
+        provider_id=provider,
+        query_provider=query_request.provider,
+        query_model=query_request.model,
     )
+    transcript = create_transcript(
+        metadata=metadata,
+        redacted_query=query_request.query,
+        summary=summary,
+        attachments=query_request.attachments or [],
+    )
+
+    store_transcript(transcript)
 
     # Assert that the transcript was stored correctly
     hashed_user_id = hashlib.sha256(user_id.encode("utf-8")).hexdigest()
-    mock_json.dump.assert_called_once_with(
-        {
-            "metadata": {
-                "provider": "fake-provider",
-                "model": "fake-model",
-                "query_provider": query_request.provider,
-                "query_model": query_request.model,
-                "user_id": hashed_user_id,
-                "conversation_id": conversation_id,
-                "timestamp": mocker.ANY,
-            },
-            "redacted_query": query,
-            "query_is_valid": query_is_valid,
-            "llm_response": summary.llm_response,
-            "rag_chunks": rag_chunks,
-            "truncated": truncated,
-            "attachments": attachments,
-            "tool_calls": [
-                {
-                    "id": "123",
-                    "name": "test-tool",
-                    "args": {"testing": "testing"},
-                    "type": "tool_call",
-                }
-            ],
-            "tool_results": [
-                {
-                    "id": "123",
-                    "status": "success",
-                    "content": "tool response",
-                    "type": "tool_result",
-                    "round": 1,
-                }
-            ],
-        },
-        mocker.ANY,
-    )
+    mock_json.dump.assert_called_once()
+    call_args = mock_json.dump.call_args[0]
+    stored_data = call_args[0]
+
+    assert stored_data["metadata"]["provider"] == "fake-provider"
+    assert stored_data["metadata"]["model"] == "fake-model"
+    assert stored_data["metadata"]["query_provider"] == query_request.provider
+    assert stored_data["metadata"]["query_model"] == query_request.model
+    assert stored_data["metadata"]["user_id"] == hashed_user_id
+    assert stored_data["metadata"]["conversation_id"] == conversation_id
+    assert "timestamp" in stored_data["metadata"]
+    assert stored_data["redacted_query"] == query
+    assert stored_data["query_is_valid"] == query_is_valid
+    assert stored_data["llm_response"] == summary.llm_response
+    assert stored_data["rag_chunks"] == []
+    assert stored_data["truncated"] == truncated
+    assert stored_data["attachments"] == []
+    assert len(stored_data["tool_calls"]) == 1
+    assert stored_data["tool_calls"][0]["id"] == "123"
+    assert stored_data["tool_calls"][0]["name"] == "test-tool"
+    assert len(stored_data["tool_results"]) == 1
+    assert stored_data["tool_results"][0]["id"] == "123"

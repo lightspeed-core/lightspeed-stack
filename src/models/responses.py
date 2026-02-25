@@ -503,7 +503,8 @@ class StreamingQueryResponse(AbstractSuccessfulResponse):
             "examples": [
                 (
                     'data: {"event": "start", "data": {'
-                    '"conversation_id": "123e4567-e89b-12d3-a456-426614174000"}}\n\n'
+                    '"conversation_id": "123e4567-e89b-12d3-a456-426614174000", '
+                    '"request_id": "123e4567-e89b-12d3-a456-426614174001"}}\n\n'
                     'data: {"event": "token", "data": {'
                     '"id": 0, "token": "No Violation"}}\n\n'
                     'data: {"event": "token", "data": {'
@@ -533,6 +534,52 @@ class StreamingQueryResponse(AbstractSuccessfulResponse):
                     '"truncated": null, "input_tokens": 11, "output_tokens": 19}, '
                     '"available_quotas": {}}\n\n'
                 ),
+            ]
+        }
+    }
+
+
+class StreamingInterruptResponse(AbstractSuccessfulResponse):
+    """Model representing a response to a streaming interrupt request.
+
+    Attributes:
+        request_id: The streaming request ID targeted by the interrupt call.
+        interrupted: Whether an in-progress stream was interrupted.
+        message: Human-readable interruption status message.
+
+    Example:
+        ```python
+        response = StreamingInterruptResponse(
+            request_id="123e4567-e89b-12d3-a456-426614174000",
+            interrupted=True,
+            message="Streaming request interrupted",
+        )
+        ```
+    """
+
+    request_id: str = Field(
+        description="The streaming request ID targeted by the interrupt call",
+        examples=["123e4567-e89b-12d3-a456-426614174000"],
+    )
+
+    interrupted: bool = Field(
+        description="Whether an in-progress stream was interrupted",
+        examples=[True],
+    )
+
+    message: str = Field(
+        description="Human-readable interruption status message",
+        examples=["Streaming request interrupted"],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "request_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "interrupted": True,
+                    "message": "Streaming request interrupted",
+                }
             ]
         }
     }
@@ -1749,20 +1796,34 @@ class NotFoundResponse(AbstractErrorResponse):
                         ),
                     },
                 },
+                {
+                    "label": "streaming request",
+                    "detail": {
+                        "response": "Streaming Request not found",
+                        "cause": (
+                            "Streaming Request with ID "
+                            "123e4567-e89b-12d3-a456-426614174000 does not exist"
+                        ),
+                    },
+                },
             ]
         }
     }
 
-    def __init__(self, *, resource: str, resource_id: str):
+    def __init__(self, *, resource: str, resource_id: str | None = None):
         """
         Create a NotFoundResponse for a missing resource and set the HTTP status to 404.
 
         Parameters:
             resource (str): Resource type that was not found (e.g., "conversation", "model").
-            resource_id (str): Identifier of the missing resource.
+            resource_id (str | None): Identifier of the missing resource. If None, indicates
+                the resource type is not configured (e.g., no model selected).
         """
         response = f"{resource.title()} not found"
-        cause = f"{resource.title()} with ID {resource_id} does not exist"
+        if resource_id is None:
+            cause = f"No {resource.title()} is configured"
+        else:
+            cause = f"{resource.title()} with ID {resource_id} does not exist"
         super().__init__(
             response=response, cause=cause, status_code=status.HTTP_404_NOT_FOUND
         )

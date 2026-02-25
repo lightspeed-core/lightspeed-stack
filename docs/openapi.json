@@ -1661,7 +1661,7 @@
                                     "type": "string",
                                     "format": "text/event-stream"
                                 },
-                                "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 11, \"output_tokens\": 19}, \"available_quotas\": {}}\n\n"
+                                "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\", \"request_id\": \"123e4567-e89b-12d3-a456-426614174001\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 11, \"output_tokens\": 19}, \"available_quotas\": {}}\n\n"
                             }
                         }
                     },
@@ -1905,6 +1905,121 @@
                                             }
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/streaming_query/interrupt": {
+            "post": {
+                "tags": [
+                    "streaming_query_interrupt"
+                ],
+                "summary": "Streaming Query Interrupt Endpoint Handler",
+                "description": "Interrupt an in-progress streaming query by request identifier.\n\nParameters:\n    interrupt_request: Request payload containing the stream request ID.\n    auth: Auth context tuple resolved from the authentication dependency.\n    registry: Stream interrupt registry dependency used to cancel streams.\n\nReturns:\n    StreamingInterruptResponse: Confirmation payload when interruption succeeds.\n\nRaises:\n    HTTPException: If no active stream for the given request ID can be interrupted.",
+                "operationId": "stream_interrupt_endpoint_handler_v1_streaming_query_interrupt_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StreamingInterruptRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StreamingInterruptResponse"
+                                },
+                                "example": {
+                                    "interrupted": true,
+                                    "message": "Streaming request interrupted",
+                                    "request_id": "123e4567-e89b-12d3-a456-426614174000"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                },
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                },
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotFoundResponse"
+                                },
+                                "examples": {
+                                    "streaming request": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Streaming Request with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                                "response": "Streaming Request not found"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
                                 }
                             }
                         }
@@ -7354,6 +7469,13 @@
                             "response": "Rag not found"
                         },
                         "label": "rag"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Streaming Request with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                            "response": "Streaming Request not found"
+                        },
+                        "label": "streaming request"
                     }
                 ]
             },
@@ -9245,6 +9367,73 @@
                         "status": {
                             "enabled": true
                         }
+                    }
+                ]
+            },
+            "StreamingInterruptRequest": {
+                "properties": {
+                    "request_id": {
+                        "type": "string",
+                        "title": "Request Id",
+                        "description": "The active streaming request ID to interrupt",
+                        "examples": [
+                            "123e4567-e89b-12d3-a456-426614174000"
+                        ]
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "request_id"
+                ],
+                "title": "StreamingInterruptRequest",
+                "description": "Model representing a request to interrupt an active streaming query.\n\nAttributes:\n    request_id: Unique ID of the active streaming request to interrupt.",
+                "examples": [
+                    {
+                        "request_id": "123e4567-e89b-12d3-a456-426614174000"
+                    }
+                ]
+            },
+            "StreamingInterruptResponse": {
+                "properties": {
+                    "request_id": {
+                        "type": "string",
+                        "title": "Request Id",
+                        "description": "The streaming request ID targeted by the interrupt call",
+                        "examples": [
+                            "123e4567-e89b-12d3-a456-426614174000"
+                        ]
+                    },
+                    "interrupted": {
+                        "type": "boolean",
+                        "title": "Interrupted",
+                        "description": "Whether an in-progress stream was interrupted",
+                        "examples": [
+                            true
+                        ]
+                    },
+                    "message": {
+                        "type": "string",
+                        "title": "Message",
+                        "description": "Human-readable interruption status message",
+                        "examples": [
+                            "Streaming request interrupted"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "request_id",
+                    "interrupted",
+                    "message"
+                ],
+                "title": "StreamingInterruptResponse",
+                "description": "Model representing a response to a streaming interrupt request.\n\nAttributes:\n    request_id: The streaming request ID targeted by the interrupt call.\n    interrupted: Whether an in-progress stream was interrupted.\n    message: Human-readable interruption status message.\n\nExample:\n    ```python\n    response = StreamingInterruptResponse(\n        request_id=\"123e4567-e89b-12d3-a456-426614174000\",\n        interrupted=True,\n        message=\"Streaming request interrupted\",\n    )\n    ```",
+                "examples": [
+                    {
+                        "interrupted": true,
+                        "message": "Streaming request interrupted",
+                        "request_id": "123e4567-e89b-12d3-a456-426614174000"
                     }
                 ]
             },

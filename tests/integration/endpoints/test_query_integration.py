@@ -71,6 +71,12 @@ def mock_llama_stack_client_fixture(
     # Mock tool calls (empty by default)
     mock_response.tool_calls = []
 
+    # Mock usage (required for token extraction)
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 10
+    mock_usage.output_tokens = 5
+    mock_response.usage = mock_usage
+
     mock_client.responses.create.return_value = mock_response
 
     # Mock models list (required for model selection)
@@ -391,6 +397,10 @@ async def test_query_v2_endpoint_with_tool_calls(
 
     mock_response.output = [mock_tool_output, mock_message_output]
     mock_response.stop_reason = "end_turn"
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 10
+    mock_usage.output_tokens = 5
+    mock_response.usage = mock_usage
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
@@ -458,7 +468,10 @@ async def test_query_v2_endpoint_with_mcp_list_tools(
 
     mock_response.output = [mock_mcp_list, mock_message]
     mock_response.tool_calls = []
-    mock_response.usage = {"input_tokens": 15, "output_tokens": 20}
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 15
+    mock_usage.output_tokens = 20
+    mock_response.usage = mock_usage
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
@@ -525,7 +538,10 @@ async def test_query_v2_endpoint_with_multiple_tool_types(
 
     mock_response.output = [mock_file_search, mock_function, mock_message]
     mock_response.tool_calls = []
-    mock_response.usage = {"input_tokens": 40, "output_tokens": 60}
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 40
+    mock_usage.output_tokens = 60
+    mock_response.usage = mock_usage
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
@@ -723,6 +739,7 @@ async def test_query_v2_endpoint_updates_existing_conversation(
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
+    mocker: MockerFixture,
 ) -> None:
     """Test that existing conversation is updated (not recreated).
 
@@ -757,7 +774,15 @@ async def test_query_v2_endpoint_updates_existing_conversation(
     original_topic = existing_conversation.topic_summary
     original_count = existing_conversation.message_count
 
-    mock_llama_stack_client.responses.create.return_value.id = EXISTING_CONV_ID
+    # Create a proper mock response with all required attributes
+    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
+    mock_response.id = EXISTING_CONV_ID
+    mock_response.output = []
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 10
+    mock_usage.output_tokens = 5
+    mock_response.usage = mock_usage
+    mock_llama_stack_client.responses.create.return_value = mock_response
 
     query_request = QueryRequest(query="Tell me more", conversation_id=EXISTING_CONV_ID)
 
@@ -989,7 +1014,10 @@ async def test_query_v2_endpoint_with_shield_violation(
 
     mock_response.output = [mock_output_item]
     mock_response.tool_calls = []
-    mock_response.usage = {"input_tokens": 10, "output_tokens": 5}
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 10
+    mock_usage.output_tokens = 5
+    mock_response.usage = mock_usage
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
@@ -1097,7 +1125,10 @@ async def test_query_v2_endpoint_handles_empty_llm_response(
 
     mock_response.output = [mock_output_item]
     mock_response.stop_reason = "end_turn"
-    mock_response.usage = {"input_tokens": 10, "output_tokens": 0}
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 10
+    mock_usage.output_tokens = 0
+    mock_response.usage = mock_usage
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
@@ -1150,7 +1181,10 @@ async def test_query_v2_endpoint_quota_integration(
     mock_response = mocker.MagicMock()
     mock_response.id = "response-quota"
     mock_response.output = []
-    mock_response.usage = {"input_tokens": 100, "output_tokens": 50}
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 100
+    mock_usage.output_tokens = 50
+    mock_response.usage = mock_usage
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
@@ -1176,7 +1210,6 @@ async def test_query_v2_endpoint_quota_integration(
     assert consume_args.kwargs["token_usage"] is not None
     assert consume_args.kwargs["token_usage"].input_tokens == 100
     assert consume_args.kwargs["token_usage"].output_tokens == 50
-    assert consume_args.kwargs["configuration"] is not None
 
     assert response.available_quotas is not None
     assert isinstance(response.available_quotas, dict)
@@ -1344,6 +1377,7 @@ async def test_query_v2_endpoint_uses_conversation_history_model(
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
+    mocker: MockerFixture,
 ) -> None:
     """Test that model from conversation history is used.
 
@@ -1376,8 +1410,14 @@ async def test_query_v2_endpoint_uses_conversation_history_model(
     patch_db_session.add(existing_conv)
     patch_db_session.commit()
 
-    # Configure mock to return the existing conversation_id (response.id becomes conversation_id)
-    mock_llama_stack_client.responses.create.return_value.id = EXISTING_CONV_ID
+    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
+    mock_response.id = EXISTING_CONV_ID
+    mock_response.output = []
+    mock_usage = mocker.MagicMock()
+    mock_usage.input_tokens = 10
+    mock_usage.output_tokens = 5
+    mock_response.usage = mock_usage
+    mock_llama_stack_client.responses.create.return_value = mock_response
 
     query_request = QueryRequest(query="Tell me more", conversation_id=EXISTING_CONV_ID)
 

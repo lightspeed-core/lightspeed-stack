@@ -496,16 +496,14 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [MCPClientAuthOptionsResponse](#mcpclientauthoptionsresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                     |
+|-------------|-----------------------|---------------------------------------------------------------|
+| 200         | Successful response   | [MCPClientAuthOptionsResponse](#mcpclientauthoptionsresponse) |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)                 |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                       |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)   |
 
 Examples
-
-
-
-
 
 ```json
 {
@@ -527,14 +525,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -544,14 +534,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -561,7 +543,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/v1/shields`
 
 > **Shields Endpoint Handler**
@@ -584,16 +566,15 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ShieldsResponse](#shieldsresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [ShieldsResponse](#shieldsresponse)                         |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
 
 Examples
-
-
-
-
 
 ```json
 {
@@ -615,11 +596,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
 
 
 
@@ -632,14 +608,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -649,13 +617,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -666,7 +627,6 @@ Examples
   }
 }
 ```
- |
 ## GET `/v1/providers`
 
 > **Providers Endpoint Handler**
@@ -689,14 +649,15 @@ Raises:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ProvidersListResponse](#providerslistresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [ProvidersListResponse](#providerslistresponse)             |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
 
 Examples
-
-
 
 
 
@@ -720,13 +681,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -737,13 +691,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -754,13 +701,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -771,7 +711,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/v1/providers/{provider_id}`
 
 > **Get Provider Endpoint Handler**
@@ -793,17 +733,22 @@ Raises:
 
 ### 🔗 Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| provider_id | string | True |  |
+| Name        | Type   | Required | Description |
+|-------------|--------|----------|-------------|
+| provider_id | string | True     |             |
 
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ProviderResponse](#providerresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [ProviderResponse](#providerresponse)                       |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found    | [NotFoundResponse](#notfoundresponse)                       |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                 |
 
 Examples
 
@@ -831,12 +776,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
 
 
 
@@ -848,12 +787,6 @@ Examples
   }
 }
 ```
- |
-| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
-
-Examples
-
-
 
 
 
@@ -865,13 +798,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -882,14 +808,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -899,8 +817,7 @@ Examples
   }
 }
 ```
- |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+
 ## GET `/v1/rags`
 
 > **Rags Endpoint Handler**
@@ -923,10 +840,13 @@ Raises:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [RAGListResponse](#raglistresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [RAGListResponse](#raglistresponse)                         |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
 
 Examples
 
@@ -954,11 +874,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
 
 
 
@@ -971,12 +886,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
 
 
 
@@ -988,12 +897,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
 
 
 
@@ -1005,7 +908,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/v1/rags/{rag_id}`
 
 > **Get Rag Endpoint Handler**
@@ -1031,17 +934,22 @@ Raises:
 
 ### 🔗 Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| rag_id | string | True |  |
+| Name   | Type   | Required | Description |
+|--------|--------|----------|-------------|
+| rag_id | string | True     |             |
 
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [RAGInfoResponse](#raginforesponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [RAGInfoResponse](#raginforesponse)                         |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found    | [NotFoundResponse](#notfoundresponse)                       |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                 |
 
 Examples
 
@@ -1069,12 +977,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
 
 
 
@@ -1086,14 +988,6 @@ Examples
   }
 }
 ```
- |
-| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -1103,13 +997,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -1120,13 +1007,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -1137,8 +1017,7 @@ Examples
   }
 }
 ```
- |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+
 ## POST `/v1/query`
 
 > **Query Endpoint Handler**
@@ -1172,10 +1051,16 @@ Raises:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [QueryResponse](#queryresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description               | Component                                                   |
+|-------------|---------------------------|-------------------------------------------------------------|
+| 200         | Successful response       | [QueryResponse](#queryresponse)                             |
+| 401         | Unauthorized              | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied         | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found        | [NotFoundResponse](#notfoundresponse)                       |
+| 422         | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse) |
+| 429         | Quota limit exceeded      | [QuotaExceededResponse](#quotaexceededresponse)             |
+| 500         | Internal server error     | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable       | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
 
 Examples
 
@@ -1203,12 +1088,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
 
 
 
@@ -1244,12 +1123,6 @@ Examples
   }
 }
 ```
- |
-| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
-
-Examples
-
-
 
 
 
@@ -1285,14 +1158,6 @@ Examples
   }
 }
 ```
- |
-| 422 | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -1326,12 +1191,6 @@ Examples
   }
 }
 ```
- |
-| 429 | Quota limit exceeded | [QuotaExceededResponse](#quotaexceededresponse)
-
-Examples
-
-
 
 
 
@@ -1415,13 +1274,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -1432,13 +1284,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -1449,7 +1294,7 @@ Examples
   }
 }
 ```
- |
+
 ## POST `/v1/streaming_query`
 
 > **Streaming Query Endpoint Handler**
@@ -1483,13 +1328,18 @@ Raises:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | string |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description               | Component                                                   |
+|-------------|---------------------------|-------------------------------------------------------------|
+| 200         | Successful response       | string                                                      |
+| 401         | Unauthorized              | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied         | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found        | [NotFoundResponse](#notfoundresponse)                       |
+| 422         | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse) |
+| 429         | Quota limit exceeded      | [QuotaExceededResponse](#quotaexceededresponse)             |
+| 500         | Internal server error     | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable       | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
 
 Examples
-
 
 
 
@@ -1514,11 +1364,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
 
 
 
@@ -1555,13 +1400,6 @@ Examples
   }
 }
 ```
- |
-| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -1596,13 +1434,6 @@ Examples
   }
 }
 ```
- |
-| 422 | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -1637,13 +1468,6 @@ Examples
   }
 }
 ```
- |
-| 429 | Quota limit exceeded | [QuotaExceededResponse](#quotaexceededresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -1726,12 +1550,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
 
 
 
@@ -1743,13 +1561,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -1760,7 +1571,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/v1/config`
 
 > **Config Endpoint Handler**
@@ -1781,10 +1592,12 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ConfigurationResponse](#configurationresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [ConfigurationResponse](#configurationresponse)             |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
 
 Examples
 
@@ -1812,13 +1625,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -1829,12 +1635,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
 
 
 
@@ -1846,7 +1646,7 @@ Examples
   }
 }
 ```
- |
+
 ## POST `/v1/feedback`
 
 > **Feedback Endpoint Handler**
@@ -1881,10 +1681,14 @@ Raises:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [FeedbackResponse](#feedbackresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [FeedbackResponse](#feedbackresponse)                       |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found    | [NotFoundResponse](#notfoundresponse)                       |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                 |
 
 Examples
 
@@ -1912,11 +1716,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
 
 
 
@@ -1941,13 +1740,6 @@ Examples
   }
 }
 ```
- |
-| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -1958,13 +1750,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -1987,8 +1772,7 @@ Examples
   }
 }
 ```
- |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+
 ## GET `/v1/feedback/status`
 
 > **Feedback Status**
@@ -2007,9 +1791,10 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [StatusResponse](#statusresponse) |
+| Status Code | Description         | Component                         |
+|-------------|---------------------|-----------------------------------|
+| 200         | Successful response | [StatusResponse](#statusresponse) |
+
 ## PUT `/v1/feedback/status`
 
 > **Update Feedback Status**
@@ -2033,10 +1818,13 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [FeedbackStatusUpdateResponse](#feedbackstatusupdateresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                     |
+|-------------|-----------------------|---------------------------------------------------------------|
+| 200         | Successful response   | [FeedbackStatusUpdateResponse](#feedbackstatusupdateresponse) |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)                 |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                       |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)   |
+| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                   |
 
 Examples
 
@@ -2064,13 +1852,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -2081,12 +1862,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
 
 
 
@@ -2098,8 +1873,7 @@ Examples
   }
 }
 ```
- |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+
 ## GET `/v1/conversations`
 
 > **Conversations List Endpoint Handler V1**
