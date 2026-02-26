@@ -330,6 +330,182 @@ async def test_query_v2_endpoint_with_attachments(
     assert response.response is not None
 
 
+@pytest.mark.asyncio
+async def test_query_v2_endpoint_empty_payload(
+    test_config: AppConfig,
+    mock_llama_stack_client: AsyncMockType,
+    test_request: Request,
+    test_auth: AuthTuple,
+) -> None:
+    """Test query v2 endpoint with minimal payload (no attachments).
+
+    Verifies that a request with only the required query and no attachments
+    field does not break the handler and returns 200.
+    """
+    _ = test_config
+    _ = mock_llama_stack_client
+
+    query_request = QueryRequest(query="what is kubernetes?")
+
+    response = await query_endpoint_handler(
+        request=test_request,
+        query_request=query_request,
+        auth=test_auth,
+        mcp_headers={},
+    )
+
+    assert getattr(response, "status_code", status.HTTP_200_OK) == status.HTTP_200_OK
+    assert response.conversation_id is not None
+    assert response.response is not None
+
+
+@pytest.mark.asyncio
+async def test_query_v2_endpoint_empty_attachments_list(
+    test_config: AppConfig,
+    mock_llama_stack_client: AsyncMockType,
+    test_request: Request,
+    test_auth: AuthTuple,
+) -> None:
+    """Test query v2 endpoint accepts empty attachment list.
+
+    Verifies that POST /v1/query with attachments=[] returns 200 and
+    application/json response.
+    """
+    _ = test_config
+    _ = mock_llama_stack_client
+
+    query_request = QueryRequest(
+        query="what is kubernetes?",
+        attachments=[],
+    )
+
+    response = await query_endpoint_handler(
+        request=test_request,
+        query_request=query_request,
+        auth=test_auth,
+        mcp_headers={},
+    )
+
+    assert getattr(response, "status_code", status.HTTP_200_OK) == status.HTTP_200_OK
+    assert response.conversation_id is not None
+    assert response.response is not None
+
+
+@pytest.mark.asyncio
+async def test_query_v2_endpoint_multiple_attachments(
+    test_config: AppConfig,
+    mock_llama_stack_client: AsyncMockType,
+    test_request: Request,
+    test_auth: AuthTuple,
+) -> None:
+    """Test query v2 endpoint with multiple attachments.
+
+    Verifies that two attachments (log + configuration) are accepted
+    and processed.
+    """
+    _ = test_config
+    _ = mock_llama_stack_client
+
+    query_request = QueryRequest(
+        query="what is kubernetes?",
+        attachments=[
+            Attachment(
+                attachment_type="log",
+                content_type="text/plain",
+                content="log content",
+            ),
+            Attachment(
+                attachment_type="configuration",
+                content_type="application/json",
+                content='{"key": "value"}',
+            ),
+        ],
+    )
+
+    response = await query_endpoint_handler(
+        request=test_request,
+        query_request=query_request,
+        auth=test_auth,
+        mcp_headers={},
+    )
+
+    assert getattr(response, "status_code", status.HTTP_200_OK) == status.HTTP_200_OK
+    assert response.conversation_id is not None
+    assert response.response is not None
+
+
+@pytest.mark.asyncio
+async def test_query_v2_endpoint_attachment_unknown_type_returns_422(
+    test_config: AppConfig,
+    mock_llama_stack_client: AsyncMockType,
+    test_request: Request,
+    test_auth: AuthTuple,
+) -> None:
+    """Test query v2 endpoint returns 422 for unknown attachment type."""
+    _ = test_config
+    _ = mock_llama_stack_client
+
+    query_request = QueryRequest(
+        query="what is kubernetes?",
+        attachments=[
+            Attachment(
+                attachment_type="unknown_type",
+                content_type="text/plain",
+                content="content",
+            )
+        ],
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await query_endpoint_handler(
+            request=test_request,
+            query_request=query_request,
+            auth=test_auth,
+            mcp_headers={},
+        )
+
+    assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert isinstance(exc_info.value.detail, dict)
+    assert "unknown_type" in exc_info.value.detail["cause"]
+    assert "Invalid" in exc_info.value.detail["response"]
+
+
+@pytest.mark.asyncio
+async def test_query_v2_endpoint_attachment_unknown_content_type_returns_422(
+    test_config: AppConfig,
+    mock_llama_stack_client: AsyncMockType,
+    test_request: Request,
+    test_auth: AuthTuple,
+) -> None:
+    """Test query v2 endpoint returns 422 for unknown attachment content type."""
+    _ = test_config
+    _ = mock_llama_stack_client
+
+    query_request = QueryRequest(
+        query="what is kubernetes?",
+        attachments=[
+            Attachment(
+                attachment_type="log",
+                content_type="unknown/type",
+                content="content",
+            )
+        ],
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await query_endpoint_handler(
+            request=test_request,
+            query_request=query_request,
+            auth=test_auth,
+            mcp_headers={},
+        )
+
+    assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert isinstance(exc_info.value.detail, dict)
+    assert "unknown/type" in exc_info.value.detail["cause"]
+    assert "Invalid" in exc_info.value.detail["response"]
+
+
 # ==========================================
 # Tool Integration Tests
 # ==========================================

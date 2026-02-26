@@ -1,5 +1,6 @@
 """Tests the OpenAPI specification that is to be stored in docs/openapi.json."""
 
+import importlib
 import json
 from pathlib import Path
 from typing import Any
@@ -56,8 +57,10 @@ def _load_openapi_spec_from_url() -> dict[str, Any]:
     configuration_filename = "tests/configuration/lightspeed-stack-proper-name.yaml"
     cfg = configuration
     cfg.load_configuration(configuration_filename)
-    from app.main import app  # pylint: disable=C0415
+    import app.main as app_main  # pylint: disable=C0415
 
+    importlib.reload(app_main)
+    app = app_main.app
     client = TestClient(app)
     response = client.get("/openapi.json")
     assert response.status_code == requests.codes.ok  # pylint: disable=no-member
