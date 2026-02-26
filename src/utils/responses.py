@@ -186,7 +186,7 @@ def _build_provider_data_headers(
     mcp_headers: McpHeaders = {
         tool.server_url: tool.headers
         for tool in tools
-        if tool.type == "mcp" and tool.headers
+        if tool.type == "mcp" and tool.headers and tool.server_url
     }
 
     if not mcp_headers:
@@ -295,7 +295,7 @@ def extract_vector_store_ids_from_tools(
     """Extract vector store IDs from prepared tool configurations.
 
     Parameters:
-        tools: The prepared tools list (typed InputTool or dict).
+        tools: The prepared tools list of InputTool objects.
 
     Returns:
         List of vector store IDs used in file_search tools, or empty list.
