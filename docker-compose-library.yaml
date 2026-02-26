@@ -28,6 +28,8 @@ services:
     depends_on:
       mcp-mock-server:
         condition: service_healthy
+      mock-mcp:
+        condition: service_healthy
     networks:
       - lightspeednet
     volumes:
@@ -92,6 +94,23 @@ services:
       timeout: 3s
       retries: 3
       start_period: 2s
+
+  mock-mcp:
+    build:
+      context: ./tests/e2e/mock_mcp_server
+      dockerfile: Dockerfile
+    container_name: mock-mcp
+    ports:
+      - "3001:3001"
+    networks:
+      - lightspeednet
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3001/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+
 
 networks:
   lightspeednet:

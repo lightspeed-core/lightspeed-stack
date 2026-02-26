@@ -3,7 +3,12 @@
 import json
 
 import requests
-from behave import then, when, step  # pyright: ignore[reportAttributeAccessIssue]
+from behave import (
+    then,
+    when,
+    step,
+    given,
+)  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 from tests.e2e.utils.utils import (
     normalize_endpoint,
@@ -186,6 +191,15 @@ def check_prediction_result(context: Context) -> None:
 
     # compare both JSONs and print actual result in case of any difference
     assert result == expected_body, f"got:\n{result}\nwant:\n{expected_body}"
+
+
+@then('The headers of the response contains the following header "{header_name}"')
+def check_response_headers_contains(context: Context, header_name: str) -> None:
+    """Check that response contains a header whose name matches."""
+    assert context.response is not None, "Request needs to be performed first"
+    assert (
+        header_name in context.response.headers.keys()
+    ), f"The response headers '{context.response.headers}' doesn't contain header '{header_name}'"
 
 
 @then('The body of the response, ignoring the "{field}" field, is the following')
@@ -386,3 +400,13 @@ def check_response_partially(context: Context) -> None:
     json_str = replace_placeholders(context, context.text or "{}")
     expected = json.loads(json_str)
     validate_json_partially(body, expected)
+
+
+@given('I set the "{header_name}" header to')
+def set_header(context: Context, header_name: str) -> None:
+    """Set a header in the request."""
+    assert context.text is not None, "Header value needs to be specified"
+
+    if not hasattr(context, "auth_headers"):
+        context.auth_headers = {}
+    context.auth_headers[header_name] = context.text
