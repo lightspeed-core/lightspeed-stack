@@ -293,7 +293,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     response: Optional[OpenAIResponseObject] = None
     try:
         moderation_result = await run_shield_moderation(
-            client, responses_params.input, shield_ids
+            client, cast(str, responses_params.input), shield_ids
         )
         if moderation_result.decision == "blocked":
             # Handle shield moderation blocking
@@ -301,11 +301,13 @@ async def retrieve_response(  # pylint: disable=too-many-locals
             await append_turn_to_conversation(
                 client,
                 responses_params.conversation,
-                responses_params.input,
+                cast(str, responses_params.input),
                 violation_message,
             )
             return TurnSummary(llm_response=violation_message)
-        response = await client.responses.create(**responses_params.model_dump())
+        response = await client.responses.create(
+            **responses_params.model_dump(exclude_none=True)
+        )
         response = cast(OpenAIResponseObject, response)
 
     except RuntimeError as e:  # library mode wraps 413 into runtime error

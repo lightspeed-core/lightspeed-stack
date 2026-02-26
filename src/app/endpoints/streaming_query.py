@@ -285,14 +285,16 @@ async def retrieve_response_generator(
     turn_summary = TurnSummary()
     try:
         moderation_result = await run_shield_moderation(
-            context.client, responses_params.input, context.query_request.shield_ids
+            context.client,
+            cast(str, responses_params.input),
+            context.query_request.shield_ids,
         )
         if moderation_result.decision == "blocked":
             turn_summary.llm_response = moderation_result.message
             await append_turn_to_conversation(
                 context.client,
                 responses_params.conversation,
-                responses_params.input,
+                cast(str, responses_params.input),
                 moderation_result.message,
             )
             media_type = context.query_request.media_type or MEDIA_TYPE_JSON
@@ -302,7 +304,7 @@ async def retrieve_response_generator(
             )
         # Retrieve response stream (may raise exceptions)
         response = await context.client.responses.create(
-            **responses_params.model_dump()
+            **responses_params.model_dump(exclude_none=True)
         )
         # Store pre-RAG documents for later merging
         turn_summary.pre_rag_documents = doc_ids_from_chunks
@@ -347,7 +349,7 @@ async def _persist_interrupted_turn(
         await append_turn_to_conversation(
             context.client,
             responses_params.conversation,
-            responses_params.input,
+            cast(str, responses_params.input),
             INTERRUPTED_RESPONSE_MESSAGE,
         )
     except Exception:  # pylint: disable=broad-except

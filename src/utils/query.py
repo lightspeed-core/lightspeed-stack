@@ -223,7 +223,7 @@ def store_query_results(  # pylint: disable=too-many-arguments
     summary: TurnSummary,
     query: str,
     skip_userid_check: bool,
-    attachments: list[Attachment] | None = None,
+    attachments: Optional[list[Attachment]] = None,
     topic_summary: Optional[str] = None,
 ) -> None:
     """
