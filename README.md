@@ -712,6 +712,13 @@ utilized:
 1. If the `shield_id` starts with `inout_`, it will be used both for input and output.
 1. Otherwise, it will be used for input only.
 
+Additionally, an optional list parameter `shield_ids` can be specified in `/query` and `/streaming_query` endpoints to override which shields are applied. You can use this config to disable shield overrides:
+
+```yaml
+customization:
+  disable_shield_ids_override: true
+```
+
 ## Authentication
 
 See [authentication and authorization](docs/auth.md).

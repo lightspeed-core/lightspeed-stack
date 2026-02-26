@@ -10,6 +10,7 @@ from utils.shields import (
     detect_shield_violations,
     get_available_shields,
     run_shield_moderation,
+    validate_shield_ids_override,
 )
 
 
@@ -335,6 +336,78 @@ class TestRunShieldModeration:
         assert result.message == DEFAULT_VIOLATION_MESSAGE
         mock_metric.inc.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_shield_ids_empty_list_raises_422(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that shield_ids=[] raises HTTPException 422 (prevents bypass)."""
+        mock_client = mocker.Mock()
+        shield = mocker.Mock()
+        shield.identifier = "shield-1"
+        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
+
+        with pytest.raises(HTTPException) as exc_info:
+            await run_shield_moderation(mock_client, "test input", shield_ids=[])
+
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert "shield_ids provided but no shields selected" in str(
+            exc_info.value.detail
+        )
+
+    @pytest.mark.asyncio
+    async def test_shield_ids_raises_exception_when_no_shields_found(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test shield_ids raises HTTPException when no requested shields exist."""
+        mock_client = mocker.Mock()
+        shield = mocker.Mock()
+        shield.identifier = "shield-1"
+        mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
+
+        with pytest.raises(HTTPException) as exc_info:
+            await run_shield_moderation(
+                mock_client, "test input", shield_ids=["typo-shield"]
+            )
+
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert "Invalid shield configuration" in exc_info.value.detail["response"]  # type: ignore
+        assert "typo-shield" in exc_info.value.detail["cause"]  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_shield_ids_filters_to_specific_shield(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that shield_ids filters to only specified shields."""
+        mock_client = mocker.Mock()
+
+        shield1 = mocker.Mock()
+        shield1.identifier = "shield-1"
+        shield1.provider_resource_id = "model-1"
+        shield2 = mocker.Mock()
+        shield2.identifier = "shield-2"
+        shield2.provider_resource_id = "model-2"
+        mock_client.shields.list = mocker.AsyncMock(return_value=[shield1, shield2])
+
+        model1 = mocker.Mock()
+        model1.id = "model-1"
+        mock_client.models.list = mocker.AsyncMock(return_value=[model1])
+
+        moderation_result = mocker.Mock()
+        moderation_result.results = [mocker.Mock(flagged=False)]
+        mock_client.moderations.create = mocker.AsyncMock(
+            return_value=moderation_result
+        )
+
+        result = await run_shield_moderation(
+            mock_client, "test input", shield_ids=["shield-1"]
+        )
+
+        assert result.decision == "passed"
+        assert mock_client.moderations.create.call_count == 1
+        mock_client.moderations.create.assert_called_with(
+            input="test input", model="model-1"
+        )
+
 
 class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
     """Tests for append_turn_to_conversation function."""
@@ -365,3 +438,83 @@ class TestAppendTurnToConversation:  # pylint: disable=too-few-public-methods
                 },
             ],
         )
+
+
+class TestValidateShieldIdsOverride:
+    """Tests for validate_shield_ids_override function."""
+
+    def test_allows_shield_ids_when_override_enabled(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that shield_ids is allowed when override is not disabled."""
+        mock_config = mocker.Mock()
+        mock_config.customization = None
+
+        query_request = mocker.Mock()
+        query_request.shield_ids = ["shield-1"]
+
+        # Should not raise exception
+        validate_shield_ids_override(query_request, mock_config)
+
+    def test_allows_shield_ids_when_customization_exists_but_override_not_disabled(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test shield_ids allowed when customization exists but override not disabled."""
+        mock_config = mocker.Mock()
+        mock_config.customization = mocker.Mock()
+        mock_config.customization.disable_shield_ids_override = False
+
+        query_request = mocker.Mock()
+        query_request.shield_ids = ["shield-1"]
+
+        # Should not raise exception
+        validate_shield_ids_override(query_request, mock_config)
+
+    def test_allows_none_shield_ids_when_override_disabled(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that None shield_ids is allowed even when override is disabled."""
+        mock_config = mocker.Mock()
+        mock_config.customization = mocker.Mock()
+        mock_config.customization.disable_shield_ids_override = True
+
+        query_request = mocker.Mock()
+        query_request.shield_ids = None
+
+        # Should not raise exception
+        validate_shield_ids_override(query_request, mock_config)
+
+    def test_raises_422_when_shield_ids_provided_and_override_disabled(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test HTTPException 422 raised when shield_ids provided but override disabled."""
+        mock_config = mocker.Mock()
+        mock_config.customization = mocker.Mock()
+        mock_config.customization.disable_shield_ids_override = True
+
+        query_request = mocker.Mock()
+        query_request.shield_ids = ["shield-1"]
+
+        with pytest.raises(HTTPException) as exc_info:
+            validate_shield_ids_override(query_request, mock_config)
+
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        # pylint: disable=line-too-long
+        assert "Shield IDs customization is disabled" in exc_info.value.detail["response"]  # type: ignore
+        assert "disable_shield_ids_override" in exc_info.value.detail["cause"]  # type: ignore
+
+    def test_raises_422_when_empty_list_shield_ids_and_override_disabled(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that HTTPException 422 is raised when shield_ids=[] and override disabled."""
+        mock_config = mocker.Mock()
+        mock_config.customization = mocker.Mock()
+        mock_config.customization.disable_shield_ids_override = True
+
+        query_request = mocker.Mock()
+        query_request.shield_ids = []
+
+        with pytest.raises(HTTPException) as exc_info:
+            validate_shield_ids_override(query_request, mock_config)
+
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

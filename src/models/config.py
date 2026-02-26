@@ -1306,6 +1306,7 @@ class Customization(ConfigurationBase):
 
     profile_path: Optional[str] = None
     disable_query_system_prompt: bool = False
+    disable_shield_ids_override: bool = False
     system_prompt_path: Optional[FilePath] = None
     system_prompt: Optional[str] = None
     agent_card_path: Optional[FilePath] = None

@@ -84,6 +84,7 @@ from utils.responses import (
 from utils.shields import (
     append_turn_to_conversation,
     run_shield_moderation,
+    validate_shield_ids_override,
 )
 from utils.stream_interrupts import get_stream_interrupt_registry
 from utils.suid import get_suid, normalize_conversation_id
@@ -159,6 +160,9 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     validate_model_provider_override(
         query_request.model, query_request.provider, request.state.authorized_actions
     )
+
+    # Validate shield_ids override if provided
+    validate_shield_ids_override(query_request, configuration)
 
     # Validate attachments if provided
     if query_request.attachments:
@@ -281,7 +285,7 @@ async def retrieve_response_generator(
     turn_summary = TurnSummary()
     try:
         moderation_result = await run_shield_moderation(
-            context.client, responses_params.input
+            context.client, responses_params.input, context.query_request.shield_ids
         )
         if moderation_result.decision == "blocked":
             turn_summary.llm_response = moderation_result.message
