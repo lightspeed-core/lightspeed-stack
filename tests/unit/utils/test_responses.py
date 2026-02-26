@@ -9,6 +9,8 @@ from typing import Any, Optional
 import pytest
 from fastapi import HTTPException
 from llama_stack_api.openai_responses import (
+    OpenAIResponseInputToolFileSearch as InputToolFileSearch,
+    OpenAIResponseInputToolMCP as InputToolMCP,
     OpenAIResponseOutputMessageFileSearchToolCall as FileSearchCall,
     OpenAIResponseOutputMessageFunctionToolCall as FunctionCall,
     OpenAIResponseOutputMessageMCPCall as MCPCall,
@@ -339,9 +341,9 @@ class TestGetRAGTools:
         tools = get_rag_tools(["db1", "db2"])
         assert isinstance(tools, list)
         assert len(tools) == 1
-        assert tools[0]["type"] == "file_search"
-        assert tools[0]["vector_store_ids"] == ["db1", "db2"]
-        assert tools[0]["max_num_results"] == 10
+        assert tools[0].type == "file_search"
+        assert tools[0].vector_store_ids == ["db1", "db2"]
+        assert tools[0].max_num_results == 10
 
 
 class TestGetMCPTools:
@@ -364,10 +366,10 @@ class TestGetMCPTools:
 
         tools_no_auth = await get_mcp_tools(token=None)
         assert len(tools_no_auth) == 2
-        assert tools_no_auth[0]["type"] == "mcp"
-        assert tools_no_auth[0]["server_label"] == "fs"
-        assert tools_no_auth[0]["server_url"] == "http://localhost:3000"
-        assert "headers" not in tools_no_auth[0]
+        assert tools_no_auth[0].type == "mcp"
+        assert tools_no_auth[0].server_label == "fs"
+        assert tools_no_auth[0].server_url == "http://localhost:3000"
+        assert tools_no_auth[0].headers is None
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_with_kubernetes_auth(
@@ -387,7 +389,7 @@ class TestGetMCPTools:
         mocker.patch("utils.responses.configuration", mock_config)
         tools_k8s = await get_mcp_tools(token="user-k8s-token")
         assert len(tools_k8s) == 1
-        assert tools_k8s[0]["authorization"] == "Bearer user-k8s-token"
+        assert tools_k8s[0].authorization == "Bearer user-k8s-token"
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_with_mcp_headers(self, mocker: MockerFixture) -> None:
@@ -412,10 +414,10 @@ class TestGetMCPTools:
         }
         tools = await get_mcp_tools(token=None, mcp_headers=mcp_headers)
         assert len(tools) == 1
-        assert tools[0]["headers"] == {
+        assert tools[0].headers == {
             "X-Custom": "custom-value",
         }
-        assert tools[0]["authorization"] == "client-provided-token"
+        assert tools[0].authorization == "client-provided-token"
 
         # Test with mcp_headers=None (server should be skipped)
         tools_no_headers = await get_mcp_tools(token=None, mcp_headers=None)
@@ -491,7 +493,7 @@ class TestGetMCPTools:
 
         tools = await get_mcp_tools(token=None)
         assert len(tools) == 1
-        assert tools[0]["authorization"] == "static-secret-token"
+        assert tools[0].authorization == "static-secret-token"
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_with_mixed_headers(
@@ -525,8 +527,8 @@ class TestGetMCPTools:
 
         tools = await get_mcp_tools(token="k8s-token", mcp_headers=mcp_headers)
         assert len(tools) == 1
-        assert tools[0]["authorization"] == "Bearer k8s-token"
-        assert tools[0]["headers"] == {
+        assert tools[0].authorization == "Bearer k8s-token"
+        assert tools[0].headers == {
             "X-API-Key": "secret-api-key",
             "X-Custom": "client-custom-value",
         }
@@ -576,8 +578,8 @@ class TestGetMCPTools:
 
         tools = await get_mcp_tools(token=None, mcp_headers=None)
         assert len(tools) == 1
-        assert tools[0]["server_label"] == "public-server"
-        assert "headers" not in tools[0]
+        assert tools[0].server_label == "public-server"
+        assert tools[0].headers is None
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_oauth_no_headers_raises_401_with_www_authenticate(
@@ -646,7 +648,7 @@ class TestGetMCPTools:
             token=None, mcp_headers=None, request_headers=request_headers
         )
         assert len(tools) == 1
-        assert tools[0]["headers"] == {
+        assert tools[0].headers == {
             "x-rh-identity": "encoded-identity",
             "x-request-id": "req-456",
         }
@@ -680,9 +682,10 @@ class TestGetMCPTools:
         )
         assert len(tools) == 1
         # Authorization from authorization_headers goes to tool's authorization field
-        assert tools[0]["authorization"] == "secret-token"
+        assert tools[0].authorization == "secret-token"
         # x-rh-identity from propagated headers should be in headers
-        assert tools[0]["headers"]["x-rh-identity"] == "identity-value"
+        assert tools[0].headers is not None
+        assert tools[0].headers["x-rh-identity"] == "identity-value"
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_propagated_headers_missing_from_request(
@@ -707,7 +710,7 @@ class TestGetMCPTools:
             token=None, mcp_headers=None, request_headers=request_headers
         )
         assert len(tools) == 1
-        assert tools[0]["headers"] == {"x-rh-identity": "identity-value"}
+        assert tools[0].headers == {"x-rh-identity": "identity-value"}
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_propagated_headers_no_request_headers(
@@ -753,8 +756,8 @@ class TestGetMCPTools:
             token=None, mcp_headers=mcp_hdrs, request_headers=request_headers
         )
         assert len(tools) == 1
-        assert tools[0]["authorization"] == "Bearer client-token"
-        assert tools[0]["headers"] == {"x-rh-identity": "identity-value"}
+        assert tools[0].authorization == "Bearer client-token"
+        assert tools[0].headers == {"x-rh-identity": "identity-value"}
 
     @pytest.mark.asyncio
     async def test_get_mcp_tools_mixed_case_precedence(
@@ -785,10 +788,11 @@ class TestGetMCPTools:
         )
         assert len(tools) == 1
         # Auth header goes to tool's authorization field
-        assert tools[0]["authorization"] == "file-secret"
+        assert tools[0].authorization == "file-secret"
         # Propagated header should be in headers (Authorization not in headers)
-        assert tools[0]["headers"]["x-rh-identity"] == "identity-value"
-        assert len(tools[0]["headers"]) == 1
+        assert tools[0].headers is not None
+        assert tools[0].headers["x-rh-identity"] == "identity-value"
+        assert len(tools[0].headers) == 1
 
 
 class TestGetTopicSummary:
@@ -895,8 +899,8 @@ class TestPrepareTools:
         result = await prepare_tools(mock_client, ["vs1", "vs2"], False, "token")
         assert result is not None
         assert len(result) == 1
-        assert result[0]["type"] == "file_search"
-        assert result[0]["vector_store_ids"] == ["vs1", "vs2"]
+        assert result[0].type == "file_search"
+        assert result[0].vector_store_ids == ["vs1", "vs2"]
 
     @pytest.mark.asyncio
     async def test_prepare_tools_fetch_vector_stores(
@@ -918,7 +922,7 @@ class TestPrepareTools:
         result = await prepare_tools(mock_client, None, False, "token")
         assert result is not None
         assert len(result) == 1
-        assert result[0]["vector_store_ids"] == ["vs1", "vs2"]
+        assert result[0].vector_store_ids == ["vs1", "vs2"]
 
     @pytest.mark.asyncio
     async def test_prepare_tools_connection_error(self, mocker: MockerFixture) -> None:
@@ -938,13 +942,16 @@ class TestPrepareTools:
     async def test_prepare_tools_with_mcp_servers(self, mocker: MockerFixture) -> None:
         """Test prepare_tools includes MCP tools."""
         mock_client = mocker.AsyncMock()
-        mock_mcp_tool = {"type": "mcp", "server_label": "test-server"}
+        mock_mcp_tool = InputToolMCP(
+            server_label="test-server",
+            server_url="http://test",
+        )
         mocker.patch("utils.responses.get_mcp_tools", return_value=[mock_mcp_tool])
 
         result = await prepare_tools(mock_client, ["vs1"], False, "token")
         assert result is not None
         assert len(result) == 2  # RAG tool + MCP tool
-        assert any(tool.get("type") == "mcp" for tool in result)
+        assert any(tool.type == "mcp" for tool in result)
 
     @pytest.mark.asyncio
     async def test_prepare_tools_api_status_error(self, mocker: MockerFixture) -> None:
@@ -1146,20 +1153,18 @@ class TestPrepareResponsesParams:
 
         # Simulate MCP tools with headers (as returned by prepare_tools/get_mcp_tools)
         mcp_tools_with_headers = [
-            {
-                "type": "mcp",
-                "server_label": "mcp::aap-controller",
-                "server_url": "http://aap.foo.redhat.com:8004/sse",
-                "require_approval": "never",
-                "headers": {"X-Authorization": "client-token"},
-            },
-            {
-                "type": "mcp",
-                "server_label": "mcp::aap-lightspeed",
-                "server_url": "http://aap.foo.redhat.com:8005/sse",
-                "require_approval": "never",
-                "headers": {"X-Authorization": "client-token-2"},
-            },
+            InputToolMCP(
+                server_label="mcp::aap-controller",
+                server_url="http://aap.foo.redhat.com:8004/sse",
+                require_approval="never",
+                headers={"X-Authorization": "client-token"},
+            ),
+            InputToolMCP(
+                server_label="mcp::aap-lightspeed",
+                server_url="http://aap.foo.redhat.com:8005/sse",
+                require_approval="never",
+                headers={"X-Authorization": "client-token-2"},
+            ),
         ]
 
         mock_config = mocker.Mock()
@@ -1986,27 +1991,27 @@ class TestExtractVectorStoreIdsFromTools:
     def test_with_file_search_tool(self) -> None:
         """Test extraction from file_search tool definition."""
         tools = [
-            {"type": "file_search", "vector_store_ids": ["vs-1", "vs-2"]},
-            {"type": "mcp", "server_label": "test"},
+            InputToolFileSearch(vector_store_ids=["vs-1", "vs-2"]),
+            InputToolMCP(server_label="test", server_url="http://test"),
         ]
         result = extract_vector_store_ids_from_tools(tools)
         assert result == ["vs-1", "vs-2"]
 
     def test_with_no_file_search(self) -> None:
         """Test extraction returns empty list when no file_search tool."""
-        tools = [{"type": "mcp", "server_label": "test"}]
+        tools = [InputToolMCP(server_label="test", server_url="http://test")]
         result = extract_vector_store_ids_from_tools(tools)
-        assert result == []
+        assert not result
 
     def test_with_none_tools(self) -> None:
         """Test extraction returns empty list for None tools."""
         result = extract_vector_store_ids_from_tools(None)
-        assert result == []
+        assert not result
 
     def test_with_empty_tools(self) -> None:
         """Test extraction returns empty list for empty tools list."""
         result = extract_vector_store_ids_from_tools([])
-        assert result == []
+        assert not result
 
 
 class TestExtractRagChunksWithIndexResolution:

@@ -5,6 +5,8 @@ from typing import Annotated, Any, Literal, Optional, TypeAlias
 from llama_stack_api import ImageContentItem, TextContentItem
 from llama_stack_api.openai_responses import (
     OpenAIResponseInputFunctionToolCallOutput as FunctionToolCallOutput,
+    OpenAIResponseInputTool as InputTool,
+    OpenAIResponseInputToolChoice as ToolChoice,
     OpenAIResponseMCPApprovalRequest as McpApprovalRequest,
     OpenAIResponseMCPApprovalResponse as McpApprovalResponse,
     OpenAIResponseMessage as ResponseMessage,
@@ -13,6 +15,8 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageMCPCall as McpCall,
     OpenAIResponseOutputMessageMCPListTools as McpListTools,
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchToolCall,
+    OpenAIResponsePrompt as Prompt,
+    OpenAIResponseText as Text,
 )
 from llama_stack_client.lib.agents.tool_parser import ToolParser
 from llama_stack_client.lib.agents.types import (
@@ -129,21 +133,90 @@ ShieldModerationResult = Annotated[
     Field(discriminator="decision"),
 ]
 
+IncludeParameter: TypeAlias = Literal[
+    "web_search_call.action.sources",
+    "code_interpreter_call.outputs",
+    "computer_call_output.output.image_url",
+    "file_search_call.results",
+    "message.input_image.image_url",
+    "message.output_text.logprobs",
+    "reasoning.encrypted_content",
+]
+
+ResponseItem: TypeAlias = (
+    ResponseMessage
+    | WebSearchToolCall
+    | FileSearchToolCall
+    | FunctionToolCallOutput
+    | McpCall
+    | McpListTools
+    | McpApprovalRequest
+    | FunctionToolCall
+    | McpApprovalResponse
+)
+
+ResponseInput: TypeAlias = str | list[ResponseItem]
+
 
 class ResponsesApiParams(BaseModel):
-    """Parameters for a Llama Stack Responses API request."""
+    """Parameters for a Llama Stack Responses API request.
 
-    input: str = Field(description="The input text with attachments appended")
+    All fields accepted by the Llama Stack client responses.create() body are
+    included so that dumped model can be passed directly to response create.
+    """
+
+    input: ResponseInput = Field(description="The input text or structured input items")
     model: str = Field(description='The full model ID in format "provider/model"')
+    conversation: str = Field(description="The conversation ID in llama-stack format")
+    include: Optional[list[IncludeParameter]] = Field(
+        default=None,
+        description="Output item types to include in the response",
+    )
     instructions: Optional[str] = Field(
         default=None, description="The resolved system prompt"
     )
-    tools: Optional[list[dict[str, Any]]] = Field(
-        default=None, description="Prepared tool groups for Responses API"
+    max_infer_iters: Optional[int] = Field(
+        default=None,
+        description="Maximum number of inference iterations",
     )
-    conversation: str = Field(description="The conversation ID in llama-stack format")
-    stream: bool = Field(description="Whether to stream the response")
+    max_tool_calls: Optional[int] = Field(
+        default=None,
+        description="Maximum tool calls allowed in a single response",
+    )
+    metadata: Optional[dict[str, str]] = Field(
+        default=None,
+        description="Custom metadata for tracking or logging",
+    )
+    parallel_tool_calls: Optional[bool] = Field(
+        default=None,
+        description="Whether the model can make multiple tool calls in parallel",
+    )
+    previous_response_id: Optional[str] = Field(
+        default=None,
+        description="Identifier of the previous response in a multi-turn conversation",
+    )
+    prompt: Optional[Prompt] = Field(
+        default=None,
+        description="Prompt template with variables for dynamic substitution",
+    )
     store: bool = Field(description="Whether to store the response")
+    stream: bool = Field(description="Whether to stream the response")
+    temperature: Optional[float] = Field(
+        default=None,
+        description="Sampling temperature (e.g. 0.0-2.0)",
+    )
+    text: Optional[Text] = Field(
+        default=None,
+        description="Text response configuration (format constraints)",
+    )
+    tool_choice: Optional[ToolChoice] = Field(
+        default=None,
+        description="Tool selection strategy",
+    )
+    tools: Optional[list[InputTool]] = Field(
+        default=None,
+        description="Prepared tool groups for Responses API (same type as ResponsesRequest.tools)",
+    )
     extra_headers: Optional[dict[str, str]] = Field(
         default=None,
         description="Extra HTTP headers to send with the request (e.g. x-llamastack-provider-data)",
@@ -227,10 +300,10 @@ class TurnSummary(BaseModel):
 class TranscriptMetadata(BaseModel):
     """Metadata for a transcript entry."""
 
-    provider: str | None = None
+    provider: Optional[str] = None
     model: str
-    query_provider: str | None = None
-    query_model: str | None = None
+    query_provider: Optional[str] = None
+    query_model: Optional[str] = None
     user_id: str
     conversation_id: str
     timestamp: str
@@ -248,28 +321,3 @@ class Transcript(BaseModel):
     attachments: list[dict[str, Any]] = Field(default_factory=list)
     tool_calls: list[dict[str, Any]] = Field(default_factory=list)
     tool_results: list[dict[str, Any]] = Field(default_factory=list)
-
-
-ResponseItem: TypeAlias = (
-    ResponseMessage
-    | WebSearchToolCall
-    | FileSearchToolCall
-    | FunctionToolCallOutput
-    | McpCall
-    | McpListTools
-    | McpApprovalRequest
-    | FunctionToolCall
-    | McpApprovalResponse
-)
-
-ResponseInput: TypeAlias = str | list[ResponseItem]
-
-IncludeParameter: TypeAlias = Literal[
-    "web_search_call.action.sources",
-    "code_interpreter_call.outputs",
-    "computer_call_output.output.image_url",
-    "file_search_call.results",
-    "message.input_image.image_url",
-    "message.output_text.logprobs",
-    "reasoning.encrypted_content",
-]
