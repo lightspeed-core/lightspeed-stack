@@ -240,6 +240,111 @@ async def test_query_v2_endpoint_handles_connection_error(
 
 
 @pytest.mark.asyncio
+async def test_query_v2_endpoint_returns_401_with_www_authenticate_when_mcp_oauth_required(
+    test_config: AppConfig,
+    mock_llama_stack_client: AsyncMockType,
+    test_request: Request,
+    test_auth: AuthTuple,
+    mocker: MockerFixture,
+) -> None:
+    """Test query endpoint returns 401 with WWW-Authenticate when MCP server requires OAuth.
+
+    When prepare_tools calls get_mcp_tools and an MCP server is configured for OAuth
+    without client-provided headers, get_mcp_tools raises 401 with WWW-Authenticate.
+    This test verifies the query handler propagates that response to the client.
+
+    Parameters:
+        test_config: Test configuration
+        mock_llama_stack_client: Mocked Llama Stack client
+        test_request: FastAPI request
+        test_auth: noop authentication tuple
+        mocker: pytest-mock fixture
+    """
+    _ = test_config
+    _ = mock_llama_stack_client
+
+    expected_www_auth = 'Bearer realm="oauth"'
+    oauth_401 = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"cause": "MCP server at http://example.com requires OAuth"},
+        headers={"WWW-Authenticate": expected_www_auth},
+    )
+    mocker.patch(
+        "utils.responses.get_mcp_tools",
+        new_callable=mocker.AsyncMock,
+        side_effect=oauth_401,
+    )
+
+    query_request = QueryRequest(query="What is Ansible?")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await query_endpoint_handler(
+            request=test_request,
+            query_request=query_request,
+            auth=test_auth,
+            mcp_headers={},
+        )
+
+    assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
+    assert exc_info.value.headers is not None
+    assert exc_info.value.headers.get("WWW-Authenticate") == expected_www_auth
+
+
+@pytest.mark.asyncio
+async def test_query_v2_endpoint_returns_401_when_oauth_probe_times_out(
+    test_config: AppConfig,
+    mock_llama_stack_client: AsyncMockType,
+    test_request: Request,
+    test_auth: AuthTuple,
+    mocker: MockerFixture,
+) -> None:
+    """Test query endpoint returns 401 when OAuth probe times out.
+
+    When prepare_responses_params calls get_mcp_tools and the MCP OAuth probe
+    times out (TimeoutError), get_mcp_tools raises 401 without a
+    WWW-Authenticate header. This test verifies the query handler propagates
+    that response.
+
+    Parameters:
+        test_config: Test configuration
+        mock_llama_stack_client: Mocked Llama Stack client
+        test_request: FastAPI request
+        test_auth: noop authentication tuple
+        mocker: pytest-mock fixture
+    """
+    _ = test_config
+    _ = mock_llama_stack_client
+
+    # Probe timed out: 401 without WWW-Authenticate (same as real probe on TimeoutError)
+    oauth_probe_timeout_401 = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"cause": "MCP server at http://example.com requires OAuth"},
+        headers=None,
+    )
+    mocker.patch(
+        "utils.responses.get_mcp_tools",
+        new_callable=mocker.AsyncMock,
+        side_effect=oauth_probe_timeout_401,
+    )
+
+    query_request = QueryRequest(query="What is Ansible?")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await query_endpoint_handler(
+            request=test_request,
+            query_request=query_request,
+            auth=test_auth,
+            mcp_headers={},
+        )
+
+    assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
+    assert (
+        exc_info.value.headers is None
+        or exc_info.value.headers.get("WWW-Authenticate") is None
+    )
+
+
+@pytest.mark.asyncio
 async def test_query_v2_endpoint_empty_query(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
