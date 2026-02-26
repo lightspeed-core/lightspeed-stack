@@ -3,6 +3,7 @@
 from datetime import datetime, UTC
 from typing import Any
 
+from llama_stack_api import OpenAIResponseMessage
 import pytest
 from pytest_mock import MockerFixture
 
@@ -11,6 +12,7 @@ from models.database.conversations import UserTurn
 from utils.conversations import (
     _build_tool_call_summary_from_item,
     _extract_text_from_content,
+    append_turn_items_to_conversation,
     build_conversation_turns_from_items,
 )
 from utils.types import ToolCallSummary
@@ -720,3 +722,37 @@ class TestBuildConversationTurnsFromItems:
         # Timestamps should match conversation start time
         assert turn.started_at == "2024-01-01T10:00:00Z"
         assert turn.completed_at == "2024-01-01T10:00:00Z"
+
+
+class TestAppendTurnItemsToConversation:  # pylint: disable=too-few-public-methods
+    """Tests for append_turn_items_to_conversation function."""
+
+    @pytest.mark.asyncio
+    async def test_appends_user_input_and_llm_output(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that append_turn_items_to_conversation creates conversation items correctly."""
+        mock_client = mocker.Mock()
+        mock_client.conversations.items.create = mocker.AsyncMock(return_value=None)
+        assistant_msg = OpenAIResponseMessage(
+            type="message",
+            role="assistant",
+            content="I cannot help with that",
+        )
+
+        await append_turn_items_to_conversation(
+            mock_client,
+            conversation_id="conv-123",
+            user_input="Hello",
+            llm_output=[assistant_msg],
+        )
+
+        mock_client.conversations.items.create.assert_called_once()
+        call_args = mock_client.conversations.items.create.call_args
+        assert call_args[0][0] == "conv-123"
+        items = call_args[1]["items"]
+        assert len(items) == 2
+        assert items[0]["type"] == "message" and items[0]["role"] == "user"
+        assert items[0]["content"] == "Hello"
+        assert items[1]["type"] == "message" and items[1]["role"] == "assistant"
+        assert items[1]["content"] == "I cannot help with that"

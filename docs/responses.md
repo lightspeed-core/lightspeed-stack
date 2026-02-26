@@ -102,6 +102,7 @@ The following fields are LCORE-specific request extensions and are not part of t
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
 | `generate_topic_summary` | boolean | Generate topic summary for new conversations | No |
+| `shield_ids` | array[string] | Safety shield IDs to apply. If omitted, all configured shields are used; if provided, must contain at least one valid shield ID (empty list returns 422). | No |
 | `solr` | dictionary | Solr vector_io provider query parameters | No |
 
 
@@ -119,6 +120,7 @@ The following table maps LCORE query request fields to the OpenResponses request
 | `no_tools` | `tool_choice` | `no_tools=true` mapped to `tool_choice="none"` |
 | `vector_store_ids` | `tools` + `tool_choice` | Vector stores can be explicitly specified and restricted by `file_search` tool type's `vector_store_ids` attribute |
 | `generate_topic_summary` | N/A | Exposed directly (LCORE-specific) |
+| `shield_ids` | N/A | Exposed directly (LCORE-specific) |
 | `solr` | N/A | Exposed directly (LCORE-specific) |
 
 **Note:** The `media_type` attribute is not present in the LCORE specification, as downstream logic determines which format to process (structured `output` or textual `output_text` response attributes).
@@ -491,6 +493,7 @@ Vector store IDs are configured within the `tools` array (e.g., as `file_search`
 The API introduces extensions that are not part of the OpenResponses specification:
 
 - `generate_topic_summary` (request) — When set to `true` and a new conversation is created, a topic summary is automatically generated and stored in conversation metadata.
+- `shield_ids` (request) — Optional list of safety shield IDs to apply. If omitted, all configured shields are used; if provided, must contain at least one valid shield ID (empty list returns 422).
 - `solr` (request) — Solr vector_io provider query parameters (e.g. filter queries).
 - `available_quotas` (response) — Provides real-time quota information from all configured quota limiters.
 

@@ -222,6 +222,21 @@ class ResponsesApiParams(BaseModel):
         description="Extra HTTP headers to send with the request (e.g. x-llamastack-provider-data)",
     )
 
+    def dump_for_create(self) -> dict[str, Any]:
+        """Dump params for client.responses.create() with single-context semantics.
+
+        When previous_response_id is set, conversation is omitted so that only
+        one context (previous_response_id) is passed to the Responses API.
+        Otherwise the full dump is returned.
+
+        Returns:
+            Dictionary suitable for unpacking into responses.create().
+        """
+        data = self.model_dump(exclude_none=True)
+        if self.previous_response_id:
+            data.pop("conversation", None)
+        return data
+
 
 class ToolCallSummary(BaseModel):
     """Model representing a tool call made during response generation (for tool_calls list)."""
@@ -288,6 +303,7 @@ class ReferencedDocument(BaseModel):
 class TurnSummary(BaseModel):
     """Summary of a turn in llama stack."""
 
+    id: str = Field(default="", description="ID of the response")
     llm_response: str = ""
     tool_calls: list[ToolCallSummary] = Field(default_factory=list)
     tool_results: list[ToolResultSummary] = Field(default_factory=list)

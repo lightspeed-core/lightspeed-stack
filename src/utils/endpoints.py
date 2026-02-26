@@ -10,7 +10,7 @@ import constants
 from app.database import get_session
 from configuration import AppConfig, LogicError
 from log import get_logger
-from models.database.conversations import UserConversation
+from models.database.conversations import UserConversation, UserTurn
 from models.responses import (
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -177,6 +177,39 @@ def validate_and_retrieve_conversation(
         raise HTTPException(**response.model_dump()) from e
 
     return user_conversation
+
+
+def retrieve_turn_by_response_id(response_id: str) -> UserTurn:
+    """Retrieve a response's turn from the database by response ID.
+
+    Looks up the turn that has this response_id to get its conversation.
+    Used for fork/previous_response_id resolution.
+
+    Args:
+        response_id: The ID of the response (stored on UserTurn.response_id).
+
+    Returns:
+        The UserTurn row for that response (has conversation_id).
+
+    Raises:
+        HTTPException: 404 if no turn has this response_id; 500 on database error.
+    """
+    try:
+        with get_session() as session:
+            turn = session.query(UserTurn).filter_by(response_id=response_id).first()
+            if turn is None:
+                logger.error("Response %s not found in database.", response_id)
+                response = NotFoundResponse(
+                    resource="response", resource_id=response_id
+                )
+                raise HTTPException(**response.model_dump())
+            return turn
+    except SQLAlchemyError as e:
+        logger.exception(
+            "Database error while retrieving turn by response_id %s", response_id
+        )
+        response = InternalServerErrorResponse.database_error()
+        raise HTTPException(**response.model_dump()) from e
 
 
 def check_configuration_loaded(config: AppConfig) -> None:

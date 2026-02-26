@@ -7,6 +7,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
 from fastapi import HTTPException
+from llama_stack_api import OpenAIResponseObject
 from llama_stack_api.openai_responses import (
     OpenAIResponseContentPartRefusal as ContentPartRefusal,
     OpenAIResponseInputMessageContent as InputMessageContent,
@@ -976,7 +977,7 @@ async def select_model_for_responses(
 
 
 def build_turn_summary(
-    response: Optional[ResponseObject],
+    response: Optional[OpenAIResponseObject],
     model: str,
     vector_store_ids: Optional[list[str]] = None,
     rag_id_mapping: Optional[dict[str, str]] = None,
@@ -998,6 +999,7 @@ def build_turn_summary(
     if response is None or response.output is None:
         return summary
 
+    summary.id = response.id
     # Extract text from output items
     summary.llm_response = extract_text_from_response_items(response.output)
 
@@ -1108,3 +1110,35 @@ def deduplicate_referenced_documents(
         seen.add(key)
         out.append(d)
     return out
+
+
+async def create_new_conversation(
+    client: AsyncLlamaStackClient,
+) -> str:
+    """Create a new conversation via the Llama Stack Conversations API.
+
+    Calls the client to create a conversation with empty metadata and returns
+    the new conversation's ID.
+
+    Args:
+        client: The Llama Stack client used to create the conversation.
+
+    Returns:
+        The new conversation's ID (string), as returned by the API.
+
+    Raises:
+        HTTPException: 503 when the backend is unreachable (APIConnectionError);
+            500 on other API errors (APIStatusError).
+    """
+    try:
+        conversation = await client.conversations.create(metadata={})
+        return conversation.id
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="Llama Stack",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+    except APIStatusError as e:
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump()) from e

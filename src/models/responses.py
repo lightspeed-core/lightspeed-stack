@@ -1431,7 +1431,7 @@ class ResponsesResponse(AbstractSuccessfulResponse):
         top_p: Top-p sampling parameter used for generation.
         truncation: Strategy used for handling content that exceeds context limits.
         usage: Token usage statistics including input_tokens, output_tokens, and
-            total_tokens.
+            total_tokens. None for intermediate responses.
         conversation: Conversation ID linking this response to a conversation thread
             (LCORE-specific).
         available_quotas: Remaining token quotas for the user (LCORE-specific).
@@ -1459,8 +1459,8 @@ class ResponsesResponse(AbstractSuccessfulResponse):
     tools: Optional[list[OutputTool]] = None
     top_p: Optional[float] = None
     truncation: Optional[str] = None
-    usage: Usage
-    conversation: Optional[str] = None
+    usage: Optional[Usage] = None
+    conversation: str
     available_quotas: dict[str, int]
     output_text: str
 

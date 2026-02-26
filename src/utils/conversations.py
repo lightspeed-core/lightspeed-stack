@@ -2,8 +2,14 @@
 
 import json
 from datetime import UTC, datetime
-from typing import Any, Optional, Union, cast
+from typing import Any, Optional, Sequence, Union, cast
 
+from fastapi import HTTPException
+from llama_stack_api import (
+    OpenAIResponseMessage,
+    OpenAIResponseObject,
+    OpenAIResponseOutput,
+)
 from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageFileSearchToolCall as FileSearchCall,
     OpenAIResponseOutputMessageFunctionToolCall as FunctionCall,
@@ -11,6 +17,8 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageMCPListTools as MCPListTools,
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
 )
+from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
+from llama_stack_client.types.conversations.item_create_params import Item
 from llama_stack_client.types.conversations.item_list_response import (
     ItemListResponse,
     OpenAIResponseInputFunctionToolCallOutput as FunctionToolCallOutput,
@@ -21,9 +29,14 @@ from llama_stack_client.types.conversations.item_list_response import (
 
 from constants import DEFAULT_RAG_TOOL
 from models.database.conversations import UserTurn
-from models.responses import ConversationTurn, Message
+from models.responses import (
+    ConversationTurn,
+    InternalServerErrorResponse,
+    Message,
+    ServiceUnavailableResponse,
+)
 from utils.responses import parse_arguments_string
-from utils.types import ToolCallSummary, ToolResultSummary
+from utils.types import ResponseInput, ToolCallSummary, ToolResultSummary
 
 
 def _extract_text_from_content(content: Union[str, list[Any]]) -> str:
@@ -423,3 +436,81 @@ def build_conversation_turns_from_items(
         )
 
     return chat_history
+
+
+async def add_response_to_conversation(
+    client: AsyncLlamaStackClient, response_id: str, conversation_id: str
+) -> None:
+    """Add a response to a conversation.
+
+    Args:
+        client: The Llama Stack client (AsyncLlamaStackClient).
+        response_id: The ID of the response to add
+        conversation_id: The ID of the conversation to add the response to
+    """
+    try:
+        items = cast(
+            OpenAIResponseObject, await client.responses.retrieve(response_id)
+        ).output
+        items = [cast(Any, item.model_dump()) for item in items]
+        await client.conversations.items.create(
+            conversation_id=conversation_id,
+            items=items,  # type: ignore[arg-type]
+        )
+
+    except APIConnectionError as e:
+        raise HTTPException(
+            **ServiceUnavailableResponse(
+                backend_name="Llama Stack", cause=str(e)
+            ).model_dump()
+        ) from e
+    except APIStatusError as e:
+        raise HTTPException(**InternalServerErrorResponse.generic().model_dump()) from e
+
+
+async def append_turn_items_to_conversation(
+    client: AsyncLlamaStackClient,
+    conversation_id: str,
+    user_input: ResponseInput,
+    llm_output: Sequence[OpenAIResponseOutput],
+) -> None:
+    """
+    Append a turn (user input + LLM output) to a conversation.
+
+    Persists the user's input and the LLM output items so the turn appears in
+    conversation history. Used for refusal turns, completed responses, or any
+    other turn that should be stored.
+
+    Args:
+        client: The Llama Stack client.
+        conversation_id: The Llama Stack conversation ID.
+        user_input: Request input (str or list of ResponseItem). If a string,
+            wrapped in a single message item; otherwise items are dumped as-is.
+        llm_output: Output from the LLM: a list of OpenAIResponseOutput
+    """
+    if isinstance(user_input, str):
+        user_message = OpenAIResponseMessage(
+            role="user",
+            content=user_input,
+        )
+        user_items = [user_message.model_dump()]
+    else:
+        user_items = [item.model_dump() for item in user_input]
+
+    output_items = [item.model_dump() for item in llm_output]
+
+    items = user_items + output_items
+    try:
+        await client.conversations.items.create(
+            conversation_id,
+            items=cast(list[Item], items),
+        )
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="Llama Stack",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+    except APIStatusError as e:
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump()) from e

@@ -3,7 +3,10 @@
 from typing import Any, Optional
 
 from fastapi import HTTPException
-from llama_stack_api import OpenAIResponseContentPartRefusal, OpenAIResponseMessage
+from llama_stack_api import (
+    OpenAIResponseContentPartRefusal,
+    OpenAIResponseMessage,
+)
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
 import metrics
@@ -266,7 +269,6 @@ def create_refusal_response(refusal_message: str) -> OpenAIResponseMessage:
     """
     refusal_content = OpenAIResponseContentPartRefusal(refusal=refusal_message)
     return OpenAIResponseMessage(
-        type="message",
         role="assistant",
         content=[refusal_content],
     )
