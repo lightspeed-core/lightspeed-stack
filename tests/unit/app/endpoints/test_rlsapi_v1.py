@@ -309,7 +309,6 @@ def test_config_error_503_matches_llm_error_503_shape(
 # --- Test retrieve_simple_response ---
 
 
-@pytest.mark.asyncio
 async def test_retrieve_simple_response_success(
     mock_configuration: AppConfig, mock_llm_response: None
 ) -> None:
@@ -320,7 +319,6 @@ async def test_retrieve_simple_response_success(
     assert response == "This is a test LLM response."
 
 
-@pytest.mark.asyncio
 async def test_retrieve_simple_response_empty_output(
     mock_configuration: AppConfig, mock_empty_llm_response: None
 ) -> None:
@@ -331,7 +329,6 @@ async def test_retrieve_simple_response_empty_output(
     assert response == ""
 
 
-@pytest.mark.asyncio
 async def test_retrieve_simple_response_api_connection_error(
     mock_configuration: AppConfig, mock_api_connection_error: None
 ) -> None:
@@ -384,7 +381,6 @@ def test_get_rh_identity_context_with_empty_values(mocker: MockerFixture) -> Non
 # --- Test infer_endpoint ---
 
 
-@pytest.mark.asyncio
 async def test_infer_minimal_request(
     mocker: MockerFixture,
     mock_configuration: AppConfig,
@@ -409,7 +405,6 @@ async def test_infer_minimal_request(
     assert check_suid(response.data.request_id)
 
 
-@pytest.mark.asyncio
 async def test_infer_full_context_request(
     mocker: MockerFixture,
     mock_configuration: AppConfig,
@@ -441,7 +436,6 @@ async def test_infer_full_context_request(
     assert response.data.request_id
 
 
-@pytest.mark.asyncio
 async def test_infer_generates_unique_request_ids(
     mocker: MockerFixture,
     mock_configuration: AppConfig,
@@ -469,7 +463,6 @@ async def test_infer_generates_unique_request_ids(
     assert response1.data.request_id != response2.data.request_id
 
 
-@pytest.mark.asyncio
 async def test_infer_api_connection_error_returns_503(
     mocker: MockerFixture,
     mock_configuration: AppConfig,
@@ -492,7 +485,6 @@ async def test_infer_api_connection_error_returns_503(
     assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
 
-@pytest.mark.asyncio
 async def test_infer_empty_llm_response_returns_fallback(
     mocker: MockerFixture,
     mock_configuration: AppConfig,
@@ -517,7 +509,6 @@ async def test_infer_empty_llm_response_returns_fallback(
 # --- Test Splunk integration ---
 
 
-@pytest.mark.asyncio
 async def test_infer_queues_splunk_event_on_success(
     mocker: MockerFixture,
     mock_configuration: AppConfig,
@@ -542,7 +533,6 @@ async def test_infer_queues_splunk_event_on_success(
     assert call_args[0][2] == "infer_with_llm"
 
 
-@pytest.mark.asyncio
 async def test_infer_queues_splunk_error_event_on_failure(
     mocker: MockerFixture,
     mock_configuration: AppConfig,
@@ -567,7 +557,6 @@ async def test_infer_queues_splunk_error_event_on_failure(
     assert call_args[0][2] == "infer_error"
 
 
-@pytest.mark.asyncio
 async def test_infer_splunk_event_includes_rh_identity_context(
     mocker: MockerFixture,
     mock_configuration: AppConfig,
@@ -638,7 +627,6 @@ def _setup_responses_mock_with_capture(
     return mock_create
 
 
-@pytest.mark.asyncio
 async def test_retrieve_simple_response_passes_tools(
     mocker: MockerFixture, mock_configuration: AppConfig
 ) -> None:
@@ -660,7 +648,6 @@ async def test_retrieve_simple_response_passes_tools(
     assert call_kwargs["tools"] == tools
 
 
-@pytest.mark.asyncio
 async def test_retrieve_simple_response_defaults_to_empty_tools(
     mocker: MockerFixture, mock_configuration: AppConfig
 ) -> None:
@@ -674,7 +661,6 @@ async def test_retrieve_simple_response_defaults_to_empty_tools(
     assert call_kwargs["tools"] == []
 
 
-@pytest.mark.asyncio
 async def test_infer_endpoint_calls_get_mcp_tools(
     mocker: MockerFixture,
     mock_configuration: AppConfig,
@@ -704,7 +690,6 @@ async def test_infer_endpoint_calls_get_mcp_tools(
     )
 
 
-@pytest.mark.asyncio
 async def test_infer_generic_runtime_error_reraises(
     mocker: MockerFixture,
     mock_configuration: AppConfig,
@@ -725,7 +710,6 @@ async def test_infer_generic_runtime_error_reraises(
         )
 
 
-@pytest.mark.asyncio
 async def test_infer_generic_runtime_error_records_failure(
     mocker: MockerFixture,
     mock_configuration: AppConfig,
