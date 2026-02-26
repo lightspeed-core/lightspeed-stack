@@ -20,6 +20,7 @@ from models.responses import (
     UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
+from utils.mcp_headers import McpHeaders, mcp_headers_dependency
 from utils.mcp_oauth_probe import probe_mcp_oauth_and_raise_401
 from utils.tool_formatter import format_tools_list
 from log import get_logger
@@ -44,6 +45,7 @@ tools_responses: dict[int | str, dict[str, Any]] = {
 async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-statements
     request: Request,
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
+    mcp_headers: McpHeaders = Depends(mcp_headers_dependency),
 ) -> ToolsResponse:
     """
     Handle requests to the /tools endpoint.
@@ -87,7 +89,13 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
     for toolgroup in toolgroups_response:
         try:
             # Get tools for each toolgroup
-            tools_response = await client.tools.list(toolgroup_id=toolgroup.identifier)
+            headers = mcp_headers.get(toolgroup.identifier, {})
+            authorization = headers.pop("Authorization", None)
+            tools_response = await client.tools.list(
+                toolgroup_id=toolgroup.identifier,
+                extra_headers=headers,
+                extra_query={"authorization": authorization},
+            )
         except BadRequestError:
             logger.error("Toolgroup %s is not found", toolgroup.identifier)
             continue

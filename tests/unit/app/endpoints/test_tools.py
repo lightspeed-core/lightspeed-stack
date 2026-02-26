@@ -190,7 +190,7 @@ async def test_tools_endpoint_success(
 
     # Call the endpoint
     response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
-        mock_request, mock_auth
+        mock_request, mock_auth, {}
     )
 
     # Verify response
@@ -213,8 +213,16 @@ async def test_tools_endpoint_success(
 
     # Verify client calls
     assert mock_client.tools.list.call_count == 2
-    mock_client.tools.list.assert_any_call(toolgroup_id="filesystem-tools")
-    mock_client.tools.list.assert_any_call(toolgroup_id="git-tools")
+    mock_client.tools.list.assert_any_call(
+        toolgroup_id="filesystem-tools",
+        extra_headers={},
+        extra_query={"authorization": None},
+    )
+    mock_client.tools.list.assert_any_call(
+        toolgroup_id="git-tools",
+        extra_headers={},
+        extra_query={"authorization": None},
+    )
 
 
 @pytest.mark.asyncio
@@ -283,7 +291,7 @@ async def test_tools_endpoint_no_mcp_servers(mocker: MockerFixture) -> None:
 
     # Call the endpoint
     response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
-        mock_request, mock_auth
+        mock_request, mock_auth, {}
     )
 
     # Verify response
@@ -328,7 +336,7 @@ async def test_tools_endpoint_api_connection_error(
     # Call the endpoint - should raise HTTPException when APIConnectionError occurs
     with pytest.raises(HTTPException) as exc_info:
         await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
-            mock_request, mock_auth
+            mock_request, mock_auth, {}
         )
 
     assert exc_info.value.status_code == 503
@@ -366,7 +374,7 @@ async def test_tools_endpoint_partial_failure(  # pylint: disable=redefined-oute
 
     with pytest.raises(HTTPException) as exc_info:
         await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
-            mock_request, mock_auth
+            mock_request, mock_auth, {}
         )
 
     assert exc_info.value.status_code == 503
@@ -419,7 +427,7 @@ async def test_tools_endpoint_toolgroup_not_found(  # pylint: disable=redefined-
 
     # Call the endpoint - should continue processing and return tools from successful toolgroups
     response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
-        mock_request, mock_auth
+        mock_request, mock_auth, {}
     )
 
     # Verify response - should have only one tool from the first successful toolgroup
@@ -430,8 +438,16 @@ async def test_tools_endpoint_toolgroup_not_found(  # pylint: disable=redefined-
 
     # Verify that tools.list was called for both toolgroups
     assert mock_client.tools.list.call_count == 2
-    mock_client.tools.list.assert_any_call(toolgroup_id="filesystem-tools")
-    mock_client.tools.list.assert_any_call(toolgroup_id="git-tools")
+    mock_client.tools.list.assert_any_call(
+        toolgroup_id="filesystem-tools",
+        extra_headers={},
+        extra_query={"authorization": None},
+    )
+    mock_client.tools.list.assert_any_call(
+        toolgroup_id="git-tools",
+        extra_headers={},
+        extra_query={"authorization": None},
+    )
 
 
 @pytest.mark.asyncio
@@ -483,7 +499,7 @@ async def test_tools_endpoint_builtin_toolgroup(
 
     # Call the endpoint
     response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
-        mock_request, mock_auth
+        mock_request, mock_auth, {}
     )
 
     # Verify response
@@ -604,7 +620,7 @@ async def test_tools_endpoint_mixed_toolgroups(mocker: MockerFixture) -> None:
 
     # Call the endpoint
     response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
-        mock_request, mock_auth
+        mock_request, mock_auth, {}
     )
 
     # Verify response - should have both tools with correct server sources
@@ -647,7 +663,7 @@ async def test_tools_endpoint_value_attribute_error(
 
     # Call the endpointt - should raise exception since toolgroups.list failed
     with pytest.raises(ValueError, match="Invalid response format"):
-        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)  # type: ignore
+        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth, {})  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -678,7 +694,7 @@ async def test_tools_endpoint_apiconnection_error_toolgroups(  # pylint: disable
 
     # Call the endpointt and expect HTTPException
     with pytest.raises(HTTPException) as exc_info:
-        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)  # type: ignore
+        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth, {})  # type: ignore
 
     assert exc_info.value.status_code == 503
 
@@ -711,7 +727,7 @@ async def test_tools_endpoint_client_holder_apiconnection_error(  # pylint: disa
 
     # Call the endpointt and expect HTTPException
     with pytest.raises(HTTPException) as exc_info:
-        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)  # type: ignore
+        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth, {})  # type: ignore
 
     assert exc_info.value.status_code == 503
 
@@ -746,7 +762,7 @@ async def test_tools_endpoint_general_exception(
 
     # Call the endpointt and expect the exception to propagate (not caught)
     with pytest.raises(Exception, match="Unexpected error"):
-        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth)  # type: ignore
+        await tools.tools_endpoint_handler.__wrapped__(mock_request, mock_auth, {})  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -794,7 +810,7 @@ async def test_tools_endpoint_authentication_error_with_mcp_endpoint(
 
     with pytest.raises(HTTPException) as exc_info:
         await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
-            mock_request, mock_auth
+            mock_request, mock_auth, {}
         )
 
     assert exc_info.value.status_code == 401
@@ -836,7 +852,7 @@ async def test_tools_endpoint_authentication_error_without_mcp_endpoint(
 
     with pytest.raises(HTTPException) as exc_info:
         await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
-            mock_request, mock_auth
+            mock_request, mock_auth, {}
         )
 
     assert exc_info.value.status_code == 401
