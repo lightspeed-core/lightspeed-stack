@@ -16,6 +16,10 @@ from behave.model import Feature, Scenario
 from tests.e2e.utils.prow_utils import restore_llama_stack_pod
 from behave.runner import Context
 
+from tests.e2e.utils.llama_stack_shields import (
+    register_shield,
+    unregister_shield,
+)
 from tests.e2e.utils.utils import (
     create_config_backup,
     is_prow_environment,
@@ -169,6 +173,27 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         scenario.skip("Skipped in library mode (no separate llama-stack container)")
         return
 
+    # @disable-shields: unregister shield via client.shields.delete("llama-guard").
+    # Only in server mode: in library mode there is no separate Llama Stack to call,
+    # and unregistering in the test process would not affect the app's in-process instance.
+    if "disable-shields" in scenario.effective_tags:
+        if context.is_library_mode:
+            scenario.skip(
+                "Shield unregister/register only applies in server mode (Llama Stack as a "
+                "separate service). In library mode the app's shields cannot be disabled from e2e."
+            )
+            return
+        try:
+            saved = unregister_shield("llama-guard")
+            context.llama_guard_provider_id = saved[0] if saved else None
+            context.llama_guard_provider_shield_id = saved[1] if saved else None
+            print("Unregistered shield llama-guard for this scenario")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            scenario.skip(
+                f"Could not unregister shield (is Llama Stack reachable?): {e}"
+            )
+            return
+
     mode_dir = "library-mode" if context.is_library_mode else "server-mode"
 
     if "InvalidFeedbackStorageConfig" in scenario.effective_tags:
@@ -217,6 +242,52 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
         switch_config(context.feature_config)
         restart_container("lightspeed-stack")
 
+    # @disable-shields: re-register shield only if we unregistered one (avoid creating a shield that did not exist)
+    if "disable-shields" in scenario.effective_tags:
+        provider_id = getattr(context, "llama_guard_provider_id", None)
+        provider_shield_id = getattr(context, "llama_guard_provider_shield_id", None)
+        if provider_id is not None and provider_shield_id is not None:
+            try:
+                register_shield(
+                    "llama-guard",
+                    provider_id=provider_id,
+                    provider_shield_id=provider_shield_id,
+                )
+                print("Re-registered shield llama-guard")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                print(f"Warning: Could not re-register shield: {e}")
+
+
+def _print_llama_stack_diagnostics() -> None:
+    """Print container state, health, and recent logs to diagnose why llama-stack did not recover."""
+    print("--- llama-stack diagnostics ---")
+    for label, cmd in [
+        ("State", ["docker", "inspect", "--format={{.State}}", "llama-stack"]),
+        ("Health", ["docker", "inspect", "--format={{.State.Health}}", "llama-stack"]),
+    ]:
+        try:
+            r = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=5, check=False
+            )
+            print(f"  {label}: {r.stdout.strip() if r.stdout else r.stderr or 'N/A'}")
+        except subprocess.TimeoutExpired:
+            print(f"  {label}: (inspect timed out)")
+    try:
+        r = subprocess.run(
+            ["docker", "logs", "--tail", "40", "llama-stack"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        out = (r.stdout or "") + (r.stderr or "")
+        print("  Logs (last 40 lines):")
+        for line in out.strip().splitlines():
+            print(f"    {line}")
+    except subprocess.TimeoutExpired:
+        print("  Logs: (timed out)")
+    print("--- end diagnostics ---")
+
 
 def _restore_llama_stack(context: Context) -> None:
     """Restore Llama Stack connection after disruption."""
@@ -263,9 +334,15 @@ def _restore_llama_stack(context: Context) -> None:
                 time.sleep(5)
             else:
                 print("Warning: Llama Stack may not be fully healthy after restoration")
+                _print_llama_stack_diagnostics()
 
     except subprocess.CalledProcessError as e:
         print(f"Warning: Could not restore Llama Stack connection: {e}")
+        if e.stderr:
+            print(f"  docker start stderr: {e.stderr}")
+        if e.stdout:
+            print(f"  docker start stdout: {e.stdout}")
+        _print_llama_stack_diagnostics()
 
 
 def before_feature(context: Context, feature: Feature) -> None:

@@ -178,3 +178,18 @@ Feature: streaming_query endpoint API tests
             }
           }
           """
+
+  Scenario: Check if streaming_query with shields returns 413 when question is too long for model context
+    Given The system is in default state
+    And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+    When I use "streaming_query" to ask question with too-long query and authorization header
+    Then The status code of the response is 413
+    And The body of the response contains Prompt is too long
+
+  @disable-shields
+  Scenario: Check if streaming_query without shields returns 200 and error in stream when question is too long for model context
+    Given The system is in default state
+    And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+    When I use "streaming_query" to ask question with too-long query and authorization header
+    Then The status code of the response is 200
+    And The streamed response contains error message Prompt is too long
