@@ -270,7 +270,7 @@ def run_https_server(port: int, httpd: HTTPServer) -> None:
         print(f"HTTPS server error: {e}")
 
 
-def main() -> None:
+def main() -> None:  # pylint: disable=R0915
     """Start the mock MCP server with HTTP and optionally HTTPS."""
     http_port = int(sys.argv[1]) if len(sys.argv) > 1 else 3000
     http_only = os.environ.get("MCP_HTTP_ONLY", "").lower() in ("true", "1", "yes")
@@ -279,6 +279,7 @@ def main() -> None:
     http_server = HTTPServer(("", http_port), MCPMockHandler)
 
     https_server = None
+    https_port = -1
     if not http_only:
         try:
             https_port = http_port + 1
