@@ -33,7 +33,9 @@ llm_calls_total = Counter(
 )
 
 # Metric that counts how many LLM calls failed
-llm_calls_failures_total = Counter("ls_llm_calls_failures_total", "LLM calls failures")
+llm_calls_failures_total = Counter(
+    "ls_llm_calls_failures_total", "LLM calls failures", ["provider", "model"]
+)
 
 # Metric that counts how many LLM calls had validation errors
 llm_calls_validation_errors_total = Counter(

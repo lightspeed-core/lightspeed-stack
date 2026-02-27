@@ -42,7 +42,6 @@ async def test_metrics_endpoint(mocker: MockerFixture) -> None:
     assert "# TYPE ls_provider_model_configuration gauge" in response_body
     assert "# TYPE ls_llm_calls_total counter" in response_body
     assert "# TYPE ls_llm_calls_failures_total counter" in response_body
-    assert "# TYPE ls_llm_calls_failures_created gauge" in response_body
     assert "# TYPE ls_llm_validation_errors_total counter" in response_body
     assert "# TYPE ls_llm_validation_errors_created gauge" in response_body
     assert "# TYPE ls_llm_token_sent_total counter" in response_body
