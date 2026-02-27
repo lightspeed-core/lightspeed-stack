@@ -36,6 +36,7 @@ from observability import InferenceEventData, build_inference_event, send_splunk
 from utils.query import handle_known_apistatus_errors
 from utils.responses import (
     extract_text_from_response_items,
+    extract_token_usage,
     get_mcp_tools,
 )
 from utils.suid import get_suid
@@ -191,6 +192,7 @@ async def retrieve_simple_response(
         store=False,
     )
     response = cast(OpenAIResponseObject, response)
+    extract_token_usage(response.usage, model_id)
 
     return extract_text_from_response_items(response.output)
 
