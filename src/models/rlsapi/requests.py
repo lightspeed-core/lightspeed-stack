@@ -31,6 +31,7 @@ class RlsapiV1Attachment(ConfigurationBase):
 
     contents: str = Field(
         default="",
+        max_length=65_536,
         description="File contents read on client",
         examples=["# Configuration file\nkey=value"],
     )
@@ -50,6 +51,7 @@ class RlsapiV1Terminal(ConfigurationBase):
 
     output: str = Field(
         default="",
+        max_length=65_536,
         description="Terminal output from client",
         examples=["bash: command not found", "Permission denied"],
     )
@@ -129,6 +131,7 @@ class RlsapiV1Context(ConfigurationBase):
 
     stdin: str = Field(
         default="",
+        max_length=65_536,
         description="Redirect input from stdin",
         examples=["piped input from previous command"],
     )
@@ -173,6 +176,7 @@ class RlsapiV1InferRequest(ConfigurationBase):
     question: str = Field(
         ...,
         min_length=1,
+        max_length=10_240,
         description="User question",
         examples=["How do I list files?", "How do I configure SELinux?"],
     )
