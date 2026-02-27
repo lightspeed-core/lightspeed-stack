@@ -8,21 +8,20 @@ import traceback
 from typing import Any, Optional
 from urllib.parse import urljoin
 
+from llama_stack_client import AsyncLlamaStackClient
+from llama_stack_client.types.query_chunks_response import Chunk
 from pydantic import AnyUrl
 
-from llama_stack_client import AsyncLlamaStackClient
-
 import constants
-from configuration import AppConfig
+from configuration import configuration
 from log import get_logger
-from models.requests import QueryRequest
 from models.responses import ReferencedDocument
 from utils.types import RAGChunk
 
 logger = get_logger(__name__)
 
 
-def _is_solr_enabled(configuration: AppConfig) -> bool:
+def _is_solr_enabled() -> bool:
     """Check if Solr is enabled in configuration."""
     return bool(configuration.solr and configuration.solr.enabled)
 
@@ -39,7 +38,7 @@ def _get_vector_store_ids(solr_enabled: bool) -> list[str]:
     return []
 
 
-def _build_query_params(query_request: QueryRequest) -> dict:
+def _build_query_params(solr: Optional[dict[str, Any]] = None) -> dict[str, Any]:
     """Build query parameters for vector search."""
     params = {
         "k": constants.VECTOR_SEARCH_DEFAULT_K,
@@ -47,10 +46,10 @@ def _build_query_params(query_request: QueryRequest) -> dict:
         "mode": constants.VECTOR_SEARCH_DEFAULT_MODE,
     }
     logger.info("Initial params: %s", params)
-    logger.info("query_request.solr: %s", query_request.solr)
+    logger.info("solr: %s", solr)
 
-    if query_request.solr:
-        params["solr"] = query_request.solr
+    if solr:
+        params["solr"] = solr
         logger.info("Final params with solr filters: %s", params)
     else:
         logger.info("No solr filters provided")
@@ -131,16 +130,16 @@ def _process_chunks_for_documents(
 
 async def perform_vector_search(
     client: AsyncLlamaStackClient,
-    query_request: QueryRequest,
-    configuration: AppConfig,
+    query: str,
+    solr: Optional[dict[str, Any]] = None,
 ) -> tuple[list[Any], list[float], list[ReferencedDocument], list[RAGChunk]]:
     """
     Perform vector search and extract RAG chunks and referenced documents.
 
     Args:
         client: The AsyncLlamaStackClient to use for the request
-        query_request: The user's query request
-        configuration: Application configuration
+        query: The user's query
+        solr: Solr query parameters
 
     Returns:
         Tuple containing:
@@ -149,13 +148,13 @@ async def perform_vector_search(
         - doc_ids_from_chunks: Referenced documents extracted from chunks
         - rag_chunks: Processed RAG chunks ready for use
     """
-    retrieved_chunks: list[Any] = []
+    retrieved_chunks: list[Chunk] = []
     retrieved_scores: list[float] = []
     doc_ids_from_chunks: list[ReferencedDocument] = []
     rag_chunks: list[RAGChunk] = []
 
     # Check if Solr is enabled in configuration
-    if not _is_solr_enabled(configuration):
+    if not _is_solr_enabled():
         logger.info("Solr vector IO is disabled, skipping vector search")
         return retrieved_chunks, retrieved_scores, doc_ids_from_chunks, rag_chunks
 
@@ -167,11 +166,11 @@ async def perform_vector_search(
 
         if vector_store_ids:
             vector_store_id = vector_store_ids[0]
-            params = _build_query_params(query_request)
+            params = _build_query_params(solr)
 
             query_response = await client.vector_io.query(
                 vector_store_id=vector_store_id,
-                query=query_request.query,
+                query=query,
                 params=params,
             )
 

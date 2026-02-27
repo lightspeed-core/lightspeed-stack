@@ -32,7 +32,6 @@ from models.responses import (
     PromptTooLongResponse,
     QueryResponse,
     QuotaExceededResponse,
-    ReferencedDocument,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
     UnprocessableEntityResponse,
@@ -65,7 +64,6 @@ from utils.shields import (
 )
 from utils.suid import normalize_conversation_id
 from utils.types import (
-    RAGChunk,
     ResponsesApiParams,
     TurnSummary,
 )
@@ -157,11 +155,8 @@ async def query_endpoint_handler(
 
     client = AsyncLlamaStackClientHolder().get_client()
 
-    doc_ids_from_chunks: list[ReferencedDocument] = []
-    pre_rag_chunks: list[RAGChunk] = []
-
     _, _, doc_ids_from_chunks, pre_rag_chunks = await perform_vector_search(
-        client, query_request, configuration
+        client, query_request.query, query_request.solr
     )
 
     rag_context = format_rag_context_for_injection(pre_rag_chunks)
@@ -209,7 +204,7 @@ async def query_endpoint_handler(
 
     if doc_ids_from_chunks:
         turn_summary.referenced_documents = deduplicate_referenced_documents(
-            doc_ids_from_chunks + (turn_summary.referenced_documents or [])
+            doc_ids_from_chunks + turn_summary.referenced_documents
         )
 
     # Get topic summary for new conversation
