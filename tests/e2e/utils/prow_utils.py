@@ -8,6 +8,8 @@ import os
 import subprocess
 import tempfile
 
+from typing import Optional
+
 
 def get_namespace() -> str:
     """Get the Kubernetes namespace for Prow environment."""
@@ -35,7 +37,7 @@ def _get_e2e_ops_script() -> str:
 
 
 def run_e2e_ops(
-    command: str, args: list[str] | None = None, timeout: int = 180
+    command: str, args: Optional[list[str]] = None, timeout: int = 180
 ) -> subprocess.CompletedProcess:
     """Run a command via the consolidated e2e-ops.sh script.
 
