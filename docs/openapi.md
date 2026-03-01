@@ -69,15 +69,13 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful Response | string |
-| 401 | Unauthorized | ...
+| Status Code | Description         | Component                                     |
+|-------------|---------------------|-----------------------------------------------|
+| 200         | Successful Response | string                                        |
+| 401         | Unauthorized        | [UnauthorizedResponse](#unauthorizedresponse) |
+| 403         | Permission denied   | [ForbiddenResponse](#forbiddenresponse)       |
+
 Examples
-
-
-
-
 
 ```json
 {
@@ -88,9 +86,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -99,14 +94,6 @@ Examples
   }
 }
 ```
-
-[UnauthorizedResponse](#unauthorizedresponse) |
-| 403 | Permission denied | ...
-Examples
-
-
-
-
 
 ```json
 {
@@ -117,15 +104,14 @@ Examples
 }
 ```
 
-[ForbiddenResponse](#forbiddenresponse) |
 ## GET `/v1/info`
 
 > **Info Endpoint Handler**
 
 Handle request to the /info endpoint.
 
-Process GET requests to the /info endpoint, returning the
-service name, version and Llama-stack version.
+Process GET requests to the /info endpoint, returning the service name, version
+and Llama-stack version.
 
 Raises:
     HTTPException: with status 500 and a detail object
@@ -142,16 +128,14 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [InfoResponse](#inforesponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description         | Component                                                 |
+|-------------|---------------------|-----------------------------------------------------------|
+| 200         | Successful response | [InfoResponse](#inforesponse)                             |
+| 401         | Unauthorized        | [UnauthorizedResponse](#unauthorizedresponse)             |
+| 403         | Permission denied   | [ForbiddenResponse](#forbiddenresponse)                   |
+| 503         | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse) |
 
 Examples
-
-
-
-
 
 ```json
 {
@@ -162,9 +146,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -173,9 +154,6 @@ Examples
   }
 }
 ```
-
-
-
 
 ```json
 {
@@ -186,9 +164,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -197,9 +172,6 @@ Examples
   }
 }
 ```
-
-
-
 
 ```json
 {
@@ -210,9 +182,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -221,9 +190,6 @@ Examples
   }
 }
 ```
-
-
-
 
 ```json
 {
@@ -234,9 +200,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -245,14 +208,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -262,14 +217,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -279,7 +226,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/v1/models`
 
 > **Models Endpoint Handler**
@@ -312,23 +259,23 @@ will be returned.
 
 ### 🔗 Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| model_type |  | False | Optional filter to return only models matching this type |
+| Name       | Type | Required | Description                                              |
+|------------|------|----------|----------------------------------------------------------|
+| model_type |      | False    | Optional filter to return only models matching this type |
 
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ModelsResponse](#modelsresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [ModelsResponse](#modelsresponse)                           |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                 |
 
 Examples
-
-
-
-
 
 ```json
 {
@@ -339,9 +286,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -350,14 +294,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -367,14 +303,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -384,14 +312,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -401,8 +321,7 @@ Examples
   }
 }
 ```
- |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+
 ## GET `/v1/tools`
 
 > **Tools Endpoint Handler**
@@ -426,16 +345,15 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ToolsResponse](#toolsresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [ToolsResponse](#toolsresponse)                             |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
 
 Examples
-
-
-
-
 
 ```json
 {
@@ -446,9 +364,6 @@ Examples
 }
 ```
 
-
-
-
 ```json
 {
   "detail": {
@@ -457,14 +372,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -474,13 +381,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -491,14 +391,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -508,7 +400,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/v1/mcp-auth/client-options`
 
 > **Get Mcp Client Auth Options**
@@ -2003,15 +1895,14 @@ Handle request to retrieve all conversations for the authenticated user.
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ConversationsListResponse](#conversationslistresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [ConversationsListResponse](#conversationslistresponse)     |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
 
 Examples
-
-
-
 
 
 ```json
@@ -2034,11 +1925,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
 
 
 
@@ -2051,13 +1937,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -2080,7 +1959,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/v1/conversations/{conversation_id}`
 
 > **Conversation Get Endpoint Handler V1**
@@ -2107,17 +1986,23 @@ Returns:
 
 ### 🔗 Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| conversation_id | string | True |  |
+| Name            | Type   | Required | Description |
+|-----------------|--------|----------|-------------|
+| conversation_id | string | True     |             |
 
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ConversationResponse](#conversationresponse) |
-| 400 | Invalid request format | [BadRequestResponse](#badrequestresponse)
+| Status Code | Description            | Component                                                   |
+|-------------|------------------------|-------------------------------------------------------------|
+| 200         | Successful response    | [ConversationResponse](#conversationresponse)               |
+| 400         | Invalid request format | [BadRequestResponse](#badrequestresponse)                   |
+| 401         | Unauthorized           | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied      | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found     | [NotFoundResponse](#notfoundresponse)                       |
+| 500         | Internal server error  | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable    | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error       | [HTTPValidationError](#httpvalidationerror)                 |
 
 Examples
 
@@ -2133,12 +2018,6 @@ Examples
   }
 }
 ```
- |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
-
-Examples
-
-
 
 
 
@@ -2162,14 +2041,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -2191,13 +2062,6 @@ Examples
   }
 }
 ```
- |
-| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -2208,12 +2072,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
 
 
 
@@ -2237,12 +2095,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
 
 
 
@@ -2254,8 +2106,6 @@ Examples
   }
 }
 ```
- |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
 ## DELETE `/v1/conversations/{conversation_id}`
 
 > **Conversation Delete Endpoint Handler V1**
@@ -2279,16 +2129,22 @@ Returns:
 
 ### 🔗 Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| conversation_id | string | True |  |
+| Name            | Type   | Required | Description |
+|-----------------|--------|----------|-------------|
+| conversation_id | string | True     |             |
 
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ConversationDeleteResponse](#conversationdeleteresponse)
+| Status Code | Description            | Component                                                   |
+|-------------|------------------------|-------------------------------------------------------------|
+| 200         | Successful response    | [ConversationDeleteResponse](#conversationdeleteresponse)   |
+| 400         | Invalid request format | [BadRequestResponse](#badrequestresponse)                   |
+| 401         | Unauthorized           | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied      | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error  | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable    | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error       | [HTTPValidationError](#httpvalidationerror)                 |
 
 Examples
 
@@ -2314,13 +2170,6 @@ Examples
   "success": true
 }
 ```
- |
-| 400 | Invalid request format | [BadRequestResponse](#badrequestresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -2331,13 +2180,6 @@ Examples
   }
 }
 ```
- |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -2360,13 +2202,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -2389,13 +2224,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -2418,14 +2246,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -2435,8 +2255,7 @@ Examples
   }
 }
 ```
- |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+
 ## PUT `/v1/conversations/{conversation_id}`
 
 > **Conversation Update Endpoint Handler V1**
@@ -2459,9 +2278,9 @@ Returns:
 
 ### 🔗 Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| conversation_id | string | True |  |
+| Name            | Type   | Required | Description |
+|-----------------|--------|----------|-------------|
+| conversation_id | string | True     |             |
 
 
 ### 📦 Request Body 
@@ -2470,14 +2289,18 @@ Returns:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ConversationUpdateResponse](#conversationupdateresponse) |
-| 400 | Invalid request format | [BadRequestResponse](#badrequestresponse)
+| Status Code | Description            | Component                                                   |
+|-------------|------------------------|-------------------------------------------------------------|
+| 200         | Successful response    | [ConversationUpdateResponse](#conversationupdateresponse)   |
+| 400         | Invalid request format | [BadRequestResponse](#badrequestresponse)                   |
+| 401         | Unauthorized           | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied      | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found     | [NotFoundResponse](#notfoundresponse)                       |
+| 500         | Internal server error  | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable    | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error       | [HTTPValidationError](#httpvalidationerror)                 |
 
 Examples
-
-
 
 
 
@@ -2489,13 +2312,6 @@ Examples
   }
 }
 ```
- |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -2518,13 +2334,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -2535,14 +2344,6 @@ Examples
   }
 }
 ```
- |
-| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -2552,14 +2353,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
-
-
 
 ```json
 {
@@ -2581,13 +2374,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -2598,8 +2384,7 @@ Examples
   }
 }
 ```
- |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+
 ## GET `/v2/conversations`
 
 > **Get Conversations List Endpoint Handler**
@@ -2612,10 +2397,12 @@ Handle request to retrieve all conversations for the authenticated user.
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ConversationsListResponseV2](#conversationslistresponsev2) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [ConversationsListResponseV2](#conversationslistresponsev2) |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
 
 Examples
 
@@ -2643,11 +2430,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
 
 
 
@@ -2660,12 +2442,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
 
 
 
@@ -2689,7 +2465,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/v2/conversations/{conversation_id}`
 
 > **Get Conversation Endpoint Handler**
@@ -2707,10 +2483,15 @@ Handle request to retrieve a conversation identified by its ID.
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ConversationResponse](#conversationresponse) |
-| 400 | Invalid request format | [BadRequestResponse](#badrequestresponse)
+| Status Code | Description            | Component                                                   |
+|-------------|------------------------|-------------------------------------------------------------|
+| 200         | Successful response    | [ConversationResponse](#conversationresponse)               |
+| 400         | Invalid request format | [BadRequestResponse](#badrequestresponse)                   |
+| 401         | Unauthorized           | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied      | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found     | [NotFoundResponse](#notfoundresponse)                       |
+| 500         | Internal server error  | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 422         | Validation Error       | [HTTPValidationError](#httpvalidationerror)                 |
 
 Examples
 
@@ -2726,11 +2507,6 @@ Examples
   }
 }
 ```
- |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
-
-Examples
-
 
 
 
@@ -2755,12 +2531,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
 
 
 
@@ -2772,12 +2542,6 @@ Examples
   }
 }
 ```
- |
-| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
-
-Examples
-
-
 
 
 
@@ -2789,12 +2553,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
 
 
 
@@ -2818,8 +2576,7 @@ Examples
   }
 }
 ```
- |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+
 ## DELETE `/v2/conversations/{conversation_id}`
 
 > **Delete Conversation Endpoint Handler**
@@ -2830,16 +2587,21 @@ Handle request to delete a conversation by ID.
 
 ### 🔗 Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| conversation_id | string | True |  |
+| Name            | Type   | Required | Description |
+|-----------------|--------|----------|-------------|
+| conversation_id | string | True     |             |
 
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ConversationDeleteResponse](#conversationdeleteresponse)
+| Status Code | Description            | Component                                                   |
+|-------------|------------------------|-------------------------------------------------------------|
+| 200         | Successful response    | [ConversationDeleteResponse](#conversationdeleteresponse)   |
+| 400         | Invalid request format | [BadRequestResponse](#badrequestresponse)                   |
+| 401         | Unauthorized           | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied      | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error  | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 422         | Validation Error       | [HTTPValidationError](#httpvalidationerror)                 |
 
 Examples
 
@@ -2865,12 +2627,6 @@ Examples
   "success": true
 }
 ```
- |
-| 400 | Invalid request format | [BadRequestResponse](#badrequestresponse)
-
-Examples
-
-
 
 
 
@@ -2882,12 +2638,6 @@ Examples
   }
 }
 ```
- |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
-
-Examples
-
-
 
 
 
@@ -2911,11 +2661,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
 
 
 
@@ -2928,11 +2673,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
 
 
 
@@ -2957,8 +2697,7 @@ Examples
   }
 }
 ```
- |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+
 ## PUT `/v2/conversations/{conversation_id}`
 
 > **Update Conversation Endpoint Handler**
@@ -2969,9 +2708,9 @@ Handle request to update a conversation topic summary by ID.
 
 ### 🔗 Parameters
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| conversation_id | string | True |  |
+| Name            | Type   | Required | Description |
+|-----------------|--------|----------|-------------|
+| conversation_id | string | True     |             |
 
 
 ### 📦 Request Body 
@@ -2980,10 +2719,15 @@ Handle request to update a conversation topic summary by ID.
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [ConversationUpdateResponse](#conversationupdateresponse) |
-| 400 | Invalid request format | [BadRequestResponse](#badrequestresponse)
+| Status Code | Description            | Component                                                   |
+|-------------|------------------------|-------------------------------------------------------------|
+| 200         | Successful response    | [ConversationUpdateResponse](#conversationupdateresponse)   |
+| 400         | Invalid request format | [BadRequestResponse](#badrequestresponse)                   |
+| 401         | Unauthorized           | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied      | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found     | [NotFoundResponse](#notfoundresponse)                       |
+| 500         | Internal server error  | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 422         | Validation Error       | [HTTPValidationError](#httpvalidationerror)                 |
 
 Examples
 
@@ -2999,12 +2743,6 @@ Examples
   }
 }
 ```
- |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
-
-Examples
-
-
 
 
 
@@ -3028,12 +2766,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
 
 
 
@@ -3045,12 +2777,6 @@ Examples
   }
 }
 ```
- |
-| 404 | Resource not found | [NotFoundResponse](#notfoundresponse)
-
-Examples
-
-
 
 
 
@@ -3062,12 +2788,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse)
-
-Examples
-
-
 
 
 
@@ -3091,8 +2811,7 @@ Examples
   }
 }
 ```
- |
-| 422 | Validation Error | [HTTPValidationError](#httpvalidationerror) |
+
 ## POST `/v1/infer`
 
 > **Infer Endpoint**
@@ -3126,10 +2845,16 @@ Raises:
 
 ### ✅ Responses
 
-| Status Code | Description | Component |
-|-------------|-------------|-----------|
-| 200 | Successful response | [RlsapiV1InferResponse](#rlsapiv1inferresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| Status Code | Description               | Component                                                   |
+|-------------|---------------------------|-------------------------------------------------------------|
+| 200         | Successful response       | [RlsapiV1InferResponse](#rlsapiv1inferresponse)             |
+| 401         | Unauthorized              | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied         | [ForbiddenResponse](#forbiddenresponse)                     |
+| 413         | Prompt is too long        | [PromptTooLongResponse](#prompttoolongresponse)             |
+| 422         | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse) |
+| 429         | Quota limit exceeded      | [QuotaExceededResponse](#quotaexceededresponse)             |
+| 500         | Internal server error     | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable       | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
 
 Examples
 
@@ -3157,12 +2882,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
-
 
 
 
@@ -3174,12 +2893,6 @@ Examples
   }
 }
 ```
- |
-| 413 | Prompt is too long | [PromptTooLongResponse](#prompttoolongresponse)
-
-Examples
-
-
 
 
 
@@ -3191,13 +2904,6 @@ Examples
   }
 }
 ```
- |
-| 422 | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse)
-
-Examples
-
-
-
 
 
 ```json
@@ -3232,12 +2938,6 @@ Examples
   }
 }
 ```
- |
-| 429 | Quota limit exceeded | [QuotaExceededResponse](#quotaexceededresponse)
-
-Examples
-
-
 
 
 
@@ -3321,13 +3021,6 @@ Examples
   }
 }
 ```
- |
-| 500 | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
-
-
 
 
 
@@ -3339,7 +3032,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/readiness`
 
 > **Readiness Probe Get Method**
