@@ -10,6 +10,8 @@ from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client import (
     APIConnectionError,
     AsyncLlamaStackClient,
+)
+from llama_stack_client import (
     APIStatusError as LLSApiStatusError,
 )
 from openai._exceptions import (
@@ -22,9 +24,9 @@ from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from log import get_logger
 from models.config import Action
 from models.requests import QueryRequest
-
 from models.responses import (
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -32,7 +34,6 @@ from models.responses import (
     PromptTooLongResponse,
     QueryResponse,
     QuotaExceededResponse,
-    ReferencedDocument,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
     UnprocessableEntityResponse,
@@ -41,7 +42,7 @@ from utils.endpoints import (
     check_configuration_loaded,
     validate_and_retrieve_conversation,
 )
-from utils.mcp_headers import mcp_headers_dependency, McpHeaders
+from utils.mcp_headers import McpHeaders, mcp_headers_dependency
 from utils.query import (
     consume_query_tokens,
     handle_known_apistatus_errors,
@@ -65,12 +66,10 @@ from utils.shields import (
 )
 from utils.suid import normalize_conversation_id
 from utils.types import (
-    RAGChunk,
     ResponsesApiParams,
     TurnSummary,
 )
-from utils.vector_search import perform_vector_search, format_rag_context_for_injection
-from log import get_logger
+from utils.vector_search import build_rag_context
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["query"])
@@ -157,18 +156,14 @@ async def query_endpoint_handler(
 
     client = AsyncLlamaStackClientHolder().get_client()
 
-    doc_ids_from_chunks: list[ReferencedDocument] = []
-    pre_rag_chunks: list[RAGChunk] = []
+    # Build RAG context from BYOK and Solr sources
+    rag_context = await build_rag_context(client, query_request, configuration)
 
-    _, _, doc_ids_from_chunks, pre_rag_chunks = await perform_vector_search(
-        client, query_request, configuration
-    )
-
-    rag_context = format_rag_context_for_injection(pre_rag_chunks)
-    if rag_context:
-        # safest: mutate a local copy so we don't surprise other logic
-        query_request = query_request.model_copy(deep=True)  # pydantic v2
-        query_request.query = query_request.query + rag_context
+    # Inject RAG context into query
+    if rag_context.context_text:
+        # Mutate a local copy to avoid surprising other logic
+        query_request = query_request.model_copy(deep=True)
+        query_request.query = query_request.query + rag_context.context_text
 
     # Prepare API request parameters
     responses_params = await prepare_responses_params(
@@ -204,13 +199,18 @@ async def query_endpoint_handler(
         rag_id_mapping,
     )
 
-    if pre_rag_chunks:
-        turn_summary.rag_chunks = pre_rag_chunks + (turn_summary.rag_chunks or [])
+    # Merge RAG chunks (BYOK + Solr) with tool-based RAG chunks
+    rag_chunks = rag_context.rag_chunks
+    tool_rag_chunks = turn_summary.rag_chunks or []
+    logger.info("RAG as a tool retrieved %d chunks", len(tool_rag_chunks))
+    turn_summary.rag_chunks = rag_chunks + tool_rag_chunks
 
-    if doc_ids_from_chunks:
-        turn_summary.referenced_documents = deduplicate_referenced_documents(
-            doc_ids_from_chunks + (turn_summary.referenced_documents or [])
-        )
+    # Add tool-based RAG documents and chunks
+    rag_documents = rag_context.referenced_documents
+    tool_rag_documents = turn_summary.referenced_documents or []
+    turn_summary.referenced_documents = deduplicate_referenced_documents(
+        rag_documents + tool_rag_documents
+    )
 
     # Get topic summary for new conversation
     if not user_conversation and query_request.generate_topic_summary:

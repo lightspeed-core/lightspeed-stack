@@ -5,7 +5,7 @@ This document explains how to configure and customize your RAG pipeline using th
 * Initialize a vector store
 * Download and point to a local embedding model
 * Configure an inference provider (LLM)
-* Enable Agent-based RAG querying
+* Choose a RAG strategy (Always RAG or Tool RAG)
 
 ---
 
@@ -26,12 +26,17 @@ This document explains how to configure and customize your RAG pipeline using th
 
 # Introduction
 
-RAG in Lightspeed Core Stack (LCS) is yet only supported via the Agents API. The agent is responsible for planning and deciding when to query the vector index.
+Lightspeed Core Stack (LCS) supports two complementary RAG strategies:
 
-The system operates a chain of command. The **Agent** is the orchestrator, using the LLM as its reasoning engine. When a plan requires external information, the Agent queries the **Vector Store**. This is your database of indexed knowledge, which you are responsible for creating before running the stack. The **Embedding Model** is used to convert the queries to vectors. 
+- **Always RAG**: context is fetched from Solr and/or BYOK vector stores and injected into every query before the LLM responds. No tool calls are required.
+- **Tool RAG**: the LLM can call the `file_search` tool during generation to retrieve context on demand from BYOK vector stores.
+
+Both strategies can be enabled independently via the `rag` section of `lightspeed-stack.yaml`. See [BYOK Feature Documentation](byok_guide.md) for configuration details.
+
+The **Embedding Model** is used to convert queries and documents into vector representations for similarity matching.
 
 > [!NOTE]
-> The same Embedding Model should be used to both create the store and to query it.
+> The same Embedding Model should be used to both create the vector store and to query it.
 
 ---
 
@@ -318,19 +323,20 @@ Note: if the vector database (portal-rag) is not in the persistent data store wi
 **2. Configure Lightspeed Stack (`lightspeed-stack.yaml`):**
 
 ```yaml
-solr:
-  enabled: true     # Enable Solr vector IO functionality
-  offline: true     # Use parent_id for document URLs (offline mode)
-                   # Set to false to use reference_url (online mode)
+rag:
+  always:
+    solr:
+      enabled: true     # Enable Solr vector IO (Always RAG - pre-query injection)
+      offline: true     # Use parent_id for document URLs (offline mode)
+                        # Set to false to use reference_url (online mode)
 ```
 
 **Query Request Example:**
 ```
 curl -sX POST http://localhost:8080/v1/query \
     -H "Content-Type: application/json" \
-    -d '{"query" : "how do I secure a nodejs application with keycloak?", "no_tools":true}' | jq .
+    -d '{"query" : "how do I secure a nodejs application with keycloak?"}' | jq .
 ```
-Note: Solr does not currently work with RAG tools. You will need to specify "no_tools": true in request.
 
 
 **Query Processing:**

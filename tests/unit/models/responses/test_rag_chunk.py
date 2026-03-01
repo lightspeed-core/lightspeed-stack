@@ -1,6 +1,7 @@
-"""Unit tests for RAGChunk model."""
+"""Unit tests for RAGChunk and RAGContext models."""
 
-from utils.types import RAGChunk
+from utils.types import RAGChunk, RAGContext
+from models.responses import ReferencedDocument
 
 
 class TestRAGChunk:
@@ -110,3 +111,84 @@ class TestRAGChunk:
         )
         assert chunk.source == url_source
         assert chunk.score == 0.92
+
+    def test_attributes_field(self) -> None:
+        """Test RAGChunk with attributes field."""
+        attributes = {
+            "doc_url": "https://example.com/doc",
+            "title": "Example Document",
+            "author": "John Doe",
+        }
+        chunk = RAGChunk(
+            content="Test content", source="test-source", attributes=attributes
+        )
+        assert chunk.attributes == attributes
+        assert chunk.attributes["doc_url"] == "https://example.com/doc"
+
+    def test_attributes_none(self) -> None:
+        """Test RAGChunk with attributes=None."""
+        chunk = RAGChunk(content="Test content", attributes=None)
+        assert chunk.attributes is None
+
+
+class TestRAGContext:
+    """Test cases for the RAGContext model."""
+
+    def test_default_values(self) -> None:
+        """Test RAGContext with default values."""
+        context = RAGContext()
+        assert context.context_text == ""
+        assert context.rag_chunks == []
+        assert context.referenced_documents == []
+
+    def test_with_context_text(self) -> None:
+        """Test RAGContext with context text."""
+        context = RAGContext(context_text="Test context")
+        assert context.context_text == "Test context"
+        assert context.rag_chunks == []
+        assert context.referenced_documents == []
+
+    def test_with_rag_chunks(self) -> None:
+        """Test RAGContext with RAG chunks."""
+        chunks = [
+            RAGChunk(content="Chunk 1", source="source1", score=0.9),
+            RAGChunk(content="Chunk 2", source="source2", score=0.8),
+        ]
+        context = RAGContext(rag_chunks=chunks)
+        assert len(context.rag_chunks) == 2
+        assert context.rag_chunks[0].content == "Chunk 1"
+        assert context.rag_chunks[1].content == "Chunk 2"
+
+    def test_with_referenced_documents(self) -> None:
+        """Test RAGContext with referenced documents."""
+        docs = [
+            ReferencedDocument(
+                doc_title="Doc 1",
+                doc_url="https://example.com/doc1",
+                source="source1",
+            ),
+            ReferencedDocument(
+                doc_title="Doc 2",
+                doc_url="https://example.com/doc2",
+                source="source2",
+            ),
+        ]
+        context = RAGContext(referenced_documents=docs)
+        assert len(context.referenced_documents) == 2
+        assert context.referenced_documents[0].doc_title == "Doc 1"
+        assert context.referenced_documents[1].doc_title == "Doc 2"
+
+    def test_fully_populated(self) -> None:
+        """Test RAGContext with all fields populated."""
+        chunks = [RAGChunk(content="Test chunk", source="source1", score=0.95)]
+        docs = [
+            ReferencedDocument(doc_title="Test Doc", doc_url="https://example.com/doc")
+        ]
+        context = RAGContext(
+            context_text="Formatted context",
+            rag_chunks=chunks,
+            referenced_documents=docs,
+        )
+        assert context.context_text == "Formatted context"
+        assert len(context.rag_chunks) == 1
+        assert len(context.referenced_documents) == 1

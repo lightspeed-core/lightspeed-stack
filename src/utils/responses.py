@@ -9,24 +9,60 @@ from typing import Any, Optional, cast
 from fastapi import HTTPException
 from llama_stack_api.openai_responses import (
     OpenAIResponseContentPartRefusal as ContentPartRefusal,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputMessageContent as InputMessageContent,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputMessageContentText as InputTextPart,
-    OpenAIResponseInputToolFileSearch as InputToolFileSearch,
-    OpenAIResponseInputToolMCP as InputToolMCP,
-    OpenAIResponseMessage as ResponseMessage,
-    OpenAIResponseObject as ResponseObject,
-    OpenAIResponseOutput as ResponseOutput,
-    OpenAIResponseOutputMessageContent as OutputMessageContent,
-    OpenAIResponseOutputMessageContentOutputText as OutputTextPart,
-    OpenAIResponseOutputMessageFileSearchToolCall as FileSearchCall,
-    OpenAIResponseOutputMessageFunctionToolCall as FunctionCall,
-    OpenAIResponseOutputMessageMCPCall as MCPCall,
-    OpenAIResponseOutputMessageMCPListTools as MCPListTools,
-    OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
-    OpenAIResponseMCPApprovalRequest as MCPApprovalRequest,
-    OpenAIResponseMCPApprovalResponse as MCPApprovalResponse,
-    OpenAIResponseUsage as ResponseUsage,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputTool as InputTool,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseInputToolFileSearch as InputToolFileSearch,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseInputToolMCP as InputToolMCP,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseMCPApprovalRequest as MCPApprovalRequest,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseMCPApprovalResponse as MCPApprovalResponse,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseMessage as ResponseMessage,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseObject as ResponseObject,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseOutput as ResponseOutput,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseOutputMessageContent as OutputMessageContent,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseOutputMessageContentOutputText as OutputTextPart,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseOutputMessageFileSearchToolCall as FileSearchCall,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseOutputMessageFunctionToolCall as FunctionCall,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseOutputMessageMCPCall as MCPCall,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseOutputMessageMCPListTools as MCPListTools,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseUsage as ResponseUsage,
 )
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
@@ -34,6 +70,7 @@ import constants
 import metrics
 from configuration import configuration
 from constants import DEFAULT_RAG_TOOL
+from log import get_logger
 from models.database.conversations import UserConversation
 from models.requests import QueryRequest
 from models.responses import (
@@ -41,6 +78,7 @@ from models.responses import (
     NotFoundResponse,
     ServiceUnavailableResponse,
 )
+from utils.mcp_headers import McpHeaders, extract_propagated_headers
 from utils.mcp_oauth_probe import probe_mcp_oauth_and_raise_401
 from utils.prompts import get_system_prompt, get_topic_summary_system_prompt
 from utils.query import (
@@ -48,7 +86,6 @@ from utils.query import (
     handle_known_apistatus_errors,
     prepare_input,
 )
-from utils.mcp_headers import McpHeaders, extract_propagated_headers
 from utils.suid import to_llama_stack_conversation_id
 from utils.token_counter import TokenCounter
 from utils.types import (
@@ -60,12 +97,49 @@ from utils.types import (
     ToolResultSummary,
     TurnSummary,
 )
-from log import get_logger
 
 logger = get_logger(__name__)
 
 
-async def get_topic_summary(
+async def get_vector_store_ids(
+    client: AsyncLlamaStackClient,
+    vector_store_ids: Optional[list[str]] = None,
+) -> list[str]:
+    """Get vector store IDs for querying.
+
+    If vector_store_ids are provided, returns them. Otherwise fetches all
+    available vector stores from Llama Stack.
+
+    Args:
+        client: The AsyncLlamaStackClient to use for fetching stores
+        vector_store_ids: Optional list of vector store IDs. If provided,
+            returns this list. If None, fetches all available vector stores.
+
+    Returns:
+        List of vector store IDs to query
+
+    Raises:
+        HTTPException: With ServiceUnavailableResponse if connection fails,
+            or InternalServerErrorResponse if API returns an error status
+    """
+    if vector_store_ids:
+        return vector_store_ids
+
+    try:
+        vector_stores = await client.vector_stores.list()
+        return [vector_store.id for vector_store in vector_stores.data]
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="Llama Stack",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+    except APIStatusError as e:
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump()) from e
+
+
+async def get_topic_summary(  # pylint: disable=too-many-nested-blocks
     question: str, client: AsyncLlamaStackClient, model_id: str
 ) -> str:
     """Get a topic summary for a question using Responses API.
@@ -128,20 +202,8 @@ async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-position
         return None
 
     toolgroups: list[InputTool] = []
-    # Get all vector stores if vector stores are not restricted by request
-    if vector_store_ids is None:
-        try:
-            vector_stores = await client.vector_stores.list()
-            vector_store_ids = [vector_store.id for vector_store in vector_stores.data]
-        except APIConnectionError as e:
-            error_response = ServiceUnavailableResponse(
-                backend_name="Llama Stack",
-                cause=str(e),
-            )
-            raise HTTPException(**error_response.model_dump()) from e
-        except APIStatusError as e:
-            error_response = InternalServerErrorResponse.generic()
-            raise HTTPException(**error_response.model_dump()) from e
+    # Get vector stores for RAG tools - use specified ones or fetch all
+    vector_store_ids = await get_vector_store_ids(client, vector_store_ids)
 
     # Add RAG tools if vector stores are available
     rag_tools = get_rag_tools(vector_store_ids)
@@ -316,15 +378,19 @@ def get_rag_tools(vector_store_ids: list[str]) -> Optional[list[InputToolFileSea
         vector_store_ids: List of vector store identifiers
 
     Returns:
-        List containing file_search tool configuration, or None if no vector stores provided
+        List containing file_search tool configuration, or None if RAG as tool is disabled
     """
+    # Check if Tool RAG is enabled in configuration
+    if not (configuration and configuration.rag.tool.byok.enabled):
+        return None
+
     if not vector_store_ids:
         return None
 
     return [
         InputToolFileSearch(
             vector_store_ids=vector_store_ids,
-            max_num_results=10,
+            max_num_results=constants.TOOL_RAG_MAX_CHUNKS,
         )
     ]
 

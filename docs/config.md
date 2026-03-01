@@ -114,11 +114,12 @@ BYOK (Bring Your Own Knowledge) RAG configuration.
 | Field | Type | Description |
 |-------|------|-------------|
 | rag_id | string | Unique RAG ID |
-| rag_type | string | Type of RAG database. |
+| rag_type | string | Type of RAG database (e.g. `inline::faiss`). |
 | embedding_model | string | Embedding model identification |
 | embedding_dimension | integer | Dimensionality of embedding vectors. |
 | vector_db_id | string | Vector database identification. |
 | db_path | string | Path to RAG database. |
+| score_multiplier | number | Multiplier applied to relevance scores from this vector store when querying multiple sources. Values > 1 boost results; values < 1 reduce them. Default: 1.0. |
 
 
 ## CORSConfiguration
@@ -170,7 +171,7 @@ Global service configuration.
 | azure_entra_id |  |  |
 | splunk |  | Splunk HEC configuration for sending telemetry events. |
 | deployment_environment | string | Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events. |
-| solr |  | Configuration for Solr vector search operations. |
+| rag |  | RAG strategy configuration (Solr and BYOK). Controls pre-query (Always RAG) and tool-based (Tool RAG) retrieval. |
 
 
 ## ConversationHistoryConfiguration
@@ -519,10 +520,42 @@ the service can handle requests concurrently.
 | cors |  | Cross-Origin Resource Sharing configuration for cross-domain requests |
 
 
-## SolrConfiguration
+## RagConfiguration
 
 
-Solr configuration for vector search queries.
+Top-level RAG strategy configuration. Controls two complementary retrieval modes:
+
+- **Always RAG**: context is fetched from Solr and/or BYOK vector stores and injected
+  into every query before the LLM responds.
+- **Tool RAG**: the LLM can call the `file_search` tool during generation to retrieve
+  context on demand from BYOK vector stores.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| always |  | Pre-query RAG from Solr and BYOK. See AlwaysRagConfiguration. |
+| tool |  | Tool-based RAG that the LLM can invoke. See ToolRagConfiguration. |
+
+
+## AlwaysRagConfiguration
+
+
+Pre-query RAG configuration that injects context before the LLM generates a response.
+
+Both Solr and BYOK sources can be enabled independently. When enabled, retrieved
+chunks are added as context on every query.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| solr |  | Solr RAG configuration for pre-query context injection. |
+| byok |  | BYOK RAG configuration for pre-query context injection. |
+
+
+## SolrRagConfiguration
+
+
+Solr configuration for Always RAG (pre-query context injection).
 
 Controls whether to use offline or online mode when building document URLs
 from vector search results, and enables/disables Solr vector IO functionality.
@@ -532,6 +565,28 @@ from vector search results, and enables/disables Solr vector IO functionality.
 |-------|------|-------------|
 | enabled | boolean | When True, enables Solr vector IO functionality for vector search queries. When False, disables Solr vector search processing. |
 | offline | boolean | When True, use parent_id for chunk source URLs. When False, use reference_url for chunk source URLs. |
+
+
+## ByokRagConfiguration
+
+
+Configuration to enable or disable BYOK RAG retrieval.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| enabled | boolean | When True, queries BYOK vector stores for RAG context. Default: False. |
+
+
+## ToolRagConfiguration
+
+
+Configuration for exposing RAG as a tool the LLM can call during generation.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| byok |  | BYOK RAG configuration for tool-based retrieval. Default: enabled. |
 
 
 ## SplunkConfiguration
