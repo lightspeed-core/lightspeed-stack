@@ -102,14 +102,19 @@
 * Check if the OpenAPI endpoint works as expected
 * Check if info endpoint is working
 * Check if info endpoint reports error when llama-stack connection is not working
-* Check if models endpoint is working
-* Check if models endpoint reports error when llama-stack is unreachable
 * Check if shields endpoint is working
 * Check if shields endpoint reports error when llama-stack is unreachable
 * Check if tools endpoint is working
 * Check if tools endpoint reports error when llama-stack is unreachable
 * Check if metrics endpoint is working
 * Check if MCP client auth options endpoint is working
+
+## [`models.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/models.feature)
+
+* Check if models endpoint is working
+* Check if models endpoint reports error when llama-stack is unreachable
+* Check if models can be filtered
+* Check if filtering can return empty list of models
 
 ## [`query.feature`](https://github.com/lightspeed-core/lightspeed-stack/blob/main/tests/e2e/features/query.feature)
 
