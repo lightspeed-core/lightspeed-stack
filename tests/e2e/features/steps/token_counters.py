@@ -2,6 +2,8 @@
 
 import json
 
+from typing import Optional
+
 import requests
 from behave import given, then  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
@@ -147,7 +149,7 @@ def _get_current_token_metrics(context: Context) -> dict[str, float]:
     return _parse_token_metrics(response.text)
 
 
-def _get_end_event_data(response_text: str) -> dict | None:
+def _get_end_event_data(response_text: str) -> Optional[dict]:
     """Extract the end event data from streaming SSE response.
 
     Parameters:
