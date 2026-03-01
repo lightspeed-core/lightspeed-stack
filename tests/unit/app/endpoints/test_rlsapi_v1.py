@@ -3,7 +3,7 @@
 # pylint: disable=protected-access
 # pylint: disable=unused-argument
 
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, status
@@ -197,7 +197,7 @@ def test_build_instructions(
 )
 def test_build_instructions_with_customization(
     mocker: MockerFixture,
-    custom_prompt: str | None,
+    custom_prompt: Optional[str],
     expected_prompt: str,
 ) -> None:
     """Test _build_instructions uses customization.system_prompt when set."""
