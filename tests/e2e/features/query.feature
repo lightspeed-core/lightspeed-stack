@@ -216,3 +216,20 @@ Scenario: Check if LLM responds for query request with error for missing query
     }
     """
     Then The status code of the response is 200
+
+  Scenario: Check if query with shields returns 413 when question is too long for model context 
+    Given The system is in default state
+    And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+    When I use "query" to ask question with too-long query and authorization header
+    Then The status code of the response is 413
+    And The body of the response contains Prompt is too long
+
+  #https://issues.redhat.com/browse/LCORE-1387
+  @skip
+  @disable-shields
+  Scenario: Check if query without shields returns 413 when question is too long for model context
+    Given The system is in default state
+    And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+    When I use "query" to ask question with too-long query and authorization header
+    Then The status code of the response is 413
+    And The body of the response contains Prompt is too long
