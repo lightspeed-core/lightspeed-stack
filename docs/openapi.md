@@ -627,6 +627,7 @@ Examples
   }
 }
 ```
+
 ## GET `/v1/providers`
 
 > **Providers Endpoint Handler**
@@ -1572,6 +1573,82 @@ Examples
 }
 ```
 
+## POST `/v1/streaming_query/interrupt`
+
+> **Streaming Query Interrupt Endpoint Handler**
+
+Interrupt an in-progress streaming query by request identifier.
+
+Parameters:
+    interrupt_request: Request payload containing the stream request ID.
+    auth: Auth context tuple resolved from the authentication dependency.
+    registry: Stream interrupt registry dependency used to cancel streams.
+
+Returns:
+    StreamingInterruptResponse: Confirmation payload when interruption succeeds.
+
+Raises:
+    HTTPException: If no active stream for the given request ID can be interrupted.
+
+
+
+
+
+### 📦 Request Body 
+
+[StreamingInterruptRequest](#streaminginterruptrequest)
+
+### ✅ Responses
+
+| Status Code | Description         | Component                                                 |
+|-------------|---------------------|-----------------------------------------------------------|
+| 200         | Successful response | [StreamingInterruptResponse](#streaminginterruptresponse) |
+| 401         | Unauthorized        | [UnauthorizedResponse](#unauthorizedresponse)             |
+| 403         | Permission denied   | [ForbiddenResponse](#forbiddenresponse)                   |
+| 404         | Resource not found  | [NotFoundResponse](#notfoundresponse)                     |
+| 422         | Validation Error    | [HTTPValidationError](#httpvalidationerror)               |
+
+
+```json
+{
+  "detail": {
+    "cause": "No Authorization header found",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+```json
+{
+  "detail": {
+    "cause": "No token found in Authorization header",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Streaming Request with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+    "response": "Streaming Request not found"
+  }
+}
+```
 ## GET `/v1/config`
 
 > **Config Endpoint Handler**
@@ -4745,6 +4822,7 @@ Useful resources:
 | provider_id | string | MCP provider identification |
 | url | string | URL of the MCP server |
 | authorization_headers | object | Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 3 special cases: 1. Usage of the kubernetes token in the header. To specify this use a string 'kubernetes' instead of the file path. 2. Usage of the client-provided token in the header. To specify this use a string 'client' instead of the file path. 3. Usage of the oauth token in the header. To specify this use a string 'oauth' instead of the file path.  |
+| headers | array | List of HTTP header names to automatically forward from the incoming request to this MCP server. Headers listed here are extracted from the original client request and included when calling the MCP server. This is useful when infrastructure components (e.g. API gateways) inject headers that MCP servers need, such as x-rh-identity in HCC. Header matching is case-insensitive. These headers are additive with authorization_headers and MCP-HEADERS. |
 | timeout |  | Timeout in seconds for requests to the MCP server. If not specified, the default timeout from Llama Stack will be used. Note: This field is reserved for future use when Llama Stack adds timeout support. |
 
 
@@ -5452,6 +5530,47 @@ Example:
 |-------|------|-------------|
 | functionality | string | The functionality of the service |
 | status | object | The status of the service |
+
+
+## StreamingInterruptRequest
+
+
+Model representing a request to interrupt an active streaming query.
+
+Attributes:
+    request_id: Unique ID of the active streaming request to interrupt.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| request_id | string | The active streaming request ID to interrupt |
+
+
+## StreamingInterruptResponse
+
+
+Model representing a response to a streaming interrupt request.
+
+Attributes:
+    request_id: The streaming request ID targeted by the interrupt call.
+    interrupted: Whether an in-progress stream was interrupted.
+    message: Human-readable interruption status message.
+
+Example:
+    ```python
+    response = StreamingInterruptResponse(
+        request_id="123e4567-e89b-12d3-a456-426614174000",
+        interrupted=True,
+        message="Streaming request interrupted",
+    )
+    ```
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| request_id | string | The streaming request ID targeted by the interrupt call |
+| interrupted | boolean | Whether an in-progress stream was interrupted |
+| message | string | Human-readable interruption status message |
 
 
 ## TLSConfiguration

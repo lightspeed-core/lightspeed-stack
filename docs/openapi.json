@@ -4447,7 +4447,7 @@
                 ],
                 "summary": "Handle A2A Jsonrpc",
                 "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
-                "operationId": "handle_a2a_jsonrpc_a2a_get",
+                "operationId": "handle_a2a_jsonrpc_a2a_post",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -4465,7 +4465,7 @@
                 ],
                 "summary": "Handle A2A Jsonrpc",
                 "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
-                "operationId": "handle_a2a_jsonrpc_a2a_get",
+                "operationId": "handle_a2a_jsonrpc_a2a_post",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -7343,6 +7343,14 @@
                         "title": "Authorization headers",
                         "description": "Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 3 special cases: 1. Usage of the kubernetes token in the header. To specify this use a string 'kubernetes' instead of the file path. 2. Usage of the client-provided token in the header. To specify this use a string 'client' instead of the file path. 3. Usage of the oauth token in the header. To specify this use a string 'oauth' instead of the file path. "
                     },
+                    "headers": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Propagated headers",
+                        "description": "List of HTTP header names to automatically forward from the incoming request to this MCP server. Headers listed here are extracted from the original client request and included when calling the MCP server. This is useful when infrastructure components (e.g. API gateways) inject headers that MCP servers need, such as x-rh-identity in HCC. Header matching is case-insensitive. These headers are additive with authorization_headers and MCP-HEADERS."
+                    },
                     "timeout": {
                         "anyOf": [
                             {
@@ -8862,6 +8870,7 @@
                 "properties": {
                     "nevra": {
                         "type": "string",
+                        "pattern": "^[a-zA-Z0-9._:+~\\-]*$",
                         "title": "Nevra",
                         "description": "CLA NEVRA identifier",
                         "default": "",
@@ -8871,6 +8880,7 @@
                     },
                     "version": {
                         "type": "string",
+                        "pattern": "^[a-zA-Z0-9._\\-]*$",
                         "title": "Version",
                         "description": "Command line assistant version",
                         "default": "",
@@ -9013,6 +9023,7 @@
                 "properties": {
                     "os": {
                         "type": "string",
+                        "pattern": "^[a-zA-Z0-9._ \\-]*$",
                         "title": "Os",
                         "description": "Operating system name",
                         "default": "",
@@ -9022,6 +9033,7 @@
                     },
                     "version": {
                         "type": "string",
+                        "pattern": "^[a-zA-Z0-9._ \\-]*$",
                         "title": "Version",
                         "description": "Operating system version",
                         "default": "",
@@ -9032,6 +9044,7 @@
                     },
                     "arch": {
                         "type": "string",
+                        "pattern": "^[a-zA-Z0-9._ \\-]*$",
                         "title": "Arch",
                         "description": "System architecture",
                         "default": "",
@@ -9042,6 +9055,7 @@
                     },
                     "id": {
                         "type": "string",
+                        "pattern": "^[a-zA-Z0-9._\\-]*$",
                         "title": "Id",
                         "description": "Client machine ID",
                         "default": "",
