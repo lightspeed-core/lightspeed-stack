@@ -12,6 +12,46 @@ Lightspeed Core Service (LCS) service API specification.
 
 # 🛠️ APIs
 
+## List of REST API endpoints
+
+| Method | Path                                  | Description |
+|--------|---------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| GET    | `/`                                   | Returns the static HTML index page                                                                                                                   |
+| GET    | `/v1/info`                            | Returns the service name, version and Llama-stack version                                                                                            |
+| GET    | `/v1/models`                          | List of available models                                                                                                                             |
+| GET    | `/v1/tools`                           | Consolidated list of available tools from all configured MCP servers                                                                                 |
+| GET    | `/v1/mcp-auth/client-options`         | List of MCP servers configured to accept client-provided authorization tokens, along with the header names where clients should provide these tokens |
+| GET    | `/v1/shields`                         | List of available shields from the Llama Stack service                                                                                               |
+| GET    | `/v1/providers`                       | List all available providers grouped by API type                                                                                                     |
+| GET    | `/v1/providers/{provider_id}`         | Retrieve a single provider identified by its unique ID                                                                                               |
+| GET    | `/v1/rags`                            | List all available RAGs                                                                                                                              |
+| GET    | `/v1/rags/{rag_id}`                   | Retrieve a single RAG identified by its unique ID                                                                                                    |
+| POST   | `/v1/query`                           | Processes a POST request to a query endpoint, forwarding the user's query to a selected Llama Stack LLM and returning the generated response         |
+| POST   | `/v1/streaming_query`                 | Streaming response using Server-Sent Events (SSE) format with content type text/event-stream                                                         |
+| GET    | `/v1/config`                          | Returns the current service configuration                                                                                                            |
+| POST   | `/v1/feedback`                        | Processes a user feedback submission, storing the feedback and returning a confirmation response                                                     |
+| GET    | `/v1/feedback/status`                 | Return the current enabled status of the feedback functionality                                                                                      |
+| PUT    | `/v1/feedback/status`                 | Change the feedback status: enables or disables it                                                                                                   |
+| GET    | `/v1/conversations`                   | Retrieve all conversations for the authenticated user                                                                                                |
+| GET    | `/v1/conversations/{conversation_id}` | Retrieve a conversation by ID using Conversations API                                                                                                |
+| DELETE | `/v1/conversations/{conversation_id}` | Delete a conversation by ID using Conversations API                                                                                                  |
+| PUT    | `/v1/conversations/{conversation_id}` | Update a conversation metadata using Conversations API                                                                                               |
+| GET    | `/v2/conversations`                   | Retrieve all conversations for the authenticated user                                                                                                |
+| GET    | `/v2/conversations/{conversation_id}` | Retrieve a conversation identified by its ID                                                                                                         |
+| DELETE | `/v2/conversations/{conversation_id}` | Delete a conversation identified by its ID                                                                                                           |
+| PUT    | `/v2/conversations/{conversation_id}` | Update a conversation topic summary by ID                                                                                                            |
+| POST   | `/v1/infer`                           | Serves requests from the RHEL Lightspeed Command Line Assistant (CLA)                                                                                |
+| GET    | `/readiness`                          | Returns service readiness state                                                                                                                      |
+| GET    | `/liveness`                           | Returns liveness status of the service                                                                                                               |
+| POST   | `/authorized`                         | Returns the authenticated user's ID and username                                                                                                     |
+| GET    | `/metrics`                            | Returns the latest Prometheus metrics in a form of plain text                                                                                        |
+| GET    | `/.well-known/agent-card.json`        | Serve the A2A Agent Card at the well-known location                                                                                                  |
+| GET    | `/.well-known/agent.json`             | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
+| GET    | `/a2a`                                | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
+| POST   | `/a2a`                                | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
+| GET    | `/a2a/health`                         | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
+
+
 ## GET `/`
 
 > **Root Endpoint Handler**
