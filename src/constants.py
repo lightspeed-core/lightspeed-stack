@@ -175,11 +175,11 @@ CLUSTER_QUOTA_LIMITER = "cluster_limiter"
 DEFAULT_RAG_TOOL = "file_search"
 TOOL_RAG_MAX_CHUNKS = 10  # retrieved from RAG as a tool
 
-# BYOK RAG constants
-BYOK_RAG_MAX_CHUNKS = 10  # retrieved from BYOK RAG (Always RAG strategy)
+# Inline RAG constants
+BYOK_RAG_MAX_CHUNKS = 10  # retrieved from BYOK RAG
+OKP_RAG_MAX_CHUNKS = 5  # retrieved from OKP RAG
 
 # Solr OKP constants
-SOLR_RAG_MAX_CHUNKS = 5  # retrieved from the Solr OKP RAG (Always RAG strategy)
 SOLR_VECTOR_SEARCH_DEFAULT_K = 5
 SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD = 0.0
 SOLR_VECTOR_SEARCH_DEFAULT_MODE = "hybrid"

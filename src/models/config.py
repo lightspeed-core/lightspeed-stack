@@ -1704,13 +1704,13 @@ class ByokRagConfiguration(ConfigurationBase):
     )
 
 
-class SolrRagConfiguration(ConfigurationBase):
-    """Solr RAG configuration."""
+class OkpRagConfiguration(ConfigurationBase):
+    """OKP RAG configuration."""
 
     enabled: bool = Field(
         default=False,
-        title="Solr RAG enabled",
-        description="When True, queries Solr OKP for RAG context.",
+        title="OKP RAG enabled",
+        description="When True, queries OKP for RAG context.",
     )
 
     offline: bool = Field(
@@ -1721,22 +1721,22 @@ class SolrRagConfiguration(ConfigurationBase):
     )
 
 
-class AlwaysRagConfiguration(ConfigurationBase):
-    """Always RAG configuration.
+class InlineRagConfiguration(ConfigurationBase):
+    """Inline RAG configuration.
 
-    Controls pre-query RAG from Solr and BYOK vector stores.
+    Controls inline RAG from OKP and BYOK vector stores.
     """
 
-    solr: SolrRagConfiguration = Field(
-        default_factory=lambda: SolrRagConfiguration(),  # pylint: disable=unnecessary-lambda
-        title="Solr RAG configuration",
-        description="Configuration for Solr RAG (pre-query).",
+    okp: OkpRagConfiguration = Field(
+        default_factory=OkpRagConfiguration,
+        title="OKP RAG configuration",
+        description="Configuration for OKP RAG (inline).",
     )
 
     byok: ByokRagConfiguration = Field(
-        default_factory=lambda: ByokRagConfiguration(),  # pylint: disable=unnecessary-lambda
+        default_factory=ByokRagConfiguration,
         title="BYOK RAG configuration",
-        description="Configuration for BYOK RAG (pre-query).",
+        description="Configuration for BYOK RAG (inline).",
     )
 
 
@@ -1758,17 +1758,17 @@ class ToolRagConfiguration(ConfigurationBase):
 class RagConfiguration(ConfigurationBase):
     """RAG strategy configuration.
 
-    Controls different RAG strategies: pre-query (always) and tool-based.
+    Controls different RAG strategies: inline and tool-based.
     """
 
-    always: AlwaysRagConfiguration = Field(
-        default_factory=lambda: AlwaysRagConfiguration(),  # pylint: disable=unnecessary-lambda
-        title="Always RAG configuration",
-        description="Configuration for pre-query RAG from Solr and BYOK vector stores.",
+    inline: InlineRagConfiguration = Field(
+        default_factory=InlineRagConfiguration,
+        title="Inline RAG configuration",
+        description="Configuration for inline RAG from OKP and BYOK vector stores.",
     )
 
     tool: ToolRagConfiguration = Field(
-        default_factory=lambda: ToolRagConfiguration(),  # pylint: disable=unnecessary-lambda
+        default_factory=ToolRagConfiguration,
         title="Tool RAG configuration",
         description="Configuration for exposing RAG as a tool that the LLM can call.",
     )
@@ -1915,7 +1915,7 @@ class Configuration(ConfigurationBase):
     rag: RagConfiguration = Field(
         default_factory=RagConfiguration,
         title="RAG configuration",
-        description="Configuration for all RAG strategies (pre-query and tool-based).",
+        description="Configuration for all RAG strategies (inline and tool-based).",
     )
 
     @model_validator(mode="after")

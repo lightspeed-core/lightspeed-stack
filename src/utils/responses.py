@@ -87,7 +87,7 @@ async def get_vector_store_ids(
         HTTPException: With ServiceUnavailableResponse if connection fails,
             or InternalServerErrorResponse if API returns an error status
     """
-    if vector_store_ids:
+    if vector_store_ids is not None:
         return vector_store_ids
 
     try:
@@ -231,6 +231,7 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     stream: bool = False,
     store: bool = True,
     request_headers: Optional[Mapping[str, str]] = None,
+    inline_rag_context: Optional[str] = None,
 ) -> ResponsesApiParams:
     """Prepare API request parameters for Responses API.
 
@@ -243,6 +244,9 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
         stream: Whether to stream the response
         store: Whether to store the response
         request_headers: Incoming HTTP request headers for allowlist propagation
+        inline_rag_context: Optional RAG context to inject into the query before
+            sending to the LLM. Passed separately to keep QueryRequest a pure public
+            API model.
 
     Returns:
         ResponsesApiParams containing all prepared parameters for the API request
@@ -272,7 +276,8 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
     )
 
     # Prepare input for Responses API
-    input_text = prepare_input(query_request)
+    # Adds inline RAG context and attachments
+    input_text = prepare_input(query_request, inline_rag_context)
 
     # Handle conversation ID for Responses API
     conversation_id = query_request.conversation_id
@@ -369,10 +374,10 @@ def get_rag_tools(vector_store_ids: list[str]) -> Optional[list[InputToolFileSea
     """
     # Check if Tool RAG is enabled in configuration
     if not (configuration and configuration.rag.tool.byok.enabled):
-        return None
+        return []
 
-    if not vector_store_ids:
-        return None
+    if vector_store_ids == []:
+        return []
 
     return [
         InputToolFileSearch(

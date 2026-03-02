@@ -5,7 +5,7 @@ This document explains how to configure and customize your RAG pipeline using th
 * Initialize a vector store
 * Download and point to a local embedding model
 * Configure an inference provider (LLM)
-* Choose a RAG strategy (Always RAG or Tool RAG)
+* Choose a RAG strategy (Inline RAG or Tool RAG)
 
 ---
 
@@ -28,7 +28,7 @@ This document explains how to configure and customize your RAG pipeline using th
 
 Lightspeed Core Stack (LCS) supports two complementary RAG strategies:
 
-- **Always RAG**: context is fetched from Solr and/or BYOK vector stores and injected into every query before the LLM responds. No tool calls are required.
+- **Inline RAG**: context is fetched from Solr and/or BYOK vector stores and injected into every query before the LLM responds. No tool calls are required.
 - **Tool RAG**: the LLM can call the `file_search` tool during generation to retrieve context on demand from BYOK vector stores.
 
 Both strategies can be enabled independently via the `rag` section of `lightspeed-stack.yaml`. See [BYOK Feature Documentation](byok_guide.md) for configuration details.
@@ -324,9 +324,9 @@ Note: if the vector database (portal-rag) is not in the persistent data store wi
 
 ```yaml
 rag:
-  always:
-    solr:
-      enabled: true     # Enable Solr vector IO (Always RAG - pre-query injection)
+  inline:
+    okp:
+      enabled: true     # Enable OKP vector IO (Inline RAG - pre-query injection)
       offline: true     # Use parent_id for document URLs (offline mode)
                         # Set to false to use reference_url (online mode)
 ```
@@ -341,7 +341,7 @@ curl -sX POST http://localhost:8080/v1/query \
 
 **Query Processing:**
 
-1. When Solr is enabled, queries use the `portal-rag` vector store
+1. When OKP is enabled, queries use the `portal-rag` vector store
 2. Vector search is performed with configurable parameters:
    - `k`: Number of results (default: 5)
    - `score_threshold`: Minimum similarity score (default: 0.0)  

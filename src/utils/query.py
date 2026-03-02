@@ -1,23 +1,31 @@
 """Utility functions for working with queries."""
 
+import sqlite3
 from datetime import UTC, datetime
 from typing import Optional
 
+import psycopg2
+from fastapi import HTTPException
 from llama_stack_client import (
     APIConnectionError,
     APIStatusError as LLSApiStatusError,
     AsyncLlamaStackClient,
 )
-from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 from llama_stack_client.types import Shield
-
-from fastapi import HTTPException
+from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
+
+import constants
+from app.database import get_session
+from authorization.azure_token_manager import AzureEntraIDManager
+from cache.cache_error import CacheError
+from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from log import get_logger
 from models.cache_entry import CacheEntry
 from models.config import Action
 from models.database.conversations import UserConversation, UserTurn
-import constants
 from models.requests import Attachment, QueryRequest
 from models.responses import (
     AbstractErrorResponse,
@@ -28,23 +36,15 @@ from models.responses import (
     ServiceUnavailableResponse,
     UnprocessableEntityResponse,
 )
-from authorization.azure_token_manager import AzureEntraIDManager
-from cache.cache_error import CacheError
-import psycopg2
-import sqlite3
-from sqlalchemy.exc import SQLAlchemyError
-from app.database import get_session
-from client import AsyncLlamaStackClientHolder
+from utils.quota import consume_tokens
+from utils.suid import normalize_conversation_id
+from utils.token_counter import TokenCounter
 from utils.transcripts import (
     create_transcript,
     create_transcript_metadata,
     store_transcript,
 )
-from utils.quota import consume_tokens
-from utils.suid import normalize_conversation_id
-from utils.token_counter import TokenCounter
 from utils.types import TurnSummary
-from log import get_logger
 
 logger = get_logger(__name__)
 
@@ -192,19 +192,27 @@ async def update_azure_token(
     )
 
 
-def prepare_input(query_request: QueryRequest) -> str:
+def prepare_input(
+    query_request: QueryRequest, inline_rag_context: Optional[str] = None
+) -> str:
     """
-    Prepare input text for Responses API by appending attachments.
+    Prepare input text for Responses API by appending RAG context and attachments.
 
-    Takes the query text and appends any attachment content with type labels.
+    Takes the query text, appends any inline RAG context for the LLM call, then
+    appends any attachment content with type labels.
 
     Args:
         query_request: The query request containing the query and optional attachments
+        inline_rag_context: Optional RAG context to inject into the query before
+            sending to the LLM. Passed separately to keep QueryRequest a pure public
+            API model.
 
     Returns:
-        str: The input text with attachments appended (if any)
+        str: The input text with RAG context and attachments appended (if any)
     """
     input_text = query_request.query
+    if inline_rag_context:
+        input_text += inline_rag_context
     if query_request.attachments:
         for attachment in query_request.attachments:
             # Append attachment content with type label

@@ -207,9 +207,9 @@ def test_dump_configuration(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "always": {
+                "inline": {
                     "byok": {"enabled": False},
-                    "solr": {"enabled": False, "offline": True},
+                    "okp": {"enabled": False, "offline": True},
                 },
                 "tool": {
                     "byok": {"enabled": True},
@@ -559,9 +559,9 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "always": {
+                "inline": {
                     "byok": {"enabled": False},
-                    "solr": {"enabled": False, "offline": True},
+                    "okp": {"enabled": False, "offline": True},
                 },
                 "tool": {
                     "byok": {"enabled": True},
@@ -789,9 +789,9 @@ def test_dump_configuration_with_quota_limiters_different_values(
             },
             "azure_entra_id": None,
             "rag": {
-                "always": {
+                "inline": {
                     "byok": {"enabled": False},
-                    "solr": {"enabled": False, "offline": True},
+                    "okp": {"enabled": False, "offline": True},
                 },
                 "tool": {
                     "byok": {"enabled": True},
@@ -994,9 +994,9 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "always": {
+                "inline": {
                     "byok": {"enabled": False},
-                    "solr": {"enabled": False, "offline": True},
+                    "okp": {"enabled": False, "offline": True},
                 },
                 "tool": {
                     "byok": {"enabled": True},
@@ -1184,9 +1184,9 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
             },
             "azure_entra_id": None,
             "rag": {
-                "always": {
+                "inline": {
                     "byok": {"enabled": False},
-                    "solr": {"enabled": False, "offline": True},
+                    "okp": {"enabled": False, "offline": True},
                 },
                 "tool": {
                     "byok": {"enabled": True},

@@ -21,8 +21,6 @@ from llama_stack_api.openai_responses import (
 from llama_stack_client.lib.agents.tool_parser import ToolParser
 from llama_stack_client.lib.agents.types import (
     CompletionMessage as AgentCompletionMessage,
-)
-from llama_stack_client.lib.agents.types import (
     ToolCall as AgentToolCall,
 )
 from pydantic import AnyUrl, BaseModel, Field
@@ -313,7 +311,7 @@ class TurnSummary(BaseModel):
     tool_results: list[ToolResultSummary] = Field(default_factory=list)
     rag_chunks: list[RAGChunk] = Field(default_factory=list)
     referenced_documents: list[ReferencedDocument] = Field(default_factory=list)
-    pre_rag_documents: list[ReferencedDocument] = Field(default_factory=list)
+    inline_rag_documents: list[ReferencedDocument] = Field(default_factory=list)
     token_usage: TokenCounter = Field(default_factory=TokenCounter)
 
 

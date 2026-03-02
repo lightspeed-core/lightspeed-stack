@@ -50,10 +50,10 @@ byok_rag:
 
 # RAG configuration
 rag:
-  # Always RAG: context injected before every LLM response (no tool calls needed)
+  # Inline RAG: context injected before every LLM request (no tool calls needed)
   # Supports both Solr and BYOK sources. Score multipliers apply here only.
-  always:
-    solr:
+  inline:
+    okp:
       enabled: false # Enable Solr OKP pre-query context injection
       offline: false # Controls how document URLs are built from Solr results
     byok:

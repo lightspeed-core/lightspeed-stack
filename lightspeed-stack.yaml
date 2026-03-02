@@ -34,9 +34,9 @@ authentication:
 
 # RAG configuration
 rag:
-  # Always RAG (inject context pre-query with RAG from Solr and BYOK vector stores)
-  always:
-    solr:
+  # Inline RAG (inject context pre-query with RAG from Solr and BYOK vector stores)
+  inline:
+    okp:
       enabled: false
       offline: false
     # Supports weighted scoring
@@ -46,4 +46,4 @@ rag:
   tool:
     byok:
       # Default is true for backward compatibility
-      enabled: false
+      enabled: true

@@ -36,15 +36,15 @@ BYOK (Bring Your Own Knowledge) is Lightspeed Core's implementation of Retrieval
 
 BYOK knowledge sources can be queried in two complementary modes, configured independently:
 
-### Always RAG (pre-query injection)
+### Inline RAG (pre-query injection)
 
-Context is fetched from your BYOK vector stores and/or Solr **before** the LLM generates a response, and injected into every query automatically. No tool calls are required.
+Context is fetched from your BYOK vector stores and/or OKP **before** the LLM generates a response, and injected into every query automatically. No tool calls are required.
 
 ```mermaid
 graph TD
     A[User Query] --> B[Fetch Context]
     B --> C[BYOK Vector Stores]
-    B --> D[Solr OKP]
+    B --> D[OKP Vector Stores]
     C --> E[Retrieved Chunks]
     D --> E
     E --> F[Inject Context into Prompt Context]
@@ -58,9 +58,9 @@ The LLM can call the `file_search` tool during generation when it decides extern
 
 ```mermaid
 graph TD
-    A[User Query] --> P{Always RAG enabled?}
+    A[User Query] --> P{Inline RAG enabled?}
     P -->|Yes| Q[Fetch Context]
-    Q --> R[BYOK Vector Stores / Solr OKP]
+    Q --> R[BYOK / OKP Vector Stores]
     R --> S[Inject Context into Prompt Context]
     S --> B[LLM]
     P -->|No| B
@@ -77,7 +77,7 @@ Both modes rely on:
 - **Vector Database**: Your indexed knowledge sources stored as vector embeddings
 - **Embedding Model**: Converts queries and documents into vector representations for similarity matching
 
-Always RAG additionally supports:
+Inline RAG additionally supports:
 - **Score Multiplier**: Optional weight applied per BYOK vector store when mixing multiple sources. Allows custom prioritization of content. 
 
 ---
@@ -286,7 +286,7 @@ registered_resources:
 > ```
 >
 > When multiple BYOK sources are configured, `score_multiplier` adjusts the relative importance of
-> each store's results during Always RAG retrieval. Values above 1.0 boost a store; below 1.0 reduce it.
+> each store's results during Inline RAG retrieval. Values above 1.0 boost a store; below 1.0 reduce it.
 
 ### Step 5: Configure RAG Strategy
 
@@ -294,12 +294,12 @@ Add a `rag` section to your `lightspeed-stack.yaml` to choose how BYOK knowledge
 
 ```yaml
 rag:
-  # Always RAG: inject context before every LLM response (no tool calls needed)
-  always:
+  # Inline RAG: inject context before every LLM response (no tool calls needed)
+  inline:
     byok:
       enabled: true   # fetch and inject BYOK vector store context pre-query
-    solr:
-      enabled: true   # fetch and inject Solr OKP context pre-query
+    okp:
+      enabled: true   # fetch and inject OKP context pre-query
 
   # Tool RAG: the LLM can call file_search to retrieve context on demand
   tool:
@@ -311,7 +311,7 @@ Both modes can be enabled simultaneously. Choose based on your latency and contr
 
 | Mode | When context is fetched | Tool call needed | Supported sources | score_multiplier |
 |------|------------------------|------------------|-------------------|-----------------|
-| Always RAG | Before every query | No | BYOK + Solr | Yes (BYOK only) |
+| Inline RAG | Before every query | No | BYOK + OKP | Yes (BYOK only) |
 | Tool RAG | On LLM demand | Yes | BYOK only | No |
 
 ---

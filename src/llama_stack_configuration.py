@@ -139,7 +139,9 @@ def construct_storage_backends_section(
 
     # add new backends for each BYOK RAG
     for brag in byok_rag:
-        rag_id = brag.get("rag_id", "")
+        if not brag.get("rag_id"):
+            raise ValueError(f"BYOK RAG entry is missing required 'rag_id': {brag}")
+        rag_id = brag["rag_id"]
         backend_name = f"byok_{rag_id}_storage"
         output[backend_name] = {
             "type": "kv_sqlite",
@@ -185,8 +187,12 @@ def construct_vector_stores_section(
     existing_store_ids = {vs.get("vector_store_id") for vs in output}
     added = 0
     for brag in byok_rag:
-        rag_id = brag.get("rag_id", "")
-        vector_db_id = brag.get("vector_db_id", "")
+        if not brag.get("rag_id"):
+            raise ValueError(f"BYOK RAG entry is missing required 'rag_id': {brag}")
+        if not brag.get("vector_db_id"):
+            raise ValueError(f"BYOK RAG entry is missing required 'vector_db_id': {brag}")
+        rag_id = brag["rag_id"]
+        vector_db_id = brag["vector_db_id"]
         if vector_db_id in existing_store_ids:
             continue
         existing_store_ids.add(vector_db_id)
@@ -231,8 +237,10 @@ def construct_models_section(
 
     # add embedding models for each BYOK RAG
     for brag in byok_rag:
+        if not brag.get("rag_id"):
+            raise ValueError(f"BYOK RAG entry is missing required 'rag_id': {brag}")
+        rag_id = brag["rag_id"]
         embedding_model = brag.get("embedding_model", constants.DEFAULT_EMBEDDING_MODEL)
-        rag_id = brag.get("rag_id", "")
         embedding_dimension = brag.get("embedding_dimension")
 
         # Skip if no embedding model specified
@@ -298,7 +306,9 @@ def construct_vector_io_providers_section(
 
     # append new vector_io entries
     for brag in byok_rag:
-        rag_id = brag.get("rag_id", "")
+        if not brag.get("rag_id"):
+            raise ValueError(f"BYOK RAG entry is missing required 'rag_id': {brag}")
+        rag_id = brag["rag_id"]
         backend_name = f"byok_{rag_id}_storage"
         provider_id = f"byok_{rag_id}"
         output.append(
@@ -519,7 +529,7 @@ def generate_configuration(
     enrich_byok_rag(ls_config, config.get("byok_rag", []))
 
     # Enrichment: Solr
-    solr_config = config.get("rag", {}).get("always", {}).get("solr", {})
+    solr_config = config.get("rag", {}).get("inline", {}).get("okp", {})
     enrich_solr(ls_config, solr_config)
 
     logger.info("Writing Llama Stack configuration into file %s", output_file)

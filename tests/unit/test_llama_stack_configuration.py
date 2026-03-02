@@ -74,7 +74,7 @@ def test_construct_vector_stores_section_merge() -> None:
     ls_config = {
         "registered_resources": {"vector_stores": [{"vector_store_id": "existing"}]}
     }
-    byok_rag = [{"vector_db_id": "new_store"}]
+    byok_rag = [{"rag_id": "rag1", "vector_db_id": "new_store"}]
     output = construct_vector_stores_section(ls_config, byok_rag)
     assert len(output) == 2
 
@@ -90,6 +90,7 @@ def test_construct_vector_stores_section_skips_duplicate_from_existing() -> None
     }
     byok_rag = [
         {
+            "rag_id": "rag1",
             "vector_db_id": "store1",
             "embedding_model": "test-model",
             "embedding_dimension": 512,
@@ -105,11 +106,13 @@ def test_construct_vector_stores_section_skips_duplicate_within_byok() -> None:
     ls_config: dict[str, Any] = {}
     byok_rag = [
         {
+            "rag_id": "rag1",
             "vector_db_id": "store1",
             "embedding_model": "model-a",
             "embedding_dimension": 512,
         },
         {
+            "rag_id": "rag2",
             "vector_db_id": "store1",
             "embedding_model": "model-b",
             "embedding_dimension": 768,
@@ -256,6 +259,7 @@ def test_construct_models_section_strips_prefix() -> None:
     ls_config: dict[str, Any] = {}
     byok_rag = [
         {
+            "rag_id": "rag1",
             "vector_db_id": "store1",
             "embedding_model": "sentence-transformers//usr/path/model",
             "embedding_dimension": 768,
@@ -264,6 +268,46 @@ def test_construct_models_section_strips_prefix() -> None:
     output = construct_models_section(ls_config, byok_rag)
     assert len(output) == 1
     assert output[0]["provider_model_id"] == "/usr/path/model"
+
+
+def test_construct_storage_backends_section_raises_on_missing_rag_id() -> None:
+    """Test raises ValueError when rag_id is missing from a BYOK RAG entry."""
+    ls_config: dict[str, Any] = {}
+    byok_rag = [{"vector_db_id": "store1"}]
+    with pytest.raises(ValueError, match="missing required 'rag_id'"):
+        construct_storage_backends_section(ls_config, byok_rag)
+
+
+def test_construct_vector_stores_section_raises_on_missing_rag_id() -> None:
+    """Test raises ValueError when rag_id is missing from a BYOK RAG entry."""
+    ls_config: dict[str, Any] = {}
+    byok_rag = [{"vector_db_id": "store1"}]
+    with pytest.raises(ValueError, match="missing required 'rag_id'"):
+        construct_vector_stores_section(ls_config, byok_rag)
+
+
+def test_construct_vector_stores_section_raises_on_missing_vector_db_id() -> None:
+    """Test raises ValueError when vector_db_id is missing from a BYOK RAG entry."""
+    ls_config: dict[str, Any] = {}
+    byok_rag = [{"rag_id": "rag1"}]
+    with pytest.raises(ValueError, match="missing required 'vector_db_id'"):
+        construct_vector_stores_section(ls_config, byok_rag)
+
+
+def test_construct_vector_io_section_raises_on_missing_rag_id() -> None:
+    """Test raises ValueError when rag_id is missing from a BYOK RAG entry."""
+    ls_config: dict[str, Any] = {}
+    byok_rag = [{"vector_db_id": "store1"}]
+    with pytest.raises(ValueError, match="missing required 'rag_id'"):
+        construct_vector_io_providers_section(ls_config, byok_rag)
+
+
+def test_construct_models_section_raises_on_missing_rag_id() -> None:
+    """Test raises ValueError when rag_id is missing from a BYOK RAG entry."""
+    ls_config: dict[str, Any] = {}
+    byok_rag = [{"vector_db_id": "store1", "embedding_model": "some-model"}]
+    with pytest.raises(ValueError, match="missing required 'rag_id'"):
+        construct_models_section(ls_config, byok_rag)
 
 
 # =============================================================================

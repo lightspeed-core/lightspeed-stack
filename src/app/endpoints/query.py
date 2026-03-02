@@ -154,14 +154,8 @@ async def query_endpoint_handler(
 
     client = AsyncLlamaStackClientHolder().get_client()
 
-    # Build RAG context from BYOK and Solr sources
-    rag_context = await build_rag_context(client, query_request, configuration)
-
-    # Inject RAG context into query
-    if rag_context.context_text:
-        # Mutate a local copy to avoid surprising other logic
-        query_request = query_request.model_copy(deep=True)
-        query_request.query = query_request.query + rag_context.context_text
+    # Build RAG context from Inline RAG sources
+    inline_rag_context = await build_rag_context(client, query_request, configuration)
 
     # Prepare API request parameters
     responses_params = await prepare_responses_params(
@@ -173,6 +167,7 @@ async def query_endpoint_handler(
         stream=False,
         store=True,
         request_headers=request.headers,
+        inline_rag_context=inline_rag_context.context_text or None,
     )
 
     # Handle Azure token refresh if needed
@@ -197,14 +192,14 @@ async def query_endpoint_handler(
         rag_id_mapping,
     )
 
-    # Merge RAG chunks (BYOK + Solr) with tool-based RAG chunks
-    rag_chunks = rag_context.rag_chunks
+    # Combine inline RAG results (BYOK + Solr) with tool-based RAG results for the transcript
+    rag_chunks = inline_rag_context.rag_chunks
     tool_rag_chunks = turn_summary.rag_chunks or []
     logger.info("RAG as a tool retrieved %d chunks", len(tool_rag_chunks))
     turn_summary.rag_chunks = rag_chunks + tool_rag_chunks
 
     # Add tool-based RAG documents and chunks
-    rag_documents = rag_context.referenced_documents
+    rag_documents = inline_rag_context.referenced_documents
     tool_rag_documents = turn_summary.referenced_documents or []
     turn_summary.referenced_documents = deduplicate_referenced_documents(
         rag_documents + tool_rag_documents

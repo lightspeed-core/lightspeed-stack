@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 
 def _is_solr_enabled() -> bool:
     """Check if Solr is enabled in configuration."""
-    return bool(configuration.rag.always.solr.enabled)
+    return bool(configuration.rag.inline.okp.enabled)
 
 
 def _get_solr_vector_store_ids() -> list[str]:
@@ -336,8 +336,8 @@ async def _fetch_byok_rag(
     rag_chunks: list[RAGChunk] = []
     referenced_documents: list[ReferencedDocument] = []
 
-    if not configuration.rag.always.byok.enabled:
-        logger.info("Always RAG (BYOK) disabled, skipping BYOK RAG search")
+    if not configuration.rag.inline.byok.enabled:
+        logger.info("Inline RAG (BYOK) disabled, skipping BYOK RAG search")
         return rag_chunks, referenced_documents
 
     try:
@@ -426,7 +426,7 @@ async def _fetch_solr_rag(
         return rag_chunks, referenced_documents
 
     # Get offline setting from configuration
-    offline = configuration.rag.always.solr.offline
+    offline = configuration.rag.inline.okp.offline
 
     try:
         vector_store_ids = _get_solr_vector_store_ids()
@@ -450,8 +450,8 @@ async def _fetch_solr_rag(
                 )
 
                 # Limit to top N chunks
-                top_chunks = query_response.chunks[: constants.SOLR_RAG_MAX_CHUNKS]
-                top_scores = retrieved_scores[: constants.SOLR_RAG_MAX_CHUNKS]
+                top_chunks = query_response.chunks[: constants.OKP_RAG_MAX_CHUNKS]
+                top_scores = retrieved_scores[: constants.OKP_RAG_MAX_CHUNKS]
 
                 # Extract referenced documents from Solr chunks
                 referenced_documents = _process_solr_chunks_for_documents(
@@ -464,7 +464,7 @@ async def _fetch_solr_rag(
                 )
                 logger.info(
                     "Filtered top %d chunks from Solr OKP RAG (%d were retrieved)",
-                    constants.SOLR_RAG_MAX_CHUNKS,
+                    constants.OKP_RAG_MAX_CHUNKS,
                     len(rag_chunks),
                 )
 
@@ -507,10 +507,11 @@ async def build_rag_context(
 
     context_text = _format_rag_context(context_chunks, query_request.query)
 
-    logger.debug("=" * 80)
-    logger.debug("RAG context built for pre-query injection:")
-    logger.debug(context_text)
-    logger.debug("=" * 80)
+    logger.debug(
+        "Inline RAG context built: %d chunks, %d characters",
+        len(context_chunks),
+        len(context_text),
+    )
 
     # Merge referenced documents from all sources (BYOK + Solr)
     top_documents = byok_docs + solr_docs

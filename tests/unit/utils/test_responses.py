@@ -337,8 +337,8 @@ class TestGetRAGTools:
     """Test cases for get_rag_tools utility function."""
 
     def test_get_rag_tools_empty_list(self) -> None:
-        """Test get_rag_tools returns None for empty list."""
-        assert get_rag_tools([]) is None
+        """Test get_rag_tools returns empty list for empty vector store IDs."""
+        assert get_rag_tools([]) == []
 
     def test_get_rag_tools_with_vector_stores(self) -> None:
         """Test get_rag_tools returns correct tool format for vector stores."""
@@ -2429,7 +2429,7 @@ class TestGetRAGToolsWithConfig:
         mock_config.rag.tool.byok.enabled = False
         mocker.patch("utils.responses.configuration", mock_config)
 
-        assert get_rag_tools(["vs1", "vs2"]) is None
+        assert get_rag_tools(["vs1", "vs2"]) == []
 
     def test_returns_tools_when_enabled(self, mocker: MockerFixture) -> None:
         """Test get_rag_tools returns tools when Tool RAG is enabled in config."""

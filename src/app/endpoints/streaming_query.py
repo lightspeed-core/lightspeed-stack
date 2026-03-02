@@ -10,29 +10,15 @@ from fastapi.responses import StreamingResponse
 from llama_stack_api.openai_responses import (
     OpenAIResponseObject,
     OpenAIResponseObjectStream,
-)
-from llama_stack_api.openai_responses import (
     OpenAIResponseObjectStreamResponseMcpCallArgumentsDone as MCPArgsDoneChunk,
-)
-from llama_stack_api.openai_responses import (
     OpenAIResponseObjectStreamResponseOutputItemAdded as OutputItemAddedChunk,
-)
-from llama_stack_api.openai_responses import (
     OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
-)
-from llama_stack_api.openai_responses import (
     OpenAIResponseObjectStreamResponseOutputTextDelta as TextDeltaChunk,
-)
-from llama_stack_api.openai_responses import (
     OpenAIResponseObjectStreamResponseOutputTextDone as TextDoneChunk,
-)
-from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageMCPCall as MCPCall,
 )
 from llama_stack_client import (
     APIConnectionError,
-)
-from llama_stack_client import (
     APIStatusError as LLSApiStatusError,
 )
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
@@ -70,10 +56,7 @@ from models.responses import (
     UnauthorizedResponse,
     UnprocessableEntityResponse,
 )
-<<<<<<< HEAD
 from utils.types import ReferencedDocument
-=======
->>>>>>> 2ace88f7 (Add chunk prioritization and always RAG support)
 from utils.endpoints import (
     check_configuration_loaded,
     validate_and_retrieve_conversation,
@@ -203,6 +186,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     client = AsyncLlamaStackClientHolder().get_client()
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     _, _, doc_ids_from_chunks, pre_rag_chunks = await perform_vector_search(
         client, query_request.query, query_request.solr
     )
@@ -219,6 +203,10 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
 >>>>>>> 2ace88f7 (Add chunk prioritization and always RAG support)
         query_request = query_request.model_copy(deep=True)
         query_request.query = query_request.query + rag_context.context_text
+=======
+    # Build RAG context from Inline RAG sources
+    inline_rag_context = await build_rag_context(client, query_request, configuration)
+>>>>>>> a4075c6d (Address review: rename always RAG to inline RAG, Solr config to OKP, fix query mutation)
 
     # Prepare API request parameters
     responses_params = await prepare_responses_params(
@@ -230,6 +218,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         stream=True,
         store=True,
         request_headers=request.headers,
+        inline_rag_context=inline_rag_context.context_text or None,
     )
 
     # Handle Azure token refresh if needed
@@ -266,7 +255,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     generator, turn_summary = await retrieve_response_generator(
         responses_params=responses_params,
         context=context,
-        pre_rag_documents=rag_context.referenced_documents,
+        inline_rag_documents=inline_rag_context.referenced_documents,
     )
 
     response_media_type = (
@@ -289,7 +278,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
 async def retrieve_response_generator(
     responses_params: ResponsesApiParams,
     context: ResponseGeneratorContext,
-    pre_rag_documents: list[ReferencedDocument],
+    inline_rag_documents: list[ReferencedDocument],
 ) -> tuple[AsyncIterator[str], TurnSummary]:
     """
     Retrieve the appropriate response generator.
@@ -302,10 +291,14 @@ async def retrieve_response_generator(
         responses_params: The Responses API parameters
         context: The response generator context
 <<<<<<< HEAD
+<<<<<<< HEAD
         doc_ids_from_chunks: List of ReferencedDocument objects extracted from static RAG
 =======
         pre_rag_documents: Referenced documents from pre-query RAG (BYOK + Solr)
 >>>>>>> 2ace88f7 (Add chunk prioritization and always RAG support)
+=======
+        inline_rag_documents: Referenced documents from pre-query RAG (BYOK + Solr)
+>>>>>>> a4075c6d (Address review: rename always RAG to inline RAG, Solr config to OKP, fix query mutation)
 
     Returns:
         tuple[AsyncIterator[str], TurnSummary]: The response generator and turn summary
@@ -336,7 +329,7 @@ async def retrieve_response_generator(
             **responses_params.model_dump(exclude_none=True)
         )
         # Store pre-RAG documents for later merging with tool-based RAG
-        turn_summary.pre_rag_documents = pre_rag_documents
+        turn_summary.inline_rag_documents = inline_rag_documents
         return response_generator(response, context, turn_summary), turn_summary
 
     # Handle know LLS client errors only at stream creation time and shield execution
@@ -777,9 +770,25 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
         rag_id_mapping=context.rag_id_mapping,
     )
 
+<<<<<<< HEAD
     turn_summary.referenced_documents = deduplicate_referenced_documents(
         tool_based_documents + turn_summary.pre_rag_documents
     )
+=======
+    # Merge pre-RAG documents with tool-based documents (similar to query.py)
+    if turn_summary.inline_rag_documents:
+        all_documents = turn_summary.inline_rag_documents + tool_based_documents
+        seen = set()
+        deduplicated_documents = []
+        for doc in all_documents:
+            key = (doc.doc_url, doc.doc_title)
+            if key not in seen:
+                seen.add(key)
+                deduplicated_documents.append(doc)
+        turn_summary.referenced_documents = deduplicated_documents
+    else:
+        turn_summary.referenced_documents = tool_based_documents
+>>>>>>> a4075c6d (Address review: rename always RAG to inline RAG, Solr config to OKP, fix query mutation)
 
 
 def stream_http_error_event(

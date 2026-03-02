@@ -712,4 +712,4 @@ class TestRetrieveResponse:
         assert result.token_usage.output_tokens == 5
         assert result.rag_chunks == []
         assert result.referenced_documents == []
-        assert result.pre_rag_documents == []
+        assert result.inline_rag_documents == []

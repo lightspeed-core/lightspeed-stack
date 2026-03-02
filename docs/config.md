@@ -171,7 +171,7 @@ Global service configuration.
 | azure_entra_id |  |  |
 | splunk |  | Splunk HEC configuration for sending telemetry events. |
 | deployment_environment | string | Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events. |
-| rag |  | RAG strategy configuration (Solr and BYOK). Controls pre-query (Always RAG) and tool-based (Tool RAG) retrieval. |
+| rag |  | RAG strategy configuration (OKP and BYOK). Controls pre-query (Inline RAG) and tool-based (Tool RAG) retrieval. |
 
 
 ## ConversationHistoryConfiguration
@@ -526,7 +526,7 @@ the service can handle requests concurrently.
 
 Top-level RAG strategy configuration. Controls two complementary retrieval modes:
 
-- **Always RAG**: context is fetched from Solr and/or BYOK vector stores and injected
+- **Inline RAG**: context is fetched from OKP and/or BYOK vector stores and injected
   into every query before the LLM responds.
 - **Tool RAG**: the LLM can call the `file_search` tool during generation to retrieve
   context on demand from BYOK vector stores.
@@ -534,37 +534,37 @@ Top-level RAG strategy configuration. Controls two complementary retrieval modes
 
 | Field | Type | Description |
 |-------|------|-------------|
-| always |  | Pre-query RAG from Solr and BYOK. See AlwaysRagConfiguration. |
+| inline |  | Pre-query RAG from OKP and BYOK. See InlineRagConfiguration. |
 | tool |  | Tool-based RAG that the LLM can invoke. See ToolRagConfiguration. |
 
 
-## AlwaysRagConfiguration
+## InlineRagConfiguration
 
 
 Pre-query RAG configuration that injects context before the LLM generates a response.
 
-Both Solr and BYOK sources can be enabled independently. When enabled, retrieved
+Both OKP and BYOK sources can be enabled independently. When enabled, retrieved
 chunks are added as context on every query.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| solr |  | Solr RAG configuration for pre-query context injection. |
+| okp |  | OKP RAG configuration for pre-query context injection. |
 | byok |  | BYOK RAG configuration for pre-query context injection. |
 
 
-## SolrRagConfiguration
+## OkpRagConfiguration
 
 
-Solr configuration for Always RAG (pre-query context injection).
+OKP configuration for Inline RAG (pre-query context injection).
 
 Controls whether to use offline or online mode when building document URLs
-from vector search results, and enables/disables Solr vector IO functionality.
+from vector search results, and enables/disables OKP vector IO functionality.
 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| enabled | boolean | When True, enables Solr vector IO functionality for vector search queries. When False, disables Solr vector search processing. |
+| enabled | boolean | When True, enables OKP vector IO functionality for vector search queries. When False, disables OKP vector search processing. |
 | offline | boolean | When True, use parent_id for chunk source URLs. When False, use reference_url for chunk source URLs. |
 
 
