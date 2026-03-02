@@ -201,6 +201,9 @@ SOLR_DEFAULT_EMBEDDING_DIMENSION = 384
 # Default score multiplier for BYOK RAG vector stores
 DEFAULT_SCORE_MULTIPLIER = 1.0
 
+# Special RAG ID that activates the OKP provider when listed in rag.inline or rag.tool
+OKP_RAG_ID = "okp-rag"
+
 # Logging configuration constants
 # Environment variable name for configurable log level
 LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR = "LIGHTSPEED_STACK_LOG_LEVEL"

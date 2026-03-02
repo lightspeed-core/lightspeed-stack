@@ -4447,7 +4447,7 @@
                 ],
                 "summary": "Handle A2A Jsonrpc",
                 "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
-                "operationId": "handle_a2a_jsonrpc_a2a_post",
+                "operationId": "handle_a2a_jsonrpc_a2a_get",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -4465,7 +4465,7 @@
                 ],
                 "summary": "Handle A2A Jsonrpc",
                 "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
-                "operationId": "handle_a2a_jsonrpc_a2a_post",
+                "operationId": "handle_a2a_jsonrpc_a2a_get",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -5522,20 +5522,6 @@
                 "title": "ByokRag",
                 "description": "BYOK (Bring Your Own Knowledge) RAG configuration."
             },
-            "ByokRagConfiguration": {
-                "properties": {
-                    "enabled": {
-                        "type": "boolean",
-                        "title": "BYOK RAG enabled",
-                        "description": "When True, queries BYOK vector stores for RAG context.",
-                        "default": false
-                    }
-                },
-                "additionalProperties": false,
-                "type": "object",
-                "title": "ByokRagConfiguration",
-                "description": "BYOK RAG configuration."
-            },
             "CORSConfiguration": {
                 "properties": {
                     "allow_origins": {
@@ -5739,6 +5725,11 @@
                         "$ref": "#/components/schemas/RagConfiguration",
                         "title": "RAG configuration",
                         "description": "Configuration for all RAG strategies (inline and tool-based)."
+                    },
+                    "okp": {
+                        "$ref": "#/components/schemas/OkpConfiguration",
+                        "title": "OKP configuration",
+                        "description": "OKP provider settings. Only used when 'okp-rag' is listed in rag.inline or rag.tool."
                     }
                 },
                 "additionalProperties": false,
@@ -6980,24 +6971,6 @@
                     }
                 ]
             },
-            "InlineRagConfiguration": {
-                "properties": {
-                    "okp": {
-                        "$ref": "#/components/schemas/OkpRagConfiguration",
-                        "title": "OKP RAG configuration",
-                        "description": "Configuration for OKP RAG (inline)."
-                    },
-                    "byok": {
-                        "$ref": "#/components/schemas/ByokRagConfiguration",
-                        "title": "BYOK RAG configuration",
-                        "description": "Configuration for BYOK RAG (inline)."
-                    }
-                },
-                "additionalProperties": false,
-                "type": "object",
-                "title": "InlineRagConfiguration",
-                "description": "Inline RAG configuration.\n\nControls inline RAG from OKP and BYOK vector stores."
-            },
             "InternalServerErrorResponse": {
                 "properties": {
                     "status_code": {
@@ -7607,25 +7580,25 @@
                 "title": "OAuthFlows",
                 "description": "Defines the configuration for the supported OAuth 2.0 flows."
             },
-            "OkpRagConfiguration": {
+            "OkpConfiguration": {
                 "properties": {
-                    "enabled": {
-                        "type": "boolean",
-                        "title": "OKP RAG enabled",
-                        "description": "When True, queries OKP for RAG context.",
-                        "default": false
-                    },
                     "offline": {
                         "type": "boolean",
-                        "title": "Offline mode",
-                        "description": "When True, use parent_id for chunk source URLs. When False, use reference_url for chunk source URLs.",
+                        "title": "OKP offline mode",
+                        "description": "When True, use parent_id for OKP chunk source URLs. When False, use reference_url for chunk source URLs.",
                         "default": true
+                    },
+                    "chunk_filter_query": {
+                        "type": "string",
+                        "title": "OKP chunk filter query",
+                        "description": "OKP filter query applied to every OKP search request. Defaults to 'is_chunk:true' to restrict results to chunk documents. To add extra constraints, extend the expression using boolean syntax, e.g. 'is_chunk:true AND product:*openshift*'.",
+                        "default": "is_chunk:true"
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
-                "title": "OkpRagConfiguration",
-                "description": "OKP RAG configuration."
+                "title": "OkpConfiguration",
+                "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp-rag\"`` is listed in ``rag.inline`` or ``rag.tool``."
             },
             "OpenIdConnectSecurityScheme": {
                 "properties": {
@@ -8804,20 +8777,33 @@
             "RagConfiguration": {
                 "properties": {
                     "inline": {
-                        "$ref": "#/components/schemas/InlineRagConfiguration",
-                        "title": "Inline RAG configuration",
-                        "description": "Configuration for inline RAG from OKP and BYOK vector stores."
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Inline RAG IDs",
+                        "description": "RAG IDs whose sources are injected as context before the LLM call. Use 'okp-rag' to enable OKP inline RAG. Empty by default (no inline RAG)."
                     },
                     "tool": {
-                        "$ref": "#/components/schemas/ToolRagConfiguration",
-                        "title": "Tool RAG configuration",
-                        "description": "Configuration for exposing RAG as a tool that the LLM can call."
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool RAG IDs",
+                        "description": "RAG IDs made available to the LLM as a file_search tool. Use 'okp-rag' to include the OKP vector store. When omitted, all registered BYOK vector stores are used (backward compatibility)."
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "RagConfiguration",
-                "description": "RAG strategy configuration.\n\nControls different RAG strategies: inline and tool-based."
+                "description": "RAG strategy configuration.\n\nControls which RAG sources are used for inline and tool-based retrieval.\n\nEach strategy lists RAG IDs to include. The special ID ``\"okp-rag\"`` defined in constants,\nactivates the OKP provider; all other IDs refer to entries in ``byok_rag``.\n\nBackward compatibility:\n    - ``inline`` defaults to ``[]`` (no inline RAG).\n    - ``tool`` defaults to ``None`` which means all registered vector stores\n      are used (identical to the previous ``tool.byok.enabled = True`` default)."
             },
             "ReadinessResponse": {
                 "properties": {
@@ -9584,19 +9570,6 @@
                 ],
                 "title": "ToolCallSummary",
                 "description": "Model representing a tool call made during response generation (for tool_calls list)."
-            },
-            "ToolRagConfiguration": {
-                "properties": {
-                    "byok": {
-                        "$ref": "#/components/schemas/ByokRagConfiguration",
-                        "title": "BYOK RAG configuration",
-                        "description": "Configuration for BYOK RAG as a tool."
-                    }
-                },
-                "additionalProperties": false,
-                "type": "object",
-                "title": "ToolRagConfiguration",
-                "description": "Tool RAG configuration.\n\nControls whether RAG functionality is exposed as a tool that the LLM can call."
             },
             "ToolResultSummary": {
                 "properties": {

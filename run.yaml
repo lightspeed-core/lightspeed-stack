@@ -24,10 +24,7 @@ providers:
     config:
       api_key: ${env.OPENAI_API_KEY}
       allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"]
-  - config:
-      allowed_models:
-        - ${env.EMBEDDING_MODEL_DIR}
-    provider_id: sentence-transformers
+  - provider_id: sentence-transformers
     provider_type: inline::sentence-transformers
   files:
   - config:
@@ -58,27 +55,7 @@ providers:
     provider_id: rag-runtime
     provider_type: inline::rag-runtime
   vector_io:
-  - provider_id: solr-vector
-    provider_type: remote::solr_vector_io
-    config:
-      solr_url: http://localhost:8983/solr
-      collection_name: portal-rag
-      vector_field: chunk_vector
-      content_field: chunk
-      embedding_dimension: 384
-      embedding_model: ${env.EMBEDDING_MODEL_DIR}
-      chunk_window_config:
-        chunk_parent_id_field: "parent_id"
-        chunk_content_field: "chunk_field"
-        chunk_index_field: "chunk_index"
-        chunk_token_count_field: "num_tokens"
-        parent_total_chunks_field: "total_chunks"
-        parent_total_tokens_field: "total_tokens"
-        chunk_filter_query: "is_chunk:true" 
-      persistence:
-        namespace: portal-rag
-        backend: kv_default
-  - config: # Define the storage backend for RAG
+  - config:
       persistence:
         namespace: vector_io::faiss
         backend: kv_default
@@ -149,22 +126,12 @@ storage:
       namespace: prompts
       backend: kv_default
 registered_resources:
-  models:
-  - model_id: granite-embedding-30m
-    model_type: embedding
-    provider_id: sentence-transformers
-    provider_model_id: ${env.EMBEDDING_MODEL_DIR}
-    metadata:
-      embedding_dimension: 384
+  models: []
   shields:
   - shield_id: llama-guard
     provider_id: llama-guard
     provider_shield_id: openai/gpt-4o-mini
-  vector_stores:
-    - embedding_dimension: 384
-      embedding_model: sentence-transformers/${env.EMBEDDING_MODEL_DIR}
-      provider_id: solr-vector
-      vector_store_id: portal-rag
+  vector_stores: []
   datasets: []
   scoring_fns: []
   benchmarks: []

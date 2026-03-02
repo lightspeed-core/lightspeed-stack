@@ -110,6 +110,22 @@ Microsoft Entra ID authentication attributes for Azure.
 
 BYOK (Bring Your Own Knowledge) RAG configuration.
 
+Each entry registers a local vector store with the service. The `rag_id` is the
+identifier used in `rag.inline` and `rag.tool` to select which stores to use.
+
+Example:
+
+```yaml
+byok_rag:
+  - rag_id: my-docs          # referenced in rag.inline / rag.tool
+    rag_type: inline::faiss
+    embedding_model: sentence-transformers/all-MiniLM-L6-v2
+    embedding_dimension: 384
+    vector_db_id: vs_abc123
+    db_path: /path/to/faiss_store.db
+    score_multiplier: 1.0
+```
+
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -526,68 +542,55 @@ the service can handle requests concurrently.
 
 Top-level RAG strategy configuration. Controls two complementary retrieval modes:
 
-- **Inline RAG**: context is fetched from OKP and/or BYOK vector stores and injected
-  into every query before the LLM responds.
+- **Inline RAG**: context is fetched from the listed sources and injected before the
+  LLM request.
 - **Tool RAG**: the LLM can call the `file_search` tool during generation to retrieve
-  context on demand from BYOK vector stores.
+  context on demand from the listed vector stores. Supports both BYOK and OKP.
+
+Each strategy is configured as a list of RAG IDs referencing entries in `byok_rag`.
+The special ID `okp-rag` activates the OKP provider (no `byok_rag` entry needed).
+
+**Backward compatibility**: omitting `tool` uses all registered BYOK vector stores
+(equivalent to the old `tool.byok.enabled = True`). Omitting `inline` means no
+context is injected before the LLM request.
+
+Example:
+
+```yaml
+rag:
+  inline:
+    - my-docs       # inject context from my-docs before the LLM request
+  tool:
+    - okp-rag       # LLM can search OKP as a tool
+    - my-docs       # LLM can also search my-docs as a tool
+
+okp:
+  offline: true     # use parent_id for OKP URL construction
+```
 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| inline |  | Pre-query RAG from OKP and BYOK. See InlineRagConfiguration. |
-| tool |  | Tool-based RAG that the LLM can invoke. See ToolRagConfiguration. |
+| inline | list[string] | RAG IDs whose content is injected before the LLM request. Use `okp-rag` for OKP. Empty by default (no inline RAG). |
+| tool | list[string] or null | RAG IDs exposed as a `file_search` tool the LLM can invoke. Use `okp-rag` to include OKP. When omitted, all registered BYOK vector stores are used (backward compatibility). |
 
 
-## InlineRagConfiguration
+## OkpConfiguration
 
+OKP (Offline Knowledge Portal) provider settings. Only used when `okp-rag` is listed in `rag.inline` or `rag.tool`.
 
-Pre-query RAG configuration that injects context before the LLM generates a response.
+Example:
 
-Both OKP and BYOK sources can be enabled independently. When enabled, retrieved
-chunks are added as context on every query.
-
-
-| Field | Type | Description |
-|-------|------|-------------|
-| okp |  | OKP RAG configuration for pre-query context injection. |
-| byok |  | BYOK RAG configuration for pre-query context injection. |
-
-
-## OkpRagConfiguration
-
-
-OKP configuration for Inline RAG (pre-query context injection).
-
-Controls whether to use offline or online mode when building document URLs
-from vector search results, and enables/disables OKP vector IO functionality.
-
+```yaml
+okp:
+  offline: true                    # use parent_id for OKP URL construction
+  chunk_filter_query: "is_chunk:true"
+```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| enabled | boolean | When True, enables OKP vector IO functionality for vector search queries. When False, disables OKP vector search processing. |
-| offline | boolean | When True, use parent_id for chunk source URLs. When False, use reference_url for chunk source URLs. |
-
-
-## ByokRagConfiguration
-
-
-Configuration to enable or disable BYOK RAG retrieval.
-
-
-| Field | Type | Description |
-|-------|------|-------------|
-| enabled | boolean | When True, queries BYOK vector stores for RAG context. Default: False. |
-
-
-## ToolRagConfiguration
-
-
-Configuration for exposing RAG as a tool the LLM can call during generation.
-
-
-| Field | Type | Description |
-|-------|------|-------------|
-| byok |  | BYOK RAG configuration for tool-based retrieval. Default: enabled. |
+| offline | boolean | When `true` (default), use `parent_id` for OKP chunk source URLs. When `false`, use `reference_url`. |
+| chunk_filter_query | string | OKP filter query (`fq`) applied to every OKP search request. Defaults to `"is_chunk:true"`. Extend with `AND` for extra constraints. |
 
 
 ## SplunkConfiguration

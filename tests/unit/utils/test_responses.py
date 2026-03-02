@@ -338,7 +338,7 @@ class TestGetRAGTools:
 
     def test_get_rag_tools_empty_list(self) -> None:
         """Test get_rag_tools returns empty list for empty vector store IDs."""
-        assert get_rag_tools([]) == []
+        assert not get_rag_tools([])
 
     def test_get_rag_tools_with_vector_stores(self) -> None:
         """Test get_rag_tools returns correct tool format for vector stores."""
@@ -2423,20 +2423,13 @@ class TestGetVectorStoreIds:
 class TestGetRAGToolsWithConfig:
     """Tests for get_rag_tools with configuration checks."""
 
-    def test_returns_none_when_tool_rag_disabled(self, mocker: MockerFixture) -> None:
-        """Test get_rag_tools returns None when Tool RAG is disabled in config."""
-        mock_config = mocker.Mock(spec=AppConfig)
-        mock_config.rag.tool.byok.enabled = False
-        mocker.patch("utils.responses.configuration", mock_config)
+    def test_returns_empty_when_no_vector_store_ids(self) -> None:
+        """Test get_rag_tools returns empty list when no vector store IDs are provided."""
+        # pylint: disable-next=use-implicit-booleaness-not-comparison
+        assert get_rag_tools([]) == []
 
-        assert get_rag_tools(["vs1", "vs2"]) == []
-
-    def test_returns_tools_when_enabled(self, mocker: MockerFixture) -> None:
-        """Test get_rag_tools returns tools when Tool RAG is enabled in config."""
-        mock_config = mocker.Mock(spec=AppConfig)
-        mock_config.rag.tool.byok.enabled = True
-        mocker.patch("utils.responses.configuration", mock_config)
-
+    def test_returns_tools_when_stores_provided(self) -> None:
+        """Test get_rag_tools returns tools when vector store IDs are provided."""
         tools = get_rag_tools(["vs1"])
         assert tools is not None
         assert tools[0].type == constants.DEFAULT_RAG_TOOL

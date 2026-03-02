@@ -212,7 +212,7 @@ def prepare_input(
     """
     input_text = query_request.query
     if inline_rag_context:
-        input_text += inline_rag_context
+        input_text += f"\n\n{inline_rag_context}"
     if query_request.attachments:
         for attachment in query_request.attachments:
             # Append attachment content with type label

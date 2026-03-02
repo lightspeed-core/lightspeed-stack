@@ -44,6 +44,7 @@ from utils.mcp_headers import McpHeaders, mcp_headers_dependency
 from utils.query import (
     consume_query_tokens,
     handle_known_apistatus_errors,
+    prepare_input,
     store_query_results,
     update_azure_token,
     validate_attachments_metadata,
@@ -155,7 +156,13 @@ async def query_endpoint_handler(
     client = AsyncLlamaStackClientHolder().get_client()
 
     # Build RAG context from Inline RAG sources
-    inline_rag_context = await build_rag_context(client, query_request, configuration)
+    inline_rag_context = await build_rag_context(
+        client, query_request.query, query_request.vector_store_ids, query_request.solr
+    )
+
+    # Moderation input is the raw user content (query + attachments) without injected RAG
+    # context, to avoid false positives from retrieved document content.
+    moderation_input = prepare_input(query_request)
 
     # Prepare API request parameters
     responses_params = await prepare_responses_params(
@@ -190,6 +197,7 @@ async def query_endpoint_handler(
         query_request.shield_ids,
         vector_store_ids,
         rag_id_mapping,
+        moderation_input=moderation_input,
     )
 
     # Combine inline RAG results (BYOK + Solr) with tool-based RAG results for the transcript
@@ -266,6 +274,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     shield_ids: Optional[list[str]] = None,
     vector_store_ids: Optional[list[str]] = None,
     rag_id_mapping: Optional[dict[str, str]] = None,
+    moderation_input: Optional[str] = None,
 ) -> TurnSummary:
     """
     Retrieve response from LLMs and agents.
@@ -279,6 +288,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals
         shield_ids: Optional list of shield IDs for moderation.
         vector_store_ids: Vector store IDs used in the query for source resolution.
         rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
+        moderation_input: Text to moderate. Should be the raw user content (query +
+            attachments) without injected RAG context to avoid false positives.
+            Falls back to responses_params.input if not provided.
 
     Returns:
         TurnSummary: Summary of the LLM response content
@@ -286,7 +298,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     response: Optional[OpenAIResponseObject] = None
     try:
         moderation_result = await run_shield_moderation(
-            client, cast(str, responses_params.input), shield_ids
+            client,
+            moderation_input or cast(str, responses_params.input),
+            shield_ids,
         )
         if moderation_result.decision == "blocked":
             # Handle shield moderation blocking

@@ -190,7 +190,9 @@ def construct_vector_stores_section(
         if not brag.get("rag_id"):
             raise ValueError(f"BYOK RAG entry is missing required 'rag_id': {brag}")
         if not brag.get("vector_db_id"):
-            raise ValueError(f"BYOK RAG entry is missing required 'vector_db_id': {brag}")
+            raise ValueError(
+                f"BYOK RAG entry is missing required 'vector_db_id': {brag}"
+            )
         rag_id = brag["rag_id"]
         vector_db_id = brag["vector_db_id"]
         if vector_db_id in existing_store_ids:
@@ -381,13 +383,15 @@ def enrich_solr(ls_config: dict[str, Any], solr_config: dict[str, Any]) -> None:
 
     Args:
         ls_config: Llama Stack configuration dict (modified in place)
-        solr_config: Solr configuration dict
+        solr_config: Solr configuration dict. Expected keys:
+            - enabled (bool): whether Solr enrichment should run
+            - chunk_filter_query (str): Solr filter query for chunk retrieval
     """
     if not solr_config or not solr_config.get("enabled"):
-        logger.info("Solr is not enabled: skipping")
+        logger.info("OKP is not enabled: skipping")
         return
 
-    logger.info("Enriching Llama Stack config with Solr")
+    logger.info("Enriching Llama Stack config with OKP")
 
     # Add vector_io provider for Solr
     if "providers" not in ls_config:
@@ -418,6 +422,8 @@ def enrich_solr(ls_config: dict[str, Any], solr_config: dict[str, Any]) -> None:
             f"${{env.SOLR_EMBEDDING_DIM:={constants.SOLR_DEFAULT_EMBEDDING_DIMENSION}}}"
         )
 
+        chunk_filter_query = solr_config.get("chunk_filter_query", "is_chunk:true")
+
         ls_config["providers"]["vector_io"].append(
             {
                 "provider_id": constants.SOLR_PROVIDER_ID,
@@ -429,6 +435,15 @@ def enrich_solr(ls_config: dict[str, Any], solr_config: dict[str, Any]) -> None:
                     "content_field": content_field_env,
                     "embedding_model": embedding_model_env,
                     "embedding_dimension": embedding_dim_env,
+                    "chunk_window_config": {
+                        "chunk_parent_id_field": "parent_id",
+                        "chunk_content_field": "chunk_field",
+                        "chunk_index_field": "chunk_index",
+                        "chunk_token_count_field": "num_tokens",
+                        "parent_total_chunks_field": "total_chunks",
+                        "parent_total_tokens_field": "total_tokens",
+                        "chunk_filter_query": chunk_filter_query,
+                    },
                     "persistence": {
                         "namespace": constants.SOLR_DEFAULT_VECTOR_STORE_ID,
                         "backend": "kv_default",
@@ -436,7 +451,7 @@ def enrich_solr(ls_config: dict[str, Any], solr_config: dict[str, Any]) -> None:
                 },
             }
         )
-        logger.info("Added Solr provider to providers/vector_io")
+        logger.info("Added OKP provider to providers/vector_io")
 
     # Add vector store registration for Solr
     if "registered_resources" not in ls_config:
@@ -495,7 +510,7 @@ def enrich_solr(ls_config: dict[str, Any], solr_config: dict[str, Any]) -> None:
                 },
             }
         )
-        logger.info("Added Solr embedding model to registered_resources.models")
+        logger.info("Added OKP embedding model to registered_resources.models")
 
 
 # =============================================================================
@@ -528,9 +543,16 @@ def generate_configuration(
     # Enrichment: BYOK RAG
     enrich_byok_rag(ls_config, config.get("byok_rag", []))
 
-    # Enrichment: Solr
-    solr_config = config.get("rag", {}).get("inline", {}).get("okp", {})
-    enrich_solr(ls_config, solr_config)
+    # Enrichment: Solr - enabled when "okp-rag" appears in either inline or tool list
+    rag_config = config.get("rag", {})
+    inline_ids = rag_config.get("inline") or []
+    tool_ids = rag_config.get("tool") or []
+    okp_enabled = constants.OKP_RAG_ID in inline_ids or constants.OKP_RAG_ID in tool_ids
+    okp_config = config.get("okp", {})
+    chunk_filter_query = okp_config.get("chunk_filter_query", "is_chunk:true")
+    enrich_solr(
+        ls_config, {"enabled": okp_enabled, "chunk_filter_query": chunk_filter_query}
+    )
 
     logger.info("Writing Llama Stack configuration into file %s", output_file)
 

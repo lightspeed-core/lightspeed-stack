@@ -28,8 +28,8 @@ This document explains how to configure and customize your RAG pipeline using th
 
 Lightspeed Core Stack (LCS) supports two complementary RAG strategies:
 
-- **Inline RAG**: context is fetched from Solr and/or BYOK vector stores and injected into every query before the LLM responds. No tool calls are required.
-- **Tool RAG**: the LLM can call the `file_search` tool during generation to retrieve context on demand from BYOK vector stores.
+- **Inline RAG**: context is fetched from BYOK vector stores and/or OKP and injected before the LLM request. No tool calls are required.
+- **Tool RAG**: the LLM can call the `file_search` tool during generation to retrieve context on demand from BYOK vector stores and/or OKP.
 
 Both strategies can be enabled independently via the `rag` section of `lightspeed-stack.yaml`. See [BYOK Feature Documentation](byok_guide.md) for configuration details.
 
@@ -273,63 +273,24 @@ The OKP (Offline Knowledge Portal) Solr Vector IO is a read-only vector search p
 
 #### How to Enable Solr Vector IO
 
-**1. Configure Llama Stack (`run.yaml`):**
-
-```yaml
-providers:
-  vector_io:
-  - provider_id: solr-vector
-    provider_type: remote::solr_vector_io
-    config:
-      solr_url: http://localhost:8983/solr
-      collection_name: portal-rag
-      vector_field: chunk_vector
-      content_field: chunk
-      embedding_dimension: 384
-      embedding_model: ${env.EMBEDDING_MODEL_DIR}
-      chunk_window_config:
-        chunk_parent_id_field: "parent_id"
-        chunk_content_field: "chunk_field"
-        chunk_index_field: "chunk_index"
-        chunk_token_count_field: "num_tokens"
-        parent_total_chunks_field: "total_chunks"
-        parent_total_tokens_field: "total_tokens"
-        chunk_filter_query: "is_chunk:true" 
-      persistence:
-        namespace: portal-rag
-        backend: kv_default
-
-registered_resources:
-  vector_stores:
-  - vector_store_id: portal-rag
-    provider_id: solr-vector
-    embedding_model: granite-embedding-30m
-    embedding_dimension: 384
-```
-
-Note: if the vector database (portal-rag) is not in the persistent data store within the vector_io provider
-(e.g. after deleting the llama stack cache) you will need to register the vector database under registered resources:
-
-
-```yaml
-  vector_stores:
-    - embedding_dimension: 384
-      embedding_model: sentence-transformers/${env.EMBEDDING_MODEL_DIR}
-      provider_id: solr-vector
-      vector_store_id: portal-rag
-```
-
-
-**2. Configure Lightspeed Stack (`lightspeed-stack.yaml`):**
+**1. Configure Lightspeed Stack (`lightspeed-stack.yaml`):**
 
 ```yaml
 rag:
   inline:
-    okp:
-      enabled: true     # Enable OKP vector IO (Inline RAG - pre-query injection)
-      offline: true     # Use parent_id for document URLs (offline mode)
-                        # Set to false to use reference_url (online mode)
+    - okp-rag           # inject OKP context before the LLM request
+  tool:
+    - okp-rag           # expose OKP as the file_search tool
+
+okp:
+  offline: true         # true = use parent_id for source URLs (offline mode)
+                        # false = use reference_url (online mode)
 ```
+
+> [!NOTE]
+> When `okp-rag` is listed in `rag.inline` or `rag.tool`, Lightspeed Stack automatically enriches
+> the Llama Stack `run.yaml` at startup with the required `vector_io` provider and `registered_resources`
+> entries for the OKP vector store. No manual registration is needed.
 
 **Query Request Example:**
 ```
@@ -353,17 +314,37 @@ curl -sX POST http://localhost:8080/v1/query \
 
 **Query Filtering:**
 
-To filter the Solr context edit the *chunk_filter_query* field in the
-Solr **vector_io** provider in the `run.yaml`. Filters should follow the key:value format:
-ex. `"product:*openshift*"`
+To filter the Solr context, set the `chunk_filter_query` field in the `okp` section of
+`lightspeed-stack.yaml`. Filters follow the Solr key:value format and are applied as a static
+`fq` parameter on every OKP search request. The default value `"is_chunk:true"` restricts
+results to chunk documents. To add extra constraints, extend the expression using Solr boolean
+syntax:
 
-Note: This static filter is a temporary work-around. 
+```yaml
+okp:
+  chunk_filter_query: "is_chunk:true AND product:*openshift*"
+```
+
+> [!NOTE]
+> This static filter is a temporary work-around until dynamic per-request filtering is supported.
 
 **Prerequisites:**
 
 - Solr must be running and accessible at the configured URL
   for instructions on how to pull and run the OKP Solr image visit: https://github.com/lightspeed-core/lightspeed-providers/lightspeed_stack_providers/providers/remote/solr_vector_io/solr_vector_io/README.md
 
+
+**Chunk volume:**
+
+OKP and BYOK scores are not directly comparable (different scoring systems), so
+`score_multiplier` (a BYOK-only concept) does not apply to OKP results. To control
+the number of retrieved chunks, set the constants in `src/constants.py`:
+
+| Constant | Default | Description |
+|----------|---------|-------------|
+| `OKP_RAG_MAX_CHUNKS` | 5 | Max chunks retrieved from OKP (Inline RAG) |
+| `BYOK_RAG_MAX_CHUNKS` | 10 | Max chunks retrieved from BYOK stores (Inline RAG) |
+| `TOOL_RAG_MAX_CHUNKS` | 10 | Max chunks retrieved via Tool RAG (`file_search`) |
 
 **Limitations:**
 

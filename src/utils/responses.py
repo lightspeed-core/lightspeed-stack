@@ -167,11 +167,17 @@ async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-position
         return None
 
     toolgroups: list[InputTool] = []
-    # Get vector stores for RAG tools - use specified ones or fetch all
-    vector_store_ids = await get_vector_store_ids(client, vector_store_ids)
+    # Per-request vector_store_ids override takes priority.
+    # When not provided, use config-based tool list (or None = all stores).
+    effective_ids = (
+        vector_store_ids
+        if vector_store_ids is not None
+        else configuration.tool_vector_store_ids
+    )
+    effective_ids = await get_vector_store_ids(client, effective_ids)
 
     # Add RAG tools if vector stores are available
-    rag_tools = get_rag_tools(vector_store_ids)
+    rag_tools = get_rag_tools(effective_ids)
     if rag_tools:
         toolgroups.extend(rag_tools)
 
@@ -370,12 +376,8 @@ def get_rag_tools(vector_store_ids: list[str]) -> Optional[list[InputToolFileSea
         vector_store_ids: List of vector store identifiers
 
     Returns:
-        List containing file_search tool configuration, or None if RAG as tool is disabled
+        List containing file_search tool configuration, or empty list if no stores available
     """
-    # Check if Tool RAG is enabled in configuration
-    if not (configuration and configuration.rag.tool.byok.enabled):
-        return []
-
     if vector_store_ids == []:
         return []
 

@@ -66,6 +66,7 @@ from utils.query import (
     consume_query_tokens,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
+    prepare_input,
     store_query_results,
     update_azure_token,
     validate_attachments_metadata,
@@ -308,7 +309,7 @@ async def retrieve_response_generator(
     try:
         moderation_result = await run_shield_moderation(
             context.client,
-            cast(str, responses_params.input),
+            prepare_input(context.query_request),
             context.query_request.shield_ids,
         )
         if moderation_result.decision == "blocked":

@@ -1,0 +1,71 @@
+name: Lightspeed Core Service (LCS)
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: false
+  url: http://localhost:8321
+  api_key: xyzzy
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+authentication:
+  module: "noop"
+quota_handlers:
+  sqlite:
+      db_path: quota.sqlite
+  limiters:
+    - name: user_monthly_limits
+      type: user_limiter
+      initial_quota: 50
+      quota_increase: 50
+      period: "30 seconds"
+    - name: cluster_monthly_limits
+      type: cluster_limiter
+      initial_quota: 100
+      quota_increase: 100
+      period: "30 seconds"
+  scheduler:
+    # scheduler ticks in seconds
+    period: 10
+byok_rag:
+  - rag_id: ocp-docs           # referenced in rag.inline / rag.tool
+    rag_type: inline::faiss
+    embedding_dimension: 1024
+    vector_db_id: vs_123       # Llama-stack vector_store_id
+    db_path: /tmp/ocp.faiss
+    score_multiplier: 1.0      # Weight for this vector store's results (Inline RAG only)
+  - rag_id: knowledge-base     # referenced in rag.inline / rag.tool
+    rag_type: inline::faiss
+    embedding_dimension: 384
+    vector_db_id: vs_456       # Llama-stack vector_store_id
+    db_path: /tmp/kb.faiss
+    score_multiplier: 1.2      # Weight for this vector store's results (Inline RAG only)
+
+# RAG configuration
+rag:
+  # Inline RAG: context injected before the LLM request from the listed sources
+  # List rag_ids from byok_rag, or 'okp-rag' to include OKP
+  inline:
+    - ocp-docs
+    - knowledge-base
+    - okp-rag
+  # Tool RAG: LLM can call file_search on demand to retrieve context
+  # List rag_ids from byok_rag, or 'okp-rag' to include OKP
+  # Omit to use all registered BYOK stores (backward compatibility)
+  tool:
+    - ocp-docs
+    - knowledge-base
+
+# OKP provider settings (only used when 'okp-rag' is listed in rag.inline or rag.tool)
+okp:
+  offline: true    # true = use parent_id for source URLs, false = use reference_url
+  # Solr fq applied to every OKP search request. Combine with AND for extra constraints:
+  # chunk_filter_query: "is_chunk:true AND product:*openshift*"
+  chunk_filter_query: "is_chunk:true"

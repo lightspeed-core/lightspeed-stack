@@ -1694,83 +1694,57 @@ class QuotaHandlersConfiguration(ConfigurationBase):
     )
 
 
-class ByokRagConfiguration(ConfigurationBase):
-    """BYOK RAG configuration."""
-
-    enabled: bool = Field(
-        default=False,
-        title="BYOK RAG enabled",
-        description="When True, queries BYOK vector stores for RAG context.",
-    )
-
-
-class OkpRagConfiguration(ConfigurationBase):
-    """OKP RAG configuration."""
-
-    enabled: bool = Field(
-        default=False,
-        title="OKP RAG enabled",
-        description="When True, queries OKP for RAG context.",
-    )
-
-    offline: bool = Field(
-        default=True,
-        title="Offline mode",
-        description="When True, use parent_id for chunk source URLs. "
-        "When False, use reference_url for chunk source URLs.",
-    )
-
-
-class InlineRagConfiguration(ConfigurationBase):
-    """Inline RAG configuration.
-
-    Controls inline RAG from OKP and BYOK vector stores.
-    """
-
-    okp: OkpRagConfiguration = Field(
-        default_factory=OkpRagConfiguration,
-        title="OKP RAG configuration",
-        description="Configuration for OKP RAG (inline).",
-    )
-
-    byok: ByokRagConfiguration = Field(
-        default_factory=ByokRagConfiguration,
-        title="BYOK RAG configuration",
-        description="Configuration for BYOK RAG (inline).",
-    )
-
-
-class ToolRagConfiguration(ConfigurationBase):
-    """Tool RAG configuration.
-
-    Controls whether RAG functionality is exposed as a tool that the LLM can call.
-    """
-
-    byok: ByokRagConfiguration = Field(
-        default_factory=lambda: ByokRagConfiguration(
-            enabled=True
-        ),  # defaults True for backward compatibility
-        title="BYOK RAG configuration",
-        description="Configuration for BYOK RAG as a tool.",
-    )
-
-
 class RagConfiguration(ConfigurationBase):
     """RAG strategy configuration.
 
-    Controls different RAG strategies: inline and tool-based.
+    Controls which RAG sources are used for inline and tool-based retrieval.
+
+    Each strategy lists RAG IDs to include. The special ID ``"okp-rag"`` defined in constants,
+    activates the OKP provider; all other IDs refer to entries in ``byok_rag``.
+
+    Backward compatibility:
+        - ``inline`` defaults to ``[]`` (no inline RAG).
+        - ``tool`` defaults to ``None`` which means all registered vector stores
+          are used (identical to the previous ``tool.byok.enabled = True`` default).
     """
 
-    inline: InlineRagConfiguration = Field(
-        default_factory=InlineRagConfiguration,
-        title="Inline RAG configuration",
-        description="Configuration for inline RAG from OKP and BYOK vector stores.",
+    inline: list[str] = Field(
+        default_factory=list,
+        title="Inline RAG IDs",
+        description="RAG IDs whose sources are injected as context before the LLM call. "
+        "Use 'okp-rag' to enable OKP inline RAG. Empty by default (no inline RAG).",
     )
 
-    tool: ToolRagConfiguration = Field(
-        default_factory=ToolRagConfiguration,
-        title="Tool RAG configuration",
-        description="Configuration for exposing RAG as a tool that the LLM can call.",
+    tool: Optional[list[str]] = Field(
+        default=None,
+        title="Tool RAG IDs",
+        description="RAG IDs made available to the LLM as a file_search tool. "
+        "Use 'okp-rag' to include the OKP vector store. "
+        "When omitted, all registered BYOK vector stores are used (backward compatibility).",
+    )
+
+
+class OkpConfiguration(ConfigurationBase):
+    """OKP (Offline Knowledge Portal) provider configuration.
+
+    Controls provider-specific behaviour for the OKP vector store.
+    Only relevant when ``"okp-rag"`` is listed in ``rag.inline`` or ``rag.tool``.
+    """
+
+    offline: bool = Field(
+        default=True,
+        title="OKP offline mode",
+        description="When True, use parent_id for OKP chunk source URLs. "
+        "When False, use reference_url for chunk source URLs.",
+    )
+
+    chunk_filter_query: str = Field(
+        default="is_chunk:true",
+        title="OKP chunk filter query",
+        description="OKP filter query applied to every OKP search request. "
+        "Defaults to 'is_chunk:true' to restrict results to chunk documents. "
+        "To add extra constraints, extend the expression using boolean syntax, "
+        "e.g. 'is_chunk:true AND product:*openshift*'.",
     )
 
 
@@ -1916,6 +1890,13 @@ class Configuration(ConfigurationBase):
         default_factory=RagConfiguration,
         title="RAG configuration",
         description="Configuration for all RAG strategies (inline and tool-based).",
+    )
+
+    okp: OkpConfiguration = Field(
+        default_factory=OkpConfiguration,
+        title="OKP configuration",
+        description="OKP provider settings. Only used when 'okp-rag' is listed "
+        "in rag.inline or rag.tool.",
     )
 
     @model_validator(mode="after")

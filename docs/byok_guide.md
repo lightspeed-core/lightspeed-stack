@@ -36,9 +36,9 @@ BYOK (Bring Your Own Knowledge) is Lightspeed Core's implementation of Retrieval
 
 BYOK knowledge sources can be queried in two complementary modes, configured independently:
 
-### Inline RAG (pre-query injection)
+### Inline RAG
 
-Context is fetched from your BYOK vector stores and/or OKP **before** the LLM generates a response, and injected into every query automatically. No tool calls are required.
+Context is fetched from your BYOK vector stores and/or OKP and injected before the LLM request. No tool calls are required.
 
 ```mermaid
 graph TD
@@ -54,7 +54,7 @@ graph TD
 
 ### Tool RAG (on-demand retrieval)
 
-The LLM can call the `file_search` tool during generation when it decides external knowledge is needed. Only BYOK vector stores are supported in Tool RAG mode.
+The LLM can call the `file_search` tool during generation when it decides external knowledge is needed. Both BYOK vector stores and OKP are supported in Tool RAG mode.
 
 ```mermaid
 graph TD
@@ -67,7 +67,7 @@ graph TD
     B --> C{Need External Knowledge?}
     C -->|Yes| D[file_search Tool]
     C -->|No| E[Generate Response]
-    D --> F[BYOK Vector Stores]
+    D --> F[BYOK / OKP Vector Stores]
     F --> G[Retrieve Relevant Context]
     G --> B
     E --> H[Response to User]
@@ -78,7 +78,13 @@ Both modes rely on:
 - **Embedding Model**: Converts queries and documents into vector representations for similarity matching
 
 Inline RAG additionally supports:
-- **Score Multiplier**: Optional weight applied per BYOK vector store when mixing multiple sources. Allows custom prioritization of content. 
+- **Score Multiplier**: Optional weight applied per BYOK vector store when mixing multiple sources. Allows custom prioritization of content.
+
+> [!NOTE]
+> OKP and BYOK scores are not directly comparable (different scoring systems), so
+> `score_multiplier` does not apply to OKP results. To control the amount of retrieved
+> context, set the `BYOK_RAG_MAX_CHUNKS` and `OKP_RAG_MAX_CHUNKS` constants in `src/constants.py`
+> (defaults: 10 and 5 respectively). For Tool RAG, use `TOOL_RAG_MAX_CHUNKS` (default: 10).
 
 ---
 
@@ -290,29 +296,37 @@ registered_resources:
 
 ### Step 5: Configure RAG Strategy
 
-Add a `rag` section to your `lightspeed-stack.yaml` to choose how BYOK knowledge is used:
+Add a `rag` section to your `lightspeed-stack.yaml` to choose how BYOK knowledge is used.
+Each list entry is a `rag_id` from `byok_rag`, or the special value `okp-rag` for OKP.
 
 ```yaml
 rag:
-  # Inline RAG: inject context before every LLM response (no tool calls needed)
+  # Inline RAG: inject context before the LLM request (no tool calls needed)
   inline:
-    byok:
-      enabled: true   # fetch and inject BYOK vector store context pre-query
-    okp:
-      enabled: true   # fetch and inject OKP context pre-query
+    - my-docs         # rag_id from byok_rag
+    - okp-rag         # include OKP context inline
 
   # Tool RAG: the LLM can call file_search to retrieve context on demand
+  # Omit to use all registered BYOK stores (backward compatibility)
   tool:
-    byok:
-      enabled: true   # expose BYOK vector stores as the file_search tool
+    - my-docs         # expose this BYOK store as the file_search tool
+    - okp-rag         # expose OKP as the file_search tool
+
+# OKP provider settings (only relevant when okp-rag is listed above)
+okp:
+  offline: true       # true = use parent_id for source URLs, false = use reference_url
 ```
 
 Both modes can be enabled simultaneously. Choose based on your latency and control preferences:
 
 | Mode | When context is fetched | Tool call needed | Supported sources | score_multiplier |
 |------|------------------------|------------------|-------------------|-----------------|
-| Inline RAG | Before every query | No | BYOK + OKP | Yes (BYOK only) |
-| Tool RAG | On LLM demand | Yes | BYOK only | No |
+| Inline RAG | With every query | No | BYOK + OKP | Yes (BYOK only) |
+| Tool RAG | On LLM demand | Yes | BYOK + OKP | No |
+
+> [!TIP]
+> A ready-to-use example combining BYOK and OKP is available at
+> [`examples/lightspeed-stack-byok-okp-rag.yaml`](../examples/lightspeed-stack-byok-okp-rag.yaml).
 
 ---
 

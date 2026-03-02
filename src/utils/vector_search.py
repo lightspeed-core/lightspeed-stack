@@ -16,22 +16,21 @@ import constants
 from configuration import configuration
 from log import get_logger
 from models.responses import ReferencedDocument
-from utils.responses import get_vector_store_ids
 from utils.types import RAGChunk, RAGContext
 
 logger = get_logger(__name__)
 
 
 def _is_solr_enabled() -> bool:
-    """Check if Solr is enabled in configuration."""
-    return bool(configuration.rag.inline.okp.enabled)
+    """Check if Solr is enabled for inline RAG in configuration."""
+    return configuration.inline_solr_enabled
 
 
 def _get_solr_vector_store_ids() -> list[str]:
     """Get vector store IDs based on Solr configuration."""
     vector_store_ids = [constants.SOLR_DEFAULT_VECTOR_STORE_ID]
     logger.info(
-        "Using %s vector store for Solr query: %s",
+        "Using %s vector store for OKP query: %s",
         constants.SOLR_DEFAULT_VECTOR_STORE_ID,
         vector_store_ids,
     )
@@ -277,7 +276,9 @@ def _process_solr_chunks_for_documents(
     metadata_doc_ids = set()
 
     for chunk in chunks:
-        logger.debug("Extract doc ids from chunk: %s", chunk)
+        logger.debug(
+            "Extracting doc ids from chunk id: %s", getattr(chunk, "chunk_id", None)
+        )
 
         doc_id, title, reference_url = _extract_solr_document_metadata(chunk)
 
@@ -301,12 +302,12 @@ def _process_solr_chunks_for_documents(
                 ReferencedDocument(
                     doc_title=title,
                     doc_url=parsed_url,
-                    source="OKP Solr",
+                    source=constants.OKP_RAG_ID,
                 )
             )
 
     logger.debug(
-        "Extracted %d unique document IDs from Solr chunks",
+        "Extracted %d unique document IDs from OKP chunks",
         len(doc_ids_from_chunks),
     )
     return doc_ids_from_chunks
@@ -336,21 +337,27 @@ async def _fetch_byok_rag(
     rag_chunks: list[RAGChunk] = []
     referenced_documents: list[ReferencedDocument] = []
 
-    if not configuration.rag.inline.byok.enabled:
-        logger.info("Inline RAG (BYOK) disabled, skipping BYOK RAG search")
+    # Determine which BYOK vector stores to query for inline RAG.
+    # Per-request override takes precedence; otherwise use config-based inline list.
+    if vector_store_ids is not None:
+        # Request-level override: filter out Solr store, use the rest
+        vector_store_ids_to_query = [
+            vs_id
+            for vs_id in vector_store_ids
+            if vs_id != constants.SOLR_DEFAULT_VECTOR_STORE_ID
+        ]
+    else:
+        vector_store_ids_to_query = configuration.inline_byok_vector_store_ids
+
+    # If inline byok stores are not defined, we disable the inline RAG for backward compatibility
+    if not vector_store_ids_to_query:
+        logger.info("No inline BYOK RAG sources configured, skipping BYOK RAG search")
         return rag_chunks, referenced_documents
 
     try:
         # Get score multiplier and rag_id mappings
         score_multiplier_mapping = configuration.score_multiplier_mapping
         rag_id_mapping = configuration.rag_id_mapping
-
-        # Filter out Solr vector stores from available stores
-        vector_store_ids_to_query = [
-            vs_id
-            for vs_id in await get_vector_store_ids(client, vector_store_ids)
-            if vs_id != constants.SOLR_DEFAULT_VECTOR_STORE_ID
-        ]
 
         # Query all vector stores in parallel
         results_per_store = await asyncio.gather(
@@ -421,12 +428,12 @@ async def _fetch_solr_rag(
     rag_chunks: list[RAGChunk] = []
     referenced_documents: list[ReferencedDocument] = []
 
-    if not _is_solr_enabled(configuration):
-        logger.info("Solr vector IO is disabled, skipping Solr search")
+    if not _is_solr_enabled():
+        logger.info("OKP vector IO is disabled, skipping OKP search")
         return rag_chunks, referenced_documents
 
     # Get offline setting from configuration
-    offline = configuration.rag.inline.okp.offline
+    offline = configuration.okp.offline
 
     try:
         vector_store_ids = _get_solr_vector_store_ids()
@@ -442,7 +449,9 @@ async def _fetch_solr_rag(
                 params=params,
             )
 
-            logger.debug("Solr query response: %s", query_response)
+            logger.debug(
+                "OKP query returned %d chunks", len(query_response.chunks or [])
+            )
 
             if query_response.chunks:
                 retrieved_scores = (
@@ -462,15 +471,15 @@ async def _fetch_solr_rag(
                 rag_chunks = _convert_solr_chunks_to_rag_format(
                     top_chunks, top_scores, offline
                 )
-                logger.info(
-                    "Filtered top %d chunks from Solr OKP RAG (%d were retrieved)",
+                logger.debug(
+                    "Filtered top %d chunks from OKP RAG (%d were retrieved)",
                     constants.OKP_RAG_MAX_CHUNKS,
                     len(rag_chunks),
                 )
 
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.warning("Failed to query Solr for chunks: %s", e)
-        logger.debug("Solr query error details: %s", traceback.format_exc())
+        logger.warning("Failed to query OKP for chunks: %s", e)
+        logger.debug("OKP query error details: %s", traceback.format_exc())
 
     return rag_chunks, referenced_documents
 
@@ -493,10 +502,8 @@ async def build_rag_context(
         RAGContext containing formatted context text and referenced documents
     """
     # Fetch from all enabled RAG sources in parallel
-    byok_chunks_task = _fetch_byok_rag(
-        client, query_request.query, configuration, query_request.vector_store_ids
-    )
-    solr_chunks_task = _fetch_solr_rag(client, query_request, configuration)
+    byok_chunks_task = _fetch_byok_rag(client, query, vector_store_ids)
+    solr_chunks_task = _fetch_solr_rag(client, query, solr)
 
     (byok_chunks, byok_docs), (solr_chunks, solr_docs) = await asyncio.gather(
         byok_chunks_task, solr_chunks_task
@@ -603,7 +610,7 @@ def _convert_solr_chunks_to_rag_format(
         rag_chunks.append(
             RAGChunk(
                 content=chunk.content,
-                source="OKP Solr",  # Hardcoded source for Solr chunks
+                source=constants.OKP_RAG_ID,
                 score=score,
                 attributes=attributes if attributes else None,
             )
