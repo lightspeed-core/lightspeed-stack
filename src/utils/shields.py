@@ -1,19 +1,29 @@
 """Utility functions for working with Llama Stack shields."""
 
-import logging
-from typing import Any, cast
+from typing import Any, Optional
 
 from fastapi import HTTPException
-from llama_stack_client import AsyncLlamaStackClient
-from llama_stack_client.types import CreateResponse
+from llama_stack_api import OpenAIResponseContentPartRefusal, OpenAIResponseMessage
+from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
 import metrics
+from configuration import AppConfig
+from log import get_logger
+from models.requests import QueryRequest
 from models.responses import (
+    InternalServerErrorResponse,
     NotFoundResponse,
+    UnprocessableEntityResponse,
+    ServiceUnavailableResponse,
 )
-from utils.types import ShieldModerationResult
+from utils.suid import get_suid
+from utils.types import (
+    ShieldModerationBlocked,
+    ShieldModerationPassed,
+    ShieldModerationResult,
+)
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DEFAULT_VIOLATION_MESSAGE = "I cannot process this request due to policy restrictions."
 
@@ -62,28 +72,105 @@ def detect_shield_violations(output_items: list[Any]) -> bool:
     return False
 
 
+def validate_shield_ids_override(
+    query_request: QueryRequest, config: AppConfig
+) -> None:
+    """
+    Validate that shield_ids override is allowed by configuration.
+
+    If configuration disables shield_ids override
+    (config.customization.disable_shield_ids_override) and the incoming
+    query_request contains shield_ids, an HTTP 422 Unprocessable Entity
+    is raised instructing the client to remove the field.
+
+    Parameters:
+        query_request: The incoming query payload; may contain shield_ids.
+        config: Application configuration which may include customization flags.
+
+    Raises:
+        HTTPException: If shield_ids override is disabled but shield_ids is provided.
+    """
+    shield_ids_override_disabled = (
+        config.customization is not None
+        and config.customization.disable_shield_ids_override
+    )
+    if shield_ids_override_disabled and query_request.shield_ids is not None:
+        response = UnprocessableEntityResponse(
+            response="Shield IDs customization is disabled",
+            cause=(
+                "This instance does not support customizing shield IDs in the "
+                "query request (disable_shield_ids_override is set). Please remove the "
+                "shield_ids field from your request."
+            ),
+        )
+        raise HTTPException(**response.model_dump())
+
+
 async def run_shield_moderation(
     client: AsyncLlamaStackClient,
     input_text: str,
+    shield_ids: Optional[list[str]] = None,
 ) -> ShieldModerationResult:
     """
     Run shield moderation on input text.
 
-    Iterates through all configured shields and runs moderation checks.
+    Iterates through configured shields and runs moderation checks.
     Raises HTTPException if shield model is not found.
 
     Parameters:
         client: The Llama Stack client.
         input_text: The text to moderate.
+        shield_ids: Optional list of shield IDs to use. If None, uses all shields.
+                   If empty list, skips all shields.
 
     Returns:
         ShieldModerationResult: Result indicating if content was blocked and the message.
+
+    Raises:
+        HTTPException: If shield's provider_resource_id is not configured or model not found.
     """
+    all_shields = await client.shields.list()
+
+    # Filter shields based on shield_ids parameter
+    if shield_ids is not None:
+        if len(shield_ids) == 0:
+            response = UnprocessableEntityResponse(
+                response="Invalid shield configuration",
+                cause=(
+                    "shield_ids provided but no shields selected. "
+                    "Remove the parameter to use default shields."
+                ),
+            )
+            raise HTTPException(**response.model_dump())
+
+        shields_to_run = [s for s in all_shields if s.identifier in shield_ids]
+
+        # Log warning if requested shield not found
+        requested = set(shield_ids)
+        available = {s.identifier for s in shields_to_run}
+        missing = requested - available
+        if missing:
+            logger.warning("Requested shields not found: %s", missing)
+
+        # Reject if no requested shields were found (prevents accidental bypass)
+        if not shields_to_run:
+            response = UnprocessableEntityResponse(
+                response="Invalid shield configuration",
+                cause=f"Requested shield_ids not found: {sorted(missing)}",
+            )
+            raise HTTPException(**response.model_dump())
+    else:
+        shields_to_run = list(all_shields)
+
     available_models = {model.id for model in await client.models.list()}
 
-    shields = await client.shields.list()
-    for shield in shields:
-        if (
+    for shield in shields_to_run:
+        # Only validate provider_resource_id against models for llama-guard.
+        # Llama Stack does not verify that the llama-guard model is registered,
+        # so we check it here to fail fast with a clear error.
+        # Custom shield providers (e.g. lightspeed_question_validity) configure
+        # their model internally, so provider_resource_id is not a model ID.
+        if shield.provider_id == "llama-guard" and (
             not shield.provider_resource_id
             or shield.provider_resource_id not in available_models
         ):
@@ -94,7 +181,7 @@ async def run_shield_moderation(
             raise HTTPException(**response.model_dump())
 
         try:
-            moderation = await client.moderations.create(
+            moderation_result = await client.moderations.create(
                 input=input_text, model=shield.provider_resource_id
             )
         # Known Llama Stack bug: error is raised when violation is present
@@ -104,13 +191,12 @@ async def run_shield_moderation(
                 "Shield violation detected, treating as blocked",
             )
             metrics.llm_calls_validation_errors_total.inc()
-            return ShieldModerationResult(
-                blocked=True,
+            return ShieldModerationBlocked(
                 message=DEFAULT_VIOLATION_MESSAGE,
-                shield_model=shield.provider_resource_id,
+                moderation_id=f"modr_{get_suid()}",
+                refusal_response=create_refusal_response(DEFAULT_VIOLATION_MESSAGE),
             )
 
-        moderation_result = cast(CreateResponse, moderation)
         if moderation_result.results and moderation_result.results[0].flagged:
             result = moderation_result.results[0]
             metrics.llm_calls_validation_errors_total.inc()
@@ -120,13 +206,13 @@ async def run_shield_moderation(
                 result.categories,
             )
             violation_message = result.user_message or DEFAULT_VIOLATION_MESSAGE
-            return ShieldModerationResult(
-                blocked=True,
+            return ShieldModerationBlocked(
                 message=violation_message,
-                shield_model=shield.provider_resource_id,
+                moderation_id=moderation_result.id,
+                refusal_response=create_refusal_response(violation_message),
             )
 
-    return ShieldModerationResult(blocked=False)
+    return ShieldModerationPassed()
 
 
 async def append_turn_to_conversation(
@@ -147,10 +233,40 @@ async def append_turn_to_conversation(
         user_message: The user's input message.
         assistant_message: The shield violation response message.
     """
-    await client.conversations.items.create(
-        conversation_id,
-        items=[
-            {"type": "message", "role": "user", "content": user_message},
-            {"type": "message", "role": "assistant", "content": assistant_message},
-        ],
+    try:
+        await client.conversations.items.create(
+            conversation_id,
+            items=[
+                {"type": "message", "role": "user", "content": user_message},
+                {"type": "message", "role": "assistant", "content": assistant_message},
+            ],
+        )
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="Llama Stack",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+    except APIStatusError as e:
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump()) from e
+
+
+def create_refusal_response(refusal_message: str) -> OpenAIResponseMessage:
+    """Create a refusal response message object.
+
+    Creates an OpenAIResponseMessage with assistant role containing a refusal
+    content part. This can be used for both conversation items and response output.
+
+    Args:
+        refusal_message: The refusal message text.
+
+    Returns:
+        OpenAIResponseMessage with refusal content.
+    """
+    refusal_content = OpenAIResponseContentPartRefusal(refusal=refusal_message)
+    return OpenAIResponseMessage(
+        type="message",
+        role="assistant",
+        content=[refusal_content],
     )

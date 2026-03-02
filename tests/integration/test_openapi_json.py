@@ -1,5 +1,6 @@
 """Tests the OpenAPI specification that is to be stored in docs/openapi.json."""
 
+import importlib
 import json
 from pathlib import Path
 from typing import Any
@@ -42,7 +43,7 @@ def _load_openapi_spec_from_file() -> dict[str, Any]:
             return json.load(f)
 
     pytest.fail("OpenAPI spec not found")
-    return {}
+    return {}  # pragma: no cover
 
 
 def _load_openapi_spec_from_url() -> dict[str, Any]:
@@ -56,8 +57,10 @@ def _load_openapi_spec_from_url() -> dict[str, Any]:
     configuration_filename = "tests/configuration/lightspeed-stack-proper-name.yaml"
     cfg = configuration
     cfg.load_configuration(configuration_filename)
-    from app.main import app  # pylint: disable=C0415
+    import app.main as app_main  # pylint: disable=C0415
 
+    importlib.reload(app_main)
+    app = app_main.app
     client = TestClient(app)
     response = client.get("/openapi.json")
     assert response.status_code == requests.codes.ok  # pylint: disable=no-member
@@ -223,6 +226,11 @@ def test_servers_section_present_from_url(spec_from_url: dict[str, Any]) -> None
             "post",
             {"200", "401", "403", "404", "422", "429", "500", "503"},
         ),
+        (
+            "/v1/streaming_query/interrupt",
+            "post",
+            {"200", "401", "403", "404"},
+        ),
         ("/v1/config", "get", {"200", "401", "403", "500"}),
         ("/v1/feedback", "post", {"200", "401", "403", "404", "500"}),
         ("/v1/feedback/status", "get", {"200"}),
@@ -304,6 +312,11 @@ def test_paths_and_responses_exist_from_file(
             "/v1/streaming_query",
             "post",
             {"200", "401", "403", "404", "422", "429", "500", "503"},
+        ),
+        (
+            "/v1/streaming_query/interrupt",
+            "post",
+            {"200", "401", "403", "404"},
         ),
         ("/v1/config", "get", {"200", "401", "403", "500"}),
         ("/v1/feedback", "post", {"200", "401", "403", "404", "500"}),

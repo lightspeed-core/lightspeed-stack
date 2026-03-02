@@ -1,9 +1,8 @@
 """Handler for REST API call to list available models."""
 
-import logging
 from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Query
 from fastapi.params import Depends
 from llama_stack_client import APIConnectionError
 
@@ -13,6 +12,7 @@ from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from models.config import Action
+from models.requests import ModelFilter
 from models.responses import (
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -21,8 +21,9 @@ from models.responses import (
     UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["models"])
 
 
@@ -57,7 +58,6 @@ def parse_llama_stack_model(model: Any) -> dict[str, Any]:
         "provider_resource_id": str(custom_metadata.get("provider_resource_id", "")),
         "model_type": model_type,
     }
-
     return legacy_model
 
 
@@ -77,18 +77,31 @@ models_responses: dict[int | str, dict[str, Any]] = {
 async def models_endpoint_handler(
     request: Request,
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
+    model_type: Annotated[ModelFilter, Query()],
 ) -> ModelsResponse:
     """
     Handle requests to the /models endpoint.
 
     Process GET requests to the /models endpoint, returning a list of available
-    models from the Llama Stack service.
+    models from the Llama Stack service. It is possible to specify "model_type"
+    query parameter that is used as a filter. For example, if model type is set
+    to "llm", only LLM models will be returned:
 
-    Raises:
+        curl http://localhost:8080/v1/models?model_type=llm
+
+    The "model_type" query parameter is optional. When not specified, all models
+    will be returned.
+
+    ### Parameters:
+        request: The incoming HTTP request.
+        auth: Authentication tuple from the auth dependency.
+        model_type: Optional filter to return only models matching this type.
+
+    ### Raises:
         HTTPException: If unable to connect to the Llama Stack server or if
         model retrieval fails for any reason.
 
-    Returns:
+    ### Returns:
         ModelsResponse: An object containing the list of available models.
     """
     # Used only by the middleware
@@ -107,8 +120,18 @@ async def models_endpoint_handler(
         client = AsyncLlamaStackClientHolder().get_client()
         # retrieve models
         models = await client.models.list()
-        # Parse models to legacy format
+
+        # parse models to legacy format
         parsed_models = [parse_llama_stack_model(model) for model in models]
+
+        # optional filtering by model type
+        if model_type.model_type is not None:
+            parsed_models = [
+                model
+                for model in parsed_models
+                if model["model_type"] == model_type.model_type
+            ]
+
         return ModelsResponse(models=parsed_models)
 
     # Connection to Llama Stack server failed

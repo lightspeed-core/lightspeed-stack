@@ -1,7 +1,7 @@
 """Unit tests for Splunk HEC client."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
@@ -61,9 +61,9 @@ def test_read_token_returns_none_for_missing_file(tmp_path: Path) -> None:
 
 def _make_config(
     enabled: bool = True,
-    url: str | None = "https://splunk:8088",
-    token_path: Path | None = None,
-    index: str | None = "idx",
+    url: Optional[str] = "https://splunk:8088",
+    token_path: Optional[Path] = None,
+    index: Optional[str] = "idx",
 ) -> MagicMock:
     """Helper to create mock config with specific fields."""
     config = MagicMock()

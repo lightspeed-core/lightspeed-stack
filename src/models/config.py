@@ -2,7 +2,6 @@
 
 # pylint: disable=too-many-lines
 
-import logging
 from pathlib import Path
 from typing import Optional, Any, Pattern
 from enum import Enum
@@ -16,6 +15,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    field_validator,
     model_validator,
     FilePath,
     AnyHttpUrl,
@@ -32,8 +32,9 @@ import constants
 
 from utils import checks
 from utils.mcp_auth_headers import resolve_authorization_headers
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ConfigurationBase(BaseModel):
@@ -406,6 +407,36 @@ class ServiceConfiguration(ConfigurationBase):
         description="Transport Layer Security configuration for HTTPS support",
     )
 
+    root_path: str = Field(
+        "",
+        title="Root path",
+        description="ASGI root path for serving behind a reverse proxy on a subpath",
+    )
+
+    @field_validator("root_path")
+    @classmethod
+    def validate_root_path(cls, value: str) -> str:
+        """Validate root_path format.
+
+        Ensures the root path is either empty or starts with a leading
+        slash and does not end with a trailing slash.
+
+        Parameters:
+            value: The root path value to validate.
+
+        Returns:
+            The validated root path value.
+
+        Raises:
+            ValueError: If root_path is missing a leading slash or has
+                a trailing slash.
+        """
+        if value and not value.startswith("/"):
+            raise ValueError("root_path must start with '/'")
+        if value.endswith("/"):
+            raise ValueError("root_path must not end with '/'")
+        return value
+
     cors: CORSConfiguration = Field(
         default_factory=lambda: CORSConfiguration(
             allow_origins=["*"],
@@ -474,11 +505,13 @@ class ModelContextProtocolServer(ConfigurationBase):
             "Headers to send to the MCP server. "
             "The map contains the header name and the path to a file containing "
             "the header value (secret). "
-            "There are 2 special cases: "
+            "There are 3 special cases: "
             "1. Usage of the kubernetes token in the header. "
             "To specify this use a string 'kubernetes' instead of the file path. "
-            "2. Usage of the client provided token in the header. "
-            "To specify this use a string 'client' instead of the file path."
+            "2. Usage of the client-provided token in the header. "
+            "To specify this use a string 'client' instead of the file path. "
+            "3. Usage of the oauth token in the header. "
+            "To specify this use a string 'oauth' instead of the file path. "
         ),
     )
 
@@ -488,6 +521,36 @@ class ModelContextProtocolServer(ConfigurationBase):
     def resolved_authorization_headers(self) -> dict[str, str]:
         """Resolved authorization headers (computed from authorization_headers)."""
         return self._resolved_authorization_headers
+
+    headers: list[str] = Field(
+        default_factory=list,
+        title="Propagated headers",
+        description=(
+            "List of HTTP header names to automatically forward from the incoming "
+            "request to this MCP server. Headers listed here are extracted from "
+            "the original client request and included when calling the MCP server. "
+            "This is useful when infrastructure components (e.g. API gateways) "
+            "inject headers that MCP servers need, such as x-rh-identity in HCC. "
+            "Header matching is case-insensitive. "
+            "These headers are additive with authorization_headers and MCP-HEADERS."
+        ),
+    )
+
+    @field_validator("headers")
+    @classmethod
+    def validate_headers(cls, value: list[str]) -> list[str]:
+        """Validate propagated headers: no empty strings, no case-insensitive duplicates."""
+        seen: set[str] = set()
+        for header in value:
+            if not header.strip():
+                msg = "Header names must not be empty"
+                raise ValueError(msg)
+            lower = header.lower()
+            if lower in seen:
+                msg = f"Duplicate header name (case-insensitive): '{header}'"
+                raise ValueError(msg)
+            seen.add(lower)
+        return value
 
     timeout: Optional[PositiveInt] = Field(
         default=None,
@@ -1243,6 +1306,7 @@ class Customization(ConfigurationBase):
 
     profile_path: Optional[str] = None
     disable_query_system_prompt: bool = False
+    disable_shield_ids_override: bool = False
     system_prompt_path: Optional[FilePath] = None
     system_prompt: Optional[str] = None
     agent_card_path: Optional[FilePath] = None
@@ -1623,6 +1687,28 @@ class QuotaHandlersConfiguration(ConfigurationBase):
     )
 
 
+class SolrConfiguration(ConfigurationBase):
+    """Solr configuration for vector search queries.
+
+    Controls whether to use offline or online mode when building document URLs
+    from vector search results, and enables/disables Solr vector IO functionality.
+    """
+
+    enabled: bool = Field(
+        False,
+        title="Solr enabled",
+        description="When True, enables Solr vector IO functionality for vector search queries. "
+        "When False, disables Solr vector search processing.",
+    )
+
+    offline: bool = Field(
+        True,
+        title="Offline mode",
+        description="When True, use parent_id for chunk source URLs. "
+        "When False, use reference_url for chunk source URLs.",
+    )
+
+
 class AzureEntraIdConfiguration(ConfigurationBase):
     """Microsoft Entra ID authentication attributes for Azure."""
 
@@ -1759,6 +1845,12 @@ class Configuration(ConfigurationBase):
         title="Deployment environment",
         description="Deployment environment name (e.g., 'development', 'staging', 'production'). "
         "Used in telemetry events.",
+    )
+
+    solr: Optional[SolrConfiguration] = Field(
+        default=None,
+        title="Solr configuration",
+        description="Configuration for Solr vector search operations.",
     )
 
     @model_validator(mode="after")

@@ -1,10 +1,12 @@
 """Shared fixtures for integration tests."""
 
+import os
 from pathlib import Path
 from typing import Generator
 
 import pytest
 from fastapi import Request, Response
+from fastapi.testclient import TestClient
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -157,3 +159,33 @@ async def test_auth_fixture(test_request: Request) -> AuthTuple:
     """
     noop_auth = NoopAuthDependency()
     return await noop_auth(test_request)
+
+
+@pytest.fixture(name="integration_http_client")
+def integration_http_client_fixture(
+    test_config: object,
+) -> Generator[TestClient, None, None]:
+    """Provide a TestClient for the app with integration config.
+
+    Use for integration tests that need to send real HTTP requests (e.g. empty
+    body validation). Depends on test_config so configuration is loaded first.
+    """
+    _ = test_config
+    config_path = (
+        Path(__file__).resolve().parent.parent
+        / "configuration"
+        / "lightspeed-stack.yaml"
+    )
+    assert config_path.exists(), f"Config file not found: {config_path}"
+
+    original = os.environ.get("LIGHTSPEED_STACK_CONFIG_PATH")
+    os.environ["LIGHTSPEED_STACK_CONFIG_PATH"] = str(config_path)
+    try:
+        from app.main import app  # pylint: disable=import-outside-toplevel
+
+        yield TestClient(app)
+    finally:
+        if original is not None:
+            os.environ["LIGHTSPEED_STACK_CONFIG_PATH"] = original
+        else:
+            os.environ.pop("LIGHTSPEED_STACK_CONFIG_PATH", None)

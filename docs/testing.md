@@ -140,6 +140,7 @@ Integration tests are based on the [Pytest framework](https://docs.pytest.org/en
 End to end tests are based on [Behave](https://behave.readthedocs.io/en/stable/) framework. Tests are specified in a form of [test scenarios](e2e_scenarios.md).
 
 * Defined in [tests/e2e](https://github.com/lightspeed-core/lightspeed-stack/tree/main/tests/e2e)
+* **Comprehensive guide:** [e2e_testing.md](e2e_testing.md) — how to run E2E tests, environment variables, deployment modes (server vs library), tags and hooks, Gherkin keywords, configuration, and troubleshooting.
 
 
 

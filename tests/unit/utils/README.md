@@ -15,14 +15,11 @@ Test module for utils/common.py.
 ## [test_connection_decorator.py](test_connection_decorator.py)
 Unit tests for the connection decorator.
 
+## [test_conversations.py](test_conversations.py)
+Unit tests for conversation utility functions.
+
 ## [test_endpoints.py](test_endpoints.py)
 Unit tests for endpoints utility functions.
-
-## [test_prompts.py](test_prompts.py)
-Unit tests for prompts utility functions (get_system_prompt, get_topic_summary_system_prompt).
-
-## [test_query.py](test_query.py)
-Unit tests for query utility functions (store_conversation_into_cache, select_model_and_provider_id, validate_model_provider_override, etc.).
 
 ## [test_llama_stack_version.py](test_llama_stack_version.py)
 Unit tests for utility function to check Llama Stack version.
@@ -32,6 +29,12 @@ Unit tests for MCP authorization headers utilities.
 
 ## [test_mcp_headers.py](test_mcp_headers.py)
 Unit tests for MCP headers utility functions.
+
+## [test_prompts.py](test_prompts.py)
+Unit tests for prompts utility functions.
+
+## [test_query.py](test_query.py)
+Unit tests for utils/query.py functions.
 
 ## [test_responses.py](test_responses.py)
 Unit tests for utils/responses.py functions.
@@ -46,5 +49,5 @@ Unit tests for functions defined in utils.suid module.
 Unit tests for functions defined in utils.transcripts module.
 
 ## [test_types.py](test_types.py)
-Unit tests for functions defined in utils/types.py.
+Unit tests for functions and types defined in utils/types.py.
 

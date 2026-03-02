@@ -170,6 +170,7 @@ Global service configuration.
 | azure_entra_id |  |  |
 | splunk |  | Splunk HEC configuration for sending telemetry events. |
 | deployment_environment | string | Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events. |
+| solr |  | Configuration for Solr vector search operations. |
 
 
 ## ConversationHistoryConfiguration
@@ -371,7 +372,8 @@ Useful resources:
 | name | string | MCP server name that must be unique |
 | provider_id | string | MCP provider identification |
 | url | string | URL of the MCP server |
-| authorization_headers | object | Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 2 special cases: 1. Usage of the kubernetes token in the header. To specify this use a string 'kubernetes' instead of the file path. 2. Usage of the client provided token in the header. To specify this use a string 'client' instead of the file path. |
+| authorization_headers | object | Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 3 special cases: 1. Usage of the kubernetes token in the header — use the string 'kubernetes' instead of the file path. 2. Usage of the client-provided token in the header — use the string 'client' instead of the file path. 3. Usage of OAuth token (resolved at request time or 401 with WWW-Authenticate) — use the string 'oauth' instead of the file path. |
+| headers | array | List of HTTP header names to automatically forward from the incoming request to this MCP server. Headers listed here are extracted from the original client request and included when calling the MCP server. This is useful when infrastructure components (e.g. API gateways) inject headers that MCP servers need, such as x-rh-identity in HCC. Header matching is case-insensitive. These headers are additive with authorization_headers and MCP-HEADERS. |
 | timeout | integer | Timeout in seconds for requests to the MCP server. If not specified, the default timeout from Llama Stack will be used. Note: This field is reserved for future use when Llama Stack adds timeout support. |
 
 
@@ -513,7 +515,23 @@ the service can handle requests concurrently.
 | color_log | boolean | Enables colorized logging |
 | access_log | boolean | Enables logging of all access information |
 | tls_config |  | Transport Layer Security configuration for HTTPS support |
+| root_path | string | ASGI root path for serving behind a reverse proxy on a subpath |
 | cors |  | Cross-Origin Resource Sharing configuration for cross-domain requests |
+
+
+## SolrConfiguration
+
+
+Solr configuration for vector search queries.
+
+Controls whether to use offline or online mode when building document URLs
+from vector search results, and enables/disables Solr vector IO functionality.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| enabled | boolean | When True, enables Solr vector IO functionality for vector search queries. When False, disables Solr vector search processing. |
+| offline | boolean | When True, use parent_id for chunk source URLs. When False, use reference_url for chunk source URLs. |
 
 
 ## SplunkConfiguration

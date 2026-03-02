@@ -1,12 +1,14 @@
 """Database engine management."""
 
+from logging import DEBUG
 from pathlib import Path
 from typing import Any, Optional
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.orm import sessionmaker, Session
-from log import get_logger, logging
+
+from log import get_logger
 from configuration import configuration
 from models.database.base import Base
 from models.config import SQLiteDatabaseConfiguration, PostgreSQLDatabaseConfiguration
@@ -173,7 +175,7 @@ def initialize_database() -> None:
     global engine, session_local  # pylint: disable=global-statement
 
     # Debug print all SQL statements if our logger is at-least DEBUG level
-    echo = bool(logger.isEnabledFor(logging.DEBUG))
+    echo = bool(logger.isEnabledFor(DEBUG))
 
     create_engine_kwargs = {
         "echo": echo,

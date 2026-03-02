@@ -14,7 +14,7 @@ import sys
 import time
 import urllib.request
 import urllib.error
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 
@@ -76,8 +76,8 @@ def mock_server() -> Any:
 def make_request(
     url: str,
     method: str = "GET",
-    data: dict[str, Any] | None = None,
-    headers: dict[str, str] | None = None,
+    data: Optional[dict[str, Any]] = None,
+    headers: Optional[dict[str, str]] = None,
     use_https: bool = False,
 ) -> tuple[int, dict[str, Any] | str]:
     """Make HTTP request and return status code and response."""

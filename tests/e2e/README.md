@@ -1,11 +1,9 @@
-# List of source files stored in `tests/e2e/` directory
+# E2E Tests
 
-## [__init__.py](__init__.py)
-End-to-end tests for the lightspeed-stack REST API service.
+End-to-end tests for the Lightspeed Core Stack REST API (Behave, Gherkin).
 
-## [gen_scenario_list.py](gen_scenario_list.py)
-Scenario list generator.
+**Full guide:** [docs/e2e_testing.md](../../docs/e2e_testing.md) — how to run, environment variables, deployment modes, tags and hooks, Gherkin keywords, configuration, and troubleshooting.
 
-## [test_api.py](test_api.py)
-End-to-end tests for basic REST API endpoints.
-
+* Tests: `tests/e2e/features/*.feature`
+* Step definitions: `tests/e2e/features/steps/`
+* Feature list (run order): `test_list.txt`

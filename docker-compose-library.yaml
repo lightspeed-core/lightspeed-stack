@@ -28,6 +28,8 @@ services:
     depends_on:
       mcp-mock-server:
         condition: service_healthy
+      mock-mcp:
+        condition: service_healthy
     networks:
       - lightspeednet
     volumes:
@@ -49,6 +51,7 @@ services:
       - CLIENT_SECRET=${CLIENT_SECRET:-}
       # RHAIIS
       - RHAIIS_URL=${RHAIIS_URL:-}
+      - RHAIIS_PORT=${RHAIIS_PORT:-}
       - RHAIIS_API_KEY=${RHAIIS_API_KEY:-}
       - RHAIIS_MODEL=${RHAIIS_MODEL:-}
       # RHEL AI
@@ -66,6 +69,8 @@ services:
       - WATSONX_API_KEY=${WATSONX_API_KEY:-}
       # Enable debug logging if needed
       - LLAMA_STACK_LOGGING=${LLAMA_STACK_LOGGING:-}
+      # FAISS test
+      - FAISS_VECTOR_STORE_ID=${FAISS_VECTOR_STORE_ID:-}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/liveness"]
       interval: 10s   # how often to run the check
@@ -89,6 +94,23 @@ services:
       timeout: 3s
       retries: 3
       start_period: 2s
+
+  mock-mcp:
+    build:
+      context: ./tests/e2e/mock_mcp_server
+      dockerfile: Dockerfile
+    container_name: mock-mcp
+    ports:
+      - "3001:3001"
+    networks:
+      - lightspeednet
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3001/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+
 
 networks:
   lightspeednet:

@@ -119,6 +119,7 @@ def test_dump_configuration(tmp_path: Path) -> None:
                     "tls_key_password": "tests/configuration/password",
                     "tls_key_path": "tests/configuration/server.key",
                 },
+                "root_path": "",
                 "cors": {
                     "allow_credentials": False,
                     "allow_headers": [
@@ -205,6 +206,7 @@ def test_dump_configuration(tmp_path: Path) -> None:
                 "postgres": None,
             },
             "azure_entra_id": None,
+            "solr": None,
             "splunk": None,
             "deployment_environment": "development",
         }
@@ -255,6 +257,7 @@ def test_dump_configuration_with_one_mcp_server(tmp_path: Path) -> None:
                 "url": "http://localhost:8080",
                 "provider_id": "model-context-protocol",
                 "authorization_headers": {},
+                "headers": [],
                 "timeout": None,
             }
         ]
@@ -314,6 +317,7 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path: Path) -> None:
                 "provider_id": "model-context-protocol",
                 "url": "http://localhost:8081",
                 "authorization_headers": {},
+                "headers": [],
                 "timeout": None,
             },
             {
@@ -321,6 +325,7 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path: Path) -> None:
                 "provider_id": "model-context-protocol",
                 "url": "http://localhost:8082",
                 "authorization_headers": {},
+                "headers": [],
                 "timeout": None,
             },
             {
@@ -328,6 +333,7 @@ def test_dump_configuration_with_more_mcp_servers(tmp_path: Path) -> None:
                 "provider_id": "model-context-protocol",
                 "url": "http://localhost:8083",
                 "authorization_headers": {},
+                "headers": [],
                 "timeout": None,
             },
         ]
@@ -442,6 +448,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                     "tls_key_password": "tests/configuration/password",
                     "tls_key_path": "tests/configuration/server.key",
                 },
+                "root_path": "",
                 "cors": {
                     "allow_credentials": False,
                     "allow_headers": [
@@ -543,6 +550,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "postgres": None,
             },
             "azure_entra_id": None,
+            "solr": None,
             "splunk": None,
             "deployment_environment": "development",
         }
@@ -662,6 +670,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
                     "tls_key_password": "tests/configuration/password",
                     "tls_key_path": "tests/configuration/server.key",
                 },
+                "root_path": "",
                 "cors": {
                     "allow_credentials": False,
                     "allow_headers": [
@@ -763,6 +772,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 "postgres": None,
             },
             "azure_entra_id": None,
+            "solr": None,
             "splunk": None,
             "deployment_environment": "development",
         }
@@ -862,6 +872,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                     "tls_key_password": "tests/configuration/password",
                     "tls_key_path": "tests/configuration/server.key",
                 },
+                "root_path": "",
                 "cors": {
                     "allow_credentials": False,
                     "allow_headers": [
@@ -957,6 +968,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 "postgres": None,
             },
             "azure_entra_id": None,
+            "solr": None,
             "splunk": None,
             "deployment_environment": "development",
         }
@@ -1051,6 +1063,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                     "tls_key_password": "tests/configuration/password",
                     "tls_key_path": "tests/configuration/server.key",
                 },
+                "root_path": "",
                 "cors": {
                     "allow_credentials": False,
                     "allow_headers": [
@@ -1137,6 +1150,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 "postgres": None,
             },
             "azure_entra_id": None,
+            "solr": None,
             "splunk": None,
             "deployment_environment": "development",
         }

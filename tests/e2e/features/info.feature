@@ -29,24 +29,6 @@ Feature: Info tests
          {"detail": {"response": "Unable to connect to Llama Stack", "cause": "Connection error."}}
       """
 
-  Scenario: Check if models endpoint is working
-    Given The system is in default state
-     When I access REST API endpoint "models" using HTTP GET method
-     Then The status code of the response is 200
-      And The body of the response has proper model structure
-
-
-  @skip-in-library-mode
-  Scenario: Check if models endpoint reports error when llama-stack in unreachable
-    Given The system is in default state
-    And  The llama-stack connection is disrupted
-     When I access REST API endpoint "models" using HTTP GET method
-     Then The status code of the response is 503
-      And The body of the response is the following
-      """
-         {"detail": {"response": "Unable to connect to Llama Stack", "cause": "Connection error."}}
-      """
-
   Scenario: Check if shields endpoint is working
     Given The system is in default state
      When I access REST API endpoint "shields" using HTTP GET method
@@ -55,7 +37,7 @@ Feature: Info tests
 
 
   @skip-in-library-mode
-  Scenario: Check if shields endpoint reports error when llama-stack in unreachable
+  Scenario: Check if shields endpoint reports error when llama-stack is unreachable
     Given The system is in default state
     And  The llama-stack connection is disrupted
      When I access REST API endpoint "shields" using HTTP GET method
@@ -114,7 +96,7 @@ Feature: Info tests
 
 
   @skip-in-library-mode
-  Scenario: Check if tools endpoint reports error when llama-stack in unreachable
+  Scenario: Check if tools endpoint reports error when llama-stack is unreachable
     Given The system is in default state
     And  The llama-stack connection is disrupted
      When I access REST API endpoint "tools" using HTTP GET method

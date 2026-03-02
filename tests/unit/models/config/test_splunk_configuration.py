@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from typing import Optional
+
 import pytest
 
 from models.config import SplunkConfiguration
@@ -53,9 +55,9 @@ def test_disabled_skips_validation() -> None:
 )
 def test_enabled_missing_required_fields(
     token_file: Path,
-    url: str | None,
+    url: Optional[str],
     has_token: bool,
-    index: str | None,
+    index: Optional[str],
     expected_missing: str,
 ) -> None:
     """Test that enabled Splunk config validates required fields."""

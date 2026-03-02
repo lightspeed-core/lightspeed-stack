@@ -297,6 +297,83 @@ def _create_turn_from_db_metadata(
     )
 
 
+def _group_items_into_turns(
+    items: list[ItemListResponse],
+) -> list[list[ItemListResponse]]:
+    """Group conversation items into turns.
+
+    Each turn starts with a user message. All subsequent messages and tool items
+    belong to that turn until the next user message.
+
+    Args:
+        items: Conversation items list from Conversations API, oldest first
+
+    Returns:
+        List of turns, where each turn is a list of items belonging to that turn
+    """
+    turns: list[list[ItemListResponse]] = []
+    current_turn_items: list[ItemListResponse] = []
+
+    for item in items:
+        item_type = getattr(item, "type", None)
+
+        # User message marks the beginning of a new turn
+        if item_type == "message":
+            message_item = cast(MessageOutput, item)
+            if message_item.role == "user":
+                # If we have accumulated items, finish the previous turn
+                if current_turn_items:
+                    turns.append(current_turn_items)
+                    current_turn_items = []
+
+                # Start new turn with this user message
+                current_turn_items = [item]
+            else:
+                # Add non-user message to current turn
+                current_turn_items.append(item)
+        else:
+            # Add tool-related items to current turn
+            current_turn_items.append(item)
+
+    # Add final turn if there are items
+    if current_turn_items:
+        turns.append(current_turn_items)
+
+    return turns
+
+
+def _process_turn_items(
+    turn_items: list[ItemListResponse],
+) -> tuple[list[Message], list[ToolCallSummary], list[ToolResultSummary]]:
+    """Process items from a single turn into messages, tool calls, and tool results.
+
+    Args:
+        turn_items: List of items belonging to a single turn
+
+    Returns:
+        Tuple of (messages, tool_calls, tool_results)
+    """
+    messages: list[Message] = []
+    tool_calls: list[ToolCallSummary] = []
+    tool_results: list[ToolResultSummary] = []
+
+    for item in turn_items:
+        item_type = getattr(item, "type", None)
+
+        if item_type == "message":
+            message_item = cast(MessageOutput, item)
+            message = _parse_message_item(message_item)
+            messages.append(message)
+        else:
+            tool_call, tool_result = _build_tool_call_summary_from_item(item)
+            if tool_call is not None:
+                tool_calls.append(tool_call)
+            if tool_result is not None:
+                tool_results.append(tool_result)
+
+    return messages, tool_calls, tool_results
+
+
 def build_conversation_turns_from_items(
     items: list[ItemListResponse],
     turns_metadata: list[UserTurn],
@@ -308,74 +385,40 @@ def build_conversation_turns_from_items(
         items: Conversation items list from Conversations API, oldest first
         turns_metadata: List of UserTurn database objects ordered by turn_number.
             Can be empty for legacy conversations without stored metadata.
+            For extended legacy conversations, only the newer turns have metadata.
         conversation_start_time: Timestamp to use for dummy metadata in legacy conversations.
             Typically the conversation's created_at timestamp.
 
     Returns:
         List of ConversationTurn objects, oldest first
     """
+    # Group items into turns first
+    turn_items_list = _group_items_into_turns(items)
+
+    # Calculate how many legacy turns don't have metadata
+    total_turns = len(turn_items_list)
+    legacy_turns_count = total_turns - len(turns_metadata)
+
+    # Process each turn with its corresponding metadata
     chat_history: list[ConversationTurn] = []
-    current_messages: list[Message] = []
-    current_tool_calls: list[ToolCallSummary] = []
-    current_tool_results: list[ToolResultSummary] = []
-    current_turn_index = 0
+    for turn_index, turn_items in enumerate(turn_items_list):
+        # Process items into messages, tool calls, and tool results
+        messages, tool_calls, tool_results = _process_turn_items(turn_items)
 
-    for item in items:
-        item_type = getattr(item, "type", None)
-
-        # Parse message items
-        if item_type == "message":
-            message_item = cast(MessageOutput, item)
-            message = _parse_message_item(message_item)
-
-            # User message marks the beginning of a new turn
-            if message.type == "user":
-                # If we have accumulated items, finish the previous turn
-                if current_messages or current_tool_calls or current_tool_results:
-                    turn_metadata = (
-                        turns_metadata[current_turn_index]
-                        if current_turn_index < len(turns_metadata)
-                        else _create_dummy_turn_metadata(conversation_start_time)
-                    )
-                    chat_history.append(
-                        _create_turn_from_db_metadata(
-                            turn_metadata,
-                            current_messages,
-                            current_tool_calls,
-                            current_tool_results,
-                        )
-                    )
-                    current_turn_index += 1
-
-                # Start new turn with this user message
-                current_messages = [message]
-                current_tool_calls = []
-                current_tool_results = []
-            else:
-                # Add non-user message to current turn
-                current_messages.append(message)
-
-        # Parse tool-related items
+        # Select appropriate metadata for this turn
+        if turn_index < legacy_turns_count:
+            turn_metadata = _create_dummy_turn_metadata(conversation_start_time)
         else:
-            tool_call, tool_result = _build_tool_call_summary_from_item(item)
-            if tool_call is not None:
-                current_tool_calls.append(tool_call)
-            if tool_result is not None:
-                current_tool_results.append(tool_result)
+            metadata_index = turn_index - legacy_turns_count
+            turn_metadata = turns_metadata[metadata_index]
 
-    # Add final turn if there are items
-    if current_messages or current_tool_calls or current_tool_results:
-        turn_metadata = (
-            turns_metadata[current_turn_index]
-            if current_turn_index < len(turns_metadata)
-            else _create_dummy_turn_metadata(conversation_start_time)
-        )
+        # Create ConversationTurn from metadata and processed items
         chat_history.append(
             _create_turn_from_db_metadata(
                 turn_metadata,
-                current_messages,
-                current_tool_calls,
-                current_tool_results,
+                messages,
+                tool_calls,
+                tool_results,
             )
         )
 

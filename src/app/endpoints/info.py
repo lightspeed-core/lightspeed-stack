@@ -1,6 +1,5 @@
 """Handler for REST API call to provide info."""
 
-import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -19,8 +18,9 @@ from models.responses import (
     UnauthorizedResponse,
 )
 from version import __version__
+from log import get_logger
 
-logger = logging.getLogger("app.endpoints.handlers")
+logger = get_logger(__name__)
 router = APIRouter(tags=["info"])
 
 

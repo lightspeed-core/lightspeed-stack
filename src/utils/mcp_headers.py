@@ -1,17 +1,21 @@
 """MCP headers handling."""
 
 import json
-import logging
+from collections.abc import Mapping
 from urllib.parse import urlparse
 
 from fastapi import Request
 
 from configuration import AppConfig
+from log import get_logger
+from models.config import ModelContextProtocolServer
 
-logger = logging.getLogger("app.endpoints.dependencies")
+logger = get_logger(__name__)
+
+type McpHeaders = dict[str, dict[str, str]]
 
 
-async def mcp_headers_dependency(request: Request) -> dict[str, dict[str, str]]:
+async def mcp_headers_dependency(request: Request) -> McpHeaders:
     """Get the MCP headers dependency to passed to mcp servers.
 
     mcp headers is a json dictionary or mcp url paths and their respective headers
@@ -25,7 +29,7 @@ async def mcp_headers_dependency(request: Request) -> dict[str, dict[str, str]]:
     return extract_mcp_headers(request)
 
 
-def extract_mcp_headers(request: Request) -> dict[str, dict[str, str]]:
+def extract_mcp_headers(request: Request) -> McpHeaders:
     """Extract mcp headers from MCP-HEADERS header.
 
     If the header is missing, contains invalid JSON, or the decoded
@@ -56,8 +60,8 @@ def extract_mcp_headers(request: Request) -> dict[str, dict[str, str]]:
 
 
 def handle_mcp_headers_with_toolgroups(
-    mcp_headers: dict[str, dict[str, str]], config: AppConfig
-) -> dict[str, dict[str, str]]:
+    mcp_headers: McpHeaders, config: AppConfig
+) -> McpHeaders:
     """Process MCP headers by converting toolgroup names to URLs.
 
     This function takes MCP headers where keys can be either valid URLs or
@@ -90,3 +94,30 @@ def handle_mcp_headers_with_toolgroups(
                     break
 
     return converted_mcp_headers
+
+
+def extract_propagated_headers(
+    mcp_server: ModelContextProtocolServer,
+    request_headers: Mapping[str, str],
+) -> dict[str, str]:
+    """Extract headers from the incoming request based on the server's allowlist.
+
+    For each header name in the MCP server's ``headers`` allowlist, looks up
+    the corresponding value in the incoming request headers (case-insensitive)
+    and returns the matches.
+
+    Args:
+        mcp_server: MCP server configuration containing the headers allowlist.
+        request_headers: Headers from the incoming HTTP request.
+
+    Returns:
+        Dictionary of header names to values extracted from the request.
+        Only headers present in both the allowlist and the request are included.
+    """
+    lower_request_headers = {k.lower(): v for k, v in request_headers.items()}
+    propagated: dict[str, str] = {}
+    for header_name in mcp_server.headers:
+        value = lower_request_headers.get(header_name.lower())
+        if value is not None:
+            propagated[header_name] = value
+    return propagated

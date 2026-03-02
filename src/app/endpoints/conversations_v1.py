@@ -1,6 +1,5 @@
 """Handler for REST API calls to manage conversation history using Conversations API."""
 
-import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -47,8 +46,9 @@ from utils.suid import (
     to_llama_stack_conversation_id,
 )
 from utils.conversations import build_conversation_turns_from_items
+from log import get_logger
 
-logger = logging.getLogger("app.endpoints.handlers")
+logger = get_logger(__name__)
 router = APIRouter(tags=["conversations_v1"])
 
 conversation_get_responses: dict[int | str, dict[str, Any]] = {
@@ -178,7 +178,7 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
     conversation_id: str,
     auth: Any = Depends(get_auth_dependency()),
 ) -> ConversationResponse:
-    """Handle request to retrieve a conversation by ID using Conversations API.
+    """Handle request to retrieve a conversation identified by ID using Conversations API.
 
     Retrieve a conversation's chat history by its ID using the LlamaStack
     Conversations API. This endpoint fetches the conversation items from

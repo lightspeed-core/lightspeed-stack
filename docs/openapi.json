@@ -245,8 +245,32 @@
                     "models"
                 ],
                 "summary": "Models Endpoint Handler",
-                "description": "Handle requests to the /models endpoint.\n\nProcess GET requests to the /models endpoint, returning a list of available\nmodels from the Llama Stack service.\n\nRaises:\n    HTTPException: If unable to connect to the Llama Stack server or if\n    model retrieval fails for any reason.\n\nReturns:\n    ModelsResponse: An object containing the list of available models.",
+                "description": "Handle requests to the /models endpoint.\n\nProcess GET requests to the /models endpoint, returning a list of available\nmodels from the Llama Stack service. It is possible to specify \"model_type\"\nquery parameter that is used as a filter. For example, if model type is set\nto \"llm\", only LLM models will be returned:\n\n    curl http://localhost:8080/v1/models?model_type=llm\n\nThe \"model_type\" query parameter is optional. When not specified, all models\nwill be returned.\n\n### Parameters:\n    request: The incoming HTTP request.\n    auth: Authentication tuple from the auth dependency.\n    model_type: Optional filter to return only models matching this type.\n\n### Raises:\n    HTTPException: If unable to connect to the Llama Stack server or if\n    model retrieval fails for any reason.\n\n### Returns:\n    ModelsResponse: An object containing the list of available models.",
                 "operationId": "models_endpoint_handler_v1_models_get",
+                "parameters": [
+                    {
+                        "name": "model_type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Optional filter to return only models matching this type",
+                            "examples": [
+                                "llm",
+                                "embeddings"
+                            ],
+                            "title": "Model Type"
+                        },
+                        "description": "Optional filter to return only models matching this type"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful response",
@@ -275,9 +299,6 @@
                         "description": "Unauthorized",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnauthorizedResponse"
-                                },
                                 "examples": {
                                     "missing header": {
                                         "value": {
@@ -295,6 +316,9 @@
                                             }
                                         }
                                     }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
                                 }
                             }
                         }
@@ -303,9 +327,6 @@
                         "description": "Permission denied",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ForbiddenResponse"
-                                },
                                 "examples": {
                                     "endpoint": {
                                         "value": {
@@ -315,6 +336,9 @@
                                             }
                                         }
                                     }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
                                 }
                             }
                         }
@@ -323,9 +347,6 @@
                         "description": "Internal server error",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
-                                },
                                 "examples": {
                                     "configuration": {
                                         "value": {
@@ -335,6 +356,9 @@
                                             }
                                         }
                                     }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
                                 }
                             }
                         }
@@ -343,9 +367,6 @@
                         "description": "Service unavailable",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
-                                },
                                 "examples": {
                                     "llama stack": {
                                         "value": {
@@ -355,6 +376,19 @@
                                             }
                                         }
                                     }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
                                 }
                             }
                         }
@@ -856,7 +890,7 @@
                     "providers"
                 ],
                 "summary": "Get Provider Endpoint Handler",
-                "description": "Retrieve a single provider by its unique ID.\n\nReturns:\n    ProviderResponse: Provider details.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Provider not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "Retrieve a single provider identified by its unique ID.\n\nReturns:\n    ProviderResponse: Provider details.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: Provider not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
                 "operationId": "get_provider_endpoint_handler_v1_providers__provider_id__get",
                 "parameters": [
                     {
@@ -1136,7 +1170,7 @@
                     "rags"
                 ],
                 "summary": "Get Rag Endpoint Handler",
-                "description": "Retrieve a single RAG by its unique ID.\n\nReturns:\n    RAGInfoResponse: A single RAG's details.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: RAG with the given ID not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "Retrieve a single RAG identified by its unique ID.\n\nAccepts both user-facing rag_id (from LCORE config) and llama-stack\nvector_store_id. If a rag_id from config is provided, it is resolved\nto the underlying vector_store_id for the llama-stack lookup.\n\nReturns:\n    RAGInfoResponse: A single RAG's details.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: RAG with the given ID not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
                 "operationId": "get_rag_endpoint_handler_v1_rags__rag_id__get",
                 "parameters": [
                     {
@@ -1453,26 +1487,6 @@
                             }
                         }
                     },
-                    "413": {
-                        "description": "Prompt is too long",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PromptTooLongResponse"
-                                },
-                                "examples": {
-                                    "prompt too long": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "The prompt exceeds the maximum allowed length.",
-                                                "response": "Prompt is too long"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
                     "422": {
                         "description": "Request validation failed",
                         "content": {
@@ -1647,7 +1661,7 @@
                                     "type": "string",
                                     "format": "text/event-stream"
                                 },
-                                "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 11, \"output_tokens\": 19}, \"available_quotas\": {}}\n\n"
+                                "example": "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\", \"request_id\": \"123e4567-e89b-12d3-a456-426614174001\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 11, \"output_tokens\": 19}, \"available_quotas\": {}}\n\n"
                             }
                         }
                     },
@@ -1744,26 +1758,6 @@
                                             "detail": {
                                                 "cause": "Model with ID gpt-4-turbo is not configured",
                                                 "response": "Model not found"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "413": {
-                        "description": "Prompt is too long",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PromptTooLongResponse"
-                                },
-                                "examples": {
-                                    "prompt too long": {
-                                        "value": {
-                                            "detail": {
-                                                "cause": "The prompt exceeds the maximum allowed length.",
-                                                "response": "Prompt is too long"
                                             }
                                         }
                                     }
@@ -1911,6 +1905,121 @@
                                             }
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/streaming_query/interrupt": {
+            "post": {
+                "tags": [
+                    "streaming_query_interrupt"
+                ],
+                "summary": "Streaming Query Interrupt Endpoint Handler",
+                "description": "Interrupt an in-progress streaming query by request identifier.\n\nParameters:\n    interrupt_request: Request payload containing the stream request ID.\n    auth: Auth context tuple resolved from the authentication dependency.\n    registry: Stream interrupt registry dependency used to cancel streams.\n\nReturns:\n    StreamingInterruptResponse: Confirmation payload when interruption succeeds.\n\nRaises:\n    HTTPException: If no active stream for the given request ID can be interrupted.",
+                "operationId": "stream_interrupt_endpoint_handler_v1_streaming_query_interrupt_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StreamingInterruptRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StreamingInterruptResponse"
+                                },
+                                "example": {
+                                    "interrupted": true,
+                                    "message": "Streaming request interrupted",
+                                    "request_id": "123e4567-e89b-12d3-a456-426614174000"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                },
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                },
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotFoundResponse"
+                                },
+                                "examples": {
+                                    "streaming request": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Streaming Request with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                                "response": "Streaming Request not found"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
                                 }
                             }
                         }
@@ -2495,7 +2604,7 @@
                     "conversations_v1"
                 ],
                 "summary": "Conversation Get Endpoint Handler V1",
-                "description": "Handle request to retrieve a conversation by ID using Conversations API.\n\nRetrieve a conversation's chat history by its ID using the LlamaStack\nConversations API. This endpoint fetches the conversation items from\nthe backend, simplifies them to essential chat history, and returns\nthem in a structured response. Raises HTTP 400 for invalid IDs, 404\nif not found, 503 if the backend is unavailable, and 500 for\nunexpected errors.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to retrieve\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationResponse: Structured response containing the conversation\n    ID and simplified chat history",
+                "description": "Handle request to retrieve a conversation identified by ID using Conversations API.\n\nRetrieve a conversation's chat history by its ID using the LlamaStack\nConversations API. This endpoint fetches the conversation items from\nthe backend, simplifies them to essential chat history, and returns\nthem in a structured response. Raises HTTP 400 for invalid IDs, 404\nif not found, 503 if the backend is unavailable, and 500 for\nunexpected errors.\n\nArgs:\n    request: The FastAPI request object\n    conversation_id: Unique identifier of the conversation to retrieve\n    auth: Authentication tuple from dependency\n\nReturns:\n    ConversationResponse: Structured response containing the conversation\n    ID and simplified chat history",
                 "operationId": "get_conversation_endpoint_handler_v1_conversations__conversation_id__get",
                 "parameters": [
                     {
@@ -3185,7 +3294,7 @@
                     "conversations_v2"
                 ],
                 "summary": "Get Conversation Endpoint Handler",
-                "description": "Handle request to retrieve a conversation by ID.",
+                "description": "Handle request to retrieve a conversation identified by its ID.",
                 "operationId": "get_conversation_endpoint_handler_v2_conversations__conversation_id__get",
                 "parameters": [
                     {
@@ -3762,6 +3871,26 @@
                                             "detail": {
                                                 "cause": "User 6789 is not authorized to access this endpoint.",
                                                 "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Prompt is too long",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptTooLongResponse"
+                                },
+                                "examples": {
+                                    "prompt too long": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "The prompt exceeds the maximum allowed length.",
+                                                "response": "Prompt is too long"
                                             }
                                         }
                                     }
@@ -5584,6 +5713,18 @@
                         "title": "Deployment environment",
                         "description": "Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events.",
                         "default": "development"
+                    },
+                    "solr": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SolrConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Solr configuration",
+                        "description": "Configuration for Solr vector search operations."
                     }
                 },
                 "additionalProperties": false,
@@ -5876,7 +6017,7 @@
                     "conversation_id"
                 ],
                 "title": "ConversationDetails",
-                "description": "Model representing the details of a user conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    created_at: When the conversation was created.\n    last_message_at: When the last message was sent.\n    message_count: Number of user messages in the conversation.\n    last_used_model: The last model used for the conversation.\n    last_used_provider: The provider of the last used model.\n    topic_summary: The topic summary for the conversation.\n\nExample:\n    ```python\n    conversation = ConversationDetails(\n        conversation_id=\"123e4567-e89b-12d3-a456-426614174000\"\n        created_at=\"2024-01-01T00:00:00Z\",\n        last_message_at=\"2024-01-01T00:05:00Z\",\n        message_count=5,\n        last_used_model=\"gemini/gemini-2.0-flash\",\n        last_used_provider=\"gemini\",\n        topic_summary=\"Openshift Microservices Deployment Strategies\",\n    )\n    ```"
+                "description": "Model representing the details of a user conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    created_at: When the conversation was created.\n    last_message_at: When the last message was sent.\n    message_count: Number of user messages in the conversation.\n    last_used_model: The last model used for the conversation.\n    last_used_provider: The provider of the last used model.\n    topic_summary: The topic summary for the conversation.\n\nExample:\n    ```python\n    conversation = ConversationDetails(\n        conversation_id=\"123e4567-e89b-12d3-a456-426614174000\",\n        created_at=\"2024-01-01T00:00:00Z\",\n        last_message_at=\"2024-01-01T00:05:00Z\",\n        message_count=5,\n        last_used_model=\"gemini/gemini-2.0-flash\",\n        last_used_provider=\"gemini\",\n        topic_summary=\"Openshift Microservices Deployment Strategies\",\n    )\n    ```"
             },
             "ConversationHistoryConfiguration": {
                 "properties": {
@@ -6253,6 +6394,11 @@
                     "disable_query_system_prompt": {
                         "type": "boolean",
                         "title": "Disable Query System Prompt",
+                        "default": false
+                    },
+                    "disable_shield_ids_override": {
+                        "type": "boolean",
+                        "title": "Disable Shield Ids Override",
                         "default": false
                     },
                     "system_prompt_path": {
@@ -7195,7 +7341,15 @@
                         },
                         "type": "object",
                         "title": "Authorization headers",
-                        "description": "Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 2 special cases: 1. Usage of the kubernetes token in the header. To specify this use a string 'kubernetes' instead of the file path. 2. Usage of the client provided token in the header. To specify this use a string 'client' instead of the file path."
+                        "description": "Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 3 special cases: 1. Usage of the kubernetes token in the header. To specify this use a string 'kubernetes' instead of the file path. 2. Usage of the client-provided token in the header. To specify this use a string 'client' instead of the file path. 3. Usage of the oauth token in the header. To specify this use a string 'oauth' instead of the file path. "
+                    },
+                    "headers": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Propagated headers",
+                        "description": "List of HTTP header names to automatically forward from the incoming request to this MCP server. Headers listed here are extracted from the original client request and included when calling the MCP server. This is useful when infrastructure components (e.g. API gateways) inject headers that MCP servers need, such as x-rh-identity in HCC. Header matching is case-insensitive. These headers are additive with authorization_headers and MCP-HEADERS."
                     },
                     "timeout": {
                         "anyOf": [
@@ -7323,6 +7477,13 @@
                             "response": "Rag not found"
                         },
                         "label": "rag"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Streaming Request with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                            "response": "Streaming Request not found"
+                        },
+                        "label": "streaming request"
                     }
                 ]
             },
@@ -7940,6 +8101,46 @@
                             "knowledge_base",
                             "vector_db_1"
                         ]
+                    },
+                    "shield_ids": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Shield Ids",
+                        "description": "Optional list of safety shield IDs to apply. If None, all configured shields are used. If provided, must contain at least one valid shield ID (empty list raises 422 error).",
+                        "examples": [
+                            "llama-guard",
+                            "custom-shield"
+                        ]
+                    },
+                    "solr": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Solr",
+                        "description": "Solr-specific query parameters including filter queries",
+                        "examples": [
+                            {
+                                "fq": [
+                                    "product:*openshift*",
+                                    "product_version:*4.16*"
+                                ]
+                            }
+                        ]
                     }
                 },
                 "additionalProperties": false,
@@ -7948,7 +8149,7 @@
                     "query"
                 ],
                 "title": "QueryRequest",
-                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    system_prompt: The optional system prompt.\n    attachments: The optional attachments.\n    no_tools: Whether to bypass all tools and MCP servers (default: False).\n    generate_topic_summary: Whether to generate topic summary for new conversations.\n    media_type: The optional media type for response format (application/json or text/plain).\n    vector_store_ids: The optional list of specific vector store IDs to query for RAG.\n\nExample:\n    ```python\n    query_request = QueryRequest(query=\"Tell me about Kubernetes\")\n    ```",
+                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    system_prompt: The optional system prompt.\n    attachments: The optional attachments.\n    no_tools: Whether to bypass all tools and MCP servers (default: False).\n    generate_topic_summary: Whether to generate topic summary for new conversations.\n    media_type: The optional media type for response format (application/json or text/plain).\n    vector_store_ids: The optional list of specific vector store IDs to query for RAG.\n    shield_ids: The optional list of safety shield IDs to apply.\n\nExample:\n    ```python\n    query_request = QueryRequest(query=\"Tell me about Kubernetes\")\n    ```",
                 "examples": [
                     {
                         "attachments": [
@@ -8349,7 +8550,7 @@
                             }
                         ],
                         "title": "Source",
-                        "description": "Source document or URL"
+                        "description": "Index name identifying the knowledge source from configuration"
                     },
                     "score": {
                         "anyOf": [
@@ -8362,6 +8563,19 @@
                         ],
                         "title": "Score",
                         "description": "Relevance score"
+                    },
+                    "attributes": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Attributes",
+                        "description": "Document metadata from the RAG provider (e.g., url, title, author)"
                     }
                 },
                 "type": "object",
@@ -8607,6 +8821,18 @@
                         ],
                         "title": "Doc Title",
                         "description": "Title of the referenced document"
+                    },
+                    "source": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Source",
+                        "description": "Index name identifying the knowledge source from configuration"
                     }
                 },
                 "type": "object",
@@ -8644,6 +8870,7 @@
                 "properties": {
                     "nevra": {
                         "type": "string",
+                        "pattern": "^[a-zA-Z0-9._:+~\\-]*$",
                         "title": "Nevra",
                         "description": "CLA NEVRA identifier",
                         "default": "",
@@ -8653,6 +8880,7 @@
                     },
                     "version": {
                         "type": "string",
+                        "pattern": "^[a-zA-Z0-9._\\-]*$",
                         "title": "Version",
                         "description": "Command line assistant version",
                         "default": "",
@@ -8795,6 +9023,7 @@
                 "properties": {
                     "os": {
                         "type": "string",
+                        "pattern": "^[a-zA-Z0-9._ \\-]*$",
                         "title": "Os",
                         "description": "Operating system name",
                         "default": "",
@@ -8804,6 +9033,7 @@
                     },
                     "version": {
                         "type": "string",
+                        "pattern": "^[a-zA-Z0-9._ \\-]*$",
                         "title": "Version",
                         "description": "Operating system version",
                         "default": "",
@@ -8814,6 +9044,7 @@
                     },
                     "arch": {
                         "type": "string",
+                        "pattern": "^[a-zA-Z0-9._ \\-]*$",
                         "title": "Arch",
                         "description": "System architecture",
                         "default": "",
@@ -8824,6 +9055,7 @@
                     },
                     "id": {
                         "type": "string",
+                        "pattern": "^[a-zA-Z0-9._\\-]*$",
                         "title": "Id",
                         "description": "Client machine ID",
                         "default": "",
@@ -8948,6 +9180,12 @@
                         "title": "TLS configuration",
                         "description": "Transport Layer Security configuration for HTTPS support"
                     },
+                    "root_path": {
+                        "type": "string",
+                        "title": "Root path",
+                        "description": "ASGI root path for serving behind a reverse proxy on a subpath",
+                        "default": ""
+                    },
                     "cors": {
                         "$ref": "#/components/schemas/CORSConfiguration",
                         "title": "CORS configuration",
@@ -9017,6 +9255,26 @@
                         ]
                     }
                 ]
+            },
+            "SolrConfiguration": {
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Solr enabled",
+                        "description": "When True, enables Solr vector IO functionality for vector search queries. When False, disables Solr vector search processing.",
+                        "default": false
+                    },
+                    "offline": {
+                        "type": "boolean",
+                        "title": "Offline mode",
+                        "description": "When True, use parent_id for chunk source URLs. When False, use reference_url for chunk source URLs.",
+                        "default": true
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "SolrConfiguration",
+                "description": "Solr configuration for vector search queries.\n\nControls whether to use offline or online mode when building document URLs\nfrom vector search results, and enables/disables Solr vector IO functionality."
             },
             "SplunkConfiguration": {
                 "properties": {
@@ -9123,6 +9381,73 @@
                         "status": {
                             "enabled": true
                         }
+                    }
+                ]
+            },
+            "StreamingInterruptRequest": {
+                "properties": {
+                    "request_id": {
+                        "type": "string",
+                        "title": "Request Id",
+                        "description": "The active streaming request ID to interrupt",
+                        "examples": [
+                            "123e4567-e89b-12d3-a456-426614174000"
+                        ]
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "request_id"
+                ],
+                "title": "StreamingInterruptRequest",
+                "description": "Model representing a request to interrupt an active streaming query.\n\nAttributes:\n    request_id: Unique ID of the active streaming request to interrupt.",
+                "examples": [
+                    {
+                        "request_id": "123e4567-e89b-12d3-a456-426614174000"
+                    }
+                ]
+            },
+            "StreamingInterruptResponse": {
+                "properties": {
+                    "request_id": {
+                        "type": "string",
+                        "title": "Request Id",
+                        "description": "The streaming request ID targeted by the interrupt call",
+                        "examples": [
+                            "123e4567-e89b-12d3-a456-426614174000"
+                        ]
+                    },
+                    "interrupted": {
+                        "type": "boolean",
+                        "title": "Interrupted",
+                        "description": "Whether an in-progress stream was interrupted",
+                        "examples": [
+                            true
+                        ]
+                    },
+                    "message": {
+                        "type": "string",
+                        "title": "Message",
+                        "description": "Human-readable interruption status message",
+                        "examples": [
+                            "Streaming request interrupted"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "request_id",
+                    "interrupted",
+                    "message"
+                ],
+                "title": "StreamingInterruptResponse",
+                "description": "Model representing a response to a streaming interrupt request.\n\nAttributes:\n    request_id: The streaming request ID targeted by the interrupt call.\n    interrupted: Whether an in-progress stream was interrupted.\n    message: Human-readable interruption status message.\n\nExample:\n    ```python\n    response = StreamingInterruptResponse(\n        request_id=\"123e4567-e89b-12d3-a456-426614174000\",\n        interrupted=True,\n        message=\"Streaming request interrupted\",\n    )\n    ```",
+                "examples": [
+                    {
+                        "interrupted": true,
+                        "message": "Streaming request interrupted",
+                        "request_id": "123e4567-e89b-12d3-a456-426614174000"
                     }
                 ]
             },

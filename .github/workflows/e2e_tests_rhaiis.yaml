@@ -11,13 +11,21 @@ jobs:
   e2e_tests:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
+        mode: ["server", "library"]
         environment: [ "rhaiis" ]
+
+    name: "RHAIIS E2E: ${{ matrix.mode }} mode / ${{ matrix.environment }}"
+
     env:
+      E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       RHAIIS_URL: ${{ secrets.RHAIIS_URL }}
+      RHAIIS_PORT: ${{ secrets.RHAIIS_PORT }}
       RHAIIS_API_KEY: ${{ secrets.RHAIIS_API_KEY }}
       RHAIIS_MODEL: ${{ vars.RHAIIS_MODEL }}
+      FAISS_VECTOR_STORE_ID: ${{ vars.FAISS_VECTOR_STORE_ID }}
 
     steps:
       - uses: actions/checkout@v4
@@ -46,37 +54,18 @@ jobs:
           echo "=== Recent commits (should show setup-metrics commits) ==="
           git log --oneline -5
 
-      - uses: 1arp/create-a-file-action@0.4.5
-        with:
-          path: '.'
-          isAbsolutePath: false
-          file: 'lightspeed-stack.yaml'
-          content: |
-            name: Lightspeed Core Service (LCS)
-            service:
-              host: 0.0.0.0
-              port: 8080
-              auth_enabled: false
-              workers: 1
-              color_log: true
-              access_log: true
-            llama_stack:
-              # Uses a remote llama-stack service
-              # The instance would have already been started with a llama-stack-run.yaml file
-              use_as_library_client: false
-              # Alternative for "as library use"
-              # use_as_library_client: true
-              # library_client_config_path: <path-to-llama-stack-run.yaml-file>
-              url: http://llama-stack:8321
-              api_key: xyzzy
-            user_data_collection:
-              feedback_enabled: true
-              feedback_storage: "/tmp/data/feedback"
-              transcripts_enabled: true
-              transcripts_storage: "/tmp/data/transcripts"
+      - name: Load lightspeed-stack.yaml configuration
+        run: |
+          MODE="${{ matrix.mode }}"
+          CONFIG_FILE="tests/e2e/configuration/${MODE}-mode/lightspeed-stack.yaml"
+          echo "Loading configuration for ${MODE} mode from ${CONFIG_FILE}"
 
-            authentication:
-              module: "noop"
+          if [ ! -f "${CONFIG_FILE}" ]; then
+            echo "Configuration file not found: ${CONFIG_FILE}"
+            exit 1
+          fi
+
+          cp "${CONFIG_FILE}" lightspeed-stack.yaml
 
       - name: Select and configure run.yaml
         env:
@@ -120,20 +109,22 @@ jobs:
 
       - name: Test RHAIIS connectivity
         run: |  
-          curl -f ${RHAIIS_URL}:8000/v1/models   -H "Authorization: Bearer ${RHAIIS_API_KEY}"  
+          curl -f ${RHAIIS_URL}:${RHAIIS_PORT}/v1/models   -H "Authorization: Bearer ${RHAIIS_API_KEY}"  
 
       - name: Docker Login for quay access
+        if: matrix.mode == 'server'
         env:
           QUAY_ROBOT_USERNAME: ${{ secrets.QUAY_DOWNSTREAM_USERNAME }}
           QUAY_ROBOT_TOKEN: ${{ secrets.QUAY_DOWNSTREAM_TOKEN }}
         run: |
           echo $QUAY_ROBOT_TOKEN | docker login quay.io -u=$QUAY_ROBOT_USERNAME --password-stdin
 
-      - name: Run service manually
-        run: |         
+      - name: Run services (Server Mode)
+        if: matrix.mode == 'server'
+        run: |
           docker compose version
           docker compose up -d
-          
+
           # Check for errors and show logs if any services failed
           if docker compose ps | grep -E 'Exit|exited|stopped'; then
             echo "Some services failed to start - showing logs:"
@@ -141,6 +132,20 @@ jobs:
             exit 1
           else
             echo "All services started successfully"
+          fi
+
+      - name: Run services (Library Mode)
+        if: matrix.mode == 'library'
+        run: |
+          echo "Starting service in library mode (1 container)"
+          docker compose -f docker-compose-library.yaml up -d
+
+          if docker compose -f docker-compose-library.yaml ps | grep -E 'Exit|exited|stopped'; then
+            echo "Service failed to start - showing logs:"
+            docker compose -f docker-compose-library.yaml logs
+            exit 1
+          else
+            echo "Service started successfully"
           fi
 
       - name: Wait for services
@@ -152,12 +157,20 @@ jobs:
         run: |
           echo "Testing basic connectivity before full test suite..."
           curl -f http://localhost:8080/v1/models || {
-            echo "❌ Basic connectivity failed - showing logs before running full tests"
-            docker compose logs --tail=30
+            echo "Basic connectivity failed - showing logs"
+            if [ "${{ matrix.mode }}" == "server" ]; then
+              docker compose logs --tail=30
+            else
+              docker compose -f docker-compose-library.yaml logs --tail=30
+            fi
             exit 1
           }
 
       - name: Run e2e tests
+        env:
+          TERM: xterm-256color
+          FORCE_COLOR: 1
+          E2E_DEPLOYMENT_MODE: ${{ matrix.mode }}
         run: |
           echo "Installing test dependencies..."
           pip install uv
@@ -170,9 +183,14 @@ jobs:
         if: failure()
         run: |
           echo "=== Test failure logs ==="
-          echo "=== llama-stack logs ==="
-          docker compose logs llama-stack
-          
-          echo ""
-          echo "=== lightspeed-stack logs ==="
-          docker compose logs lightspeed-stack
+
+          if [ "${{ matrix.mode }}" == "server" ]; then
+            echo "=== llama-stack logs ==="
+            docker compose logs llama-stack
+            echo ""
+            echo "=== lightspeed-stack logs ==="
+            docker compose logs lightspeed-stack
+          else
+            echo "=== lightspeed-stack (library mode) logs ==="
+            docker compose -f docker-compose-library.yaml logs lightspeed-stack
+          fi

@@ -1,11 +1,15 @@
 """Unit tests for the /rags REST API endpoints."""
 
+from pathlib import Path
+from typing import Any
+
 import pytest
 from fastapi import HTTPException, Request, status
 from llama_stack_client import APIConnectionError, BadRequestError
 from pytest_mock import MockerFixture
 
 from app.endpoints.rags import (
+    _resolve_rag_id_to_vector_db_id,
     get_rag_endpoint_handler,
     rags_endpoint_handler,
 )
@@ -244,3 +248,142 @@ async def test_rag_info_endpoint_success(
     assert response.object == "faiss"
     assert response.status == "completed"
     assert response.usage_bytes == 100
+
+
+def _make_byok_config(tmp_path: Any) -> AppConfig:
+    """Create an AppConfig with BYOK RAG entries for testing."""
+    db_file = Path(tmp_path) / "test.db"
+    db_file.touch()
+    cfg = AppConfig()
+    cfg.init_from_dict(
+        {
+            "name": "test",
+            "service": {"host": "localhost", "port": 8080},
+            "llama_stack": {
+                "api_key": "test-key",
+                "url": "http://test.com:1234",
+                "use_as_library_client": False,
+            },
+            "user_data_collection": {},
+            "authentication": {"module": "noop"},
+            "authorization": {"access_rules": []},
+            "byok_rag": [
+                {
+                    "rag_id": "ocp-4.18-docs",
+                    "rag_type": "inline::faiss",
+                    "embedding_model": "all-MiniLM-L6-v2",
+                    "embedding_dimension": 384,
+                    "vector_db_id": "vs_abc123",
+                    "db_path": str(db_file),
+                },
+                {
+                    "rag_id": "company-kb",
+                    "rag_type": "inline::faiss",
+                    "embedding_model": "all-MiniLM-L6-v2",
+                    "embedding_dimension": 384,
+                    "vector_db_id": "vs_def456",
+                    "db_path": str(db_file),
+                },
+            ],
+        }
+    )
+    return cfg
+
+
+@pytest.mark.asyncio
+async def test_rags_endpoint_returns_rag_ids_from_config(
+    mocker: MockerFixture, tmp_path: Path
+) -> None:
+    """Test that /rags endpoint maps llama-stack IDs to user-facing rag_ids."""
+    byok_config = _make_byok_config(str(tmp_path))
+    mocker.patch("app.endpoints.rags.configuration", byok_config)
+
+    # pylint: disable=R0903
+    class RagInfo:
+        """RagInfo mock."""
+
+        def __init__(self, rag_id: str) -> None:
+            """Initialize with ID."""
+            self.id = rag_id
+
+    # pylint: disable=R0903
+    class RagList:
+        """List of RAGs mock."""
+
+        def __init__(self) -> None:
+            """Initialize with mapped and unmapped entries."""
+            self.data = [
+                RagInfo("vs_abc123"),  # mapped to ocp-4.18-docs
+                RagInfo("vs_def456"),  # mapped to company-kb
+                RagInfo("vs_unmapped"),  # not in config, passed through
+            ]
+
+    mock_client = mocker.AsyncMock()
+    mock_client.vector_stores.list.return_value = RagList()
+    mocker.patch(
+        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+    ).return_value.get_client.return_value = mock_client
+
+    request = Request(scope={"type": "http"})
+    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
+
+    response = await rags_endpoint_handler(request=request, auth=auth)
+    assert response.rags == ["ocp-4.18-docs", "company-kb", "vs_unmapped"]
+
+
+@pytest.mark.asyncio
+async def test_rag_info_endpoint_accepts_rag_id_from_config(
+    mocker: MockerFixture, tmp_path: Path
+) -> None:
+    """Test that /rags/{rag_id} accepts a user-facing rag_id and resolves it."""
+    byok_config = _make_byok_config(str(tmp_path))
+    mocker.patch("app.endpoints.rags.configuration", byok_config)
+
+    # pylint: disable=R0902,R0903
+    class RagInfo:
+        """RagInfo mock."""
+
+        def __init__(self) -> None:
+            """Initialize with test data."""
+            self.id = "vs_abc123"
+            self.name = "OCP 4.18 Docs"
+            self.created_at = 100
+            self.last_active_at = 200
+            self.expires_at = 300
+            self.object = "vector_store"
+            self.status = "completed"
+            self.usage_bytes = 500
+
+    mock_client = mocker.AsyncMock()
+    mock_client.vector_stores.retrieve.return_value = RagInfo()
+    mocker.patch(
+        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+    ).return_value.get_client.return_value = mock_client
+
+    request = Request(scope={"type": "http"})
+    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
+
+    # Pass the user-facing rag_id, not the vector_store_id
+    response = await get_rag_endpoint_handler(
+        request=request, auth=auth, rag_id="ocp-4.18-docs"
+    )
+
+    # The endpoint should resolve ocp-4.18-docs -> vs_abc123 for the lookup
+    mock_client.vector_stores.retrieve.assert_called_once_with("vs_abc123")
+    # The response should show the user-facing ID
+    assert response.id == "ocp-4.18-docs"
+
+
+def test_resolve_rag_id_to_vector_db_id_with_mapping(tmp_path: Path) -> None:
+    """Test that _resolve_rag_id_to_vector_db_id maps rag_id to vector_db_id."""
+    byok_config = _make_byok_config(str(tmp_path))
+    byok_rags = byok_config.configuration.byok_rag
+    assert _resolve_rag_id_to_vector_db_id("ocp-4.18-docs", byok_rags) == "vs_abc123"
+    assert _resolve_rag_id_to_vector_db_id("company-kb", byok_rags) == "vs_def456"
+
+
+def test_resolve_rag_id_to_vector_db_id_passthrough(tmp_path: Path) -> None:
+    """Test that unmapped IDs are passed through unchanged."""
+    byok_config = _make_byok_config(str(tmp_path))
+    byok_rags = byok_config.configuration.byok_rag
+    assert _resolve_rag_id_to_vector_db_id("vs_unknown", byok_rags) == "vs_unknown"

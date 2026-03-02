@@ -30,3 +30,9 @@ conversation_cache:
 
 authentication:
   module: "noop"
+
+
+# OKP Solr for supplementary RAG
+solr:
+  enabled: false
+  offline: true

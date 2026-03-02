@@ -4,6 +4,22 @@ from pydantic import Field, field_validator
 
 from models.config import ConfigurationBase
 
+# Character validation patterns for fields flowing into Splunk telemetry.
+# Restrict the character set to prevent injection of control characters,
+# HTML/script tags, or other malicious content into the telemetry pipeline.
+
+# Alphanumeric, dots, underscores, spaces, and hyphens.
+_SAFE_TEXT_PATTERN = r"^[a-zA-Z0-9._ \-]*$"
+
+# Machine IDs: alphanumeric, dots, underscores, and hyphens (no spaces).
+_MACHINE_ID_PATTERN = r"^[a-zA-Z0-9._\-]*$"
+
+# NEVRA (Name-Epoch:Version-Release.Arch): also needs colons, plus, and tilde.
+_NEVRA_PATTERN = r"^[a-zA-Z0-9._:+~\-]*$"
+
+# Version strings share the same allowed set as machine IDs.
+_VERSION_PATTERN = _MACHINE_ID_PATTERN
+
 
 class RlsapiV1Attachment(ConfigurationBase):
     """Attachment data from rlsapi v1 context.
@@ -49,16 +65,28 @@ class RlsapiV1SystemInfo(ConfigurationBase):
         system_id: The id of the client machine.
     """
 
-    os: str = Field(default="", description="Operating system name", examples=["RHEL"])
+    os: str = Field(
+        default="",
+        pattern=_SAFE_TEXT_PATTERN,
+        description="Operating system name",
+        examples=["RHEL"],
+    )
     version: str = Field(
-        default="", description="Operating system version", examples=["9.3", "8.10"]
+        default="",
+        pattern=_SAFE_TEXT_PATTERN,
+        description="Operating system version",
+        examples=["9.3", "8.10"],
     )
     arch: str = Field(
-        default="", description="System architecture", examples=["x86_64", "aarch64"]
+        default="",
+        pattern=_SAFE_TEXT_PATTERN,
+        description="System architecture",
+        examples=["x86_64", "aarch64"],
     )
     system_id: str = Field(
         default="",
         alias="id",
+        pattern=_MACHINE_ID_PATTERN,
         description="Client machine ID",
         examples=["01JDKR8N7QW9ZMXVGK3PB5TQWZ"],
     )
@@ -76,11 +104,13 @@ class RlsapiV1CLA(ConfigurationBase):
 
     nevra: str = Field(
         default="",
+        pattern=_NEVRA_PATTERN,
         description="CLA NEVRA identifier",
         examples=["command-line-assistant-0:0.2.0-1.el9.noarch"],
     )
     version: str = Field(
         default="",
+        pattern=_VERSION_PATTERN,
         description="Command line assistant version",
         examples=["0.2.0"],
     )

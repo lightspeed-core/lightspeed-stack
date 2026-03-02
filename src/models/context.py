@@ -1,14 +1,13 @@
 """Context objects for internal operations."""
 
-from dataclasses import dataclass
-
+from dataclasses import dataclass, field
 from llama_stack_client import AsyncLlamaStackClient
 
 from models.requests import QueryRequest
 
 
 @dataclass
-class ResponseGeneratorContext:
+class ResponseGeneratorContext:  # pylint: disable=too-many-instance-attributes
     """
     Context object for response generator creation.
 
@@ -17,16 +16,20 @@ class ResponseGeneratorContext:
 
     Attributes:
         conversation_id: The conversation identifier
+        request_id: Unique identifier for the streaming request
         user_id: The user identifier
         skip_userid_check: Whether to skip user ID validation
         model_id: The model identifier
         query_request: The query request object
         started_at: Timestamp when the request started (ISO 8601 format)
         client: The Llama Stack client for API interactions
+        vector_store_ids: Vector store IDs used in the query for source resolution.
+        rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
     """
 
     # Conversation & User context
     conversation_id: str
+    request_id: str
     user_id: str
     skip_userid_check: bool
 
@@ -39,3 +42,7 @@ class ResponseGeneratorContext:
 
     # Dependencies & State
     client: AsyncLlamaStackClient
+
+    # RAG index identification
+    vector_store_ids: list[str] = field(default_factory=list)
+    rag_id_mapping: dict[str, str] = field(default_factory=dict)

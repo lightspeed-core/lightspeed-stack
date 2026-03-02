@@ -275,7 +275,7 @@
             "type": "integer"
           },
           "vector_db_id": {
-            "description": "Vector DB identification.",
+            "description": "Vector database identification.",
             "minLength": 1,
             "title": "Vector DB ID",
             "type": "string"
@@ -466,6 +466,19 @@
             "description": "Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events.",
             "title": "Deployment environment",
             "type": "string"
+          },
+          "solr": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SolrConfiguration"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Configuration for Solr vector search operations.",
+            "title": "Solr configuration"
           }
         },
         "required": [
@@ -794,7 +807,7 @@
             "type": "string",
             "nullable": true,
             "default": null,
-            "description": "URL to Llama Stack service; used when library mode is disabled",
+            "description": "URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.",
             "title": "Llama Stack URL"
           },
           "api_key": {
@@ -1154,6 +1167,12 @@
             "description": "Transport Layer Security configuration for HTTPS support",
             "title": "TLS configuration"
           },
+          "root_path": {
+            "default": "",
+            "description": "ASGI root path for serving behind a reverse proxy on a subpath",
+            "title": "Root path",
+            "type": "string"
+          },
           "cors": {
             "$ref": "#/components/schemas/CORSConfiguration",
             "description": "Cross-Origin Resource Sharing configuration for cross-domain requests",
@@ -1161,6 +1180,26 @@
           }
         },
         "title": "ServiceConfiguration",
+        "type": "object"
+      },
+      "SolrConfiguration": {
+        "additionalProperties": false,
+        "description": "Solr configuration for vector search queries.\n\nControls whether to use offline or online mode when building document URLs\nfrom vector search results, and enables/disables Solr vector IO functionality.",
+        "properties": {
+          "enabled": {
+            "default": false,
+            "description": "When True, enables Solr vector IO functionality for vector search queries. When False, disables Solr vector search processing.",
+            "title": "Solr enabled",
+            "type": "boolean"
+          },
+          "offline": {
+            "default": true,
+            "description": "When True, use parent_id for chunk source URLs. When False, use reference_url for chunk source URLs.",
+            "title": "Offline mode",
+            "type": "boolean"
+          }
+        },
+        "title": "SolrConfiguration",
         "type": "object"
       },
       "SplunkConfiguration": {

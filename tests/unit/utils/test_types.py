@@ -1,10 +1,8 @@
 """Unit tests for functions and types defined in utils/types.py."""
 
-from llama_stack_client.types.shared.interleaved_content_item import (
-    ImageContentItem,
-    TextContentItem,
-)
 import pytest
+from llama_stack_api import ImageContentItem, TextContentItem, URL, _URLOrData
+
 from pydantic import AnyUrl, ValidationError
 from pytest_mock import MockerFixture
 
@@ -89,13 +87,9 @@ class TestContentToStr:
 
     def test_content_to_str_image_content_item(self) -> None:
         """Test content_to_str with ImageContentItem."""
-
-        # ImageContentItem is a Pydantic model that requires 'image' parameter, not 'image_url'
-        # Use a mock that passes isinstance check by creating a subclass
-        class MockImageContentItem(ImageContentItem):
-            """Mock ImageContentItem for testing."""
-
-        image_item = MockImageContentItem.__new__(MockImageContentItem)
+        image_item = ImageContentItem(
+            image=_URLOrData(url=URL(uri="http://example.com/img.png"))
+        )
         result = content_to_str(image_item)
         assert result == "<image>"
 

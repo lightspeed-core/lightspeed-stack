@@ -1,8 +1,9 @@
 """Streaming query handler using Responses API."""
 
+import asyncio
+import datetime
 import json
-import logging
-from datetime import UTC, datetime
+
 from typing import Annotated, Any, AsyncIterator, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -30,10 +31,12 @@ from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import (
+    INTERRUPTED_RESPONSE_MESSAGE,
     LLM_TOKEN_EVENT,
     LLM_TOOL_CALL_EVENT,
     LLM_TOOL_RESULT_EVENT,
     LLM_TURN_COMPLETE_EVENT,
+    MEDIA_TYPE_EVENT_STREAM,
     MEDIA_TYPE_JSON,
     MEDIA_TYPE_TEXT,
 )
@@ -57,7 +60,7 @@ from utils.endpoints import (
     check_configuration_loaded,
     validate_and_retrieve_conversation,
 )
-from utils.mcp_headers import mcp_headers_dependency
+from utils.mcp_headers import mcp_headers_dependency, McpHeaders
 from utils.query import (
     consume_query_tokens,
     extract_provider_and_model_from_model_id,
@@ -72,7 +75,9 @@ from utils.responses import (
     build_mcp_tool_call_from_arguments_done,
     build_tool_call_summary,
     build_tool_result_from_mcp_output_item_done,
+    deduplicate_referenced_documents,
     extract_token_usage,
+    extract_vector_store_ids_from_tools,
     get_topic_summary,
     parse_referenced_documents,
     prepare_responses_params,
@@ -80,12 +85,16 @@ from utils.responses import (
 from utils.shields import (
     append_turn_to_conversation,
     run_shield_moderation,
+    validate_shield_ids_override,
 )
-from utils.suid import normalize_conversation_id
+from utils.stream_interrupts import get_stream_interrupt_registry
+from utils.suid import get_suid, normalize_conversation_id
 from utils.token_counter import TokenCounter
 from utils.types import ResponsesApiParams, TurnSummary
+from utils.vector_search import format_rag_context_for_injection, perform_vector_search
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["streaming_query"])
 
 streaming_query_responses: dict[int | str, dict[str, Any]] = {
@@ -99,7 +108,7 @@ streaming_query_responses: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(
         examples=["conversation", "model", "provider"]
     ),
-    413: PromptTooLongResponse.openapi_response(),
+    # 413: PromptTooLongResponse.openapi_response(),
     422: UnprocessableEntityResponse.openapi_response(),
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
@@ -118,7 +127,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     request: Request,
     query_request: QueryRequest,
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
-    mcp_headers: dict[str, dict[str, str]] = Depends(mcp_headers_dependency),
+    mcp_headers: McpHeaders = Depends(mcp_headers_dependency),
 ) -> StreamingResponse:
     """
     Handle request to the /streaming_query endpoint using Responses API.
@@ -143,13 +152,18 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     check_configuration_loaded(configuration)
 
     user_id, _user_name, _skip_userid_check, token = auth
-    started_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    started_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Check token availability
     check_tokens_available(configuration.quota_limiters, user_id)
 
     # Enforce RBAC: optionally disallow overriding model/provider in requests
-    validate_model_provider_override(query_request, request.state.authorized_actions)
+    validate_model_provider_override(
+        query_request.model, query_request.provider, request.state.authorized_actions
+    )
+
+    # Validate shield_ids override if provided
+    validate_shield_ids_override(query_request, configuration)
 
     # Validate attachments if provided
     if query_request.attachments:
@@ -171,6 +185,15 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
 
     client = AsyncLlamaStackClientHolder().get_client()
 
+    _, _, doc_ids_from_chunks, pre_rag_chunks = await perform_vector_search(
+        client, query_request.query, query_request.solr
+    )
+
+    rag_context = format_rag_context_for_injection(pre_rag_chunks)
+    if rag_context:
+        query_request = query_request.model_copy(deep=True)
+        query_request.query = query_request.query + rag_context
+
     # Prepare API request parameters
     responses_params = await prepare_responses_params(
         client=client,
@@ -180,6 +203,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         mcp_headers=mcp_headers,
         stream=True,
         store=True,
+        request_headers=request.headers,
     )
 
     # Handle Azure token refresh if needed
@@ -191,15 +215,20 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     ):
         client = await update_azure_token(client)
 
-    # Create context
+    request_id = get_suid()
+
+    # Create context with index identification mapping for RAG source resolution
     context = ResponseGeneratorContext(
         conversation_id=normalize_conversation_id(responses_params.conversation),
+        request_id=request_id,
         model_id=responses_params.model,
         user_id=user_id,
         skip_userid_check=_skip_userid_check,
         query_request=query_request,
         started_at=started_at,
         client=client,
+        vector_store_ids=extract_vector_store_ids_from_tools(responses_params.tools),
+        rag_id_mapping=configuration.rag_id_mapping,
     )
 
     # Update metrics for the LLM call
@@ -211,6 +240,13 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     generator, turn_summary = await retrieve_response_generator(
         responses_params=responses_params,
         context=context,
+        doc_ids_from_chunks=doc_ids_from_chunks,
+    )
+
+    response_media_type = (
+        MEDIA_TYPE_TEXT
+        if query_request.media_type == MEDIA_TYPE_TEXT
+        else MEDIA_TYPE_EVENT_STREAM
     )
 
     return StreamingResponse(
@@ -220,13 +256,14 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
             responses_params=responses_params,
             turn_summary=turn_summary,
         ),
-        media_type=query_request.media_type or MEDIA_TYPE_TEXT,
+        media_type=response_media_type,
     )
 
 
 async def retrieve_response_generator(
     responses_params: ResponsesApiParams,
     context: ResponseGeneratorContext,
+    doc_ids_from_chunks: list[ReferencedDocument],
 ) -> tuple[AsyncIterator[str], TurnSummary]:
     """
     Retrieve the appropriate response generator.
@@ -238,6 +275,7 @@ async def retrieve_response_generator(
     Args:
         responses_params: The Responses API parameters
         context: The response generator context
+        doc_ids_from_chunks: List of ReferencedDocument objects extracted from static RAG
 
     Returns:
         tuple[AsyncIterator[str], TurnSummary]: The response generator and turn summary
@@ -246,26 +284,29 @@ async def retrieve_response_generator(
     turn_summary = TurnSummary()
     try:
         moderation_result = await run_shield_moderation(
-            context.client, responses_params.input
+            context.client,
+            cast(str, responses_params.input),
+            context.query_request.shield_ids,
         )
-        if moderation_result.blocked:
-            violation_message = moderation_result.message or ""
-            turn_summary.llm_response = violation_message
+        if moderation_result.decision == "blocked":
+            turn_summary.llm_response = moderation_result.message
             await append_turn_to_conversation(
                 context.client,
                 responses_params.conversation,
-                responses_params.input,
-                violation_message,
+                cast(str, responses_params.input),
+                moderation_result.message,
             )
             media_type = context.query_request.media_type or MEDIA_TYPE_JSON
             return (
-                shield_violation_generator(violation_message, media_type),
+                shield_violation_generator(moderation_result.message, media_type),
                 turn_summary,
             )
         # Retrieve response stream (may raise exceptions)
         response = await context.client.responses.create(
-            **responses_params.model_dump()
+            **responses_params.model_dump(exclude_none=True)
         )
+        # Store pre-RAG documents for later merging
+        turn_summary.pre_rag_documents = doc_ids_from_chunks
         return response_generator(response, context, turn_summary), turn_summary
 
     # Handle know LLS client errors only at stream creation time and shield execution
@@ -286,6 +327,110 @@ async def retrieve_response_generator(
         raise HTTPException(**error_response.model_dump()) from e
 
 
+async def _persist_interrupted_turn(
+    context: ResponseGeneratorContext,
+    responses_params: ResponsesApiParams,
+    turn_summary: TurnSummary,
+) -> None:
+    """Persist the user query and an interrupted response into the conversation.
+
+    Called when a streaming request is cancelled so the exchange is not lost.
+    All errors are caught and logged to avoid masking the original
+    cancellation.
+
+    Parameters:
+        context: The response generator context.
+        responses_params: The Responses API parameters.
+        turn_summary: TurnSummary with llm_response already set to the
+            interrupted message.
+    """
+    try:
+        await append_turn_to_conversation(
+            context.client,
+            responses_params.conversation,
+            cast(str, responses_params.input),
+            INTERRUPTED_RESPONSE_MESSAGE,
+        )
+    except Exception:  # pylint: disable=broad-except
+        logger.exception(
+            "Failed to append interrupted turn to conversation for request %s",
+            context.request_id,
+        )
+
+    try:
+        completed_at = datetime.datetime.now(datetime.UTC).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        store_query_results(
+            user_id=context.user_id,
+            conversation_id=context.conversation_id,
+            model=responses_params.model,
+            completed_at=completed_at,
+            started_at=context.started_at,
+            summary=turn_summary,
+            query=context.query_request.query,
+            skip_userid_check=context.skip_userid_check,
+            topic_summary=None,
+        )
+    except Exception:  # pylint: disable=broad-except
+        logger.exception(
+            "Failed to store interrupted query results for request %s",
+            context.request_id,
+        )
+
+
+def _register_interrupt_callback(
+    context: ResponseGeneratorContext,
+    responses_params: ResponsesApiParams,
+    turn_summary: TurnSummary,
+) -> list[bool]:
+    """Build an interrupt callback and register the stream for cancellation.
+
+    The callback is scheduled as a **separate** asyncio task by
+    ``cancel_stream`` so it executes regardless of where the
+    ``CancelledError`` is raised in the ASGI stack.
+
+    A mutable one-element list is used as a shared guard so the
+    callback and the in-generator ``CancelledError`` handler never
+    both persist the same turn.
+
+    Parameters:
+        context: The response generator context.
+        responses_params: The Responses API parameters.
+        turn_summary: TurnSummary populated during streaming.
+
+    Returns:
+        A mutable list ``[False]`` used as a persist-done guard; the
+        caller should check ``guard[0]`` before persisting and set
+        it to ``True`` afterwards.
+    """
+    guard: list[bool] = [False]
+
+    async def _on_interrupt() -> None:
+        if guard[0]:
+            return
+        guard[0] = True
+        turn_summary.llm_response = INTERRUPTED_RESPONSE_MESSAGE
+        await _persist_interrupted_turn(context, responses_params, turn_summary)
+
+    current_task = asyncio.current_task()
+    if current_task is not None:
+        get_stream_interrupt_registry().register_stream(
+            request_id=context.request_id,
+            user_id=context.user_id,
+            task=current_task,
+            on_interrupt=_on_interrupt,
+        )
+    else:
+        logger.warning(
+            "No current asyncio task for request %s; "
+            "stream interruption will not be available",
+            context.request_id,
+        )
+
+    return guard
+
+
 async def generate_response(
     generator: AsyncIterator[str],
     context: ResponseGeneratorContext,
@@ -295,7 +440,10 @@ async def generate_response(
     """Wrap a generator with cleanup logic.
 
     Re-yields events from the generator, handles errors, and ensures
-    persistence and token consumption after completion.
+    persistence and token consumption after completion.  When the
+    stream is interrupted via ``CancelledError``, the user query and
+    an interrupted response are persisted to the conversation, but
+    token consumption is skipped (no usage data is available).
 
     Args:
         generator: The base generator to wrap
@@ -306,12 +454,22 @@ async def generate_response(
     Yields:
         SSE-formatted strings from the wrapped generator
     """
-    yield stream_start_event(context.conversation_id)
+    persist_guard = _register_interrupt_callback(
+        context, responses_params, turn_summary
+    )
 
-    # Re-yield all events from the generator
+    stream_completed = False
     try:
+        yield stream_start_event(
+            conversation_id=context.conversation_id,
+            request_id=context.request_id,
+        )
+
+        # Re-yield all events from the generator
         async for event in generator:
             yield event
+
+        stream_completed = True
 
     # Handle known LLS client errors during response generation time
     except RuntimeError as e:  # library mode wraps 413 into runtime error
@@ -321,18 +479,32 @@ async def generate_response(
             else InternalServerErrorResponse.generic()
         )
         yield stream_http_error_event(error_response, context.query_request.media_type)
-        return
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
             backend_name="Llama Stack",
             cause=str(e),
         )
         yield stream_http_error_event(error_response, context.query_request.media_type)
-        return
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         error_response = handle_known_apistatus_errors(e, responses_params.model)
         yield stream_http_error_event(error_response, context.query_request.media_type)
+    except asyncio.CancelledError:
+        logger.info("Streaming request %s interrupted by user", context.request_id)
+        current_task = asyncio.current_task()
+        if current_task is not None:
+            current_task.uncancel()
+        if not persist_guard[0]:
+            persist_guard[0] = True
+            turn_summary.llm_response = INTERRUPTED_RESPONSE_MESSAGE
+            await _persist_interrupted_turn(context, responses_params, turn_summary)
+        yield stream_interrupted_event(context.request_id)
+    finally:
+        get_stream_interrupt_registry().deregister_stream(context.request_id)
+
+    if not stream_completed:
         return
+
+    # Post-stream side effects: only run when streaming finished successfully
 
     # Get topic summary for new conversations if needed
     topic_summary = None
@@ -352,7 +524,6 @@ async def generate_response(
         user_id=context.user_id,
         model_id=responses_params.model,
         token_usage=turn_summary.token_usage,
-        configuration=configuration,
     )
     # Get available quotas
     logger.info("Getting available quotas")
@@ -366,17 +537,19 @@ async def generate_response(
         turn_summary.referenced_documents,
         context.query_request.media_type or MEDIA_TYPE_JSON,
     )
+    completed_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Store query results (transcript, conversation details, cache)
     logger.info("Storing query results")
     store_query_results(
         user_id=context.user_id,
         conversation_id=context.conversation_id,
-        model_id=responses_params.model,
+        model=responses_params.model,
+        completed_at=completed_at,
         started_at=context.started_at,
         summary=turn_summary,
-        query_request=context.query_request,
-        configuration=configuration,
+        query=context.query_request.query,
+        attachments=context.query_request.attachments,
         skip_userid_check=context.skip_userid_check,
         topic_summary=topic_summary,
     )
@@ -502,7 +675,10 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
                 # For all other types (and mcp_call when arguments.done didn't happen),
                 # emit both call and result together
                 tool_call, tool_result = build_tool_call_summary(
-                    output_item_done_chunk.item, turn_summary.rag_chunks
+                    output_item_done_chunk.item,
+                    turn_summary.rag_chunks,
+                    vector_store_ids=context.vector_store_ids,
+                    rag_id_mapping=context.rag_id_mapping,
                 )
                 if tool_call:
                     turn_summary.tool_calls.append(tool_call)
@@ -559,11 +735,20 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
     )
 
     # Extract token usage and referenced documents from the final response object
+    if not latest_response_object:
+        return
+
     turn_summary.token_usage = extract_token_usage(
-        latest_response_object, context.model_id
+        latest_response_object.usage, context.model_id
     )
-    turn_summary.referenced_documents = parse_referenced_documents(
-        latest_response_object
+    tool_based_documents = parse_referenced_documents(
+        latest_response_object,
+        vector_store_ids=context.vector_store_ids,
+        rag_id_mapping=context.rag_id_mapping,
+    )
+
+    turn_summary.referenced_documents = deduplicate_referenced_documents(
+        tool_based_documents + turn_summary.pre_rag_documents
     )
 
 
@@ -599,7 +784,7 @@ def stream_http_error_event(
 
 def format_stream_data(d: dict) -> str:
     """
-    Format a dictionary as a Server-Sent Events (SSE) data string.
+    Create a response generator function for Responses API streaming.
 
     Parameters:
         d (dict): The data to be formatted as an SSE event.
@@ -611,16 +796,17 @@ def format_stream_data(d: dict) -> str:
     return f"data: {data}\n\n"
 
 
-def stream_start_event(conversation_id: str) -> str:
-    """
-    Yield the start of the data stream.
+def stream_start_event(conversation_id: str, request_id: str) -> str:
+    """Format an SSE start event for a streaming response.
 
-    Format a Server-Sent Events (SSE) start event containing the
-    conversation ID.
+    The payload contains both the conversation ID and the request ID
+    so the client can correlate the stream with a conversation and
+    use the request ID to issue an interrupt if needed.
 
     Parameters:
-        conversation_id (str): Unique identifier for the
-        conversation.
+        conversation_id (str): Unique identifier for the conversation.
+        request_id (str): Unique SUID for this streaming request,
+            returned to the client for interrupt support.
 
     Returns:
         str: SSE-formatted string representing the start event.
@@ -630,6 +816,30 @@ def stream_start_event(conversation_id: str) -> str:
             "event": "start",
             "data": {
                 "conversation_id": conversation_id,
+                "request_id": request_id,
+            },
+        }
+    )
+
+
+def stream_interrupted_event(request_id: str) -> str:
+    """Format an SSE event indicating the stream was interrupted.
+
+    Emitted to the client just before the generator closes so the
+    frontend can distinguish an intentional user-initiated interruption
+    from an unexpected connection drop.
+
+    Parameters:
+        request_id (str): Unique identifier for the interrupted request.
+
+    Returns:
+        str: SSE-formatted string representing the interrupted event.
+    """
+    return format_stream_data(
+        {
+            "event": "interrupted",
+            "data": {
+                "request_id": request_id,
             },
         }
     )
@@ -685,22 +895,24 @@ def stream_event(data: dict, event_type: str, media_type: str) -> str:
     """Build an item to yield based on media type.
 
     Args:
-        data: The data to yield.
-        event_type: The type of event (e.g. token, tool request, tool execution).
-        media_type: Media type of the response (e.g. text or JSON).
+        data: Dictionary containing the event data
+        event_type: Type of event (token, tool call, etc.)
+        media_type: The media type for the response format
 
     Returns:
-        str: The formatted string or JSON to yield.
+        SSE-formatted string representing the event
     """
     if media_type == MEDIA_TYPE_TEXT:
         if event_type == LLM_TOKEN_EVENT:
-            return data["token"]
+            return data.get("token", "")
         if event_type == LLM_TOOL_CALL_EVENT:
-            return f"\nTool call: {json.dumps(data)}\n"
+            return f"[Tool Call: {data.get('function_name', 'unknown')}]\n"
         if event_type == LLM_TOOL_RESULT_EVENT:
-            return f"\nTool result: {json.dumps(data)}\n"
-        logger.error("Unknown event type: %s", event_type)
+            return "[Tool Result]\n"
+        if event_type == LLM_TURN_COMPLETE_EVENT:
+            return ""
         return ""
+
     return format_stream_data(
         {
             "event": event_type,

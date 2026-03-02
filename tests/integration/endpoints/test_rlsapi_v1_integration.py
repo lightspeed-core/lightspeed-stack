@@ -31,6 +31,7 @@ from models.rlsapi.requests import (
 from models.rlsapi.responses import RlsapiV1InferResponse
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 from utils.suid import check_suid
+from version import __version__
 
 # ==========================================
 # Shared Fixtures
@@ -170,7 +171,7 @@ async def test_rlsapi_v1_infer_minimal_request(
                 attachments=RlsapiV1Attachment(contents="log content"),
                 terminal=RlsapiV1Terminal(output="command not found"),
                 systeminfo=RlsapiV1SystemInfo(os="RHEL", version="9.3", arch="x86_64"),
-                cla=RlsapiV1CLA(nevra="cla-0.4.1", version="0.4.1"),
+                cla=RlsapiV1CLA(nevra=f"cla-{__version__}", version=__version__),
             ),
             "full_context",
             id="full_context",
@@ -350,7 +351,12 @@ async def test_rlsapi_v1_infer_input_source_combination(
     call_args = mock_responses.create.call_args
     input_content = call_args.kwargs["input"]
 
-    for expected in ["My question", "stdin content", "attachment content", "terminal"]:
+    for expected in [
+        "My question",
+        "stdin content",
+        "attachment content",
+        "terminal output",
+    ]:
         assert expected in input_content
 
 
@@ -389,6 +395,7 @@ async def test_rlsapi_v1_infer_no_mcp_servers_passes_empty_tools(
 
     mocker.patch(
         "app.endpoints.rlsapi_v1.get_mcp_tools",
+        new_callable=mocker.AsyncMock,
         return_value=[],
     )
 
@@ -437,6 +444,7 @@ async def test_rlsapi_v1_infer_mcp_tools_passed_to_llm(
     ]
     mocker.patch(
         "app.endpoints.rlsapi_v1.get_mcp_tools",
+        new_callable=mocker.AsyncMock,
         return_value=mcp_tools,
     )
 

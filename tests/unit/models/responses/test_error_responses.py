@@ -472,13 +472,14 @@ class TestNotFoundResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 4
+        assert expected_count == 5
 
         # Verify all labeled examples are present
         assert "conversation" in examples
         assert "provider" in examples
         assert "model" in examples
         assert "rag" in examples
+        assert "streaming request" in examples
 
         # Verify example structure for one example
         conversation_example = examples["conversation"]

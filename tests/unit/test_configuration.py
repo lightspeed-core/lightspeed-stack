@@ -35,63 +35,83 @@ def test_default_configuration() -> None:
     assert cfg is not None
 
     # configuration is not loaded
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.configuration  # pylint: disable=pointless-statement
 
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.service_configuration  # pylint: disable=pointless-statement
 
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.llama_stack_configuration  # pylint: disable=pointless-statement
 
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = (
             cfg.user_data_collection_configuration
         )  # pylint: disable=pointless-statement
 
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.mcp_servers  # pylint: disable=pointless-statement
 
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.authentication_configuration  # pylint: disable=pointless-statement
 
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.customization  # pylint: disable=pointless-statement
 
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.authorization_configuration  # pylint: disable=pointless-statement
 
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.inference  # pylint: disable=pointless-statement
 
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.database_configuration  # pylint: disable=pointless-statement
 
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.conversation_cache_configuration  # pylint: disable=pointless-statement
 
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.quota_handlers_configuration  # pylint: disable=pointless-statement
 
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.conversation_cache  # pylint: disable=pointless-statement
 
-    with pytest.raises(Exception, match="logic error: configuration is not loaded"):
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
         # try to read property
         _ = cfg.quota_limiters  # pylint: disable=pointless-statement
+
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
+        # try to read property
+        _ = cfg.a2a_state  # pylint: disable=pointless-statement
+
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
+        # try to read property
+        _ = cfg.token_usage_history  # pylint: disable=pointless-statement
+
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
+        # try to read property
+        _ = cfg.azure_entra_id  # pylint: disable=pointless-statement
+
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
+        # try to read property
+        _ = cfg.splunk  # pylint: disable=pointless-statement
+
+    with pytest.raises(LogicError, match="logic error: configuration is not loaded"):
+        # try to read property
+        _ = cfg.deployment_environment  # pylint: disable=pointless-statement
 
 
 def test_configuration_is_singleton() -> None:
@@ -126,6 +146,19 @@ def test_init_from_dict() -> None:
         "authentication": {
             "module": "noop",
         },
+        "a2a_state": {
+            "sqlite": None,
+            "postgres": None,
+        },
+        "splunk": {
+            "enabled": False,
+            "url": "foo.bar.baz",
+            "index": "index",
+            "source": "source",
+            "timeout": 10,
+            "verify_ssl": False,
+        },
+        "deployment_environment": "foo",
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
@@ -171,6 +204,26 @@ def test_init_from_dict() -> None:
 
     # check conversation cache
     assert cfg.conversation_cache_configuration is not None
+
+    # check a2a state
+    assert cfg.a2a_state is not None
+    assert cfg.a2a_state.sqlite is None
+    assert cfg.a2a_state.postgres is None
+
+    # check Splunk
+    assert cfg.splunk is not None
+    assert cfg.splunk.enabled is False
+    assert cfg.splunk.url == "foo.bar.baz"
+    assert cfg.splunk.index == "index"
+    assert cfg.splunk.source == "source"
+    assert cfg.splunk.timeout == 10
+    assert cfg.splunk.verify_ssl is False
+
+    # check deployment_environment
+    assert cfg.deployment_environment is not None
+
+    # check token usage history
+    assert cfg.token_usage_history is None
 
 
 def test_init_from_dict_with_mcp_servers() -> None:
@@ -724,6 +777,44 @@ quota_handlers:
     assert cfg.quota_handlers_configuration.scheduler.period == 1
 
 
+def test_configuration_with_token_history_no_storage(tmpdir: Path) -> None:
+    """Test loading configuration from YAML file with quota handlers configuration."""
+    cfg_filename = tmpdir / "config.yaml"
+    with open(cfg_filename, "w", encoding="utf-8") as fout:
+        fout.write("""
+name: test service
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: false
+  url: http://localhost:8321
+  api_key: test-key
+user_data_collection:
+  feedback_enabled: false
+quota_handlers:
+  scheduler:
+    # scheduler ticks in seconds
+    period: 1
+  enable_token_history: true
+            """)
+
+    cfg = AppConfig()
+    cfg.load_configuration(str(cfg_filename))
+
+    assert cfg.quota_handlers_configuration is not None
+    assert cfg.quota_handlers_configuration.sqlite is None
+    assert cfg.quota_handlers_configuration.postgres is None
+    assert cfg.quota_handlers_configuration.scheduler is not None
+
+    # check the token usage history
+    assert cfg.token_usage_history is not None
+
+
 def test_configuration_with_quota_handlers(tmpdir: Path) -> None:
     """Test loading configuration from YAML file with quota handlers configuration."""
     cfg_filename = tmpdir / "config.yaml"
@@ -851,3 +942,55 @@ azure_entra_id:
     cfg = AppConfig()
     with pytest.raises(ValidationError):
         cfg.load_configuration(str(cfg_filename))
+
+
+def test_rag_id_mapping_empty_when_no_byok(minimal_config: AppConfig) -> None:
+    """Test that rag_id_mapping returns empty dict when no BYOK RAG configured."""
+    assert minimal_config.rag_id_mapping == {}
+
+
+def test_rag_id_mapping_with_byok(tmp_path: Path) -> None:
+    """Test that rag_id_mapping builds correct mapping from BYOK config."""
+    db_file = tmp_path / "test.db"
+    db_file.touch()
+    cfg = AppConfig()
+    cfg.init_from_dict(
+        {
+            "name": "test",
+            "service": {"host": "localhost", "port": 8080},
+            "llama_stack": {
+                "api_key": "k",
+                "url": "http://test.com:1234",
+                "use_as_library_client": False,
+            },
+            "user_data_collection": {},
+            "authentication": {"module": "noop"},
+            "byok_rag": [
+                {
+                    "rag_id": "my-kb",
+                    "vector_db_id": "vs-001",
+                    "db_path": str(db_file),
+                },
+            ],
+        }
+    )
+    assert cfg.rag_id_mapping == {"vs-001": "my-kb"}
+
+
+def test_resolve_index_name_with_mapping(minimal_config: AppConfig) -> None:
+    """Test resolve_index_name uses mapping when available."""
+    mapping = {"vs-x": "user-friendly-name"}
+    assert minimal_config.resolve_index_name("vs-x", mapping) == "user-friendly-name"
+
+
+def test_resolve_index_name_passthrough(minimal_config: AppConfig) -> None:
+    """Test resolve_index_name passes through unmapped IDs."""
+    assert minimal_config.resolve_index_name("vs-unknown", {}) == "vs-unknown"
+
+
+def test_rag_id_mapping_not_loaded() -> None:
+    """Test that rag_id_mapping raises when config not loaded."""
+    cfg = AppConfig()
+    cfg._configuration = None
+    with pytest.raises(LogicError):
+        _ = cfg.rag_id_mapping

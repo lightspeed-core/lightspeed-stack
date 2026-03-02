@@ -6,15 +6,16 @@ User and System identity types with optional entitlement validation.
 
 import base64
 import json
-import logging
 from typing import Optional
 
 from fastapi import HTTPException, Request
 
-from authentication.interface import AuthInterface, AuthTuple
+from authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
+from configuration import configuration
 from constants import DEFAULT_VIRTUAL_PATH, NO_USER_TOKEN
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class RHIdentityData:
@@ -53,45 +54,53 @@ class RHIdentityData:
             "identity" not in self.identity_data
             or self.identity_data["identity"] is None
         ):
-            raise HTTPException(status_code=400, detail="Missing 'identity' field")
+            logger.warning("Identity validation failed: missing 'identity' field")
+            raise HTTPException(status_code=400, detail="Invalid identity data")
 
         identity = self.identity_data["identity"]
         if "type" not in identity:
-            raise HTTPException(status_code=400, detail="Missing identity 'type' field")
+            logger.warning("Identity validation failed: missing 'type' field")
+            raise HTTPException(status_code=400, detail="Invalid identity data")
 
         identity_type = identity["type"]
         if identity_type == "User":
             if "user" not in identity:
-                raise HTTPException(
-                    status_code=400, detail="Missing 'user' field for User type"
+                logger.warning(
+                    "Identity validation failed: missing 'user' field for User type"
                 )
+                raise HTTPException(status_code=400, detail="Invalid identity data")
             user = identity["user"]
             if "user_id" not in user:
-                raise HTTPException(
-                    status_code=400, detail="Missing 'user_id' in user data"
+                logger.warning(
+                    "Identity validation failed: missing 'user_id' in user data"
                 )
+                raise HTTPException(status_code=400, detail="Invalid identity data")
             if "username" not in user:
-                raise HTTPException(
-                    status_code=400, detail="Missing 'username' in user data"
+                logger.warning(
+                    "Identity validation failed: missing 'username' in user data"
                 )
+                raise HTTPException(status_code=400, detail="Invalid identity data")
         elif identity_type == "System":
             if "system" not in identity:
-                raise HTTPException(
-                    status_code=400, detail="Missing 'system' field for System type"
+                logger.warning(
+                    "Identity validation failed: missing 'system' field for System type"
                 )
+                raise HTTPException(status_code=400, detail="Invalid identity data")
             system = identity["system"]
             if "cn" not in system:
-                raise HTTPException(
-                    status_code=400, detail="Missing 'cn' in system data"
+                logger.warning(
+                    "Identity validation failed: missing 'cn' in system data"
                 )
+                raise HTTPException(status_code=400, detail="Invalid identity data")
             if "account_number" not in identity:
-                raise HTTPException(
-                    status_code=400, detail="Missing 'account_number' for System type"
+                logger.warning(
+                    "Identity validation failed: "
+                    "missing 'account_number' for System type"
                 )
+                raise HTTPException(status_code=400, detail="Invalid identity data")
         else:
-            raise HTTPException(
-                status_code=400, detail=f"Unsupported identity type: {identity_type}"
-            )
+            logger.warning("Identity validation failed: unsupported identity type")
+            raise HTTPException(status_code=400, detail="Invalid identity data")
 
     def _get_identity_type(self) -> str:
         """Get the identity type (User or System).
@@ -168,10 +177,13 @@ class RHIdentityData:
 
         missing = [s for s in self.required_entitlements if not self.has_entitlement(s)]
         if missing:
-            entitlement_word = "entitlement" if len(missing) == 1 else "entitlements"
+            logger.warning(
+                "Entitlement validation failed: missing required entitlements: %s",
+                ", ".join(missing),
+            )
             raise HTTPException(
                 status_code=403,
-                detail=f"Missing required {entitlement_word}: {', '.join(missing)}",
+                detail="Insufficient entitlements",
             )
 
 
@@ -215,6 +227,10 @@ class RHIdentityAuthDependency(AuthInterface):  # pylint: disable=too-few-public
         # Extract header
         identity_header = request.headers.get("x-rh-identity")
         if not identity_header:
+            # Skip auth for health probes when configured
+            if request.url.path.endswith(("/readiness", "/liveness")):
+                if configuration.authentication_configuration.skip_for_health_probes:
+                    return NO_AUTH_TUPLE
             logger.warning("Missing x-rh-identity header")
             raise HTTPException(status_code=401, detail="Missing x-rh-identity header")
 

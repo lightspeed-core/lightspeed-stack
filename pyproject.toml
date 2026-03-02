@@ -65,7 +65,7 @@ dependencies = [
     "einops>=0.8.1",
     # Used for Azure Entra ID token management
     "azure-core>=1.38.0",
-    "azure-identity",
+    "azure-identity>=1.21.0",
     "pyasn1>=0.6.2",
 ]
 
@@ -148,7 +148,6 @@ llslibdev = [
     # "pillow>=11.1.0",
     # "pandas>=2.2.3",
     # "scikit-learn>=1.5.2",
-    # "psycopg2-binary>=2.9.10",
     # API eval: inline::meta-reference
     "tree_sitter>=0.24.0",
     "pythainlp>=3.0.10",
@@ -157,8 +156,11 @@ llslibdev = [
     "nltk>=3.8.1",
     # API inference: inline::sentence-transformers
     "sentence-transformers>=5.0.0",
-    # API vector_io: inline::faiss
+    # API vector_io: inline::faiss, inline::sqlite-vec, remote::pgvector
     "faiss-cpu>=1.11.0",
+    "sqlite-vec>=0.1.6",
+    "chardet>=5.2.0",
+    "psycopg2-binary>=2.9.10",
     # API scoring: inline::basic
     "requests>=2.32.4",
     # API datasetio: inline::localfs
@@ -172,17 +174,23 @@ llslibdev = [
     "transformers>=4.34.0",
     "numpy==2.3.5",
     # API tool_runtime: remote::model-context-protocol
-    "mcp>=1.9.4",
+    "mcp>=1.23.0",
     # API post_training: inline::huggingface
     "torch==2.9.0",
     "trl>=0.18.2",
     "peft>=0.15.2",
+    # API inference: remote::vertexai
+    "google-cloud-aiplatform>=1.130.0",
+    # API inference: remote::watsonx
+    "litellm>=1.81.0",
     # Other
     "autoevals>=0.0.129",
     "fire>=0.7.0",
     "opentelemetry-instrumentation>=0.55b0",
     "blobfile>=3.0.0",
     "psutil>=7.0.0",
+    # Azure
+    "azure-identity>=1.21.0",
 ]
 
 build = [
@@ -211,7 +219,7 @@ build-backend = "pdm.backend"
 disable = ["R0801"]
 
 [tool.ruff]
-exclude = ["tests/profiles/syntax_error.py"]
+extend-exclude = ["tests/profiles/syntax_error.py"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 banned-api = { "unittest" = { msg = "use pytest instead of unittest" }, "unittest.mock" = { msg = "use pytest-mock instead of unittest.mock" } }

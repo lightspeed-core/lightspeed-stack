@@ -5,7 +5,6 @@ requests. Note that these endpoints can be accessed using GET or HEAD HTTP
 methods. For HEAD HTTP method, just the HTTP response code is used.
 """
 
-import logging
 from enum import Enum
 from typing import Annotated, Any
 
@@ -16,6 +15,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
+from log import get_logger
 from models.config import Action
 from models.responses import (
     ForbiddenResponse,
@@ -26,7 +26,7 @@ from models.responses import (
     UnauthorizedResponse,
 )
 
-logger = logging.getLogger("app.endpoints.handlers")
+logger = get_logger(__name__)
 router = APIRouter(tags=["health"])
 
 

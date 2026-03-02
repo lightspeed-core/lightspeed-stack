@@ -5,6 +5,8 @@ import time
 from behave import given  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
+from tests.e2e.utils.utils import is_prow_environment
+
 
 @given("The llama-stack connection is disrupted")
 def llama_stack_connection_broken(context: Context) -> None:
@@ -27,6 +29,13 @@ def llama_stack_connection_broken(context: Context) -> None:
     # Store original state for restoration
     context.llama_stack_was_running = False
 
+    if is_prow_environment():
+        from tests.e2e.utils.prow_utils import disrupt_llama_stack_pod
+
+        context.llama_stack_was_running = disrupt_llama_stack_pod()
+        return
+
+    # Docker-based disruption
     try:
         result = subprocess.run(
             ["docker", "inspect", "-f", "{{.State.Running}}", "llama-stack"],

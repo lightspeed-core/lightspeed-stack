@@ -28,6 +28,8 @@ from models.responses import (
     ConversationResponse,
     ConversationsListResponse,
     ConversationUpdateResponse,
+    ForbiddenResponse,
+    InternalServerErrorResponse,
 )
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
@@ -546,6 +548,7 @@ class TestGetConversationEndpoint:
         mocker: MockerFixture,
         setup_configuration: AppConfig,
         dummy_request: Request,
+        mock_conversation: MockType,
     ) -> None:
         """Test the endpoint when LlamaStack returns NotFoundError.
 
@@ -561,8 +564,10 @@ class TestGetConversationEndpoint:
             "app.endpoints.conversations_v1.configuration", setup_configuration
         )
         mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
-        mocker.patch("app.endpoints.conversations_v1.retrieve_conversation")
+        mocker.patch(
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            return_value=mock_conversation,
+        )
 
         mock_database_session(mocker, db_turns=[])
 
@@ -598,7 +603,6 @@ class TestGetConversationEndpoint:
         mocker: MockerFixture,
         setup_configuration: AppConfig,
         dummy_request: Request,
-        mock_conversation: MockType,
     ) -> None:
         """Test forbidden access when user lacks permission to read conversation."""
         mocker.patch(
@@ -606,26 +610,20 @@ class TestGetConversationEndpoint:
         )
         mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
         mocker.patch(
-            "app.endpoints.conversations_v1.retrieve_conversation",
-            return_value=mock_conversation,
-        )
-        mocker.patch(
             "authorization.resolvers.NoopAccessResolver.get_actions",
             return_value=set(Action.GET_CONVERSATION),
         )
 
-        mock_row = mocker.Mock()
-        mock_row.user_id = "different_user_id"
-
-        mock_session = mocker.MagicMock()
-        mock_session.query.return_value.filter.return_value.first.return_value = (
-            mock_row
+        # Mock validate_and_retrieve_conversation to raise 403 Forbidden
+        forbidden_response = ForbiddenResponse.conversation(
+            action="read",
+            resource_id=VALID_CONVERSATION_ID,
+            user_id=MOCK_AUTH[0],
         )
-
-        mock_session.__enter__.return_value = mock_session
-        mock_session.__exit__.return_value = None
-
-        mocker.patch("utils.endpoints.get_session", return_value=mock_session)
+        mocker.patch(
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            side_effect=HTTPException(**forbidden_response.model_dump()),
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(
@@ -783,22 +781,21 @@ class TestGetConversationEndpoint:
         assert "Conversation not found" in detail["response"]  # type: ignore
 
     @pytest.mark.asyncio
-    async def test_no_sessions_found_in_get_conversation(
+    async def test_no_items_found_in_get_conversation(
         self,
         mocker: MockerFixture,
         setup_configuration: AppConfig,
         dummy_request: Request,
         mock_conversation: MockType,
     ) -> None:
-        """Test when no sessions are found for the conversation."""
+        """Test when no items are found for the conversation (empty data list)."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
             "app.endpoints.conversations_v1.configuration", setup_configuration
         )
         mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
         mocker.patch(
-            "app.endpoints.conversations_v1.retrieve_conversation",
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
             return_value=mock_conversation,
         )
 
@@ -826,12 +823,55 @@ class TestGetConversationEndpoint:
         assert "Conversation not found" in detail["response"]  # type: ignore
 
     @pytest.mark.asyncio
-    async def test_sqlalchemy_error_in_get_conversation(
+    async def test_api_status_error_in_get_conversation(
         self,
         mocker: MockerFixture,
         setup_configuration: AppConfig,
         dummy_request: Request,
         mock_conversation: MockType,
+    ) -> None:
+        """Test when APIStatusError is raised during conversation retrieval."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            return_value=mock_conversation,
+        )
+
+        mock_database_session(mocker, db_turns=[])
+
+        mock_client = mocker.AsyncMock()
+        mock_client.conversations.items.list.side_effect = APIStatusError(
+            message="Conversation not found",
+            response=mocker.Mock(status_code=404, request=None),
+            body=None,
+        )
+        mock_client_holder = mocker.patch(
+            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+        )
+        mock_client_holder.return_value.get_client.return_value = mock_client
+
+        with pytest.raises(HTTPException) as exc_info:
+            await get_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                auth=MOCK_AUTH,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "Conversation not found" in detail["response"]  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_sqlalchemy_error_in_get_conversation(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
     ) -> None:
         """Test when SQLAlchemyError is raised during conversation retrieval."""
         mock_authorization_resolvers(mocker)
@@ -839,10 +879,67 @@ class TestGetConversationEndpoint:
             "app.endpoints.conversations_v1.configuration", setup_configuration
         )
         mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        # Mock validate_and_retrieve_conversation to raise HTTPException (which it does
+        # when it catches SQLAlchemyError internally)
+        database_error_response = InternalServerErrorResponse.database_error()
         mocker.patch(
-            "app.endpoints.conversations_v1.retrieve_conversation",
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            side_effect=HTTPException(**database_error_response.model_dump()),
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await get_conversation_endpoint_handler(
+                request=dummy_request,
+                conversation_id=VALID_CONVERSATION_ID,
+                auth=MOCK_AUTH,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "Database" in detail["response"]  # type: ignore
+
+    @pytest.mark.asyncio
+    async def test_sqlalchemy_error_retrieving_turns_in_get_conversation(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,
+        dummy_request: Request,
+        mock_conversation: MockType,
+    ) -> None:
+        """Test when SQLAlchemyError is raised while retrieving conversation turns."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch(
+            "app.endpoints.conversations_v1.configuration", setup_configuration
+        )
+        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch(
+            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
             return_value=mock_conversation,
+        )
+
+        # Mock get_session to raise SQLAlchemyError when querying UserTurn
+        mock_session = mocker.Mock()
+
+        def query_side_effect(model_class: type[Any]) -> Any:
+            if model_class == UserTurn:
+                mock_query = mocker.Mock()
+                mock_query_chain = (
+                    mock_query.filter_by.return_value.order_by.return_value.all
+                )
+                mock_query_chain.side_effect = SQLAlchemyError("Database error")
+                return mock_query
+            # Return a default mock for other queries
+            return mocker.Mock()
+
+        mock_session.query.side_effect = query_side_effect
+
+        mock_session_context = mocker.MagicMock()
+        mock_session_context.__enter__.return_value = mock_session
+        mock_session_context.__exit__.return_value = None
+        mocker.patch(
+            "app.endpoints.conversations_v1.get_session",
+            return_value=mock_session_context,
         )
 
         mock_client = mocker.AsyncMock()
@@ -856,43 +953,6 @@ class TestGetConversationEndpoint:
             "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
-
-        mock_session = mocker.Mock()
-
-        def query_side_effect(model_class: type[Any]) -> Any:
-            if model_class == UserTurn:
-                mock_query = mocker.Mock()
-                mock_query.filter_by.return_value.order_by.return_value.all.side_effect = SQLAlchemyError(  # pylint: disable=line-too-long
-                    "Database error"
-                )
-                return mock_query
-            if model_class == UserConversation:
-                mock_query = mocker.Mock()
-                mock_query.filter_by.return_value.first.return_value = mock_conversation
-                return mock_query
-            # Other queries work normally
-            mock_query = mocker.Mock()
-            mock_query.all.return_value = []
-            mock_query.filter_by.return_value.all.return_value = []
-            mock_query.filter_by.return_value.first.return_value = None
-            return mock_query
-
-        mock_session.query.side_effect = query_side_effect
-        mock_session_context = mocker.MagicMock()
-        mock_session_context.__enter__.return_value = mock_session
-        mock_session_context.__exit__.return_value = None
-        mocker.patch(
-            "app.endpoints.conversations_v1.get_session",
-            return_value=mock_session_context,
-        )
-        mocker.patch(
-            "utils.endpoints.get_session",
-            return_value=mock_session_context,
-        )
-        mocker.patch(
-            "utils.endpoints.can_access_conversation",
-            return_value=True,
-        )
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(

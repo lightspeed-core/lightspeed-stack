@@ -15,95 +15,98 @@ The service includes comprehensive user data collection capabilities for various
 
 <!-- vim-markdown-toc GFM -->
 
-* [lightspeed-stack](#lightspeed-stack)
-  * [About The Project](#about-the-project)
 * [Architecture](#architecture)
 * [Prerequisites](#prerequisites)
 * [Installation](#installation)
 * [Run LCS locally](#run-lcs-locally)
 * [Configuration](#configuration)
-  * [LLM Compatibility](#llm-compatibility)
-  * [Set LLM provider and model](#set-llm-provider-and-model)
-  * [Selecting provider and model](#selecting-provider-and-model)
-    * [Provider and model selection in REST API request](#provider-and-model-selection-in-rest-api-request)
-    * [Default provider and model](#default-provider-and-model)
-  * [Supported providers](#supported-providers)
-  * [Integration with Llama Stack](#integration-with-llama-stack)
-  * [Llama Stack as separate server](#llama-stack-as-separate-server)
-    * [MCP Server and Tool Configuration](#mcp-server-and-tool-configuration)
-      * [Configuring MCP Servers](#configuring-mcp-servers)
-      * [Configuring MCP Server Authentication](#configuring-mcp-server-authentication)
-        * [1. Static Tokens from Files (Recommended for Service Credentials)](#1-static-tokens-from-files-recommended-for-service-credentials)
-        * [2. Kubernetes Service Account Tokens (For K8s Deployments)](#2-kubernetes-service-account-tokens-for-k8s-deployments)
-        * [3. Client-Provided Tokens (For Per-User Authentication)](#3-client-provided-tokens-for-per-user-authentication)
-        * [Client-Authenticated MCP Servers Discovery](#client-authenticated-mcp-servers-discovery)
-        * [Combining Authentication Methods](#combining-authentication-methods)
-        * [Authentication Method Comparison](#authentication-method-comparison)
-        * [Important: Automatic Server Skipping](#important-automatic-server-skipping)
-    * [Llama Stack project and configuration](#llama-stack-project-and-configuration)
-    * [Check connection to Llama Stack](#check-connection-to-llama-stack)
-  * [Llama Stack as client library](#llama-stack-as-client-library)
-  * [Llama Stack version check](#llama-stack-version-check)
-  * [User data collection](#user-data-collection)
-  * [System prompt](#system-prompt)
-    * [System Prompt Path](#system-prompt-path)
-    * [System Prompt Literal](#system-prompt-literal)
-    * [Custom Profile](#custom-profile)
-    * [Control model/provider overrides via authorization](#control-modelprovider-overrides-via-authorization)
-  * [Safety Shields](#safety-shields)
-  * [Authentication](#authentication)
-  * [CORS](#cors)
-    * [Default values](#default-values)
-  * [Allow credentials](#allow-credentials)
+    * [LLM Compatibility](#llm-compatibility)
+    * [Set LLM provider and model](#set-llm-provider-and-model)
+    * [Selecting provider and model](#selecting-provider-and-model)
+        * [Provider and model selection in REST API request](#provider-and-model-selection-in-rest-api-request)
+        * [Default provider and model](#default-provider-and-model)
+    * [Supported providers](#supported-providers)
+    * [Integration with Llama Stack](#integration-with-llama-stack)
+    * [Llama Stack as separate server](#llama-stack-as-separate-server)
+        * [MCP Server and Tool Configuration](#mcp-server-and-tool-configuration)
+            * [Configuring MCP Servers](#configuring-mcp-servers)
+            * [Configuring MCP Server Authentication](#configuring-mcp-server-authentication)
+                * [1. Static Tokens from Files (Recommended for Service Credentials)](#1-static-tokens-from-files-recommended-for-service-credentials)
+                * [2. Kubernetes Service Account Tokens (For K8s Deployments)](#2-kubernetes-service-account-tokens-for-k8s-deployments)
+                * [3. Client-Provided Tokens (For Per-User Authentication)](#3-client-provided-tokens-for-per-user-authentication)
+                * [4. OAuth (For MCP Servers Requiring OAuth)](#4-oauth-for-mcp-servers-requiring-oauth)
+                * [Client-Authenticated MCP Servers Discovery](#client-authenticated-mcp-servers-discovery)
+                * [Combining Authentication Methods](#combining-authentication-methods)
+                * [Authentication Method Comparison](#authentication-method-comparison)
+                * [Important: Automatic Server Skipping](#important-automatic-server-skipping)
+        * [Llama Stack project and configuration](#llama-stack-project-and-configuration)
+        * [Check connection to Llama Stack](#check-connection-to-llama-stack)
+    * [Llama Stack as client library](#llama-stack-as-client-library)
+    * [Llama Stack version check](#llama-stack-version-check)
+    * [User data collection](#user-data-collection)
+    * [System prompt](#system-prompt)
+        * [System Prompt Path](#system-prompt-path)
+        * [System Prompt Literal](#system-prompt-literal)
+        * [Custom Profile](#custom-profile)
+        * [Control model/provider overrides via authorization](#control-modelprovider-overrides-via-authorization)
+    * [Safety Shields](#safety-shields)
+    * [Authentication](#authentication)
+    * [CORS](#cors)
+        * [Default values](#default-values)
+    * [Allow credentials](#allow-credentials)
 * [RAG Configuration](#rag-configuration)
-  * [Example configurations for inference](#example-configurations-for-inference)
+    * [Example configurations for inference](#example-configurations-for-inference)
 * [Usage](#usage)
-  * [Make targets](#make-targets)
-  * [Running Linux container image](#running-linux-container-image)
-  * [Building Container Images](#building-container-images)
-    * [Llama-Stack as Separate Service (Server Mode)](#llama-stack-as-separate-service-server-mode)
-      * [macOS (arm64)](#macos-arm64)
-    * [Llama-Stack as Library (Library Mode)](#llama-stack-as-library-library-mode)
-      * [macOS](#macos)
-    * [Verify it's running properly](#verify-its-running-properly)
-  * [Custom Container Image](#custom-container-image)
+    * [CLI options](#cli-options)
+        * [Dumping configuration](#dumping-configuration)
+        * [Dumping configuration schema](#dumping-configuration-schema)
+    * [Make targets](#make-targets)
+    * [Running Linux container image](#running-linux-container-image)
+    * [Building Container Images](#building-container-images)
+        * [Llama-Stack as Separate Service (Server Mode)](#llama-stack-as-separate-service-server-mode)
+            * [macOS (arm64)](#macos-arm64)
+        * [Llama-Stack as Library (Library Mode)](#llama-stack-as-library-library-mode)
+            * [macOS](#macos)
+        * [Verify it's running properly](#verify-its-running-properly)
+    * [Custom Container Image](#custom-container-image)
 * [Endpoints](#endpoints)
-  * [OpenAPI specification](#openapi-specification)
-  * [Readiness Endpoint](#readiness-endpoint)
-  * [Liveness Endpoint](#liveness-endpoint)
+    * [OpenAPI specification](#openapi-specification)
+    * [Readiness Endpoint](#readiness-endpoint)
+    * [Liveness Endpoint](#liveness-endpoint)
+    * [Models endpoint](#models-endpoint)
 * [Database structure](#database-structure)
 * [Publish the service as Python package on PyPI](#publish-the-service-as-python-package-on-pypi)
-  * [Generate distribution archives to be uploaded into Python registry](#generate-distribution-archives-to-be-uploaded-into-python-registry)
-  * [Upload distribution archives into selected Python registry](#upload-distribution-archives-into-selected-python-registry)
-  * [Packages on PyPI and Test PyPI](#packages-on-pypi-and-test-pypi)
+    * [Generate distribution archives to be uploaded into Python registry](#generate-distribution-archives-to-be-uploaded-into-python-registry)
+    * [Upload distribution archives into selected Python registry](#upload-distribution-archives-into-selected-python-registry)
+    * [Packages on PyPI and Test PyPI](#packages-on-pypi-and-test-pypi)
 * [Contributing](#contributing)
 * [Testing](#testing)
 * [License](#license)
 * [Additional tools](#additional-tools)
-  * [Utility to generate OpenAPI schema](#utility-to-generate-openapi-schema)
-    * [Path](#path)
-    * [Usage](#usage-1)
-  * [Makefile target to generate OpenAPI specification](#makefile-target-to-generate-openapi-specification)
-  * [Utility to generate documentation from source code](#utility-to-generate-documentation-from-source-code)
-    * [Path](#path-1)
-    * [Usage](#usage-2)
+    * [Utility to generate OpenAPI schema](#utility-to-generate-openapi-schema)
+        * [Path](#path)
+        * [Usage](#usage-1)
+    * [Makefile target to generate OpenAPI specification](#makefile-target-to-generate-openapi-specification)
+    * [Utility to generate documentation from source code](#utility-to-generate-documentation-from-source-code)
+        * [Path](#path-1)
+        * [Usage](#usage-2)
 * [Data Export Integration](#data-export-integration)
-  * [Quick Integration](#quick-integration)
-  * [Documentation](#documentation)
+    * [Quick Integration](#quick-integration)
+    * [Documentation](#documentation)
 * [Project structure](#project-structure)
-  * [Configuration classes](#configuration-classes)
-  * [REST API](#rest-api)
-  * [Sequence diagrams](#sequence-diagrams)
-    * [Query endpoint REST API handler](#query-endpoint-rest-api-handler)
-  * [Streaming query endpoint REST API handler](#streaming-query-endpoint-rest-api-handler)
-  * [Versioning](#versioning)
+    * [Configuration classes](#configuration-classes)
+    * [REST API](#rest-api)
+    * [Sequence diagrams](#sequence-diagrams)
+        * [Query endpoint REST API handler](#query-endpoint-rest-api-handler)
+    * [Streaming query endpoint REST API handler](#streaming-query-endpoint-rest-api-handler)
+    * [Versioning](#versioning)
 * [Development Tools](#development-tools)
-  * [MCP Mock Server](#mcp-mock-server)
+    * [MCP Mock Server](#mcp-mock-server)
 * [Konflux](#konflux)
-  * [Updating Dependencies for Hermetic Builds](#updating-dependencies-for-hermetic-builds)
-    * [When to Update Dependency Files](#when-to-update-dependency-files)
-    * [Updating Python Dependencies](#updating-python-dependencies)
-    * [Updating RPM Dependencies](#updating-rpm-dependencies)
+    * [Updating Dependencies for Hermetic Builds](#updating-dependencies-for-hermetic-builds)
+        * [When to Update Dependency Files](#when-to-update-dependency-files)
+        * [Updating Python Dependencies](#updating-python-dependencies)
+        * [Updating RPM Dependencies](#updating-rpm-dependencies)
 
 <!-- vim-markdown-toc -->
 
@@ -127,14 +130,14 @@ Lightspeed Core Stack is based on the FastAPI framework (Uvicorn). The service i
 
   Lightspeed Stack supports multiple LLM providers.
 
-  | Provider       | Setup Documentation                                                   |
-  |----------------|-----------------------------------------------------------------------|
-  | OpenAI         | https://platform.openai.com                                           |
-  | Azure OpenAI   | https://azure.microsoft.com/en-us/products/ai-services/openai-service |
-  | Google VertexAI| https://cloud.google.com/vertex-ai |
-  | IBM WatsonX | https://www.ibm.com/products/watsonx |
-  | RHOAI (vLLM)   | See tests/e2e-prow/rhoai/configs/run.yaml                             |
-  | RHEL AI (vLLM) | See tests/e2e/configs/run-rhelai.yaml                                 |
+  | Provider        | Setup Documentation                                                   |
+  |-----------------|-----------------------------------------------------------------------|
+  | OpenAI          | https://platform.openai.com                                           |
+  | Azure OpenAI    | https://azure.microsoft.com/en-us/products/ai-services/openai-service |
+  | Google VertexAI | https://cloud.google.com/vertex-ai                                    |
+  | IBM WatsonX     | https://www.ibm.com/products/watsonx                                  |
+  | RHOAI (vLLM)    | See tests/e2e-prow/rhoai/configs/run.yaml                             |
+  | RHEL AI (vLLM)  | See tests/e2e/configs/run-rhelai.yaml                                 |
 
   See `docs/providers.md` for configuration details.
 
@@ -197,17 +200,17 @@ To quickly get hands on LCS, we can run it using the default configurations prov
 Lightspeed Core Stack (LCS) provides support for Large Language Model providers. The models listed in the table below represent specific examples that have been tested within LCS.
 __Note__: Support for individual models is dependent on the specific inference provider's implementation within the currently supported version of Llama Stack.
 
-| Provider | Model                                          | Tool Calling | provider_type  | Example                                                                    |
-| -------- | ---------------------------------------------- | ------------ | -------------- | -------------------------------------------------------------------------- |
-| OpenAI   | gpt-5, gpt-4o, gpt4-turbo, gpt-4.1, o1, o3, o4 | Yes          | remote::openai | [1](examples/openai-faiss-run.yaml) [2](examples/openai-pgvector-run.yaml) |
-| OpenAI   | gpt-3.5-turbo, gpt-4                           | No           | remote::openai |                                                                            |
-| RHOAI (vLLM)| meta-llama/Llama-3.2-1B-Instruct           | Yes          | remote::vllm   | [1](tests/e2e-prow/rhoai/configs/run.yaml)                                     |
-| RHAIIS (vLLM)| meta-llama/Llama-3.1-8B-Instruct           | Yes          | remote::vllm   | [1](tests/e2e/configs/run-rhaiis.yaml)                                     |
-| RHEL AI (vLLM)| meta-llama/Llama-3.1-8B-Instruct           | Yes          | remote::vllm   | [1](tests/e2e/configs/run-rhelai.yaml)                                     |
-| Azure    | gpt-5, gpt-5-mini, gpt-5-nano, gpt-4o-mini, o3-mini, o4-mini, o1| Yes          | remote::azure  | [1](examples/azure-run.yaml)                                               |
-| Azure    |  gpt-5-chat, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano,  o1-mini | No or limited         | remote::azure  |  |
-| VertexAI    | google/gemini-2.0-flash, google/gemini-2.5-flash, google/gemini-2.5-pro [^1] | Yes          | remote::vertexai  | [1](examples/vertexai-run.yaml)                                               |
-| WatsonX    | meta-llama/llama-3-3-70b-instruct | Yes          | remote::watsonx  | [1](examples/watsonx-run.yaml)                                               |
+| Provider       | Model                                                                        | Tool Calling  | provider_type    | Example                                                                    |
+|----------------|------------------------------------------------------------------------------|---------------|------------------|----------------------------------------------------------------------------|
+| OpenAI         | gpt-5, gpt-4o, gpt-4-turbo, gpt-4.1, o1, o3, o4                               | Yes           | remote::openai   | [1](examples/openai-faiss-run.yaml) [2](examples/openai-pgvector-run.yaml) |
+| OpenAI         | gpt-3.5-turbo, gpt-4                                                         | No            | remote::openai   |                                                                            |
+| RHOAI (vLLM)   | meta-llama/Llama-3.2-1B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e-prow/rhoai/configs/run.yaml)                                 |
+| RHAIIS (vLLM)  | meta-llama/Llama-3.1-8B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e/configs/run-rhaiis.yaml)                                     |
+| RHEL AI (vLLM) | meta-llama/Llama-3.1-8B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e/configs/run-rhelai.yaml)                                     |
+| Azure          | gpt-5, gpt-5-mini, gpt-5-nano, gpt-4o-mini, o3-mini, o4-mini, o1             | Yes           | remote::azure    | [1](examples/azure-run.yaml)                                               |
+| Azure          | gpt-5-chat, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano,  o1-mini                    | No or limited | remote::azure    |                                                                            |
+| VertexAI       | google/gemini-2.0-flash, google/gemini-2.5-flash, google/gemini-2.5-pro [^1] | Yes           | remote::vertexai | [1](examples/vertexai-run.yaml)                                            |
+| WatsonX        | meta-llama/llama-3-3-70b-instruct                                            | Yes           | remote::watsonx  | [1](examples/watsonx-run.yaml)                                             |
 
 [^1]: List of models is limited by design in llama-stack, future versions will probably allow to use more models (see [here](https://github.com/llamastack/llama-stack/blob/release-0.3.x/llama_stack/providers/remote/inference/vertexai/vertexai.py#L54))
 
@@ -337,8 +340,9 @@ Each MCP server requires two fields:
 - `name`: Unique identifier for the MCP server
 - `url`: The endpoint where the MCP server is running
 
-And one optional field:
+And optional fields:
 - `provider_id`: MCP provider identification (defaults to `"model-context-protocol"`)
+- `headers`: List of HTTP header names to automatically forward from the incoming request to this MCP server (see [Automatic Header Propagation](#5-automatic-header-propagation-for-gateway-injected-headers))
 
 **Minimal Example:**
 
@@ -354,7 +358,7 @@ In addition to the basic configuration above, you can configure authentication h
 
 #### Configuring MCP Server Authentication
 
-Lightspeed Core Stack supports three methods for authenticating with MCP servers, each suited for different use cases:
+Lightspeed Core Stack supports four methods for authenticating with MCP servers, each suited for different use cases:
 
 ##### 1. Static Tokens from Files (Recommended for Service Credentials)
 
@@ -391,7 +395,7 @@ mcp_servers:
       Authorization: "kubernetes"    # Uses user's k8s token from request auth
 ```
 
-**Note:** Kubernetes token-based MCP authorization only works when Lightspeed Core Stack is configured with Kubernetes authentication (`authentication.k8s`). For any other authentication types, MCP servers configured with `Authorization: "kubernetes"` are removed from the available MCP servers list.
+**Note:** Kubernetes token-based MCP authorization only works when Lightspeed Core Stack is configured with Kubernetes authentication (`authentication.module` is `k8s`) or `noop-with-token`. For any other authentication types, MCP servers configured with `Authorization: "kubernetes"` are removed from the available MCP servers list.
 
 ##### 3. Client-Provided Tokens (For Per-User Authentication)
 
@@ -418,6 +422,55 @@ curl -X POST "http://localhost:8080/v1/query" \
 **Note**: `MCP-HEADERS` is an **HTTP request header** containing a JSON-encoded dictionary. The dictionary is keyed by **server name** (not URL), matching the `name` field in your MCP server configuration. Each server name maps to another dictionary containing the HTTP headers to forward to that specific MCP server.
 
 **Structure**: `MCP-HEADERS: {"<server-name>": {"<header-name>": "<header-value>", ...}, ...}`
+
+##### 4. OAuth (For MCP Servers Requiring OAuth)
+
+Use the special `"oauth"` keyword when the MCP server requires OAuth and the client will supply a token (e.g. via `MCP-HEADERS` after obtaining it from an OAuth flow):
+
+```yaml
+mcp_servers:
+  - name: "oauth-protected-service"
+    url: "https://mcp.example.com"
+    authorization_headers:
+      Authorization: "oauth"    # Token provided via MCP-HEADERS (from OAuth flow)
+```
+
+When no token is provided for an OAuth-configured server, the service may respond with **401 Unauthorized** and a **`WWW-Authenticate`** header (probed from the MCP server). Clients can use this to drive an OAuth flow and then retry with the token in `MCP-HEADERS`.
+
+##### 5. Automatic Header Propagation (For Gateway-Injected Headers)
+
+Use the `headers` field to automatically forward specific headers from the incoming HTTP request to an MCP server. This is designed for environments where infrastructure components (e.g. API gateways) inject headers that MCP servers need but clients cannot provide.
+
+**HCC Use Case:** In Hybrid Cloud Console (HCC), the gateway strips the client's `Authorization` header and replaces it with `x-rh-identity` (a base64-encoded user identity). Backend services use `x-rh-identity` to identify users. Since clients never see this header, the existing `MCP-HEADERS` mechanism cannot be used. Instead, configure `headers` to automatically forward it:
+
+```yaml
+mcp_servers:
+  - name: "rbac"
+    url: "http://rbac-service:8080"
+    headers:
+      - x-rh-identity
+      - x-rh-insights-request-id
+```
+
+When a request arrives at Lightspeed with these headers, they are automatically extracted and forwarded to the `rbac` MCP server. No client-side configuration is needed.
+
+**Key behaviors:**
+
+- **Case-insensitive matching**: Header names in the allowlist are matched case-insensitively against the incoming request.
+- **Missing headers are skipped**: If a header in the allowlist is not present on the incoming request, it is silently skipped. The MCP server is **not** skipped (unlike `authorization_headers` behavior).
+- **Additive with other methods**: Propagated headers can be combined with `authorization_headers` and `MCP-HEADERS`. If the same header name appears in both `authorization_headers` and `headers`, the `authorization_headers` value takes precedence.
+
+**Combined example:**
+
+```yaml
+mcp_servers:
+  - name: "notifications"
+    url: "http://notifications-service:8080"
+    headers:
+      - x-rh-identity                              # From incoming request
+    authorization_headers:
+      X-API-Key: "/var/secrets/notifications-key"   # Static service credential
+```
 
 ##### Client-Authenticated MCP Servers Discovery
 
@@ -475,11 +528,13 @@ mcp_servers:
 
 ##### Authentication Method Comparison
 
-| Method | Use Case | Configuration | Token Scope | Example |
-|--------|----------|---------------|-------------|---------|
-| **Static File** | Service tokens, API keys | File path in config | Global (all users) | `"/var/secrets/token"` |
-| **Kubernetes** | K8s service accounts | `"kubernetes"` keyword | Per-user (from auth) | `"kubernetes"` |
-| **Client** | User-specific tokens | `"client"` keyword + HTTP header | Per-request | `"client"` |
+| Method                 | Use Case                         | Configuration                    | Token Scope                        | Example                       |
+|------------------------|----------------------------------|----------------------------------|------------------------------------|-------------------------------|
+| **Static File**        | Service tokens, API keys         | File path in config              | Global (all users)                 | `"/var/secrets/token"`        |
+| **Kubernetes**         | K8s service accounts             | `"kubernetes"` keyword           | Per-user (from auth)               | `"kubernetes"`                |
+| **Client**             | User-specific tokens             | `"client"` keyword + HTTP header | Per-request                        | `"client"`                    |
+| **OAuth**              | OAuth-protected MCP servers      | `"oauth"` keyword + HTTP header  | Per-request (from OAuth flow)      | `"oauth"`                     |
+| **Header Propagation** | Gateway-injected headers (HCC)   | `headers` list                   | Per-request (from incoming request)| `headers: [x-rh-identity]`   |
 
 ##### Important: Automatic Server Skipping
 
@@ -488,6 +543,7 @@ mcp_servers:
 **Examples:**
 - A server with `Authorization: "kubernetes"` will be skipped if the user's request doesn't include a Kubernetes token
 - A server with `Authorization: "client"` will be skipped if no `MCP-HEADERS` are provided in the request
+- A server with `Authorization: "oauth"` and no token in `MCP-HEADERS` may cause the API to return **401 Unauthorized** with a **`WWW-Authenticate`** header (so the client can perform OAuth and retry)
 - A server with multiple headers will be skipped if **any** required header cannot be resolved
 
 Skipped servers are logged as warnings. Check Lightspeed Core logs to see which servers were skipped and why.
@@ -656,6 +712,13 @@ utilized:
 1. If the `shield_id` starts with `inout_`, it will be used both for input and output.
 1. Otherwise, it will be used for input only.
 
+Additionally, an optional list parameter `shield_ids` can be specified in `/query` and `/streaming_query` endpoints to override which shields are applied. You can use this config to disable shield overrides:
+
+```yaml
+customization:
+  disable_shield_ids_override: true
+```
+
 ## Authentication
 
 See [authentication and authorization](docs/auth.md).
@@ -733,6 +796,22 @@ options:
 
 ```
 
+## CLI options
+
+### Dumping configuration
+
+If `--dump-configuration` CLI option is provided, LCORE writes the active
+configuration to a file named `configuration.json` and exits (exits with status
+1 on failure).
+
+### Dumping configuration schema
+
+If `--dump-schema` CLI option is provided, LCORE writes the active
+configuration schema to a file named `schema.json` and exits (exits with status
+1 on failure).
+
+
+
 ## Make targets
 
 ```
@@ -769,7 +848,7 @@ verify                            Run all linters
 distribution-archives             Generate distribution archives to be uploaded into Python registry
 upload-distribution-archives      Upload distribution archives into Python registry
 konflux-requirements              generate hermetic requirements.*.txt file for konflux build
-konflux-rpm-lock 	                generate rpm.lock.yaml file for konflux build
+konflux-rpm-lock 	              generate rpm.lock.yaml file for konflux build
 ```
 
 ## Running Linux container image
@@ -1010,6 +1089,62 @@ The liveness endpoint performs a basic health check to verify the service is ali
   "alive": true
 }
 ```
+
+## Models endpoint
+
+**Endpoint:** `GET /v1/models`
+
+Process GET requests and returns a list of available models from the Llama
+Stack service. It is possible to specify "model_type" query parameter that is
+used as a filter. For example, if model type is set to "llm", only LLM models
+will be returned:
+
+```bash
+curl http://localhost:8080/v1/models?model_type=llm
+```
+
+The "model_type" query parameter is optional. When not specified, all models
+will be returned.
+
+**Response Body:**
+```json
+{
+  "models": [
+    {
+      "identifier": "sentence-transformers/.llama",
+      "metadata": {
+        "embedding_dimension": 384
+      },
+      "api_model_type": "embedding",
+      "provider_id": "sentence-transformers",
+      "type": "model",
+      "provider_resource_id": ".llama",
+      "model_type": "embedding"
+    },
+    {
+      "identifier": "openai/gpt-4o-mini",
+      "metadata": {},
+      "api_model_type": "llm",
+      "provider_id": "openai",
+      "type": "model",
+      "provider_resource_id": "gpt-4o-mini",
+      "model_type": "llm"
+    },
+    {
+      "identifier": "sentence-transformers/nomic-ai/nomic-embed-text-v1.5",
+      "metadata": {
+        "embedding_dimension": 768
+      },
+      "api_model_type": "embedding",
+      "provider_id": "sentence-transformers",
+      "type": "model",
+      "provider_resource_id": "nomic-ai/nomic-embed-text-v1.5",
+      "model_type": "embedding"
+    }
+  ]
+}
+```
+
 
 # Database structure
 

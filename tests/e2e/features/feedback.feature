@@ -198,7 +198,7 @@ Feature: feedback endpoint API tests
         }
         """
 
-  Scenario: Check if feedback submittion fails when invald sentiment is passed
+  Scenario: Check if feedback submission fails when invalid sentiment is passed
     Given The system is in default state
     And A new conversation is initialized
     And The feedback is enabled

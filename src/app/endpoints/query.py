@@ -2,9 +2,8 @@
 
 """Handler for REST API call to provide answer to query using Response API."""
 
-import logging
-from datetime import UTC, datetime
-from typing import Annotated, Any, cast
+import datetime
+from typing import Annotated, Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from llama_stack_api.openai_responses import OpenAIResponseObject
@@ -25,6 +24,7 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from models.config import Action
 from models.requests import QueryRequest
+
 from models.responses import (
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -40,7 +40,7 @@ from utils.endpoints import (
     check_configuration_loaded,
     validate_and_retrieve_conversation,
 )
-from utils.mcp_headers import mcp_headers_dependency
+from utils.mcp_headers import mcp_headers_dependency, McpHeaders
 from utils.query import (
     consume_query_tokens,
     handle_known_apistatus_errors,
@@ -51,21 +51,26 @@ from utils.query import (
 )
 from utils.quota import check_tokens_available, get_available_quotas
 from utils.responses import (
-    build_tool_call_summary,
-    extract_text_from_response_output_item,
-    extract_token_usage,
+    build_turn_summary,
+    deduplicate_referenced_documents,
+    extract_vector_store_ids_from_tools,
     get_topic_summary,
-    parse_referenced_documents,
     prepare_responses_params,
 )
 from utils.shields import (
     append_turn_to_conversation,
     run_shield_moderation,
+    validate_shield_ids_override,
 )
 from utils.suid import normalize_conversation_id
-from utils.types import ResponsesApiParams, TurnSummary
+from utils.types import (
+    ResponsesApiParams,
+    TurnSummary,
+)
+from utils.vector_search import perform_vector_search, format_rag_context_for_injection
+from log import get_logger
 
-logger = logging.getLogger("app.endpoints.handlers")
+logger = get_logger(__name__)
 router = APIRouter(tags=["query"])
 
 query_response: dict[int | str, dict[str, Any]] = {
@@ -77,9 +82,9 @@ query_response: dict[int | str, dict[str, Any]] = {
         examples=["endpoint", "conversation read", "model override"]
     ),
     404: NotFoundResponse.openapi_response(
-        examples=["model", "conversation", "provider"]
+        examples=["conversation", "model", "provider"]
     ),
-    413: PromptTooLongResponse.openapi_response(),
+    # 413: PromptTooLongResponse.openapi_response(),
     422: UnprocessableEntityResponse.openapi_response(),
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
@@ -93,7 +98,7 @@ async def query_endpoint_handler(
     request: Request,
     query_request: QueryRequest,
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
-    mcp_headers: dict[str, dict[str, str]] = Depends(mcp_headers_dependency),
+    mcp_headers: McpHeaders = Depends(mcp_headers_dependency),
 ) -> QueryResponse:
     """
     Handle request to the /query endpoint using Responses API.
@@ -117,13 +122,18 @@ async def query_endpoint_handler(
     """
     check_configuration_loaded(configuration)
 
-    started_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    started_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     user_id, _, _skip_userid_check, token = auth
     # Check token availability
     check_tokens_available(configuration.quota_limiters, user_id)
 
     # Enforce RBAC: optionally disallow overriding model/provider in requests
-    validate_model_provider_override(query_request, request.state.authorized_actions)
+    validate_model_provider_override(
+        query_request.model, query_request.provider, request.state.authorized_actions
+    )
+
+    # Validate shield_ids override if provided
+    validate_shield_ids_override(query_request, configuration)
 
     # Validate attachments if provided
     if query_request.attachments:
@@ -145,6 +155,16 @@ async def query_endpoint_handler(
 
     client = AsyncLlamaStackClientHolder().get_client()
 
+    _, _, doc_ids_from_chunks, pre_rag_chunks = await perform_vector_search(
+        client, query_request.query, query_request.solr
+    )
+
+    rag_context = format_rag_context_for_injection(pre_rag_chunks)
+    if rag_context:
+        # safest: mutate a local copy so we don't surprise other logic
+        query_request = query_request.model_copy(deep=True)  # pydantic v2
+        query_request.query = query_request.query + rag_context
+
     # Prepare API request parameters
     responses_params = await prepare_responses_params(
         client,
@@ -154,6 +174,7 @@ async def query_endpoint_handler(
         mcp_headers,
         stream=False,
         store=True,
+        request_headers=request.headers,
     )
 
     # Handle Azure token refresh if needed
@@ -165,8 +186,26 @@ async def query_endpoint_handler(
     ):
         client = await update_azure_token(client)
 
+    # Build index identification mapping for RAG source resolution
+    vector_store_ids = extract_vector_store_ids_from_tools(responses_params.tools)
+    rag_id_mapping = configuration.rag_id_mapping
+
     # Retrieve response using Responses API
-    turn_summary = await retrieve_response(client, responses_params)
+    turn_summary = await retrieve_response(
+        client,
+        responses_params,
+        query_request.shield_ids,
+        vector_store_ids,
+        rag_id_mapping,
+    )
+
+    if pre_rag_chunks:
+        turn_summary.rag_chunks = pre_rag_chunks + (turn_summary.rag_chunks or [])
+
+    if doc_ids_from_chunks:
+        turn_summary.referenced_documents = deduplicate_referenced_documents(
+            doc_ids_from_chunks + turn_summary.referenced_documents
+        )
 
     # Get topic summary for new conversation
     if not user_conversation and query_request.generate_topic_summary:
@@ -182,7 +221,6 @@ async def query_endpoint_handler(
         user_id=user_id,
         model_id=responses_params.model,
         token_usage=turn_summary.token_usage,
-        configuration=configuration,
     )
 
     logger.info("Getting available quotas")
@@ -190,16 +228,21 @@ async def query_endpoint_handler(
         quota_limiters=configuration.quota_limiters, user_id=user_id
     )
 
+    completed_at = datetime.datetime.now(datetime.timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     conversation_id = normalize_conversation_id(responses_params.conversation)
+
     logger.info("Storing query results")
     store_query_results(
         user_id=user_id,
         conversation_id=conversation_id,
-        model_id=responses_params.model,
+        model=responses_params.model,
         started_at=started_at,
+        completed_at=completed_at,
         summary=turn_summary,
-        query_request=query_request,
-        configuration=configuration,
+        query=query_request.query,
+        attachments=query_request.attachments,
         skip_userid_check=_skip_userid_check,
         topic_summary=topic_summary,
     )
@@ -222,6 +265,9 @@ async def query_endpoint_handler(
 async def retrieve_response(  # pylint: disable=too-many-locals
     client: AsyncLlamaStackClient,
     responses_params: ResponsesApiParams,
+    shield_ids: Optional[list[str]] = None,
+    vector_store_ids: Optional[list[str]] = None,
+    rag_id_mapping: Optional[dict[str, str]] = None,
 ) -> TurnSummary:
     """
     Retrieve response from LLMs and agents.
@@ -232,26 +278,31 @@ async def retrieve_response(  # pylint: disable=too-many-locals
     Parameters:
         client: The AsyncLlamaStackClient to use for the request.
         responses_params: The Responses API parameters.
+        shield_ids: Optional list of shield IDs for moderation.
+        vector_store_ids: Vector store IDs used in the query for source resolution.
+        rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
 
     Returns:
         TurnSummary: Summary of the LLM response content
     """
-    summary = TurnSummary()
-
+    response: Optional[OpenAIResponseObject] = None
     try:
-        moderation_result = await run_shield_moderation(client, responses_params.input)
-        if moderation_result.blocked:
+        moderation_result = await run_shield_moderation(
+            client, cast(str, responses_params.input), shield_ids
+        )
+        if moderation_result.decision == "blocked":
             # Handle shield moderation blocking
-            violation_message = moderation_result.message or ""
+            violation_message = moderation_result.message
             await append_turn_to_conversation(
                 client,
                 responses_params.conversation,
-                responses_params.input,
+                cast(str, responses_params.input),
                 violation_message,
             )
-            summary.llm_response = violation_message
-            return summary
-        response = await client.responses.create(**responses_params.model_dump())
+            return TurnSummary(llm_response=violation_message)
+        response = await client.responses.create(
+            **responses_params.model_dump(exclude_none=True)
+        )
         response = cast(OpenAIResponseObject, response)
 
     except RuntimeError as e:  # library mode wraps 413 into runtime error
@@ -269,28 +320,6 @@ async def retrieve_response(  # pylint: disable=too-many-locals
         error_response = handle_known_apistatus_errors(e, responses_params.model)
         raise HTTPException(**error_response.model_dump()) from e
 
-    # Process OpenAI response format
-    for output_item in response.output:
-        message_text = extract_text_from_response_output_item(output_item)
-        if message_text:
-            summary.llm_response += message_text
-
-        tool_call, tool_result = build_tool_call_summary(
-            output_item, summary.rag_chunks
-        )
-        if tool_call:
-            summary.tool_calls.append(tool_call)
-        if tool_result:
-            summary.tool_results.append(tool_result)
-
-    logger.info(
-        "Response processing complete - Tool calls: %d, Response length: %d chars",
-        len(summary.tool_calls),
-        len(summary.llm_response),
+    return build_turn_summary(
+        response, responses_params.model, vector_store_ids, rag_id_mapping
     )
-
-    # Extract referenced documents and token usage from Responses API response
-    summary.referenced_documents = parse_referenced_documents(response)
-    summary.token_usage = extract_token_usage(response, responses_params.model)
-
-    return summary

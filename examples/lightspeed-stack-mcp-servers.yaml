@@ -47,3 +47,19 @@ mcp_servers:
     authorization_headers:
       Authorization: "client"  # Special value to forward the client's token
     timeout: 30  # Optional: timeout in seconds (future Llama Stack feature)
+  # Example with automatic header propagation from incoming request (HCC use case)
+  # Headers listed here are automatically extracted from the incoming HTTP request
+  # and forwarded to this MCP server. Useful when infrastructure components (e.g.
+  # HCC Gateway) inject headers that MCP servers need for user identification.
+  - name: "rbac"
+    url: "http://rbac-service:8080"
+    headers:
+      - x-rh-identity
+      - x-rh-insights-request-id
+  # Headers can be combined with authorization_headers (additive)
+  - name: "notifications"
+    url: "http://notifications-service:8080"
+    headers:
+      - x-rh-identity
+    authorization_headers:
+      X-API-Key: "/var/secrets/notifications-api-key"

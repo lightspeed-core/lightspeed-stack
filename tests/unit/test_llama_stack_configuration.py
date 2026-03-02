@@ -78,6 +78,47 @@ def test_construct_vector_stores_section_merge() -> None:
     assert len(output) == 2
 
 
+def test_construct_vector_stores_section_skips_duplicate_from_existing() -> None:
+    """Test skips BYOK entry when vector_store_id already exists in config."""
+    ls_config = {
+        "registered_resources": {
+            "vector_stores": [
+                {"vector_store_id": "store1", "provider_id": "original_provider"},
+            ]
+        }
+    }
+    byok_rag = [
+        {
+            "vector_db_id": "store1",
+            "embedding_model": "test-model",
+            "embedding_dimension": 512,
+        },
+    ]
+    output = construct_vector_stores_section(ls_config, byok_rag)
+    assert len(output) == 1
+    assert output[0]["provider_id"] == "original_provider"
+
+
+def test_construct_vector_stores_section_skips_duplicate_within_byok() -> None:
+    """Test skips duplicate vector_db_id entries within the BYOK RAG list."""
+    ls_config: dict[str, Any] = {}
+    byok_rag = [
+        {
+            "vector_db_id": "store1",
+            "embedding_model": "model-a",
+            "embedding_dimension": 512,
+        },
+        {
+            "vector_db_id": "store1",
+            "embedding_model": "model-b",
+            "embedding_dimension": 768,
+        },
+    ]
+    output = construct_vector_stores_section(ls_config, byok_rag)
+    assert len(output) == 1
+    assert output[0]["embedding_model"] == "model-a"
+
+
 # =============================================================================
 # Test construct_vector_io_providers_section
 # =============================================================================

@@ -1,6 +1,5 @@
 """Configuration loader."""
 
-import logging
 from typing import Any, Optional
 
 # We want to support environment variable replacement in the configuration
@@ -23,6 +22,7 @@ from models.config import (
     DatabaseConfiguration,
     ConversationHistoryConfiguration,
     QuotaHandlersConfiguration,
+    SolrConfiguration,
     SplunkConfiguration,
 )
 
@@ -32,8 +32,9 @@ from cache.cache_factory import CacheFactory
 from quota.quota_limiter import QuotaLimiter
 from quota.token_usage_history import TokenUsageHistory
 from quota.quota_limiter_factory import QuotaLimiterFactory
+from log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class LogicError(Exception):
@@ -362,6 +363,46 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         return self._configuration.deployment_environment
+
+    @property
+    def solr(self) -> Optional[SolrConfiguration]:
+        """Return Solr configuration, or None if not provided."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.solr
+
+    @property
+    def rag_id_mapping(self) -> dict[str, str]:
+        """Return mapping from vector_db_id to rag_id from BYOK RAG config.
+
+        Returns:
+            dict[str, str]: Mapping where keys are llama-stack vector_db_ids
+            and values are user-facing rag_ids from configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return {brag.vector_db_id: brag.rag_id for brag in self._configuration.byok_rag}
+
+    def resolve_index_name(
+        self, vector_store_id: str, rag_id_mapping: Optional[dict[str, str]] = None
+    ) -> str:
+        """Resolve a vector store ID to its user-facing index name.
+
+        Uses the provided mapping or falls back to the BYOK RAG config.
+        If no mapping exists, returns the vector_store_id unchanged.
+
+        Parameters:
+            vector_store_id: The llama-stack vector store identifier.
+            rag_id_mapping: Optional pre-built mapping to avoid repeated lookups.
+
+        Returns:
+            str: The user-facing index name from config, or the original ID.
+        """
+        mapping = rag_id_mapping if rag_id_mapping is not None else self.rag_id_mapping
+        return mapping.get(vector_store_id, vector_store_id)
 
 
 configuration: AppConfig = AppConfig()

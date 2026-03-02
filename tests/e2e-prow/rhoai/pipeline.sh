@@ -2,22 +2,19 @@
 set -euo pipefail
 trap 'echo "❌ Pipeline failed at line $LINENO"; exit 1' ERR
 
+# Signal to e2e tests that we're running in Prow/OpenShift
+export RUNNING_PROW=true
 
 #========================================
 # 1. GLOBAL CONFIG
 #========================================
 NAMESPACE="e2e-rhoai-dsc"
-MODEL_NAME="meta-llama/Llama-3.2-1B-Instruct"
+MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
 PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Get llama-stack image from GitHub Containerfile
-echo "Fetching llama-stack image from GitHub..."
-LLAMA_STACK_IMAGE=$(curl -sL https://raw.githubusercontent.com/lightspeed-core/lightspeed-stack/main/test.containerfile | grep -m1 '^FROM' | awk '{print $2}')
-if [ -z "$LLAMA_STACK_IMAGE" ]; then
-  echo "❌ Failed to fetch llama-stack image from GitHub"
-  exit 1
-fi
-echo "  -> Found llama-stack image: $LLAMA_STACK_IMAGE"
+# RHOAI llama-stack image
+LLAMA_STACK_IMAGE="${LLAMA_STACK_IMAGE:-quay.io/rhoai/odh-llama-stack-core-rhel9:rhoai-3.3}"
+echo "Using llama-stack image: $LLAMA_STACK_IMAGE"
 export LLAMA_STACK_IMAGE
 
 #========================================
@@ -77,12 +74,12 @@ oc secrets link default quay-lightspeed-pull-secret --for=pull -n "$NAMESPACE" 2
 #========================================
 echo "===== Setting up configmaps ====="
 
-curl -sL -o tool_chat_template_llama3.2_json.jinja \
-    https://raw.githubusercontent.com/vllm-project/vllm/main/examples/tool_chat_template_llama3.2_json.jinja \
+curl -sL -o tool_chat_template_llama3.1_json.jinja \
+    https://raw.githubusercontent.com/vllm-project/vllm/main/examples/tool_chat_template_llama3.1_json.jinja \
     || { echo "❌ Failed to download jinja template"; exit 1; }
 
 oc create configmap vllm-chat-template -n "$NAMESPACE" \
-    --from-file=tool_chat_template_llama3.2_json.jinja --dry-run=client -o yaml | oc apply -f -
+    --from-file=tool_chat_template_llama3.1_json.jinja --dry-run=client -o yaml | oc apply -f -
 
 
 #========================================
@@ -97,7 +94,7 @@ oc get pods -n "$NAMESPACE"
 # 6. WAIT FOR POD & TEST API
 #========================================
 source pod.env
-oc wait --for=condition=Ready pod/$POD_NAME -n $NAMESPACE --timeout=300s
+oc wait --for=condition=Ready pod/$POD_NAME -n $NAMESPACE --timeout=600s
 
 echo "===== Testing vLLM endpoint ====="
 start_time=$(date +%s)
@@ -154,14 +151,89 @@ oc delete pod vllm-test-curl -n "$NAMESPACE" --ignore-not-found=true
 
 
 #========================================
-# 7. DEPLOY LIGHTSPEED STACK AND LLAMA STACK
+# 7. DEPLOY MOCK SERVERS (JWKS & MCP)
+#========================================
+echo "===== Deploying Mock Servers ====="
+
+# Navigate to repo root to access server scripts
+REPO_ROOT="$(cd "$PIPELINE_DIR/../../.." && pwd)"
+
+# Create ConfigMaps from server scripts
+echo "Creating mock server ConfigMaps..."
+oc create configmap mock-jwks-script -n "$NAMESPACE" \
+    --from-file=server.py="$REPO_ROOT/tests/e2e/mock_jwks_server/server.py" \
+    --dry-run=client -o yaml | oc apply -f -
+
+oc create configmap mcp-mock-server-script -n "$NAMESPACE" \
+    --from-file=server.py="$REPO_ROOT/dev-tools/mcp-mock-server/server.py" \
+    --dry-run=client -o yaml | oc apply -f -
+
+# Deploy mock server pods and services
+echo "Deploying mock-jwks..."
+oc apply -f "$PIPELINE_DIR/manifests/lightspeed/mock-jwks.yaml"
+
+echo "Deploying mcp-mock-server..."
+oc apply -f "$PIPELINE_DIR/manifests/lightspeed/mcp-mock-server.yaml"
+
+# Wait for mock servers to be ready
+echo "Waiting for mock servers to be ready..."
+oc wait pod/mock-jwks pod/mcp-mock-server \
+    -n "$NAMESPACE" --for=condition=Ready --timeout=120s || {
+    echo "⚠️  Mock servers not ready, checking status..."
+    oc get pods -n "$NAMESPACE" | grep -E "mock-jwks|mcp-mock" || true
+    oc describe pod mock-jwks -n "$NAMESPACE" 2>/dev/null | tail -20 || true
+    oc describe pod mcp-mock-server -n "$NAMESPACE" 2>/dev/null | tail -20 || true
+    echo "❌ Mock servers failed to become ready"
+    exit 1
+}
+echo "✅ Mock servers deployed"
+
+#========================================
+# 8. DEPLOY LIGHTSPEED STACK AND LLAMA STACK
 #========================================
 echo "===== Deploying Services ====="
 
 create_secret api-url-secret --from-literal=key="$KSVC_URL"
 oc create configmap llama-stack-config -n "$NAMESPACE" --from-file=configs/run.yaml
 oc create configmap lightspeed-stack-config -n "$NAMESPACE" --from-file=configs/lightspeed-stack.yaml
-oc create configmap test-script-cm -n "$NAMESPACE" --from-file=run-tests.sh
+
+# Create RAG data ConfigMap from the e2e test RAG data
+echo "Creating RAG data ConfigMap..."
+RAG_DB_PATH="$REPO_ROOT/tests/e2e/rag/kv_store.db"
+if [ -f "$RAG_DB_PATH" ]; then
+    # Extract vector store ID from kv_store.db using Python (sqlite3 CLI may not be available)
+    echo "Extracting vector store ID from kv_store.db..."
+    # Key format is: vector_stores:v3::vs_xxx or openai_vector_stores:v3::vs_xxx
+    export FAISS_VECTOR_STORE_ID=$(python3 -c "
+import sqlite3
+import re
+conn = sqlite3.connect('$RAG_DB_PATH')
+cursor = conn.cursor()
+cursor.execute(\"SELECT key FROM kvstore WHERE key LIKE 'vector_stores:v%::%' LIMIT 1\")
+row = cursor.fetchone()
+if row:
+    # Extract the vs_xxx ID from the key
+    match = re.search(r'(vs_[a-f0-9-]+)', row[0])
+    if match:
+        print(match.group(1))
+conn.close()
+" 2>/dev/null || echo "")
+    
+    if [ -n "$FAISS_VECTOR_STORE_ID" ]; then
+        echo "✅ Extracted FAISS_VECTOR_STORE_ID: $FAISS_VECTOR_STORE_ID"
+        # Create secret for llama-stack to use
+        create_secret faiss-vector-store-secret --from-literal=id="$FAISS_VECTOR_STORE_ID"
+    else
+        echo "❌ No vector_store found in $RAG_DB_PATH - FAISS tests will fail!"
+    fi
+
+    gzip -c "$RAG_DB_PATH" > /tmp/kv_store.db.gz
+    oc create configmap rag-data -n "$NAMESPACE" --from-file=kv_store.db.gz=/tmp/kv_store.db.gz
+    rm /tmp/kv_store.db.gz
+    echo "✅ RAG data ConfigMap created from $RAG_DB_PATH"
+else
+    echo "⚠️  No kv_store.db found at $RAG_DB_PATH"
+fi
 
 ./pipeline-services.sh
 
@@ -191,7 +263,6 @@ if ! oc wait pod/lightspeed-stack-service pod/llama-stack-service \
   exit 1
 fi
 echo "✅ Both service pods are ready"
-sleep 30
 
 oc get pods -n "$NAMESPACE"
 
@@ -205,7 +276,7 @@ oc describe pod llama-stack-service -n "$NAMESPACE" || true
 
 
 #========================================
-# 8. EXTRACT LCS IP & STORE
+# 9. EXPOSE SERVICE & START PORT-FORWARD
 #========================================
 oc label pod lightspeed-stack-service pod=lightspeed-stack-service -n $NAMESPACE
 
@@ -215,54 +286,78 @@ oc expose pod lightspeed-stack-service \
   --type=ClusterIP \
   -n $NAMESPACE
 
-E2E_LSC_HOSTNAME="lightspeed-stack-service-svc.$NAMESPACE.svc.cluster.local"
-echo "LCS IP: $E2E_LSC_HOSTNAME"
+# Kill any existing processes on ports 8080 and 8000
+echo "Checking for existing processes on ports 8080 and 8000..."
+lsof -ti:8080 | xargs kill -9 2>/dev/null || true
+lsof -ti:8000 | xargs kill -9 2>/dev/null || true
 
-create_secret lcs-ip-secret --from-literal=key="$E2E_LSC_HOSTNAME"
+# Start port-forward for lightspeed-stack
+echo "Starting port-forward for lightspeed-stack..."
+oc port-forward svc/lightspeed-stack-service-svc 8080:8080 -n $NAMESPACE &
+PF_LCS_PID=$!
 
+# Start port-forward for mock-jwks (needed for RBAC tests to get tokens)
+echo "Starting port-forward for mock-jwks..."
+oc port-forward svc/mock-jwks 8000:8000 -n $NAMESPACE &
+PF_JWKS_PID=$!
 
-#========================================
-# 9. LOGGING & TEST EXECUTION
-#========================================
-echo "===== Running test pod ====="
-./pipeline-test-pod.sh 
-
-sleep 20
-oc get pods -n "$NAMESPACE"
-
-# Wait until tests are complete
-oc wait --for=condition=Ready=True pod/test-pod -n $NAMESPACE --timeout=900s || oc wait --for=condition=Ready=False pod/test-pod -n $NAMESPACE --timeout=60s
-
-start_time=$(date +%s)
-timeout=2400
-while true; do
-  sleep 120
-  
-  PHASE=$(oc get pod test-pod -n $NAMESPACE -o jsonpath='{.status.phase}')
-  echo "Current phase test-pod: $PHASE"
-  if [[ "$PHASE" == "Succeeded" || "$PHASE" == "Failed" ]]; then
-      break
+# Wait for port-forward to be usable (app may not be listening immediately; port-forward can drop)
+echo "Waiting for port-forward to lightspeed-stack to be ready..."
+for i in $(seq 1 36); do
+  if curl -sf http://localhost:8080/v1/models > /dev/null 2>&1; then
+    echo "✅ Port-forward ready after $(( i * 5 ))s"
+    break
   fi
-
-  current_time=$(date +%s)
-  elapsed=$((current_time - start_time))
-
-  if (( elapsed >= timeout )); then
-      echo "⏰ Timeout reached ($timeout seconds). Stopping test."
-      exit 1
+  if [ $i -eq 36 ]; then
+    echo "❌ Port-forward to lightspeed-stack never became ready (3 min)"
+    kill $PF_LCS_PID 2>/dev/null || true
+    kill $PF_JWKS_PID 2>/dev/null || true
+    exit 1
   fi
-
-  oc get pods -n "$NAMESPACE"
+  # If port-forward process died, restart it (e.g. "connection refused" / "lost connection to pod")
+  if ! kill -0 $PF_LCS_PID 2>/dev/null; then
+    echo "Port-forward died, restarting (attempt $i)..."
+    oc port-forward svc/lightspeed-stack-service-svc 8080:8080 -n $NAMESPACE &
+    PF_LCS_PID=$!
+  fi
+  sleep 5
 done
-oc logs test-pod -n $NAMESPACE || oc describe pod test-pod -n $NAMESPACE || true
+
+export E2E_LSC_HOSTNAME="localhost"
+export E2E_JWKS_HOSTNAME="localhost"
+echo "LCS accessible at: http://$E2E_LSC_HOSTNAME:8080"
+echo "Mock JWKS accessible at: http://$E2E_JWKS_HOSTNAME:8000"
 
 
-TEST_EXIT_CODE=$(oc get pod test-pod -n $NAMESPACE -o jsonpath='{.status.containerStatuses[0].state.terminated.exitCode}')
+
+#========================================
+# 10. RUN TESTS
+#========================================
+echo "===== Running E2E tests ====="
+
+# Ensure run-tests.sh is executable
+chmod +x ./run-tests.sh
+
+# Run tests and cleanup port-forwards. Disable ERR trap so we can capture test exit code and reap
+# killed port-forwards without the trap firing (ERR fires on any non-zero exit, not only when set -e would exit).
+trap - ERR
+set +e
+export E2E_EXIT_CODE_FILE="${PIPELINE_DIR}/.e2e_exit_code"
+./run-tests.sh
+# Read exit code from file so we get the real test result (shell can overwrite $? with "PID Killed" before we use it)
+TEST_EXIT_CODE=$(cat "$E2E_EXIT_CODE_FILE" 2>/dev/null || echo 1)
+# Kill first so wait doesn't block (if a port-forward is still running, wait would hang)
+kill $PF_LCS_PID 2>/dev/null || true
+kill $PF_JWKS_PID 2>/dev/null || true
+wait $PF_LCS_PID 2>/dev/null || true
+wait $PF_JWKS_PID 2>/dev/null || true
+set -e
+trap 'echo "❌ Pipeline failed at line $LINENO"; exit 1' ERR
 
 echo "===== E2E COMPLETE ====="
 
-if [ "${TEST_EXIT_CODE:-2}" -ne 0 ]; then
-    echo "❌ E2E tests failed with exit code $TEST_EXIT_CODE (pod/test-pod failed)"
+if [ "${TEST_EXIT_CODE:-1}" -ne 0 ]; then
+    echo "❌ E2E tests failed with exit code $TEST_EXIT_CODE"
 else
     echo "✅ E2E tests succeeded"
 fi
