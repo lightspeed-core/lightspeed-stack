@@ -1,5 +1,5 @@
-# Custom Red Hat llama-stack image with missing dependencies
-FROM quay.io/rhoai/odh-llama-stack-core-rhel9:rhoai-3.4 
+# Upstream llama-stack built from Red Hat UBI
+FROM registry.access.redhat.com/ubi9/ubi-minimal
 
 USER root
 
