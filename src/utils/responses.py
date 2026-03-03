@@ -1079,6 +1079,9 @@ def _extract_text_from_content(
 
     text_fragments: list[str] = []
     for part in content:
+        if isinstance(part, str):
+            text_fragments.append(part.strip())
+            continue
         if part.type == "input_text":
             input_text_part = cast(InputTextPart, part)
             if input_text_part.text:
