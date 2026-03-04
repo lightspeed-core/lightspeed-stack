@@ -301,6 +301,19 @@ def store_query_results(  # pylint: disable=too-many-arguments
         tool_results=summary.tool_results,
     )
     try:
+        cache_entry = CacheEntry(
+            query=query_request.query,
+            response=summary.llm_response,
+            provider=provider_id,
+            model=model_id,
+            started_at=started_at,
+            completed_at=completed_at,
+            referenced_documents=summary.referenced_documents,
+            tool_calls=summary.tool_calls,
+            tool_results=summary.tool_results,
+            attachments=query_request.attachments,
+        )
+
         logger.info("Storing conversation in cache")
         store_conversation_into_cache(
             user_id=user_id,
