@@ -56,7 +56,6 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
-  @skip     # will be fixed in LCORE-1368
   Scenario: Check if tools endpoint succeeds when MCP auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -93,14 +92,13 @@ Feature: MCP tests
                     "parameters": [],
                     "provider_id": "",
                     "toolgroup_id": "mcp-oauth",
-                    "server_source": "http://localhost:3001",
+                    "server_source": "http://mock-mcp:3001",
                     "type": ""
                 }
             ]
         }
     """
 
-  @skip     # will be fixed in LCORE-1366
   Scenario: Check if query endpoint succeeds when MCP auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -118,7 +116,6 @@ Feature: MCP tests
         | hello                     |
     And The token metrics should have increased
 
-  @skip     # will be fixed in LCORE-1366
   Scenario: Check if streaming_query endpoint succeeds when MCP auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -137,7 +134,6 @@ Feature: MCP tests
         | hello                     |
     And The token metrics should have increased
 
-  @skip     # will be fixed in LCORE-1368
   Scenario: Check if tools endpoint reports error when MCP invalid auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -157,7 +153,6 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
-  @skip     # will be fixed in LCORE-1366
   Scenario: Check if query endpoint reports error when MCP invalid auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -180,7 +175,6 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
-  @skip     # will be fixed in LCORE-1366
   Scenario: Check if streaming_query endpoint reports error when MCP invalid auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to

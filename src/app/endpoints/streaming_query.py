@@ -73,6 +73,7 @@ from utils.query import (
 from utils.quota import check_tokens_available, get_available_quotas
 from utils.responses import (
     build_mcp_tool_call_from_arguments_done,
+    responses_params_to_request_body,
     build_tool_call_summary,
     build_tool_result_from_mcp_output_item_done,
     deduplicate_referenced_documents,
@@ -303,7 +304,7 @@ async def retrieve_response_generator(
             )
         # Retrieve response stream (may raise exceptions)
         response = await context.client.responses.create(
-            **responses_params.model_dump(exclude_none=True)
+            **responses_params_to_request_body(responses_params),
         )
         # Store pre-RAG documents for later merging
         turn_summary.pre_rag_documents = doc_ids_from_chunks

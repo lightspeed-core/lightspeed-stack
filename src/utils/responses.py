@@ -65,6 +65,33 @@ from log import get_logger
 logger = get_logger(__name__)
 
 
+def responses_params_to_request_body(params: ResponsesApiParams) -> dict[str, Any]:
+    """Build request body for Responses API from ResponsesApiParams.
+
+    Serializes params and ensures MCP tool authorization is included (the
+    llama_stack_api marks it Field(exclude=True), so it is omitted by
+    model_dump() otherwise).
+
+    Parameters:
+        params: The Responses API parameters.
+
+    Returns:
+        Dict suitable for client.responses.create(**result).
+    """
+    body = params.model_dump(exclude_none=True)
+    tools = getattr(params, "tools", None)
+    if tools is not None:
+        tools_out: list[dict[str, Any]] = []
+        for tool in tools:
+            tool_dump = tool.model_dump(exclude_none=True)
+            auth = getattr(tool, "authorization", None)
+            if auth is not None:
+                tool_dump["authorization"] = auth
+            tools_out.append(tool_dump)
+        body["tools"] = tools_out
+    return body
+
+
 async def get_topic_summary(
     question: str, client: AsyncLlamaStackClient, model_id: str
 ) -> str:
@@ -391,20 +418,20 @@ async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-
             if h_value is not None:
                 headers[name] = h_value
 
+        uses_oauth = (
+            constants.MCP_AUTH_OAUTH
+            in mcp_server.resolved_authorization_headers.values()
+        )
+
+        if uses_oauth:
+            await probe_mcp_oauth_and_raise_401(
+                mcp_server.url, authorization=headers.get("Authorization", None)
+            )
+
         # Skip server if auth headers were configured but not all could be resolved
         if mcp_server.authorization_headers and len(headers) != len(
             mcp_server.authorization_headers
         ):
-            # If OAuth was required and no headers passed, probe endpoint and forward
-            # 401 with WWW-Authenticate so the client can perform OAuth
-            uses_oauth = (
-                constants.MCP_AUTH_OAUTH
-                in mcp_server.resolved_authorization_headers.values()
-            )
-            if uses_oauth and (
-                mcp_headers is None or not mcp_headers.get(mcp_server.name)
-            ):
-                await probe_mcp_oauth_and_raise_401(mcp_server.url)
             logger.warning(
                 "Skipping MCP server %s: required %d auth headers but only resolved %d",
                 mcp_server.name,

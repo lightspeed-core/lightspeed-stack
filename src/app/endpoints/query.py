@@ -56,6 +56,7 @@ from utils.responses import (
     extract_vector_store_ids_from_tools,
     get_topic_summary,
     prepare_responses_params,
+    responses_params_to_request_body,
 )
 from utils.shields import (
     append_turn_to_conversation,
@@ -301,7 +302,7 @@ async def retrieve_response(  # pylint: disable=too-many-locals
             )
             return TurnSummary(llm_response=violation_message)
         response = await client.responses.create(
-            **responses_params.model_dump(exclude_none=True)
+            **responses_params_to_request_body(responses_params),
         )
         response = cast(OpenAIResponseObject, response)
 

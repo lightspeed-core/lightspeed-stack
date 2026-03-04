@@ -45,10 +45,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # pylint: disable=invalid-name
         """Handle GET requests."""
-        if self.path == "/health":
-            self._json_response({"status": "ok"})
-        else:
-            self._require_oauth()
+        if self._parse_auth() is None:
+            if self.path == "/health":
+                self._json_response({"status": "ok"})
+            else:
+                self._require_oauth()
+            return
+
+        self._json_response({"status": "ok"})
 
     def do_POST(self) -> None:  # pylint: disable=invalid-name
         """Handle POST requests."""

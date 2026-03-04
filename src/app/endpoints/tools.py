@@ -156,9 +156,7 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
             continue
         except (AuthenticationError, AuthenticationRequiredError) as e:
             if toolgroup.mcp_endpoint:
-                await probe_mcp_oauth_and_raise_401(
-                    toolgroup.mcp_endpoint.uri, chain_from=e
-                )
+                await probe_mcp_oauth_and_raise_401(toolgroup.mcp_endpoint.uri)
             error_response = UnauthorizedResponse(cause=str(e))
             raise HTTPException(**error_response.model_dump()) from e
         except APIConnectionError as e:

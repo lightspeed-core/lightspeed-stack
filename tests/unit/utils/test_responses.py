@@ -599,6 +599,7 @@ class TestGetMCPTools:
         mocker.patch("utils.responses.configuration", mock_config)
 
         mock_resp = mocker.Mock()
+        mock_resp.status = 401
         mock_resp.headers = {"WWW-Authenticate": 'Bearer error="invalid_token"'}
         mock_session = mocker.MagicMock()
         mock_get_cm = mocker.AsyncMock()
