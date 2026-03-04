@@ -191,6 +191,17 @@ async def query_endpoint_handler(
     vector_store_ids = extract_vector_store_ids_from_tools(responses_params.tools)
     rag_id_mapping = configuration.rag_id_mapping
 
+    # Get topic summary for new conversation before main response so it is not
+    # cancelled by MCP session cleanup (MCPSessionManager.close_all) that runs
+    # after retrieve_response completes.
+    if not user_conversation and query_request.generate_topic_summary:
+        logger.debug("Generating topic summary for new conversation")
+        topic_summary = await get_topic_summary(
+            query_request.query, client, responses_params.model
+        )
+    else:
+        topic_summary = None
+
     # Retrieve response using Responses API
     turn_summary = await retrieve_response(
         client,
@@ -207,15 +218,6 @@ async def query_endpoint_handler(
         turn_summary.referenced_documents = deduplicate_referenced_documents(
             doc_ids_from_chunks + turn_summary.referenced_documents
         )
-
-    # Get topic summary for new conversation
-    if not user_conversation and query_request.generate_topic_summary:
-        logger.debug("Generating topic summary for new conversation")
-        topic_summary = await get_topic_summary(
-            query_request.query, client, responses_params.model
-        )
-    else:
-        topic_summary = None
 
     logger.info("Consuming tokens")
     consume_query_tokens(

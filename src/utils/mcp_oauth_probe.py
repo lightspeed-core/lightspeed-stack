@@ -42,7 +42,6 @@ async def probe_mcp_oauth_and_raise_401(
         timeout = aiohttp.ClientTimeout(total=10)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(url, headers=headers) as resp:
-                print(resp.status)
                 if resp.status != 401:
                     return
                 www_auth = resp.headers.get("WWW-Authenticate")

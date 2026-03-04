@@ -432,7 +432,7 @@ def _register_interrupt_callback(
     return guard
 
 
-async def generate_response(
+async def generate_response(  # pylint: disable=too-many-statements
     generator: AsyncIterator[str],
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
@@ -507,17 +507,25 @@ async def generate_response(
 
     # Post-stream side effects: only run when streaming finished successfully
 
-    # Get topic summary for new conversations if needed
+    # Get topic summary for new conversations if needed. Guard against
+    # CancelledError from MCP session cleanup (MCPSessionManager.close_all)
+    # so we still yield stream_end_event and complete the ASGI response.
     topic_summary = None
     if not context.query_request.conversation_id:
         should_generate = context.query_request.generate_topic_summary
         if should_generate:
-            logger.debug("Generating topic summary for new conversation")
-            topic_summary = await get_topic_summary(
-                context.query_request.query,
-                context.client,
-                responses_params.model,
-            )
+            try:
+                logger.debug("Generating topic summary for new conversation")
+                topic_summary = await get_topic_summary(
+                    context.query_request.query,
+                    context.client,
+                    responses_params.model,
+                )
+            except asyncio.CancelledError:
+                logger.debug(
+                    "Topic summary cancelled (e.g. MCP cleanup); completing without it"
+                )
+                topic_summary = None
 
     # Consume tokens
     logger.info("Consuming tokens")
