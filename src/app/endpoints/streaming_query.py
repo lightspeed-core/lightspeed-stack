@@ -56,7 +56,6 @@ from models.responses import (
     UnauthorizedResponse,
     UnprocessableEntityResponse,
 )
-from utils.types import ReferencedDocument
 from utils.endpoints import (
     check_configuration_loaded,
     validate_and_retrieve_conversation,
@@ -186,29 +185,10 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
 
     client = AsyncLlamaStackClientHolder().get_client()
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    _, _, doc_ids_from_chunks, pre_rag_chunks = await perform_vector_search(
-        client, query_request.query, query_request.solr
-    )
-
-    rag_context = format_rag_context_for_injection(pre_rag_chunks)
-    if rag_context:
-=======
-    # Build RAG context from BYOK and Solr sources
-    rag_context = await build_rag_context(client, query_request, configuration)
-
-    # Inject RAG context into query
-    if rag_context.context_text:
-        # Mutate a local copy to avoid surprising other logic
->>>>>>> 2ace88f7 (Add chunk prioritization and always RAG support)
-        query_request = query_request.model_copy(deep=True)
-        query_request.query = query_request.query + rag_context.context_text
-=======
     # Build RAG context from Inline RAG sources
-    inline_rag_context = await build_rag_context(client, query_request, configuration)
->>>>>>> a4075c6d (Address review: rename always RAG to inline RAG, Solr config to OKP, fix query mutation)
-
+    inline_rag_context = await build_rag_context(
+        client, query_request.query, query_request.vector_store_ids, query_request.solr
+    )
     # Prepare API request parameters
     responses_params = await prepare_responses_params(
         client=client,
@@ -291,15 +271,7 @@ async def retrieve_response_generator(
     Args:
         responses_params: The Responses API parameters
         context: The response generator context
-<<<<<<< HEAD
-<<<<<<< HEAD
-        doc_ids_from_chunks: List of ReferencedDocument objects extracted from static RAG
-=======
-        pre_rag_documents: Referenced documents from pre-query RAG (BYOK + Solr)
->>>>>>> 2ace88f7 (Add chunk prioritization and always RAG support)
-=======
-        inline_rag_documents: Referenced documents from pre-query RAG (BYOK + Solr)
->>>>>>> a4075c6d (Address review: rename always RAG to inline RAG, Solr config to OKP, fix query mutation)
+        inline_rag_documents: Referenced documents from inline  RAG (BYOK + Solr)
 
     Returns:
         tuple[AsyncIterator[str], TurnSummary]: The response generator and turn summary
@@ -771,25 +743,10 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
         rag_id_mapping=context.rag_id_mapping,
     )
 
-<<<<<<< HEAD
+    # Merge pre-RAG documents with tool-based documents and deduplicate
     turn_summary.referenced_documents = deduplicate_referenced_documents(
-        tool_based_documents + turn_summary.pre_rag_documents
+        turn_summary.inline_rag_documents + tool_based_documents
     )
-=======
-    # Merge pre-RAG documents with tool-based documents (similar to query.py)
-    if turn_summary.inline_rag_documents:
-        all_documents = turn_summary.inline_rag_documents + tool_based_documents
-        seen = set()
-        deduplicated_documents = []
-        for doc in all_documents:
-            key = (doc.doc_url, doc.doc_title)
-            if key not in seen:
-                seen.add(key)
-                deduplicated_documents.append(doc)
-        turn_summary.referenced_documents = deduplicated_documents
-    else:
-        turn_summary.referenced_documents = tool_based_documents
->>>>>>> a4075c6d (Address review: rename always RAG to inline RAG, Solr config to OKP, fix query mutation)
 
 
 def stream_http_error_event(

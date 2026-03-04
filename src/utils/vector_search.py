@@ -16,6 +16,7 @@ import constants
 from configuration import configuration
 from log import get_logger
 from models.responses import ReferencedDocument
+from utils.responses import resolve_vector_store_ids
 from utils.types import RAGChunk, RAGContext
 
 logger = get_logger(__name__)
@@ -45,10 +46,10 @@ def _build_query_params(solr: Optional[dict[str, Any]] = None) -> dict[str, Any]
         "mode": constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE,
     }
     logger.debug("Initial params: %s", params)
-    logger.debug("query_request.solr: %s", query_request.solr)
+    logger.debug("query_request.solr: %s", solr)
 
-    if query_request.solr:
-        params["solr"] = query_request.solr
+    if solr:
+        params["solr"] = solr
         logger.debug("Final params with solr filters: %s", params)
     else:
         logger.debug("No solr filters provided")
@@ -316,7 +317,6 @@ def _process_solr_chunks_for_documents(
 async def _fetch_byok_rag(
     client: AsyncLlamaStackClient,
     query: str,
-    configuration: AppConfig,
     vector_store_ids: Optional[list[str]] = None,
 ) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
     """Fetch chunks and documents from BYOK RAG sources.
@@ -347,7 +347,14 @@ async def _fetch_byok_rag(
             if vs_id != constants.SOLR_DEFAULT_VECTOR_STORE_ID
         ]
     else:
-        vector_store_ids_to_query = configuration.inline_byok_vector_store_ids
+        inline_rag_ids = [
+            rid
+            for rid in configuration.configuration.rag.inline
+            if rid != constants.OKP_RAG_ID
+        ]
+        vector_store_ids_to_query = resolve_vector_store_ids(
+            inline_rag_ids, configuration.configuration.byok_rag
+        )
 
     # If inline byok stores are not defined, we disable the inline RAG for backward compatibility
     if not vector_store_ids_to_query:
@@ -410,8 +417,8 @@ async def _fetch_byok_rag(
 
 async def _fetch_solr_rag(
     client: AsyncLlamaStackClient,
-    query_request: QueryRequest,
-    configuration: AppConfig,
+    query: str,
+    solr: Optional[dict[str, Any]] = None,
 ) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
     """Fetch chunks and documents from Solr RAG source.
 
@@ -486,8 +493,9 @@ async def _fetch_solr_rag(
 
 async def build_rag_context(
     client: AsyncLlamaStackClient,
-    query_request: QueryRequest,
-    configuration: AppConfig,
+    query: str,
+    vector_store_ids: Optional[list[str]],
+    solr: Optional[dict[str, Any]] = None,
 ) -> RAGContext:
     """Build RAG context by fetching and merging chunks from all enabled sources.
 
@@ -512,7 +520,7 @@ async def build_rag_context(
     # Merge chunks from all sources (BYOK + Solr)
     context_chunks = byok_chunks + solr_chunks
 
-    context_text = _format_rag_context(context_chunks, query_request.query)
+    context_text = _format_rag_context(context_chunks, query)
 
     logger.debug(
         "Inline RAG context built: %d chunks, %d characters",

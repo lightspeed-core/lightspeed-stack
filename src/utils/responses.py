@@ -167,14 +167,19 @@ async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-position
         return None
 
     toolgroups: list[InputTool] = []
-    # Per-request vector_store_ids override takes priority.
-    # When not provided, use config-based tool list (or None = all stores).
-    effective_ids = (
-        vector_store_ids
-        if vector_store_ids is not None
-        else configuration.tool_vector_store_ids
-    )
-    effective_ids = await get_vector_store_ids(client, effective_ids)
+
+    # Priority: per-request IDs > rag.tool config > all registered stores.
+    # In all cases, customer-facing rag_ids are translated to internal vector_db_ids.
+    # IDs fetched from llama-stack are already internal and need no translation.
+    byok_rags = configuration.configuration.byok_rag
+    if vector_store_ids is not None:
+        effective_ids: list[str] = resolve_vector_store_ids(vector_store_ids, byok_rags)
+    elif configuration.configuration.rag.tool is not None:
+        effective_ids = resolve_vector_store_ids(
+            configuration.configuration.rag.tool, byok_rags
+        )
+    else:
+        effective_ids = await get_vector_store_ids(client, None)
 
     # Add RAG tools if vector stores are available
     rag_tools = get_rag_tools(effective_ids)
@@ -350,10 +355,11 @@ def extract_vector_store_ids_from_tools(
 def resolve_vector_store_ids(
     vector_store_ids: list[str], byok_rags: list[ByokRag]
 ) -> list[str]:
-    """Translate customer-facing BYOK rag_ids to llama-stack vector_db_ids.
+    """Translate customer-facing rag_ids to llama-stack vector_db_ids.
 
     Each ID is looked up against the BYOK RAG configuration. If a matching
     ``rag_id`` is found, the corresponding ``vector_db_id`` is returned.
+    The special ``okp-rag`` ID is mapped to the Solr vector store ID.
     Otherwise the ID is passed through unchanged (assumed to already be a
     llama-stack vector store ID).
 
@@ -366,6 +372,9 @@ def resolve_vector_store_ids(
         List of llama-stack vector_db_ids ready for the Llama Stack API.
     """
     rag_id_to_vector_db_id = {brag.rag_id: brag.vector_db_id for brag in byok_rags}
+    rag_id_to_vector_db_id[constants.OKP_RAG_ID] = (
+        constants.SOLR_DEFAULT_VECTOR_STORE_ID
+    )
     return [rag_id_to_vector_db_id.get(vs_id, vs_id) for vs_id in vector_store_ids]
 
 

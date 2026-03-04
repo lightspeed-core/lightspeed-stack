@@ -28,7 +28,7 @@ def test_byok_rag_configuration_default_values() -> None:
     assert byok_rag.embedding_model == DEFAULT_EMBEDDING_MODEL
     assert byok_rag.embedding_dimension == DEFAULT_EMBEDDING_DIMENSION
     assert byok_rag.vector_db_id == "vector_db_id"
-    assert byok_rag.db_path == Path("tests/configuration/rag.txt")
+    assert byok_rag.db_path == "tests/configuration/rag.txt"
     assert byok_rag.score_multiplier == DEFAULT_SCORE_MULTIPLIER
 
 

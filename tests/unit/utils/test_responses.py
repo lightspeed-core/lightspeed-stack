@@ -24,7 +24,6 @@ from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 
 import constants
-from configuration import AppConfig
 from models.config import ByokRag, ModelContextProtocolServer
 from models.requests import QueryRequest
 from utils.responses import (
@@ -1122,6 +1121,7 @@ class TestPrepareToolsTranslatesVectorStoreIds:
         mock_byok_rag.vector_db_id = "vs-translated"
         mock_config = mocker.Mock()
         mock_config.configuration.byok_rag = [mock_byok_rag]
+        mock_config.configuration.rag.tool = None
         mocker.patch("utils.responses.configuration", mock_config)
 
         result = await prepare_tools(mock_client, None, False, "token")

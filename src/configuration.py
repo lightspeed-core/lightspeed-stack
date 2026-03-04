@@ -427,63 +427,6 @@ class AppConfig:  # pylint: disable=too-many-public-methods
             raise LogicError("logic error: configuration is not loaded")
         return constants.OKP_RAG_ID in self._configuration.rag.inline
 
-    @property
-    def inline_byok_vector_store_ids(self) -> list[str]:
-        """Return vector store IDs for the BYOK sources listed in rag.inline.
-
-        Maps non-okp rag_ids in rag.inline to their corresponding vector_db_ids
-        from the byok_rag configuration. IDs that are not found in byok_rag are
-        silently skipped.
-
-        Returns:
-            list[str]: Ordered list of vector_db_ids for inline BYOK RAG.
-
-        Raises:
-            LogicError: If the configuration has not been loaded.
-        """
-        if self._configuration is None:
-            raise LogicError("logic error: configuration is not loaded")
-        inline_ids = [
-            rid for rid in self._configuration.rag.inline if rid != constants.OKP_RAG_ID
-        ]
-        rag_to_vdb = {
-            brag.rag_id: brag.vector_db_id for brag in self._configuration.byok_rag
-        }
-        return [rag_to_vdb[rid] for rid in inline_ids if rid in rag_to_vdb]
-
-    @property
-    def tool_vector_store_ids(self) -> Optional[list[str]]:
-        """Return vector store IDs for tool RAG, or None to use all registered stores.
-
-        When rag.tool is None (default), returns None to signal that all
-        registered vector stores should be used (backward compatibility).
-
-        When rag.tool is an explicit list, maps rag_ids to vector_db_ids and
-        includes the OKP vector store ID for the special 'okp-rag' entry.
-
-        Returns:
-            Optional[list[str]]: List of vector_db_ids for tool RAG, or None
-            when all registered stores should be used.
-
-        Raises:
-            LogicError: If the configuration has not been loaded.
-        """
-        if self._configuration is None:
-            raise LogicError("logic error: configuration is not loaded")
-        tool_ids = self._configuration.rag.tool
-        if tool_ids is None:
-            return None
-        rag_to_vdb = {
-            brag.rag_id: brag.vector_db_id for brag in self._configuration.byok_rag
-        }
-        result = []
-        for rid in tool_ids:
-            if rid == constants.OKP_RAG_ID:
-                result.append(constants.SOLR_DEFAULT_VECTOR_STORE_ID)
-            elif rid in rag_to_vdb:
-                result.append(rag_to_vdb[rid])
-        return result
-
     def resolve_index_name(
         self, vector_store_id: str, rag_id_mapping: Optional[dict[str, str]] = None
     ) -> str:

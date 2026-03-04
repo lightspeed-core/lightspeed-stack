@@ -351,7 +351,8 @@ class TestFetchByokRag:
     async def test_byok_no_inline_ids(self, mocker) -> None:  # type: ignore[no-untyped-def]
         """Test when no inline BYOK sources are configured."""
         config_mock = mocker.Mock(spec=AppConfig)
-        config_mock.inline_byok_vector_store_ids = []
+        config_mock.configuration.rag.inline = []
+        config_mock.configuration.byok_rag = []
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
@@ -366,7 +367,11 @@ class TestFetchByokRag:
         """Test successful BYOK RAG fetch when inline IDs are configured."""
         # Mock configuration
         config_mock = mocker.Mock(spec=AppConfig)
-        config_mock.inline_byok_vector_store_ids = ["vs_1"]
+        byok_rag_mock = mocker.Mock()
+        byok_rag_mock.rag_id = "rag_1"
+        byok_rag_mock.vector_db_id = "vs_1"
+        config_mock.configuration.rag.inline = ["rag_1"]
+        config_mock.configuration.byok_rag = [byok_rag_mock]
         config_mock.score_multiplier_mapping = {"vs_1": 1.5}
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         mocker.patch("utils.vector_search.configuration", config_mock)
@@ -451,7 +456,8 @@ class TestBuildRagContext:
     async def test_both_sources_disabled(self, mocker) -> None:  # type: ignore[no-untyped-def]
         """Test when both BYOK inline and Solr inline are not configured."""
         config_mock = mocker.Mock(spec=AppConfig)
-        config_mock.inline_byok_vector_store_ids = []
+        config_mock.configuration.rag.inline = []
+        config_mock.configuration.byok_rag = []
         config_mock.inline_solr_enabled = False
         mocker.patch("utils.vector_search.configuration", config_mock)
 
@@ -467,7 +473,11 @@ class TestBuildRagContext:
         """Test when only inline BYOK is configured."""
         # Mock configuration
         config_mock = mocker.Mock(spec=AppConfig)
-        config_mock.inline_byok_vector_store_ids = ["vs_1"]
+        byok_rag_mock = mocker.Mock()
+        byok_rag_mock.rag_id = "rag_1"
+        byok_rag_mock.vector_db_id = "vs_1"
+        config_mock.configuration.rag.inline = ["rag_1"]
+        config_mock.configuration.byok_rag = [byok_rag_mock]
         config_mock.inline_solr_enabled = False
         config_mock.score_multiplier_mapping = {"vs_1": 1.0}
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
