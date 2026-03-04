@@ -149,7 +149,7 @@ Feature: MCP tests
                         "description":"The query to search for. Can be a natural language sentence or keywords.",
                         "parameter_type":"string",
                         "required":true,
-                        "default": None
+                        "default": null
                         }
                     ],
                     "provider_id":"rag-runtime",
@@ -166,7 +166,7 @@ Feature: MCP tests
                         "description":"Test message",
                         "parameter_type":"string",
                         "required":false,
-                        "default":None
+                        "default": null
                         }
                     ],
                     "provider_id":"model-context-protocol",
@@ -183,7 +183,7 @@ Feature: MCP tests
                         "description":"Test message",
                         "parameter_type":"string",
                         "required":false,
-                        "default":None
+                        "default": null
                         }
                     ],
                     "provider_id":"model-context-protocol",
@@ -200,7 +200,7 @@ Feature: MCP tests
                         "description":"Test message",
                         "parameter_type":"string",
                         "required":false,
-                        "default":None
+                        "default": null
                         }
                     ],
                     "provider_id":"model-context-protocol",
@@ -217,7 +217,7 @@ Feature: MCP tests
                         "description":"Test message",
                         "parameter_type":"string",
                         "required":false,
-                        "default":None
+                        "default": null
                         }
                     ],
                     "provider_id":"model-context-protocol",
