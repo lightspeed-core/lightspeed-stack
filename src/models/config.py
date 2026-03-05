@@ -1699,7 +1699,7 @@ class RagConfiguration(ConfigurationBase):
 
     Controls which RAG sources are used for inline and tool-based retrieval.
 
-    Each strategy lists RAG IDs to include. The special ID ``"okp-rag"`` defined in constants,
+    Each strategy lists RAG IDs to include. The special ID ``"okp"`` defined in constants,
     activates the OKP provider; all other IDs refer to entries in ``byok_rag``.
 
     Backward compatibility:
@@ -1712,14 +1712,14 @@ class RagConfiguration(ConfigurationBase):
         default_factory=list,
         title="Inline RAG IDs",
         description="RAG IDs whose sources are injected as context before the LLM call. "
-        "Use 'okp-rag' to enable OKP inline RAG. Empty by default (no inline RAG).",
+        f"Use '{constants.OKP_RAG_ID}' to enable OKP inline RAG. Empty by default (no inline RAG).",
     )
 
     tool: Optional[list[str]] = Field(
         default=None,
         title="Tool RAG IDs",
         description="RAG IDs made available to the LLM as a file_search tool. "
-        "Use 'okp-rag' to include the OKP vector store. "
+        f"Use '{constants.OKP_RAG_ID}' to include the OKP vector store. "
         "When omitted, all registered BYOK vector stores are used (backward compatibility).",
     )
 
@@ -1728,7 +1728,7 @@ class OkpConfiguration(ConfigurationBase):
     """OKP (Offline Knowledge Portal) provider configuration.
 
     Controls provider-specific behaviour for the OKP vector store.
-    Only relevant when ``"okp-rag"`` is listed in ``rag.inline`` or ``rag.tool``.
+    Only relevant when ``"okp"`` is listed in ``rag.inline`` or ``rag.tool``.
     """
 
     offline: bool = Field(
@@ -1895,7 +1895,7 @@ class Configuration(ConfigurationBase):
     okp: OkpConfiguration = Field(
         default_factory=OkpConfiguration,
         title="OKP configuration",
-        description="OKP provider settings. Only used when 'okp-rag' is listed "
+        description=f"OKP provider settings. Only used when '{constants.OKP_RAG_ID}' is listed "
         "in rag.inline or rag.tool.",
     )
 

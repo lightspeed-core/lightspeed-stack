@@ -6,6 +6,7 @@
 import pytest
 from pydantic import ValidationError
 
+import constants
 from models.config import OkpConfiguration, RagConfiguration
 
 
@@ -25,19 +26,19 @@ class TestRagConfiguration:
         assert config.tool is None
 
     def test_inline_with_okp_rag(self) -> None:
-        """Test inline list including the special okp-rag ID."""
-        config = RagConfiguration(inline=["okp-rag", "store-1"])
-        assert "okp-rag" in config.inline
+        """Test inline list including the special OKP ID."""
+        config = RagConfiguration(inline=[constants.OKP_RAG_ID, "store-1"])
+        assert constants.OKP_RAG_ID in config.inline
         assert "store-1" in config.inline
 
     def test_tool_with_okp_rag_and_byok(self) -> None:
-        """Test tool list with okp-rag and BYOK IDs."""
+        """Test tool list with OKP and BYOK IDs."""
         config = RagConfiguration(
             inline=["store-1"],
-            tool=["okp-rag", "store-1"],
+            tool=[constants.OKP_RAG_ID, "store-1"],
         )
         assert config.inline == ["store-1"]
-        assert config.tool == ["okp-rag", "store-1"]
+        assert config.tool == [constants.OKP_RAG_ID, "store-1"]
 
     def test_tool_empty_list(self) -> None:
         """Test that an explicit empty tool list disables tool RAG."""
@@ -57,10 +58,10 @@ class TestRagConfiguration:
     def test_fully_custom_config(self) -> None:
         """Test RagConfiguration with all fields set."""
         config = RagConfiguration(
-            inline=["okp-rag", "store-1"],
+            inline=[constants.OKP_RAG_ID, "store-1"],
             tool=["store-1"],
         )
-        assert "okp-rag" in config.inline
+        assert constants.OKP_RAG_ID in config.inline
         assert "store-1" in config.inline
         assert config.tool == ["store-1"]
 

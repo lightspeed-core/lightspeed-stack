@@ -278,9 +278,9 @@ The OKP (Offline Knowledge Portal) Solr Vector IO is a read-only vector search p
 ```yaml
 rag:
   inline:
-    - okp-rag           # inject OKP context before the LLM request
+    - okp               # inject OKP context before the LLM request
   tool:
-    - okp-rag           # expose OKP as the file_search tool
+    - okp               # expose OKP as the file_search tool
 
 okp:
   offline: true         # true = use parent_id for source URLs (offline mode)
@@ -288,7 +288,7 @@ okp:
 ```
 
 > [!NOTE]
-> When `okp-rag` is listed in `rag.inline` or `rag.tool`, Lightspeed Stack automatically enriches
+> When `okp` is listed in `rag.inline` or `rag.tool`, Lightspeed Stack automatically enriches
 > the Llama Stack `run.yaml` at startup with the required `vector_io` provider and `registered_resources`
 > entries for the OKP vector store. No manual registration is needed.
 

@@ -359,7 +359,7 @@ def resolve_vector_store_ids(
 
     Each ID is looked up against the BYOK RAG configuration. If a matching
     ``rag_id`` is found, the corresponding ``vector_db_id`` is returned.
-    The special ``okp-rag`` ID is mapped to the Solr vector store ID.
+    The special ``okp`` ID is mapped to the Solr vector store ID.
     Otherwise the ID is passed through unchanged (assumed to already be a
     llama-stack vector store ID).
 

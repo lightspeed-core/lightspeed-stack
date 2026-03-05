@@ -543,7 +543,7 @@ def generate_configuration(
     # Enrichment: BYOK RAG
     enrich_byok_rag(ls_config, config.get("byok_rag", []))
 
-    # Enrichment: Solr - enabled when "okp-rag" appears in either inline or tool list
+    # Enrichment: Solr - enabled when "okp" appears in either inline or tool list
     rag_config = config.get("rag", {})
     inline_ids = rag_config.get("inline") or []
     tool_ids = rag_config.get("tool") or []

@@ -110,7 +110,7 @@ Microsoft Entra ID authentication attributes for Azure.
 
 BYOK (Bring Your Own Knowledge) RAG configuration.
 
-Each entry registers a local vector store with the service. The `rag_id` is the
+Each entry registers a local vector store. The `rag_id` is the
 identifier used in `rag.inline` and `rag.tool` to select which stores to use.
 
 Example:
@@ -548,7 +548,7 @@ Top-level RAG strategy configuration. Controls two complementary retrieval modes
   context on demand from the listed vector stores. Supports both BYOK and OKP.
 
 Each strategy is configured as a list of RAG IDs referencing entries in `byok_rag`.
-The special ID `okp-rag` activates the OKP provider (no `byok_rag` entry needed).
+The special ID `okp` activates the OKP provider (no `byok_rag` entry needed).
 
 **Backward compatibility**: omitting `tool` uses all registered BYOK vector stores
 (equivalent to the old `tool.byok.enabled = True`). Omitting `inline` means no
@@ -561,7 +561,7 @@ rag:
   inline:
     - my-docs       # inject context from my-docs before the LLM request
   tool:
-    - okp-rag       # LLM can search OKP as a tool
+    - okp       # LLM can search OKP as a tool
     - my-docs       # LLM can also search my-docs as a tool
 
 okp:
@@ -571,13 +571,13 @@ okp:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| inline | list[string] | RAG IDs whose content is injected before the LLM request. Use `okp-rag` for OKP. Empty by default (no inline RAG). |
-| tool | list[string] or null | RAG IDs exposed as a `file_search` tool the LLM can invoke. Use `okp-rag` to include OKP. When omitted, all registered BYOK vector stores are used (backward compatibility). |
+| inline | list[string] | RAG IDs whose content is injected before the LLM request. Use `okp` for OKP. Empty by default (no inline RAG). |
+| tool | list[string] or null | RAG IDs exposed as a `file_search` tool the LLM can invoke. Use `okp` to include OKP. When omitted, all registered BYOK vector stores are used (backward compatibility). |
 
 
 ## OkpConfiguration
 
-OKP (Offline Knowledge Portal) provider settings. Only used when `okp-rag` is listed in `rag.inline` or `rag.tool`.
+OKP (Offline Knowledge Portal) provider settings. Only used when `okp` is listed in `rag.inline` or `rag.tool`.
 
 Example:
 

@@ -418,7 +418,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         """Return whether OKP is included in the inline RAG list.
 
         Returns:
-            bool: True if 'okp-rag' appears in rag.inline, False otherwise.
+            bool: True if 'okp' appears in rag.inline, False otherwise.
 
         Raises:
             LogicError: If the configuration has not been loaded.

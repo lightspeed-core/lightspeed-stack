@@ -277,7 +277,7 @@ registered_resources:
 
 > [!TIP]
 > Instead of manually editing `run.yaml`, you can declare your knowledge sources in the `byok_rag`
-> section of `lightspeed-stack.yaml`. The service automatically generates the required configuration
+> section of `lightspeed-stack.yaml`. The lightspeed-stack service automatically generates the required configuration
 > at startup.
 >
 > ```yaml
@@ -297,32 +297,32 @@ registered_resources:
 ### Step 5: Configure RAG Strategy
 
 Add a `rag` section to your `lightspeed-stack.yaml` to choose how BYOK knowledge is used.
-Each list entry is a `rag_id` from `byok_rag`, or the special value `okp-rag` for OKP.
+Each list entry is a `rag_id` from `byok_rag`, or the special value `okp` for OKP.
 
 ```yaml
 rag:
   # Inline RAG: inject context before the LLM request (no tool calls needed)
   inline:
     - my-docs         # rag_id from byok_rag
-    - okp-rag         # include OKP context inline
+    - okp             # include OKP context inline
 
   # Tool RAG: the LLM can call file_search to retrieve context on demand
   # Omit to use all registered BYOK stores (backward compatibility)
   tool:
     - my-docs         # expose this BYOK store as the file_search tool
-    - okp-rag         # expose OKP as the file_search tool
+    - okp             # expose OKP as the file_search tool
 
-# OKP provider settings (only relevant when okp-rag is listed above)
+# OKP provider settings (only relevant when okp is listed above)
 okp:
   offline: true       # true = use parent_id for source URLs, false = use reference_url
 ```
 
 Both modes can be enabled simultaneously. Choose based on your latency and control preferences:
 
-| Mode | When context is fetched | Tool call needed | Supported sources | score_multiplier |
-|------|------------------------|------------------|-------------------|-----------------|
-| Inline RAG | With every query | No | BYOK + OKP | Yes (BYOK only) |
-| Tool RAG | On LLM demand | Yes | BYOK + OKP | No |
+| Mode | When context is fetched | Tool call needed | score_multiplier |
+|------|------------------------|------------------|-----------------|
+| Inline RAG | With every query | No | Yes (BYOK only) |
+| Tool RAG | On LLM demand | Yes | No |
 
 > [!TIP]
 > A ready-to-use example combining BYOK and OKP is available at

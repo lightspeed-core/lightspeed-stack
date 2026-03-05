@@ -51,19 +51,19 @@ byok_rag:
 # RAG configuration
 rag:
   # Inline RAG: context injected before the LLM request from the listed sources
-  # List rag_ids from byok_rag, or 'okp-rag' to include OKP
+  # List rag_ids from byok_rag, or 'okp' to include OKP
   inline:
     - ocp-docs
     - knowledge-base
-    - okp-rag
+    - okp
   # Tool RAG: LLM can call file_search on demand to retrieve context
-  # List rag_ids from byok_rag, or 'okp-rag' to include OKP
+  # List rag_ids from byok_rag, or 'okp' to include OKP
   # Omit to use all registered BYOK stores (backward compatibility)
   tool:
     - ocp-docs
     - knowledge-base
 
-# OKP provider settings (only used when 'okp-rag' is listed in rag.inline or rag.tool)
+# OKP provider settings (only used when 'okp' is listed in rag.inline or rag.tool)
 okp:
   offline: true    # true = use parent_id for source URLs, false = use reference_url
   # Solr fq applied to every OKP search request. Combine with AND for extra constraints:

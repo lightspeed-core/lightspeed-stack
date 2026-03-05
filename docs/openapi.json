@@ -5729,7 +5729,7 @@
                     "okp": {
                         "$ref": "#/components/schemas/OkpConfiguration",
                         "title": "OKP configuration",
-                        "description": "OKP provider settings. Only used when 'okp-rag' is listed in rag.inline or rag.tool."
+                        "description": "OKP provider settings. Only used when 'okp' is listed in rag.inline or rag.tool."
                     }
                 },
                 "additionalProperties": false,
@@ -7598,7 +7598,7 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "OkpConfiguration",
-                "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp-rag\"`` is listed in ``rag.inline`` or ``rag.tool``."
+                "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp\"`` is listed in ``rag.inline`` or ``rag.tool``."
             },
             "OpenIdConnectSecurityScheme": {
                 "properties": {
@@ -8782,7 +8782,7 @@
                         },
                         "type": "array",
                         "title": "Inline RAG IDs",
-                        "description": "RAG IDs whose sources are injected as context before the LLM call. Use 'okp-rag' to enable OKP inline RAG. Empty by default (no inline RAG)."
+                        "description": "RAG IDs whose sources are injected as context before the LLM call. Use 'okp' to enable OKP inline RAG. Empty by default (no inline RAG)."
                     },
                     "tool": {
                         "anyOf": [
@@ -8797,13 +8797,13 @@
                             }
                         ],
                         "title": "Tool RAG IDs",
-                        "description": "RAG IDs made available to the LLM as a file_search tool. Use 'okp-rag' to include the OKP vector store. When omitted, all registered BYOK vector stores are used (backward compatibility)."
+                        "description": "RAG IDs made available to the LLM as a file_search tool. Use 'okp' to include the OKP vector store. When omitted, all registered BYOK vector stores are used (backward compatibility)."
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "RagConfiguration",
-                "description": "RAG strategy configuration.\n\nControls which RAG sources are used for inline and tool-based retrieval.\n\nEach strategy lists RAG IDs to include. The special ID ``\"okp-rag\"`` defined in constants,\nactivates the OKP provider; all other IDs refer to entries in ``byok_rag``.\n\nBackward compatibility:\n    - ``inline`` defaults to ``[]`` (no inline RAG).\n    - ``tool`` defaults to ``None`` which means all registered vector stores\n      are used (identical to the previous ``tool.byok.enabled = True`` default)."
+                "description": "RAG strategy configuration.\n\nControls which RAG sources are used for inline and tool-based retrieval.\n\nEach strategy lists RAG IDs to include. The special ID ``\"okp\"`` defined in constants,\nactivates the OKP provider; all other IDs refer to entries in ``byok_rag``.\n\nBackward compatibility:\n    - ``inline`` defaults to ``[]`` (no inline RAG).\n    - ``tool`` defaults to ``None`` which means all registered vector stores\n      are used (identical to the previous ``tool.byok.enabled = True`` default)."
             },
             "ReadinessResponse": {
                 "properties": {

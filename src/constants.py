@@ -181,7 +181,7 @@ OKP_RAG_MAX_CHUNKS = 5  # retrieved from OKP RAG
 
 # Solr OKP constants
 SOLR_VECTOR_SEARCH_DEFAULT_K = 5
-SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD = 0.0
+SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD = 0.3
 SOLR_VECTOR_SEARCH_DEFAULT_MODE = "hybrid"
 
 # SOLR OKP RAG
@@ -202,7 +202,7 @@ SOLR_DEFAULT_EMBEDDING_DIMENSION = 384
 DEFAULT_SCORE_MULTIPLIER = 1.0
 
 # Special RAG ID that activates the OKP provider when listed in rag.inline or rag.tool
-OKP_RAG_ID = "okp-rag"
+OKP_RAG_ID = "okp"
 
 # Logging configuration constants
 # Environment variable name for configurable log level
