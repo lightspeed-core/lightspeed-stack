@@ -11,10 +11,14 @@ aiohttp==3.13.3 \
     --hash=sha256:c418ae157c77de1c7314313d767efcdf2243dc0122beddeafd2f3bab73ad0ed8
 aiosignal==1.4.0 \
     --hash=sha256:9d5af4742d4552e8a3f2fbd48237e07cab578e7175af2f952c420d2e98b731f0
+aiosqlite==0.22.1 \
+    --hash=sha256:2e85580d41e992ed45e1aafce66ac4c23b7bd7cf842dc5209a39b95c11497115
 annotated-doc==0.0.4 \
     --hash=sha256:cf904ba25da8611ae3274f2af1d6e82275e452113f7774505e723a21957c10d6
 annotated-types==0.7.0 \
     --hash=sha256:fcdc578cef2d4fd8770abc0ceb0241c68c992698aa7a5f945ce67651dd585cfb
+anyio==4.12.1 \
+    --hash=sha256:e18da418b6421e6735231319ea8ae4262f68b52b8dbcb4699a7a14f89cfb2b15
 asyncpg==0.31.0 \
     --hash=sha256:30b9415c515d7aeeb78a2973398c110b021bbc8c4b664a50309c8a7a59f850e6 \
     --hash=sha256:d5fcd8eb91e0624dbbd391062d529ec24ac41e0665c6aa4df719f6682856b318 \
@@ -32,11 +36,11 @@ chevron==0.14.0 \
     --hash=sha256:215f5e3e7ac75d150eadfc0f8c651b3815dc36813e122484b1ed68e142e5adfb
 click==8.3.1 \
     --hash=sha256:a87f0253ce1fb7747cdde1674d73f34241bb4de9fca7a31bc866fb0a8a5f4307
-cryptography==46.0.3 \
-    --hash=sha256:66ce9fc152c36e72fc2ef35a278e9ccc0861afbdf4096f6a0b4221d64ebaead0 \
-    --hash=sha256:77d3ab32961821b5c91e10fc0d943d725d3545fee2a1d4985fb30a26b4ed79cc \
-    --hash=sha256:a2c7213647c9a23b30d21966c721f94d32a6de6728d1e7da88b7ce55cc658b0c \
-    --hash=sha256:b501441a03c71a7b9caaa22f37e3f1ce1b2dfd126c80500cac6ac156c0138de5
+cryptography==46.0.4 \
+    --hash=sha256:26ffa7666abe41b7b75905f7353c43ff4e812cf7f5b2b253ec3bcddd0d29e7a1 \
+    --hash=sha256:b1352b1c73e908b825c91e8fe23f24775fcebca7d59f66a6864e4dcf6fdd6323
+datasets==4.4.2 \
+    --hash=sha256:a022a72b5ff21868e78e7ea66f8bb2eeaee632f354574643561bea6c224ab915
 dill==0.4.0 \
     --hash=sha256:e09f4727f6f6c193a79c01826c5221fc26a16022279e4bf38cc3d35ff4197af4
 distro==1.9.0 \
@@ -139,6 +143,11 @@ pandas==2.3.3 \
     --hash=sha256:e3a18fae723b808514670a4a0172f9939cdbb095abd5eef1f34cf5ae1b99f424
 peft==0.18.1 \
     --hash=sha256:026817e68c93fcc0569360afa0ee4fb74b06b0a4268240f922bc2bc0a691bcc1
+pillow==12.1.0 \
+    --hash=sha256:44e141bd88fa5c8db3ab16d64b054ac692bbd5f12ac7d35347506283a7d4f1b5 \
+    --hash=sha256:586b0875614afba7f538334413150a8a2ea42aea557c823c54fd60a3218d960e \
+    --hash=sha256:70ef2aa5cd788e9de636eca6c5d3f2189b12f1c52aae7fdda59f3de76cf4e5f9 \
+    --hash=sha256:f90eaeb5761e1ff10a995dd462ab8c87b7ee4171057ebf2f4ac1fd20e6bc6bda
 prometheus-client==0.24.1 \
     --hash=sha256:fe601e041eac55bad8f46da2f3c54f2ab6cd8a8272d9595742c83980e95ed5e4
 prompt-toolkit==3.0.52 \
@@ -232,6 +241,11 @@ tiktoken==0.12.0 \
     --hash=sha256:019dfefcb4f2899eb8c7fd4d170c3ed335113579de129f55526fcdc3b43ef5ba \
     --hash=sha256:9d341a1e06d325151f05991a0a1616c12918132fda42b7601d25c9d02726e5b3 \
     --hash=sha256:aee67dcabd42538b82abaf27a1d5b74da0eb2da37fa9c9c117ca99d9146e2937
+tokenizers==0.22.2 \
+    --hash=sha256:109c12a85bc794db2d335e9845198fd4dfbdd25a5e47d944ada5ee28d720a01c \
+    --hash=sha256:914385483cfc1f8a38e8141e9370ca315484464afda41eb3959cd4d36ad2217b \
+    --hash=sha256:c6123f7e43990992323d4cd8ee0d463383a7dffe3c03e1f4483b446034910faf \
+    --hash=sha256:c883273341b96903ddeda79cb247a6f3ea316bd668ee2dd93d86e6fb57fc35b3
 tornado==6.5.4 \
     --hash=sha256:4009891b752e77c47c396ed587fd3abeeeaf53ce0ff180ac5fbd81f3c5522903 \
     --hash=sha256:9532231bbed1fab64200c9f755616e45f4a9d2b52fbefb91dd3b24f9b9ade291 \
