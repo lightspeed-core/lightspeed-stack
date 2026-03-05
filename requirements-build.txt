@@ -6,14 +6,39 @@
 #
 calver==2025.10.20
     # via trove-classifiers
+certifi==2026.2.25
+    # via requests
+cffi==2.0.0
+    # via cryptography
+charset-normalizer==3.4.4
+    # via requests
 coherent-licensed==0.5.2
-    # via importlib-metadata
-dunamai==1.25.0
+    # via
+    #   importlib-metadata
+    #   jaraco-context
+    #   jaraco-functools
+    #   keyring
+cryptography==46.0.5
+    # via secretstorage
+cython==3.1.1
+    # via grpcio
+docutils==0.22.4
+    # via readme-renderer
+dunamai==1.26.0
     # via uv-dynamic-versioning
+expandvars==1.1.2
+    # via yarl
 flit-core==3.12.0
     # via
     #   coherent-licensed
+    #   docutils
+    #   id
+    #   idna
+    #   jeepney
     #   jinja2
+    #   markdown-it-py
+    #   mdurl
+    #   more-itertools
     #   packaging
     #   pathspec
     #   wheel
@@ -24,6 +49,7 @@ hatch-fancy-pypi-readme==25.1.0
     #   openai
 hatch-vcs==0.5.0
     # via
+    #   chardet
     #   filelock
     #   jsonschema
     #   termcolor
@@ -33,30 +59,74 @@ hatchling==1.26.3
     #   hatch-fancy-pypi-readme
     #   llama-stack-client
     #   openai
-hatchling==1.28.0
+hatchling==1.29.0
     # via
     #   a2a-sdk
+    #   chardet
     #   einops
+    #   expandvars
     #   filelock
     #   hatch-fancy-pypi-readme
     #   hatch-vcs
     #   jsonschema
     #   mcp
+    #   opentelemetry-api
+    #   opentelemetry-exporter-otlp
+    #   opentelemetry-exporter-otlp-proto-common
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-instrumentation
+    #   opentelemetry-proto
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+    #   pydantic-settings
+    #   pygments
     #   python-multipart
+    #   starlette
     #   termcolor
     #   urllib3
     #   uv-dynamic-versioning
     #   uvicorn
     #   wcwidth
+id==1.6.1
+    # via twine
+idna==3.11
+    # via requests
+jaraco-classes==3.4.0
+    # via keyring
+jaraco-context==6.1.0
+    # via keyring
+jaraco-functools==4.4.0
+    # via keyring
+jeepney==0.9.0
+    # via
+    #   keyring
+    #   secretstorage
 jinja2==3.1.6
     # via uv-dynamic-versioning
+keyring==25.7.0
+    # via twine
+markdown-it-py==4.0.0
+    # via rich
 markupsafe==3.0.3
     # via jinja2
 maturin==1.10.2
-    # via fastuuid
+    # via
+    #   cryptography
+    #   fastuuid
+    #   hf-xet
+    #   nh3
+mdurl==0.1.2
+    # via markdown-it-py
+more-itertools==10.8.0
+    # via
+    #   jaraco-classes
+    #   jaraco-functools
+nh3==0.3.3
+    # via readme-renderer
 packaging==26.0
     # via
-    #   dunamai
+    #   google-genai
     #   hatchling
     #   setuptools-scm
     #   wheel
@@ -64,6 +134,8 @@ pathspec==1.0.4
     # via hatchling
 pdm-backend==2.4.7
     # via fastapi
+pkginfo==1.12.1.2
+    # via google-genai
 pluggy==1.6.0
     # via hatchling
 poetry-core==2.3.1
@@ -72,6 +144,26 @@ poetry-core==2.3.1
     #   litellm
     #   rich
     #   tomlkit
+pycparser==3.0
+    # via cffi
+pygments==2.19.2
+    # via
+    #   readme-renderer
+    #   rich
+readme-renderer==44.0
+    # via twine
+requests-toolbelt==1.0.0
+    # via twine
+requests==2.32.5
+    # via
+    #   requests-toolbelt
+    #   twine
+rfc3986==2.0.0
+    # via twine
+rich==14.3.3
+    # via twine
+secretstorage==3.5.0
+    # via keyring
 semantic-version==2.10.0
     # via setuptools-rust
 setuptools-rust==1.12.0
@@ -80,15 +172,28 @@ setuptools-scm==9.2.2
     # via
     #   hatch-vcs
     #   importlib-metadata
+    #   jaraco-classes
+    #   jaraco-context
+    #   jaraco-functools
+    #   keyring
     #   llama-stack-api
     #   pluggy
     #   setuptools-rust
+    #   tenacity
     #   tqdm
+    #   twine
     #   urllib3
 tomlkit==0.14.0
     # via uv-dynamic-versioning
 trove-classifiers==2026.1.14.14
     # via hatchling
+twine==6.2.0
+    # via google-genai
+urllib3==2.6.3
+    # via
+    #   id
+    #   requests
+    #   twine
 uv-dynamic-versioning==0.13.0
     # via
     #   a2a-sdk
@@ -98,12 +203,17 @@ wheel==0.46.3
     #   authlib
     #   azure-identity
     #   cachetools
+    #   google-genai
+    #   grpcio
+    #   grpcio-status
     #   litellm
     #   pycparser
     #   sentence-transformers
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==80.10.2
+setuptools==81.0.0
+    # via charset-normalizer
+setuptools==82.0.0
     # via
     #   authlib
     #   azure-identity
@@ -111,10 +221,20 @@ setuptools==80.10.2
     #   cachetools
     #   calver
     #   certifi
+    #   cffi
+    #   cryptography
     #   emoji
     #   google-api-core
+    #   google-cloud-bigquery
+    #   google-genai
     #   greenlet
+    #   grpcio
+    #   grpcio-status
     #   importlib-metadata
+    #   jaraco-classes
+    #   jaraco-context
+    #   jaraco-functools
+    #   keyring
     #   llama-stack
     #   llama-stack-api
     #   markupsafe
@@ -130,13 +250,20 @@ setuptools==80.10.2
     #   pycparser
     #   pycryptodomex
     #   pyjwt
+    #   python-dotenv
+    #   readme-renderer
     #   regex
+    #   secretstorage
     #   semver
     #   sentence-transformers
     #   setuptools-rust
     #   setuptools-scm
     #   sse-starlette
+    #   tenacity
     #   tqdm
     #   tree-sitter
     #   trl
     #   trove-classifiers
+    #   twine
+    #   websockets
+    #   yarl
