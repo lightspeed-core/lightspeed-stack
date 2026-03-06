@@ -107,7 +107,10 @@ async def get_conversations_list_endpoint_handler(
     return ConversationsListResponseV2(conversations=conversations)
 
 
-@router.get("/conversations/{conversation_id}", responses=conversation_get_responses)
+@router.get(
+    "/conversations/{conversation_id}",
+    responses=conversation_get_responses,
+)
 @authorize(Action.GET_CONVERSATION)
 async def get_conversation_endpoint_handler(
     request: Request,  # pylint: disable=unused-argument
@@ -257,8 +260,12 @@ def build_conversation_turn_from_cache_entry(entry: CacheEntry) -> ConversationT
     """
     # Create Message objects for user and assistant
     messages = [
-        Message(content=entry.query, type="user"),
-        Message(content=entry.response, type="assistant"),
+        Message(content=entry.query, type="user", referenced_documents=None),
+        Message(
+            content=entry.response,
+            type="assistant",
+            referenced_documents=entry.referenced_documents or None,
+        ),
     ]
 
     # Extract tool calls and results (default to empty lists if None)

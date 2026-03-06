@@ -71,7 +71,7 @@ def _parse_message_item(item: MessageOutput) -> Message:
     """
     content_text = _extract_text_from_content(item.content)
     message_type = item.role
-    return Message(content=content_text, type=message_type)
+    return Message(content=content_text, type=message_type, referenced_documents=None)
 
 
 def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-statements

@@ -436,7 +436,7 @@ class TestBuildConversationTurnsFromItems:
         result = build_conversation_turns_from_items(
             mock_items, mock_db_turns, conversation_start_time
         )
-        actual_history = [turn.model_dump() for turn in result]
+        actual_history = [turn.model_dump(exclude_none=True) for turn in result]
         assert actual_history == expected_chat_history
 
     @pytest.mark.asyncio
@@ -745,7 +745,9 @@ class TestGetConversationEndpoint:
 
         assert isinstance(response, ConversationResponse)
         assert response.conversation_id == VALID_CONVERSATION_ID
-        actual_history = [turn.model_dump() for turn in response.chat_history]
+        actual_history = [
+            turn.model_dump(exclude_none=True) for turn in response.chat_history
+        ]
         assert actual_history == expected_chat_history
 
     @pytest.mark.asyncio

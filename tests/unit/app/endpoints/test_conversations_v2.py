@@ -26,7 +26,7 @@ from models.responses import (
     ConversationUpdateResponse,
 )
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
-from utils.types import ToolCallSummary, ToolResultSummary
+from utils.types import ReferencedDocument, ToolCallSummary, ToolResultSummary
 
 MOCK_AUTH = ("mock_user_id", "mock_username", False, "mock_token")
 VALID_CONVERSATION_ID = "123e4567-e89b-12d3-a456-426614174000"
@@ -94,6 +94,133 @@ class TestBuildConversationTurnFromCacheEntry:
         assert turn.tool_calls[0].name == "test_tool"
         assert len(turn.tool_results) == 1
         assert turn.tool_results[0].status == "success"
+
+    def test_build_turn_with_referenced_documents(self) -> None:
+        """Test that referenced_documents from cache are included in the assistant message."""
+        ref_docs = [
+            ReferencedDocument(
+                doc_url="https://docs.example.com/page1",
+                doc_title="Page 1",
+                source="vs_abc123",
+            ),
+            ReferencedDocument(
+                doc_url="https://docs.example.com/page2",
+                doc_title="Page 2",
+                source="vs_abc123",
+            ),
+        ]
+        entry = CacheEntry(
+            query="What is RHDH?",
+            response="RHDH is a developer hub.",
+            provider="vllm",
+            model="llama-3",
+            started_at="2024-01-01T00:00:00Z",
+            completed_at="2024-01-01T00:00:05Z",
+            referenced_documents=ref_docs,
+        )
+
+        turn = build_conversation_turn_from_cache_entry(entry)
+
+        assert len(turn.messages) == 2
+        user_msg = turn.messages[0]
+        assistant_msg = turn.messages[1]
+
+        assert user_msg.type == "user"
+        assert user_msg.referenced_documents is None
+
+        assert assistant_msg.type == "assistant"
+        assert assistant_msg.referenced_documents is not None
+        assert len(assistant_msg.referenced_documents) == 2
+        assert (
+            str(assistant_msg.referenced_documents[0].doc_url)
+            == "https://docs.example.com/page1"
+        )
+        assert assistant_msg.referenced_documents[0].doc_title == "Page 1"
+        assert (
+            str(assistant_msg.referenced_documents[1].doc_url)
+            == "https://docs.example.com/page2"
+        )
+        assert assistant_msg.referenced_documents[1].doc_title == "Page 2"
+
+    def test_build_turn_without_referenced_documents(self) -> None:
+        """Test that assistant message has no referenced_documents when cache entry has none."""
+        entry = CacheEntry(
+            query="Hello",
+            response="Hi there!",
+            provider="openai",
+            model="gpt-4",
+            started_at="2024-01-01T00:00:00Z",
+            completed_at="2024-01-01T00:00:05Z",
+        )
+
+        turn = build_conversation_turn_from_cache_entry(entry)
+
+        assert turn.messages[1].type == "assistant"
+        assert turn.messages[1].referenced_documents is None
+
+    def test_build_turn_with_empty_referenced_documents(self) -> None:
+        """Test assistant message has no referenced_documents when cache has empty list."""
+        entry = CacheEntry(
+            query="Hello",
+            response="Hi there!",
+            provider="openai",
+            model="gpt-4",
+            started_at="2024-01-01T00:00:00Z",
+            completed_at="2024-01-01T00:00:05Z",
+            referenced_documents=[],
+        )
+
+        turn = build_conversation_turn_from_cache_entry(entry)
+
+        assert turn.messages[1].type == "assistant"
+        assert turn.messages[1].referenced_documents is None
+
+    def test_build_turn_serialization_excludes_none_referenced_documents(self) -> None:
+        """Test that model_dump(exclude_none=True) omits referenced_documents when None."""
+        entry = CacheEntry(
+            query="Hello",
+            response="Hi there!",
+            provider="openai",
+            model="gpt-4",
+            started_at="2024-01-01T00:00:00Z",
+            completed_at="2024-01-01T00:00:05Z",
+        )
+
+        turn = build_conversation_turn_from_cache_entry(entry)
+        dumped = turn.model_dump(exclude_none=True)
+
+        user_msg_dict = dumped["messages"][0]
+        assistant_msg_dict = dumped["messages"][1]
+        assert "referenced_documents" not in user_msg_dict
+        assert "referenced_documents" not in assistant_msg_dict
+
+    def test_build_turn_serialization_includes_referenced_documents(self) -> None:
+        """Test that model_dump(exclude_none=True) includes referenced_documents when present."""
+        ref_docs = [
+            ReferencedDocument(
+                doc_url="https://docs.example.com/page1",
+                doc_title="Page 1",
+            ),
+        ]
+        entry = CacheEntry(
+            query="What is RHDH?",
+            response="RHDH is a developer hub.",
+            provider="vllm",
+            model="llama-3",
+            started_at="2024-01-01T00:00:00Z",
+            completed_at="2024-01-01T00:00:05Z",
+            referenced_documents=ref_docs,
+        )
+
+        turn = build_conversation_turn_from_cache_entry(entry)
+        dumped = turn.model_dump(exclude_none=True)
+
+        user_msg_dict = dumped["messages"][0]
+        assistant_msg_dict = dumped["messages"][1]
+        assert "referenced_documents" not in user_msg_dict
+        assert "referenced_documents" in assistant_msg_dict
+        assert len(assistant_msg_dict["referenced_documents"]) == 1
+        assert assistant_msg_dict["referenced_documents"][0]["doc_title"] == "Page 1"
 
 
 @pytest.fixture
@@ -427,6 +554,95 @@ class TestGetConversationEndpoint:
         assert response.conversation_id == VALID_CONVERSATION_ID
         assert len(response.chat_history) == 1
         assert response.chat_history[0].messages[0].content == "query"
+
+    @pytest.mark.asyncio
+    async def test_successful_retrieval_includes_referenced_documents(
+        self, mocker: MockerFixture, mock_configuration: MockType
+    ) -> None:
+        """Test that GET conversation includes referenced_documents in assistant messages."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        ref_docs = [
+            ReferencedDocument(
+                doc_url="https://docs.example.com/intro",
+                doc_title="Introduction",
+                source="vs_abc123",
+            ),
+            ReferencedDocument(
+                doc_url="https://docs.example.com/guide",
+                doc_title="User Guide",
+                source="vs_abc123",
+            ),
+        ]
+        mock_configuration.conversation_cache.list.return_value = [
+            mocker.Mock(conversation_id=VALID_CONVERSATION_ID)
+        ]
+        mock_configuration.conversation_cache.get.return_value = [
+            CacheEntry(
+                query="What is RHDH?",
+                response="RHDH is a developer hub.",
+                provider="vllm",
+                model="llama-3",
+                started_at="2024-01-01T00:00:00Z",
+                completed_at="2024-01-01T00:00:05Z",
+                referenced_documents=ref_docs,
+            )
+        ]
+
+        response = await get_conversation_endpoint_handler(
+            request=mocker.Mock(),
+            conversation_id=VALID_CONVERSATION_ID,
+            auth=MOCK_AUTH,
+        )
+
+        assert response is not None
+        assert len(response.chat_history) == 1
+        turn = response.chat_history[0]
+
+        user_msg = turn.messages[0]
+        assert user_msg.type == "user"
+        assert user_msg.referenced_documents is None
+
+        assistant_msg = turn.messages[1]
+        assert assistant_msg.type == "assistant"
+        assert assistant_msg.referenced_documents is not None
+        assert len(assistant_msg.referenced_documents) == 2
+        assert assistant_msg.referenced_documents[0].doc_title == "Introduction"
+        assert assistant_msg.referenced_documents[1].doc_title == "User Guide"
+
+    @pytest.mark.asyncio
+    async def test_successful_retrieval_without_referenced_documents(
+        self, mocker: MockerFixture, mock_configuration: MockType
+    ) -> None:
+        """Test that GET conversation works when cache entry has no referenced_documents."""
+        mock_authorization_resolvers(mocker)
+        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mock_configuration.conversation_cache.list.return_value = [
+            mocker.Mock(conversation_id=VALID_CONVERSATION_ID)
+        ]
+        mock_configuration.conversation_cache.get.return_value = [
+            CacheEntry(
+                query="Hello",
+                response="Hi there!",
+                provider="openai",
+                model="gpt-4",
+                started_at="2024-01-01T00:00:00Z",
+                completed_at="2024-01-01T00:00:05Z",
+            )
+        ]
+
+        response = await get_conversation_endpoint_handler(
+            request=mocker.Mock(),
+            conversation_id=VALID_CONVERSATION_ID,
+            auth=MOCK_AUTH,
+        )
+
+        assert response is not None
+        turn = response.chat_history[0]
+        assert turn.messages[1].type == "assistant"
+        assert turn.messages[1].referenced_documents is None
 
     @pytest.mark.asyncio
     async def test_with_skip_userid_check(

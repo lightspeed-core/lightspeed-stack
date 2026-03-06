@@ -607,8 +607,10 @@ class TestConversationResponse:
         )
         assert isinstance(response, AbstractSuccessfulResponse)
         assert response.conversation_id == "123e4567-e89b-12d3-a456-426614174000"
-        # Convert ConversationTurn objects to dicts for comparison
-        actual_history = [turn.model_dump() for turn in response.chat_history]
+        # Convert ConversationTurn objects to dicts for comparison (exclude None for clean output)
+        actual_history = [
+            turn.model_dump(exclude_none=True) for turn in response.chat_history
+        ]
         assert actual_history == chat_history
 
     def test_empty_chat_history(self) -> None:

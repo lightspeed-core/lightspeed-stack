@@ -866,6 +866,7 @@ class Message(BaseModel):
     Attributes:
         content: The message content.
         type: The type of message.
+        referenced_documents: Optional list of documents referenced in an assistant response.
     """
 
     content: str = Field(
@@ -877,6 +878,10 @@ class Message(BaseModel):
         ...,
         description="The type of message",
         examples=["user", "assistant", "system", "developer"],
+    )
+    referenced_documents: Optional[list[ReferencedDocument]] = Field(
+        None,
+        description="List of documents referenced in the response (assistant messages only)",
     )
 
 
