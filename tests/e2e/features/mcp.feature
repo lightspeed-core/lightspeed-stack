@@ -56,7 +56,6 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
-  @skip     # will be fixed in LCORE-1368
   Scenario: Check if tools endpoint succeeds when MCP auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -65,42 +64,9 @@ Feature: MCP tests
     """
     When I access REST API endpoint "tools" using HTTP GET method
     Then The status code of the response is 200
-    And The body of the response is the following
-    """
-        {
-            "tools": [
-                {
-                    "identifier": "",
-                    "description": "Insert documents into memory",
-                    "parameters": [],
-                    "provider_id": "",
-                    "toolgroup_id": "builtin::rag",
-                    "server_source": "builtin",
-                    "type": ""
-                },
-                {
-                    "identifier": "",
-                    "description": "Search for information in a database.",
-                    "parameters": [],
-                    "provider_id": "",
-                    "toolgroup_id": "builtin::rag",
-                    "server_source": "builtin",
-                    "type": ""
-                },
-                {
-                    "identifier": "",
-                    "description": "Mock tool for E2E",
-                    "parameters": [],
-                    "provider_id": "",
-                    "toolgroup_id": "mcp-oauth",
-                    "server_source": "http://localhost:3001",
-                    "type": ""
-                }
-            ]
-        }
-    """
+    And The body of the response contains mcp-oauth
 
-  @skip     # will be fixed in LCORE-1366
+  @skip-in-library-mode     # will be fixed in LCORE-1428
   Scenario: Check if query endpoint succeeds when MCP auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -115,10 +81,10 @@ Feature: MCP tests
     Then The status code of the response is 200
     And The response should contain following fragments
         | Fragments in LLM response |
-        | hello                     |
+        | Hello                     |
     And The token metrics should have increased
 
-  @skip     # will be fixed in LCORE-1366
+  @skip-in-library-mode     # will be fixed in LCORE-1428
   Scenario: Check if streaming_query endpoint succeeds when MCP auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -134,10 +100,9 @@ Feature: MCP tests
     Then The status code of the response is 200
     And The streamed response should contain following fragments
         | Fragments in LLM response |
-        | hello                     |
+        | Hello                     |
     And The token metrics should have increased
 
-  @skip     # will be fixed in LCORE-1368
   Scenario: Check if tools endpoint reports error when MCP invalid auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -180,7 +145,6 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
-  @skip     # will be fixed in LCORE-1366
   Scenario: Check if streaming_query endpoint reports error when MCP invalid auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to

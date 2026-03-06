@@ -47,6 +47,8 @@ class Handler(BaseHTTPRequestHandler):
         """Handle GET requests."""
         if self.path == "/health":
             self._json_response({"status": "ok"})
+        elif self._parse_auth() is not None:
+            self._json_response({"status": "authorized"})
         else:
             self._require_oauth()
 

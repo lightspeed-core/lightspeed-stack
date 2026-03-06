@@ -585,48 +585,6 @@ class TestGetMCPTools:
         assert tools[0].headers is None
 
     @pytest.mark.asyncio
-    async def test_get_mcp_tools_oauth_no_headers_raises_401_with_www_authenticate(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test get_mcp_tools raises 401 with WWW-Authenticate when OAuth required and no headers."""
-        servers = [
-            ModelContextProtocolServer(
-                name="oauth-server",
-                url="http://localhost:3000",
-                authorization_headers={"Authorization": "oauth"},
-                provider_id="x",
-            ),
-        ]
-        mock_config = mocker.Mock()
-        mock_config.mcp_servers = servers
-        mocker.patch("utils.responses.configuration", mock_config)
-
-        mock_resp = mocker.Mock()
-        mock_resp.headers = {"WWW-Authenticate": 'Bearer error="invalid_token"'}
-        mock_session = mocker.MagicMock()
-        mock_get_cm = mocker.AsyncMock()
-        mock_get_cm.__aenter__.return_value = mock_resp
-        mock_get_cm.__aexit__.return_value = None
-        mock_session.get.return_value = mock_get_cm
-        mock_session_cm = mocker.AsyncMock()
-        mock_session_cm.__aenter__.return_value = mock_session
-        mock_session_cm.__aexit__.return_value = None
-        mocker.patch(
-            "utils.mcp_oauth_probe.aiohttp.ClientSession",
-            return_value=mock_session_cm,
-        )
-
-        with pytest.raises(HTTPException) as exc_info:
-            await get_mcp_tools(token=None, mcp_headers=None)
-
-        assert exc_info.value.status_code == 401
-        assert exc_info.value.headers is not None
-        assert (
-            exc_info.value.headers.get("WWW-Authenticate")
-            == 'Bearer error="invalid_token"'
-        )
-
-    @pytest.mark.asyncio
     async def test_get_mcp_tools_with_propagated_headers(
         self, mocker: MockerFixture
     ) -> None:

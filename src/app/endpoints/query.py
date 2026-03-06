@@ -41,6 +41,7 @@ from utils.endpoints import (
     validate_and_retrieve_conversation,
 )
 from utils.mcp_headers import McpHeaders, mcp_headers_dependency
+from utils.mcp_oauth_probe import check_mcp_auth
 from utils.query import (
     consume_query_tokens,
     handle_known_apistatus_errors,
@@ -121,6 +122,8 @@ async def query_endpoint_handler(
             - 503: Service Unavailable - Unable to connect to Llama Stack backend
     """
     check_configuration_loaded(configuration)
+
+    await check_mcp_auth(configuration, mcp_headers)
 
     started_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     user_id, _, _skip_userid_check, token = auth

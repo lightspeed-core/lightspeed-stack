@@ -61,6 +61,7 @@ from utils.endpoints import (
     validate_and_retrieve_conversation,
 )
 from utils.mcp_headers import McpHeaders, mcp_headers_dependency
+from utils.mcp_oauth_probe import check_mcp_auth
 from utils.query import (
     consume_query_tokens,
     extract_provider_and_model_from_model_id,
@@ -150,6 +151,8 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
             - 503: Service Unavailable - Unable to connect to Llama Stack backend
     """
     check_configuration_loaded(configuration)
+
+    await check_mcp_auth(configuration, mcp_headers)
 
     user_id, _user_name, _skip_userid_check, token = auth
     started_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")

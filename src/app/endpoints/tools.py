@@ -3,8 +3,7 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from llama_stack_client import APIConnectionError, BadRequestError, AuthenticationError
-from llama_stack.core.datatypes import AuthenticationRequiredError
+from llama_stack_client import APIConnectionError, BadRequestError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -21,7 +20,7 @@ from models.responses import (
 )
 from utils.endpoints import check_configuration_loaded
 from utils.mcp_headers import McpHeaders, mcp_headers_dependency
-from utils.mcp_oauth_probe import probe_mcp_oauth_and_raise_401
+from utils.mcp_oauth_probe import check_mcp_auth
 from utils.tool_formatter import format_tools_list
 from log import get_logger
 
@@ -124,6 +123,8 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
 
     check_configuration_loaded(configuration)
 
+    await check_mcp_auth(configuration, mcp_headers)
+
     toolgroups_response = []
     try:
         client = AsyncLlamaStackClientHolder().get_client()
@@ -146,6 +147,7 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
             # Get tools for each toolgroup
             headers = mcp_headers.get(toolgroup.identifier, {})
             authorization = headers.pop("Authorization", None)
+
             tools_response = await client.tools.list(
                 toolgroup_id=toolgroup.identifier,
                 extra_headers=headers,
@@ -154,13 +156,6 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
         except BadRequestError:
             logger.error("Toolgroup %s is not found", toolgroup.identifier)
             continue
-        except (AuthenticationError, AuthenticationRequiredError) as e:
-            if toolgroup.mcp_endpoint:
-                await probe_mcp_oauth_and_raise_401(
-                    toolgroup.mcp_endpoint.uri, chain_from=e
-                )
-            error_response = UnauthorizedResponse(cause=str(e))
-            raise HTTPException(**error_response.model_dump()) from e
         except APIConnectionError as e:
             logger.error("Unable to connect to Llama Stack: %s", e)
             response = ServiceUnavailableResponse(
