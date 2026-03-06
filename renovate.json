@@ -1,6 +1,43 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
     "enabledManagers": [
-        "tekton"
+        "tekton",
+        "pip_requirements",
+        "pip_setup",
+        "pep621",
+        "dockerfile",
+        "github-actions"
+    ],
+    "pip_requirements": {
+        "fileMatch": [
+            "(^|/)requirements[\\w-]*\\.txt$",
+            "(^|/)requirements[\\w-]*\\.in$"
+        ]
+    },
+    "packageRules": [
+        {
+            "description": "Group all Tekton pipeline updates",
+            "matchManagers": ["tekton"],
+            "groupName": "Tekton pipelines"
+        },
+        {
+            "description": "Group Python build dependencies",
+            "matchFiles": ["requirements-build.txt"],
+            "groupName": "Python build dependencies"
+        },
+        {
+            "description": "Separate security updates for faster merging",
+            "matchUpdateTypes": ["patch"],
+            "matchCurrentVersion": "!/^0/",
+            "automerge": false,
+            "labels": ["security"]
+        }
+    ],
+    "vulnerabilityAlerts": {
+        "enabled": true,
+        "labels": ["security"]
+    },
+    "schedule": [
+        "before 6am on Monday"
     ]
 }
