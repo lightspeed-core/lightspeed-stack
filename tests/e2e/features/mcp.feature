@@ -7,7 +7,7 @@ Feature: MCP tests
 
 
 # File-based
-@MCPFileAuth
+  @MCPFileAuthConfig
   Scenario: Check if tools endpoint succeeds when MCP file-based auth token is passed
     Given The system is in default state
     When I access REST API endpoint "tools" using HTTP GET method
@@ -15,10 +15,11 @@ Feature: MCP tests
     And The body of the response contains mcp-file
 
   @skip-in-library-mode     # will be fixed in LCORE-1428
+  @MCPFileAuthConfig
   Scenario: Check if query endpoint succeeds when MCP file-based auth token is passed
     Given The system is in default state
     And I capture the current token metrics
-    When I use "query" to ask question with authorization header
+    When I use "query" to ask question
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
@@ -29,10 +30,11 @@ Feature: MCP tests
     And The token metrics should have increased
 
   @skip-in-library-mode     # will be fixed in LCORE-1428
+  @MCPFileAuthConfig
   Scenario: Check if streaming_query endpoint succeeds when MCP file-based auth token is passed
     Given The system is in default state
     And I capture the current token metrics
-    When I use "streaming_query" to ask question with authorization header
+    When I use "streaming_query" to ask question
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
@@ -43,7 +45,7 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics should have increased
 
-@InvalidMCPFileAuth
+  @InvalidMCPFileAuthConfig
   Scenario: Check if tools endpoint reports error when MCP file-based invalid auth token is passed
     Given The system is in default state
     When I access REST API endpoint "tools" using HTTP GET method
@@ -58,6 +60,7 @@ Feature: MCP tests
         }
     """
 
+  @InvalidMCPFileAuthConfig
   Scenario: Check if query endpoint reports error when MCP file-based invalid auth token is passed
     Given The system is in default state
     When I use "query" to ask question with authorization header
@@ -75,6 +78,7 @@ Feature: MCP tests
         }
     """
 
+  @InvalidMCPFileAuthConfig
   Scenario: Check if streaming_query endpoint reports error when MCP file-based invalid auth token is passed
     Given The system is in default state
     When I use "streaming_query" to ask question with authorization header
@@ -93,7 +97,7 @@ Feature: MCP tests
     """
 
 # Kubernetes
-@MCPKubernetesConfig
+  @MCPKubernetesAuthConfig
   Scenario: Check if tools endpoint succeeds when MCP kubernetes auth token is passed
     Given The system is in default state
     And I set the Authorization header to Bearer kubernetes-test-token
@@ -102,6 +106,7 @@ Feature: MCP tests
     And The body of the response contains mcp-kubernetes
 
   @skip-in-library-mode     # will be fixed in LCORE-1428
+  @MCPKubernetesAuthConfig
   Scenario: Check if query endpoint succeeds when MCP kubernetes auth token is passed
     Given The system is in default state
     And I set the Authorization header to Bearer kubernetes-test-token
@@ -117,6 +122,7 @@ Feature: MCP tests
     And The token metrics should have increased
 
   @skip-in-library-mode     # will be fixed in LCORE-1428
+  @MCPKubernetesAuthConfig
   Scenario: Check if streaming_query endpoint succeeds when MCP kubernetes auth token is passed
     Given The system is in default state
     And I set the Authorization header to Bearer kubernetes-test-token
@@ -132,6 +138,7 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics should have increased
 
+  @MCPKubernetesAuthConfig
   Scenario: Check if tools endpoint reports error when MCP kubernetes invalid auth token is passed
     Given The system is in default state
     And I set the Authorization header to Bearer kubernetes-invalid-token
@@ -147,6 +154,7 @@ Feature: MCP tests
         }
     """
 
+  @MCPKubernetesAuthConfig
   Scenario: Check if query endpoint reports error when MCP kubernetes invalid auth token is passed
     Given The system is in default state
     And I set the Authorization header to Bearer kubernetes-invalid-token
@@ -165,6 +173,7 @@ Feature: MCP tests
         }
     """
 
+  @MCPKubernetesAuthConfig
   Scenario: Check if streaming_query endpoint reports error when MCP kubernetes invalid auth token is passed
     Given The system is in default state
     And I set the Authorization header to Bearer kubernetes-invalid-token
@@ -184,13 +193,14 @@ Feature: MCP tests
     """
 
 # Client-provided
-@MCPClientConfig
+  @MCPClientAuthConfig
   Scenario: Check if tools endpoint succeeds by skipping when MCP client-provided auth token is omitted
     Given The system is in default state
     When I access REST API endpoint "tools" using HTTP GET method
     Then The status code of the response is 200
     And The body of the response does not contain mcp-client
 
+  @MCPClientAuthConfig
   Scenario: Check if query endpoint succeeds by skipping when MCP client-provided auth token is omitted
     Given The system is in default state
     And I capture the current token metrics
@@ -204,6 +214,7 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics should have increased
 
+  @MCPClientAuthConfig
   Scenario: Check if streaming_query endpoint succeeds by skipping when MCP client-provided auth token is omitted
     Given The system is in default state
     And I capture the current token metrics
@@ -218,6 +229,7 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics should have increased
 
+  @MCPClientAuthConfig
   Scenario: Check if tools endpoint succeeds when MCP client-provided auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -229,6 +241,7 @@ Feature: MCP tests
     And The body of the response contains mcp-client
 
   @skip-in-library-mode     # will be fixed in LCORE-1428
+  @MCPClientAuthConfig
   Scenario: Check if query endpoint succeeds when MCP client-provided auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -247,6 +260,7 @@ Feature: MCP tests
     And The token metrics should have increased
 
   @skip-in-library-mode     # will be fixed in LCORE-1428
+  @MCPClientAuthConfig
   Scenario: Check if streaming_query endpoint succeeds when MCP client-provided auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -265,6 +279,7 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics should have increased
 
+  @MCPClientAuthConfig
   Scenario: Check if tools endpoint reports error when MCP client-provided invalid auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -283,6 +298,7 @@ Feature: MCP tests
         }
     """
 
+  @MCPClientAuthConfig
   Scenario: Check if query endpoint reports error when MCP client-provided invalid auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -304,6 +320,7 @@ Feature: MCP tests
         }
     """
 
+  @MCPClientAuthConfig
   Scenario: Check if streaming_query endpoint reports error when MCP client-provided invalid auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -327,7 +344,7 @@ Feature: MCP tests
 
 # OAuth
 
-@MCPOAuthConfig
+@MCPOAuthAuthConfig
   Scenario: Check if tools endpoint reports error when MCP OAuth requires authentication
     Given The system is in default state
     When I access REST API endpoint "tools" using HTTP GET method
@@ -343,6 +360,7 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
+  @MCPOAuthAuthConfig
   Scenario: Check if query endpoint reports error when MCP OAuth requires authentication
     Given The system is in default state
     When I use "query" to ask question
@@ -361,6 +379,7 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
+  @MCPOAuthAuthConfig
   Scenario: Check if streaming_query endpoint reports error when MCP OAuth requires authentication
     Given The system is in default state
     When I use "streaming_query" to ask question
@@ -379,6 +398,7 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
+  @MCPOAuthAuthConfig
   Scenario: Check if tools endpoint succeeds when MCP OAuth auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -390,6 +410,7 @@ Feature: MCP tests
     And The body of the response contains mcp-oauth
 
   @skip-in-library-mode     # will be fixed in LCORE-1428
+  @MCPOAuthAuthConfig
   Scenario: Check if query endpoint succeeds when MCP OAuth auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -408,6 +429,7 @@ Feature: MCP tests
     And The token metrics should have increased
 
   @skip-in-library-mode     # will be fixed in LCORE-1428
+  @MCPOAuthAuthConfig
   Scenario: Check if streaming_query endpoint succeeds when MCP OAuth auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -426,6 +448,7 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics should have increased
 
+  @MCPOAuthAuthConfig
   Scenario: Check if tools endpoint reports error when MCP OAuth invalid auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -445,6 +468,7 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
+  @MCPOAuthAuthConfig
   Scenario: Check if query endpoint reports error when MCP OAuth invalid auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
@@ -467,6 +491,7 @@ Feature: MCP tests
     """
     And The headers of the response contains the following header "www-authenticate"
 
+  @MCPOAuthAuthConfig
   Scenario: Check if streaming_query endpoint reports error when MCP OAuth invalid auth token is passed
     Given The system is in default state
     And I set the "MCP-HEADERS" header to

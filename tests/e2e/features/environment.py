@@ -213,6 +213,11 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         unregister_mcp_toolgroups()
         switch_config(context.scenario_config)
         restart_container("lightspeed-stack")
+    if "InvalidMCPFileAuthConfig" in scenario.effective_tags:
+        context.scenario_config = _get_config_path("invalid-mcp-file-auth", mode_dir)
+        unregister_mcp_toolgroups()
+        switch_config(context.scenario_config)
+        restart_container("lightspeed-stack")
     if "MCPKubernetesAuthConfig" in scenario.effective_tags:
         context.scenario_config = _get_config_path("mcp-kubernetes", mode_dir)
         unregister_mcp_toolgroups()
@@ -267,6 +272,7 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
         "InvalidFeedbackStorageConfig",
         "NoCacheConfig",
         "MCPFileAuthConfig",
+        "InvalidMCPFileAuthConfig",
         "MCPKubernetesAuthConfig",
         "MCPClientAuthConfig",
         "MCPOAuthAuthConfig",
