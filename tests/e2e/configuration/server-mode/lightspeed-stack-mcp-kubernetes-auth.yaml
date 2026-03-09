@@ -19,7 +19,7 @@ user_data_collection:
 authentication:
   module: "noop"
 mcp_servers:
-  - name: "mcp-file"
+  - name: "mcp-kubernetes"
     url: "http://mock-mcp:3001"
     authorization_headers:
-      Authorization: "/tmp/mcp-secret-token"
+      Authorization: "kubernetes"
