@@ -16,6 +16,7 @@ from behave.model import Feature, Scenario
 from tests.e2e.utils.prow_utils import restore_llama_stack_pod
 from behave.runner import Context
 
+from tests.e2e.utils.llama_stack_tools import unregister_mcp_toolgroups
 from tests.e2e.utils.llama_stack_shields import (
     register_shield,
     unregister_shield,
@@ -207,6 +208,27 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         switch_config(context.scenario_config)
         restart_container("lightspeed-stack")
 
+    if "MCPFileAuthConfig" in scenario.effective_tags:
+        context.scenario_config = _get_config_path("mcp-file-auth", mode_dir)
+        unregister_mcp_toolgroups()
+        switch_config(context.scenario_config)
+        restart_container("lightspeed-stack")
+    if "MCPKubernetesAuthConfig" in scenario.effective_tags:
+        context.scenario_config = _get_config_path("mcp-kubernetes", mode_dir)
+        unregister_mcp_toolgroups()
+        switch_config(context.scenario_config)
+        restart_container("lightspeed-stack")
+    if "MCPClientAuthConfig" in scenario.effective_tags:
+        context.scenario_config = _get_config_path("mcp-client", mode_dir)
+        unregister_mcp_toolgroups()
+        switch_config(context.scenario_config)
+        restart_container("lightspeed-stack")
+    if "MCPOAuthAuthConfig" in scenario.effective_tags:
+        context.scenario_config = _get_config_path("mcp-oauth", mode_dir)
+        unregister_mcp_toolgroups()
+        switch_config(context.scenario_config)
+        restart_container("lightspeed-stack")
+
 
 def after_scenario(context: Context, scenario: Scenario) -> None:
     """Run after each scenario is run.
@@ -241,7 +263,14 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
         context.llama_stack_was_running = False
 
     # Tags that require config restoration after scenario
-    config_restore_tags = {"InvalidFeedbackStorageConfig", "NoCacheConfig"}
+    config_restore_tags = {
+        "InvalidFeedbackStorageConfig",
+        "NoCacheConfig",
+        "MCPFileAuthConfig",
+        "MCPKubernetesAuthConfig",
+        "MCPClientAuthConfig",
+        "MCPOAuthAuthConfig",
+    }
     if config_restore_tags & set(scenario.effective_tags):
         switch_config(context.feature_config)
         restart_container("lightspeed-stack")
