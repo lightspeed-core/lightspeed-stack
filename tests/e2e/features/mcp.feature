@@ -63,7 +63,7 @@ Feature: MCP tests
   @InvalidMCPFileAuthConfig
   Scenario: Check if query endpoint reports error when MCP file-based invalid auth token is passed
     Given The system is in default state
-    When I use "query" to ask question with authorization header
+    When I use "query" to ask question
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
@@ -81,7 +81,7 @@ Feature: MCP tests
   @InvalidMCPFileAuthConfig
   Scenario: Check if streaming_query endpoint reports error when MCP file-based invalid auth token is passed
     Given The system is in default state
-    When I use "streaming_query" to ask question with authorization header
+    When I use "streaming_query" to ask question
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
@@ -204,7 +204,7 @@ Feature: MCP tests
   Scenario: Check if query endpoint succeeds by skipping when MCP client-provided auth token is omitted
     Given The system is in default state
     And I capture the current token metrics
-    When I use "query" to ask question with authorization header
+    When I use "query" to ask question
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
@@ -218,7 +218,7 @@ Feature: MCP tests
   Scenario: Check if streaming_query endpoint succeeds by skipping when MCP client-provided auth token is omitted
     Given The system is in default state
     And I capture the current token metrics
-    When I use "streaming_query" to ask question with authorization header
+    When I use "streaming_query" to ask question
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
