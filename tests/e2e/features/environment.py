@@ -58,6 +58,22 @@ _CONFIG_PATHS = {
         "tests/e2e/configuration/{mode_dir}/lightspeed-stack-mcp-file-auth.yaml",
         "tests/e2e-prow/rhoai/configs/lightspeed-stack-mcp-file-auth.yaml",
     ),
+    "invalid-mcp-file-auth": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-invalid-mcp-file-auth.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-invalid-mcp-file-auth.yaml",
+    ),
+    "mcp-kubernetes-auth": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-mcp-kubernetes-auth.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-mcp-kubernetes-auth.yaml",
+    ),
+    "mcp-client-auth": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-mcp-client-auth.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-mcp-client-auth.yaml",
+    ),
+    "mcp-oauth-auth": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-mcp-oauth-auth.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-mcp-oauth-auth.yaml",
+    ),
 }
 
 
@@ -219,17 +235,17 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         switch_config(context.scenario_config)
         restart_container("lightspeed-stack")
     if "MCPKubernetesAuthConfig" in scenario.effective_tags:
-        context.scenario_config = _get_config_path("mcp-kubernetes", mode_dir)
+        context.scenario_config = _get_config_path("mcp-kubernetes-auth", mode_dir)
         unregister_mcp_toolgroups()
         switch_config(context.scenario_config)
         restart_container("lightspeed-stack")
     if "MCPClientAuthConfig" in scenario.effective_tags:
-        context.scenario_config = _get_config_path("mcp-client", mode_dir)
+        context.scenario_config = _get_config_path("mcp-client-auth", mode_dir)
         unregister_mcp_toolgroups()
         switch_config(context.scenario_config)
         restart_container("lightspeed-stack")
     if "MCPOAuthAuthConfig" in scenario.effective_tags:
-        context.scenario_config = _get_config_path("mcp-oauth", mode_dir)
+        context.scenario_config = _get_config_path("mcp-oauth-auth", mode_dir)
         unregister_mcp_toolgroups()
         switch_config(context.scenario_config)
         restart_container("lightspeed-stack")
