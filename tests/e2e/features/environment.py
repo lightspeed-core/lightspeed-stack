@@ -224,29 +224,22 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         switch_config(context.scenario_config)
         restart_container("lightspeed-stack")
 
+    config_name: str | None = None
     if "MCPFileAuthConfig" in scenario.effective_tags:
-        context.scenario_config = _get_config_path("mcp-file-auth", mode_dir)
-        unregister_mcp_toolgroups()
-        switch_config(context.scenario_config)
-        restart_container("lightspeed-stack")
-    if "InvalidMCPFileAuthConfig" in scenario.effective_tags:
-        context.scenario_config = _get_config_path("invalid-mcp-file-auth", mode_dir)
-        unregister_mcp_toolgroups()
-        switch_config(context.scenario_config)
-        restart_container("lightspeed-stack")
-    if "MCPKubernetesAuthConfig" in scenario.effective_tags:
-        context.scenario_config = _get_config_path("mcp-kubernetes-auth", mode_dir)
-        unregister_mcp_toolgroups()
-        switch_config(context.scenario_config)
-        restart_container("lightspeed-stack")
-    if "MCPClientAuthConfig" in scenario.effective_tags:
-        context.scenario_config = _get_config_path("mcp-client-auth", mode_dir)
-        unregister_mcp_toolgroups()
-        switch_config(context.scenario_config)
-        restart_container("lightspeed-stack")
-    if "MCPOAuthAuthConfig" in scenario.effective_tags:
-        context.scenario_config = _get_config_path("mcp-oauth-auth", mode_dir)
-        unregister_mcp_toolgroups()
+        config_name = "mcp-file-auth"
+    elif "InvalidMCPFileAuthConfig" in scenario.effective_tags:
+        config_name = "invalid-mcp-file-auth"
+    elif "MCPKubernetesAuthConfig" in scenario.effective_tags:
+        config_name = "mcp-kubernetes-auth"
+    elif "MCPClientAuthConfig" in scenario.effective_tags:
+        config_name = "mcp-client-auth"
+    elif "MCPOAuthAuthConfig" in scenario.effective_tags:
+        config_name = "mcp-oauth-auth"
+        
+    if config_name is not None:
+        if not context.is_library_mode:
+            unregister_mcp_toolgroups()
+        context.scenario_config = _get_config_path(config_name, mode_dir)
         switch_config(context.scenario_config)
         restart_container("lightspeed-stack")
 
