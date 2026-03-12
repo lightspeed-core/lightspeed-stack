@@ -235,7 +235,7 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         config_name = "mcp-client-auth"
     elif "MCPOAuthAuthConfig" in scenario.effective_tags:
         config_name = "mcp-oauth-auth"
-        
+
     if config_name is not None:
         if not context.is_library_mode:
             unregister_mcp_toolgroups()
