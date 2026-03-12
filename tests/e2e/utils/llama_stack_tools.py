@@ -1,9 +1,13 @@
-"""E2E helpers to unregister and re-register Llama Stack shields via the client API.
+"""E2E test utilities for managing Llama Stack MCP toolgroups.
 
-Used by the @disable-shields tag: before the scenario we call client.shields.delete()
-to unregister the shield; after the scenario we call client.shields.register()
-to restore it. Only applies in server mode (Llama Stack as a separate service).
-Requires E2E_LLAMA_STACK_URL or E2E_LLAMA_HOSTNAME/E2E_LLAMA_PORT.
+This module provides functions to unregister (delete) MCP-related toolgroups from
+a running Llama Stack instance during end-to-end tests. These utilities are intended to
+reset Llama Stack toolgroup state between scenarios that involve dynamic toolgroup registration,
+such as when switching configurations or testing various MCP authentication methods.
+
+Only applies when running Llama Stack as a separate service (server mode).
+Requires E2E_LLAMA_STACK_URL or the combination of E2E_LLAMA_HOSTNAME and E2E_LLAMA_PORT
+environment variables to locate the Llama Stack instance.
 """
 
 import asyncio
