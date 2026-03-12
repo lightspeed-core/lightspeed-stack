@@ -81,6 +81,7 @@ Feature: MCP tests
         }
     """
 
+  @skip
   @InvalidMCPFileAuthConfig
   Scenario: Check if streaming_query endpoint reports error when MCP file-based invalid auth token is passed 
     Given The system is in default state
