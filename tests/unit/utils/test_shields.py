@@ -1,8 +1,8 @@
 """Unit tests for utils/shields.py functions."""
 
+from llama_stack_client import APIConnectionError, APIStatusError
 import pytest
 from fastapi import HTTPException, status
-from llama_stack_client import APIConnectionError, APIStatusError
 from pytest_mock import MockerFixture
 
 from utils.shields import (

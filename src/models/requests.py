@@ -6,10 +6,11 @@ from typing import Self
 
 from llama_stack_api.openai_responses import (
     OpenAIResponseInputToolChoice as ToolChoice,
-    OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
     OpenAIResponseInputTool as InputTool,
     OpenAIResponsePrompt as Prompt,
     OpenAIResponseText as Text,
+    OpenAIResponseToolMCP as OutputToolMCP,
+    OpenAIResponseReasoning as Reasoning,
 )
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -19,6 +20,28 @@ from utils import suid
 from utils.types import IncludeParameter, ResponseInput
 
 logger = get_logger(__name__)
+
+# Attribute names that are echoed back in the response.
+_ECHOED_FIELDS = set(
+    {
+        "instructions",
+        "max_tool_calls",
+        "max_output_tokens",
+        "metadata",
+        "model",
+        "parallel_tool_calls",
+        "previous_response_id",
+        "prompt",
+        "reasoning",
+        "safety_identifier",
+        "temperature",
+        "top_p",
+        "truncation",
+        "text",
+        "tool_choice",
+        "store",
+    }
+)
 
 
 class Attachment(BaseModel):
@@ -614,6 +637,7 @@ class ResponsesRequest(BaseModel):
         instructions: System instructions or guidelines provided to the model (acts as
             the system prompt).
         max_infer_iters: Maximum number of inference iterations the model can perform.
+        max_output_tokens: Maximum number of tokens allowed in the response.
         max_tool_calls: Maximum number of tool calls allowed in a single response.
         metadata: Custom metadata dictionary with key-value pairs for tracking or logging.
         parallel_tool_calls: Whether the model can make multiple tool calls in parallel.
@@ -621,17 +645,21 @@ class ResponsesRequest(BaseModel):
             conversation. Mutually exclusive with conversation.
         prompt: Prompt object containing a template with variables for dynamic
             substitution.
+        reasoning: Reasoning configuration for the response.
+        safety_identifier: Safety identifier for the response.
         store: Whether to store the response in conversation history. Defaults to True.
         stream: Whether to stream the response as it is generated. Defaults to False.
         temperature: Sampling temperature controlling randomness (typically 0.0–2.0).
         text: Text response configuration specifying output format constraints (JSON
             schema, JSON object, or plain text).
         tool_choice: Tool selection strategy ("auto", "required", "none", or specific
-            tool configuration). Defaults to "auto".
+            tool configuration).
         tools: List of tools available to the model (file search, web search, function
             calls, MCP tools). Defaults to all tools available to the model.
         generate_topic_summary: LCORE-specific flag indicating whether to generate a
             topic summary for new conversations. Defaults to True.
+        shield_ids: LCORE-specific list of safety shield IDs to apply. If None, all
+            configured shields are used.
         solr: LCORE-specific Solr vector_io provider query parameters (e.g. filter
             queries). Optional.
     """
@@ -642,18 +670,23 @@ class ResponsesRequest(BaseModel):
     include: Optional[list[IncludeParameter]] = None
     instructions: Optional[str] = None
     max_infer_iters: Optional[int] = None
+    max_output_tokens: Optional[int] = None
     max_tool_calls: Optional[int] = None
     metadata: Optional[dict[str, str]] = None
     parallel_tool_calls: Optional[bool] = None
     previous_response_id: Optional[str] = None
     prompt: Optional[Prompt] = None
+    reasoning: Optional[Reasoning] = None
+    safety_identifier: Optional[str] = None
     store: bool = True
     stream: bool = False
     temperature: Optional[float] = None
     text: Optional[Text] = None
-    tool_choice: Optional[ToolChoice] = ToolChoiceMode.auto
+    tool_choice: Optional[ToolChoice] = None
     tools: Optional[list[InputTool]] = None
+    # LCORE-specific attributes
     generate_topic_summary: Optional[bool] = True
+    shield_ids: Optional[list[str]] = None
     solr: Optional[dict[str, Any]] = None
 
     model_config = {
@@ -661,40 +694,11 @@ class ResponsesRequest(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "input": "What is Kubernetes?",
+                    "input": "Hello World!",
                     "model": "openai/gpt-4o-mini",
-                    "conversation": "conv_0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e",
                     "instructions": "You are a helpful assistant",
-                    "include": ["message.output_text.logprobs"],
-                    "max_tool_calls": 5,
-                    "metadata": {"source": "api"},
-                    "parallel_tool_calls": True,
-                    "prompt": {
-                        "id": "prompt_123",
-                        "variables": {
-                            "topic": {"type": "input_text", "text": "Kubernetes"}
-                        },
-                        "version": "1.0",
-                    },
                     "store": True,
                     "stream": False,
-                    "temperature": 0.7,
-                    "text": {
-                        "format": {
-                            "type": "json_schema",
-                            "schema": {
-                                "type": "object",
-                                "properties": {"answer": {"type": "string"}},
-                            },
-                        }
-                    },
-                    "tool_choice": "auto",
-                    "tools": [
-                        {
-                            "type": "file_search",
-                            "vector_store_ids": ["vs_123"],
-                        }
-                    ],
                     "generate_topic_summary": True,
                 }
             ]
@@ -729,3 +733,32 @@ class ResponsesRequest(BaseModel):
         if value and not suid.check_suid(value):
             raise ValueError(f"Improper conversation ID '{value}'")
         return value
+
+    @field_validator("previous_response_id")
+    @classmethod
+    def check_previous_response_id(cls, value: Optional[str]) -> Optional[str]:
+        """Validate that previous_response_id does not start with 'modr'."""
+        if value is not None and value.startswith("modr"):
+            raise ValueError("You cannot provide context by moderation response.")
+        return value
+
+    def echoed_params(self) -> dict[str, Any]:
+        """Dump attributes that are echoed back in the response.
+
+        The tools attribute is converted from input tool to output tool model.
+
+        Returns:
+            Dict of echoed attributes.
+        """
+        data = self.model_dump(include=_ECHOED_FIELDS)
+        if self.tools is not None:
+            data["tools"] = [
+                (
+                    OutputToolMCP.model_validate(t.model_dump()).model_dump()
+                    if t.type == "mcp"
+                    else t.model_dump()
+                )
+                for t in self.tools
+            ]
+
+        return data

@@ -476,3 +476,39 @@ async def append_turn_items_to_conversation(
     except APIStatusError as e:
         error_response = InternalServerErrorResponse.generic()
         raise HTTPException(**error_response.model_dump()) from e
+
+
+async def get_all_conversation_items(
+    client: AsyncLlamaStackClient,
+    conversation_id_llama_stack: str,
+) -> list[ItemListResponse]:
+    """Fetch all items for a conversation (Conversations API), paginating as needed.
+
+    Args:
+        client: Llama Stack client.
+        conversation_id_llama_stack: Conversation ID in Llama Stack format.
+
+    Returns:
+        List of all items in the conversation, oldest first.
+    """
+    try:
+        paginator = client.conversations.items.list(
+            conversation_id=conversation_id_llama_stack,
+            order="asc",
+        )
+        first_page = await paginator
+        items: list[ItemListResponse] = list(first_page.data or [])
+        page = first_page
+        while page.has_next_page():
+            page = await page.get_next_page()
+            items.extend(page.data or [])
+        return items
+    except APIConnectionError as e:
+        error_response = ServiceUnavailableResponse(
+            backend_name="Llama Stack",
+            cause=str(e),
+        )
+        raise HTTPException(**error_response.model_dump()) from e
+    except APIStatusError as e:
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump()) from e

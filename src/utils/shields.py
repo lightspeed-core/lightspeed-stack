@@ -230,7 +230,6 @@ def create_refusal_response(refusal_message: str) -> OpenAIResponseMessage:
         OpenAIResponseMessage with refusal message.
     """
     return OpenAIResponseMessage(
-        type="message",
         role="assistant",
         content=refusal_message,
     )

@@ -44,6 +44,7 @@ from utils.transcripts import (
     create_transcript_metadata,
     store_transcript,
 )
+from utils.suid import is_moderation_id
 from utils.types import TurnSummary
 
 logger = get_logger(__name__)
@@ -290,6 +291,7 @@ def store_query_results(  # pylint: disable=too-many-arguments
             model_id=model_id,
             provider_id=provider_id,
             topic_summary=topic_summary,
+            response_id=summary.id,
         )
     except SQLAlchemyError as e:
         logger.exception("Error persisting conversation details.")
@@ -377,6 +379,7 @@ def persist_user_conversation_details(
     model_id: str,
     provider_id: str,
     topic_summary: Optional[str],
+    response_id: str,
 ) -> None:
     """Associate conversation to user in the database.
 
@@ -388,6 +391,7 @@ def persist_user_conversation_details(
         model_id: The model identifier
         provider_id: The provider identifier
         topic_summary: Optional topic summary for the conversation
+        response_id: Response ID for the conversation
     """
     # Normalize the conversation ID (strip 'conv_' prefix if present)
     normalized_id = normalize_conversation_id(conversation_id)
@@ -402,7 +406,6 @@ def persist_user_conversation_details(
         existing_conversation = (
             session.query(UserConversation).filter_by(id=normalized_id).first()
         )
-
         if not existing_conversation:
             conversation = UserConversation(
                 id=normalized_id,
@@ -411,6 +414,10 @@ def persist_user_conversation_details(
                 last_used_provider=provider_id,
                 topic_summary=topic_summary or "",
                 message_count=1,
+                # For new conversation either current response or None if moderation-blocked
+                last_response_id=(
+                    response_id if not is_moderation_id(response_id) else None
+                ),
             )
             session.add(conversation)
             logger.debug(
@@ -427,6 +434,9 @@ def persist_user_conversation_details(
                 user_id,
                 existing_conversation.message_count,
             )
+            # Update last response id only if not moderation-blocked
+            if not is_moderation_id(response_id):
+                existing_conversation.last_response_id = response_id
 
         max_turn_number = (
             session.query(func.max(UserTurn.turn_number))
@@ -441,6 +451,7 @@ def persist_user_conversation_details(
             completed_at=datetime.fromisoformat(completed_at),
             provider=provider_id,
             model=model_id,
+            response_id=response_id,
         )
         session.add(turn)
         logger.debug(

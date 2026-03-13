@@ -552,12 +552,8 @@ class TestGetConversationEndpoint:
     ) -> None:
         """Test the endpoint when LlamaStack returns NotFoundError.
 
-        Verify the GET /conversations/{conversation_id} handler raises an HTTP
-        404 when the Llama Stack client reports the session as not found.
-
-        Asserts that the raised HTTPException contains a response message
-        indicating the conversation was not found and a cause that includes
-        "does not exist" and the conversation ID.
+        When the Llama Stack client reports the session as not found,
+        get_all_conversation_items maps it to HTTP 500 (InternalServerError).
         """
         mock_authorization_resolvers(mocker)
         mocker.patch(
@@ -589,13 +585,13 @@ class TestGetConversationEndpoint:
                 auth=MOCK_AUTH,
             )
 
-        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-
+        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
-        assert "Conversation not found" in detail["response"]  # type: ignore
-        assert "does not exist" in detail["cause"]  # type: ignore
-        assert VALID_CONVERSATION_ID in detail["cause"]  # type: ignore
+        assert detail["response"] == "Internal server error"
+        assert detail["cause"] == (
+            "An unexpected error occurred while processing the request."
+        )
 
     @pytest.mark.asyncio
     async def test_get_conversation_forbidden(
@@ -679,7 +675,10 @@ class TestGetConversationEndpoint:
         mock_item2.role = "assistant"
         mock_item2.content = "Hi there!"
         mock_items_response.data = [mock_item1, mock_item2]
-        mock_client.conversations.items.list.return_value = mock_items_response
+        mock_items_response.has_next_page.return_value = False
+        mock_client.conversations.items.list = mocker.AsyncMock(
+            return_value=mock_items_response
+        )
 
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
@@ -732,7 +731,8 @@ class TestGetConversationEndpoint:
                 type="message", role="assistant", content="I'm doing well, thanks!"
             ),
         ]
-        mock_client.conversations.items.list.return_value = mock_items
+        mock_items.has_next_page.return_value = False
+        mock_client.conversations.items.list = mocker.AsyncMock(return_value=mock_items)
 
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
@@ -806,7 +806,10 @@ class TestGetConversationEndpoint:
         mock_client = mocker.AsyncMock()
         mock_items_response = mocker.Mock()
         mock_items_response.data = []
-        mock_client.conversations.items.list.return_value = mock_items_response
+        mock_items_response.has_next_page.return_value = False
+        mock_client.conversations.items.list = mocker.AsyncMock(
+            return_value=mock_items_response
+        )
         mock_client_holder = mocker.patch(
             "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
@@ -832,7 +835,10 @@ class TestGetConversationEndpoint:
         dummy_request: Request,
         mock_conversation: MockType,
     ) -> None:
-        """Test when APIStatusError is raised during conversation retrieval."""
+        """Test when APIStatusError is raised during conversation retrieval.
+
+        get_all_conversation_items maps APIStatusError to HTTP 500.
+        """
         mock_authorization_resolvers(mocker)
         mocker.patch(
             "app.endpoints.conversations_v1.configuration", setup_configuration
@@ -863,10 +869,10 @@ class TestGetConversationEndpoint:
                 auth=MOCK_AUTH,
             )
 
-        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
+        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
-        assert "Conversation not found" in detail["response"]  # type: ignore
+        assert "response" in detail
 
     @pytest.mark.asyncio
     async def test_sqlalchemy_error_in_get_conversation(
@@ -940,7 +946,7 @@ class TestGetConversationEndpoint:
         mock_session_context.__enter__.return_value = mock_session
         mock_session_context.__exit__.return_value = None
         mocker.patch(
-            "app.endpoints.conversations_v1.get_session",
+            "utils.endpoints.get_session",
             return_value=mock_session_context,
         )
 

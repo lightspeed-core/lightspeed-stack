@@ -28,6 +28,7 @@ from app.endpoints import (
     rlsapi_v1,
     a2a,
     query,
+    responses,
 )
 
 
@@ -53,7 +54,7 @@ class MockFastAPI(FastAPI):
         prefix: str = "",
         tags: Optional[list] = None,
         dependencies: Optional[Sequence] = None,
-        responses: Optional[dict] = None,
+        responses: Optional[dict] = None,  # pylint: disable=redefined-outer-name
         deprecated: Optional[bool] = None,
         include_in_schema: Optional[bool] = None,
         default_response_class: Optional[Any] = None,
@@ -108,7 +109,7 @@ def test_include_routers() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 20
+    assert len(app.routers) == 21
     assert root.router in app.get_routers()
     assert info.router in app.get_routers()
     assert models.router in app.get_routers()
@@ -129,6 +130,7 @@ def test_include_routers() -> None:
     assert rlsapi_v1.router in app.get_routers()
     assert a2a.router in app.get_routers()
     assert stream_interrupt.router in app.get_routers()
+    assert responses.router in app.get_routers()
 
 
 def test_check_prefixes() -> None:
@@ -136,7 +138,7 @@ def test_check_prefixes() -> None:
 
     Verify that include_routers registers the expected routers with their configured URL prefixes.
 
-    Asserts that 16 routers are registered on a MockFastAPI instance and that
+    Asserts that 21 routers are registered on a MockFastAPI instance and that
     each router's prefix matches the expected value (e.g., root, health,
     authorized, metrics use an empty prefix; most API routers use "/v1";
     conversations_v2 uses "/v2").
@@ -145,7 +147,7 @@ def test_check_prefixes() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 20
+    assert len(app.routers) == 21
     assert app.get_router_prefix(root.router) == ""
     assert app.get_router_prefix(info.router) == "/v1"
     assert app.get_router_prefix(models.router) == "/v1"
@@ -167,3 +169,4 @@ def test_check_prefixes() -> None:
     assert app.get_router_prefix(rlsapi_v1.router) == "/v1"
     assert app.get_router_prefix(a2a.router) == ""
     assert app.get_router_prefix(stream_interrupt.router) == "/v1"
+    assert app.get_router_prefix(responses.router) == "/v1"

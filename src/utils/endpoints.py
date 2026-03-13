@@ -6,17 +6,20 @@ from fastapi import HTTPException
 from pydantic import AnyUrl, ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
+from client import AsyncLlamaStackClientHolder
 import constants
 from app.database import get_session
 from configuration import AppConfig, LogicError
 from log import get_logger
-from models.database.conversations import UserConversation
+from models.database.conversations import UserConversation, UserTurn
 from models.responses import (
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
 )
-from utils.types import ReferencedDocument, TurnSummary
+from utils.responses import create_new_conversation
+from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
+from utils.types import ReferencedDocument, ResponsesConversationContext, TurnSummary
 
 logger = get_logger(__name__)
 
@@ -57,6 +60,35 @@ def retrieve_conversation(conversation_id: str) -> Optional[UserConversation]:
     """
     with get_session() as session:
         return session.query(UserConversation).filter_by(id=conversation_id).first()
+
+
+def retrieve_conversation_turns(conversation_id: str) -> list[UserTurn]:
+    """Retrieve all turns for a conversation from the database, ordered by turn number.
+
+    Args:
+        conversation_id (str): The normalized conversation ID.
+
+    Returns:
+        list[UserTurn]: The list of turns for the conversation, ordered by turn_number.
+
+    Raises:
+        HTTPException: 500 if a database error occurs.
+    """
+    try:
+        with get_session() as session:
+            return (
+                session.query(UserTurn)
+                .filter_by(conversation_id=conversation_id)
+                .order_by(UserTurn.turn_number)
+                .all()
+            )
+    except SQLAlchemyError as e:
+        logger.error(
+            "Database error occurred while retrieving conversation turns for %s.",
+            conversation_id,
+        )
+        response = InternalServerErrorResponse.database_error()
+        raise HTTPException(**response.model_dump()) from e
 
 
 def validate_conversation_ownership(
@@ -177,6 +209,145 @@ def validate_and_retrieve_conversation(
         raise HTTPException(**response.model_dump()) from e
 
     return user_conversation
+
+
+async def resolve_response_context(
+    user_id: str,
+    others_allowed: bool,
+    conversation_id: Optional[str],
+    previous_response_id: Optional[str],
+    generate_topic_summary: Optional[bool],
+) -> ResponsesConversationContext:
+    """Resolve conversation context for the responses endpoint without mutating the request.
+
+    Parameters:
+        user_id: ID of the user making the request.
+        others_allowed: Whether the user can access conversations owned by others.
+        conversation_id: Conversation ID from the request, if any.
+        previous_response_id: Previous response ID from the request, if any.
+        generate_topic_summary: Resolved value for request.generate_topic_summary.
+
+    Returns:
+        ResponsesConversationContext: Contains conversation, user_conversation, and
+            resolved generate_topic_summary to apply to the request.
+
+    Raises:
+        HTTPException: 404 if previous_response_id is set but the turn does not exist;
+            other HTTP exceptions from validate_and_retrieve_conversation.
+    """
+    client = AsyncLlamaStackClientHolder().get_client()
+    # Context for the LLM passed by conversation
+    if conversation_id:
+        logger.info("Conversation ID specified in request: %s", conversation_id)
+        user_conversation = validate_and_retrieve_conversation(
+            normalized_conv_id=normalize_conversation_id(conversation_id),
+            user_id=user_id,
+            others_allowed=others_allowed,
+        )
+        return ResponsesConversationContext(
+            conversation=to_llama_stack_conversation_id(user_conversation.id),
+            user_conversation=user_conversation,
+            generate_topic_summary=False,
+        )
+
+    # Context for the LLM passed by previous response id
+    if previous_response_id:
+        if not check_turn_existence(previous_response_id):
+            error_response = NotFoundResponse(
+                resource="response", resource_id=previous_response_id
+            )
+            raise HTTPException(**error_response.model_dump())
+        prev_user_turn = retrieve_turn_by_response_id(previous_response_id)
+        user_conversation = validate_and_retrieve_conversation(
+            normalized_conv_id=prev_user_turn.conversation_id,
+            user_id=user_id,
+            others_allowed=others_allowed,
+        )
+        if (
+            user_conversation.last_response_id is not None
+            and user_conversation.last_response_id != previous_response_id
+        ):
+            new_conv_id = await create_new_conversation(client)
+            want_topic_summary = (
+                generate_topic_summary if generate_topic_summary is not None else True
+            )
+            return ResponsesConversationContext(
+                conversation=new_conv_id,
+                user_conversation=user_conversation,
+                generate_topic_summary=want_topic_summary,
+            )
+        return ResponsesConversationContext(
+            conversation=to_llama_stack_conversation_id(user_conversation.id),
+            user_conversation=user_conversation,
+            generate_topic_summary=False,
+        )
+
+    # No context passed, create new conversation
+    new_conv_id = await create_new_conversation(client)
+    want_topic_summary = (
+        generate_topic_summary if generate_topic_summary is not None else True
+    )
+    return ResponsesConversationContext(
+        conversation=new_conv_id,
+        user_conversation=None,
+        generate_topic_summary=want_topic_summary,
+    )
+
+
+def retrieve_turn_by_response_id(response_id: str) -> UserTurn:
+    """Retrieve a response's turn from the database by response ID.
+
+    Looks up the turn that has this response_id to get its conversation.
+    Used for fork/previous_response_id resolution.
+
+    Args:
+        response_id: The ID of the response (stored on UserTurn.response_id).
+
+    Returns:
+        The UserTurn row for that response (has conversation_id).
+
+    Raises:
+        HTTPException: 404 if no turn has this response_id; 500 on database error.
+    """
+    try:
+        with get_session() as session:
+            turn = session.query(UserTurn).filter_by(response_id=response_id).first()
+            if turn is None:
+                logger.error("Response %s not found in database.", response_id)
+                response = NotFoundResponse(
+                    resource="response", resource_id=response_id
+                )
+                raise HTTPException(**response.model_dump())
+            return turn
+    except SQLAlchemyError as e:
+        logger.exception(
+            "Database error while retrieving turn by response_id %s", response_id
+        )
+        response = InternalServerErrorResponse.database_error()
+        raise HTTPException(**response.model_dump()) from e
+
+
+def check_turn_existence(response_id: str) -> bool:
+    """Check if a turn exists for a given response ID.
+
+    Args:
+        response_id: The ID of the response to check.
+
+    Returns:
+        bool: True if the turn exists, False otherwise.
+    """
+    try:
+        with get_session() as session:
+            turn = session.query(UserTurn).filter_by(response_id=response_id).first()
+            return turn is not None
+    except SQLAlchemyError as e:
+        logger.exception(
+            "Database error while checking turn existence for response_id %s",
+            response_id,
+        )
+        raise HTTPException(
+            **InternalServerErrorResponse.database_error().model_dump()
+        ) from e
 
 
 def check_configuration_loaded(config: AppConfig) -> None:

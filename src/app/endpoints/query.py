@@ -1,5 +1,3 @@
-# pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks
-
 """Handler for REST API call to provide answer to query using Response API."""
 
 import datetime
@@ -264,7 +262,7 @@ async def query_endpoint_handler(
     )
 
 
-async def retrieve_response(  # pylint: disable=too-many-locals
+async def retrieve_response(
     client: AsyncLlamaStackClient,
     responses_params: ResponsesApiParams,
     moderation_result: ShieldModerationResult,
@@ -291,7 +289,9 @@ async def retrieve_response(  # pylint: disable=too-many-locals
             responses_params.input,
             [moderation_result.refusal_response],
         )
-        return TurnSummary(llm_response=moderation_result.message)
+        return TurnSummary(
+            id=moderation_result.moderation_id, llm_response=moderation_result.message
+        )
     try:
         response = await client.responses.create(
             **responses_params.model_dump(exclude_none=True)

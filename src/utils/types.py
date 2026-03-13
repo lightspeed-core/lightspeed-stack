@@ -17,14 +17,16 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchToolCall,
     OpenAIResponsePrompt as Prompt,
     OpenAIResponseText as Text,
+    OpenAIResponseReasoning as Reasoning,
 )
 from llama_stack_client.lib.agents.tool_parser import ToolParser
 from llama_stack_client.lib.agents.types import (
     CompletionMessage as AgentCompletionMessage,
     ToolCall as AgentToolCall,
 )
-from pydantic import AnyUrl, BaseModel, Field
+from pydantic import AnyUrl, BaseModel, ConfigDict, Field
 
+from models.database.conversations import UserConversation
 from utils.token_counter import TokenCounter
 
 
@@ -117,6 +119,31 @@ class ShieldModerationPassed(BaseModel):
     decision: Literal["passed"] = "passed"
 
 
+class ResponsesConversationContext(BaseModel):
+    """Result of resolving conversation context for the responses endpoint.
+
+    Holds the conversation ID to use for the LLM, the optional user conversation
+    record, and the resolved generate_topic_summary flag. Caller assigns these
+    to the request in outer scope instead of mutating the request inside the
+    resolver.
+
+    Attributes:
+        conversation: Conversation ID in llama-stack format to use for the request.
+        user_conversation: Resolved user conversation record, or None for new ones.
+        generate_topic_summary: Resolved value for request.generate_topic_summary.
+    """
+
+    conversation: str = Field(description="Conversation ID in llama-stack format")
+    user_conversation: Optional[UserConversation] = Field(
+        default=None,
+        description="Resolved user conversation record, or None for new conversations",
+    )
+    generate_topic_summary: bool = Field(
+        description="Resolved value for request.generate_topic_summary",
+    )
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
 class ShieldModerationBlocked(BaseModel):
     """Shield moderation blocked the content; refusal details are present."""
 
@@ -177,6 +204,10 @@ class ResponsesApiParams(BaseModel):
         default=None,
         description="Maximum number of inference iterations",
     )
+    max_output_tokens: Optional[int] = Field(
+        default=None,
+        description="Maximum number of tokens allowed in the response",
+    )
     max_tool_calls: Optional[int] = Field(
         default=None,
         description="Maximum tool calls allowed in a single response",
@@ -196,6 +227,10 @@ class ResponsesApiParams(BaseModel):
     prompt: Optional[Prompt] = Field(
         default=None,
         description="Prompt template with variables for dynamic substitution",
+    )
+    reasoning: Optional[Reasoning] = Field(
+        default=None,
+        description="Reasoning configuration for the response",
     )
     store: bool = Field(description="Whether to store the response")
     stream: bool = Field(description="Whether to stream the response")
@@ -230,6 +265,10 @@ class ResponsesApiParams(BaseModel):
         MCP servers.  See LCORE-1414 / GitHub issue #1269.
         """
         result = super().model_dump(*args, **kwargs)
+        # Only one context option is allowed, previous_response_id has priority
+        # Turn is added to conversation manually if previous_response_id is used
+        if self.previous_response_id:
+            result.pop("conversation", None)
         dumped_tools = result.get("tools")
         if not self.tools or not isinstance(dumped_tools, list):
             return result
@@ -327,6 +366,7 @@ class RAGContext(BaseModel):
 class TurnSummary(BaseModel):
     """Summary of a turn in llama stack."""
 
+    id: str = Field(default="", description="ID of the response")
     llm_response: str = ""
     tool_calls: list[ToolCallSummary] = Field(default_factory=list)
     tool_results: list[ToolResultSummary] = Field(default_factory=list)

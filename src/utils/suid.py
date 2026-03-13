@@ -103,3 +103,11 @@ def to_llama_stack_conversation_id(conversation_id: str) -> str:
     if not conversation_id.startswith("conv_"):
         return f"conv_{conversation_id}"
     return conversation_id
+
+
+def is_moderation_id(suid: str) -> bool:
+    """Check if given string is a moderation ID.
+
+    Returns True if the string starts with 'modr'.
+    """
+    return suid.startswith("modr")

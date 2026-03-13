@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from llama_stack_api.openai_responses import (
+from llama_stack_api import (
     OpenAIResponseObject,
     OpenAIResponseObjectStream,
     OpenAIResponseObjectStreamResponseMcpCallArgumentsDone as MCPArgsDoneChunk,
@@ -302,6 +302,7 @@ async def retrieve_response_generator(
     try:
         if context.moderation_result.decision == "blocked":
             turn_summary.llm_response = context.moderation_result.message
+            turn_summary.id = context.moderation_result.moderation_id
             await append_turn_items_to_conversation(
                 context.client,
                 responses_params.conversation,
@@ -590,6 +591,7 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
         turn_response: The streaming response from Llama Stack
         context: The response generator context
         turn_summary: TurnSummary to populate during streaming
+
     Yields:
         SSE-formatted strings for tokens, tool calls, tool results,
         turn completion, and error events.

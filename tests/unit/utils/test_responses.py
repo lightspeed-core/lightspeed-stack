@@ -126,9 +126,8 @@ def make_content_part(
         ("function_call", "assistant", "some text", ""),
         ("file_search_call", "assistant", "some text", ""),
         (None, "assistant", "some text", ""),
-        # User role messages are filtered out - return empty string
-        ("message", "user", "some text", ""),
-        # Valid assistant message with string content
+        # Message type extracts content regardless of role (input or output)
+        ("message", "user", "some text", "some text"),
         ("message", "assistant", "Hello, world!", "Hello, world!"),
         ("message", "assistant", "", ""),
     ],
@@ -136,7 +135,7 @@ def make_content_part(
         "function_call_type_returns_empty",
         "file_search_call_type_returns_empty",
         "none_type_returns_empty",
-        "user_role_returns_empty",
+        "user_message_extracts_content",
         "valid_string_content",
         "empty_string_content",
     ],
@@ -146,11 +145,7 @@ def test_extract_text_basic_cases(
 ) -> None:
     """Test basic extraction cases for different types, roles, and simple content.
 
-    Args:
-        item_type: Type of the output item
-        role: Role of the message
-        content: Content of the message
-        expected: Expected extracted text
+    Extraction works for both input and output items; role is not filtered.
     """
     output_item = make_output_item(item_type=item_type, role=role, content=content)
     result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
@@ -306,8 +301,8 @@ class TestExtractTextFromResponseItems:
         result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
         assert result == "Valid message"
 
-    def test_extract_text_from_response_items_filters_user_messages(self) -> None:
-        """Test extract_text_from_response_items filters out user role messages."""
+    def test_extract_text_from_response_items_includes_all_roles(self) -> None:
+        """Test extract_text_from_response_items extracts from all message roles."""
         item1 = make_output_item(
             item_type="message", role="assistant", content="Assistant message"
         )
@@ -315,8 +310,8 @@ class TestExtractTextFromResponseItems:
             item_type="message", role="user", content="User message"
         )
         result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
-        # User messages are filtered out - only assistant message is included
-        assert result == "Assistant message"
+        # All message items are included (generalizes for input and output)
+        assert result == "Assistant message User message"
 
     def test_extract_text_from_response_items_with_list_content(self) -> None:
         """Test extract_text_from_response_items with list-based content."""

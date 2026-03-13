@@ -31,6 +31,7 @@ class UserConversation(Base):  # pylint: disable=too-few-public-methods
         DateTime(timezone=True),
         server_default=func.now(),  # pylint: disable=not-callable
     )
+    last_response_id: Mapped[str] = mapped_column(nullable=True)
 
     # The number of user messages in the conversation
     message_count: Mapped[int] = mapped_column(default=0)
@@ -66,3 +67,7 @@ class UserTurn(Base):  # pylint: disable=too-few-public-methods
     provider: Mapped[str] = mapped_column(nullable=False)
 
     model: Mapped[str] = mapped_column(nullable=False)
+
+    # Llama Stack response ID for this turn (1:1); nullable for legacy turns without it.
+    # Indexed for fast lookup when resolving previous_response_id to conversation.
+    response_id: Mapped[str] = mapped_column(nullable=True, index=True)

@@ -6,9 +6,12 @@ and processing RAG chunks that is shared between query_v2.py and streaming_query
 
 import asyncio
 import traceback
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from urllib.parse import urljoin
 
+from llama_stack_api.openai_responses import (
+    OpenAIResponseMessage as ResponseMessage,
+)
 from llama_stack_client import AsyncLlamaStackClient
 from pydantic import AnyUrl
 
@@ -17,7 +20,7 @@ from configuration import configuration
 from log import get_logger
 from models.responses import ReferencedDocument
 from utils.responses import resolve_vector_store_ids
-from utils.types import RAGChunk, RAGContext
+from utils.types import RAGChunk, RAGContext, ResponseInput
 
 logger = get_logger(__name__)
 
@@ -631,3 +634,39 @@ def _convert_solr_chunks_to_rag_format(
         )
 
     return rag_chunks
+
+
+def append_inline_rag_context_to_responses_input(
+    input_value: ResponseInput,
+    inline_rag_context_text: str,
+) -> ResponseInput:
+    """Append inline RAG context to Responses API input.
+
+    If input is str, appends the context text.
+    If input is a sequence of items, appends the context to the text of the first user message.
+    If there is no user message, returns the input unchanged.
+
+    Parameters:
+        input_value: The request input (string or list of ResponseItem).
+        inline_rag_context_text: RAG context string to inject.
+
+    Returns:
+        The same type as input_value, with context merged in.
+    """
+    if not inline_rag_context_text:
+        return input_value
+    if isinstance(input_value, str):
+        return input_value + "\n\n" + inline_rag_context_text
+    for item in input_value:
+        if item.type != "message" or item.role != "user":
+            continue
+        message = cast(ResponseMessage, item)
+        content = message.content
+        if isinstance(content, str):
+            message.content = content + "\n\n" + inline_rag_context_text
+            return input_value
+        for part in content:
+            if part.type == "input_text":
+                part.text = part.text + "\n\n" + inline_rag_context_text
+                return input_value
+    return input_value

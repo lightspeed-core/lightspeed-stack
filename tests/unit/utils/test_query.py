@@ -407,6 +407,7 @@ class TestPersistUserConversationDetails:
             model_id="model1",
             provider_id="provider1",
             topic_summary="Topic",
+            response_id="resp_1",
         )
 
         mock_session.add.assert_called()
@@ -454,6 +455,7 @@ class TestPersistUserConversationDetails:
             model_id="new_model",
             provider_id="new_provider",
             topic_summary=None,
+            response_id="resp_1",
         )
 
         assert existing_conv.last_used_model == "new_model"
@@ -497,6 +499,7 @@ class TestPersistUserConversationDetails:
             model_id="model1",
             provider_id="provider1",
             topic_summary="Topic",
+            response_id="resp_1",
         )
 
         # Verify that the turn number is incremented correctly

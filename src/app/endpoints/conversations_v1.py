@@ -16,7 +16,6 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from models.config import Action
 from models.database.conversations import (
-    UserTurn,
     UserConversation,
 )
 from models.requests import ConversationUpdateRequest
@@ -38,6 +37,7 @@ from utils.endpoints import (
     check_configuration_loaded,
     delete_conversation,
     retrieve_conversation,
+    retrieve_conversation_turns,
     validate_and_retrieve_conversation,
 )
 from utils.suid import (
@@ -45,7 +45,10 @@ from utils.suid import (
     normalize_conversation_id,
     to_llama_stack_conversation_id,
 )
-from utils.conversations import build_conversation_turns_from_items
+from utils.conversations import (
+    build_conversation_turns_from_items,
+    get_all_conversation_items,
+)
 from log import get_logger
 
 logger = get_logger(__name__)
@@ -236,46 +239,23 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
             llama_stack_conv_id,
         )
 
-        # Use Conversations API to retrieve conversation items
-        conversation_items_response = await client.conversations.items.list(
-            conversation_id=llama_stack_conv_id,
-            after=None,
-            include=None,
-            limit=None,
-            order="asc",  # oldest first
-        )
+        # Retrieve turns metadata from database (can be empty for legacy conversations)
+        db_turns = retrieve_conversation_turns(normalized_conv_id)
 
-        if not conversation_items_response.data:
+        # Use Conversations API to retrieve conversation items
+        items = await get_all_conversation_items(client, llama_stack_conv_id)
+        if not items:
             logger.error("No items found for conversation %s", conversation_id)
             response = NotFoundResponse(
                 resource="conversation", resource_id=normalized_conv_id
             ).model_dump()
             raise HTTPException(**response)
 
-        items = conversation_items_response.data
-
         logger.info(
             "Successfully retrieved %d items for conversation %s",
             len(items),
             conversation_id,
         )
-        # Retrieve turns metadata from database
-        db_turns: list[UserTurn] = []
-        try:
-            with get_session() as session:
-                db_turns = (
-                    session.query(UserTurn)
-                    .filter_by(conversation_id=normalized_conv_id)
-                    .order_by(UserTurn.turn_number)
-                    .all()
-                )
-        except SQLAlchemyError as e:
-            logger.error(
-                "Database error occurred while retrieving conversation turns for %s.",
-                normalized_conv_id,
-            )
-            response = InternalServerErrorResponse.database_error()
-            raise HTTPException(**response.model_dump()) from e
 
         # Build conversation turns from items and populate turns metadata
         # Use conversation.created_at for legacy conversations without turn metadata

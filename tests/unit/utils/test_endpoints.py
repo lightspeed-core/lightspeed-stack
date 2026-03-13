@@ -11,9 +11,9 @@ from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import SQLAlchemyError
 
-from models.database.conversations import UserConversation
+from models.database.conversations import UserConversation, UserTurn
 from utils import endpoints
-from utils.types import ReferencedDocument
+from utils.types import ReferencedDocument, ResponsesConversationContext
 
 
 @pytest.fixture(name="input_file")
@@ -451,3 +451,266 @@ class TestValidateConversationOwnership:
         mock_query.filter_by.assert_called_once_with(
             id=conversation_id, user_id=user_id
         )
+
+
+class TestResolveResponseContext:
+    """Tests for resolve_response_context function."""
+
+    @pytest.mark.asyncio
+    async def test_conversation_id_returns_context_with_existing_conversation(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When conversation_id is set, validate and return context with it."""
+        mock_holder = mocker.Mock()
+        mock_client = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.endpoints.AsyncLlamaStackClientHolder",
+            return_value=mock_holder,
+        )
+
+        mock_conv = mocker.Mock(spec=UserConversation)
+        mock_conv.id = "conv-normalized-123"
+        mocker.patch(
+            "utils.endpoints.normalize_conversation_id",
+            return_value="conv-normalized-123",
+        )
+        mocker.patch(
+            "utils.endpoints.to_llama_stack_conversation_id",
+            return_value="conv_conv-normalized-123",
+        )
+        mocker.patch(
+            "utils.endpoints.validate_and_retrieve_conversation",
+            return_value=mock_conv,
+        )
+
+        result = await endpoints.resolve_response_context(
+            user_id="user-1",
+            others_allowed=False,
+            conversation_id="conv-raw",
+            previous_response_id=None,
+            generate_topic_summary=None,
+        )
+
+        assert isinstance(result, ResponsesConversationContext)
+        assert result.conversation == "conv_conv-normalized-123"
+        assert result.user_conversation is mock_conv
+        assert result.generate_topic_summary is False
+
+    @pytest.mark.asyncio
+    async def test_previous_response_id_turn_not_found_raises_404(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When previous_response_id is set but turn does not exist, raise 404."""
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mocker.Mock()
+        mocker.patch(
+            "utils.endpoints.AsyncLlamaStackClientHolder",
+            return_value=mock_holder,
+        )
+        mocker.patch("utils.endpoints.check_turn_existence", return_value=False)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await endpoints.resolve_response_context(
+                user_id="user-1",
+                others_allowed=False,
+                conversation_id=None,
+                previous_response_id="resp-missing",
+                generate_topic_summary=None,
+            )
+
+        assert exc_info.value.status_code == 404
+        assert isinstance(exc_info.value.detail, dict)
+        assert "resp-missing" in str(exc_info.value.detail["cause"])
+
+    @pytest.mark.asyncio
+    async def test_previous_response_id_same_as_last_returns_existing_conversation(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When previous_response_id equals last_response_id, use existing conv."""
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mocker.Mock()
+        mocker.patch(
+            "utils.endpoints.AsyncLlamaStackClientHolder",
+            return_value=mock_holder,
+        )
+        mocker.patch("utils.endpoints.check_turn_existence", return_value=True)
+
+        mock_turn = mocker.Mock(spec=UserTurn)
+        mock_turn.conversation_id = "conv-existing"
+        mocker.patch(
+            "utils.endpoints.retrieve_turn_by_response_id",
+            return_value=mock_turn,
+        )
+
+        mock_conv = mocker.Mock(spec=UserConversation)
+        mock_conv.id = "conv-existing"
+        mock_conv.last_response_id = "resp-123"  # same as previous_response_id
+        mocker.patch(
+            "utils.endpoints.validate_and_retrieve_conversation",
+            return_value=mock_conv,
+        )
+        mocker.patch(
+            "utils.endpoints.to_llama_stack_conversation_id",
+            return_value="conv_conv-existing",
+        )
+        mock_create = mocker.patch(
+            "utils.endpoints.create_new_conversation",
+            new=mocker.AsyncMock(),
+        )
+
+        result = await endpoints.resolve_response_context(
+            user_id="user-1",
+            others_allowed=False,
+            conversation_id=None,
+            previous_response_id="resp-123",
+            generate_topic_summary=None,
+        )
+
+        assert result.conversation == "conv_conv-existing"
+        assert result.user_conversation is mock_conv
+        assert result.generate_topic_summary is False
+        mock_create.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_previous_response_id_fork_creates_new_conversation(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When last_response_id differs from previous_response_id, fork to new conv."""
+        mock_client = mocker.Mock()
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.endpoints.AsyncLlamaStackClientHolder",
+            return_value=mock_holder,
+        )
+        mocker.patch("utils.endpoints.check_turn_existence", return_value=True)
+
+        mock_turn = mocker.Mock(spec=UserTurn)
+        mock_turn.conversation_id = "conv-existing"
+        mocker.patch(
+            "utils.endpoints.retrieve_turn_by_response_id",
+            return_value=mock_turn,
+        )
+
+        mock_conv = mocker.Mock(spec=UserConversation)
+        mock_conv.id = "conv-existing"
+        mock_conv.last_response_id = "resp-latest"  # fork: different from prev
+        mocker.patch(
+            "utils.endpoints.validate_and_retrieve_conversation",
+            return_value=mock_conv,
+        )
+        mocker.patch(
+            "utils.endpoints.create_new_conversation",
+            new=mocker.AsyncMock(return_value="conv_new_fork"),
+        )
+
+        result = await endpoints.resolve_response_context(
+            user_id="user-1",
+            others_allowed=False,
+            conversation_id=None,
+            previous_response_id="resp-old",
+            generate_topic_summary=None,
+        )
+
+        assert result.conversation == "conv_new_fork"
+        assert result.user_conversation is mock_conv
+        assert result.generate_topic_summary is True
+
+    @pytest.mark.asyncio
+    async def test_previous_response_id_fork_respects_generate_topic_summary(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Fork path uses request generate_topic_summary when provided."""
+        mock_client = mocker.Mock()
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.endpoints.AsyncLlamaStackClientHolder",
+            return_value=mock_holder,
+        )
+        mocker.patch("utils.endpoints.check_turn_existence", return_value=True)
+
+        mock_turn = mocker.Mock(spec=UserTurn)
+        mock_turn.conversation_id = "conv-existing"
+        mocker.patch(
+            "utils.endpoints.retrieve_turn_by_response_id",
+            return_value=mock_turn,
+        )
+
+        mock_conv = mocker.Mock(spec=UserConversation)
+        mock_conv.id = "conv-existing"
+        mock_conv.last_response_id = "resp-latest"
+        mocker.patch(
+            "utils.endpoints.validate_and_retrieve_conversation",
+            return_value=mock_conv,
+        )
+        mocker.patch(
+            "utils.endpoints.create_new_conversation",
+            new=mocker.AsyncMock(return_value="conv_new"),
+        )
+
+        result = await endpoints.resolve_response_context(
+            user_id="user-1",
+            others_allowed=False,
+            conversation_id=None,
+            previous_response_id="resp-old",
+            generate_topic_summary=False,
+        )
+
+        assert result.generate_topic_summary is False
+
+    @pytest.mark.asyncio
+    async def test_no_context_creates_new_conversation(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When neither conversation_id nor previous_response_id set, create new."""
+        mock_client = mocker.Mock()
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.endpoints.AsyncLlamaStackClientHolder",
+            return_value=mock_holder,
+        )
+        mocker.patch(
+            "utils.endpoints.create_new_conversation",
+            new=mocker.AsyncMock(return_value="conv_brand_new"),
+        )
+
+        result = await endpoints.resolve_response_context(
+            user_id="user-1",
+            others_allowed=False,
+            conversation_id=None,
+            previous_response_id=None,
+            generate_topic_summary=None,
+        )
+
+        assert result.conversation == "conv_brand_new"
+        assert result.user_conversation is None
+        assert result.generate_topic_summary is True
+
+    @pytest.mark.asyncio
+    async def test_no_context_respects_generate_topic_summary(
+        self, mocker: MockerFixture
+    ) -> None:
+        """New conversation path uses generate_topic_summary when provided."""
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mocker.Mock()
+        mocker.patch(
+            "utils.endpoints.AsyncLlamaStackClientHolder",
+            return_value=mock_holder,
+        )
+        mocker.patch(
+            "utils.endpoints.create_new_conversation",
+            new=mocker.AsyncMock(return_value="conv_new"),
+        )
+
+        result = await endpoints.resolve_response_context(
+            user_id="user-1",
+            others_allowed=False,
+            conversation_id=None,
+            previous_response_id=None,
+            generate_topic_summary=False,
+        )
+
+        assert result.generate_topic_summary is False

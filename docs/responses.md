@@ -1,6 +1,6 @@
 # LCORE OpenResponses API Specification
 
-This document describes the LCORE implementation of the OpenResponses API, exposed via the `POST /v1/responses` endpoint. This endpoint follows the OpenResponses specification and is built on top of the Llama Stack Responses API. Since the underlying Llama Stack Responses API is still evolving, the LCORE endpoint provides a standards-aligned interface while documenting a supported subset of OpenResponses fields. In addition, it introduces LCORE-specific extensions to preserve feature parity and defines explicit field mappings to reproduce the functionality of existing `/v1/query` and `/v1/streaming_query` endpoints.
+This document describes the LCORE implementation of the OpenResponses API, exposed via the `POST /v1/responses` endpoint. This endpoint follows the OpenResponses specification and is built on top of the Llama Stack Responses API. In addition, it introduces LCORE-specific extensions to preserve feature parity and defines explicit field mappings to reproduce the functionality of existing `/v1/query` and `/v1/streaming_query` endpoints.
 
 ---
 
@@ -9,7 +9,7 @@ This document describes the LCORE implementation of the OpenResponses API, expos
 * [Introduction](#introduction)
 * [Endpoint Overview](#endpoint-overview)
 * [Request Specification](#request-specification)
-  * [Inherited LLS OpenAPI Fields](#inherited-lls-openapi-fields)
+  * [Inherited LLS OpenAPI Fields](#inherited-lls-openapi-attributes)
   * [LCORE-Specific Extensions](#lcore-specific-extensions)
   * [Field Mappings](#field-mappings)
   * [Structured request attributes: variants and usage](#structured-request-attributes-variants-and-usage)
@@ -19,7 +19,7 @@ This document describes the LCORE implementation of the OpenResponses API, expos
   * [LCORE-Specific Extensions](#lcore-specific-extensions-1)
   * [Field Mappings](#field-mappings-1)
 * [Streaming Support](#streaming-support)
-* [Known Limitations and Behavioral Differences](#known-limitations-and-behavioral-differences)
+* [Behavioral Differences](#behavioral-differences)
   * [Conversation Handling](#conversation-handling)
   * [Output Representation](#output-representation)
   * [Tool Configuration Differences](#tool-configuration-differences)
@@ -47,9 +47,9 @@ This document describes the LCORE implementation of the OpenResponses API, expos
 
 ## Introduction
 
-The LCORE OpenResponses API provides a standards-aligned interface for AI response generation while preserving feature compatibility with existing LCORE workflows. In particular, the endpoint enriches requests and responses with LCORE-specific attributes, adjusts the semantics of some fields for compatibility, and enriches streaming events.
+The LCORE OpenResponses API provides a standards-aligned interface for AI response generation while preserving feature compatibility with existing LCORE workflows. In particular, the endpoint enriches requests and responses with LCORE-specific attributes, adjusts the semantics of some fields for compatibility, and enriches content of some streaming events.
 
-The endpoint is designed to provide feature parity with existing streaming endpoints while offering a more direct interface to the underlying Responses API.
+The endpoint is designed to provide feature parity with existing query endpoints while offering a more direct interface to the underlying Responses API.
 
 ---
 
@@ -69,7 +69,7 @@ The endpoint is designed to provide feature parity with existing streaming endpo
 
 ## Request Specification
 
-### Inherited LLS OpenAPI Fields
+### Inherited LLS OpenAPI Attributes
 
 The following request attributes are supported as defined by the underlying Llama Stack Responses API and retain their original OpenResponses semantics unless otherwise stated:
 
@@ -80,12 +80,15 @@ The following request attributes are supported as defined by the underlying Llam
 | `conversation` | string | Conversation ID (OpenAI or LCORE format). Mutually exclusive with `previous_response_id` | No |
 | `include` | array[string] | Extra output item types to include | No |
 | `instructions` | string | System prompt | No |
-| `max_infer_iters` | integer | Max inference iterations | No |
-| `max_tool_calls` | integer | Max tool calls per response | No |
+| `max_infer_iters` | integer | Maximum of inference iterations | No |
+| `max_output_tokens` | integer | Maximum of output tokens | No |
+| `max_tool_calls` | integer | Maximum of tool calls per response | No |
 | `metadata` | dictionary | Custom metadata (tracking/logging) | No |
 | `parallel_tool_calls` | boolean | Allow parallel tool calls | No |
 | `previous_response_id` | string | Previous response ID for context. Mutually exclusive with `conversation` | No |
 | `prompt` | object | Prompt substitution template | No |
+| `reasoning` | object | Reasoning configuration (effort level) used for the response | No |
+| `safety_identifier` | string | Safety/guardrail identifier applied to the request | No |
 | `store` | boolean | Store in conversation history (default: true) | No |
 | `stream` | boolean | Stream response (default: false) | No |
 | `temperature` | float | Sampling temperature (0.0–2.0) | No |
@@ -93,15 +96,14 @@ The following request attributes are supported as defined by the underlying Llam
 | `tool_choice` | string or object | Tool selection strategy (auto, required, none, or specific rules). Default: auto | No |
 | `tools` | array[object] | Tools available for request (file search, web search, functions, MCP). Default: all | No |
 
-**Note:** Only the fields listed above are currently supported. Additional OpenResponses fields may not yet be available due to LLS API incompleteness.
-
 ### LCORE-Specific Extensions
 
 The following fields are LCORE-specific request extensions and are not part of the standard LLS OpenAPI specification:
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
-| `generate_topic_summary` | boolean | Generate topic summary for new conversations | No |
+| `generate_topic_summary` | boolean | Generate topic summary for new conversations. Default: true | No |
+| `shield_ids` | array[string] | Shield IDs to apply. If omitted, all configured shields in LCORE are used | No |
 | `solr` | dictionary | Solr vector_io provider query parameters | No |
 
 
@@ -114,11 +116,12 @@ The following table maps LCORE query request fields to the OpenResponses request
 | `query` | `input` | The attribute allows to pass string-like input and also structured input of list of input items |
 | `conversation_id` | `conversation` | Supports OpenAI `conv_*` format or LCORE hex UUID |
 | `provider` + `model` | `model` | Concatenated as `provider/model` |
-| `system_prompt` | `instructions` | Only change in attribute's name |
+| `system_prompt` | `instructions` | Same meaning. Only change in attribute's name |
 | `attachments` | `input` items | Attachments can be passed as input messages with content of type `input_file` |
 | `no_tools` | `tool_choice` | `no_tools=true` mapped to `tool_choice="none"` |
 | `vector_store_ids` | `tools` + `tool_choice` | Vector stores can be explicitly specified and restricted by `file_search` tool type's `vector_store_ids` attribute |
 | `generate_topic_summary` | N/A | Exposed directly (LCORE-specific) |
+| `shield_ids` | N/A | Exposed directly (LCORE-specific) |
 | `solr` | N/A | Exposed directly (LCORE-specific) |
 
 **Note:** The `media_type` attribute is not present in the LCORE specification, as downstream logic determines which format to process (structured `output` or textual `output_text` response attributes).
@@ -141,7 +144,7 @@ Required. Either a **string** or a list of input items. Each **item** is one of:
 - [mcp_approval_request](#mcp_approval_request) — request for human approval of an MCP call
 - [mcp_approval_response](#mcp_approval_response) — human approval or denial
 
-All input item objects have a common `type` attribute that determines their structure. See [Available OpenResponses items](#available-openresponses-items) for detailed descriptions and examples of each item type.
+All input item objects have a common `type` discriminator that determines the subsequent structure. See [Available OpenResponses items](#available-openresponses-items) for detailed descriptions and examples of each item type.
 
 #### `include`
 
@@ -189,6 +192,28 @@ Template with multiple variable types (text, image, file):
 ```
 
 Here the template `report_template` (version `2.0`) might define placeholders such as `{{title}}`, `{{chart}}`, and `{{data}}`; the backend substitutes them with the provided text, image, and file respectively.
+
+#### `reasoning`
+
+Optional. **Reasoning effort configuration** that controls how much “thinking” the model does before producing its answer. Supported on models that expose reasoning (e.g. o1/o3-style). Lower effort favors speed and fewer tokens; higher effort favors more thorough reasoning.
+
+When provided, the object has a single key:
+
+`effort`: One of `"none"`, `"minimal"`, `"low"`, `"medium"`, `"high"`, or `"xhigh"`. `None` leaves the default behavior to the backend.
+
+**Examples:**
+
+```json
+{ "reasoning": { "effort": "low" } }
+```
+
+```json
+{ "reasoning": { "effort": "high" } }
+```
+
+```json
+{ "reasoning": { "effort": "medium" } }
+```
 
 #### `text`
 
@@ -357,27 +382,31 @@ The following response attributes are inherited directly from the LLS OpenAPI sp
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | string | Unique response ID |
-| `object` | string | Always `"response"` |
 | `created_at` | integer | Creation time (Unix) |
-| `status` | string | Status (e.g. completed, blocked, in_progress) |
 | `completed_at` | integer | Completion time (Unix), if set |
+| `error` | object | Error details if failed or incompleted |
+| `id` | string | Unique response ID or moderation ID |
 | `model` | string | Model ID (provider/model) used |
+| `object` | string | Always `"response"` |
 | `output` | array[object] | Structured output (messages, tool calls, etc.) |
-| `error` | object | Error details if failed or blocked |
-| `instructions` | string | System instructions used |
-| `max_tool_calls` | integer | Max tool calls allowed |
-| `metadata` | dictionary | Custom metadata |
 | `parallel_tool_calls` | boolean | Parallel tool calls allowed |
 | `previous_response_id` | string | Previous response ID (multi-turn) |
-| `prompt` | object | Prompt echoed (id, variables, version) |
-| `temperature` | float | Temperature used |
-| `text` | object | Text config (format key) |
-| `tool_choice` | string or object | Tool selection used |
-| `tools` | array[object] | Tools available during generation |
+| `prompt` | object | The input prompt object that was sent to the model |
+| `status` | string | Status (e.g. completed, blocked, in_progress) |
+| `temperature` | float | Temperature parameter used for generation |
+| `text` | object | Text response configuration object used |
 | `top_p` | float | Top-p sampling used |
+| `tools` | array[object] | Tools available during generation |
+| `tool_choice` | string or object | Tool selection used |
 | `truncation` | string | Truncation strategy applied (`"auto"` or `"disabled"`) |
 | `usage` | object | Token usage (input_tokens, output_tokens, total_tokens) |
+| `instructions` | string | System instructions used |
+| `max_tool_calls` | integer | Max tool calls allowed |
+| `reasoning` | object | Reasoning configuration applied |
+| `max_output_tokens` | integer | Maximum output tokens allowed, if set |
+| `safety_identifier` | string | Safety model or identifier used, if set |
+| `metadata` | dictionary | Custom metadata specified in request |
+| `store` | boolean | Whether the response was stored |
 | `output_text` | string | Aggregated text from output items |
 
 ### Structured response output: object types and examples
@@ -394,7 +423,7 @@ The `output` array contains structured items. Each item has a `type`. Each list 
 
 **Note:** No `mcp_approval_response` nor `function_call_output` here as they can serve only as input items.
 
-All response item objects have a common `type` attribute that determines their structure. See [Available OpenResponses items](#available-openresponses-items) for detailed descriptions and examples of each item type.
+All response item objects have a common `type` discriminator that determines subsequent structure. See [Available OpenResponses items](#available-openresponses-items) for detailed descriptions and examples of each item type.
 
 ### LCORE-Specific Extensions
 
@@ -421,7 +450,7 @@ The following mappings are applied when converting from LLS OpenAPI format to LC
 **Deprecated Fields:** The following fields are not exposed in the LCORE OpenResponses specification:
 * `rag_chunks` - Part of `output` items of `file_search_call` type
 * `referenced_documents` - Part of `output` items
-* `truncated` - Deprecated; `truncation` field indicates used strategy, not whether the truncation was applied.
+* `truncated` - Deprecated; `truncation` field indicates used strategy, not whether the truncation was actually applied.
 
 ---
 
@@ -447,15 +476,15 @@ Each streaming event follows the Server-Sent Events (SSE) format:
 
 ---
 
-## Known Limitations and Behavioral Differences
+## Behavioral Differences
 
-The `/v1/responses` endpoint follows the OpenResponses structure but is currently constrained by the capabilities of the underlying Llama Stack Responses API. As a result, only the documented subset of request and response fields is supported.
+The `/v1/responses` endpoint follows the OpenResponses structure but also incorporates LCORE-specific features to maintain full feature compatibility with query endpoints.
 
 Several behavioral differences and implementation details should be noted:
 
 ### Conversation Handling
 
-The `conversation` field in responses is a LCORE-managed extension. While not natively defined by the Llama Stack specification, it is internally resolved and linked to the request conversation to preserve multi-turn behavior.
+The `conversation` field in responses is a LCORE-managed extension. While not natively defined by the Llama Stack specification, it is internally resolved and **always** present in the response to preserve LCORE conversation-based model.
 
 The endpoint accepts two conversation ID formats:
 
@@ -484,13 +513,14 @@ Fields such as `media_type`, `tool_calls`, `tool_results`, `rag_chunks`, and `re
 
 ### Tool Configuration Differences
 
-Vector store IDs are configured within the `tools` array (e.g., as `file_search` tools) rather than through separate parameters. By default all tools that are configured in LCORE are used to support the response. The set of available tools can be maintained per-request by `tool_choice` or `tools` attributes.
+Vector store IDs are configured within the `tools` as `file_search` tools rather than through separate parameters. MCP tools are configurable under `mcp` tool type. By default **all** tools that are configured in LCORE are used to support the response. The set of available tools can be maintained per-request by `tool_choice` or `tools` attributes.
 
 ### LCORE-Specific Extensions
 
 The API introduces extensions that are not part of the OpenResponses specification:
 
 - `generate_topic_summary` (request) — When set to `true` and a new conversation is created, a topic summary is automatically generated and stored in conversation metadata.
+- `shield_ids` (request) — Optional list of safety shield IDs to apply. If omitted, all configured shields are used.
 - `solr` (request) — Solr vector_io provider query parameters (e.g. filter queries).
 - `available_quotas` (response) — Provides real-time quota information from all configured quota limiters.
 
@@ -498,10 +528,33 @@ The API introduces extensions that are not part of the OpenResponses specificati
 
 Streaming responses use Server-Sent Events (SSE) and are enriched with LCORE-specific metadata:
 
-- The `conversation` attribute is included in streamed response payloads.
+- The `conversation` attribute is included in all streamed payloads that contain `response` attribute.
 - The `available_quotas` attribute is added to final completion events (`response.completed`, `response.incomplete`, or `response.failed`) and also to the intermediate `response.in_progress` with empty object.
 
-This enrichment may differ slightly from standard OpenAI streaming behavior but preserves compatibility with existing LCORE streaming workflows.
+
+## Implicit Conversation Management
+
+This implementation introduces **implicit conversation management**, ensuring that every response is associated with a conversation and can be inspected through the Conversations API.
+
+Users can provide context to the LLM using one of the following **mutually exclusive** strategies:
+
+- `conversation` — reference an existing conversation by ID
+- `previous_response_id` — reference a previous response (for multi-turn continuation or branching)
+- **no context** — neither a conversation nor a previous response is provided
+
+In **LCORE**, a conversation is modeled as a **linear chain of user turns** (request + response), where every turn belongs to exactly one conversation. Supporting `previous_response_id` as a context mechanism introduces **branching semantics**, which would break this linear structure if handled naively. To preserve a consistent conversation model, implicit conversation management applies the following rules:
+
+- **Context via `conversation`** — All items from the referenced conversation are provided as context for the new response. The new turn is automatically appended to that conversation, provided the conversation exists and the user has permission to access it.
+
+- **No context provided** — LCORE creates a new, empty conversation and assigns the new turn to it.
+
+- **Context via `previous_response_id`** — LCORE determines whether the referenced response is the **latest response in its conversation**:
+  - **If it is the latest successful response** — The request is treated as a normal continuation of that conversation, preserving the linear structure.
+  - **If it is not the latest response** — The conversation is **forked**. A new conversation is created, and the new turn becomes the starting point of that conversation.
+
+**Moderation responses** (requests that fail shield moderation) follow the same conversation rules. However, only **valid (successful) responses** can be referenced via `previous_response_id`; moderation responses cannot be used as context for follow-up requests.
+
+Blocked turns still appear in conversation history via the Conversations API, but they **do not produce a referenceable response** for continuation or forking. They are also **excluded when determining the latest response** in a conversation.
 
 ## Examples
 
