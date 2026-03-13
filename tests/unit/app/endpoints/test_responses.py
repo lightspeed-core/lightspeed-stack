@@ -34,6 +34,7 @@ VALID_CONV_ID = "conv_e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
 VALID_CONV_ID_NORMALIZED = "e6afd7aaa97b49ce8f4f96a801b07893d9cb784d72e53e3c"
 MODULE = "app.endpoints.responses"
 ENDPOINTS_MODULE = "utils.endpoints"
+UTILS_RESPONSES_MODULE = "utils.responses"
 
 
 def _patch_base(mocker: MockerFixture, config: AppConfig) -> None:
@@ -42,7 +43,16 @@ def _patch_base(mocker: MockerFixture, config: AppConfig) -> None:
     mocker.patch(f"{MODULE}.check_configuration_loaded")
     mocker.patch(f"{MODULE}.check_tokens_available")
     mocker.patch(f"{MODULE}.validate_model_provider_override")
-    mocker.patch(f"{MODULE}.prepare_tools", new=mocker.AsyncMock(return_value=None))
+    mock_holder = mocker.Mock()
+    mock_holder.get_client.return_value = mocker.Mock()
+    mocker.patch(
+        f"{UTILS_RESPONSES_MODULE}.AsyncLlamaStackClientHolder",
+        return_value=mock_holder,
+    )
+    mocker.patch(
+        f"{UTILS_RESPONSES_MODULE}.prepare_tools",
+        new=mocker.AsyncMock(return_value=None),
+    )
 
 
 def _patch_client(mocker: MockerFixture) -> Any:

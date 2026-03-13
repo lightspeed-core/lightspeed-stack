@@ -9,8 +9,9 @@ from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from llama_stack_api import OpenAIResponseObject, OpenAIResponseObjectStream, ToolChoice
-from llama_stack_api.openai_responses import (
+from llama_stack_api import (
+    OpenAIResponseObject,
+    OpenAIResponseObjectStream,
     OpenAIResponseObjectStreamResponseOutputItemAdded as OutputItemAddedChunk,
     OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
 )
@@ -72,7 +73,7 @@ from utils.responses import (
     get_topic_summary,
     get_zero_usage,
     parse_referenced_documents,
-    prepare_tools,
+    resolve_tool_choice,
     select_model_for_responses,
 )
 from utils.shields import run_shield_moderation
@@ -88,7 +89,7 @@ from utils.types import (
     TurnSummary,
 )
 from utils.vector_search import (
-    append_inline_rag_context_to_input,
+    append_inline_rag_context_to_responses_input,
     build_rag_context,
 )
 
@@ -214,18 +215,17 @@ async def responses_endpoint_handler(
         responses_request.shield_ids,
     )
 
-    # If tools attribute is None, configure all tools configured in LCORE
-    if responses_request.tools is None:
-        responses_request.tools = await prepare_tools(
-            client=client,
-            vector_store_ids=None,  # allow all configured vector stores
-            no_tools=responses_request.tool_choice == ToolChoice.none,
-            token=auth[1],
-            mcp_headers=mcp_headers,
-            request_headers=request.headers,
-        )
-
-    vector_store_ids = extract_vector_store_ids_from_tools(responses_request.tools)
+    (
+        responses_request.tools,
+        responses_request.tool_choice,
+        vector_store_ids,
+    ) = await resolve_tool_choice(
+        responses_request.tools,
+        responses_request.tool_choice,
+        auth[1],
+        mcp_headers,
+        request.headers,
+    )
 
     # Build RAG context from Inline RAG sources
     inline_rag_context = await build_rag_context(
@@ -236,7 +236,7 @@ async def responses_endpoint_handler(
         responses_request.solr,
     )
     if moderation_result.decision == "passed":
-        responses_request.input = append_inline_rag_context_to_input(
+        responses_request.input = append_inline_rag_context_to_responses_input(
             responses_request.input, inline_rag_context.context_text
         )
 

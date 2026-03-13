@@ -636,7 +636,7 @@ def _convert_solr_chunks_to_rag_format(
     return rag_chunks
 
 
-def append_inline_rag_context_to_input(
+def append_inline_rag_context_to_responses_input(
     input_value: ResponseInput,
     inline_rag_context_text: str,
 ) -> ResponseInput:
