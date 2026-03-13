@@ -16,6 +16,7 @@ from behave.model import Feature, Scenario
 from tests.e2e.utils.prow_utils import restore_llama_stack_pod
 from behave.runner import Context
 
+from tests.e2e.utils.llama_stack_tools import unregister_mcp_toolgroups
 from tests.e2e.utils.llama_stack_shields import (
     register_shield,
     unregister_shield,
@@ -56,6 +57,22 @@ _CONFIG_PATHS = {
     "mcp-file-auth": (
         "tests/e2e/configuration/{mode_dir}/lightspeed-stack-mcp-file-auth.yaml",
         "tests/e2e-prow/rhoai/configs/lightspeed-stack-mcp-file-auth.yaml",
+    ),
+    "invalid-mcp-file-auth": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-invalid-mcp-file-auth.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-invalid-mcp-file-auth.yaml",
+    ),
+    "mcp-kubernetes-auth": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-mcp-kubernetes-auth.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-mcp-kubernetes-auth.yaml",
+    ),
+    "mcp-client-auth": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-mcp-client-auth.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-mcp-client-auth.yaml",
+    ),
+    "mcp-oauth-auth": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-mcp-oauth-auth.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-mcp-oauth-auth.yaml",
     ),
 }
 
@@ -207,6 +224,25 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         switch_config(context.scenario_config)
         restart_container("lightspeed-stack")
 
+    config_name: str | None = None
+    if "MCPFileAuthConfig" in scenario.effective_tags:
+        config_name = "mcp-file-auth"
+    elif "InvalidMCPFileAuthConfig" in scenario.effective_tags:
+        config_name = "invalid-mcp-file-auth"
+    elif "MCPKubernetesAuthConfig" in scenario.effective_tags:
+        config_name = "mcp-kubernetes-auth"
+    elif "MCPClientAuthConfig" in scenario.effective_tags:
+        config_name = "mcp-client-auth"
+    elif "MCPOAuthAuthConfig" in scenario.effective_tags:
+        config_name = "mcp-oauth-auth"
+
+    if config_name is not None:
+        if not context.is_library_mode:
+            unregister_mcp_toolgroups()
+        context.scenario_config = _get_config_path(config_name, mode_dir)
+        switch_config(context.scenario_config)
+        restart_container("lightspeed-stack")
+
 
 def after_scenario(context: Context, scenario: Scenario) -> None:
     """Run after each scenario is run.
@@ -241,7 +277,15 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
         context.llama_stack_was_running = False
 
     # Tags that require config restoration after scenario
-    config_restore_tags = {"InvalidFeedbackStorageConfig", "NoCacheConfig"}
+    config_restore_tags = {
+        "InvalidFeedbackStorageConfig",
+        "NoCacheConfig",
+        "MCPFileAuthConfig",
+        "InvalidMCPFileAuthConfig",
+        "MCPKubernetesAuthConfig",
+        "MCPClientAuthConfig",
+        "MCPOAuthAuthConfig",
+    }
     if config_restore_tags & set(scenario.effective_tags):
         switch_config(context.feature_config)
         restart_container("lightspeed-stack")

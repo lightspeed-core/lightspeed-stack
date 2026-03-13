@@ -178,6 +178,15 @@ def check_response_body_contains(context: Context, substring: str) -> None:
     ), f"The response text '{context.response.text}' doesn't contain '{expected}'"
 
 
+@then("The body of the response does not contain {substring}")
+def check_response_body_does_not_contain(context: Context, substring: str) -> None:
+    """Check that response body does not contain a substring."""
+    assert context.response is not None, "Request needs to be performed first"
+    assert (
+        substring not in context.response.text
+    ), f"The response text '{context.response.text}' contains '{substring}'"
+
+
 @then("The body of the response is the following")
 def check_prediction_result(context: Context) -> None:
     """Check the content of the response to be exactly the same.
