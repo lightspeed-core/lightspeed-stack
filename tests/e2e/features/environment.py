@@ -16,12 +16,13 @@ from behave.model import Feature, Scenario
 from tests.e2e.utils.prow_utils import restore_llama_stack_pod
 from behave.runner import Context
 
-from tests.e2e.utils.llama_stack_tools import unregister_mcp_toolgroups
-from tests.e2e.utils.llama_stack_shields import (
+from tests.e2e.utils.llama_stack_utils import (
     register_shield,
+    unregister_mcp_toolgroups,
     unregister_shield,
 )
 from tests.e2e.utils.utils import (
+    clear_llama_stack_storage,
     create_config_backup,
     is_prow_environment,
     remove_config_backup,
@@ -239,6 +240,8 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     if config_name is not None:
         if not context.is_library_mode:
             unregister_mcp_toolgroups()
+        else:
+            clear_llama_stack_storage()
         context.scenario_config = _get_config_path(config_name, mode_dir)
         switch_config(context.scenario_config)
         restart_container("lightspeed-stack")

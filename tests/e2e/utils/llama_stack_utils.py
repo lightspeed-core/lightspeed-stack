@@ -1,9 +1,12 @@
-"""E2E helpers to unregister and re-register Llama Stack shields via the client API.
+"""E2E test utilities for Llama Stack (toolgroups and shields).
 
-Used by the @disable-shields tag: before the scenario we call client.shields.delete()
-to unregister the shield; after the scenario we call client.shields.register()
-to restore it. Only applies in server mode (Llama Stack as a separate service).
-Requires E2E_LLAMA_STACK_URL or E2E_LLAMA_HOSTNAME/E2E_LLAMA_PORT.
+This module provides functions to manage MCP toolgroups and shields on a running
+Llama Stack instance during end-to-end tests: unregister MCP toolgroups when
+switching configurations or testing MCP auth, and unregister/re-register shields
+(e.g. for the @disable-shields tag).
+
+Only applies when running Llama Stack as a separate service (server mode).
+Requires E2E_LLAMA_STACK_URL or E2E_LLAMA_HOSTNAME and E2E_LLAMA_PORT.
 """
 
 import asyncio
@@ -27,6 +30,54 @@ def _get_llama_stack_client() -> AsyncLlamaStackClient:
     api_key = os.getenv("E2E_LLAMA_STACK_API_KEY", "xyzzy")
     timeout = int(os.getenv("E2E_LLAMA_STACK_TIMEOUT", "60"))
     return AsyncLlamaStackClient(base_url=base_url, api_key=api_key, timeout=timeout)
+
+
+# -----------------------------------------------------------------------------
+# Toolgroups
+# -----------------------------------------------------------------------------
+
+
+async def _unregister_toolgroup_async(identifier: str) -> None:
+    """Unregister a toolgroup by identifier; return (provider_id, provider_shield_id) for restore."""
+    client = _get_llama_stack_client()
+    try:
+        await client.toolgroups.unregister(identifier)
+    except APIConnectionError:
+        raise
+    except APIStatusError as e:
+        # 400 "not found": toolgroup already absent, scenario can proceed
+        if e.status_code == 400 and "not found" in str(e).lower():
+            return None
+        raise
+    finally:
+        await client.close()
+
+
+async def _unregister_mcp_toolgroups_async() -> None:
+    """Unregister all MCP toolgroups."""
+    client = _get_llama_stack_client()
+    try:
+        toolgroups = await client.toolgroups.list()
+        for toolgroup in toolgroups:
+            if (
+                toolgroup.identifier
+                and toolgroup.provider_id == "model-context-protocol"
+            ):
+                await _unregister_toolgroup_async(toolgroup.identifier)
+    except APIConnectionError:
+        raise
+    finally:
+        await client.close()
+
+
+def unregister_mcp_toolgroups() -> None:
+    """Unregister all MCP toolgroups."""
+    asyncio.run(_unregister_mcp_toolgroups_async())
+
+
+# -----------------------------------------------------------------------------
+# Shields
+# -----------------------------------------------------------------------------
 
 
 async def _unregister_shield_async(identifier: str) -> Optional[tuple[str, str]]:
