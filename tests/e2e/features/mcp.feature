@@ -7,7 +7,7 @@ Feature: MCP tests
 
 
 # File-based
-  @skip
+  @skip  # will be fixed by LCORE-1461
   @MCPFileAuthConfig
   Scenario: Check if tools endpoint succeeds when MCP file-based auth token is passed 
     Given The system is in default state
@@ -46,7 +46,7 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics should have increased
 
-  @skip
+  @skip  # will be fixed by LCORE-1461
   @InvalidMCPFileAuthConfig
   Scenario: Check if tools endpoint reports error when MCP file-based invalid auth token is passed 
     Given The system is in default state
@@ -62,7 +62,7 @@ Feature: MCP tests
         }
     """
 
-  @skip
+  @skip  # will be fixed by LCORE-1463
   @InvalidMCPFileAuthConfig
   Scenario: Check if query endpoint reports error when MCP file-based invalid auth token is passed 
     Given The system is in default state
@@ -81,7 +81,7 @@ Feature: MCP tests
         }
     """
 
-  @skip
+  @skip  # will be fixed by LCORE-1463
   @InvalidMCPFileAuthConfig
   Scenario: Check if streaming_query endpoint reports error when MCP file-based invalid auth token is passed 
     Given The system is in default state
@@ -101,7 +101,7 @@ Feature: MCP tests
     """
 
 # Kubernetes
-  @skip
+  @skip  # will be fixed by LCORE-1461
   @MCPKubernetesAuthConfig
   Scenario: Check if tools endpoint succeeds when MCP kubernetes auth token is passed 
     Given The system is in default state
@@ -143,7 +143,7 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics should have increased
 
-  @skip
+  @skip  # will be fixed by LCORE-1461
   @MCPKubernetesAuthConfig
   Scenario: Check if tools endpoint reports error when MCP kubernetes invalid auth token is passed 
     Given The system is in default state
@@ -160,7 +160,7 @@ Feature: MCP tests
         }
     """
 
-  @skip
+  @skip  # will be fixed by LCORE-1463
   @MCPKubernetesAuthConfig
   Scenario: Check if query endpoint reports error when MCP kubernetes invalid auth token is passed
     Given The system is in default state
@@ -180,7 +180,7 @@ Feature: MCP tests
         }
     """
 
-  @skip
+  @skip  # will be fixed by LCORE-1463
   @MCPKubernetesAuthConfig
   Scenario: Check if streaming_query endpoint reports error when MCP kubernetes invalid auth token is passed 
     Given The system is in default state
@@ -201,7 +201,7 @@ Feature: MCP tests
     """
 
 # Client-provided
-  @skip
+  @skip  # will be fixed by LCORE-1462
   @MCPClientAuthConfig
   Scenario: Check if tools endpoint succeeds by skipping when MCP client-provided auth token is omitted
     Given The system is in default state
