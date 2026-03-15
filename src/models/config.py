@@ -1311,6 +1311,21 @@ class Customization(ConfigurationBase):
     agent_card_config: Optional[dict[str, Any]] = None
     custom_profile: Optional[CustomProfile] = Field(default=None, init=False)
 
+    # Debugging: Allow /v1/infer to return extended metadata
+    # WARNING: This should NOT be enabled in production environments.
+    # Setting this to True allows clients to request extended response data
+    # (tool_calls, rag_chunks, token_usage, etc.) from the /v1/infer endpoint
+    # by including "include_metadata": true in the request body.
+    #
+    # If this feature were wanted in production, consider implementing RBAC-based access control instead:
+    # 1. Add Action.RLSAPI_V1_INFER_VERBOSE to models/config.py Action enum
+    # 2. Check authorization in infer_endpoint:
+    #    if infer_request.include_metadata:
+    #        if Action.RLSAPI_V1_INFER_VERBOSE not in request.state.authorized_actions:
+    #            raise HTTPException(status_code=403, detail="Verbose infer not authorized")
+    # 3. Add the action to authorization rules for specific users/roles
+    allow_verbose_infer: bool = False
+
     @model_validator(mode="after")
     def check_customization_model(self) -> Self:
         """

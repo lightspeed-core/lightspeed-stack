@@ -160,6 +160,7 @@ class RlsapiV1InferRequest(ConfigurationBase):
         question: User question string.
         context: Context with system info, terminal output, etc. (defaults provided).
         skip_rag: Reserved for future use. RAG retrieval is not yet implemented.
+        include_metadata: Request extended response with debugging metadata (development/testing only).
 
     Example:
         ```python
@@ -187,6 +188,12 @@ class RlsapiV1InferRequest(ConfigurationBase):
     skip_rag: bool = Field(
         default=False,
         description="Reserved for future use. RAG retrieval is not yet implemented.",
+        examples=[False, True],
+    )
+    include_metadata: bool = Field(
+        default=False,
+        description="[Development/Testing Only] Return extended response with debugging metadata (tool_calls, rag_chunks, tokens). "
+        "Only honored when allow_verbose_infer is enabled in configuration. Not available in production.",
         examples=[False, True],
     )
 

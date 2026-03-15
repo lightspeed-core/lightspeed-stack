@@ -42,6 +42,7 @@ from utils.query import (
     handle_known_apistatus_errors,
 )
 from utils.responses import (
+    build_turn_summary,
     extract_text_from_response_items,
     extract_token_usage,
     get_mcp_tools,
@@ -405,7 +406,7 @@ def _map_inference_error_to_http_exception(  # pylint: disable=too-many-return-s
     return None
 
 
-@router.post("/infer", responses=infer_responses)
+@router.post("/infer", responses=infer_responses, response_model_exclude_none=True)
 @authorize(Action.RLSAPI_V1_INFER)
 async def infer_endpoint(  # pylint: disable=R0914
     infer_request: RlsapiV1InferRequest,
@@ -448,14 +449,38 @@ async def infer_endpoint(  # pylint: disable=R0914
     )
 
     start_time = time.monotonic()
+
+    # Check if verbose metadata should be returned
+    verbose_enabled = (
+        configuration.customization is not None
+        and configuration.customization.allow_verbose_infer
+        and infer_request.include_metadata
+    )
+
     try:
         instructions = _build_instructions(infer_request.context.systeminfo)
-        response_text = await retrieve_simple_response(
-            input_source,
-            instructions,
-            tools=cast(list[Any], mcp_tools),
-            model_id=model_id,
-        )
+
+        # For verbose mode, retrieve the full response object instead of just text
+        if verbose_enabled:
+            client = AsyncLlamaStackClientHolder().get_client()
+            response = await client.responses.create(
+                input=input_source,
+                model=model_id,
+                instructions=instructions,
+                tools=mcp_tools or [],
+                stream=False,
+                store=False,
+            )
+            response = cast(OpenAIResponseObject, response)
+            response_text = extract_text_from_response_items(response.output)
+        else:
+            response = None
+            response_text = await retrieve_simple_response(
+                input_source,
+                instructions,
+                tools=cast(list[Any], mcp_tools),
+                model_id=model_id,
+            )
         inference_time = time.monotonic() - start_time
     except _INFER_HANDLED_EXCEPTIONS as error:
         _record_inference_failure(
@@ -493,6 +518,27 @@ async def infer_endpoint(  # pylint: disable=R0914
 
     logger.info("Completed rlsapi v1 /infer request %s", request_id)
 
+    # Build response with optional extended metadata
+    if verbose_enabled and response is not None:
+        # Extract metadata from full response object
+        turn_summary = build_turn_summary(
+            response, model_id, vector_store_ids=None, rag_id_mapping=None
+        )
+
+        return RlsapiV1InferResponse(
+            data=RlsapiV1InferData(
+                text=response_text,
+                request_id=request_id,
+                tool_calls=turn_summary.tool_calls,
+                tool_results=turn_summary.tool_results,
+                rag_chunks=turn_summary.rag_chunks,
+                referenced_documents=turn_summary.referenced_documents,
+                input_tokens=turn_summary.token_usage.input_tokens,
+                output_tokens=turn_summary.token_usage.output_tokens,
+            )
+        )
+
+    # Standard minimal response
     return RlsapiV1InferResponse(
         data=RlsapiV1InferData(
             text=response_text,
