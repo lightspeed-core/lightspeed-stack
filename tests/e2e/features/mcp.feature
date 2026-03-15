@@ -218,6 +218,7 @@ Feature: MCP tests
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
     """
     Then The status code of the response is 200
+    And The body of the response does not contain mcp-client
     And The response should contain following fragments
         | Fragments in LLM response |
         | Hello                     |
@@ -233,6 +234,7 @@ Feature: MCP tests
     """
     When I wait for the response to be completed
     Then The status code of the response is 200
+    And The body of the response does not contain mcp-client
     And The streamed response should contain following fragments
         | Fragments in LLM response |
         | Hello                     |
