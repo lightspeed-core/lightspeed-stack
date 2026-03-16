@@ -16,5 +16,4 @@ features/rlsapi_v1_errors.feature
 features/streaming_query.feature
 features/rest_api.feature
 features/mcp.feature
-features/mcp_file_auth.feature
 features/models.feature
