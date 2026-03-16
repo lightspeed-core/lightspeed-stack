@@ -414,7 +414,7 @@ Feature: MCP tests
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
     """
-    {"mcp-oauth": {"Authorization": "Bearer oauth-test-token"}, "mcp-client": {"Authorization": "Bearer client-test-token"}}
+    {"mcp-oauth": {"Authorization": "Bearer oauth-test-token"}}
     """
     When I access REST API endpoint "tools" using HTTP GET method
     Then The status code of the response is 200
@@ -426,7 +426,7 @@ Feature: MCP tests
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
     """
-    {"mcp-oauth": {"Authorization": "Bearer oauth-test-token"}, "mcp-client": {"Authorization": "Bearer client-test-token"}}
+    {"mcp-oauth": {"Authorization": "Bearer oauth-test-token"}}
     """
     And I capture the current token metrics
     When I use "query" to ask question with authorization header
@@ -445,7 +445,7 @@ Feature: MCP tests
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
     """
-    {"mcp-oauth": {"Authorization": "Bearer test-token"}}
+    {"mcp-oauth": {"Authorization": "Bearer oauth-test-token"}}
     """
     And I capture the current token metrics
     When I use "streaming_query" to ask question with authorization header
@@ -464,7 +464,7 @@ Feature: MCP tests
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
     """
-    {"mcp-oauth": {"Authorization": "Bearer invalid-token"}}
+    {"mcp-oauth": {"Authorization": "Bearer oauth-invalid-token"}}
     """
     When I access REST API endpoint "tools" using HTTP GET method
     Then The status code of the response is 401
@@ -484,7 +484,7 @@ Feature: MCP tests
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
     """
-    {"mcp-oauth": {"Authorization": "Bearer invalid-token"}}
+    {"mcp-oauth": {"Authorization": "Bearer oauth-invalid-token"}}
     """
     When I use "query" to ask question with authorization header
     """
@@ -507,7 +507,7 @@ Feature: MCP tests
     Given The system is in default state
     And I set the "MCP-HEADERS" header to
     """
-    {"mcp-oauth": {"Authorization": "Bearer invalid-token"}}
+    {"mcp-oauth": {"Authorization": "Bearer oauth-invalid-token"}}
     """
     When I use "streaming_query" to ask question with authorization header
     """
