@@ -633,6 +633,421 @@
                 }
             }
         },
+        "/v1/mcp-servers": {
+            "get": {
+                "tags": [
+                    "mcp-servers"
+                ],
+                "summary": "List Mcp Servers Handler",
+                "description": "List all registered MCP servers.\n\nReturns both statically configured (from YAML) and dynamically\nregistered (via API) MCP servers.\n\nRaises:\n    HTTPException: If configuration is not loaded.\n\nReturns:\n    MCPServerListResponse: List of all registered MCP servers with source info.",
+                "operationId": "list_mcp_servers_handler_v1_mcp_servers_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MCPServerListResponse"
+                                },
+                                "example": {
+                                    "servers": [
+                                        {
+                                            "name": "mcp-integration-tools",
+                                            "provider_id": "model-context-protocol",
+                                            "source": "config",
+                                            "url": "http://host.docker.internal:7008/api/mcp-actions/v1"
+                                        },
+                                        {
+                                            "name": "test-mcp-server",
+                                            "provider_id": "model-context-protocol",
+                                            "source": "api",
+                                            "url": "http://host.docker.internal:8888/mcp"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                },
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                },
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                },
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "mcp-servers"
+                ],
+                "summary": "Register Mcp Server Handler",
+                "description": "Register an MCP server dynamically at runtime.\n\nAdds the MCP server to the runtime configuration and registers it\nas a toolgroup with Llama Stack so it becomes available for queries.\n\nRaises:\n    HTTPException: On duplicate name, Llama Stack connection error,\n        or registration failure.\n\nReturns:\n    MCPServerRegistrationResponse: Details of the newly registered server.",
+                "operationId": "register_mcp_server_handler_v1_mcp_servers_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MCPServerRegistrationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MCPServerRegistrationResponse"
+                                },
+                                "example": {
+                                    "message": "MCP server 'mcp-integration-tools' registered successfully",
+                                    "name": "mcp-integration-tools",
+                                    "provider_id": "model-context-protocol",
+                                    "url": "http://host.docker.internal:7008/api/mcp-actions/v1"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                },
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                },
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Resource already exists",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConflictResponse"
+                                },
+                                "examples": {
+                                    "mcp server": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Mcp Server with name 'test-mcp-server' is already registered",
+                                                "response": "Mcp Server already exists"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                },
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
+                                },
+                                "examples": {
+                                    "llama stack": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Connection error while trying to reach backend service.",
+                                                "response": "Unable to connect to Llama Stack"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/mcp-servers/{name}": {
+            "delete": {
+                "tags": [
+                    "mcp-servers"
+                ],
+                "summary": "Delete Mcp Server Handler",
+                "description": "Unregister a dynamically registered MCP server.\n\nRemoves the MCP server from the runtime configuration and unregisters\nits toolgroup from Llama Stack. Only servers registered via the API\ncan be deleted; statically configured servers cannot be removed.\n\nRaises:\n    HTTPException: If the server is not found, is statically configured,\n        or Llama Stack unregistration fails.\n\nReturns:\n    MCPServerDeleteResponse: Confirmation of the deletion.",
+                "operationId": "delete_mcp_server_handler_v1_mcp_servers__name__delete",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Name"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MCPServerDeleteResponse"
+                                },
+                                "example": {
+                                    "message": "MCP server 'test-mcp-server' unregistered successfully",
+                                    "name": "test-mcp-server"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Resource not found",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "mcp server": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Mcp Server with ID test-mcp-server does not exist",
+                                                "response": "Mcp Server not found"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotFoundResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable",
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "llama stack": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Connection error while trying to reach backend service.",
+                                                "response": "Unable to connect to Llama Stack"
+                                            }
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/shields": {
             "get": {
                 "tags": [
@@ -4794,7 +5209,7 @@
                 ],
                 "summary": "Handle A2A Jsonrpc",
                 "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
-                "operationId": "handle_a2a_jsonrpc_a2a_get",
+                "operationId": "handle_a2a_jsonrpc_a2a_post",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -4812,7 +5227,7 @@
                 ],
                 "summary": "Handle A2A Jsonrpc",
                 "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
-                "operationId": "handle_a2a_jsonrpc_a2a_get",
+                "operationId": "handle_a2a_jsonrpc_a2a_post",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -4994,6 +5409,9 @@
                     "info",
                     "model_override",
                     "rlsapi_v1_infer",
+                    "register_mcp_server",
+                    "list_mcp_servers",
+                    "delete_mcp_server",
                     "a2a_agent_card",
                     "a2a_task_execution",
                     "a2a_message",
@@ -6226,6 +6644,33 @@
                                 "transcripts_storage": "/tmp/data/transcripts"
                             }
                         }
+                    }
+                ]
+            },
+            "ConflictResponse": {
+                "properties": {
+                    "status_code": {
+                        "type": "integer",
+                        "title": "Status Code"
+                    },
+                    "detail": {
+                        "$ref": "#/components/schemas/DetailModel"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status_code",
+                    "detail"
+                ],
+                "title": "ConflictResponse",
+                "description": "409 Conflict - Resource already exists.",
+                "examples": [
+                    {
+                        "detail": {
+                            "cause": "Mcp Server with name 'test-mcp-server' is already registered",
+                            "response": "Mcp Server already exists"
+                        },
+                        "label": "mcp server"
                     }
                 ]
             },
@@ -7731,6 +8176,277 @@
                 "title": "MCPServerAuthInfo",
                 "description": "Information about MCP server client authentication options."
             },
+            "MCPServerDeleteResponse": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Deleted MCP server name"
+                    },
+                    "message": {
+                        "type": "string",
+                        "title": "Message",
+                        "description": "Status message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "message"
+                ],
+                "title": "MCPServerDeleteResponse",
+                "description": "Response for a successful MCP server deletion.",
+                "examples": [
+                    {
+                        "message": "MCP server 'test-mcp-server' unregistered successfully",
+                        "name": "test-mcp-server"
+                    }
+                ]
+            },
+            "MCPServerInfo": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "MCP server name"
+                    },
+                    "url": {
+                        "type": "string",
+                        "title": "Url",
+                        "description": "MCP server URL"
+                    },
+                    "provider_id": {
+                        "type": "string",
+                        "title": "Provider Id",
+                        "description": "MCP provider identification"
+                    },
+                    "source": {
+                        "type": "string",
+                        "title": "Source",
+                        "description": "How the server was registered: 'config' (static) or 'api' (dynamic)",
+                        "examples": [
+                            "config",
+                            "api"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "url",
+                    "provider_id",
+                    "source"
+                ],
+                "title": "MCPServerInfo",
+                "description": "Information about a registered MCP server.\n\nAttributes:\n    name: Unique name of the MCP server.\n    url: URL of the MCP server endpoint.\n    provider_id: MCP provider identification.\n    source: Whether the server was registered statically (config) or dynamically (api)."
+            },
+            "MCPServerListResponse": {
+                "properties": {
+                    "servers": {
+                        "items": {
+                            "$ref": "#/components/schemas/MCPServerInfo"
+                        },
+                        "type": "array",
+                        "title": "Servers",
+                        "description": "List of all registered MCP servers (static and dynamic)"
+                    }
+                },
+                "type": "object",
+                "title": "MCPServerListResponse",
+                "description": "Response listing all registered MCP servers.",
+                "examples": [
+                    {
+                        "servers": [
+                            {
+                                "name": "mcp-integration-tools",
+                                "provider_id": "model-context-protocol",
+                                "source": "config",
+                                "url": "http://host.docker.internal:7008/api/mcp-actions/v1"
+                            },
+                            {
+                                "name": "test-mcp-server",
+                                "provider_id": "model-context-protocol",
+                                "source": "api",
+                                "url": "http://host.docker.internal:8888/mcp"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "MCPServerRegistrationRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 256,
+                        "minLength": 1,
+                        "title": "Name",
+                        "description": "Unique name for the MCP server",
+                        "examples": [
+                            "my-mcp-tools"
+                        ]
+                    },
+                    "url": {
+                        "type": "string",
+                        "title": "Url",
+                        "description": "URL of the MCP server endpoint",
+                        "examples": [
+                            "http://host.docker.internal:7008/api/mcp-actions/v1"
+                        ]
+                    },
+                    "provider_id": {
+                        "type": "string",
+                        "title": "Provider Id",
+                        "description": "MCP provider identification",
+                        "default": "model-context-protocol",
+                        "examples": [
+                            "model-context-protocol"
+                        ]
+                    },
+                    "authorization_headers": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": {
+                                    "type": "string"
+                                },
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Authorization Headers",
+                        "description": "Headers to send to the MCP server. Values must be one of the supported token resolution keywords: 'client' - forward the caller's token provided via MCP-HEADERS, 'kubernetes' - use the authenticated user's Kubernetes token, 'oauth' - use an OAuth token provided via MCP-HEADERS. File-path based secrets (used in static YAML config) are not supported for dynamically registered servers.",
+                        "examples": [
+                            {
+                                "Authorization": "client"
+                            },
+                            {
+                                "Authorization": "kubernetes"
+                            },
+                            {
+                                "Authorization": "oauth"
+                            }
+                        ]
+                    },
+                    "headers": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Headers",
+                        "description": "List of HTTP header names to forward from incoming requests",
+                        "examples": [
+                            [
+                                "x-rh-identity"
+                            ]
+                        ]
+                    },
+                    "timeout": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "exclusiveMinimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds for the MCP server",
+                        "examples": [
+                            30
+                        ]
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "name",
+                    "url"
+                ],
+                "title": "MCPServerRegistrationRequest",
+                "description": "Request model for dynamically registering an MCP server.\n\nAttributes:\n    name: Unique name for the MCP server.\n    url: URL of the MCP server endpoint.\n    provider_id: MCP provider identification (defaults to \"model-context-protocol\").\n    authorization_headers: Optional headers to send to the MCP server.\n    headers: Optional list of HTTP header names to forward from incoming requests.\n    timeout: Optional request timeout in seconds.\n\nExample:\n    ```python\n    request = MCPServerRegistrationRequest(\n        name=\"my-tools\",\n        url=\"http://localhost:8888/mcp\",\n    )\n    ```",
+                "examples": [
+                    {
+                        "authorization_headers": {
+                            "Authorization": "client"
+                        },
+                        "name": "mcp-integration-tools",
+                        "url": "http://host.docker.internal:7008/api/mcp-actions/v1"
+                    },
+                    {
+                        "authorization_headers": {
+                            "Authorization": "kubernetes"
+                        },
+                        "name": "k8s-internal-service",
+                        "url": "http://internal-mcp.default.svc.cluster.local:8080"
+                    },
+                    {
+                        "authorization_headers": {
+                            "Authorization": "oauth"
+                        },
+                        "name": "oauth-mcp-server",
+                        "url": "https://mcp.example.com/api"
+                    },
+                    {
+                        "headers": [
+                            "x-rh-identity"
+                        ],
+                        "name": "test-mcp-server",
+                        "provider_id": "model-context-protocol",
+                        "timeout": 30,
+                        "url": "http://host.docker.internal:8888/mcp"
+                    }
+                ]
+            },
+            "MCPServerRegistrationResponse": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Registered MCP server name"
+                    },
+                    "url": {
+                        "type": "string",
+                        "title": "Url",
+                        "description": "Registered MCP server URL"
+                    },
+                    "provider_id": {
+                        "type": "string",
+                        "title": "Provider Id",
+                        "description": "MCP provider identification"
+                    },
+                    "message": {
+                        "type": "string",
+                        "title": "Message",
+                        "description": "Status message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "url",
+                    "provider_id",
+                    "message"
+                ],
+                "title": "MCPServerRegistrationResponse",
+                "description": "Response for a successful MCP server registration.",
+                "examples": [
+                    {
+                        "message": "MCP server 'mcp-integration-tools' registered successfully",
+                        "name": "mcp-integration-tools",
+                        "provider_id": "model-context-protocol",
+                        "url": "http://host.docker.internal:7008/api/mcp-actions/v1"
+                    }
+                ]
+            },
             "Message": {
                 "properties": {
                     "content": {
@@ -7949,6 +8665,13 @@
                             "response": "Streaming Request not found"
                         },
                         "label": "streaming request"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Mcp Server with ID test-mcp-server does not exist",
+                            "response": "Mcp Server not found"
+                        },
+                        "label": "mcp server"
                     }
                 ]
             },

@@ -108,7 +108,7 @@ This section describes the major functional components that make up LCore. Each 
 - **Lifecycle Management**: 
   - **Startup**: Load configuration, initialize Llama Stack client, load MCP server configuration and register all defined servers with Llama Stack to build the tools list, establish database connections
   - **Shutdown**: Clean up A2A storage resources (database connections and other resources are cleaned up automatically by Python's context managers)
-- **Router Registration**: Mount all endpoint routers (query, conversation, model info, auth, metrics, A2A, feedback, admin, mcp_auth)
+- **Router Registration**: Mount all endpoint routers (query, conversation, model info, auth, metrics, A2A, feedback, admin, mcp_auth, mcp_servers)
 
 **Note:** All configured MCP servers must be running and accessible at startup time for LCore to initialize successfully.
 
@@ -206,6 +206,9 @@ The system defines 30+ actions that can be authorized. Examples (see `docs/auth.
 
 **Agent-to-Agent Protocol:**
 - `A2A_JSONRPC` - A2A protocol access
+
+**MCP Server Management:**
+- `REGISTER_MCP_SERVER`, `LIST_MCP_SERVERS`, `DELETE_MCP_SERVER`
 
 **Metadata Operations:**
 - `LIST_MODELS`, `LIST_SHIELDS`, `LIST_TOOLS`, `LIST_PROVIDERS`
@@ -325,7 +328,7 @@ MCP servers are remote HTTP services that expose tools/capabilities to LLMs (e.g
 
 **How It Works:**
 
-1. **Configuration:** MCP servers are defined in the config file with name, URL, and authorization headers
+1. **Configuration:** MCP servers are defined in the config file with name, URL, and authorization headers. Servers can also be registered dynamically at runtime via `POST /v1/mcp-servers`.
 2. **Registration at Startup:** LCore tells Llama Stack about each MCP server by calling `toolgroups.register()` - this makes the MCP server's tools available in Llama Stack's tool registry
 3. **Query Processing:** When processing a query, LCore determines which tools to make available to the LLM and finalizes authorization headers (e.g., merging client-provided tokens with configured headers)
 4. **Tool Execution:** When the LLM calls a tool, Llama Stack routes the request to the appropriate MCP server URL with the finalized authorization headers
@@ -488,6 +491,11 @@ This section documents the REST API endpoints exposed by LCore for client intera
 **Discover MCP Client Auth Options:** `GET /v1/mcp-auth/client-options`
 - Returns MCP servers that accept client-provided authentication tokens
 - Includes header names that need to be provided via MCP-HEADERS
+
+**MCP Server Management:**
+- `POST /v1/mcp-servers` - Register a new MCP server at runtime
+- `GET /v1/mcp-servers` - List all registered MCP servers (static and dynamic)
+- `DELETE /v1/mcp-servers/{name}` - Unregister a dynamically registered MCP server
 
 **List Shields:** `GET /shields`
 - Returns available guardrails
