@@ -408,7 +408,7 @@ Only relevant when ``"okp"`` is listed in ``rag.inline`` or ``rag.tool``.
 | Field | Type | Description |
 |-------|------|-------------|
 | offline | boolean | When True, use parent_id for OKP chunk source URLs. When False, use reference_url for chunk source URLs. |
-| chunk_filter_query | string | OKP filter query applied to every OKP search request. Defaults to 'is_chunk:true' to restrict results to chunk documents. To add extra constraints, extend the expression using boolean syntax, e.g. 'is_chunk:true AND product:*openshift*'. |
+| chunk_filter_query | string | Additional OKP filter query applied to every OKP search request. Use Solr boolean syntax, e.g. 'product:\*ansible\* AND product:\*openshift\*'. |
 
 
 ## PostgreSQLDatabaseConfiguration

@@ -11,11 +11,11 @@ from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
 from llama_stack_client import APIConnectionError, AsyncLlamaStackClient  # type: ignore
 
 from configuration import configuration
-from llama_stack_configuration import enrich_byok_rag, YamlDumper
+from llama_stack_configuration import YamlDumper, enrich_byok_rag, enrich_solr
+from log import get_logger
 from models.config import LlamaStackConfiguration
 from models.responses import ServiceUnavailableResponse
 from utils.types import Singleton
-from log import get_logger
 
 logger = get_logger(__name__)
 
@@ -52,14 +52,9 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
             )
         logger.info("Using Llama stack as library client")
 
-        byok_rag = [b.model_dump() for b in configuration.configuration.byok_rag]
-
-        if byok_rag:  # BYOK RAG configured - enrich and store enriched path
-            self._config_path = self._enrich_library_config(
-                config.library_client_config_path, byok_rag
-            )
-        else:  # No RAG - store original path
-            self._config_path = config.library_client_config_path
+        self._config_path = self._enrich_library_config(
+            config.library_client_config_path
+        )
 
         client = AsyncLlamaStackAsLibraryClient(self._config_path)
         await client.initialize()
@@ -78,13 +73,8 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
             base_url=base_url, api_key=api_key, timeout=config.timeout
         )
 
-    def _enrich_library_config(
-        self, input_config_path: str, byok_rag: list[dict]
-    ) -> str:
-        """Enrich llama-stack config with BYOK RAG settings.
-
-        Only called when BYOK RAG is configured.
-        """
+    def _enrich_library_config(self, input_config_path: str) -> str:
+        """Enrich llama-stack config with BYOK RAG and OKP Solr settings."""
         try:
             with open(input_config_path, "r", encoding="utf-8") as f:
                 ls_config = yaml.safe_load(f)
@@ -92,7 +82,13 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
             logger.warning("Failed to read llama-stack config: %s", e)
             return input_config_path
 
-        enrich_byok_rag(ls_config, byok_rag)
+        config = configuration.configuration
+
+        # Enrichment: BYOK RAG
+        enrich_byok_rag(ls_config, [b.model_dump() for b in config.byok_rag])
+
+        # Enrichment: Solr - enabled when "okp" appears in either inline or tool list
+        enrich_solr(ls_config, config.rag.model_dump(), config.okp.model_dump())
 
         enriched_path = os.path.join(
             tempfile.gettempdir(), "llama_stack_enriched_config.yaml"

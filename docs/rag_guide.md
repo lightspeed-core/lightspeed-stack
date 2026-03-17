@@ -343,15 +343,13 @@ curl -sX POST http://localhost:8080/v1/query \
 
 **Query Filtering:**
 
-To filter the Solr context, set the `chunk_filter_query` field in the `okp` section of
+To further filter the OKP context, set the `chunk_filter_query` field in the `okp` section of
 `lightspeed-stack.yaml`. Filters follow the Solr key:value format and are applied as a static
-`fq` parameter on every OKP search request. The default value `"is_chunk:true"` restricts
-results to chunk documents. To add extra constraints, extend the expression using Solr boolean
-syntax:
+`fq` parameter on every OKP search request.
 
 ```yaml
 okp:
-  chunk_filter_query: "is_chunk:true AND product:*openshift*"
+  chunk_filter_query: "product:*openshift*"
 ```
 
 > [!NOTE]

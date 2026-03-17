@@ -73,7 +73,7 @@ class TestOkpConfiguration:
         """Test that OkpConfiguration has correct default values."""
         config = OkpConfiguration()
         assert config.offline is True
-        assert config.chunk_filter_query == "is_chunk:true"
+        assert config.chunk_filter_query is None
 
     def test_offline_false(self) -> None:
         """Test offline can be set to False (online mode)."""
@@ -82,10 +82,8 @@ class TestOkpConfiguration:
 
     def test_custom_chunk_filter_query(self) -> None:
         """Test that chunk_filter_query can be customised."""
-        config = OkpConfiguration(
-            chunk_filter_query="is_chunk:true AND product:*openshift*"
-        )
-        assert config.chunk_filter_query == "is_chunk:true AND product:*openshift*"
+        config = OkpConfiguration(chunk_filter_query="product:*openshift*")
+        assert config.chunk_filter_query == "product:*openshift*"
 
     def test_no_unknown_fields_allowed(self) -> None:
         """Test that OkpConfiguration rejects unknown fields."""

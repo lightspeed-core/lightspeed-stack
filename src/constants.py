@@ -184,6 +184,9 @@ SOLR_VECTOR_SEARCH_DEFAULT_K = 5
 SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD = 0.3
 SOLR_VECTOR_SEARCH_DEFAULT_MODE = "hybrid"
 
+# Internal Solr filter always applied to restrict results to chunk documents
+SOLR_CHUNK_FILTER_QUERY = "is_chunk:true"
+
 # SOLR OKP RAG
 MIMIR_DOC_URL = "https://mimir.corp.redhat.com"
 
