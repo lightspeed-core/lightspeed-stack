@@ -19,11 +19,6 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseText as Text,
     OpenAIResponseReasoning as Reasoning,
 )
-from llama_stack_client.lib.agents.tool_parser import ToolParser
-from llama_stack_client.lib.agents.types import (
-    CompletionMessage as AgentCompletionMessage,
-    ToolCall as AgentToolCall,
-)
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field
 
 from models.database.conversations import UserConversation
@@ -68,49 +63,6 @@ class Singleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
-
-
-# See https://github.com/meta-llama/llama-stack-client-python/issues/206
-class GraniteToolParser(ToolParser):
-    """Workaround for 'tool_calls' with granite models."""
-
-    def get_tool_calls(
-        self, output_message: AgentCompletionMessage
-    ) -> list[AgentToolCall]:
-        """
-        Return the `tool_calls` list from a CompletionMessage, or an empty list if none are present.
-
-        Parameters:
-            output_message (Optional[AgentCompletionMessage]): Completion
-            message potentially containing `tool_calls`.
-
-        Returns:
-            list[AgentToolCall]: The list of tool call entries
-            extracted from `output_message`, or an empty list.
-        """
-        if output_message and output_message.tool_calls:
-            return output_message.tool_calls
-        return []
-
-    @staticmethod
-    def get_parser(model_id: str) -> Optional[ToolParser]:
-        """
-        Return a GraniteToolParser when the model identifier denotes a Granite model.
-
-        Returns None otherwise.
-
-        Parameters:
-            model_id (str): Model identifier string checked case-insensitively.
-            If it starts with "granite", a GraniteToolParser instance is
-            returned.
-
-        Returns:
-            Optional[ToolParser]: GraniteToolParser for Granite models, or None
-            if `model_id` is falsy or does not start with "granite".
-        """
-        if model_id and model_id.lower().startswith("granite"):
-            return GraniteToolParser()
-        return None
 
 
 class ShieldModerationPassed(BaseModel):
