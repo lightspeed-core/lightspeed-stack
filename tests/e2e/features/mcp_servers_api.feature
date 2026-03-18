@@ -52,22 +52,36 @@ Feature: MCP Server Management API tests
     Given The system is in default state
     When I access REST API endpoint "mcp-servers/non-existent-server" using HTTP DELETE method
     Then The status code of the response is 404
+    And The body of the response contains Mcp Server not found
 
-  Scenario: Register MCP server with invalid request body returns 422
+  Scenario: Register MCP server with missing required fields returns 422
     Given The system is in default state
     When I access REST API endpoint "mcp-servers" using HTTP POST method
     """
     {"url": "http://mock-mcp:3001"}
     """
     Then The status code of the response is 422
+    And The body of the response contains name
 
   Scenario: Register MCP server with invalid URL scheme returns 422
     Given The system is in default state
     When I access REST API endpoint "mcp-servers" using HTTP POST method
     """
-    {"name": "bad-url-server", "url": "ftp://mock-mcp:3001"}
+    {"name": "bad-url-server", "url": "ftp://mock-mcp:3001", "provider_id": "model-context-protocol"}
     """
     Then The status code of the response is 422
+    And The body of the response contains scheme
+
+  @skip-in-library-mode
+  Scenario: Register MCP server returns 503 when Llama Stack is unreachable
+    Given The system is in default state
+      And The llama-stack connection is disrupted
+    When I access REST API endpoint "mcp-servers" using HTTP POST method
+    """
+    {"name": "unreachable-server", "url": "http://mock-mcp:3001", "provider_id": "model-context-protocol"}
+    """
+    Then The status code of the response is 503
+    And The body of the response contains Llama Stack
 
   @skip-in-library-mode
   Scenario: Register and delete MCP server lifecycle
@@ -81,10 +95,39 @@ Feature: MCP Server Management API tests
     And The body of the response contains registered successfully
     When I access REST API endpoint "mcp-servers" using HTTP GET method
     Then The status code of the response is 200
-    And The body of the response contains e2e-lifecycle-server
-    And The body of the response contains api
+    And the body of the response has the following structure
+    """
+    {
+        "servers": [
+            {
+                "name": "mcp-oauth",
+                "source": "config"
+            },
+            {
+                "name": "e2e-lifecycle-server",
+                "url": "http://mock-mcp:3001",
+                "provider_id": "model-context-protocol",
+                "source": "api"
+            }
+        ]
+    }
+    """
     When I access REST API endpoint "mcp-servers/e2e-lifecycle-server" using HTTP DELETE method
     Then The status code of the response is 200
+    And The body of the response contains e2e-lifecycle-server
     And The body of the response contains unregistered successfully
+    When I access REST API endpoint "mcp-servers/e2e-lifecycle-server" using HTTP DELETE method
+    Then The status code of the response is 404
     When I access REST API endpoint "mcp-servers" using HTTP GET method
     Then The status code of the response is 200
+    And the body of the response has the following structure
+    """
+    {
+        "servers": [
+            {
+                "name": "mcp-oauth",
+                "source": "config"
+            }
+        ]
+    }
+    """

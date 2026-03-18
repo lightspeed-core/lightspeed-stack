@@ -374,10 +374,10 @@ Useful resources:
 Model context protocol server configuration.
 
 MCP (Model Context Protocol) servers provide tools and capabilities to the
-AI agents. These are configured by this structure. Only MCP servers
-defined in the lightspeed-stack.yaml configuration are available to the
-agents. Tools configured in the llama-stack run.yaml are not accessible to
-lightspeed-core agents.
+AI agents. These are configured by this structure. MCP servers defined in
+lightspeed-stack.yaml and servers registered at runtime via the
+`POST /v1/mcp-servers` API are available to agents. Tools configured in
+the llama-stack run.yaml are not accessible to lightspeed-core agents.
 
 Useful resources:
 

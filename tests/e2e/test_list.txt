@@ -17,4 +17,6 @@ features/streaming_query.feature
 features/rest_api.feature
 features/mcp.feature
 features/mcp_servers_api.feature
+features/mcp_servers_api_auth.feature
+features/mcp_servers_api_no_config.feature
 features/models.feature

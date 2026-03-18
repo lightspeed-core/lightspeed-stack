@@ -261,6 +261,11 @@ After starting the MCP servers and updating `lightspeed-stack.yaml`, test by sen
 
 In addition to static configuration in `lightspeed-stack.yaml`, MCP servers can be registered, listed, and removed at runtime through the REST API. This is useful for development, testing, or scenarios where MCP servers are provisioned dynamically.
 
+When authorization is enabled, callers need the following permissions:
+- `REGISTER_MCP_SERVER` for `POST /v1/mcp-servers`
+- `LIST_MCP_SERVERS` for `GET /v1/mcp-servers`
+- `DELETE_MCP_SERVER` for `DELETE /v1/mcp-servers/{name}`
+
 #### Register an MCP server
 
 ```bash
