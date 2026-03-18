@@ -341,13 +341,12 @@ async def _fetch_byok_rag(
     rag_chunks: list[RAGChunk] = []
     referenced_documents: list[ReferencedDocument] = []
 
-    # Determine which BYOK vector stores to query for inline RAG.
-    # Per-request override takes precedence; otherwise use config-based inline list.
-    rag_ids_to_query = (
-        vector_store_ids
-        if vector_store_ids and no_tools
-        else configuration.configuration.rag.inline
-    )
+    # When no_tools=True and vector_store_ids is provided, use it (even if empty).
+    # Otherwise, use config inline.
+    if no_tools and vector_store_ids is not None:
+        rag_ids_to_query = vector_store_ids
+    else:
+        rag_ids_to_query = configuration.configuration.rag.inline
 
     # Translate user-facing rag_ids to llama-stack ids
     vector_store_ids_to_query: list[str] = resolve_vector_store_ids(

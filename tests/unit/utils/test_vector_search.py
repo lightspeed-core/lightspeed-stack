@@ -409,6 +409,7 @@ class TestFetchByokRag:
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "my-kb"
         byok_rag_mock.vector_db_id = "vs-internal-001"
+        config_mock.configuration.rag.inline = ["my-kb"]
         config_mock.configuration.byok_rag = [byok_rag_mock]
         config_mock.score_multiplier_mapping = {"vs-internal-001": 1.0}
         config_mock.rag_id_mapping = {"vs-internal-001": "my-kb"}
@@ -448,6 +449,7 @@ class TestFetchByokRag:
         byok_rag_2 = mocker.Mock()
         byok_rag_2.rag_id = "kb-part2"
         byok_rag_2.vector_db_id = "vs-bbb-222"
+        config_mock.configuration.rag.inline = ["kb-part1", "kb-part2"]
         config_mock.configuration.byok_rag = [byok_rag_1, byok_rag_2]
         config_mock.score_multiplier_mapping = {"vs-aaa-111": 1.0, "vs-bbb-222": 1.0}
         config_mock.rag_id_mapping = {
