@@ -94,7 +94,12 @@ from utils.shields import (
 from utils.stream_interrupts import get_stream_interrupt_registry
 from utils.suid import get_suid, normalize_conversation_id
 from utils.token_counter import TokenCounter
-from utils.types import ReferencedDocument, ResponsesApiParams, TurnSummary
+from utils.types import (
+    RAGContextParams,
+    ReferencedDocument,
+    ResponsesApiParams,
+    TurnSummary,
+)
 from utils.vector_search import build_rag_context
 
 logger = get_logger(__name__)
@@ -200,11 +205,13 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     # Build RAG context from Inline RAG sources
     inline_rag_context = await build_rag_context(
         client,
-        moderation_result.decision,
-        query_request.query,
-        query_request.vector_store_ids,
-        query_request.solr,
-        query_request.no_tools or False,
+        RAGContextParams(
+            moderation_decision=moderation_result.decision,
+            query=query_request.query,
+            vector_store_ids=query_request.vector_store_ids,
+            solr=query_request.solr,
+            no_tools=query_request.no_tools or False,
+        ),
     )
 
     # Prepare API request parameters

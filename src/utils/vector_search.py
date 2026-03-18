@@ -20,7 +20,7 @@ from configuration import configuration
 from log import get_logger
 from models.responses import ReferencedDocument
 from utils.responses import resolve_vector_store_ids
-from utils.types import RAGChunk, RAGContext, ResponseInput
+from utils.types import RAGChunk, RAGContext, RAGContextParams, ResponseInput
 
 logger = get_logger(__name__)
 
@@ -323,6 +323,7 @@ async def _fetch_byok_rag(
     vector_store_ids: Optional[list[str]] = None,  # User-facing
     no_tools: bool = False,
 ) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
+    # pylint: disable=too-many-locals
     """Fetch chunks and documents from BYOK RAG sources.
 
     Args:
@@ -497,11 +498,7 @@ async def _fetch_solr_rag(
 
 async def build_rag_context(
     client: AsyncLlamaStackClient,
-    moderation_decision: str,
-    query: str,
-    vector_store_ids: Optional[list[str]],
-    solr: Optional[dict[str, Any]] = None,
-    no_tools: bool = False,
+    params: RAGContextParams,
 ) -> RAGContext:
     """Build RAG context by fetching and merging chunks from all enabled sources.
 
@@ -509,20 +506,20 @@ async def build_rag_context(
 
     Args:
         client: The AsyncLlamaStackClient to use for the request
-        moderation_decision: The moderation decision
-        query: The user's query
-        vector_store_ids: The vector store IDs to query
-        solr: The Solr query parameters
-        no_tools: Whether to disable tool RAG
+        params: RAG context parameters (moderation_decision, query,
+            vector_store_ids, solr, no_tools)
+
     Returns:
         RAGContext containing formatted context text and referenced documents
     """
-    if moderation_decision == "blocked":
+    if params.moderation_decision == "blocked":
         return RAGContext()
 
     # Fetch from all enabled RAG sources in parallel
-    byok_chunks_task = _fetch_byok_rag(client, query, vector_store_ids, no_tools)
-    solr_chunks_task = _fetch_solr_rag(client, query, solr)
+    byok_chunks_task = _fetch_byok_rag(
+        client, params.query, params.vector_store_ids, params.no_tools
+    )
+    solr_chunks_task = _fetch_solr_rag(client, params.query, params.solr)
 
     (byok_chunks, byok_docs), (solr_chunks, solr_docs) = await asyncio.gather(
         byok_chunks_task, solr_chunks_task
@@ -531,7 +528,7 @@ async def build_rag_context(
     # Merge chunks from all sources (BYOK + Solr)
     context_chunks = byok_chunks + solr_chunks
 
-    context_text = _format_rag_context(context_chunks, query)
+    context_text = _format_rag_context(context_chunks, params.query)
 
     logger.debug(
         "Inline RAG context built: %d chunks, %d characters",

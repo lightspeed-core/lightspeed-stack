@@ -4,7 +4,7 @@ import pytest
 
 import constants
 from configuration import AppConfig
-from utils.types import RAGChunk
+from utils.types import RAGChunk, RAGContextParams
 from utils.vector_search import (
     _build_document_url,
     _build_query_params,
@@ -547,7 +547,12 @@ class TestBuildRagContext:
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        params = RAGContextParams(
+            moderation_decision="passed",
+            query="test query",
+            vector_store_ids=None,
+        )
+        context = await build_rag_context(client_mock, params)
 
         assert context.context_text == ""
         assert context.rag_chunks == []
@@ -582,7 +587,12 @@ class TestBuildRagContext:
         client_mock = mocker.AsyncMock()
         client_mock.vector_io.query.return_value = search_response
 
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        params = RAGContextParams(
+            moderation_decision="passed",
+            query="test query",
+            vector_store_ids=None,
+        )
+        context = await build_rag_context(client_mock, params)
 
         assert len(context.rag_chunks) > 0
         assert "BYOK content" in context.context_text
