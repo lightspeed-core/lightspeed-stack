@@ -435,12 +435,6 @@ def before_feature(context: Context, feature: Feature) -> None:
         switch_config(context.feature_config)
         restart_container("lightspeed-stack")
 
-    if "MCPFileAuth" in feature.tags:
-        context.feature_config = _get_config_path("mcp-file-auth", mode_dir)
-        context.default_config_backup = create_config_backup("lightspeed-stack.yaml")
-        switch_config(context.feature_config)
-        restart_container("lightspeed-stack")
-
 
 def after_feature(context: Context, feature: Feature) -> None:
     """Run after each feature file is exercised.
@@ -470,11 +464,6 @@ def after_feature(context: Context, feature: Feature) -> None:
             assert response.status_code == 200, f"{url} returned {response.status_code}"
 
     if "MCP" in feature.tags:
-        switch_config(context.default_config_backup)
-        restart_container("lightspeed-stack")
-        remove_config_backup(context.default_config_backup)
-
-    if "MCPFileAuth" in feature.tags:
         switch_config(context.default_config_backup)
         restart_container("lightspeed-stack")
         remove_config_backup(context.default_config_backup)

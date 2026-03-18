@@ -81,8 +81,8 @@ services:
       - "8080:8080"
     volumes:
       - ./lightspeed-stack.yaml:/app-root/lightspeed-stack.yaml:z
-      - ./tests/e2e/secrets/mcp-token:/tmp/mcp-secret-token:ro
-      - ./tests/e2e/secrets/invalid-mcp-token:/tmp/invalid-mcp-secret-token:ro
+      - ./tests/e2e/secrets/mcp-token:/tmp/mcp-token:ro
+      - ./tests/e2e/secrets/invalid-mcp-token:/tmp/invalid-mcp-token:ro
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       # Azure Entra ID credentials (AZURE_API_KEY is obtained dynamically)

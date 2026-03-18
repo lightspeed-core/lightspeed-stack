@@ -50,7 +50,7 @@ from models.responses import (
     NotFoundResponse,
     ServiceUnavailableResponse,
 )
-from utils.mcp_headers import McpHeaders, extract_propagated_headers
+from utils.mcp_headers import McpHeaders, build_mcp_headers
 from utils.prompts import get_system_prompt, get_topic_summary_system_prompt
 from utils.query import (
     extract_provider_and_model_from_model_id,
@@ -437,17 +437,21 @@ def get_rag_tools(vector_store_ids: list[str]) -> Optional[list[InputToolFileSea
     ]
 
 
-async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-locals
+async def get_mcp_tools(
     token: Optional[str] = None,
     mcp_headers: Optional[McpHeaders] = None,
     request_headers: Optional[Mapping[str, str]] = None,
 ) -> list[InputToolMCP]:
     """Convert MCP servers to tools format for Responses API.
 
+    Fully delegates header assembly to ``build_mcp_headers``, which handles static
+    config tokens, the kubernetes Bearer token, client/oauth client-provided headers,
+    and propagated request headers.
+
     Args:
-        token: Optional authentication token for MCP server authorization
-        mcp_headers: Optional per-request headers for MCP servers, keyed by server URL
-        request_headers: Optional incoming HTTP request headers for allowlist propagation
+        token: Optional Kubernetes service-account token for ``kubernetes`` auth headers.
+        mcp_headers: Optional per-request headers for MCP servers, keyed by server name.
+        request_headers: Optional incoming HTTP request headers for allowlist propagation.
 
     Returns:
         List of MCP tool definitions with server details and optional auth. When
@@ -458,68 +462,30 @@ async def get_mcp_tools(  # pylint: disable=too-many-return-statements,too-many-
         HTTPException: 401 with WWW-Authenticate header when an MCP server uses OAuth,
             no headers are passed, and the server responds with 401 and WWW-Authenticate.
     """
-
-    def _get_token_value(original: str, header: str) -> Optional[str]:
-        """Convert to header value."""
-        match original:
-            case constants.MCP_AUTH_KUBERNETES:
-                # use k8s token
-                if token is None or token == "":
-                    return None
-                return f"Bearer {token}"
-            case constants.MCP_AUTH_CLIENT:
-                # use client provided token
-                if mcp_headers is None:
-                    return None
-                c_headers = mcp_headers.get(mcp_server.name, None)
-                if c_headers is None:
-                    return None
-                return c_headers.get(header, None)
-            case constants.MCP_AUTH_OAUTH:
-                # use oauth token
-                if mcp_headers is None:
-                    return None
-                c_headers = mcp_headers.get(mcp_server.name, None)
-                if c_headers is None:
-                    return None
-                return c_headers.get(header, None)
-            case _:
-                # use provided
-                return original
+    complete_headers = build_mcp_headers(
+        configuration, mcp_headers or {}, request_headers, token
+    )
 
     tools: list[InputToolMCP] = []
     for mcp_server in configuration.mcp_servers:
-        # Build headers
-        headers: dict[str, str] = {}
-        for name, value in mcp_server.resolved_authorization_headers.items():
-            # for each defined header
-            h_value = _get_token_value(value, name)
-            # only add the header if we got value
-            if h_value is not None:
-                headers[name] = h_value
+        headers: dict[str, str] = dict(complete_headers.get(mcp_server.name, {}))
 
-        # Skip server if auth headers were configured but not all could be resolved
-        if mcp_server.authorization_headers and len(headers) != len(
-            mcp_server.authorization_headers
-        ):
-            logger.warning(
-                "Skipping MCP server %s: required %d auth headers but only resolved %d",
-                mcp_server.name,
-                len(mcp_server.authorization_headers),
-                len(headers),
-            )
-            continue
+        # Skip server if any configured auth header could not be resolved.
+        if mcp_server.authorization_headers:
+            unresolved = [
+                h
+                for h in mcp_server.authorization_headers
+                if not any(k.lower() == h.lower() for k in headers)
+            ]
+            if unresolved:
+                logger.warning(
+                    "Skipping MCP server %s: required %d auth headers but only resolved %d",
+                    mcp_server.name,
+                    len(mcp_server.authorization_headers),
+                    len(mcp_server.authorization_headers) - len(unresolved),
+                )
+                continue
 
-        # Propagate allowlisted headers from the incoming request
-        if mcp_server.headers and request_headers is not None:
-            propagated = extract_propagated_headers(mcp_server, request_headers)
-            existing_lower = {name.lower() for name in headers}
-            for h_name, h_value in propagated.items():
-                if h_name.lower() not in existing_lower:
-                    headers[h_name] = h_value
-                    existing_lower.add(h_name.lower())
-
-        # Build Authorization header
         authorization = headers.pop("Authorization", None)
         tools.append(
             InputToolMCP(
