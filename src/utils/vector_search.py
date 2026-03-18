@@ -321,6 +321,7 @@ async def _fetch_byok_rag(
     client: AsyncLlamaStackClient,
     query: str,
     vector_store_ids: Optional[list[str]] = None,  # User-facing
+    no_tools: bool = False,
 ) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
     """Fetch chunks and documents from BYOK RAG sources.
 
@@ -343,9 +344,9 @@ async def _fetch_byok_rag(
     # Determine which BYOK vector stores to query for inline RAG.
     # Per-request override takes precedence; otherwise use config-based inline list.
     rag_ids_to_query = (
-        configuration.configuration.rag.inline
-        if vector_store_ids is None
-        else vector_store_ids
+        vector_store_ids
+        if vector_store_ids and no_tools
+        else configuration.configuration.rag.inline
     )
 
     # Translate user-facing rag_ids to llama-stack ids
@@ -501,6 +502,7 @@ async def build_rag_context(
     query: str,
     vector_store_ids: Optional[list[str]],
     solr: Optional[dict[str, Any]] = None,
+    no_tools: bool = False,
 ) -> RAGContext:
     """Build RAG context by fetching and merging chunks from all enabled sources.
 
@@ -512,7 +514,7 @@ async def build_rag_context(
         query: The user's query
         vector_store_ids: The vector store IDs to query
         solr: The Solr query parameters
-
+        no_tools: Whether to disable tool RAG
     Returns:
         RAGContext containing formatted context text and referenced documents
     """
@@ -520,7 +522,7 @@ async def build_rag_context(
         return RAGContext()
 
     # Fetch from all enabled RAG sources in parallel
-    byok_chunks_task = _fetch_byok_rag(client, query, vector_store_ids)
+    byok_chunks_task = _fetch_byok_rag(client, query, vector_store_ids, no_tools)
     solr_chunks_task = _fetch_solr_rag(client, query, solr)
 
     (byok_chunks, byok_docs), (solr_chunks, solr_docs) = await asyncio.gather(

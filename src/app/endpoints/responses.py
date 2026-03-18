@@ -234,6 +234,7 @@ async def responses_endpoint_handler(
         input_text,
         vector_store_ids,
         responses_request.solr,
+        responses_request.no_tools or False,
     )
     if moderation_result.decision == "passed":
         responses_request.input = append_inline_rag_context_to_responses_input(

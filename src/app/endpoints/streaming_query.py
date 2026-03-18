@@ -204,6 +204,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         query_request.query,
         query_request.vector_store_ids,
         query_request.solr,
+        query_request.no_tools or False,
     )
 
     # Prepare API request parameters

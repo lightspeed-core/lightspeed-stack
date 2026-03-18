@@ -168,6 +168,7 @@ async def query_endpoint_handler(
         query_request.query,
         query_request.vector_store_ids,
         query_request.solr,
+        query_request.no_tools or False,
     )
 
     # Prepare API request parameters
