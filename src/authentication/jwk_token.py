@@ -16,7 +16,7 @@ from authlib.jose.errors import (
 from cachetools import TTLCache
 from fastapi import HTTPException, Request
 
-from authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
+from authentication.interface import AuthInterface, AuthTuple
 from authentication.utils import extract_user_token
 from constants import (
     DEFAULT_VIRTUAL_PATH,
@@ -163,24 +163,27 @@ class JwkTokenAuthDependency(AuthInterface):  # pylint: disable=too-few-public-m
     async def __call__(self, request: Request) -> AuthTuple:
         """Authenticate the JWT in the headers against the keys from the JWK url.
 
-        If the Authorization header is missing, returns NO_AUTH_TUPLE. On token
-        verification or validation failures this function raises HTTPException
-        with appropriate HTTP status codes:
-        - 401 for unknown signing key/algorithm, bad signature, expired token,
-              or missing required claims;
+        When the Authorization header is missing, this method raises
+        HTTPException with status 401 (Unauthorized). On token verification or
+        validation failures it also raises HTTPException with appropriate
+        status codes:
         - 400 for token decode or other JOSE-related decode/validation errors;
+        - 401 for missing Authorization header, unknown signing key/algorithm,
+              bad signature, expired token, or missing required claims;
         - 500 for unexpected internal errors.
 
         Parameters:
-            request (Request): The incoming FastAPI request containing the Authorization header.
+            request (Request): The incoming FastAPI request; must include the
+                Authorization header (Bearer token) or 401 is raised.
 
         Returns:
             AuthTuple: A tuple (user_id, username, skip_userid_check, token)
-            extracted from the validated token, or NO_AUTH_TUPLE when no
-            Authorization header is present.
+            extracted from the validated JWT. Only returned on successful
+            authentication; all error paths raise HTTPException.
         """
         if not request.headers.get("Authorization"):
-            return NO_AUTH_TUPLE
+            response = UnauthorizedResponse(cause="No Authorization header found")
+            raise HTTPException(**response.model_dump())
 
         user_token = extract_user_token(request.headers)
 

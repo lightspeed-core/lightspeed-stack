@@ -1745,13 +1745,11 @@ class OkpConfiguration(ConfigurationBase):
         "When False, use reference_url for chunk source URLs.",
     )
 
-    chunk_filter_query: str = Field(
-        default="is_chunk:true",
+    chunk_filter_query: Optional[str] = Field(
+        default=None,
         title="OKP chunk filter query",
-        description="OKP filter query applied to every OKP search request. "
-        "Defaults to 'is_chunk:true' to restrict results to chunk documents. "
-        "To add extra constraints, extend the expression using boolean syntax, "
-        "e.g. 'is_chunk:true AND product:*openshift*'.",
+        description="Additional OKP filter query applied to every OKP search request. "
+        "Use Solr boolean syntax, e.g. 'product:ansible AND product:*openshift*'.",
     )
 
 

@@ -163,7 +163,7 @@ class "ModelContextProtocolServer" as src.models.config.ModelContextProtocolServ
   validate_headers(value: list[str]) -> list[str]
 }
 class "OkpConfiguration" as src.models.config.OkpConfiguration {
-  chunk_filter_query : str
+  chunk_filter_query : Optional[str]
   offline : bool
 }
 class "PostgreSQLDatabaseConfiguration" as src.models.config.PostgreSQLDatabaseConfiguration {

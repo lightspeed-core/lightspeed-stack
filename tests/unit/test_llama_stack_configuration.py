@@ -403,24 +403,27 @@ def test_generate_configuration_with_byok(tmp_path: Path) -> None:
 # =============================================================================
 
 
+_OKP_RAG_CONFIG = {"inline": ["okp"]}
+
+
 def test_enrich_solr_skips_when_not_enabled() -> None:
-    """Test enrich_solr does nothing when Solr is not enabled."""
+    """Test enrich_solr does nothing when OKP is not in rag inline or tool lists."""
     ls_config: dict[str, Any] = {}
-    enrich_solr(ls_config, {"enabled": False})
+    enrich_solr(ls_config, {"inline": [], "tool": []}, {})
     assert not ls_config
 
 
 def test_enrich_solr_skips_when_empty_config() -> None:
-    """Test enrich_solr does nothing with empty config."""
+    """Test enrich_solr does nothing with empty rag config."""
     ls_config: dict[str, Any] = {}
-    enrich_solr(ls_config, {})
+    enrich_solr(ls_config, {}, {})
     assert not ls_config
 
 
 def test_enrich_solr_adds_vector_io_provider() -> None:
     """Test enrich_solr adds Solr provider to vector_io section."""
     ls_config: dict[str, Any] = {}
-    enrich_solr(ls_config, {"enabled": True})
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {})
 
     assert "providers" in ls_config
     assert "vector_io" in ls_config["providers"]
@@ -431,7 +434,7 @@ def test_enrich_solr_adds_vector_io_provider() -> None:
 def test_enrich_solr_adds_vector_store_registration() -> None:
     """Test enrich_solr registers the Solr vector store."""
     ls_config: dict[str, Any] = {}
-    enrich_solr(ls_config, {"enabled": True})
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {})
 
     assert "registered_resources" in ls_config
     store_ids = [
@@ -443,7 +446,7 @@ def test_enrich_solr_adds_vector_store_registration() -> None:
 def test_enrich_solr_adds_embedding_model() -> None:
     """Test enrich_solr registers the Solr embedding model."""
     ls_config: dict[str, Any] = {}
-    enrich_solr(ls_config, {"enabled": True})
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {})
 
     model_ids = [m["model_id"] for m in ls_config["registered_resources"]["models"]]
     assert "solr_embedding" in model_ids
@@ -454,7 +457,7 @@ def test_enrich_solr_skips_duplicate_provider() -> None:
     ls_config: dict[str, Any] = {
         "providers": {"vector_io": [{"provider_id": "okp_solr"}]}
     }
-    enrich_solr(ls_config, {"enabled": True})
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {})
 
     provider_ids = [p["provider_id"] for p in ls_config["providers"]["vector_io"]]
     assert provider_ids.count("okp_solr") == 1
@@ -465,7 +468,7 @@ def test_enrich_solr_skips_duplicate_vector_store() -> None:
     ls_config: dict[str, Any] = {
         "registered_resources": {"vector_stores": [{"vector_store_id": "portal-rag"}]}
     }
-    enrich_solr(ls_config, {"enabled": True})
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {})
 
     store_ids = [
         s["vector_store_id"] for s in ls_config["registered_resources"]["vector_stores"]
@@ -482,7 +485,7 @@ def test_enrich_solr_preserves_existing_config() -> None:
             "models": [{"model_id": "existing_model"}],
         },
     }
-    enrich_solr(ls_config, {"enabled": True})
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {})
 
     provider_ids = [p["provider_id"] for p in ls_config["providers"]["vector_io"]]
     assert "existing_provider" in provider_ids
@@ -493,3 +496,30 @@ def test_enrich_solr_preserves_existing_config() -> None:
     ]
     assert "existing_store" in store_ids
     assert "portal-rag" in store_ids
+
+
+def test_enrich_solr_default_chunk_filter_query() -> None:
+    """Test enrich_solr uses the internal chunk filter when no user filter is set."""
+    ls_config: dict[str, Any] = {}
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {})
+
+    provider = next(
+        p for p in ls_config["providers"]["vector_io"] if p["provider_id"] == "okp_solr"
+    )
+    assert (
+        provider["config"]["chunk_window_config"]["chunk_filter_query"]
+        == "is_chunk:true"
+    )
+
+
+def test_enrich_solr_user_chunk_filter_query_is_conjoined() -> None:
+    """Test enrich_solr ANDs the user filter with the internal chunk filter."""
+    ls_config: dict[str, Any] = {}
+    enrich_solr(ls_config, _OKP_RAG_CONFIG, {"chunk_filter_query": "product:ansible"})
+
+    provider = next(
+        p for p in ls_config["providers"]["vector_io"] if p["provider_id"] == "okp_solr"
+    )
+    assert provider["config"]["chunk_window_config"]["chunk_filter_query"] == (
+        "is_chunk:true AND product:ansible"
+    )

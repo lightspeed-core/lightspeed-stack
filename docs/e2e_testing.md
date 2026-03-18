@@ -58,7 +58,7 @@ tests/e2e/
 ├── utils/
 │   ├── utils.py                 # restart_container, switch_config, wait_for_container_health, etc.
 │   ├── prow_utils.py            # Prow/OpenShift helpers (restore_llama_stack_pod, etc.)
-│   └── llama_stack_shields.py   # Shield unregister/register (server mode, optional)
+│   └── llama_stack_utils.py    # Toolgroups + shield unregister/register (server mode, optional)
 ├── mock_mcp_server/             # Mock MCP server for MCP tests
 └── rag/                         # RAG test data (e.g. for FAISS)
 ```

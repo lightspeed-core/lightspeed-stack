@@ -12,14 +12,20 @@ Feature: Role-Based Access Control (RBAC)
   # Authentication - Token Validation
   # ============================================
 
-  #https://issues.redhat.com/browse/LCORE-1210
-  @skip
   Scenario: Request without token returns 401
     Given The system is in default state
       And I remove the auth header
      When I access REST API endpoint "models" using HTTP GET method
      Then The status code of the response is 401
-      And The body of the response contains Missing or invalid credentials
+     And The body of the response is the following
+        """
+        {
+              "detail": {
+                  "response": "Missing or invalid credentials provided by client",
+                  "cause": "No Authorization header found"
+                }     
+        }
+        """
 
   Scenario: Request with malformed Authorization header returns 401
     Given The system is in default state

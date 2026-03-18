@@ -377,18 +377,35 @@ def enrich_byok_rag(ls_config: dict[str, Any], byok_rag: list[dict[str, Any]]) -
 # =============================================================================
 
 
-def enrich_solr(ls_config: dict[str, Any], solr_config: dict[str, Any]) -> None:
+def enrich_solr(  # pylint: disable=too-many-locals
+    ls_config: dict[str, Any],
+    rag_config: dict[str, Any],
+    okp_config: dict[str, Any],
+) -> None:
     """Enrich Llama Stack config with Solr settings.
 
     Args:
         ls_config: Llama Stack configuration dict (modified in place)
-        solr_config: Solr configuration dict. Expected keys:
-            - enabled (bool): whether Solr enrichment should run
+        rag_config: RAG configuration dict. Used keys:
+            - inline (list[str]): inline RAG IDs
+            - tool (list[str]): tool RAG IDs
+        okp_config: OKP configuration dict. Used keys:
             - chunk_filter_query (str): Solr filter query for chunk retrieval
     """
-    if not solr_config or not solr_config.get("enabled"):
+    inline_ids = rag_config.get("inline") or []
+    tool_ids = rag_config.get("tool") or []
+    okp_enabled = constants.OKP_RAG_ID in inline_ids or constants.OKP_RAG_ID in tool_ids
+
+    if not okp_enabled:
         logger.info("OKP is not enabled: skipping")
         return
+
+    user_filter = okp_config.get("chunk_filter_query")
+    chunk_filter_query = (
+        f"{constants.SOLR_CHUNK_FILTER_QUERY} AND {user_filter}"
+        if user_filter
+        else constants.SOLR_CHUNK_FILTER_QUERY
+    )
 
     logger.info("Enriching Llama Stack config with OKP")
 
@@ -420,9 +437,6 @@ def enrich_solr(ls_config: dict[str, Any], solr_config: dict[str, Any]) -> None:
         embedding_dim_env = (
             f"${{env.SOLR_EMBEDDING_DIM:={constants.SOLR_DEFAULT_EMBEDDING_DIMENSION}}}"
         )
-
-        chunk_filter_query = solr_config.get("chunk_filter_query", "is_chunk:true")
-
         ls_config["providers"]["vector_io"].append(
             {
                 "provider_id": constants.SOLR_PROVIDER_ID,
@@ -543,15 +557,7 @@ def generate_configuration(
     enrich_byok_rag(ls_config, config.get("byok_rag", []))
 
     # Enrichment: Solr - enabled when "okp" appears in either inline or tool list
-    rag_config = config.get("rag", {})
-    inline_ids = rag_config.get("inline") or []
-    tool_ids = rag_config.get("tool") or []
-    okp_enabled = constants.OKP_RAG_ID in inline_ids or constants.OKP_RAG_ID in tool_ids
-    okp_config = config.get("okp", {})
-    chunk_filter_query = okp_config.get("chunk_filter_query", "is_chunk:true")
-    enrich_solr(
-        ls_config, {"enabled": okp_enabled, "chunk_filter_query": chunk_filter_query}
-    )
+    enrich_solr(ls_config, config.get("rag", {}), config.get("okp", {}))
 
     logger.info("Writing Llama Stack configuration into file %s", output_file)
 

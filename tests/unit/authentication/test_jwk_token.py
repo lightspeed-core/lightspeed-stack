@@ -13,7 +13,6 @@ from pytest_mock import MockerFixture
 from authlib.jose import JsonWebKey, JsonWebToken
 
 from authentication.jwk_token import JwkTokenAuthDependency, _jwk_cache
-from constants import DEFAULT_USER_NAME, DEFAULT_USER_UID, NO_USER_TOKEN
 from models.config import JwkConfiguration, JwtConfiguration
 
 TEST_USER_ID = "test-user-123"
@@ -435,19 +434,18 @@ async def test_no_auth_header(
     mocked_signing_keys_server: Any,
     no_token_request: Request,
 ) -> None:
-    """Test with no Authorization header."""
+    """Test with no Authorization header returns 401 Unauthorized."""
     _ = mocked_signing_keys_server
 
     dependency = JwkTokenAuthDependency(default_jwk_configuration)
 
-    user_id, username, skip_userid_check, token_claims = await dependency(
-        no_token_request
-    )
+    with pytest.raises(HTTPException) as exc_info:
+        await dependency(no_token_request)
 
-    assert user_id == DEFAULT_USER_UID
-    assert username == DEFAULT_USER_NAME
-    assert skip_userid_check is True
-    assert token_claims == NO_USER_TOKEN
+    assert exc_info.value.status_code == 401
+    detail = cast(dict, exc_info.value.detail)
+    assert detail["cause"] == "No Authorization header found"
+    assert detail["response"] == "Missing or invalid credentials provided by client"
 
 
 async def test_no_bearer(

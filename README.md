@@ -829,7 +829,6 @@ Usage: make <OPTIONS> ... <TARGETS>
 Available targets are:
 
 run                               Run the service locally
-help                              Show this help screen
 run-llama-stack                   Start Llama Stack with enriched config (for local service mode)
 test-unit                         Run the unit tests
 test-integration                  Run integration tests tests
@@ -842,7 +841,6 @@ format                            Format the code into unified format
 schema                            Generate OpenAPI schema file
 openapi-doc                       Generate OpenAPI documentation
 generate-documentation            Generate documentation
-requirements.txt                  Generate requirements.txt file containing hashes for all non-devel packages
 doc                               Generate documentation for developers
 docs/config.puml                  Generate PlantUML class diagram for configuration
 docs/config.png                   Generate an image with configuration graph
@@ -857,8 +855,11 @@ verify                            Run all linters
 distribution-archives             Generate distribution archives to be uploaded into Python registry
 upload-distribution-archives      Upload distribution archives into Python registry
 konflux-requirements              Generate hermetic requirements.*.txt file for konflux build
-konflux-rpm-lock 	              Generate rpm.lock.yaml file for konflux build
+konflux-rpm-lock                  Generate rpm.lock.yaml file for konflux build
+help                              Show this help screen
 ```
+
+
 
 ## Running Linux container image
 

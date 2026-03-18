@@ -66,6 +66,6 @@ rag:
 # OKP provider settings (only used when 'okp' is listed in rag.inline or rag.tool)
 okp:
   offline: true    # true = use parent_id for source URLs, false = use reference_url
-  # Solr fq applied to every OKP search request. Combine with AND for extra constraints:
-  # chunk_filter_query: "is_chunk:true AND product:*openshift*"
-  chunk_filter_query: "is_chunk:true"
+  # Additional Solr filter query applied to every OKP search request.
+  # Use Solr boolean syntax
+  # chunk_filter_query: "product:*ansible* AND product:*openshift*"
