@@ -23,7 +23,7 @@ providers:
     provider_type: remote::azure
     config: 
       api_key: ${env.AZURE_API_KEY}
-      api_base: https://ols-test.openai.azure.com/
+      base_url: https://ols-test.openai.azure.com/
       api_version: 2024-02-15-preview
   - provider_id: openai
     provider_type: remote::openai
