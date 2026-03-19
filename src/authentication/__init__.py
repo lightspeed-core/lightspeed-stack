@@ -72,6 +72,7 @@ def get_auth_dependency(
             return rh_identity.RHIdentityAuthDependency(
                 required_entitlements=rh_identity_config.required_entitlements,
                 virtual_path=virtual_path,
+                max_header_size=rh_identity_config.max_header_size,
             )
         case constants.AUTH_MOD_APIKEY_TOKEN:
             return api_key_token.APIKeyTokenAuthDependency(

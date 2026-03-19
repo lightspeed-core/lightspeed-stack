@@ -547,3 +547,186 @@ class TestRHIdentityHealthProbeSkip:
         with pytest.raises(HTTPException) as exc_info:
             await auth_dep(request)
         assert exc_info.value.status_code == 401
+
+
+class TestRHIdentityHeaderSizeLimit:
+    """Test suite for x-rh-identity header size limit enforcement."""
+
+    @pytest.mark.asyncio
+    async def test_header_at_exact_limit_accepted(
+        self, mocker: MockerFixture, user_identity_data: dict
+    ) -> None:
+        """Test that a header at exactly the size limit is accepted."""
+        header_value = create_auth_header(user_identity_data)
+        auth_dep = RHIdentityAuthDependency(max_header_size=len(header_value))
+        request = create_request_with_header(mocker, header_value)
+
+        user_id, username, _, _ = await auth_dep(request)
+
+        assert user_id == "abc123"
+        assert username == "user@redhat.com"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "header_size,max_size",
+        [
+            (9000, 8192),  # Well over default limit
+            (101, 100),  # One byte over custom limit
+            (200, 100),  # Well over custom limit
+        ],
+    )
+    async def test_header_exceeding_limit_rejected(
+        self,
+        mocker: MockerFixture,
+        header_size: int,
+        max_size: int,
+    ) -> None:
+        """Test oversized headers rejected with HTTP 400 and a warning logged."""
+        mock_warning = mocker.patch("authentication.rh_identity.logger.warning")
+        auth_dep = RHIdentityAuthDependency(max_header_size=max_size)
+        request = create_request_with_header(mocker, "x" * header_size)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await auth_dep(request)
+
+        assert exc_info.value.status_code == 400
+        assert "exceeds maximum" in str(exc_info.value.detail)
+        mock_warning.assert_called_once()
+        assert mock_warning.call_args.args[1] == header_size
+        assert mock_warning.call_args.args[2] == max_size
+
+
+class TestRHIdentityFieldValidation:
+    """Test suite for RHIdentityData string field validation."""
+
+    @pytest.mark.parametrize(
+        "field_path,bad_value",
+        [
+            (("user", "user_id"), None),
+            (("user", "user_id"), 12345),
+            (("user", "user_id"), True),
+            (("user", "user_id"), []),
+            (("user", "user_id"), {}),
+            (("user", "user_id"), 3.14),
+            (("user", "username"), None),
+            (("user", "username"), 12345),
+        ],
+    )
+    def test_user_non_string_types_rejected(
+        self, user_identity_data: dict, field_path: tuple[str, str], bad_value: object
+    ) -> None:
+        """Reject non-string values in User identity string fields."""
+        user_identity_data["identity"][field_path[0]][field_path[1]] = bad_value
+        with pytest.raises(HTTPException) as exc_info:
+            RHIdentityData(user_identity_data)
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.parametrize(
+        "field_path,bad_value",
+        [
+            (("system", "cn"), None),
+            (("system", "cn"), 12345),
+            (("system", "cn"), True),
+            (("system", "cn"), []),
+            (("system", "cn"), {}),
+            (("account_number",), None),
+            (("account_number",), 12345),
+            (("account_number",), False),
+            (("account_number",), []),
+            (("account_number",), {}),
+        ],
+    )
+    def test_system_non_string_types_rejected(
+        self,
+        system_identity_data: dict,
+        field_path: tuple[str, ...],
+        bad_value: object,
+    ) -> None:
+        """Reject non-string values in System identity string fields."""
+        identity = system_identity_data["identity"]
+        if len(field_path) == 1:
+            identity[field_path[0]] = bad_value
+        else:
+            identity[field_path[0]][field_path[1]] = bad_value
+        with pytest.raises(HTTPException) as exc_info:
+            RHIdentityData(system_identity_data)
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.parametrize("bad_value", ["", "   ", "\t", "\n"])
+    def test_empty_whitespace_rejected(
+        self, user_identity_data: dict, bad_value: str
+    ) -> None:
+        """Reject empty and whitespace-only strings."""
+        user_identity_data["identity"]["user"]["user_id"] = bad_value
+        with pytest.raises(HTTPException) as exc_info:
+            RHIdentityData(user_identity_data)
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.parametrize(
+        "bad_value",
+        ["user\x00id", "user\nid", "user\rid", "a\x1fb", "a\x7fb"],
+    )
+    def test_control_characters_rejected(
+        self, user_identity_data: dict, bad_value: str
+    ) -> None:
+        """Reject strings containing control characters."""
+        user_identity_data["identity"]["user"]["user_id"] = bad_value
+        with pytest.raises(HTTPException) as exc_info:
+            RHIdentityData(user_identity_data)
+        assert exc_info.value.status_code == 400
+
+    def test_oversized_value_rejected(self, user_identity_data: dict) -> None:
+        """Reject values longer than 256 characters."""
+        user_identity_data["identity"]["user"]["user_id"] = "a" * 257
+        with pytest.raises(HTTPException) as exc_info:
+            RHIdentityData(user_identity_data)
+        assert exc_info.value.status_code == 400
+
+    def test_max_length_boundary_accepted(self, user_identity_data: dict) -> None:
+        """Accept values exactly 256 characters long."""
+        user_identity_data["identity"]["user"]["user_id"] = "a" * 256
+        RHIdentityData(user_identity_data)
+
+    def test_org_id_missing_accepted(self, user_identity_data: dict) -> None:
+        """Allow missing org_id."""
+        user_identity_data["identity"].pop("org_id", None)
+        RHIdentityData(user_identity_data)
+
+    def test_org_id_empty_accepted(self, user_identity_data: dict) -> None:
+        """Allow empty org_id."""
+        user_identity_data["identity"]["org_id"] = ""
+        RHIdentityData(user_identity_data)
+
+    def test_org_id_non_string_rejected(self, user_identity_data: dict) -> None:
+        """Reject non-string org_id when provided and non-empty."""
+        user_identity_data["identity"]["org_id"] = 12345
+        with pytest.raises(HTTPException) as exc_info:
+            RHIdentityData(user_identity_data)
+        assert exc_info.value.status_code == 400
+
+    def test_org_id_valid_accepted(self, user_identity_data: dict) -> None:
+        """Accept valid string org_id."""
+        user_identity_data["identity"]["org_id"] = "valid-org-id"
+        RHIdentityData(user_identity_data)
+
+    def test_org_id_oversized_rejected(self, user_identity_data: dict) -> None:
+        """Reject oversized org_id."""
+        user_identity_data["identity"]["org_id"] = "a" * 257
+        with pytest.raises(HTTPException) as exc_info:
+            RHIdentityData(user_identity_data)
+        assert exc_info.value.status_code == 400
+
+    def test_org_id_control_chars_rejected(self, user_identity_data: dict) -> None:
+        """Reject org_id containing control characters."""
+        user_identity_data["identity"]["org_id"] = "org\x00id"
+        with pytest.raises(HTTPException) as exc_info:
+            RHIdentityData(user_identity_data)
+        assert exc_info.value.status_code == 400
+
+    def test_valid_user_data_still_passes(self, user_identity_data: dict) -> None:
+        """Regression: valid User identity data passes validation."""
+        RHIdentityData(user_identity_data)
+
+    def test_valid_system_data_still_passes(self, system_identity_data: dict) -> None:
+        """Regression: valid System identity data passes validation."""
+        RHIdentityData(system_identity_data)

@@ -1,5 +1,6 @@
 """Unit tests for AuthenticationConfiguration model."""
 
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,7 @@ from constants import (
     AUTH_MOD_JWK_TOKEN,
     AUTH_MOD_RH_IDENTITY,
     AUTH_MOD_APIKEY_TOKEN,
+    DEFAULT_RH_IDENTITY_MAX_HEADER_SIZE,
 )
 
 
@@ -572,3 +574,31 @@ def test_authentication_configuration_api_key_but_insufficient_config() -> None:
             k8s_cluster_api=None,
             skip_for_health_probes=True,
         )
+
+
+def test_rh_identity_max_header_size_default() -> None:
+    """Test that RHIdentityConfiguration default max_header_size matches the constant."""
+    config = RHIdentityConfiguration()
+    assert config.max_header_size == DEFAULT_RH_IDENTITY_MAX_HEADER_SIZE
+
+
+@pytest.mark.parametrize(
+    "max_header_size,expectation",
+    [
+        (4096, nullcontext()),
+        (0, pytest.raises(ValidationError)),
+        (-1, pytest.raises(ValidationError)),
+    ],
+)
+def test_rh_identity_max_header_size_validation(
+    max_header_size: int,
+    expectation: AbstractContextManager,
+) -> None:
+    """Test that RHIdentityConfiguration validates max_header_size correctly.
+
+    Verify that PositiveInt accepts valid custom values and rejects zero and
+    negative values.
+    """
+    with expectation:
+        config = RHIdentityConfiguration(max_header_size=max_header_size)
+        assert config.max_header_size == max_header_size

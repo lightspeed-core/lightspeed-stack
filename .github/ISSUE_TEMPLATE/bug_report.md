@@ -8,7 +8,7 @@ assignees: ''
 
 # Bug Description
 
-## **Output of `OLS` version**
+## **Lightspeed Stack version**
 
 ## **Describe the bug**
 

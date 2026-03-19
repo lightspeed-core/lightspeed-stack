@@ -21,6 +21,9 @@ Lightspeed Core Service (LCS) service API specification.
 | GET    | `/v1/models`                          | List of available models                                                                                                                             |
 | GET    | `/v1/tools`                           | Consolidated list of available tools from all configured MCP servers                                                                                 |
 | GET    | `/v1/mcp-auth/client-options`         | List of MCP servers configured to accept client-provided authorization tokens, along with the header names where clients should provide these tokens |
+| GET    | `/v1/mcp-servers`                     | List all registered MCP servers                                                                                                                      |
+| POST   | `/v1/mcp-servers`                     | Register an MCP server dynamically at runtime                                                                                                        |
+| DELETE | `/v1/mcp-servers/{name}`              | Unregister a dynamically registered MCP server                                                                                                       |
 | GET    | `/v1/shields`                         | List of available shields from the Llama Stack service                                                                                               |
 | GET    | `/v1/providers`                       | List all available providers grouped by API type                                                                                                     |
 | GET    | `/v1/providers/{provider_id}`         | Retrieve a single provider identified by its unique ID                                                                                               |
@@ -41,6 +44,7 @@ Lightspeed Core Service (LCS) service API specification.
 | DELETE | `/v2/conversations/{conversation_id}` | Delete a conversation identified by its ID                                                                                                           |
 | PUT    | `/v2/conversations/{conversation_id}` | Update a conversation topic summary by ID                                                                                                            |
 | POST   | `/v1/infer`                           | Serves requests from the RHEL Lightspeed Command Line Assistant (CLA)                                                                                |
+| POST   | `/v1/responses`                       | Handle request to the /responses endpoint using Responses API (LCORE specification)                                                                  |
 | GET    | `/readiness`                          | Returns service readiness state                                                                                                                      |
 | GET    | `/liveness`                           | Returns liveness status of the service                                                                                                               |
 | POST   | `/authorized`                         | Returns the authenticated user's ID and username                                                                                                     |
@@ -110,8 +114,8 @@ Examples
 
 Handle request to the /info endpoint.
 
-Process GET requests to the /info endpoint, returning the service name, version
-and Llama-stack version.
+Process GET requests to the /info endpoint, returning the
+service name, version and Llama-stack version.
 
 Raises:
     HTTPException: with status 500 and a detail object
@@ -472,6 +476,299 @@ Examples
   "detail": {
     "cause": "Lightspeed Stack configuration has not been initialized.",
     "response": "Configuration is not loaded"
+  }
+}
+```
+
+
+## GET `/v1/mcp-servers`
+
+> **List Mcp Servers Handler**
+
+List all registered MCP servers.
+
+Returns both statically configured (from YAML) and dynamically
+registered (via API) MCP servers.
+
+Raises:
+    HTTPException: If configuration is not loaded.
+
+Returns:
+    MCPServerListResponse: List of all registered MCP servers with source info.
+
+
+
+
+
+### ✅ Responses
+
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [MCPServerListResponse](#mcpserverlistresponse)             |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+
+Examples
+
+
+```json
+{
+  "detail": {
+    "cause": "No Authorization header found",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No token found in Authorization header",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+```json
+{
+  "detail": {
+    "cause": "Lightspeed Stack configuration has not been initialized.",
+    "response": "Configuration is not loaded"
+  }
+}
+```
+
+## POST `/v1/mcp-servers`
+
+> **Register Mcp Server Handler**
+
+Register an MCP server dynamically at runtime.
+
+Adds the MCP server to the runtime configuration and registers it
+as a toolgroup with Llama Stack so it becomes available for queries.
+
+Raises:
+    HTTPException: On duplicate name, Llama Stack connection error,
+        or registration failure.
+
+Returns:
+    MCPServerRegistrationResponse: Details of the newly registered server.
+
+
+
+
+
+### 📦 Request Body 
+
+[MCPServerRegistrationRequest](#mcpserverregistrationrequest)
+
+### ✅ Responses
+
+| Status Code | Description             | Component                                                       |
+|-------------|-------------------------|-----------------------------------------------------------------|
+| 201         | Successful response     | [MCPServerRegistrationResponse](#mcpserverregistrationresponse) |
+| 401         | Unauthorized            | [UnauthorizedResponse](#unauthorizedresponse)                   |
+| 403         | Permission denied       | [ForbiddenResponse](#forbiddenresponse)                         |
+| 409         | Resource already exists | [ConflictResponse](#conflictresponse)                           |
+| 500         | Internal server error   | [InternalServerErrorResponse](#internalservererrorresponse)     |
+| 503         | Service unavailable     | [ServiceUnavailableResponse](#serviceunavailableresponse)       |
+| 422         | Validation Error        | [HTTPValidationError](#httpvalidationerror)                     |
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No Authorization header found",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No token found in Authorization header",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Mcp Server with name 'test-mcp-server' is already registered",
+    "response": "Mcp Server already exists"
+  }
+}
+```
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Lightspeed Stack configuration has not been initialized.",
+    "response": "Configuration is not loaded"
+  }
+}
+```
+
+
+```json
+{
+  "detail": {
+    "cause": "Connection error while trying to reach backend service.",
+    "response": "Unable to connect to Llama Stack"
+  }
+}
+```
+
+## DELETE `/v1/mcp-servers/{name}`
+
+> **Delete Mcp Server Handler**
+
+Unregister a dynamically registered MCP server.
+
+Removes the MCP server from the runtime configuration and unregisters
+its toolgroup from Llama Stack. Only servers registered via the API
+can be deleted; statically configured servers cannot be removed.
+
+Raises:
+    HTTPException: If the server is not found, is statically configured,
+        or Llama Stack unregistration fails.
+
+Returns:
+    MCPServerDeleteResponse: Confirmation of the deletion.
+
+
+
+### 🔗 Parameters
+
+| Name | Type   | Required | Description |
+|------|--------|----------|-------------|
+| name | string | True     |             |
+
+
+### ✅ Responses
+
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [MCPServerDeleteResponse](#mcpserverdeleteresponse)         |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found    | [NotFoundResponse](#notfoundresponse)                       |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                 |
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No Authorization header found",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No token found in Authorization header",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Mcp Server with ID test-mcp-server does not exist",
+    "response": "Mcp Server not found"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Lightspeed Stack configuration has not been initialized.",
+    "response": "Configuration is not loaded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Connection error while trying to reach backend service.",
+    "response": "Unable to connect to Llama Stack"
   }
 }
 ```
@@ -2812,6 +3109,308 @@ Examples
 }
 ```
 
+## POST `/v1/responses`
+
+> **Responses Endpoint Handler**
+
+Handle request to the /responses endpoint using Responses API (LCORE specification).
+
+Processes a POST request to the responses endpoint, forwarding the
+user's request to a selected Llama Stack LLM and returning the generated response
+following the LCORE OpenAPI specification.
+
+Returns:
+    ResponsesResponse: Contains the response following LCORE specification (non-streaming).
+    StreamingResponse: SSE-formatted streaming response with enriched events (streaming).
+        - response.created event includes conversation attribute
+        - response.completed event includes available_quotas attribute
+
+Raises:
+    HTTPException:
+        - 401: Unauthorized - Missing or invalid credentials
+        - 403: Forbidden - Insufficient permissions or model override not allowed
+        - 404: Not Found - Conversation, model, or provider not found
+        - 413: Prompt too long - Prompt exceeded model's context window size
+        - 422: Unprocessable Entity - Request validation failed
+        - 429: Quota limit exceeded - The token quota for model or user has been exceeded
+        - 500: Internal Server Error - Configuration not loaded or other server errors
+        - 503: Service Unavailable - Unable to connect to Llama Stack backend
+
+
+
+
+
+### 📦 Request Body 
+
+[ResponsesRequest](#responsesrequest)
+
+### ✅ Responses
+
+| Status Code | Description               | Component                                                   |
+|-------------|---------------------------|-------------------------------------------------------------|
+| 200         | Successful response       | [ResponsesResponse](#responsesresponse)                     |
+| 401         | Unauthorized              | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied         | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found        | [NotFoundResponse](#notfoundresponse)                       |
+| 413         | Prompt is too long        | [PromptTooLongResponse](#prompttoolongresponse)             |
+| 422         | Request validation failed | [UnprocessableEntityResponse](#unprocessableentityresponse) |
+| 429         | Quota limit exceeded      | [QuotaExceededResponse](#quotaexceededresponse)             |
+| 503         | Service unavailable       | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 500         | Internal server error     | [InternalServerErrorResponse](#internalservererrorresponse) |
+
+
+
+
+```json
+"event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_abc\",\"created_at\":1704067200,\"status\":\"in_progress\",\"output\":[],\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{},\"output_text\":\"\"}}\n\nevent: response.output_item.added\ndata: {\"response_id\":\"resp_abc\",\"item\":{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\"}]},\"output_index\":0,\"sequence_number\":1}\n\nevent: response.output_item.done\ndata: {\"response_id\":\"resp_abc\",\"item\":{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\"}]},\"output_index\":0,\"sequence_number\":2}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":3,\"response\":{\"id\":\"resp_abc\",\"created_at\":1704067200,\"completed_at\":1704067250,\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\"}]}],\"usage\":{\"input_tokens\":10,\"output_tokens\":6,\"total_tokens\":16},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{\"daily\":1000,\"monthly\":50000},\"output_text\":\"Hello! How can I help?\"}}\n\ndata: [DONE]\n\n"
+```
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No Authorization header found",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No token found in Authorization header",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 does not have permission to read conversation with ID 123e4567-e89b-12d3-a456-426614174000",
+    "response": "User does not have permission to perform this action"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User lacks model_override permission required to override model/provider.",
+    "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
+  }
+}
+```
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+    "response": "Conversation not found"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Provider with ID openai does not exist",
+    "response": "Provider not found"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Model with ID gpt-4-turbo is not configured",
+    "response": "Model not found"
+  }
+}
+```
+
+
+
+```json
+{
+  "detail": {
+    "cause": "The prompt exceeds the maximum allowed length.",
+    "response": "Prompt is too long"
+  }
+}
+```
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Invalid request format. The request body could not be parsed.",
+    "response": "Invalid request format"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Missing required attributes: ['query', 'model', 'provider']",
+    "response": "Missing required attributes"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+    "response": "Invalid attribute value"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "The token quota for model gpt-4-turbo has been exceeded.",
+    "response": "The model quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 123 has no available tokens.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Cluster has no available tokens.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Unknown subject 999 has no available tokens.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
+    "response": "The quota has been exceeded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Lightspeed Stack configuration has not been initialized.",
+    "response": "Configuration is not loaded"
+  }
+}
+```
+
+
+```json
+{
+  "detail": {
+    "cause": "Connection error while trying to reach backend service.",
+    "response": "Unable to connect to Llama Stack"
+  }
+}
+```
+
 ## POST `/v1/infer`
 
 > **Infer Endpoint**
@@ -3057,7 +3656,9 @@ Returns:
 | Status Code | Description | Component |
 |-------------|-------------|-----------|
 | 200 | Successful response | [ReadinessResponse](#readinessresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
+| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse) |
+| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse) |
+| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse) |
 
 Examples
 
@@ -3085,10 +3686,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
 
 
 
@@ -3102,10 +3699,6 @@ Examples
   }
 }
 ```
- |
-| 503 | Service unavailable | [ServiceUnavailableResponse](#serviceunavailableresponse)
-
-Examples
 
 
 
@@ -3119,7 +3712,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/liveness`
 
 > **Liveness Probe Get Method**
@@ -3207,9 +3800,8 @@ Returns:
 | Status Code | Description | Component |
 |-------------|-------------|-----------|
 | 200 | Successful response | [AuthorizedResponse](#authorizedresponse) |
-| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse)
-
-Examples
+| 401 | Unauthorized | [UnauthorizedResponse](#unauthorizedresponse) |
+| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse) |
 
 
 
@@ -3235,11 +3827,6 @@ Examples
   }
 }
 ```
- |
-| 403 | Permission denied | [ForbiddenResponse](#forbiddenresponse)
-
-Examples
-
 
 
 
@@ -3252,7 +3839,7 @@ Examples
   }
 }
 ```
- |
+
 ## GET `/metrics`
 
 > **Metrics Endpoint Handler**
@@ -3675,6 +4262,34 @@ Represents a distinct capability or function that an agent can perform.
 | tags | array |  |
 
 
+## AllowedToolsFilter
+
+
+Filter configuration for restricting which MCP tools can be used.
+
+:param tool_names: (Optional) List of specific tool names that are allowed
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| tool_names |  |  |
+
+
+## ApprovalFilter
+
+
+Filter configuration for MCP tool approval requirements.
+
+:param always: (Optional) List of tool names that always require approval
+:param never: (Optional) List of tool names that never require approval
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| always |  |  |
+| never |  |  |
+
+
 ## Attachment
 
 
@@ -3882,6 +4497,18 @@ Success response model for the config endpoint.
 | Field | Type | Description |
 |-------|------|-------------|
 | configuration |  |  |
+
+
+## ConflictResponse
+
+
+409 Conflict - Resource already exists.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status_code | integer |  |
+| detail |  |  |
 
 
 ## ConversationData
@@ -4119,6 +4746,7 @@ Service customization.
 | agent_card_path |  |  |
 | agent_card_config |  |  |
 | custom_profile |  |  |
+| allow_verbose_infer | boolean |  |
 
 
 ## DatabaseConfiguration
@@ -4326,6 +4954,12 @@ In-memory cache configuration.
 | max_entries | integer | Maximum number of entries stored in the in-memory cache |
 
 
+## IncludeParameter
+
+
+
+
+
 ## InferenceConfiguration
 
 
@@ -4505,6 +5139,23 @@ Response containing MCP servers that accept client-provided authorization.
 | servers | array | List of MCP servers that accept client-provided authorization |
 
 
+## MCPListToolsTool
+
+
+Tool definition returned by MCP list tools operation.
+
+:param input_schema: JSON schema defining the tool's input parameters
+:param name: Name of the tool
+:param description: (Optional) Description of what the tool does
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| input_schema | object |  |
+| name | string |  |
+| description |  |  |
+
+
 ## MCPServerAuthInfo
 
 
@@ -4515,6 +5166,95 @@ Information about MCP server client authentication options.
 |-------|------|-------------|
 | name | string | MCP server name |
 | client_auth_headers | array | List of authentication header names for client-provided tokens |
+
+
+## MCPServerDeleteResponse
+
+
+Response for a successful MCP server deletion.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Deleted MCP server name |
+| message | string | Status message |
+
+
+## MCPServerInfo
+
+
+Information about a registered MCP server.
+
+Attributes:
+    name: Unique name of the MCP server.
+    url: URL of the MCP server endpoint.
+    provider_id: MCP provider identification.
+    source: Whether the server was registered statically (config) or dynamically (api).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | MCP server name |
+| url | string | MCP server URL |
+| provider_id | string | MCP provider identification |
+| source | string | How the server was registered: 'config' (static) or 'api' (dynamic) |
+
+
+## MCPServerListResponse
+
+
+Response listing all registered MCP servers.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| servers | array | List of all registered MCP servers (static and dynamic) |
+
+
+## MCPServerRegistrationRequest
+
+
+Request model for dynamically registering an MCP server.
+
+Attributes:
+    name: Unique name for the MCP server.
+    url: URL of the MCP server endpoint.
+    provider_id: MCP provider identification (defaults to "model-context-protocol").
+    authorization_headers: Optional headers to send to the MCP server.
+    headers: Optional list of HTTP header names to forward from incoming requests.
+    timeout: Optional request timeout in seconds.
+
+Example:
+    ```python
+    request = MCPServerRegistrationRequest(
+        name="my-tools",
+        url="http://localhost:8888/mcp",
+    )
+    ```
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Unique name for the MCP server |
+| url | string | URL of the MCP server endpoint |
+| provider_id | string | MCP provider identification |
+| authorization_headers |  | Headers to send to the MCP server. Values must be one of the supported token resolution keywords: 'client' - forward the caller's token provided via MCP-HEADERS, 'kubernetes' - use the authenticated user's Kubernetes token, 'oauth' - use an OAuth token provided via MCP-HEADERS. File-path based secrets (used in static YAML config) are not supported for dynamically registered servers. |
+| headers |  | List of HTTP header names to forward from incoming requests |
+| timeout |  | Request timeout in seconds for the MCP server |
+
+
+## MCPServerRegistrationResponse
+
+
+Response for a successful MCP server registration.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Registered MCP server name |
+| url | string | Registered MCP server URL |
+| provider_id | string | MCP provider identification |
+| message | string | Status message |
 
 
 ## Message
@@ -4639,6 +5379,726 @@ Only relevant when ``"okp"`` is listed in ``rag.inline`` or ``rag.tool``.
 |-------|------|-------------|
 | offline | boolean | When True, use parent_id for OKP chunk source URLs. When False, use reference_url for chunk source URLs. |
 | chunk_filter_query | string | OKP filter query applied to every OKP search request. Defaults to 'is_chunk:true' to restrict results to chunk documents. To add extra constraints, extend the expression using boolean syntax, e.g. 'is_chunk:true AND product:*openshift*'. |
+
+
+## OpenAIResponseAnnotationCitation
+
+
+URL citation annotation for referencing external web resources.
+
+:param type: Annotation type identifier, always "url_citation"
+:param end_index: End position of the citation span in the content
+:param start_index: Start position of the citation span in the content
+:param title: Title of the referenced web resource
+:param url: URL of the referenced web resource
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| end_index | integer |  |
+| start_index | integer |  |
+| title | string |  |
+| url | string |  |
+
+
+## OpenAIResponseAnnotationContainerFileCitation
+
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| container_id | string |  |
+| end_index | integer |  |
+| file_id | string |  |
+| filename | string |  |
+| start_index | integer |  |
+
+
+## OpenAIResponseAnnotationFileCitation
+
+
+File citation annotation for referencing specific files in response content.
+
+:param type: Annotation type identifier, always "file_citation"
+:param file_id: Unique identifier of the referenced file
+:param filename: Name of the referenced file
+:param index: Position index of the citation within the content
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| file_id | string |  |
+| filename | string |  |
+| index | integer |  |
+
+
+## OpenAIResponseAnnotationFilePath
+
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| file_id | string |  |
+| index | integer |  |
+
+
+## OpenAIResponseContentPartRefusal
+
+
+Refusal content within a streamed response part.
+
+:param type: Content part type identifier, always "refusal"
+:param refusal: Refusal text supplied by the model
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| refusal | string |  |
+
+
+## OpenAIResponseError
+
+
+Error details for failed OpenAI response requests.
+
+:param code: Error code identifying the type of failure
+:param message: Human-readable error message describing the failure
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| code | string |  |
+| message | string |  |
+
+
+## OpenAIResponseInputFunctionToolCallOutput
+
+
+This represents the output of a function call that gets passed back to the model.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| call_id | string |  |
+| output | string |  |
+| type | string |  |
+| id |  |  |
+| status |  |  |
+
+
+## OpenAIResponseInputMessageContentFile
+
+
+File content for input messages in OpenAI response format.
+
+:param type: The type of the input item. Always `input_file`.
+:param file_data: The data of the file to be sent to the model.
+:param file_id: (Optional) The ID of the file to be sent to the model.
+:param file_url: The URL of the file to be sent to the model.
+:param filename: The name of the file to be sent to the model.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| file_data |  |  |
+| file_id |  |  |
+| file_url |  |  |
+| filename |  |  |
+
+
+## OpenAIResponseInputMessageContentImage
+
+
+Image content for input messages in OpenAI response format.
+
+:param detail: Level of detail for image processing, can be "low", "high", or "auto"
+:param type: Content type identifier, always "input_image"
+:param file_id: (Optional) The ID of the file to be sent to the model.
+:param image_url: (Optional) URL of the image content
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| detail |  |  |
+| type | string |  |
+| file_id |  |  |
+| image_url |  |  |
+
+
+## OpenAIResponseInputMessageContentText
+
+
+Text content for input messages in OpenAI response format.
+
+:param text: The text content of the input message
+:param type: Content type identifier, always "input_text"
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| text | string |  |
+| type | string |  |
+
+
+## OpenAIResponseInputToolChoiceAllowedTools
+
+
+Constrains the tools available to the model to a pre-defined set.
+
+:param mode: Constrains the tools available to the model to a pre-defined set
+:param tools: A list of tool definitions that the model should be allowed to call
+:param type: Tool choice type identifier, always "allowed_tools"
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| mode | string |  |
+| tools | array |  |
+| type | string |  |
+
+
+## OpenAIResponseInputToolChoiceCustomTool
+
+
+Forces the model to call a custom tool.
+
+:param type: Tool choice type identifier, always "custom"
+:param name: The name of the custom tool to call.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| name | string |  |
+
+
+## OpenAIResponseInputToolChoiceFileSearch
+
+
+Indicates that the model should use file search to generate a response.
+
+:param type: Tool choice type identifier, always "file_search"
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+
+
+## OpenAIResponseInputToolChoiceFunctionTool
+
+
+Forces the model to call a specific function.
+
+:param name: The name of the function to call
+:param type: Tool choice type identifier, always "function"
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string |  |
+| type | string |  |
+
+
+## OpenAIResponseInputToolChoiceMCPTool
+
+
+Forces the model to call a specific tool on a remote MCP server
+
+:param server_label: The label of the MCP server to use.
+:param type: Tool choice type identifier, always "mcp"
+:param name: (Optional) The name of the tool to call on the server.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| server_label | string |  |
+| type | string |  |
+| name |  |  |
+
+
+## OpenAIResponseInputToolChoiceMode
+
+
+
+
+
+## OpenAIResponseInputToolChoiceWebSearch
+
+
+Indicates that the model should use web search to generate a response
+
+:param type: Web search tool type variant to use
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type |  |  |
+
+
+## OpenAIResponseInputToolFileSearch
+
+
+File search tool configuration for OpenAI response inputs.
+
+:param type: Tool type identifier, always "file_search"
+:param vector_store_ids: List of vector store identifiers to search within
+:param filters: (Optional) Additional filters to apply to the search
+:param max_num_results: (Optional) Maximum number of search results to return (1-50)
+:param ranking_options: (Optional) Options for ranking and scoring search results
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| vector_store_ids | array |  |
+| filters |  |  |
+| max_num_results |  |  |
+| ranking_options |  |  |
+
+
+## OpenAIResponseInputToolFunction
+
+
+Function tool configuration for OpenAI response inputs.
+
+:param type: Tool type identifier, always "function"
+:param name: Name of the function that can be called
+:param description: (Optional) Description of what the function does
+:param parameters: (Optional) JSON schema defining the function's parameters
+:param strict: (Optional) Whether to enforce strict parameter validation
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| name | string |  |
+| description |  |  |
+| parameters |  |  |
+| strict |  |  |
+
+
+## OpenAIResponseInputToolMCP
+
+
+Model Context Protocol (MCP) tool configuration for OpenAI response inputs.
+
+:param type: Tool type identifier, always "mcp"
+:param server_label: Label to identify this MCP server
+:param connector_id: (Optional) ID of the connector to use for this MCP server
+:param server_url: (Optional) URL endpoint of the MCP server
+:param headers: (Optional) HTTP headers to include when connecting to the server
+:param authorization: (Optional) OAuth access token for authenticating with the MCP server
+:param require_approval: Approval requirement for tool calls ("always", "never", or filter)
+:param allowed_tools: (Optional) Restriction on which tools can be used from this server
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| server_label | string |  |
+| connector_id |  |  |
+| server_url |  |  |
+| headers |  |  |
+| authorization |  |  |
+| require_approval |  |  |
+| allowed_tools |  |  |
+
+
+## OpenAIResponseInputToolWebSearch
+
+
+Web search tool configuration for OpenAI response inputs.
+
+:param type: Web search tool type variant to use
+:param search_context_size: (Optional) Size of search context, must be "low", "medium", or "high"
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type |  |  |
+| search_context_size |  |  |
+
+
+## OpenAIResponseMCPApprovalRequest
+
+
+A request for human approval of a tool invocation.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| arguments | string |  |
+| id | string |  |
+| name | string |  |
+| server_label | string |  |
+| type | string |  |
+
+
+## OpenAIResponseMCPApprovalResponse
+
+
+A response to an MCP approval request.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| approval_request_id | string |  |
+| approve | boolean |  |
+| type | string |  |
+| id |  |  |
+| reason |  |  |
+
+
+## OpenAIResponseMessage-Input
+
+
+Corresponds to the various Message types in the Responses API.
+They are all under one type because the Responses API gives them all
+the same "type" value, and there is no way to tell them apart in certain
+scenarios.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| content |  |  |
+| role |  |  |
+| type | string |  |
+| id |  |  |
+| status |  |  |
+
+
+## OpenAIResponseMessage-Output
+
+
+Corresponds to the various Message types in the Responses API.
+They are all under one type because the Responses API gives them all
+the same "type" value, and there is no way to tell them apart in certain
+scenarios.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| content |  |  |
+| role |  |  |
+| type | string |  |
+| id |  |  |
+| status |  |  |
+
+
+## OpenAIResponseOutputMessageContentOutputText-Input
+
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| text | string |  |
+| type | string |  |
+| annotations | array |  |
+| logprobs |  |  |
+
+
+## OpenAIResponseOutputMessageContentOutputText-Output
+
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| text | string |  |
+| type | string |  |
+| annotations | array |  |
+| logprobs |  |  |
+
+
+## OpenAIResponseOutputMessageFileSearchToolCall
+
+
+File search tool call output message for OpenAI responses.
+
+:param id: Unique identifier for this tool call
+:param queries: List of search queries executed
+:param status: Current status of the file search operation
+:param type: Tool call type identifier, always "file_search_call"
+:param results: (Optional) Search results returned by the file search operation
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string |  |
+| queries | array |  |
+| status | string |  |
+| type | string |  |
+| results |  |  |
+
+
+## OpenAIResponseOutputMessageFileSearchToolCallResults
+
+
+Search results returned by the file search operation.
+
+:param attributes: (Optional) Key-value attributes associated with the file
+:param file_id: Unique identifier of the file containing the result
+:param filename: Name of the file containing the result
+:param score: Relevance score for this search result (between 0 and 1)
+:param text: Text content of the search result
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| attributes | object |  |
+| file_id | string |  |
+| filename | string |  |
+| score | number |  |
+| text | string |  |
+
+
+## OpenAIResponseOutputMessageFunctionToolCall
+
+
+Function tool call output message for OpenAI responses.
+
+:param call_id: Unique identifier for the function call
+:param name: Name of the function being called
+:param arguments: JSON string containing the function arguments
+:param type: Tool call type identifier, always "function_call"
+:param id: (Optional) Additional identifier for the tool call
+:param status: (Optional) Current status of the function call execution
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| call_id | string |  |
+| name | string |  |
+| arguments | string |  |
+| type | string |  |
+| id |  |  |
+| status |  |  |
+
+
+## OpenAIResponseOutputMessageMCPCall
+
+
+Model Context Protocol (MCP) call output message for OpenAI responses.
+
+:param id: Unique identifier for this MCP call
+:param type: Tool call type identifier, always "mcp_call"
+:param arguments: JSON string containing the MCP call arguments
+:param name: Name of the MCP method being called
+:param server_label: Label identifying the MCP server handling the call
+:param error: (Optional) Error message if the MCP call failed
+:param output: (Optional) Output result from the successful MCP call
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string |  |
+| type | string |  |
+| arguments | string |  |
+| name | string |  |
+| server_label | string |  |
+| error |  |  |
+| output |  |  |
+
+
+## OpenAIResponseOutputMessageMCPListTools
+
+
+MCP list tools output message containing available tools from an MCP server.
+
+:param id: Unique identifier for this MCP list tools operation
+:param type: Tool call type identifier, always "mcp_list_tools"
+:param server_label: Label identifying the MCP server providing the tools
+:param tools: List of available tools provided by the MCP server
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string |  |
+| type | string |  |
+| server_label | string |  |
+| tools | array |  |
+
+
+## OpenAIResponseOutputMessageWebSearchToolCall
+
+
+Web search tool call output message for OpenAI responses.
+
+:param id: Unique identifier for this tool call
+:param status: Current status of the web search operation
+:param type: Tool call type identifier, always "web_search_call"
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string |  |
+| status | string |  |
+| type | string |  |
+
+
+## OpenAIResponsePrompt
+
+
+OpenAI compatible Prompt object that is used in OpenAI responses.
+
+:param id: Unique identifier of the prompt template
+:param variables: Dictionary of variable names to OpenAIResponseInputMessageContent structure for template substitution. The substitution values can either be strings, or other Response input types
+like images or files.
+:param version: Version number of the prompt to use (defaults to latest if not specified)
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string |  |
+| variables |  |  |
+| version |  |  |
+
+
+## OpenAIResponseReasoning
+
+
+Configuration for reasoning effort in OpenAI responses.
+
+Controls how much reasoning the model performs before generating a response.
+
+:param effort: The effort level for reasoning. "low" favors speed and economical token usage,
+               "high" favors more complete reasoning, "medium" is a balance between the two.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| effort |  |  |
+
+
+## OpenAIResponseText
+
+
+Text response configuration for OpenAI responses.
+
+:param format: (Optional) Text format configuration specifying output format requirements
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| format |  |  |
+
+
+## OpenAIResponseTextFormat
+
+
+Configuration for Responses API text format.
+
+:param type: Must be "text", "json_schema", or "json_object" to identify the format type
+:param name: The name of the response format. Only used for json_schema.
+:param schema: The JSON schema the response should conform to. In a Python SDK, this is often a `pydantic` model. Only used for json_schema.
+:param description: (Optional) A description of the response format. Only used for json_schema.
+:param strict: (Optional) Whether to strictly enforce the JSON schema. If true, the response must match the schema exactly. Only used for json_schema.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type |  |  |
+| name |  |  |
+| schema |  |  |
+| description |  |  |
+| strict |  |  |
+
+
+## OpenAIResponseToolMCP
+
+
+Model Context Protocol (MCP) tool configuration for OpenAI response object.
+
+:param type: Tool type identifier, always "mcp"
+:param server_label: Label to identify this MCP server
+:param allowed_tools: (Optional) Restriction on which tools can be used from this server
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| server_label | string |  |
+| allowed_tools |  |  |
+
+
+## OpenAIResponseUsage
+
+
+Usage information for OpenAI response.
+
+:param input_tokens: Number of tokens in the input
+:param output_tokens: Number of tokens in the output
+:param total_tokens: Total tokens used (input + output)
+:param input_tokens_details: Detailed breakdown of input token usage
+:param output_tokens_details: Detailed breakdown of output token usage
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| input_tokens | integer |  |
+| output_tokens | integer |  |
+| total_tokens | integer |  |
+| input_tokens_details |  |  |
+| output_tokens_details |  |  |
+
+
+## OpenAIResponseUsageInputTokensDetails
+
+
+Token details for input tokens in OpenAI response usage.
+
+:param cached_tokens: Number of tokens retrieved from cache
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| cached_tokens | integer |  |
+
+
+## OpenAIResponseUsageOutputTokensDetails
+
+
+Token details for output tokens in OpenAI response usage.
+
+:param reasoning_tokens: Number of tokens used for reasoning (o1/o3 models)
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| reasoning_tokens | integer |  |
+
+
+## OpenAITokenLogProb
+
+
+The log probability for a token from an OpenAI-compatible chat completion response.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| token | string | The token. |
+| bytes |  | The bytes for the token. |
+| logprob | number | The log probability of the token. |
+| top_logprobs |  | The top log probabilities for the token. |
+
+
+## OpenAITopLogProb
+
+
+The top log probability for a token from an OpenAI-compatible chat completion response.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| token | string | The token. |
+| bytes |  | The bytes for the token. |
+| logprob | number | The log probability of the token. |
 
 
 ## OpenIdConnectSecurityScheme
@@ -4955,6 +6415,7 @@ Red Hat Identity authentication configuration.
 | Field | Type | Description |
 |-------|------|-------------|
 | required_entitlements |  | List of all required entitlements. |
+| max_header_size | integer | Maximum allowed size in bytes for the base64-encoded x-rh-identity header. Headers exceeding this size are rejected before decoding. |
 
 
 ## RagConfiguration
@@ -5248,12 +6709,24 @@ Response data for rlsapi v1 /infer endpoint.
 Attributes:
     text: The generated response text.
     request_id: Unique identifier for the request.
+    tool_calls: MCP tool calls made during inference (verbose mode only).
+    tool_results: Results from MCP tool calls (verbose mode only).
+    rag_chunks: RAG chunks retrieved from documentation (verbose mode only).
+    referenced_documents: Source documents referenced (verbose mode only).
+    input_tokens: Number of input tokens consumed (verbose mode only).
+    output_tokens: Number of output tokens generated (verbose mode only).
 
 
 | Field | Type | Description |
 |-------|------|-------------|
 | text | string | Generated response text |
 | request_id |  | Unique request identifier |
+| tool_calls |  | Tool calls made during inference (requires include_metadata=true) |
+| tool_results |  | Results from tool calls (requires include_metadata=true) |
+| rag_chunks |  | Retrieved RAG documentation chunks (requires include_metadata=true) |
+| referenced_documents |  | Source documents referenced in answer (requires include_metadata=true) |
+| input_tokens |  | Number of input tokens consumed (requires include_metadata=true) |
+| output_tokens |  | Number of output tokens generated (requires include_metadata=true) |
 
 
 ## RlsapiV1InferRequest
@@ -5265,6 +6738,7 @@ Attributes:
     question: User question string.
     context: Context with system info, terminal output, etc. (defaults provided).
     skip_rag: Reserved for future use. RAG retrieval is not yet implemented.
+    include_metadata: Request extended response with debugging metadata (dev/testing only).
 
 Example:
     ```python
@@ -5283,6 +6757,7 @@ Example:
 | question | string | User question |
 | context |  | Optional context (system info, terminal output, stdin, attachments) |
 | skip_rag | boolean | Reserved for future use. RAG retrieval is not yet implemented. |
+| include_metadata | boolean | [Development/Testing Only] Return extended response with debugging metadata (tool_calls, rag_chunks, tokens). Only honored when allow_verbose_infer is enabled. Not available in production. |
 
 
 ## RlsapiV1InferResponse

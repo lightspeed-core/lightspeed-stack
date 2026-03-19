@@ -1131,6 +1131,13 @@ class RHIdentityConfiguration(ConfigurationBase):
         description="List of all required entitlements.",
     )
 
+    max_header_size: PositiveInt = Field(
+        default=constants.DEFAULT_RH_IDENTITY_MAX_HEADER_SIZE,
+        title="Maximum header size",
+        description="Maximum allowed size in bytes for the base64-encoded x-rh-identity header. "
+        "Headers exceeding this size are rejected before decoding.",
+    )
+
 
 class APIKeyTokenConfiguration(ConfigurationBase):
     """API Key Token configuration."""
