@@ -50,9 +50,12 @@ providers:
     provider_id: basic
     provider_type: inline::basic
   tool_runtime:
-  - config: {}
+  - config: {} # Enable the RAG tool
     provider_id: rag-runtime
     provider_type: inline::rag-runtime
+  - config: {} # Enable MCP (Model Context Protocol) support
+    provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
   vector_io:
   - config:
       persistence:
