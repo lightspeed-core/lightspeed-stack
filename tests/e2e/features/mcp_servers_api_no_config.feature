@@ -1,3 +1,4 @@
+@MCPNoConfig
 Feature: MCP Server API tests without configured MCP servers
 
   Tests that the MCP server management endpoints work correctly

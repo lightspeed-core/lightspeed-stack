@@ -1,0 +1,19 @@
+name: Lightspeed Core Service (LCS)
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  # Library mode - embeds llama-stack as library
+  use_as_library_client: true
+  library_client_config_path: run.yaml
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+authentication:
+  module: "noop"
