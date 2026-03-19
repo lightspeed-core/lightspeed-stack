@@ -1,0 +1,302 @@
+50-QUERY COMPACTION EXPERIMENT — ANALYSIS
+============================================================
+Parameters: threshold=10, RECENT_MESSAGES_TO_KEEP=4
+Model: gpt-4o-mini (via OpenAI remote)
+Date: 2026-03-16
+
+GLOSSARY
+------------------------------------------------------------
+
+Compaction:
+  The process of summarizing older conversation history to
+  reduce the number of tokens sent to the LLM. When a
+  conversation grows too long, older turns are replaced with
+  a concise LLM-generated summary so that the conversation
+  can continue without hitting the model's context window
+  limit.
+
+Probe:
+  A query deliberately designed to test whether the LLM
+  still remembers information from earlier in the conversation.
+  Probes ask "recall what we discussed about X" where X is a
+  topic from turns that may have been compacted (summarized
+  away). If the LLM can answer accurately, the summary
+  preserved that context. If not, the compaction lost it.
+  6 probes were placed at turns 11, 21, 31, 41, 46, and 50.
+
+Turn:
+  One user query + one assistant response. Turn 1 is the
+  first query/response pair. The experiment has 50 turns.
+
+Threshold:
+  The message_count value above which compaction triggers.
+  Set to 10 for this experiment, meaning compaction fires
+  when the 11th+ message is sent on a given conversation.
+  After compaction, a new conversation is created and the
+  counter resets to 0.
+
+RECENT_MESSAGES_TO_KEEP:
+  How many recent user+assistant turn pairs are preserved
+  verbatim (not summarized) during compaction. Set to 4,
+  meaning the last 4 turns (8 messages) are carried forward
+  as-is into the new conversation.
+
+Recursive summarization:
+  The approach used in this PoC. When compaction triggers a
+  second time, the conversation already contains the previous
+  summary (injected as the first message). The LLM summarizes
+  everything in the "old" zone — including the previous
+  summary — producing a "summary of a summary." Each layer
+  of compaction re-compresses all prior context.
+
+  Contrast with additive summarization, where each chunk's
+  summary is generated once and kept independently. The
+  context would be: [summary of turns 1-8] + [summary of
+  turns 9-18] + [summary of turns 19-28] + [recent turns].
+
+Sawtooth pattern:
+  The shape of the input token count over time. Tokens grow
+  linearly as the conversation accumulates turns, then drop
+  sharply when compaction replaces old turns with a summary.
+  This repeats, forming a sawtooth wave.
+
+Input tokens:
+  The number of tokens the LLM receives as context for a
+  given query. Includes system prompt, conversation history
+  (or summary), and the user's new query. Reported by the
+  LLM provider in the response.
+
+Post-compaction baseline:
+  The input token count immediately after compaction. This
+  represents the "floor" — the minimum context size for the
+  new conversation, consisting of the summary + recent turns.
+  In recursive summarization, this baseline grows with each
+  compaction cycle because summaries accumulate.
+
+Context fidelity:
+  How accurately the LLM's responses reflect information
+  from earlier in the conversation. High fidelity means the
+  LLM correctly recalls earlier topics. Low fidelity means
+  compaction lost important context.
+
+
+EXPERIMENT DESIGN
+------------------------------------------------------------
+
+50 queries were sent to the lightspeed-stack /v1/query
+endpoint, building a coherent conversation about container
+and Kubernetes technologies. Topics were introduced in
+blocks of ~5 turns:
+
+  Turns  1-5:  Kubernetes fundamentals (pods, services,
+                deployments, namespaces, ConfigMaps)
+  Turns  6-10: Docker & containers (images, containerd,
+                multi-stage builds)
+  Turns 11-15: Podman (daemonless, rootless, Compose)
+  Turns 16-20: OpenShift (S2I, SCCs, OperatorHub)
+  Turns 21-25: Helm & Operators
+  Turns 26-30: Service mesh & Istio (mTLS, traffic mgmt)
+  Turns 31-35: CI/CD (Tekton, ArgoCD)
+  Turns 36-40: Observability (OpenTelemetry, Prometheus,
+                Grafana, Jaeger)
+  Turns 41-45: Security (RBAC, network policies, image
+                scanning)
+  Turns 46-50: CRDs, GitOps, production challenges
+
+6 probe queries were placed at turns 11, 21, 31, 41, 46,
+and 50 to test context fidelity. Each asks the LLM to
+recall specific topics discussed earlier.
+
+The conversation_id returned in each response was used for
+the next query. When compaction changes the conversation_id,
+the new ID is used going forward.
+
+
+RESULTS SUMMARY
+------------------------------------------------------------
+
+4 compactions occurred at turns 12, 23, 34, 45 — exactly
+every ~11 turns as expected (threshold=10; compaction triggers
+when message_count > 10; counter resets after each compaction
+because a new conversation is created).
+
+
+TOKEN USAGE PATTERN (SAWTOOTH)
+------------------------------------------------------------
+
+Input tokens grow linearly within each cycle, then drop on
+compaction. But the post-compaction baseline grows across
+cycles:
+
+  Turn  1:    388 tokens  ─┐
+  Turn 10: 12617 tokens    │ Cycle 1: growing
+  Turn 11:     0 tokens    │ (probe — 0 likely a reporting issue)
+  Turn 12:  1565 tokens   ─┘ COMPACTED → reset
+  Turn 22:  7116 tokens   ─┐ Cycle 2: growing
+  Turn 23:  2362 tokens   ─┘ COMPACTED → reset (higher baseline)
+  Turn 33:  9589 tokens   ─┐ Cycle 3: growing
+  Turn 34:  3280 tokens   ─┘ COMPACTED → reset (even higher)
+  Turn 44: 12001 tokens   ─┐ Cycle 4: growing
+  Turn 45:  4076 tokens   ─┘ COMPACTED → reset (highest)
+
+Post-compaction baselines: 1565 → 2362 → 3280 → 4076
+
+This growth is the recursive summarization cost: each new
+summary contains the previous summary's content (compressed
+further), so summaries get larger with each cycle. After
+enough cycles, the summary alone would approach the context
+window limit, defeating the purpose of compaction.
+
+In an additive approach, each chunk's summary would be
+generated independently, so early summaries would not be
+re-compressed. The total summary section would still grow
+(linearly), but without the fidelity loss from recursive
+re-compression.
+
+
+CONTEXT FIDELITY
+------------------------------------------------------------
+
+Probes 1-4 (turns 11, 21, 31, 41):
+  All produced detailed, accurate recalls. These probes were
+  asked BEFORE compaction within their cycle, so the full
+  conversation history was still available in the Llama Stack
+  conversation. They confirm the LLM has access to all prior
+  context when compaction has not yet triggered.
+
+Probe 5 (turn 46 — immediately after the 4th compaction):
+  Asked: "Recall the key differences between Docker, Podman,
+  and containerd."
+  These topics were covered in turns 6-15 and have been
+  through all 4 compaction cycles. The response was still
+  correct and detailed — Docker, Podman, and containerd were
+  all accurately described.
+  Verdict: GOOD. Specific factual recall survived 4 layers
+  of recursive summarization.
+
+Probe 6 (turn 50 — final comprehensive probe):
+  Asked: "Give me a comprehensive summary of ALL the
+  container and Kubernetes topics we discussed in this
+  conversation, from the very beginning."
+
+  NOTABLE FIDELITY LOSS:
+  - The response listed ArgoCD first (a topic from the most
+    recent compaction cycle) and was dominated by content
+    from the latest cycle (observability, security, CRDs).
+  - MISSED several topics from the earliest turns:
+    * Kubernetes fundamentals (pods, services, deployments)
+    * Kubernetes namespaces
+    * ConfigMaps and Secrets
+    * Helm charts, values, releases
+    * Istio architecture details (Envoy proxy, istiod)
+  - Topics from middle turns were also compressed or absent.
+
+  Verdict: POOR for comprehensive recall. The recursive
+  summarization progressively diluted early-conversation
+  topics. The LLM's "memory" is biased towards recent
+  content.
+
+
+SUMMARY QUALITY ANALYSIS
+------------------------------------------------------------
+
+Summary 1 (generated at compaction turn 12):
+  Summarizes turns 1-5 (Kubernetes fundamentals).
+  Quality: GOOD. Concise, accurate, covers pods, services,
+  and deployments clearly.
+
+Summary 2 (generated at compaction turn 23):
+  Summarizes Summary 1 + turns 6-18 (Docker, Podman,
+  namespaces, networking, ConfigMaps).
+  Quality: GOOD. Broader coverage, well-structured with
+  clear sections. Previous summary's content (Kubernetes
+  fundamentals) is still represented, though more compressed.
+
+Summary 3 (generated at compaction turn 34):
+  Summarizes Summary 2 + turns 19-26 (OpenShift, Helm,
+  Operators, service mesh).
+  Quality: GOOD. Comprehensive. Lists all major topics
+  covered so far. Shows the summary growing in scope as it
+  incorporates prior summaries.
+
+Summary 4 (generated at compaction turn 45):
+  Summarizes Summary 3 + turns 27-37 (Istio details, CI/CD,
+  ArgoCD, observability).
+  Quality: PROBLEM. The summary is almost entirely about
+  ArgoCD — a single topic from the most recent turns. The
+  broader context from summaries 1-3 (Kubernetes, Docker,
+  Podman, OpenShift, Helm) appears to have been crowded out.
+
+  Likely causes:
+  1. The recursive approach feeds the previous summary as
+     just another "old message" to summarize. The LLM doesn't
+     know it's special.
+  2. The LLM prioritized the detailed, recent ArgoCD content
+     over the already-compressed summary text.
+  3. The summarization prompt doesn't instruct the LLM to
+     preserve the scope of any existing summary.
+
+
+IMPLICATIONS FOR PRODUCTION DESIGN
+------------------------------------------------------------
+
+1. RECURSIVE vs ADDITIVE SUMMARIZATION:
+   This experiment confirms that recursive summarization
+   loses fidelity over multiple cycles. Early-conversation
+   topics were progressively diluted, and by the 4th cycle,
+   the summary had lost most of its breadth.
+
+   Recommendation: Use additive summarization as the primary
+   approach — generate each chunk's summary independently and
+   concatenate them. Fall back to recursive re-summarization
+   only when the total summary size itself approaches the
+   context limit. This gives the best fidelity for the
+   longest time.
+
+2. SUMMARIZATION PROMPT NEEDS IMPROVEMENT:
+   The current generic prompt ("preserve key decisions,
+   entities...") doesn't instruct the LLM to treat an
+   existing summary differently from regular conversation
+   turns. For production, the prompt should explicitly state:
+   "The conversation contains a previous summary of earlier
+   turns. You MUST preserve all topics and facts from that
+   summary in your new summary, in addition to summarizing
+   the new turns."
+
+   This alone could significantly improve recursive quality
+   if recursive summarization is used.
+
+3. POST-COMPACTION BASELINE GROWTH:
+   The growing baseline (1565 → 2362 → 3280 → 4076 tokens)
+   means that after enough compaction cycles, the summary
+   itself will approach the context window limit. Production
+   must handle this — either by re-summarizing the summary
+   (accepting fidelity loss) or by setting a maximum
+   conversation length beyond which the user must start a
+   new conversation.
+
+4. TOKEN ESTIMATION NEEDED FOR PRODUCTION:
+   The PoC uses message_count as a proxy trigger. This works
+   for a PoC but is too coarse for production because:
+   - Turn sizes vary wildly (a turn with tool results or
+     RAG context can be 10x a simple Q&A turn).
+   - The growing summary baseline means the same number of
+     turns consumes more tokens after each compaction cycle.
+   Production should use tiktoken (or equivalent) for actual
+   token estimation before each inference call.
+
+5. LATENCY:
+   Normal turns: 9-20 seconds.
+   Compaction turns: 14-40 seconds (extra LLM call).
+   The overhead is acceptable for an infrequent event (~once
+   every 11 turns) but users should see a UI indicator during
+   compaction (e.g., "Optimizing conversation context...").
+
+6. CONVERSATION ID TRANSITION:
+   The PoC creates a new Llama Stack conversation on each
+   compaction, changing the conversation_id returned to the
+   user. Production should hide this transition — either by
+   updating the lightspeed DB mapping (so the user-facing ID
+   stays stable) or by using the spike doc's recommended
+   approach of building explicit input instead of relying on
+   the conversation parameter.

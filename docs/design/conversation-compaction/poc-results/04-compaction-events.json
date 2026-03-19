@@ -1,0 +1,57 @@
+{
+  "total_queries": 50,
+  "total_compactions": 4,
+  "conv_id_history": [
+    {
+      "turn": 1,
+      "conv_id": "7c6203dfd2b7622daee145080a1afdd70cf9e56419dd7cf6",
+      "reason": "created"
+    },
+    {
+      "turn": 12,
+      "conv_id": "80af44206e4161e9a5367a9c8d0ced7894e4766dd57af31a",
+      "reason": "compaction"
+    },
+    {
+      "turn": 23,
+      "conv_id": "cfbbafbcdb8b214540e7e8fcba4d36589018d27e3cc53b54",
+      "reason": "compaction"
+    },
+    {
+      "turn": 34,
+      "conv_id": "ac5600438ace7712bab00a583c30ceef06516226b397cf38",
+      "reason": "compaction"
+    },
+    {
+      "turn": 45,
+      "conv_id": "ba38b8f21f894c069ae086a32d443ac4ad88e6dc1dc92e9d",
+      "reason": "compaction"
+    }
+  ],
+  "events": [
+    {
+      "turn": 12,
+      "old_conv_id": "7c6203dfd2b7622daee145080a1afdd70cf9e56419dd7cf6",
+      "new_conv_id": "80af44206e4161e9a5367a9c8d0ced7894e4766dd57af31a",
+      "input_tokens": 1565
+    },
+    {
+      "turn": 23,
+      "old_conv_id": "80af44206e4161e9a5367a9c8d0ced7894e4766dd57af31a",
+      "new_conv_id": "cfbbafbcdb8b214540e7e8fcba4d36589018d27e3cc53b54",
+      "input_tokens": 2362
+    },
+    {
+      "turn": 34,
+      "old_conv_id": "cfbbafbcdb8b214540e7e8fcba4d36589018d27e3cc53b54",
+      "new_conv_id": "ac5600438ace7712bab00a583c30ceef06516226b397cf38",
+      "input_tokens": 3280
+    },
+    {
+      "turn": 45,
+      "old_conv_id": "ac5600438ace7712bab00a583c30ceef06516226b397cf38",
+      "new_conv_id": "ba38b8f21f894c069ae086a32d443ac4ad88e6dc1dc92e9d",
+      "input_tokens": 4076
+    }
+  ]
+}

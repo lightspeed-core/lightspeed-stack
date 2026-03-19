@@ -57,6 +57,7 @@ from utils.query import (
     handle_known_apistatus_errors,
     prepare_input,
 )
+from utils.compaction import compact_conversation_if_needed
 from utils.suid import to_llama_stack_conversation_id
 from utils.token_counter import TokenCounter
 from utils.types import (
@@ -311,6 +312,15 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
         # Conversation ID was provided - convert to llama-stack format
         logger.debug("Using existing conversation ID: %s", conversation_id)
         llama_stack_conv_id = to_llama_stack_conversation_id(conversation_id)
+
+        # Check if conversation needs compaction (PoC)
+        if user_conversation:
+            llama_stack_conv_id = await compact_conversation_if_needed(
+                client=client,
+                llama_stack_conv_id=llama_stack_conv_id,
+                model=model,
+                message_count=user_conversation.message_count,
+            )
     else:
         # No conversation_id provided - create a new conversation first
         logger.debug("No conversation_id provided, creating new conversation")
