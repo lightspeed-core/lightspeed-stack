@@ -1,5 +1,7 @@
 """Streaming query handler using Responses API."""
 
+# pylint: disable=too-many-lines
+
 import asyncio
 import datetime
 import json
