@@ -303,6 +303,39 @@ async def test_auth_fixture(test_request: Request) -> AuthTuple:
     return await noop_auth(test_request)
 
 
+@pytest.fixture(name="non_admin_test_request")
+def non_admin_test_request_fixture(
+    test_request: Request, mocker: Any
+) -> Generator[Request, None, None]:
+    """Create a test request with standard user permissions (no elevated OTHERS permissions).
+
+    This fixture patches the authorization system to grant only standard user actions,
+    excluding elevated permissions like LIST_OTHERS_CONVERSATIONS, DELETE_OTHERS_CONVERSATIONS, etc.
+    This allows testing user isolation in integration tests.
+
+    Parameters:
+        test_request: Base request fixture
+        mocker: pytest-mock fixture
+
+    Yields:
+        Request: Test request that will have limited permissions when used with @authorize decorator
+    """
+    # Define standard user actions (excluding OTHERS and ADMIN permissions)
+    standard_actions = {
+        Action.LIST_CONVERSATIONS,
+        Action.GET_CONVERSATION,
+        Action.DELETE_CONVERSATION,
+        Action.UPDATE_CONVERSATION,
+    }
+
+    # Patch the NoopAccessResolver to return limited actions
+    mocker.patch(
+        "authorization.resolvers.NoopAccessResolver.get_actions",
+        return_value=standard_actions,
+    )
+    yield test_request
+
+
 @pytest.fixture(name="integration_http_client")
 def integration_http_client_fixture(
     test_config: object,
