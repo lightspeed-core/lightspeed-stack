@@ -387,6 +387,27 @@ async def _persist_interrupted_turn(
         )
 
     try:
+        topic_summary = None
+        if not context.query_request.conversation_id:
+            should_generate = context.query_request.generate_topic_summary
+            if should_generate:
+                try:
+                    logger.debug(
+                        "Generating topic summary for interrupted new conversation"
+                    )
+                    topic_summary = await get_topic_summary(
+                        context.query_request.query,
+                        context.client,
+                        responses_params.model,
+                    )
+                except Exception as e:  # pylint: disable=broad-except
+                    logger.warning(
+                        "Failed to generate topic summary for interrupted turn, "
+                        "request %s: %s",
+                        context.request_id,
+                        e,
+                    )
+
         completed_at = datetime.datetime.now(datetime.UTC).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
         )
@@ -399,7 +420,7 @@ async def _persist_interrupted_turn(
             summary=turn_summary,
             query=context.query_request.query,
             skip_userid_check=context.skip_userid_check,
-            topic_summary=None,
+            topic_summary=topic_summary,
         )
     except Exception:  # pylint: disable=broad-except
         logger.exception(
