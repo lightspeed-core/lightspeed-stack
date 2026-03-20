@@ -264,7 +264,7 @@ jobs:
       - name: Set watsonx test overrides
         if: matrix.environment == 'watsonx'
         run: |
-          echo "E2E_DEFAULT_MODEL_OVERRIDE=watsonx/watsonx/meta-llama/llama-3-3-70b-instruct" >> $GITHUB_ENV
+          echo "E2E_DEFAULT_MODEL_OVERRIDE=meta-llama/llama-4-maverick-17b-128e-instruct-fp8" >> $GITHUB_ENV
           echo "E2E_DEFAULT_PROVIDER_OVERRIDE=watsonx" >> $GITHUB_ENV
 
       - name: Run e2e tests
