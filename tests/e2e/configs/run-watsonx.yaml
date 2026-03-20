@@ -140,10 +140,6 @@ storage:
       backend: kv_default
 registered_resources:
   models: 
-  - model_id: custom-watsonx-model
-    provider_id: watsonx
-    model_type: llm
-    provider_model_id: watsonx/meta-llama/llama-3-3-70b-instruct
   - model_id: all-mpnet-base-v2
     model_type: embedding
     provider_id: sentence-transformers
@@ -159,7 +155,6 @@ registered_resources:
     embedding_model: sentence-transformers/all-mpnet-base-v2
     provider_id: faiss
     vector_store_id: ${env.FAISS_VECTOR_STORE_ID}
-  vector_stores: []
   datasets: []
   scoring_fns: []
   benchmarks: []
