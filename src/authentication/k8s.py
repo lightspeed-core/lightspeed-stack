@@ -1,6 +1,7 @@
 """Manage authentication flow for FastAPI endpoints with K8S/OCP."""
 
 import os
+from http import HTTPStatus
 from typing import Optional, Self, cast
 
 import kubernetes.client
@@ -29,8 +30,45 @@ RUNNING_IN_CLUSTER = (
 )
 
 
-class ClusterIDUnavailableError(Exception):
-    """Cluster ID is not available."""
+class K8sAuthenticationError(Exception):
+    """Base exception for Kubernetes authentication errors."""
+
+
+class K8sAPIConnectionError(K8sAuthenticationError):
+    """Cannot connect to Kubernetes API server.
+
+    Indicates transient failures that may be resolved by retrying.
+    Maps to HTTP 503 Service Unavailable.
+    """
+
+
+class K8sConfigurationError(K8sAuthenticationError):
+    """Kubernetes cluster configuration issue.
+
+    Indicates persistent configuration problems requiring admin intervention.
+    Maps to HTTP 500 Internal Server Error.
+    """
+
+
+class ClusterVersionNotFoundError(K8sConfigurationError):
+    """ClusterVersion resource not found in OpenShift cluster.
+
+    Raised when the ClusterVersion custom resource does not exist (HTTP 404).
+    """
+
+
+class ClusterVersionPermissionError(K8sConfigurationError):
+    """No permission to access ClusterVersion resource.
+
+    Raised when RBAC denies access to the ClusterVersion resource (HTTP 403).
+    """
+
+
+class InvalidClusterVersionError(K8sConfigurationError):
+    """ClusterVersion resource has invalid structure or missing required fields.
+
+    Raised when the ClusterVersion exists but is missing spec.clusterID or has wrong type.
+    """
 
 
 class K8sClientSingleton:
@@ -156,8 +194,10 @@ class K8sClientSingleton:
             str: The cluster's `clusterID`.
 
         Raises:
-            ClusterIDUnavailableError: If the cluster ID cannot be obtained due
-            to missing keys, an API error, or any unexpected error.
+            K8sAPIConnectionError: If the Kubernetes API is unreachable or returns 5xx errors.
+            ClusterVersionNotFoundError: If the ClusterVersion resource does not exist (404).
+            ClusterVersionPermissionError: If access to ClusterVersion is denied (403).
+            InvalidClusterVersionError: If ClusterVersion has invalid structure or missing fields.
         """
         try:
             custom_objects_api = cls.get_custom_objects_api()
@@ -170,27 +210,64 @@ class K8sClientSingleton:
             )
             spec = version_data.get("spec")
             if not isinstance(spec, dict):
-                raise ClusterIDUnavailableError(
+                raise InvalidClusterVersionError(
                     "Missing or invalid 'spec' in ClusterVersion"
                 )
             cluster_id = spec.get("clusterID")
             if not isinstance(cluster_id, str) or not cluster_id.strip():
-                raise ClusterIDUnavailableError(
+                raise InvalidClusterVersionError(
                     "Missing or invalid 'clusterID' in ClusterVersion"
                 )
             cls._cluster_id = cluster_id
             return cluster_id
-        except KeyError as e:
-            logger.error(
-                "Failed to get cluster_id from cluster, missing keys in version object"
-            )
-            raise ClusterIDUnavailableError("Failed to get cluster ID") from e
         except ApiException as e:
-            logger.error("API exception during ClusterInfo: %s", e)
-            raise ClusterIDUnavailableError("Failed to get cluster ID") from e
-        except Exception as e:
-            logger.error("Unexpected error during getting cluster ID: %s", e)
-            raise ClusterIDUnavailableError("Failed to get cluster ID") from e
+            # Handle specific HTTP status codes from Kubernetes API
+            if e.status is None:
+                # No status code indicates a connection/network issue
+                logger.error("Kubernetes API error with no status code: %s", e.reason)
+                raise K8sAPIConnectionError(
+                    f"Failed to connect to Kubernetes API: {e.reason}"
+                ) from e
+
+            if e.status == HTTPStatus.NOT_FOUND:
+                logger.error(
+                    "ClusterVersion resource 'version' not found in cluster: %s",
+                    e.reason,
+                )
+                raise ClusterVersionNotFoundError(
+                    "ClusterVersion 'version' resource not found in OpenShift cluster"
+                ) from e
+            if e.status == HTTPStatus.FORBIDDEN:
+                logger.error(
+                    "Permission denied to access ClusterVersion resource: %s", e.reason
+                )
+                raise ClusterVersionPermissionError(
+                    "Insufficient permissions to read ClusterVersion resource"
+                ) from e
+            # Classify errors by status code range
+            # 5xx errors and 429 (rate limit) are transient - map to 503
+            if (
+                e.status >= HTTPStatus.INTERNAL_SERVER_ERROR
+                or e.status == HTTPStatus.TOO_MANY_REQUESTS
+            ):
+                logger.error(
+                    "Kubernetes API unavailable while fetching ClusterVersion (status %s): %s",
+                    e.status,
+                    e.reason,
+                )
+                raise K8sAPIConnectionError(
+                    f"Failed to connect to Kubernetes API: {e.reason} (status {e.status})"
+                ) from e
+            # All other errors (4xx client errors) are configuration issues - map to 500
+            logger.error(
+                "Kubernetes API returned client error while fetching "
+                "ClusterVersion (status %s): %s",
+                e.status,
+                e.reason,
+            )
+            raise K8sConfigurationError(
+                f"Kubernetes API request failed: {e.reason} (status {e.status})"
+            ) from e
 
     @classmethod
     def get_cluster_id(cls) -> str:
@@ -207,7 +284,10 @@ class K8sClientSingleton:
             str: The cluster identifier.
 
         Raises:
-            ClusterIDUnavailableError: If running in-cluster and fetching the cluster ID fails.
+            K8sAPIConnectionError: If the Kubernetes API is unreachable.
+            ClusterVersionNotFoundError: If the ClusterVersion resource does not exist.
+            ClusterVersionPermissionError: If access to ClusterVersion is denied.
+            InvalidClusterVersionError: If ClusterVersion has invalid structure.
         """
         if cls._instance is None:
             cls()
@@ -230,7 +310,10 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReviewStatus]
         The V1TokenReviewStatus if the token is valid, None otherwise.
 
     Raises:
-        HTTPException: If unable to connect to Kubernetes API or unexpected error occurs.
+        HTTPException:
+            503 if Kubernetes API is unavailable (5xx errors, 429 rate limit).
+            503 if unable to initialize Kubernetes client.
+            500 if Kubernetes API configuration issue (4xx errors).
     """
     try:
         auth_api = K8sClientSingleton.get_authn_api()
@@ -254,8 +337,47 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReviewStatus]
         if status is not None and status.authenticated:
             return status
         return None
+    except ApiException as e:
+        if e.status is None:
+            logger.error(
+                "Kubernetes API error during TokenReview with no status code: %s",
+                e.reason,
+            )
+            response = ServiceUnavailableResponse(
+                backend_name="Kubernetes API",
+                cause=f"Failed to connect to Kubernetes API: {e.reason}",
+            )
+            raise HTTPException(**response.model_dump()) from e
+
+        # 5xx errors and 429 (rate limit) are transient - map to 503
+        if (
+            e.status >= HTTPStatus.INTERNAL_SERVER_ERROR
+            or e.status == HTTPStatus.TOO_MANY_REQUESTS
+        ):
+            logger.error(
+                "Kubernetes API unavailable during TokenReview (status %s): %s",
+                e.status,
+                e.reason,
+            )
+            response = ServiceUnavailableResponse(
+                backend_name="Kubernetes API",
+                cause=f"Kubernetes API unavailable: {e.reason} (status {e.status})",
+            )
+            raise HTTPException(**response.model_dump()) from e
+
+        # All other errors (4xx client errors) are configuration issues - map to 500
+        logger.error(
+            "Kubernetes API returned client error during TokenReview (status %s): %s",
+            e.status,
+            e.reason,
+        )
+        response_obj = InternalServerErrorResponse(
+            response="Internal server error",
+            cause=f"Kubernetes API request failed: {e.reason} (status {e.status})",
+        )
+        raise HTTPException(**response_obj.model_dump()) from e
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.error("API exception during TokenReview: %s", e)
+        logger.error("Unexpected error during TokenReview: %s", e)
         return None
 
 
@@ -325,11 +447,20 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
         if user.username == "kube:admin":
             try:
                 user.uid = K8sClientSingleton.get_cluster_id()
-            except ClusterIDUnavailableError as e:
-                logger.error("Failed to get cluster ID: %s", e)
+            except K8sAPIConnectionError as e:
+                # Kubernetes API is unreachable - return 503
+                logger.error("Cannot connect to Kubernetes API: %s", e)
+                response = ServiceUnavailableResponse(
+                    backend_name="Kubernetes API",
+                    cause=str(e),
+                )
+                raise HTTPException(**response.model_dump()) from e
+            except K8sConfigurationError as e:
+                # Cluster misconfiguration or client error - return 500
+                logger.error("Cluster configuration error: %s", e)
                 response = InternalServerErrorResponse(
                     response="Internal server error",
-                    cause="Unable to retrieve cluster ID",
+                    cause=str(e),
                 )
                 raise HTTPException(**response.model_dump()) from e
 
