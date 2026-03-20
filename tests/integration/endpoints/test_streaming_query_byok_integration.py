@@ -11,10 +11,7 @@ from fastapi import Request, status
 from fastapi.responses import StreamingResponse
 from llama_stack_api.openai_responses import OpenAIResponseObject
 from pytest_mock import AsyncMockType, MockerFixture
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
 
-import app.database
 import constants
 from app.endpoints.streaming_query import streaming_query_endpoint_handler
 from authentication.interface import AuthTuple
@@ -96,24 +93,6 @@ def _build_base_streaming_mock_client(mocker: MockerFixture) -> Any:
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
-
-@pytest.fixture(name="patch_db_session", autouse=True)
-def patch_db_session_fixture(
-    test_db_session: Session,
-    test_db_engine: Engine,
-) -> Generator[Session, None, None]:
-    """Patch global database session to use in-memory test database."""
-    original_engine = app.database.engine
-    original_session_local = app.database.session_local
-
-    app.database.engine = test_db_engine
-    app.database.session_local = sessionmaker(bind=test_db_engine)
-
-    yield test_db_session
-
-    app.database.engine = original_engine
-    app.database.session_local = original_session_local
 
 
 @pytest.fixture(name="mock_streaming_byok_client")

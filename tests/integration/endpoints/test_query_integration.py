@@ -4,17 +4,13 @@
 # pylint: disable=too-many-arguments  # Integration tests need many fixtures
 # pylint: disable=too-many-positional-arguments  # Integration tests need many fixtures
 
-from typing import Any
-from collections.abc import Generator
 
 import pytest
 from fastapi import HTTPException, Request, status
 from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client import APIConnectionError
-from llama_stack_client.types import VersionInfo
 from pytest_mock import AsyncMockType, MockerFixture
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 import app.database
 import app.endpoints.query
@@ -24,123 +20,19 @@ from configuration import AppConfig
 from models.cache_entry import CacheEntry
 from models.database.conversations import UserConversation
 from models.requests import Attachment, QueryRequest
+from tests.integration.conftest import (
+    TEST_CONVERSATION_ID,
+    TEST_NON_EXISTENT_ID,
+    create_mock_llm_response,
+)
 import utils.query
 
-# Test constants - use valid UUID format
-TEST_CONVERSATION_ID = "c9d40813-d64d-41eb-8060-3b2446929a02"
-TEST_CONV_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-NON_EXISTENT_ID = "00000000-0000-0000-0000-000000000001"
-OTHER_USER_CONV_ID = "11111111-1111-1111-1111-111111111111"
+# File-specific test constants
+SPECIFIC_CONV_ID = "c9d40813-d64d-41eb-8060-3b2446929a02"
 EXISTING_CONV_ID = "22222222-2222-2222-2222-222222222222"
 
-
-@pytest.fixture(name="mock_llama_stack_client")
-def mock_llama_stack_client_fixture(
-    mocker: MockerFixture,
-) -> Generator[Any, None, None]:
-    """Mock only the external Llama Stack client.
-
-    This is the only external dependency we mock for integration tests,
-    as it represents an external service call.
-
-    Parameters:
-        mocker (MockerFixture): pytest-mock fixture used to create and patch mocks.
-
-    Returns:
-        mock_client: The mocked Llama Stack client instance configured as described above.
-    """
-    # Patch in app.endpoints.query where it's actually used by query_endpoint_handler_base
-    mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
-
-    mock_client = mocker.AsyncMock()
-
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
-    mock_response.id = "response-123"
-
-    # Mock output with assistant message
-    mock_output_item = mocker.MagicMock()
-    mock_output_item.type = "message"
-    mock_output_item.role = "assistant"
-    mock_output_item.content = "This is a test response about Ansible."
-    mock_output_item.refusal = (
-        None  # Explicitly set refusal to None (no shield violation)
-    )
-
-    mock_response.output = [mock_output_item]
-    mock_response.stop_reason = "end_turn"
-
-    # Mock tool calls (empty by default)
-    mock_response.tool_calls = []
-
-    # Mock usage (required for token extraction)
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 10
-    mock_usage.output_tokens = 5
-    mock_response.usage = mock_usage
-
-    mock_client.responses.create.return_value = mock_response
-
-    # Mock models list (required for model selection)
-    mock_model = mocker.MagicMock()
-    mock_model.id = "test-provider/test-model"
-    mock_model.custom_metadata = {
-        "provider_id": "test-provider",
-        "model_type": "llm",
-    }
-    mock_client.models.list.return_value = [mock_model]
-
-    # Mock shields list (empty by default for simpler tests)
-    mock_client.shields.list.return_value = []
-
-    # Mock vector stores list (empty by default) - must return object with .data attribute
-    mock_vector_stores_response = mocker.MagicMock()
-    mock_vector_stores_response.data = []
-    mock_client.vector_stores.list.return_value = mock_vector_stores_response
-
-    # Mock conversations.create for new conversation creation
-    # Returns ID in llama-stack format (conv_ prefix + 48 hex chars)
-    mock_conversation = mocker.MagicMock()
-    mock_conversation.id = "conv_" + "a" * 48  # conv_aaa...aaa (proper format)
-    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
-
-    # Mock version info
-    mock_client.inspect.version.return_value = VersionInfo(version="0.2.22")
-
-    # Create a mock holder instance
-    mock_holder_instance = mock_holder_class.return_value
-    mock_holder_instance.get_client.return_value = mock_client
-
-    yield mock_client
-
-
-@pytest.fixture(name="patch_db_session", autouse=True)
-def patch_db_session_fixture(
-    test_db_session: Session,
-    test_db_engine: Engine,
-) -> Generator[Session, None, None]:
-    """Initialize database session for integration tests.
-
-    This sets up the global session_local in app.database to use the test database.
-    Uses an in-memory SQLite database, isolating tests from production data.
-    This fixture is autouse=True, so it applies to all tests in this module automatically.
-
-    Returns:
-        The test database Session instance to be used by the test.
-    """
-    # Store original values to restore later
-    original_engine = app.database.engine
-    original_session_local = app.database.session_local
-
-    # Set the test database engine and session maker globally
-    app.database.engine = test_db_engine
-    app.database.session_local = sessionmaker(bind=test_db_engine)
-
-    yield test_db_session
-
-    # Restore original values
-    app.database.engine = original_engine
-    app.database.session_local = original_session_local
-
+# Note: mock_llama_stack_client and patch_db_session are now provided by
+# tests/integration/conftest.py (patch_db_session is autouse for all tests)
 
 # ==========================================
 # Basic Response Tests
@@ -1057,13 +949,14 @@ async def test_query_v2_endpoint_updates_existing_conversation(
     original_count = existing_conversation.message_count
 
     # Create a proper mock response with all required attributes
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
+    mock_response = create_mock_llm_response(
+        mocker,
+        content="",
+        input_tokens=10,
+        output_tokens=5,
+    )
     mock_response.id = EXISTING_CONV_ID
-    mock_response.output = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 10
-    mock_usage.output_tokens = 5
-    mock_response.usage = mock_usage
+    mock_response.output = []  # Override to empty for this test
     mock_llama_stack_client.responses.create.return_value = mock_response
 
     query_request = QueryRequest(query="Tell me more", conversation_id=EXISTING_CONV_ID)
@@ -1113,7 +1006,7 @@ async def test_query_v2_endpoint_conversation_ownership_validation(
     # Create conversation owned by the authenticated user in database
     user_id, _, _, _ = test_auth
     user_conversation = UserConversation(
-        id=TEST_CONV_ID,
+        id=TEST_CONVERSATION_ID,
         user_id=user_id,
         last_used_model="test-model",
         last_used_provider="test-provider",
@@ -1123,7 +1016,9 @@ async def test_query_v2_endpoint_conversation_ownership_validation(
     patch_db_session.add(user_conversation)
     patch_db_session.commit()
 
-    query_request = QueryRequest(query="What is Ansible?", conversation_id=TEST_CONV_ID)
+    query_request = QueryRequest(
+        query="What is Ansible?", conversation_id=TEST_CONVERSATION_ID
+    )
 
     response = await query_endpoint_handler(
         request=test_request,
@@ -1227,7 +1122,7 @@ async def test_query_v2_endpoint_conversation_not_found_returns_404(
     _ = mock_llama_stack_client
 
     query_request = QueryRequest(
-        query="What is Ansible?", conversation_id=NON_EXISTENT_ID
+        query="What is Ansible?", conversation_id=TEST_NON_EXISTENT_ID
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -1283,23 +1178,14 @@ async def test_query_v2_endpoint_with_shield_violation(
     _ = test_config
 
     # Configure Llama Stack mock to return response with violation
-    mock_response = mocker.MagicMock()
+    mock_response = create_mock_llm_response(
+        mocker,
+        content="I cannot respond to this request",
+        refusal="Content violates safety policy",
+        input_tokens=10,
+        output_tokens=5,
+    )
     mock_response.id = "response-violation"
-
-    # Mock output with shield violation (refusal from Llama Stack)
-    mock_output_item = mocker.MagicMock()
-    mock_output_item.type = "message"
-    mock_output_item.role = "assistant"
-    mock_output_item.content = "I cannot respond to this request"
-    mock_output_item.refusal = "Content violates safety policy"
-    mock_output_item.stop_reason = "content_filter"
-
-    mock_response.output = [mock_output_item]
-    mock_response.tool_calls = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 10
-    mock_usage.output_tokens = 5
-    mock_response.usage = mock_usage
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
@@ -1396,21 +1282,13 @@ async def test_query_v2_endpoint_handles_empty_llm_response(
     """
     _ = test_config
 
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
+    mock_response = create_mock_llm_response(
+        mocker,
+        content="",
+        input_tokens=10,
+        output_tokens=0,
+    )
     mock_response.id = "response-empty"
-
-    mock_output_item = mocker.MagicMock()
-    mock_output_item.type = "message"
-    mock_output_item.role = "assistant"
-    mock_output_item.content = ""  # Empty content
-    mock_output_item.refusal = None
-
-    mock_response.output = [mock_output_item]
-    mock_response.stop_reason = "end_turn"
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 10
-    mock_usage.output_tokens = 0
-    mock_response.usage = mock_usage
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
@@ -1460,13 +1338,14 @@ async def test_query_v2_endpoint_quota_integration(
     _ = test_config
     _ = patch_db_session
 
-    mock_response = mocker.MagicMock()
+    mock_response = create_mock_llm_response(
+        mocker,
+        content="",
+        input_tokens=100,
+        output_tokens=50,
+    )
     mock_response.id = "response-quota"
-    mock_response.output = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 100
-    mock_usage.output_tokens = 50
-    mock_response.usage = mock_usage
+    mock_response.output = []  # Override to empty for this test
 
     mock_llama_stack_client.responses.create.return_value = mock_response
 
@@ -1692,13 +1571,14 @@ async def test_query_v2_endpoint_uses_conversation_history_model(
     patch_db_session.add(existing_conv)
     patch_db_session.commit()
 
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
+    mock_response = create_mock_llm_response(
+        mocker,
+        content="",
+        input_tokens=10,
+        output_tokens=5,
+    )
     mock_response.id = EXISTING_CONV_ID
-    mock_response.output = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 10
-    mock_usage.output_tokens = 5
-    mock_response.usage = mock_usage
+    mock_response.output = []  # Override to empty for this test
     mock_llama_stack_client.responses.create.return_value = mock_response
 
     query_request = QueryRequest(query="Tell me more", conversation_id=EXISTING_CONV_ID)
