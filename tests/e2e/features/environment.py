@@ -76,6 +76,14 @@ _CONFIG_PATHS = {
         "tests/e2e/configuration/{mode_dir}/lightspeed-stack-mcp-oauth-auth.yaml",
         "tests/e2e-prow/rhoai/configs/lightspeed-stack-mcp-oauth-auth.yaml",
     ),
+    "mcp-auth": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-mcp-auth.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-mcp-auth.yaml",
+    ),
+    "no-mcp": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-no-mcp.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-no-mcp.yaml",
+    ),
 }
 
 
@@ -441,6 +449,18 @@ def before_feature(context: Context, feature: Feature) -> None:
         switch_config(context.feature_config)
         restart_container("lightspeed-stack")
 
+    if "MCPServerAPIAuth" in feature.tags:
+        context.feature_config = _get_config_path("mcp-auth", mode_dir)
+        context.default_config_backup = create_config_backup("lightspeed-stack.yaml")
+        switch_config(context.feature_config)
+        restart_container("lightspeed-stack")
+
+    if "MCPNoConfig" in feature.tags:
+        context.feature_config = _get_config_path("no-mcp", mode_dir)
+        context.default_config_backup = create_config_backup("lightspeed-stack.yaml")
+        switch_config(context.feature_config)
+        restart_container("lightspeed-stack")
+
 
 def after_feature(context: Context, feature: Feature) -> None:
     """Run after each feature file is exercised.
@@ -475,6 +495,16 @@ def after_feature(context: Context, feature: Feature) -> None:
         remove_config_backup(context.default_config_backup)
 
     if "MCPFileAuth" in feature.tags:
+        switch_config(context.default_config_backup)
+        restart_container("lightspeed-stack")
+        remove_config_backup(context.default_config_backup)
+
+    if "MCPServerAPIAuth" in feature.tags:
+        switch_config(context.default_config_backup)
+        restart_container("lightspeed-stack")
+        remove_config_backup(context.default_config_backup)
+
+    if "MCPNoConfig" in feature.tags:
         switch_config(context.default_config_backup)
         restart_container("lightspeed-stack")
         remove_config_backup(context.default_config_backup)

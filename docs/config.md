@@ -175,7 +175,7 @@ Global service configuration.
 | llama_stack |  | This section contains Llama Stack configuration. Lightspeed Core Stack service can call Llama Stack in library mode or in server mode. |
 | user_data_collection |  | This section contains configuration for subsystem that collects user data(transcription history and feedbacks). |
 | database |  | Configuration for database to store conversation IDs and other runtime data |
-| mcp_servers | array | MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the llama-stack run.yaml are not accessible to lightspeed-core agents. |
+| mcp_servers | array | MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Servers can also be registered dynamically at runtime via the `POST /v1/mcp-servers` API endpoint. Only MCP servers defined in lightspeed-stack.yaml or registered via the API are available to the agents. Tools configured in the llama-stack run.yaml are not accessible to lightspeed-core agents. |
 | authentication |  | Authentication configuration |
 | authorization |  | Lightspeed Core Stack implements a modular authentication and authorization system with multiple authentication methods. Authorization is configurable through role-based access control. Authentication is handled through selectable modules configured via the module field in the authentication configuration. |
 | customization |  | It is possible to customize Lightspeed Core Stack via this section. System prompt can be customized and also different parts of the service can be replaced by custom Python modules. |
@@ -374,10 +374,10 @@ Useful resources:
 Model context protocol server configuration.
 
 MCP (Model Context Protocol) servers provide tools and capabilities to the
-AI agents. These are configured by this structure. Only MCP servers
-defined in the lightspeed-stack.yaml configuration are available to the
-agents. Tools configured in the llama-stack run.yaml are not accessible to
-lightspeed-core agents.
+AI agents. These are configured by this structure. MCP servers defined in
+lightspeed-stack.yaml and servers registered at runtime via the
+`POST /v1/mcp-servers` API are available to agents. Tools configured in
+the llama-stack run.yaml are not accessible to lightspeed-core agents.
 
 Useful resources:
 

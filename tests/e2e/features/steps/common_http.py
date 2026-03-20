@@ -337,6 +337,19 @@ def access_rest_api_endpoint_post(context: Context, endpoint: str) -> None:
     )
 
 
+@when("I access REST API endpoint {endpoint} using HTTP DELETE method")
+def access_rest_api_endpoint_delete(context: Context, endpoint: str) -> None:
+    """Send DELETE HTTP request to tested service."""
+    endpoint = normalize_endpoint(endpoint)
+    base = f"http://{context.hostname}:{context.port}"
+    path = f"{context.api_prefix}/{endpoint}".replace("//", "/")
+    url = base + path
+    headers = context.auth_headers if hasattr(context, "auth_headers") else {}
+    context.response = None
+
+    context.response = requests.delete(url, headers=headers, timeout=DEFAULT_TIMEOUT)
+
+
 @when("I access REST API endpoint {endpoint} using HTTP PUT method")
 def access_rest_api_endpoint_put(context: Context, endpoint: str) -> None:
     """Send PUT HTTP request with JSON payload to tested service.

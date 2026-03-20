@@ -240,7 +240,7 @@ mcp_servers:
     url: "http://localhost:3002"
 ```
 
-**Important**: Only MCP servers defined in the `lightspeed-stack.yaml` configuration are available to the AI agents. Tools configured in the llama-stack `run.yaml` are not accessible to LCS agents.
+**Important**: MCP servers defined in `lightspeed-stack.yaml` or registered dynamically via the API (see [Dynamic MCP Server Management](#dynamic-mcp-server-management-via-api)) are available to the AI agents. Tools configured in the llama-stack `run.yaml` are not accessible to LCS agents.
 
 #### Step 3: Pass authentication or metadata via MCP headers (optional)
 
@@ -255,4 +255,84 @@ curl -X POST "http://localhost:8080/v1/query" \
 ```
 
 #### Step 4: Verify connectivity
-After starting the MCP servers and updating `lightspeed-stack.yaml`, test by sending a prompt to the AI agent. LCS evaluates the prompt against available tools’ metadata, selects the appropriate tool, calls the corresponding MCP server, and uses the result to generate more accurate agent response.
+After starting the MCP servers and updating `lightspeed-stack.yaml`, test by sending a prompt to the AI agent. LCS evaluates the prompt against available tools' metadata, selects the appropriate tool, calls the corresponding MCP server, and uses the result to generate more accurate agent response.
+
+### Dynamic MCP Server Management via API
+
+In addition to static configuration in `lightspeed-stack.yaml`, MCP servers can be registered, listed, and removed at runtime through the REST API. This is useful for development, testing, or scenarios where MCP servers are provisioned dynamically.
+
+When authorization is enabled, callers need the following permissions:
+- `REGISTER_MCP_SERVER` for `POST /v1/mcp-servers`
+- `LIST_MCP_SERVERS` for `GET /v1/mcp-servers`
+- `DELETE_MCP_SERVER` for `DELETE /v1/mcp-servers/{name}`
+
+#### Register an MCP server
+
+```bash
+curl -X POST "http://localhost:8080/v1/mcp-servers" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-dynamic-tools",
+    "url": "http://localhost:9000/mcp",
+    "provider_id": "model-context-protocol"
+  }'
+```
+
+Response (201 Created):
+```json
+{
+  "name": "my-dynamic-tools",
+  "url": "http://localhost:9000/mcp",
+  "provider_id": "model-context-protocol",
+  "message": "MCP server 'my-dynamic-tools' registered successfully"
+}
+```
+
+Optional fields in the request body:
+- `authorization_headers` (object): Headers to send to the MCP server (e.g., `{"Authorization": "Bearer token123"}`).
+- `headers` (array): List of HTTP header names to forward from incoming requests to this MCP server.
+- `timeout` (integer): Request timeout in seconds.
+
+#### List all MCP servers
+
+```bash
+curl "http://localhost:8080/v1/mcp-servers"
+```
+
+Response (200 OK):
+```json
+{
+  "servers": [
+    {
+      "name": "filesystem-tools",
+      "url": "http://localhost:3000",
+      "provider_id": "model-context-protocol",
+      "source": "config"
+    },
+    {
+      "name": "my-dynamic-tools",
+      "url": "http://localhost:9000/mcp",
+      "provider_id": "model-context-protocol",
+      "source": "api"
+    }
+  ]
+}
+```
+
+Each server has a `source` field indicating how it was registered: `"config"` for servers defined in `lightspeed-stack.yaml`, or `"api"` for servers registered via the REST API.
+
+#### Delete a dynamically registered MCP server
+
+```bash
+curl -X DELETE "http://localhost:8080/v1/mcp-servers/my-dynamic-tools"
+```
+
+Response (200 OK):
+```json
+{
+  "name": "my-dynamic-tools",
+  "message": "MCP server 'my-dynamic-tools' unregistered successfully"
+}
+```
+
+**Note:** Only dynamically registered servers (source `"api"`) can be deleted via the API. Attempting to delete a statically configured server returns 403 Forbidden. Dynamically registered servers do not persist across service restarts.
