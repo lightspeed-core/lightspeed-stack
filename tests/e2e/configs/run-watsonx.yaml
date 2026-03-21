@@ -22,7 +22,7 @@ providers:
   - provider_id: watsonx
     provider_type: remote::watsonx
     config:
-      url: ${env.WATSONX_BASE_URL:=https://us-south.ml.cloud.ibm.com}
+      base_url: ${env.WATSONX_BASE_URL:=https://us-south.ml.cloud.ibm.com}
       api_key: ${env.WATSONX_API_KEY:=key-not-set}
       project_id: ${env.WATSONX_PROJECT_ID:=project-not-set}
       timeout: 1200
@@ -61,6 +61,9 @@ providers:
   - config: {} # Enable the RAG tool
     provider_id: rag-runtime
     provider_type: inline::rag-runtime
+  - config: {} # Enable MCP (Model Context Protocol) support
+    provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
   vector_io:
   - config: # Define the storage backend for RAG
       persistence:
@@ -137,10 +140,6 @@ storage:
       backend: kv_default
 registered_resources:
   models: 
-  - model_id: custom-watsonx-model
-    provider_id: watsonx
-    model_type: llm
-    provider_model_id: watsonx/meta-llama/llama-3-3-70b-instruct
   - model_id: all-mpnet-base-v2
     model_type: embedding
     provider_id: sentence-transformers
@@ -156,7 +155,6 @@ registered_resources:
     embedding_model: sentence-transformers/all-mpnet-base-v2
     provider_id: faiss
     vector_store_id: ${env.FAISS_VECTOR_STORE_ID}
-  vector_stores: []
   datasets: []
   scoring_fns: []
   benchmarks: []

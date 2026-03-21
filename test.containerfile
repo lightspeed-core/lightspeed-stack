@@ -20,7 +20,8 @@ COPY src ./src
 RUN uv sync --locked --no-install-project --group llslibdev
 
 # Add virtual environment to PATH for llama command
-ENV PATH="/opt/app-root/.venv/bin:$PATH"
+ENV PATH="/opt/app-root/.venv/bin:$PATH" \
+    PYTHONPATH="/opt/app-root/src"
 
 # Set HOME directory so llama-stack uses /opt/app-root/src/.llama
 ENV HOME="/opt/app-root/src"

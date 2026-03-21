@@ -67,6 +67,7 @@ services:
       - WATSONX_BASE_URL=${WATSONX_BASE_URL:-}
       - WATSONX_PROJECT_ID=${WATSONX_PROJECT_ID:-}
       - WATSONX_API_KEY=${WATSONX_API_KEY:-}
+      - LITELLM_DROP_PARAMS=true
       # Enable debug logging if needed
       - LLAMA_STACK_LOGGING=${LLAMA_STACK_LOGGING:-}
       # FAISS test

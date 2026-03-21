@@ -13,6 +13,9 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseInputMessageContent as InputMessageContent,
     OpenAIResponseInputMessageContentFile as InputFilePart,
     OpenAIResponseInputMessageContentText as InputTextPart,
+    OpenAIResponseInputTool as InputTool,
+    OpenAIResponseInputToolChoice as ToolChoice,
+    OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
     OpenAIResponseInputToolFileSearch as InputToolFileSearch,
     OpenAIResponseInputToolMCP as InputToolMCP,
     OpenAIResponseMCPApprovalRequest as MCPApprovalRequest,
@@ -28,17 +31,14 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageMCPListTools as MCPListTools,
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
     OpenAIResponseUsage as ResponseUsage,
-    OpenAIResponseInputTool as InputTool,
     OpenAIResponseUsageInputTokensDetails as UsageInputTokensDetails,
     OpenAIResponseUsageOutputTokensDetails as UsageOutputTokensDetails,
-    OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
-    OpenAIResponseInputToolChoice as ToolChoice,
 )
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
-from client import AsyncLlamaStackClientHolder
 import constants
 import metrics
+from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import DEFAULT_RAG_TOOL
 from log import get_logger
@@ -1005,6 +1005,12 @@ async def check_model_configured(
         models = await client.models.list()
         for model in models:
             if model.id == model_id:
+                return True
+            # Workaround to llama-stack bug
+            # TODO(are-ces): fix upstream
+            if model_id.startswith("watsonx/") and model.id == model_id.removeprefix(
+                "watsonx/"
+            ):
                 return True
         return False
     except APIStatusError as e:
