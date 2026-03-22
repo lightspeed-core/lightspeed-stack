@@ -295,6 +295,28 @@ class ReferencedDocument(BaseModel):
     )
 
 
+class RAGContextParams(BaseModel):
+    """Parameters for building RAG context.
+
+    Attributes:
+        moderation_decision: The moderation decision from shield.
+        query: The user's query string.
+        vector_store_ids: Optional list of vector store IDs to query.
+        solr: Optional Solr query parameters.
+        no_tools: Whether to disable tool RAG.
+    """
+
+    moderation_decision: str = Field(description="Moderation decision from shield")
+    query: str = Field(description="User's query string")
+    vector_store_ids: Optional[list[str]] = Field(
+        default=None, description="Vector store IDs to query"
+    )
+    solr: Optional[dict[str, Any]] = Field(
+        default=None, description="Solr query parameters"
+    )
+    no_tools: bool = Field(default=False, description="Whether to disable tool RAG")
+
+
 class RAGContext(BaseModel):
     """Result of building RAG context from all enabled pre-query RAG sources.
 

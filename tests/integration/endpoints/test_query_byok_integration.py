@@ -569,7 +569,9 @@ async def test_query_byok_inline_rag_empty_vector_store_ids_returns_no_chunks(
     """
     _ = byok_config
 
-    query_request = QueryRequest(query="What is OpenShift?", vector_store_ids=[])
+    query_request = QueryRequest(
+        query="What is OpenShift?", vector_store_ids=[], no_tools=True
+    )
 
     response = await query_endpoint_handler(
         request=test_request,

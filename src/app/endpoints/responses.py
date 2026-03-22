@@ -82,6 +82,7 @@ from utils.suid import (
 )
 from utils.types import (
     RAGContext,
+    RAGContextParams,
     ResponseInput,
     ResponsesApiParams,
     ShieldModerationBlocked,
@@ -230,10 +231,13 @@ async def responses_endpoint_handler(
     # Build RAG context from Inline RAG sources
     inline_rag_context = await build_rag_context(
         client,
-        moderation_result.decision,
-        input_text,
-        vector_store_ids,
-        responses_request.solr,
+        RAGContextParams(
+            moderation_decision=moderation_result.decision,
+            query=input_text,
+            vector_store_ids=vector_store_ids,
+            solr=responses_request.solr,
+            no_tools=responses_request.no_tools or False,
+        ),
     )
     if moderation_result.decision == "passed":
         responses_request.input = append_inline_rag_context_to_responses_input(

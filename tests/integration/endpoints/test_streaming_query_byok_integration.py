@@ -388,6 +388,7 @@ async def test_streaming_query_byok_inline_rag_with_request_vector_store_ids(
     query_request = QueryRequest(
         query="What is OpenShift?",
         vector_store_ids=["vs-source-b"],
+        no_tools=True,
     )
 
     response = await streaming_query_endpoint_handler(
@@ -455,6 +456,7 @@ async def test_streaming_query_byok_request_vector_store_ids_filters_configured_
     query_request = QueryRequest(
         query="What is OpenShift?",
         vector_store_ids=["vs-source-a"],
+        no_tools=True,
     )
 
     response = await streaming_query_endpoint_handler(
@@ -497,7 +499,9 @@ async def test_streaming_query_byok_inline_rag_empty_vector_store_ids_no_context
     """
     _ = byok_config
 
-    query_request = QueryRequest(query="What is OpenShift?", vector_store_ids=[])
+    query_request = QueryRequest(
+        query="What is OpenShift?", vector_store_ids=[], no_tools=True
+    )
 
     response = await streaming_query_endpoint_handler(
         request=test_request,

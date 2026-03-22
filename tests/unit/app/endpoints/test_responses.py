@@ -492,9 +492,8 @@ class TestResponsesEndpointHandler:
 
         mock_build_rag.assert_called_once()
         call_args = mock_build_rag.call_args[0]
-        assert (
-            call_args[2] == "What is K8s?"
-        )  # input_text (3rd arg to build_rag_context)
+        # Check the query field in the params object (2nd arg)
+        assert call_args[1].query == "What is K8s?"
 
     @pytest.mark.asyncio
     async def test_responses_blocked_with_conversation_appends_refusal(

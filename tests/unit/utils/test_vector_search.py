@@ -6,7 +6,7 @@ from pytest_mock import MockerFixture
 
 import constants
 from configuration import AppConfig
-from utils.types import RAGChunk
+from utils.types import RAGChunk, RAGContextParams
 from utils.vector_search import (
     _build_document_url,
     _build_query_params,
@@ -438,6 +438,7 @@ class TestFetchByokRag:
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "my-kb"
         byok_rag_mock.vector_db_id = "vs-internal-001"
+        config_mock.configuration.rag.inline = ["my-kb"]
         config_mock.configuration.byok_rag = [byok_rag_mock]
         config_mock.score_multiplier_mapping = {"vs-internal-001": 1.0}
         config_mock.rag_id_mapping = {"vs-internal-001": "my-kb"}
@@ -477,6 +478,7 @@ class TestFetchByokRag:
         byok_rag_2 = mocker.Mock()
         byok_rag_2.rag_id = "kb-part2"
         byok_rag_2.vector_db_id = "vs-bbb-222"
+        config_mock.configuration.rag.inline = ["kb-part1", "kb-part2"]
         config_mock.configuration.byok_rag = [byok_rag_1, byok_rag_2]
         config_mock.score_multiplier_mapping = {"vs-aaa-111": 1.0, "vs-bbb-222": 1.0}
         config_mock.rag_id_mapping = {
@@ -575,7 +577,12 @@ class TestBuildRagContext:
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        params = RAGContextParams(
+            moderation_decision="passed",
+            query="test query",
+            vector_store_ids=None,
+        )
+        context = await build_rag_context(client_mock, params)
 
         assert context.context_text == ""
         assert context.rag_chunks == []
@@ -610,7 +617,12 @@ class TestBuildRagContext:
         client_mock = mocker.AsyncMock()
         client_mock.vector_io.query.return_value = search_response
 
-        context = await build_rag_context(client_mock, "passed", "test query", None)
+        params = RAGContextParams(
+            moderation_decision="passed",
+            query="test query",
+            vector_store_ids=None,
+        )
+        context = await build_rag_context(client_mock, params)
 
         assert len(context.rag_chunks) > 0
         assert "BYOK content" in context.context_text

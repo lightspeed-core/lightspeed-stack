@@ -66,6 +66,7 @@ from utils.types import (
     TurnSummary,
 )
 from utils.vector_search import build_rag_context
+from utils.types import RAGContextParams
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["query"])
@@ -164,10 +165,13 @@ async def query_endpoint_handler(
     # Build RAG context from Inline RAG sources
     inline_rag_context = await build_rag_context(
         client,
-        moderation_result.decision,
-        query_request.query,
-        query_request.vector_store_ids,
-        query_request.solr,
+        RAGContextParams(
+            moderation_decision=moderation_result.decision,
+            query=query_request.query,
+            vector_store_ids=query_request.vector_store_ids,
+            solr=query_request.solr,
+            no_tools=True,
+        ),
     )
 
     # Prepare API request parameters
