@@ -30,7 +30,7 @@ mcp_servers:
   - name: "mcp-file"
     url: "http://mock-mcp:3001"
     authorization_headers:
-      Authorization: "/tmp/mcp-secret-token"
+      Authorization: "/tmp/mcp-token"
   - name: "mcp-client"
     url: "http://mock-mcp:3001"
     authorization_headers:

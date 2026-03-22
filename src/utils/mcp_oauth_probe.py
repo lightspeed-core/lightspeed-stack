@@ -42,7 +42,16 @@ async def check_mcp_auth(configuration: AppConfig, mcp_headers: McpHeaders) -> N
     probes = []
     for mcp_server in configuration.mcp_servers:
         headers = mcp_headers.get(mcp_server.name, {})
-        authorization = headers.get("Authorization", None)
+        auth_header = headers.get("Authorization")
+        if auth_header:
+            authorization = (
+                auth_header
+                if auth_header.startswith("Bearer ")
+                else f"Bearer {auth_header}"
+            )
+        else:
+            authorization = None
+
         if (
             authorization
             or constants.MCP_AUTH_OAUTH

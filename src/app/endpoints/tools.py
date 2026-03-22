@@ -19,7 +19,7 @@ from models.responses import (
     UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
-from utils.mcp_headers import McpHeaders, mcp_headers_dependency
+from utils.mcp_headers import McpHeaders, build_mcp_headers, mcp_headers_dependency
 from utils.mcp_oauth_probe import check_mcp_auth
 from utils.tool_formatter import format_tools_list
 from log import get_logger
@@ -115,15 +115,18 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
         ToolsResponse: An object containing the consolidated list of available tools
         with metadata including tool name, description, parameters, and server source.
     """
-    # Used only by the middleware
-    _ = auth
+    _, _, _, token = auth
 
     # Nothing interesting in the request
     _ = request
 
     check_configuration_loaded(configuration)
 
-    await check_mcp_auth(configuration, mcp_headers)
+    complete_mcp_headers = build_mcp_headers(
+        configuration, mcp_headers, request.headers, token
+    )
+
+    await check_mcp_auth(configuration, complete_mcp_headers)
 
     toolgroups_response = []
     try:
@@ -145,7 +148,7 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
     for toolgroup in toolgroups_response:
         try:
             # Get tools for each toolgroup
-            headers = mcp_headers.get(toolgroup.identifier, {})
+            headers = complete_mcp_headers.get(toolgroup.identifier, {})
             authorization = headers.pop("Authorization", None)
 
             tools_response = await client.tools.list(

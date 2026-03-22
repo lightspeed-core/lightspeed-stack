@@ -7,11 +7,10 @@ Feature: MCP tests
 
 
 # File-based
-  @skip #TODO: LCORE-1461
   @MCPFileAuthConfig
   Scenario: Check if tools endpoint succeeds when MCP file-based auth token is passed 
     Given The system is in default state
-    And The mcp-file mcp server Authorization header is set to "/tmp/mcp-secret-token"
+    And The mcp-file mcp server Authorization header is set to "/tmp/mcp-token"
     When I access REST API endpoint "tools" using HTTP GET method
     Then The status code of the response is 200
     And The body of the response contains mcp-file
@@ -20,7 +19,7 @@ Feature: MCP tests
   @MCPFileAuthConfig
   Scenario: Check if query endpoint succeeds when MCP file-based auth token is passed
     Given The system is in default state
-    And The mcp-file mcp server Authorization header is set to "/tmp/mcp-secret-token"
+    And The mcp-file mcp server Authorization header is set to "/tmp/mcp-token"
     And I capture the current token metrics
     When I use "query" to ask question
     """
@@ -36,7 +35,7 @@ Feature: MCP tests
   @MCPFileAuthConfig
   Scenario: Check if streaming_query endpoint succeeds when MCP file-based auth token is passed
     Given The system is in default state
-    And The mcp-file mcp server Authorization header is set to "/tmp/mcp-secret-token"
+    And The mcp-file mcp server Authorization header is set to "/tmp/mcp-token"
     And I capture the current token metrics
     When I use "streaming_query" to ask question
     """
@@ -49,11 +48,10 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics should have increased
 
-  @skip #TODO: LCORE-1461
   @InvalidMCPFileAuthConfig
   Scenario: Check if tools endpoint reports error when MCP file-based invalid auth token is passed 
     Given The system is in default state
-    And The mcp-file mcp server Authorization header is set to "/tmp/invalid-mcp-secret-token"
+    And The mcp-file mcp server Authorization header is set to "/tmp/invalid-mcp-token"
     When I access REST API endpoint "tools" using HTTP GET method
     Then The status code of the response is 401
     And The body of the response is the following
@@ -70,7 +68,7 @@ Feature: MCP tests
   @InvalidMCPFileAuthConfig
   Scenario: Check if query endpoint reports error when MCP file-based invalid auth token is passed 
     Given The system is in default state
-    And The mcp-file mcp server Authorization header is set to "/tmp/invalid-mcp-secret-token"
+    And The mcp-file mcp server Authorization header is set to "/tmp/invalid-mcp-token"
     When I use "query" to ask question
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
@@ -90,7 +88,7 @@ Feature: MCP tests
   @InvalidMCPFileAuthConfig
   Scenario: Check if streaming_query endpoint reports error when MCP file-based invalid auth token is passed 
     Given The system is in default state
-    And The mcp-file mcp server Authorization header is set to "/tmp/invalid-mcp-secret-token"
+    And The mcp-file mcp server Authorization header is set to "/tmp/invalid-mcp-token"
     When I use "streaming_query" to ask question
     """
     {"query": "Say hello", "model": "{MODEL}", "provider": "{PROVIDER}"}
@@ -107,7 +105,6 @@ Feature: MCP tests
     """
 
 # Kubernetes
-  @skip #TODO: LCORE-1461
   @MCPKubernetesAuthConfig
   Scenario: Check if tools endpoint succeeds when MCP kubernetes auth token is passed 
     Given The system is in default state
@@ -149,7 +146,6 @@ Feature: MCP tests
         | Hello                     |
     And The token metrics should have increased
 
-  @skip #TODO: LCORE-1461
   @MCPKubernetesAuthConfig
   Scenario: Check if tools endpoint reports error when MCP kubernetes invalid auth token is passed 
     Given The system is in default state

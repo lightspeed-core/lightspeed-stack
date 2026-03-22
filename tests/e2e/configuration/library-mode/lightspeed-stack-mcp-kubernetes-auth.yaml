@@ -16,7 +16,7 @@ user_data_collection:
   transcripts_enabled: true
   transcripts_storage: "/tmp/data/transcripts"
 authentication:
-  module: "noop"
+  module: "noop-with-token"
 mcp_servers:
   - name: "mcp-kubernetes"
     url: "http://mock-mcp:3001"

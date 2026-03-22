@@ -21,4 +21,4 @@ mcp_servers:
   - name: "mcp-file"
     url: "http://mock-mcp:3001"
     authorization_headers:
-      Authorization: "/tmp/invalid-mcp-secret-token"
+      Authorization: "/tmp/invalid-mcp-token"

@@ -38,6 +38,8 @@ services:
       - ./run.yaml:/app-root/run.yaml:Z
       - ${GCP_KEYS_PATH:-./tmp/.gcp-keys-dummy}:/opt/app-root/.gcp-keys:ro
       - ./tests/e2e/rag:/opt/app-root/src/.llama/storage/rag:Z
+      - ./tests/e2e/secrets/mcp-token:/tmp/mcp-token:ro
+      - ./tests/e2e/secrets/invalid-mcp-token:/tmp/invalid-mcp-token:ro
     environment:
       # LLM Provider API Keys
       - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
