@@ -139,6 +139,17 @@ def check_llm_response_not_truncated(context: Context) -> None:
     assert response_json["truncated"] is False
 
 
+@then("The response should contain non-empty rag_chunks")
+def check_rag_chunks_present(context: Context) -> None:
+    """Check that the response contains non-empty rag_chunks from inline RAG."""
+    assert context.response is not None
+    response_json = context.response.json()
+    assert "rag_chunks" in response_json, "rag_chunks field missing from response"
+    assert (
+        len(response_json["rag_chunks"]) > 0
+    ), "rag_chunks is empty — inline RAG did not inject any chunks"
+
+
 @then("The response should contain following fragments")
 def check_fragments_in_response(context: Context) -> None:
     """Check that all specified fragments are present in the LLM response.

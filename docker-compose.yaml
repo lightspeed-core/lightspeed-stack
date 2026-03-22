@@ -89,6 +89,8 @@ services:
       - TENANT_ID=${TENANT_ID:-}
       - CLIENT_ID=${CLIENT_ID:-}
       - CLIENT_SECRET=${CLIENT_SECRET:-}
+      # FAISS vector store ID (used by inline RAG config)
+      - FAISS_VECTOR_STORE_ID=${FAISS_VECTOR_STORE_ID:-}
     depends_on:
         llama-stack:
           condition: service_healthy

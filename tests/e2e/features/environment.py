@@ -84,6 +84,10 @@ _CONFIG_PATHS = {
         "tests/e2e/configuration/{mode_dir}/lightspeed-stack-mcp-oauth-auth.yaml",
         "tests/e2e-prow/rhoai/configs/lightspeed-stack-mcp-oauth-auth.yaml",
     ),
+    "inline-rag": (
+        "tests/e2e/configuration/{mode_dir}/lightspeed-stack-inline-rag.yaml",
+        "tests/e2e-prow/rhoai/configs/lightspeed-stack-inline-rag.yaml",
+    ),
     "mcp-auth": (
         "tests/e2e/configuration/{mode_dir}/lightspeed-stack-mcp-auth.yaml",
         "tests/e2e-prow/rhoai/configs/lightspeed-stack-mcp-auth.yaml",

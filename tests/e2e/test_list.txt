@@ -18,3 +18,4 @@ features/streaming_query.feature
 features/rest_api.feature
 features/mcp.feature
 features/models.feature
+features/inline_rag.feature

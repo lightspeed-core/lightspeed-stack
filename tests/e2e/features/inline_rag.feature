@@ -1,0 +1,44 @@
+@InlineRAG
+Feature: Inline RAG (BYOK) support tests
+
+  Background:
+    Given The service is started locally
+      And REST API service prefix is /v1
+
+  Scenario: Check if inline RAG source is registered
+    Given The system is in default state
+     And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+    When I access REST API endpoint rags using HTTP GET method
+    Then The status code of the response is 200
+     And the body of the response has the following structure
+    """
+    {
+      "rags": [
+        "e2e-test-docs"
+      ]
+    }
+    """
+
+  Scenario: Query with inline RAG returns relevant content
+    Given The system is in default state
+      And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+    When I use "query" to ask question with authorization header
+    """
+    {"query": "What is the title of the article from Paul?", "system_prompt": "You are an assistant. Write only lowercase letters"}
+    """
+    Then The status code of the response is 200
+     And The response should contain following fragments
+         | Fragments in LLM response |
+         | great work                |
+     And The response should contain non-empty rag_chunks
+
+  Scenario: Inline RAG query includes referenced documents
+    Given The system is in default state
+      And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
+    When I use "query" to ask question with authorization header
+    """
+    {"query": "What does Paul Graham say about great work?"}
+    """
+    Then The status code of the response is 200
+     And The response should have proper LLM response format
+     And The response should contain non-empty rag_chunks
