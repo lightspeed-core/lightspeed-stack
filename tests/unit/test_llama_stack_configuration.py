@@ -101,6 +101,34 @@ def test_construct_vector_stores_section_skips_duplicate_from_existing() -> None
     assert output[0]["provider_id"] == "original_provider"
 
 
+def test_construct_vector_stores_section_skips_duplicate_env_var(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test skips BYOK entry when existing store uses an env var that resolves to the same ID."""
+    monkeypatch.setenv("FAISS_VECTOR_STORE_ID", "vs_abc123")
+    ls_config = {
+        "registered_resources": {
+            "vector_stores": [
+                {
+                    "vector_store_id": "${env.FAISS_VECTOR_STORE_ID}",
+                    "provider_id": "faiss",
+                },
+            ]
+        }
+    }
+    byok_rag = [
+        {
+            "rag_id": "rag1",
+            "vector_db_id": "vs_abc123",
+            "embedding_model": "test-model",
+            "embedding_dimension": 768,
+        },
+    ]
+    output = construct_vector_stores_section(ls_config, byok_rag)
+    assert len(output) == 1
+    assert output[0]["provider_id"] == "faiss"
+
+
 def test_construct_vector_stores_section_skips_duplicate_within_byok() -> None:
     """Test skips duplicate vector_db_id entries within the BYOK RAG list."""
     ls_config: dict[str, Any] = {}
