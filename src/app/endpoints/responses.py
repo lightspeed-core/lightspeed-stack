@@ -19,6 +19,9 @@ from llama_stack_api import (
 from llama_stack_api import (
     OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
 )
+from llama_stack_api.openai_responses import (
+    OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
+)
 from llama_stack_client import (
     APIConnectionError,
     AsyncLlamaStackClient,
@@ -241,7 +244,7 @@ async def responses_endpoint_handler(
             query=input_text,
             vector_store_ids=vector_store_ids,
             solr=responses_request.solr,
-            no_tools=responses_request.tool_choice is None,
+            no_tools=responses_request.tool_choice == ToolChoiceMode.none,
         ),
     )
     if moderation_result.decision == "passed":
