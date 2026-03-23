@@ -32,7 +32,7 @@ byok_rag:
     embedding_model: sentence-transformers/all-mpnet-base-v2
     embedding_dimension: 768
     vector_db_id: ${env.FAISS_VECTOR_STORE_ID}
-    db_path: ~/.llama/storage/rag/kv_store.db
+    db_path: ${env.KV_RAG_PATH:=~/.llama/storage/rag/kv_store.db}
     score_multiplier: 1.0
 
 rag:
