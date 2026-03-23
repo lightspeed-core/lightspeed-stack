@@ -14,7 +14,7 @@ Feature: FAISS support tests
     """
     {
       "rags": [
-        "{VECTOR_STORE_ID}"
+        "e2e-test-docs"
       ]
     }
     """

@@ -144,11 +144,7 @@ registered_resources:
   - shield_id: llama-guard
     provider_id: llama-guard
     provider_shield_id: openai/gpt-4o-mini
-  vector_stores: 
-  - embedding_dimension: 768
-    embedding_model: sentence-transformers/all-mpnet-base-v2
-    provider_id: faiss
-    vector_store_id: ${env.FAISS_VECTOR_STORE_ID}
+  vector_stores: []
   datasets: []
   scoring_fns: []
   benchmarks: []
