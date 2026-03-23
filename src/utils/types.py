@@ -5,24 +5,52 @@ from typing import Annotated, Any, Literal, Optional
 from llama_stack_api import ImageContentItem, TextContentItem
 from llama_stack_api.openai_responses import (
     OpenAIResponseInputFunctionToolCallOutput as FunctionToolCallOutput,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputTool as InputTool,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputToolChoice as ToolChoice,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseMCPApprovalRequest as McpApprovalRequest,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseMCPApprovalResponse as McpApprovalResponse,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseMessage as ResponseMessage,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageFileSearchToolCall as FileSearchToolCall,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageFunctionToolCall as FunctionToolCall,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageMCPCall as McpCall,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageMCPListTools as McpListTools,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchToolCall,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponsePrompt as Prompt,
-    OpenAIResponseText as Text,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseReasoning as Reasoning,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseText as Text,
 )
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field
 
 from models.database.conversations import UserConversation
 from utils.token_counter import TokenCounter
+
+type SingletonInstances = dict[type, Any]
 
 
 def content_to_str(content: Any) -> str:
@@ -51,9 +79,9 @@ def content_to_str(content: Any) -> str:
 class Singleton(type):
     """Metaclass for Singleton support."""
 
-    _instances = {}  # type: ignore
+    _instances: SingletonInstances = {}
 
-    def __call__(cls, *args, **kwargs):  # type: ignore
+    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
         """
         Return the single cached instance of the class, creating and caching it on first call.
 

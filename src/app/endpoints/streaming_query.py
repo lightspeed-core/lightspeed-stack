@@ -5,23 +5,37 @@
 import asyncio
 import datetime
 import json
-from typing import Annotated, Any, Optional, cast
 from collections.abc import AsyncIterator
+from typing import Annotated, Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from llama_stack_api import (
     OpenAIResponseObject,
     OpenAIResponseObjectStream,
+)
+from llama_stack_api import (
     OpenAIResponseObjectStreamResponseMcpCallArgumentsDone as MCPArgsDoneChunk,
+)
+from llama_stack_api import (
     OpenAIResponseObjectStreamResponseOutputItemAdded as OutputItemAddedChunk,
+)
+from llama_stack_api import (
     OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
+)
+from llama_stack_api import (
     OpenAIResponseObjectStreamResponseOutputTextDelta as TextDeltaChunk,
+)
+from llama_stack_api import (
     OpenAIResponseObjectStreamResponseOutputTextDone as TextDoneChunk,
+)
+from llama_stack_api import (
     OpenAIResponseOutputMessageMCPCall as MCPCall,
 )
 from llama_stack_client import (
     APIConnectionError,
+)
+from llama_stack_client import (
     APIStatusError as LLSApiStatusError,
 )
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError

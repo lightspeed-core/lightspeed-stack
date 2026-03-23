@@ -26,7 +26,6 @@ async def test_check_llama_stack_version_minimal_supported_version(
     mocker: MockerFixture,
 ) -> None:
     """Test the check_llama_stack_version function."""
-
     # mock the Llama Stack client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.return_value = VersionInfo(
@@ -42,7 +41,6 @@ async def test_check_llama_stack_version_maximal_supported_version(
     mocker: MockerFixture,
 ) -> None:
     """Test the check_llama_stack_version function."""
-
     # mock the Llama Stack client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.return_value = VersionInfo(
@@ -58,7 +56,6 @@ async def test_check_llama_stack_version_too_small_version(
     mocker: MockerFixture,
 ) -> None:
     """Test the check_llama_stack_version function."""
-
     # mock the Llama Stack client
     mock_client = mocker.AsyncMock()
 
@@ -101,7 +98,6 @@ async def test_check_llama_stack_version_too_big_version(
     mocker: MockerFixture, subtests: SubTests
 ) -> None:
     """Test the check_llama_stack_version function."""
-
     # mock the Llama Stack client
     mock_client = mocker.AsyncMock()
 

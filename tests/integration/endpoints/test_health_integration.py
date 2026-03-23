@@ -142,7 +142,6 @@ async def test_health_readiness_client_error(
         test_response: FastAPI response object
         test_auth: noop authentication tuple
     """
-
     # Verify that RuntimeError propagates from the endpoint (not caught)
     with pytest.raises(RuntimeError) as exc_info:
         await readiness_probe_get_method(auth=test_auth, response=test_response)

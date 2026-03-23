@@ -60,7 +60,6 @@ def test_is_feedback_disabled(mocker: MockerFixture) -> None:
 
 async def test_assert_feedback_enabled_disabled(mocker: MockerFixture) -> None:
     """Test that assert_feedback_enabled raises HTTPException when feedback is disabled."""
-
     # Simulate feedback being disabled
     mocker.patch("app.endpoints.feedback.is_feedback_enabled", return_value=False)
 
@@ -74,7 +73,6 @@ async def test_assert_feedback_enabled_disabled(mocker: MockerFixture) -> None:
 
 async def test_assert_feedback_enabled(mocker: MockerFixture) -> None:
     """Test that assert_feedback_enabled does not raise an exception when feedback is enabled."""
-
     # Simulate feedback being enabled
     mocker.patch("app.endpoints.feedback.is_feedback_enabled", return_value=True)
 
@@ -101,7 +99,6 @@ async def test_feedback_endpoint_handler(
     mocker: MockerFixture, feedback_request_data: dict[str, Any]
 ) -> None:
     """Test that feedback_endpoint_handler processes feedback for different payloads."""
-
     mock_authorization_resolvers(mocker)
 
     # Mock the dependencies
@@ -200,7 +197,6 @@ def test_store_feedback(
     mocker: MockerFixture, feedback_request_data: dict[str, Any]
 ) -> None:
     """Test that store_feedback correctly stores various feedback payloads."""
-
     configuration.user_data_collection_configuration.feedback_storage = "fake-path"
 
     # Patch filesystem and helpers
@@ -248,7 +244,6 @@ def test_store_feedback_on_io_error(
     mocker: MockerFixture, feedback_request_data: dict[str, Any]
 ) -> None:
     """Test the OSError and IOError handlings during feedback storage."""
-
     # non-writable path
     # avoid touching the real filesystem; simulate a permission error on open
     configuration.user_data_collection_configuration.feedback_storage = "fake-path"

@@ -10,6 +10,7 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from log import get_logger
 from models.config import Action
 from models.responses import (
     ForbiddenResponse,
@@ -18,7 +19,6 @@ from models.responses import (
     UnauthorizedResponse,
 )
 from version import __version__
-from log import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["info"])

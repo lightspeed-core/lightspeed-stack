@@ -57,7 +57,6 @@ class TestBuildConversationTurnFromCacheEntry:
 
     def test_build_turn_with_tool_calls(self) -> None:
         """Test building a turn when tool calls and results are present."""
-
         tool_calls = [
             ToolCallSummary(
                 id="call_1",

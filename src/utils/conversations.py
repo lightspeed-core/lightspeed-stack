@@ -1,26 +1,42 @@
 """Utilities for conversations."""
 
 import json
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any, Optional, cast
-from collections.abc import Sequence
 
 from fastapi import HTTPException
 from llama_stack_api import OpenAIResponseMessage, OpenAIResponseOutput
 from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageFileSearchToolCall as FileSearchCall,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageFunctionToolCall as FunctionCall,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageMCPCall as MCPCall,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageMCPListTools as MCPListTools,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
 )
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 from llama_stack_client.types.conversations.item_create_params import Item
 from llama_stack_client.types.conversations.item_list_response import (
     ItemListResponse,
+)
+from llama_stack_client.types.conversations.item_list_response import (
     OpenAIResponseInputFunctionToolCallOutput as FunctionToolCallOutput,
+)
+from llama_stack_client.types.conversations.item_list_response import (
     OpenAIResponseMcpApprovalRequest as MCPApprovalRequest,
+)
+from llama_stack_client.types.conversations.item_list_response import (
     OpenAIResponseMcpApprovalResponse as MCPApprovalResponse,
+)
+from llama_stack_client.types.conversations.item_list_response import (
     OpenAIResponseMessageOutput as MessageOutput,
 )
 

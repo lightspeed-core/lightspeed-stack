@@ -1,6 +1,7 @@
 """Function to dump the configuration schema into OpenAPI-compatible format."""
 
 import json
+
 from pydantic.json_schema import models_json_schema
 
 from models.config import Configuration

@@ -34,6 +34,33 @@ RUN pip3.12 install "uv>=0.8.15"
 COPY ${LSC_SOURCE_DIR}/src ./src
 COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR}/README.md ${LSC_SOURCE_DIR}/uv.lock ${LSC_SOURCE_DIR}/requirements.*.txt ./
 
+# lightspeed-providers:
+# Fully hermetic — uses prefetched artifact or pinned commit from GitHub
+ARG LIGHTSPEED_PROVIDERS_COMMIT=9e073aaaa43a8a5bac38a3bbddbe6cf24842847b
+RUN set -eux; \
+    ZIP_PATH="/tmp/lightspeed-providers.zip"; \
+    EXTRACT_DIR="/tmp/providers"; \
+    \
+    # Use hermetic pre-fetched artifact if available, otherwise download pinned commit
+    if [ -f "/cachi2/output/deps/generic/lightspeed-providers.zip" ]; then \
+        cp "/cachi2/output/deps/generic/lightspeed-providers.zip" "${ZIP_PATH}"; \
+    else \
+        curl -fL --retry 2 --retry-delay 5 "https://github.com/lightspeed-core/lightspeed-providers/archive/${LIGHTSPEED_PROVIDERS_COMMIT}.zip" -o "${ZIP_PATH}"; \
+    fi; \
+    \
+    # Extract zip (stdlib zipfile — no unzip RPM; works on minimal Konflux builders)
+    mkdir -p "${EXTRACT_DIR}"; \
+    export ZIP_PATH EXTRACT_DIR; \
+    ROOT_DIR="$(python3.12 -c 'import os, zipfile; z=zipfile.ZipFile(os.environ["ZIP_PATH"]); print(z.namelist()[0].split("/")[0])')"; \
+    python3.12 -c 'import os, zipfile; zipfile.ZipFile(os.environ["ZIP_PATH"]).extractall(os.environ["EXTRACT_DIR"])'; \
+    \
+    # Move relevant directories into container filesystem
+    mv "${EXTRACT_DIR}/${ROOT_DIR}/lightspeed_stack_providers" /app-root/; \
+    mv "${EXTRACT_DIR}/${ROOT_DIR}/resources/external_providers" /app-root/providers.d; \
+    \
+    # Cleanup
+    rm -rf "${ZIP_PATH}" "${EXTRACT_DIR}"
+
 # Bundle additional dependencies for library mode.
 # Source cachi2 environment for hermetic builds if available, otherwise use normal installation
 # cachi2.env has these env vars:
@@ -98,6 +125,10 @@ RUN mkdir -p /opt/app-root/src/.cache/huggingface && \
 
 # Add executables from .venv to system PATH
 ENV PATH="/app-root/.venv/bin:$PATH"
+
+# Library mode: Llama Stack expects external provider configs under a path named providers.d (hardcoded).
+# We place them at /app-root/providers.d. YAMLs there reference lightspeed_stack_providers.*, so that package must be on PYTHONPATH.
+ENV PYTHONPATH="/app-root"
 
 # Run the application
 EXPOSE 8080

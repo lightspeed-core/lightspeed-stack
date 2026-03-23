@@ -588,7 +588,7 @@ class TestInternalServerErrorResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 6
+        assert expected_count == 9
 
         # Verify all labeled examples are present
         assert "internal" in examples
@@ -597,6 +597,9 @@ class TestInternalServerErrorResponse:
         assert "query" in examples
         assert "conversation cache" in examples
         assert "database" in examples
+        assert "cluster version not found" in examples
+        assert "cluster version permission denied" in examples
+        assert "invalid cluster version" in examples
 
         # Verify example structure for one example
         internal_example = examples["internal"]
@@ -656,10 +659,11 @@ class TestServiceUnavailableResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 1
+        assert expected_count == 2
 
         # Verify example structure
         assert "llama stack" in examples
+        assert "kubernetes api" in examples
         llama_example = examples["llama stack"]
         assert "value" in llama_example
         assert "detail" in llama_example["value"]
@@ -687,7 +691,7 @@ class TestPromptTooLongResponse:
             cause="The prompt exceeds the maximum allowed length."
         )
         assert isinstance(response, AbstractErrorResponse)
-        assert response.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+        assert response.status_code == status.HTTP_413_CONTENT_TOO_LARGE
         assert isinstance(response.detail, DetailModel)
         assert response.detail.response == "Prompt is too long"
         assert response.detail.cause == "The prompt exceeds the maximum allowed length."

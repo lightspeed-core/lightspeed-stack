@@ -75,7 +75,6 @@ async def test_config_endpoint_fails_without_configuration(
         test_request (Request): FastAPI request fixture
         test_auth (AuthTuple): noop authentication fixture
     """
-
     # Verify that HTTPException is raised when configuration is not loaded
     with pytest.raises(HTTPException) as exc_info:
         await config_endpoint_handler(auth=test_auth, request=test_request)

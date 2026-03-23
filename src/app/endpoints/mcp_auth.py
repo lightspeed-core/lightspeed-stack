@@ -9,6 +9,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from configuration import configuration
+from log import get_logger
 from models.config import Action
 from models.responses import (
     ForbiddenResponse,
@@ -18,7 +19,6 @@ from models.responses import (
     UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
-from log import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/mcp-auth", tags=["mcp-auth"])

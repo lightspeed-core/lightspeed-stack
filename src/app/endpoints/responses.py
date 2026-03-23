@@ -3,22 +3,28 @@
 """Handler for REST API call to provide answer using Responses API (LCORE specification)."""
 
 import json
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Annotated, Any, Optional, cast
-from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from llama_stack_api import (
     OpenAIResponseObject,
     OpenAIResponseObjectStream,
+)
+from llama_stack_api import (
     OpenAIResponseObjectStreamResponseOutputItemAdded as OutputItemAddedChunk,
+)
+from llama_stack_api import (
     OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
 )
 from llama_stack_client import (
     APIConnectionError,
-    APIStatusError as LLSApiStatusError,
     AsyncLlamaStackClient,
+)
+from llama_stack_client import (
+    APIStatusError as LLSApiStatusError,
 )
 from openai._exceptions import (
     APIStatusError as OpenAIAPIStatusError,
@@ -44,7 +50,6 @@ from models.responses import (
     UnauthorizedResponse,
     UnprocessableEntityResponse,
 )
-
 from utils.conversations import append_turn_items_to_conversation
 from utils.endpoints import (
     check_configuration_loaded,

@@ -1,10 +1,11 @@
 """Checks that are performed to configuration options."""
 
-import os
 import importlib
 import importlib.util
+import os
 from types import ModuleType
 from typing import Optional
+
 from pydantic import FilePath
 
 

@@ -10,13 +10,11 @@ from typing import Optional
 import aiohttp
 from fastapi import HTTPException
 
-from models.responses import UnauthorizedResponse
-
-from configuration import AppConfig
-from utils.mcp_headers import McpHeaders
 import constants
-
+from configuration import AppConfig
 from log import get_logger
+from models.responses import UnauthorizedResponse
+from utils.mcp_headers import McpHeaders
 
 logger = get_logger(__name__)
 

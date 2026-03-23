@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from sqlalchemy import Column, String, Table, MetaData, select, delete
+from sqlalchemy import Column, MetaData, String, Table, delete, select
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from a2a_storage.context_store import A2AContextStore

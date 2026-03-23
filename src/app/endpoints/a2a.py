@@ -3,8 +3,8 @@
 import asyncio
 import json
 import uuid
-from collections.abc import Mapping, AsyncIterator, MutableMapping
-from datetime import datetime, UTC
+from collections.abc import AsyncIterator, Mapping, MutableMapping
+from datetime import UTC, datetime
 from typing import Annotated, Any, Optional
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
@@ -36,23 +36,22 @@ from llama_stack_client import APIConnectionError
 from starlette.responses import Response, StreamingResponse
 
 from a2a_storage import A2AContextStore, A2AStorageFactory
-
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import MEDIA_TYPE_EVENT_STREAM
+from log import get_logger
 from models.config import Action
 from models.requests import QueryRequest
-from utils.mcp_headers import mcp_headers_dependency, McpHeaders
+from utils.mcp_headers import McpHeaders, mcp_headers_dependency
 from utils.responses import (
     extract_text_from_response_item,
     prepare_responses_params,
 )
 from utils.suid import normalize_conversation_id
 from version import __version__
-from log import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["a2a"])

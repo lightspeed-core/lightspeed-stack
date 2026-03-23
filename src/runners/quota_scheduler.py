@@ -1,9 +1,8 @@
 """User and cluster quota scheduler runner."""
 
-from typing import Any, Optional
 from threading import Thread
 from time import sleep
-
+from typing import Any, Optional
 
 import constants
 from log import get_logger
@@ -12,10 +11,8 @@ from models.config import (
     QuotaHandlersConfiguration,
     QuotaLimiterConfiguration,
 )
-
 from quota.connect_pg import connect_pg
 from quota.connect_sqlite import connect_sqlite
-
 from quota.sql import (
     CREATE_QUOTA_TABLE_PG,
     CREATE_QUOTA_TABLE_SQLITE,

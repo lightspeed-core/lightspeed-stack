@@ -18,10 +18,12 @@ flit-core==3.12.0
     #   wheel
 hatch-fancy-pypi-readme==25.1.0
     # via
+    #   attrs
     #   llama-stack-client
     #   openai
 hatch-vcs==0.5.0
     # via
+    #   attrs
     #   chardet
     #   filelock
 hatchling==1.26.3
@@ -32,6 +34,7 @@ hatchling==1.26.3
 hatchling==1.29.0
     # via
     #   a2a-sdk
+    #   attrs
     #   chardet
     #   filelock
     #   hatch-fancy-pypi-readme
@@ -48,6 +51,7 @@ hatchling==1.29.0
     #   opentelemetry-semantic-conventions
     #   pydantic-settings
     #   pythainlp
+    #   starlette
     #   uv-dynamic-versioning
     #   uvicorn
     #   wcwidth
@@ -90,7 +94,7 @@ tomlkit==0.14.0
     # via uv-dynamic-versioning
 trove-classifiers==2026.1.14.14
     # via hatchling
-uv-dynamic-versioning==0.13.0
+uv-dynamic-versioning==0.14.0
     # via a2a-sdk
 wheel==0.46.3
     # via

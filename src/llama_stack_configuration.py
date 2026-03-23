@@ -391,6 +391,7 @@ def enrich_solr(  # pylint: disable=too-many-locals
             - tool (list[str]): tool RAG IDs
         okp_config: OKP configuration dict. Used keys:
             - chunk_filter_query (str): Solr filter query for chunk retrieval
+            - rhokp_url (str): OKP/Solr base URL (e.g. from ${env.RH_SERVER_OKP})
     """
     inline_ids = rag_config.get("inline") or []
     tool_ids = rag_config.get("tool") or []
@@ -407,6 +408,11 @@ def enrich_solr(  # pylint: disable=too-many-locals
         else constants.SOLR_CHUNK_FILTER_QUERY
     )
 
+    rhokp_raw = okp_config.get("rhokp_url")
+    solr_url = (
+        str(rhokp_raw) if rhokp_raw is not None else constants.RH_SERVER_OKP_DEFAULT_URL
+    )
+
     logger.info("Enriching Llama Stack config with OKP")
 
     # Add vector_io provider for Solr
@@ -420,8 +426,6 @@ def enrich_solr(  # pylint: disable=too-many-locals
         p.get("provider_id") for p in ls_config["providers"]["vector_io"]
     ]
     if constants.SOLR_PROVIDER_ID not in existing_providers:
-        # Build environment variable expressions
-        solr_url_env = "${env.SOLR_URL:=http://localhost:8983/solr}"
         collection_env = (
             f"${{env.SOLR_COLLECTION:={constants.SOLR_DEFAULT_VECTOR_STORE_ID}}}"
         )
@@ -442,7 +446,7 @@ def enrich_solr(  # pylint: disable=too-many-locals
                 "provider_id": constants.SOLR_PROVIDER_ID,
                 "provider_type": "remote::solr_vector_io",
                 "config": {
-                    "solr_url": solr_url_env,
+                    "solr_url": solr_url,
                     "collection_name": collection_env,
                     "vector_field": vector_field_env,
                     "content_field": content_field_env,

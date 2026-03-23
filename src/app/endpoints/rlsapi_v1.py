@@ -6,12 +6,12 @@ from the RHEL Lightspeed Command Line Assistant (CLA).
 
 import functools
 import time
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Annotated, Any, Optional, cast
 
 import jinja2
-from jinja2.sandbox import SandboxedEnvironment
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from jinja2.sandbox import SandboxedEnvironment
 from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client import APIConnectionError, APIStatusError, RateLimitError
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
@@ -24,6 +24,7 @@ from authentication.rh_identity import RHIdentityData
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from log import get_logger
 from models.config import Action
 from models.responses import (
     ForbiddenResponse,
@@ -48,7 +49,6 @@ from utils.responses import (
     get_mcp_tools,
 )
 from utils.suid import get_suid
-from log import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["rlsapi-v1"])
@@ -457,6 +457,7 @@ async def infer_endpoint(  # pylint: disable=R0914
         and infer_request.include_metadata
     )
 
+    response = None
     try:
         instructions = _build_instructions(infer_request.context.systeminfo)
 
@@ -474,7 +475,6 @@ async def infer_endpoint(  # pylint: disable=R0914
             response = cast(OpenAIResponseObject, response)
             response_text = extract_text_from_response_items(response.output)
         else:
-            response = None
             response_text = await retrieve_simple_response(
                 input_source,
                 instructions,
@@ -483,6 +483,8 @@ async def infer_endpoint(  # pylint: disable=R0914
             )
         inference_time = time.monotonic() - start_time
     except _INFER_HANDLED_EXCEPTIONS as error:
+        if verbose_enabled and response is not None:
+            extract_token_usage(response.usage, model_id)  # type: ignore[arg-type]
         _record_inference_failure(
             background_tasks,
             infer_request,

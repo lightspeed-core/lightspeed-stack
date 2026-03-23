@@ -211,6 +211,7 @@ def test_dump_configuration(tmp_path: Path) -> None:
                 "tool": [],
             },
             "okp": {
+                "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
             },
@@ -562,6 +563,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "tool": [],
             },
             "okp": {
+                "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
             },
@@ -791,6 +793,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 "tool": [],
             },
             "okp": {
+                "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
             },
@@ -995,6 +998,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 "tool": [],
             },
             "okp": {
+                "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
             },
@@ -1184,6 +1188,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 "tool": [],
             },
             "okp": {
+                "rhokp_url": None,
                 "offline": True,
                 "chunk_filter_query": None,
             },

@@ -43,7 +43,6 @@ def test_model_context_protocol_server_custom_provider() -> None:
 
 def test_model_context_protocol_server_required_fields() -> None:
     """Test that ModelContextProtocolServer requires name and url."""
-
     with pytest.raises(ValidationError):
         ModelContextProtocolServer()  # pyright: ignore[reportCallIssue]
 

@@ -7,8 +7,8 @@ from typing import Any, Optional
 import aiohttp
 
 from configuration import configuration
-from version import __version__
 from log import get_logger
+from version import __version__
 
 logger = get_logger(__name__)
 

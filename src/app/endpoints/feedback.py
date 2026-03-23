@@ -12,6 +12,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from configuration import configuration
+from log import get_logger
 from models.config import Action
 from models.requests import FeedbackRequest, FeedbackStatusUpdateRequest
 from models.responses import (
@@ -25,7 +26,6 @@ from models.responses import (
 )
 from utils.endpoints import check_configuration_loaded, retrieve_conversation
 from utils.suid import get_suid
-from log import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])

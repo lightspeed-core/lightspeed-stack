@@ -2,10 +2,11 @@
 
 import asyncio
 from collections.abc import Callable, Coroutine
-from typing import Any
 from dataclasses import dataclass, field
 from enum import Enum
 from threading import Lock
+from typing import Any
+
 from log import get_logger
 from utils.types import Singleton
 

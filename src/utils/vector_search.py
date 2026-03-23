@@ -7,7 +7,6 @@ and processing RAG chunks that is shared between query_v2.py and streaming_query
 import asyncio
 import traceback
 from typing import Any, Optional, cast
-from urllib.parse import urljoin
 
 from llama_stack_api.openai_responses import (
     OpenAIResponseMessage as ResponseMessage,
@@ -23,6 +22,18 @@ from utils.responses import resolve_vector_store_ids
 from utils.types import RAGChunk, RAGContext, RAGContextParams, ResponseInput
 
 logger = get_logger(__name__)
+
+
+def _get_okp_base_url() -> AnyUrl:
+    """Return OKP document base URL from configuration (rhokp_url), or default if unset.
+
+    Returns:
+        Parsed base URL as ``AnyUrl``.
+    """
+    rhokp = configuration.okp.rhokp_url
+    if rhokp is None:
+        return AnyUrl(constants.RH_SERVER_OKP_DEFAULT_URL)
+    return AnyUrl(str(rhokp))
 
 
 def _is_solr_enabled() -> bool:
@@ -546,6 +557,30 @@ async def build_rag_context(
     )
 
 
+def _join_okp_doc_url(base_url: AnyUrl, reference: Optional[str]) -> str:
+    """Build a well-formed document URL from base and reference.
+
+    If reference is None or empty, returns ''.
+    If reference already starts with 'http', returns reference unchanged.
+    Otherwise normalizes ``base_url`` to end with a single '/', strips any leading
+    '/' from reference, and concatenates.
+
+    Args:
+        base_url: OKP base URL.
+        reference: Document path or full URL.
+
+    Returns:
+        Well-formed doc_url string.
+    """
+    if not reference:
+        return ""
+    if reference.startswith("http"):
+        return reference
+    base = str(base_url).rstrip("/") + "/"
+    ref = reference.lstrip("/")
+    return base + ref
+
+
 def _build_document_url(
     offline: bool, doc_id: Optional[str], reference_url: Optional[str]
 ) -> tuple[str, Optional[str]]:
@@ -562,19 +597,9 @@ def _build_document_url(
         - doc_url: The full URL for the document
         - reference_doc: The document reference used for deduplication
     """
-    if offline:
-        # Use parent/doc path
-        reference_doc = doc_id
-        doc_url = constants.MIMIR_DOC_URL + reference_doc if reference_doc else ""
-    else:
-        # Use reference_url if online
-        reference_doc = reference_url or doc_id
-        doc_url = (
-            reference_doc
-            if reference_doc and reference_doc.startswith("http")
-            else (constants.MIMIR_DOC_URL + reference_doc if reference_doc else "")
-        )
-
+    base_url = _get_okp_base_url()
+    reference_doc = doc_id if offline else (reference_url or doc_id)
+    doc_url = _join_okp_doc_url(base_url, reference_doc)
     return doc_url, reference_doc
 
 
@@ -605,7 +630,9 @@ def _convert_solr_chunks_to_rag_format(
             if offline:
                 parent_id = chunk.metadata.get("parent_id")
                 if parent_id:
-                    attributes["doc_url"] = urljoin(constants.MIMIR_DOC_URL, parent_id)
+                    attributes["doc_url"] = _join_okp_doc_url(
+                        _get_okp_base_url(), parent_id
+                    )
             else:
                 reference_url = chunk.metadata.get("reference_url")
                 if reference_url:
@@ -618,7 +645,9 @@ def _convert_solr_chunks_to_rag_format(
                 attributes["document_id"] = doc_id
                 # Build URL if not already set
                 if "doc_url" not in attributes and offline and doc_id:
-                    attributes["doc_url"] = urljoin(constants.MIMIR_DOC_URL, doc_id)
+                    attributes["doc_url"] = _join_okp_doc_url(
+                        _get_okp_base_url(), doc_id
+                    )
 
         # Get score from retrieved_scores list if available
         score = retrieved_scores[i] if i < len(retrieved_scores) else None

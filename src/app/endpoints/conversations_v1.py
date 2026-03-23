@@ -14,6 +14,7 @@ from authentication import get_auth_dependency
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from log import get_logger
 from models.config import Action
 from models.database.conversations import (
     UserConversation,
@@ -32,6 +33,10 @@ from models.responses import (
     ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
+from utils.conversations import (
+    build_conversation_turns_from_items,
+    get_all_conversation_items,
+)
 from utils.endpoints import (
     can_access_conversation,
     check_configuration_loaded,
@@ -45,11 +50,6 @@ from utils.suid import (
     normalize_conversation_id,
     to_llama_stack_conversation_id,
 )
-from utils.conversations import (
-    build_conversation_turns_from_items,
-    get_all_conversation_items,
-)
-from log import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["conversations_v1"])

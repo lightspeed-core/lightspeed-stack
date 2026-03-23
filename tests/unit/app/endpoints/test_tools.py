@@ -839,22 +839,18 @@ class TestInputSchemaToParameters:
 
     def test_none_schema(self) -> None:
         """Test that None schema returns empty list."""
-
         assert _input_schema_to_parameters(None) == []
 
     def test_empty_schema(self) -> None:
         """Test that empty dict returns empty list."""
-
         assert _input_schema_to_parameters({}) == []
 
     def test_schema_without_properties(self) -> None:
         """Test that schema without properties returns empty list."""
-
         assert _input_schema_to_parameters({"type": "object"}) == []
 
     def test_single_required_param(self) -> None:
         """Test conversion of a single required parameter."""
-
         schema = {
             "type": "object",
             "properties": {
@@ -875,7 +871,6 @@ class TestInputSchemaToParameters:
 
     def test_optional_param_with_default(self) -> None:
         """Test conversion of an optional parameter with a default value."""
-
         schema = {
             "type": "object",
             "properties": {
@@ -896,7 +891,6 @@ class TestInputSchemaToParameters:
 
     def test_multiple_params_mixed_required(self) -> None:
         """Test conversion with a mix of required and optional parameters."""
-
         schema = {
             "type": "object",
             "properties": {

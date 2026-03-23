@@ -17,7 +17,6 @@ from utils.types import ToolCallSummary, ToolResultSummary, TurnSummary
 
 def test_construct_transcripts_path(mocker: MockerFixture) -> None:
     """Test the construct_transcripts_path function."""
-
     config_dict = {
         "name": "test",
         "service": {
@@ -58,7 +57,6 @@ def test_store_transcript(  # pylint: disable=too-many-locals
     mocker: MockerFixture,
 ) -> None:
     """Test the store_transcript function."""
-
     mocker.patch("builtins.open", mocker.mock_open())
     mocker.patch(
         "utils.transcripts.construct_transcripts_path",

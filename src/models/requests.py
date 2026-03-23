@@ -1,25 +1,34 @@
 """Models for REST API requests."""
 
 from enum import Enum
-from typing import Optional, Any
-from typing import Self
+from typing import Any, Optional, Self
 
 from llama_stack_api.openai_responses import (
-    OpenAIResponseInputToolChoice as ToolChoice,
     OpenAIResponseInputTool as InputTool,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseInputToolChoice as ToolChoice,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponsePrompt as Prompt,
-    OpenAIResponseText as Text,
-    OpenAIResponseToolMCP as OutputToolMCP,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseReasoning as Reasoning,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseText as Text,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseToolMCP as OutputToolMCP,
 )
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from constants import (
-    MEDIA_TYPE_JSON,
-    MEDIA_TYPE_TEXT,
     MCP_AUTH_CLIENT,
     MCP_AUTH_KUBERNETES,
     MCP_AUTH_OAUTH,
+    MEDIA_TYPE_JSON,
+    MEDIA_TYPE_TEXT,
 )
 from log import get_logger
 from utils import suid

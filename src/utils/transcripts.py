@@ -4,16 +4,16 @@ Transcripts are a log of individual query/response pairs that get
 stored on disk for later analysis
 """
 
-from datetime import UTC, datetime
+import hashlib
 import json
 import os
+from datetime import UTC, datetime
 from pathlib import Path
-import hashlib
 
 from fastapi import HTTPException
 
 from configuration import configuration
-
+from log import get_logger
 from models.requests import Attachment
 from models.responses import InternalServerErrorResponse
 from utils.suid import get_suid
@@ -22,7 +22,6 @@ from utils.types import (
     TranscriptMetadata,
     TurnSummary,
 )
-from log import get_logger
 
 logger = get_logger(__name__)
 

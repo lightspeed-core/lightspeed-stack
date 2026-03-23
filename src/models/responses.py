@@ -7,13 +7,27 @@ from typing import Any, ClassVar, Literal, Optional, cast
 from fastapi import status
 from llama_stack_api.openai_responses import (
     OpenAIResponseError as Error,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputToolChoice as ToolChoice,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutput as Output,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponsePrompt as Prompt,
-    OpenAIResponseText as Text,
-    OpenAIResponseTool as OutputTool,
-    OpenAIResponseUsage as Usage,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseReasoning as Reasoning,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseText as Text,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseTool as OutputTool,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseUsage as Usage,
 )
 from pydantic import BaseModel, Field
 from pydantic_core import SchemaError
@@ -1603,6 +1617,8 @@ class ResponsesResponse(AbstractSuccessfulResponse):
                         "input_tokens": 100,
                         "output_tokens": 50,
                         "total_tokens": 150,
+                        "input_tokens_details": {"cached_tokens": 0},
+                        "output_tokens_details": {"reasoning_tokens": 0},
                     },
                     "instructions": "You are a helpful assistant",
                     "store": True,
@@ -1617,27 +1633,28 @@ class ResponsesResponse(AbstractSuccessfulResponse):
             "sse_example": (
                 "event: response.created\n"
                 'data: {"type":"response.created","sequence_number":0,'
-                '"response":{"id":"resp_abc","created_at":1704067200,'
-                '"status":"in_progress","output":[],"conversation":'
-                '"0d21ba731f21f798dc9680125d5d6f49","available_quotas":{},'
-                '"output_text":""}}\n\n'
+                '"response":{"id":"resp_abc","object":"response",'
+                '"created_at":1704067200,"status":"in_progress","model":"openai/gpt-4o-mini",'
+                '"output":[],"store":true,"text":{"format":{"type":"text"}},'
+                '"conversation":"0d21ba731f21f798dc9680125d5d6f49",'
+                '"available_quotas":{},"output_text":""}}\n\n'
                 "event: response.output_item.added\n"
-                'data: {"response_id":"resp_abc","item":{"type":"message",'
-                '"role":"assistant","content":[{"type":"output_text",'
-                '"text":"Hello! How can I help?"}]},"output_index":0,'
-                '"sequence_number":1}\n\n'
-                "event: response.output_item.done\n"
-                'data: {"response_id":"resp_abc","item":{"type":"message",'
-                '"role":"assistant","content":[{"type":"output_text",'
-                '"text":"Hello! How can I help?"}]},"output_index":0,'
-                '"sequence_number":2}\n\n'
+                'data: {"type":"response.output_item.added","sequence_number":1,'
+                '"response_id":"resp_abc","output_index":0,'
+                '"item":{"id":"msg_abc","type":"message","status":"in_progress",'
+                '"role":"assistant","content":[]}}\n\n'
+                "...\n\n"
                 "event: response.completed\n"
-                'data: {"type":"response.completed","sequence_number":3,'
-                '"response":{"id":"resp_abc","created_at":1704067200,'
-                '"completed_at":1704067250,"status":"completed",'
-                '"output":[{"type":"message","role":"assistant",'
-                '"content":[{"type":"output_text","text":"Hello! How can I help?"}]}],'
-                '"usage":{"input_tokens":10,"output_tokens":6,"total_tokens":16},'
+                'data: {"type":"response.completed","sequence_number":30,'
+                '"response":{"id":"resp_abc","object":"response",'
+                '"created_at":1704067200,"status":"completed","model":"openai/gpt-4o-mini",'
+                '"output":[{"id":"msg_abc","type":"message","status":"completed",'
+                '"role":"assistant","content":[{"type":"output_text",'
+                '"text":"Hello! How can I help?","annotations":[]}]}],'
+                '"store":true,"text":{"format":{"type":"text"}},'
+                '"usage":{"input_tokens":10,"output_tokens":6,"total_tokens":16,'
+                '"input_tokens_details":{"cached_tokens":0},'
+                '"output_tokens_details":{"reasoning_tokens":0}},'
                 '"conversation":"0d21ba731f21f798dc9680125d5d6f49",'
                 '"available_quotas":{"daily":1000,"monthly":50000},'
                 '"output_text":"Hello! How can I help?"}}\n\n'
@@ -1668,7 +1685,7 @@ class ResponsesResponse(AbstractSuccessfulResponse):
             "text/event-stream": {
                 "schema": {"type": "string"},
                 "description": "SSE stream of events",
-                "examples": {"stream": {"value": sse_example}} if sse_example else {},
+                "example": sse_example,
             },
         }
 
@@ -2200,7 +2217,7 @@ class PromptTooLongResponse(AbstractErrorResponse):
         super().__init__(
             response=response,
             cause=cause,
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
         )
 
 
@@ -2414,6 +2431,27 @@ class InternalServerErrorResponse(AbstractErrorResponse):
                         "cause": "Failed to query the database",
                     },
                 },
+                {
+                    "label": "cluster version not found",
+                    "detail": {
+                        "response": "Internal server error",
+                        "cause": "ClusterVersion 'version' resource not found in OpenShift cluster",
+                    },
+                },
+                {
+                    "label": "cluster version permission denied",
+                    "detail": {
+                        "response": "Internal server error",
+                        "cause": "Insufficient permissions to read ClusterVersion resource",
+                    },
+                },
+                {
+                    "label": "invalid cluster version",
+                    "detail": {
+                        "response": "Internal server error",
+                        "cause": "ClusterVersion missing required field: 'clusterID'",
+                    },
+                },
             ]
         }
     }
@@ -2537,7 +2575,17 @@ class ServiceUnavailableResponse(AbstractErrorResponse):
                         "response": "Unable to connect to Llama Stack",
                         "cause": "Connection error while trying to reach backend service.",
                     },
-                }
+                },
+                {
+                    "label": "kubernetes api",
+                    "detail": {
+                        "response": "Unable to connect to Kubernetes API",
+                        "cause": (
+                            "Failed to connect to Kubernetes API: "
+                            "Service Unavailable (status 503)"
+                        ),
+                    },
+                },
             ]
         }
     }

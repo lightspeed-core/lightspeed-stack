@@ -1,7 +1,9 @@
 """Model for conversation history cache entry."""
 
 from typing import Optional
+
 from pydantic import BaseModel
+
 from utils.types import ReferencedDocument, ToolCallSummary, ToolResultSummary
 
 

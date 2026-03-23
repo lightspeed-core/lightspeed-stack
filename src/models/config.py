@@ -1760,6 +1760,14 @@ class OkpConfiguration(ConfigurationBase):
     Only relevant when ``"okp"`` is listed in ``rag.inline`` or ``rag.tool``.
     """
 
+    rhokp_url: Optional[AnyHttpUrl] = Field(
+        default=None,
+        title="OKP base URL",
+        description="Base URL for the OKP server (http or https). "
+        "Set to `${env.RH_SERVER_OKP}` in YAML to use the environment variable. "
+        "When unset, the default from constants is used.",
+    )
+
     offline: bool = Field(
         default=True,
         title="OKP offline mode",

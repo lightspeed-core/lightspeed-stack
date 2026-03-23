@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from sqlalchemy import Column, String, Table, MetaData, select, delete
+from sqlalchemy import Column, MetaData, String, Table, delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 

@@ -10,6 +10,7 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from log import get_logger
 from models.config import Action
 from models.responses import (
     ForbiddenResponse,
@@ -22,7 +23,6 @@ from utils.endpoints import check_configuration_loaded
 from utils.mcp_headers import McpHeaders, mcp_headers_dependency
 from utils.mcp_oauth_probe import check_mcp_auth
 from utils.tool_formatter import format_tools_list
-from log import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["tools"])

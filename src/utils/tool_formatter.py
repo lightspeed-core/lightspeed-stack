@@ -1,6 +1,7 @@
 """Utility functions for formatting and parsing MCP tool descriptions."""
 
 from typing import Any
+
 from log import get_logger
 
 logger = get_logger(__name__)

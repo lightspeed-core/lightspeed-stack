@@ -16,7 +16,6 @@ from models.config import ByokRag
 
 def test_byok_rag_configuration_default_values() -> None:
     """Test the ByokRag constructor."""
-
     byok_rag = ByokRag(  # pyright: ignore[reportCallIssue]
         rag_id="rag_id",
         vector_db_id="vector_db_id",
@@ -41,7 +40,6 @@ def test_byok_rag_configuration_nondefault_values() -> None:
     vector_db_id match the provided inputs and that db_path is converted to a
     Path.
     """
-
     byok_rag = ByokRag(
         rag_id="rag_id",
         rag_type="rag_type",
@@ -61,7 +59,6 @@ def test_byok_rag_configuration_nondefault_values() -> None:
 
 def test_byok_rag_configuration_wrong_dimension() -> None:
     """Test the ByokRag constructor."""
-
     with pytest.raises(ValidationError, match="should be greater than 0"):
         _ = ByokRag(
             rag_id="rag_id",
@@ -75,7 +72,6 @@ def test_byok_rag_configuration_wrong_dimension() -> None:
 
 def test_byok_rag_configuration_empty_rag_id() -> None:
     """Test the ByokRag constructor."""
-
     with pytest.raises(
         ValidationError, match="String should have at least 1 character"
     ):
@@ -98,7 +94,6 @@ def test_byok_rag_configuration_empty_rag_type() -> None:
         ValidationError: if `rag_type` is an empty string; error message
         includes "String should have at least 1 character".
     """
-
     with pytest.raises(
         ValidationError, match="String should have at least 1 character"
     ):
@@ -114,7 +109,6 @@ def test_byok_rag_configuration_empty_rag_type() -> None:
 
 def test_byok_rag_configuration_empty_embedding_model() -> None:
     """Test the ByokRag constructor."""
-
     with pytest.raises(
         ValidationError, match="String should have at least 1 character"
     ):
@@ -130,7 +124,6 @@ def test_byok_rag_configuration_empty_embedding_model() -> None:
 
 def test_byok_rag_configuration_empty_vector_db_id() -> None:
     """Test the ByokRag constructor."""
-
     with pytest.raises(
         ValidationError, match="String should have at least 1 character"
     ):
@@ -146,7 +139,6 @@ def test_byok_rag_configuration_empty_vector_db_id() -> None:
 
 def test_byok_rag_configuration_custom_score_multiplier() -> None:
     """Test ByokRag with custom score_multiplier."""
-
     byok_rag = ByokRag(
         rag_id="rag_id",
         vector_db_id="vector_db_id",
@@ -158,7 +150,6 @@ def test_byok_rag_configuration_custom_score_multiplier() -> None:
 
 def test_byok_rag_configuration_score_multiplier_must_be_positive() -> None:
     """Test that score_multiplier must be greater than 0."""
-
     with pytest.raises(ValidationError, match="greater than 0"):
         _ = ByokRag(
             rag_id="rag_id",

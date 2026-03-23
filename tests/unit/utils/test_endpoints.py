@@ -38,7 +38,6 @@ class TestCreateReferencedDocuments:
         self,
     ) -> None:
         """Test HTTP URLs with ReferencedDocument format."""
-
         mock_chunk1 = type("MockChunk", (), {"source": "https://example.com/doc1"})()
         mock_chunk2 = type("MockChunk", (), {"source": "https://example.com/doc2"})()
 
@@ -59,7 +58,6 @@ class TestCreateReferencedDocuments:
 
     def test_create_referenced_documents_document_ids_with_metadata(self) -> None:
         """Test document IDs with metadata enrichment."""
-
         mock_chunk1 = type("MockChunk", (), {"source": "doc_id_1"})()
         mock_chunk2 = type("MockChunk", (), {"source": "doc_id_2"})()
 
@@ -87,7 +85,6 @@ class TestCreateReferencedDocuments:
 
     def test_create_referenced_documents_skips_tool_names(self) -> None:
         """Test that tool names like 'knowledge_search' are skipped."""
-
         mock_chunk1 = type("MockChunk", (), {"source": "knowledge_search"})()
         mock_chunk2 = type("MockChunk", (), {"source": "https://example.com/doc1"})()
 
@@ -104,7 +101,6 @@ class TestCreateReferencedDocuments:
 
     def test_create_referenced_documents_skips_empty_sources(self) -> None:
         """Test that chunks with empty or None sources are skipped."""
-
         mock_chunk1 = type("MockChunk", (), {"source": None})()
         mock_chunk2 = type("MockChunk", (), {"source": ""})()
         mock_chunk3 = type("MockChunk", (), {"source": "https://example.com/doc1"})()
@@ -124,7 +120,6 @@ class TestCreateReferencedDocuments:
 
     def test_create_referenced_documents_deduplication(self) -> None:
         """Test that duplicate sources are deduplicated."""
-
         mock_chunk1 = type("MockChunk", (), {"source": "https://example.com/doc1"})()
         mock_chunk2 = type(
             "MockChunk", (), {"source": "https://example.com/doc1"}
@@ -149,7 +144,6 @@ class TestCreateReferencedDocuments:
 
     def test_create_referenced_documents_invalid_urls(self) -> None:
         """Test handling of invalid URLs."""
-
         mock_chunk1 = type("MockChunk", (), {"source": "not-a-valid-url"})()
         mock_chunk2 = type("MockChunk", (), {"source": "https://example.com/doc1"})()
 

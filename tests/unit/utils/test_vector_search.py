@@ -1,6 +1,8 @@
 """Unit tests for vector search utilities."""
 
 import pytest
+from pydantic import AnyUrl
+from pytest_mock import MockerFixture
 
 import constants
 from configuration import AppConfig
@@ -14,6 +16,7 @@ from utils.vector_search import (
     _fetch_byok_rag,
     _fetch_solr_rag,
     _format_rag_context,
+    _get_okp_base_url,
     _get_solr_vector_store_ids,
     _is_solr_enabled,
     build_rag_context,
@@ -23,14 +26,14 @@ from utils.vector_search import (
 class TestIsSolrEnabled:
     """Tests for _is_solr_enabled function."""
 
-    def test_solr_enabled_true(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    def test_solr_enabled_true(self, mocker: MockerFixture) -> None:
         """Test when Solr is enabled in configuration."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.inline_solr_enabled = True
         mocker.patch("utils.vector_search.configuration", config_mock)
         assert _is_solr_enabled() is True
 
-    def test_solr_enabled_false(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    def test_solr_enabled_false(self, mocker: MockerFixture) -> None:
         """Test when Solr is disabled in configuration."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.inline_solr_enabled = False
@@ -75,7 +78,7 @@ class TestBuildQueryParams:
 class TestExtractByokRagChunks:
     """Tests for _extract_byok_rag_chunks function."""
 
-    def test_extract_chunks_with_metadata(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    def test_extract_chunks_with_metadata(self, mocker: MockerFixture) -> None:
         """Test extraction of chunks with metadata."""
         # Create mock chunks
         chunk1 = mocker.Mock()
@@ -104,7 +107,7 @@ class TestExtractByokRagChunks:
         assert result[0]["source"] == "test_store"
         assert result[0]["doc_id"] == "doc_1"
 
-    def test_extract_chunks_without_metadata(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    def test_extract_chunks_without_metadata(self, mocker: MockerFixture) -> None:
         """Test extraction of chunks without metadata."""
         chunk = mocker.Mock()
         chunk.content = "Test content"
@@ -187,7 +190,7 @@ class TestFormatRagContext:
 class TestExtractSolrDocumentMetadata:
     """Tests for _extract_solr_document_metadata function."""
 
-    def test_extract_from_dict_metadata(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    def test_extract_from_dict_metadata(self, mocker: MockerFixture) -> None:
         """Test extraction from dict-based metadata."""
         chunk = mocker.Mock()
         chunk.metadata = {
@@ -202,9 +205,7 @@ class TestExtractSolrDocumentMetadata:
         assert title == "Test Document"
         assert reference_url == "https://example.com/doc"
 
-    def test_extract_from_chunk_metadata_object(  # type: ignore[no-untyped-def]
-        self, mocker
-    ) -> None:
+    def test_extract_from_chunk_metadata_object(self, mocker: MockerFixture) -> None:
         """Test extraction from typed chunk_metadata object."""
         chunk_meta = mocker.Mock()
         chunk_meta.doc_id = "doc_456"
@@ -221,7 +222,7 @@ class TestExtractSolrDocumentMetadata:
         assert title == "Another Document"
         assert reference_url == "https://example.com/another"
 
-    def test_extract_with_missing_fields(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    def test_extract_with_missing_fields(self, mocker: MockerFixture) -> None:
         """Test extraction when some fields are missing."""
         chunk = mocker.Mock()
         chunk.metadata = {"doc_id": "doc_789"}
@@ -233,16 +234,40 @@ class TestExtractSolrDocumentMetadata:
         assert reference_url is None
 
 
+class TestGetOkpBaseUrl:
+    """Tests for _get_okp_base_url function (config rhokp_url vs default)."""
+
+    def test_returns_custom_host_when_rhokp_url_configured(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When rhokp_url is set in config, returned base URL uses that value."""
+        custom = "https://custom.okp.example.com"
+        config_mock = mocker.Mock()
+        config_mock.okp.rhokp_url = custom
+        mocker.patch("utils.vector_search.configuration", config_mock)
+        assert _get_okp_base_url() == AnyUrl(custom)
+
+    def test_returns_default_when_rhokp_url_unset(self, mocker: MockerFixture) -> None:
+        """When rhokp_url is missing or empty, returned base URL uses default."""
+        config_mock = mocker.Mock()
+        config_mock.okp.rhokp_url = None
+        mocker.patch("utils.vector_search.configuration", config_mock)
+        assert _get_okp_base_url() == AnyUrl(constants.RH_SERVER_OKP_DEFAULT_URL)
+        assert str(_get_okp_base_url()).startswith("http://")
+
+
 class TestBuildDocumentUrl:
     """Tests for _build_document_url function."""
 
-    def test_offline_mode_with_doc_id(self) -> None:
+    def test_offline_mode_with_doc_id(self, mocker: MockerFixture) -> None:
         """Test URL building in offline mode with doc_id."""
+        config_mock = mocker.Mock()
+        config_mock.okp.rhokp_url = "https://mimir.test"
+        mocker.patch("utils.vector_search.configuration", config_mock)
         doc_url, reference_doc = _build_document_url(
             offline=True, doc_id="doc_123", reference_url=None
         )
-
-        assert doc_url == constants.MIMIR_DOC_URL + "doc_123"
+        assert doc_url == "https://mimir.test/doc_123"
         assert reference_doc == "doc_123"
 
     def test_online_mode_with_reference_url(self) -> None:
@@ -256,13 +281,15 @@ class TestBuildDocumentUrl:
         assert doc_url == "https://docs.example.com/page"
         assert reference_doc == "https://docs.example.com/page"
 
-    def test_online_mode_without_http(self) -> None:
+    def test_online_mode_without_http(self, mocker: MockerFixture) -> None:
         """Test online mode when reference_url doesn't start with http."""
+        config_mock = mocker.Mock()
+        config_mock.okp.rhokp_url = "https://mimir.test"
+        mocker.patch("utils.vector_search.configuration", config_mock)
         doc_url, reference_doc = _build_document_url(
             offline=False, doc_id="doc_123", reference_url="relative/path"
         )
-
-        assert doc_url == constants.MIMIR_DOC_URL + "relative/path"
+        assert doc_url == "https://mimir.test/relative/path"
         assert reference_doc == "relative/path"
 
     def test_offline_mode_without_doc_id(self) -> None:
@@ -278,7 +305,7 @@ class TestBuildDocumentUrl:
 class TestConvertSolrChunksToRagFormat:
     """Tests for _convert_solr_chunks_to_rag_format function."""
 
-    def test_convert_with_metadata_offline(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    def test_convert_with_metadata_offline(self, mocker: MockerFixture) -> None:
         """Test conversion with metadata in offline mode."""
         chunk = mocker.Mock()
         chunk.content = "Test content"
@@ -291,10 +318,11 @@ class TestConvertSolrChunksToRagFormat:
         assert result[0].content == "Test content"
         assert result[0].source == constants.OKP_RAG_ID
         assert result[0].score == 0.85
+        assert result[0].attributes is not None
         assert "doc_url" in result[0].attributes
         assert "parent_123" in result[0].attributes["doc_url"]
 
-    def test_convert_with_metadata_online(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    def test_convert_with_metadata_online(self, mocker: MockerFixture) -> None:
         """Test conversion with metadata in online mode."""
         chunk = mocker.Mock()
         chunk.content = "Test content"
@@ -304,9 +332,10 @@ class TestConvertSolrChunksToRagFormat:
         result = _convert_solr_chunks_to_rag_format([chunk], [0.75], offline=False)
 
         assert len(result) == 1
+        assert result[0].attributes is not None
         assert result[0].attributes["doc_url"] == "https://example.com/doc"
 
-    def test_convert_with_chunk_metadata(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    def test_convert_with_chunk_metadata(self, mocker: MockerFixture) -> None:
         """Test conversion with chunk_metadata object."""
         chunk_meta = mocker.Mock()
         chunk_meta.document_id = "doc_456"
@@ -319,9 +348,10 @@ class TestConvertSolrChunksToRagFormat:
         result = _convert_solr_chunks_to_rag_format([chunk], [0.9], offline=True)
 
         assert len(result) == 1
+        assert result[0].attributes is not None
         assert result[0].attributes["document_id"] == "doc_456"
 
-    def test_convert_multiple_chunks(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    def test_convert_multiple_chunks(self, mocker: MockerFixture) -> None:
         """Test conversion of multiple chunks."""
         chunk1 = mocker.Mock()
         chunk1.content = "Content 1"
@@ -348,7 +378,7 @@ class TestFetchByokRag:
     """Tests for _fetch_byok_rag async function."""
 
     @pytest.mark.asyncio
-    async def test_byok_no_inline_ids(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    async def test_byok_no_inline_ids(self, mocker: MockerFixture) -> None:
         """Test when no inline BYOK sources are configured."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.configuration.rag.inline = []
@@ -363,7 +393,7 @@ class TestFetchByokRag:
         client_mock.vector_io.query.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_byok_enabled_success(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    async def test_byok_enabled_success(self, mocker: MockerFixture) -> None:
         """Test successful BYOK RAG fetch when inline IDs are configured."""
         # Mock configuration
         config_mock = mocker.Mock(spec=AppConfig)
@@ -401,8 +431,8 @@ class TestFetchByokRag:
         assert len(referenced_docs) > 0
 
     @pytest.mark.asyncio
-    async def test_user_facing_ids_translated_to_internal_ids(  # type: ignore[no-untyped-def]
-        self, mocker
+    async def test_user_facing_ids_translated_to_internal_ids(
+        self, mocker: MockerFixture
     ) -> None:
         """Test that user-facing rag_ids (vector_store_ids) are translated to llama-stack ids."""
         config_mock = mocker.Mock(spec=AppConfig)
@@ -438,8 +468,8 @@ class TestFetchByokRag:
         )
 
     @pytest.mark.asyncio
-    async def test_multiple_user_facing_ids_each_translated(  # type: ignore[no-untyped-def]
-        self, mocker
+    async def test_multiple_user_facing_ids_each_translated(
+        self, mocker: MockerFixture
     ) -> None:
         """Test that multiple user-facing rag_ids are each translated to their vector_store_id."""
         config_mock = mocker.Mock(spec=AppConfig)
@@ -490,7 +520,7 @@ class TestFetchSolrRag:
     """Tests for _fetch_solr_rag async function."""
 
     @pytest.mark.asyncio
-    async def test_solr_disabled(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    async def test_solr_disabled(self, mocker: MockerFixture) -> None:
         """Test when Solr is disabled."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.inline_solr_enabled = False
@@ -504,12 +534,13 @@ class TestFetchSolrRag:
         client_mock.vector_io.query.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_solr_enabled_success(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    async def test_solr_enabled_success(self, mocker: MockerFixture) -> None:
         """Test successful Solr RAG fetch."""
         # Mock configuration
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.inline_solr_enabled = True
         config_mock.okp.offline = True
+        config_mock.okp.rhokp_url = "https://okp.test"
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         # Mock chunk
@@ -538,7 +569,7 @@ class TestBuildRagContext:
     """Tests for build_rag_context async function."""
 
     @pytest.mark.asyncio
-    async def test_both_sources_disabled(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    async def test_both_sources_disabled(self, mocker: MockerFixture) -> None:
         """Test when both BYOK inline and Solr inline are not configured."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.configuration.rag.inline = []
@@ -559,7 +590,7 @@ class TestBuildRagContext:
         assert context.referenced_documents == []
 
     @pytest.mark.asyncio
-    async def test_byok_enabled_only(self, mocker) -> None:  # type: ignore[no-untyped-def]
+    async def test_byok_enabled_only(self, mocker: MockerFixture) -> None:
         """Test when only inline BYOK is configured."""
         # Mock configuration
         config_mock = mocker.Mock(spec=AppConfig)

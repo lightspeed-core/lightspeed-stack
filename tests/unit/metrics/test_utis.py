@@ -7,7 +7,6 @@ from metrics.utils import setup_model_metrics
 
 async def test_setup_model_metrics(mocker: MockerFixture) -> None:
     """Test the setup_model_metrics function."""
-
     # Mock the LlamaStackAsLibraryClient
     mock_client = mocker.patch(
         "client.AsyncLlamaStackClientHolder.get_client"

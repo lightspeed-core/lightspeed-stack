@@ -29,7 +29,6 @@ def claims_to_token(claims: dict) -> str:
         claims)>.foo_signature", where the payload is base64url-encoded without
         padding.
     """
-
     string_claims = json.dumps(claims)
     b64_encoded_claims = (
         base64.urlsafe_b64encode(string_claims.encode()).decode().rstrip("=")

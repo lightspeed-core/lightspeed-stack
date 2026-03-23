@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from authentication import get_auth_dependency
 from authorization.middleware import authorize
 from configuration import configuration
+from log import get_logger
 from models.cache_entry import CacheEntry
 from models.config import Action
 from models.requests import ConversationUpdateRequest
@@ -14,8 +15,8 @@ from models.responses import (
     BadRequestResponse,
     ConversationDeleteResponse,
     ConversationResponse,
-    ConversationTurn,
     ConversationsListResponseV2,
+    ConversationTurn,
     ConversationUpdateResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -25,7 +26,6 @@ from models.responses import (
 )
 from utils.endpoints import check_configuration_loaded
 from utils.suid import check_suid
-from log import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["conversations_v2"])

@@ -8,7 +8,7 @@ from typing import Optional
 import yaml
 from fastapi import HTTPException
 from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
-from llama_stack_client import APIConnectionError, AsyncLlamaStackClient  # type: ignore
+from llama_stack_client import APIConnectionError, AsyncLlamaStackClient
 
 from configuration import configuration
 from llama_stack_configuration import YamlDumper, enrich_byok_rag, enrich_solr

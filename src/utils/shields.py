@@ -6,21 +6,24 @@ from fastapi import HTTPException
 from llama_stack_api import OpenAIResponseMessage
 from llama_stack_client import (
     APIConnectionError,
-    APIStatusError as LLSApiStatusError,
     AsyncLlamaStackClient,
+)
+from llama_stack_client import (
+    APIStatusError as LLSApiStatusError,
 )
 from llama_stack_client.types import ShieldListResponse
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 
 import metrics
 from configuration import AppConfig
+from constants import DEFAULT_VIOLATION_MESSAGE
 from log import get_logger
 from models.requests import QueryRequest
 from models.responses import (
     InternalServerErrorResponse,
     NotFoundResponse,
-    UnprocessableEntityResponse,
     ServiceUnavailableResponse,
+    UnprocessableEntityResponse,
 )
 from utils.query import handle_known_apistatus_errors
 from utils.types import (
@@ -28,7 +31,6 @@ from utils.types import (
     ShieldModerationPassed,
     ShieldModerationResult,
 )
-from constants import DEFAULT_VIOLATION_MESSAGE
 
 logger = get_logger(__name__)
 

@@ -7,8 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client import (
     APIConnectionError,
-    APIStatusError as LLSApiStatusError,
     AsyncLlamaStackClient,
+)
+from llama_stack_client import (
+    APIStatusError as LLSApiStatusError,
 )
 from openai._exceptions import (
     APIStatusError as OpenAIAPIStatusError,

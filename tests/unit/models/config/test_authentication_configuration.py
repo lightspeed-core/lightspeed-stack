@@ -30,7 +30,6 @@ from constants import (
 
 def test_authentication_configuration() -> None:
     """Test the AuthenticationConfiguration constructor."""
-
     auth_config = AuthenticationConfiguration(
         module=AUTH_MOD_NOOP,
         skip_tls_verification=False,
@@ -56,7 +55,6 @@ def test_authentication_configuration() -> None:
 
 def test_authentication_configuration_rh_identity() -> None:
     """Test the AuthenticationConfiguration with RH identity token."""
-
     auth_config = AuthenticationConfiguration(
         module=AUTH_MOD_RH_IDENTITY,
         skip_tls_verification=False,
@@ -78,7 +76,6 @@ def test_authentication_configuration_rh_identity() -> None:
 
 def test_authentication_configuration_rh_identity_default_value() -> None:
     """Test the AuthenticationConfiguration with RH identity token."""
-
     auth_config = AuthenticationConfiguration(
         module=AUTH_MOD_RH_IDENTITY,
         skip_tls_verification=False,
@@ -100,7 +97,6 @@ def test_authentication_configuration_rh_identity_default_value() -> None:
 
 def test_authentication_configuration_rh_identity_one_entitlement() -> None:
     """Test the AuthenticationConfiguration with RH identity token."""
-
     auth_config = AuthenticationConfiguration(
         module=AUTH_MOD_RH_IDENTITY,
         skip_tls_verification=False,
@@ -122,7 +118,6 @@ def test_authentication_configuration_rh_identity_one_entitlement() -> None:
 
 def test_authentication_configuration_rh_identity_more_entitlements() -> None:
     """Test the AuthenticationConfiguration with RH identity token."""
-
     auth_config = AuthenticationConfiguration(
         module=AUTH_MOD_RH_IDENTITY,
         skip_tls_verification=False,
@@ -156,7 +151,6 @@ def test_authentication_configuration_rh_identity_but_insufficient_config() -> N
 
     Expects a ValidationError with the message "RH Identity configuration must be specified".
     """
-
     with pytest.raises(
         ValidationError, match="RH Identity configuration must be specified"
     ):
@@ -171,7 +165,6 @@ def test_authentication_configuration_rh_identity_but_insufficient_config() -> N
 
 def test_authentication_configuration_jwk_token() -> None:
     """Test the AuthenticationConfiguration with JWK token."""
-
     auth_config = AuthenticationConfiguration(
         module=AUTH_MOD_JWK_TOKEN,
         skip_tls_verification=False,
@@ -200,7 +193,6 @@ def test_authentication_configuration_jwk_token_but_insufficient_config() -> Non
     `module=AUTH_MOD_JWK_TOKEN` and an empty `JwkConfiguration` must raise a
     `ValidationError` containing the text "JwkConfiguration".
     """
-
     with pytest.raises(ValidationError, match="JwkConfiguration"):
         AuthenticationConfiguration(
             module=AUTH_MOD_JWK_TOKEN,
@@ -214,7 +206,6 @@ def test_authentication_configuration_jwk_token_but_insufficient_config() -> Non
 
 def test_authentication_configuration_jwk_token_but_not_config() -> None:
     """Test the AuthenticationConfiguration with JWK token."""
-
     with pytest.raises(
         ValidationError,
         match="Value error, JWK configuration must be specified when using JWK token",
@@ -239,7 +230,6 @@ def test_authentication_configuration_jwk_broken_config() -> None:
     `jwk_config`, and asserts that accessing `jwk_configuration` raises
     ValueError with message "JWK configuration should not be None".
     """
-
     auth_config = AuthenticationConfiguration(
         module=AUTH_MOD_JWK_TOKEN,
         skip_tls_verification=False,
@@ -536,7 +526,6 @@ def test_authentication_configuration_in_config_jwktoken() -> None:
 
 def test_authentication_configuration_api_token() -> None:
     """Test the AuthenticationConfiguration with API Token."""
-
     auth_config = AuthenticationConfiguration(
         module=AUTH_MOD_APIKEY_TOKEN,
         skip_tls_verification=False,
@@ -561,7 +550,6 @@ def test_authentication_configuration_api_token() -> None:
 
 def test_authentication_configuration_api_key_but_insufficient_config() -> None:
     """Test the AuthenticationConfiguration with API Token."""
-
     with pytest.raises(
         ValidationError,
         match="API Key configuration section must be "

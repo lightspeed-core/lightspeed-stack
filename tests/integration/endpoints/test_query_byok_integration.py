@@ -10,10 +10,7 @@ from fastapi import Request
 from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client.types import VersionInfo
 from pytest_mock import AsyncMockType, MockerFixture
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
 
-import app.database
 import constants
 from app.endpoints.query import query_endpoint_handler
 from authentication.interface import AuthTuple
@@ -242,24 +239,6 @@ def mock_byok_tool_rag_client_fixture(
 
     mock_holder_class.return_value.get_client.return_value = mock_client
     yield mock_client
-
-
-@pytest.fixture(name="patch_db_session", autouse=True)
-def patch_db_session_fixture(
-    test_db_session: Session,
-    test_db_engine: Engine,
-) -> Generator[Session, None, None]:
-    """Patch global database session to use in-memory test database."""
-    original_engine = app.database.engine
-    original_session_local = app.database.session_local
-
-    app.database.engine = test_db_engine
-    app.database.session_local = sessionmaker(bind=test_db_engine)
-
-    yield test_db_session
-
-    app.database.engine = original_engine
-    app.database.session_local = original_session_local
 
 
 @pytest.fixture(name="byok_config")

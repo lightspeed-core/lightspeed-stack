@@ -2,13 +2,12 @@
 
 import re
 
+from llama_stack_client._client import AsyncLlamaStackClient
 from semver import Version
 
-from llama_stack_client._client import AsyncLlamaStackClient
-
 from constants import (
-    MINIMAL_SUPPORTED_LLAMA_STACK_VERSION,
     MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION,
+    MINIMAL_SUPPORTED_LLAMA_STACK_VERSION,
 )
 from log import get_logger
 

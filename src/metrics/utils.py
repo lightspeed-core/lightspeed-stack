@@ -32,8 +32,8 @@ async def setup_model_metrics() -> None:
     ]
 
     default_model_label = (
-        configuration.inference.default_provider,  # type: ignore[reportAttributeAccessIssue]
-        configuration.inference.default_model,  # type: ignore[reportAttributeAccessIssue]
+        configuration.inference.default_provider,
+        configuration.inference.default_model,
     )
 
     for model in models:

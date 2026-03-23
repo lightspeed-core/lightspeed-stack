@@ -88,7 +88,6 @@ class TestQueryRequest:
         model, and media_type "text/plain", and asserts the logger's warning
         method was not called.
         """
-
         # Mock the logger
         mock_logger = mocker.Mock(spec=Logger)
         mocker.patch("models.requests.logger", mock_logger)

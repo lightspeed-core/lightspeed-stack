@@ -3,31 +3,31 @@
 from fastapi import FastAPI
 
 from app.endpoints import (
-    info,
-    models,
-    shields,
-    providers,
-    rags,
-    root,
-    health,
-    config,
-    feedback,
-    streaming_query,
-    stream_interrupt,
-    authorized,
-    conversations_v2,
-    conversations_v1,
-    metrics,
-    tools,
-    mcp_auth,
-    mcp_servers,
-    # Query endpoints for Response API support
-    query,
-    # RHEL Lightspeed rlsapi v1 compatibility
-    rlsapi_v1,
     # A2A (Agent-to-Agent) protocol support
     a2a,
+    authorized,
+    config,
+    conversations_v1,
+    conversations_v2,
+    feedback,
+    health,
+    info,
+    mcp_auth,
+    mcp_servers,
+    metrics,
+    models,
+    providers,
+    # Query endpoints for Response API support
+    query,
+    rags,
     responses,
+    # RHEL Lightspeed rlsapi v1 compatibility
+    rlsapi_v1,
+    root,
+    shields,
+    stream_interrupt,
+    streaming_query,
+    tools,
 )
 
 

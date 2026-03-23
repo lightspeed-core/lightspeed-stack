@@ -6,9 +6,9 @@ from fastapi import HTTPException
 from pydantic import AnyUrl, ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
-from client import AsyncLlamaStackClientHolder
 import constants
 from app.database import get_session
+from client import AsyncLlamaStackClientHolder
 from configuration import AppConfig, LogicError
 from log import get_logger
 from models.database.conversations import UserConversation, UserTurn

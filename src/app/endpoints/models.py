@@ -2,7 +2,7 @@
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.params import Depends
 from llama_stack_client import APIConnectionError
 
@@ -11,6 +11,7 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from log import get_logger
 from models.config import Action
 from models.requests import ModelFilter
 from models.responses import (
@@ -21,7 +22,6 @@ from models.responses import (
     UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
-from log import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["models"])

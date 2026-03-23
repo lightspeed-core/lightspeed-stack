@@ -8,8 +8,10 @@ import psycopg2
 from fastapi import HTTPException
 from llama_stack_client import (
     APIConnectionError,
-    APIStatusError as LLSApiStatusError,
     AsyncLlamaStackClient,
+)
+from llama_stack_client import (
+    APIStatusError as LLSApiStatusError,
 )
 from llama_stack_client.types import Shield
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
@@ -37,14 +39,13 @@ from models.responses import (
     UnprocessableEntityResponse,
 )
 from utils.quota import consume_tokens
-from utils.suid import normalize_conversation_id
+from utils.suid import is_moderation_id, normalize_conversation_id
 from utils.token_counter import TokenCounter
 from utils.transcripts import (
     create_transcript,
     create_transcript_metadata,
     store_transcript,
 )
-from utils.suid import is_moderation_id
 from utils.types import TurnSummary
 
 logger = get_logger(__name__)

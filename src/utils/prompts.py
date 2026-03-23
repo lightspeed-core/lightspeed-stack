@@ -1,6 +1,7 @@
 """Utility functions for system prompts."""
 
 from typing import Optional
+
 from fastapi import HTTPException
 
 import constants

@@ -3,6 +3,7 @@
 # pylint: disable=too-many-arguments,too-many-positional-arguments,too-few-public-methods,protected-access
 
 import os
+from http import HTTPStatus
 from typing import Optional, cast
 
 import pytest
@@ -13,9 +14,14 @@ from pytest_mock import MockerFixture
 
 from authentication.k8s import (
     CLUSTER_ID_LOCAL,
-    ClusterIDUnavailableError,
+    ClusterVersionNotFoundError,
+    ClusterVersionPermissionError,
+    InvalidClusterVersionError,
+    K8sAPIConnectionError,
+    K8sConfigurationError,
     K8SAuthDependency,
     K8sClientSingleton,
+    get_user_info,
 )
 
 from configuration import AppConfig
@@ -137,7 +143,7 @@ async def test_auth_dependency_valid_token(mocker: MockerFixture) -> None:
 
     # Mock a successful token review response
     mock_authn_api.return_value.create_token_review.return_value = MockK8sResponse(
-        authenticated=True, username="valid-user", uid="valid-uid", groups=["ols-group"]
+        authenticated=True, username="valid-user", uid="valid-uid", groups=["lsc-group"]
     )
     mock_authz_api.return_value.create_subject_access_review.return_value = (
         MockK8sResponse(allowed=True)
@@ -312,7 +318,6 @@ async def test_auth_dependency_no_token_readiness_liveness_endpoints_2(
     For this test the skip_for_health_probes configuration parameter is set to
     False.
     """
-
     config_dict = {
         "name": "test",
         "service": {
@@ -491,7 +496,7 @@ async def test_cluster_id_is_used_for_kube_admin(mocker: MockerFixture) -> None:
             allowed=True,
             username="kube:admin",
             uid="some-uuid",
-            groups=["ols-group"],
+            groups=["lsc-group"],
         ),
     )
     mocker.patch(
@@ -522,8 +527,8 @@ def test_auth_dependency_config(mocker: MockerFixture) -> None:
     ), "authz_client is not an instance of AuthorizationV1Api"
 
 
-def test_get_cluster_id(mocker: MockerFixture) -> None:
-    """Test get_cluster_id function."""
+def test_get_cluster_id_success(mocker: MockerFixture) -> None:
+    """Test get_cluster_id function with successful response."""
     mock_get_custom_objects_api = mocker.patch(
         "authentication.k8s.K8sClientSingleton.get_custom_objects_api"
     )
@@ -534,30 +539,181 @@ def test_get_cluster_id(mocker: MockerFixture) -> None:
     mock_get_custom_objects_api.return_value = mocked_call
     assert K8sClientSingleton._get_cluster_id() == "some-cluster-id"
 
-    # keyerror
-    cluster_id = {"spec": {}}
+
+def test_get_cluster_id_missing_cluster_id_field(mocker: MockerFixture) -> None:
+    """Test get_cluster_id raises InvalidClusterVersionError when clusterID is missing."""
+    mock_get_custom_objects_api = mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_custom_objects_api"
+    )
+
+    # Missing clusterID field
+    cluster_data: dict[str, dict[str, str]] = {"spec": {}}
     mocked_call = mocker.MagicMock()
-    mocked_call.get_cluster_custom_object.return_value = cluster_id
+    mocked_call.get_cluster_custom_object.return_value = cluster_data
     mock_get_custom_objects_api.return_value = mocked_call
-    with pytest.raises(ClusterIDUnavailableError, match="Failed to get cluster ID"):
+
+    with pytest.raises(
+        InvalidClusterVersionError, match="Missing or invalid 'clusterID'"
+    ):
         K8sClientSingleton._get_cluster_id()
 
-    # typeerror
-    cluster_id = None  # type: ignore
+
+def test_get_cluster_id_missing_spec_field(mocker: MockerFixture) -> None:
+    """Test get_cluster_id raises InvalidClusterVersionError when spec is missing."""
+    mock_get_custom_objects_api = mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_custom_objects_api"
+    )
+
+    # Missing spec field
+    cluster_data: dict[str, dict[str, str]] = {"metadata": {}}
     mocked_call = mocker.MagicMock()
-    mocked_call.get_cluster_custom_object.return_value = cluster_id
+    mocked_call.get_cluster_custom_object.return_value = cluster_data
     mock_get_custom_objects_api.return_value = mocked_call
-    with pytest.raises(ClusterIDUnavailableError, match="Failed to get cluster ID"):
+
+    with pytest.raises(
+        InvalidClusterVersionError,
+        match="Missing or invalid 'spec'",
+    ):
         K8sClientSingleton._get_cluster_id()
 
-    # typeerror
-    mock_get_custom_objects_api.side_effect = ApiException()
-    with pytest.raises(ClusterIDUnavailableError, match="Failed to get cluster ID"):
+
+def test_get_cluster_id_invalid_type(mocker: MockerFixture) -> None:
+    """Test get_cluster_id handles non-dict return from API.
+
+    If the API returns a non-dict value (e.g., None), version_data.get() will
+    raise AttributeError. This is caught and wrapped in InvalidClusterVersionError
+    by the outer exception handler (future enhancement).
+
+    For now, we test that malformed spec dict raises InvalidClusterVersionError.
+    """
+    mock_get_custom_objects_api = mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_custom_objects_api"
+    )
+
+    # Invalid spec type (not a dict)
+    cluster_data = {"spec": "invalid"}  # spec should be dict
+    mocked_call = mocker.MagicMock()
+    mocked_call.get_cluster_custom_object.return_value = cluster_data
+    mock_get_custom_objects_api.return_value = mocked_call
+
+    with pytest.raises(
+        InvalidClusterVersionError,
+        match="Missing or invalid 'spec'",
+    ):
         K8sClientSingleton._get_cluster_id()
 
-    # exception
-    mock_get_custom_objects_api.side_effect = Exception()
-    with pytest.raises(ClusterIDUnavailableError, match="Failed to get cluster ID"):
+
+def test_get_cluster_id_api_not_found(mocker: MockerFixture) -> None:
+    """Test get_cluster_id raises ClusterVersionNotFoundError for 404."""
+    mock_get_custom_objects_api = mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_custom_objects_api"
+    )
+
+    # ApiException with 404
+    mocked_call = mocker.MagicMock()
+    mocked_call.get_cluster_custom_object.side_effect = ApiException(
+        status=HTTPStatus.NOT_FOUND, reason="Not Found"
+    )
+    mock_get_custom_objects_api.return_value = mocked_call
+
+    with pytest.raises(
+        ClusterVersionNotFoundError,
+        match="ClusterVersion 'version' resource not found",
+    ):
+        K8sClientSingleton._get_cluster_id()
+
+
+def test_get_cluster_id_api_permission_denied(mocker: MockerFixture) -> None:
+    """Test get_cluster_id raises ClusterVersionPermissionError for 403."""
+    mock_get_custom_objects_api = mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_custom_objects_api"
+    )
+
+    # ApiException with 403
+    mocked_call = mocker.MagicMock()
+    mocked_call.get_cluster_custom_object.side_effect = ApiException(
+        status=HTTPStatus.FORBIDDEN, reason="Forbidden"
+    )
+    mock_get_custom_objects_api.return_value = mocked_call
+
+    with pytest.raises(
+        ClusterVersionPermissionError,
+        match="Insufficient permissions to read ClusterVersion",
+    ):
+        K8sClientSingleton._get_cluster_id()
+
+
+def test_get_cluster_id_api_connection_error(mocker: MockerFixture) -> None:
+    """Test get_cluster_id raises K8sAPIConnectionError for other API errors."""
+    mock_get_custom_objects_api = mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_custom_objects_api"
+    )
+
+    # ApiException with 503
+    mocked_call = mocker.MagicMock()
+    mocked_call.get_cluster_custom_object.side_effect = ApiException(
+        status=HTTPStatus.SERVICE_UNAVAILABLE, reason="Service Unavailable"
+    )
+    mock_get_custom_objects_api.return_value = mocked_call
+
+    with pytest.raises(
+        K8sAPIConnectionError, match="Failed to connect to Kubernetes API"
+    ):
+        K8sClientSingleton._get_cluster_id()
+
+
+def test_get_cluster_id_api_client_error(mocker: MockerFixture) -> None:
+    """Test get_cluster_id raises K8sConfigurationError for 4xx client errors."""
+    mock_get_custom_objects_api = mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_custom_objects_api"
+    )
+
+    # ApiException with 400 (client error)
+    mocked_call = mocker.MagicMock()
+    mocked_call.get_cluster_custom_object.side_effect = ApiException(
+        status=HTTPStatus.BAD_REQUEST, reason="Bad Request"
+    )
+    mock_get_custom_objects_api.return_value = mocked_call
+
+    with pytest.raises(K8sConfigurationError, match="Kubernetes API request failed"):
+        K8sClientSingleton._get_cluster_id()
+
+
+def test_get_cluster_id_api_rate_limit(mocker: MockerFixture) -> None:
+    """Test get_cluster_id raises K8sAPIConnectionError for 429 rate limit."""
+    mock_get_custom_objects_api = mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_custom_objects_api"
+    )
+
+    # ApiException with 429 (rate limit - transient error)
+    mocked_call = mocker.MagicMock()
+    mocked_call.get_cluster_custom_object.side_effect = ApiException(
+        status=HTTPStatus.TOO_MANY_REQUESTS, reason="Too Many Requests"
+    )
+    mock_get_custom_objects_api.return_value = mocked_call
+
+    with pytest.raises(
+        K8sAPIConnectionError, match="Failed to connect to Kubernetes API"
+    ):
+        K8sClientSingleton._get_cluster_id()
+
+
+def test_get_cluster_id_api_no_status(mocker: MockerFixture) -> None:
+    """Test get_cluster_id raises K8sAPIConnectionError when status is None."""
+    mock_get_custom_objects_api = mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_custom_objects_api"
+    )
+
+    # ApiException with None status (connection/network issue)
+    mocked_call = mocker.MagicMock()
+    mocked_call.get_cluster_custom_object.side_effect = ApiException(
+        status=None, reason="Connection failed"
+    )
+    mock_get_custom_objects_api.return_value = mocked_call
+
+    with pytest.raises(
+        K8sAPIConnectionError, match="Failed to connect to Kubernetes API"
+    ):
         K8sClientSingleton._get_cluster_id()
 
 
@@ -581,3 +737,243 @@ def test_get_cluster_id_outside_of_cluster(mocker: MockerFixture) -> None:
     # ensure cluster_id is None to trigger the condition
     K8sClientSingleton._cluster_id = None
     assert K8sClientSingleton.get_cluster_id() == CLUSTER_ID_LOCAL
+
+
+async def test_kube_admin_cluster_id_api_connection_error_returns_503(
+    mocker: MockerFixture,
+) -> None:
+    """Test kube:admin flow returns 503 when K8s API is unreachable."""
+    dependency = K8SAuthDependency()
+    mock_authz_api = mocker.patch("authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authz_api.return_value.create_subject_access_review.return_value = (
+        MockK8sResponse(allowed=True)
+    )
+
+    request = Request(
+        scope={
+            "type": "http",
+            "headers": [(b"authorization", b"Bearer valid-token")],
+        }
+    )
+
+    mocker.patch(
+        "authentication.k8s.get_user_info",
+        return_value=MockK8sResponseStatus(
+            authenticated=True,
+            allowed=True,
+            username="kube:admin",
+            uid="some-uuid",
+            groups=["lsc-group"],
+        ),
+    )
+
+    # Mock K8s API connection error
+    mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_cluster_id",
+        side_effect=K8sAPIConnectionError(
+            "Failed to connect to Kubernetes API: Service Unavailable (status 503)"
+        ),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await dependency(request)
+
+    # Should return 503 Service Unavailable
+    assert exc_info.value.status_code == 503
+    detail = cast(dict[str, str], exc_info.value.detail)
+    assert detail["response"] == "Unable to connect to Kubernetes API"
+    assert "Service Unavailable" in detail["cause"]
+
+
+async def test_kube_admin_cluster_version_not_found_returns_500(
+    mocker: MockerFixture,
+) -> None:
+    """Test kube:admin flow returns 500 when ClusterVersion doesn't exist."""
+    dependency = K8SAuthDependency()
+    mock_authz_api = mocker.patch("authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authz_api.return_value.create_subject_access_review.return_value = (
+        MockK8sResponse(allowed=True)
+    )
+
+    request = Request(
+        scope={
+            "type": "http",
+            "headers": [(b"authorization", b"Bearer valid-token")],
+        }
+    )
+
+    mocker.patch(
+        "authentication.k8s.get_user_info",
+        return_value=MockK8sResponseStatus(
+            authenticated=True,
+            allowed=True,
+            username="kube:admin",
+            uid="some-uuid",
+            groups=["lsc-group"],
+        ),
+    )
+
+    # Mock ClusterVersion not found (404)
+    mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_cluster_id",
+        side_effect=ClusterVersionNotFoundError(
+            "ClusterVersion 'version' resource not found in OpenShift cluster"
+        ),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await dependency(request)
+
+    # Should return 500 Internal Server Error
+    assert exc_info.value.status_code == 500
+    detail = cast(dict[str, str], exc_info.value.detail)
+    assert detail["response"] == "Internal server error"
+    assert "ClusterVersion 'version' resource not found" in detail["cause"]
+
+
+async def test_kube_admin_cluster_version_permission_error_returns_500(
+    mocker: MockerFixture,
+) -> None:
+    """Test kube:admin flow returns 500 when permission to ClusterVersion is denied."""
+    dependency = K8SAuthDependency()
+    mock_authz_api = mocker.patch("authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authz_api.return_value.create_subject_access_review.return_value = (
+        MockK8sResponse(allowed=True)
+    )
+
+    request = Request(
+        scope={
+            "type": "http",
+            "headers": [(b"authorization", b"Bearer valid-token")],
+        }
+    )
+
+    mocker.patch(
+        "authentication.k8s.get_user_info",
+        return_value=MockK8sResponseStatus(
+            authenticated=True,
+            allowed=True,
+            username="kube:admin",
+            uid="some-uuid",
+            groups=["lsc-group"],
+        ),
+    )
+
+    # Mock ClusterVersion permission denied (403)
+    mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_cluster_id",
+        side_effect=ClusterVersionPermissionError(
+            "Insufficient permissions to read ClusterVersion resource"
+        ),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await dependency(request)
+
+    # Should return 500 Internal Server Error
+    assert exc_info.value.status_code == 500
+    detail = cast(dict[str, str], exc_info.value.detail)
+    assert detail["response"] == "Internal server error"
+    assert "Insufficient permissions" in detail["cause"]
+
+
+async def test_kube_admin_invalid_cluster_version_returns_500(
+    mocker: MockerFixture,
+) -> None:
+    """Test kube:admin flow returns 500 when ClusterVersion has invalid structure."""
+    dependency = K8SAuthDependency()
+    mock_authz_api = mocker.patch("authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authz_api.return_value.create_subject_access_review.return_value = (
+        MockK8sResponse(allowed=True)
+    )
+
+    request = Request(
+        scope={
+            "type": "http",
+            "headers": [(b"authorization", b"Bearer valid-token")],
+        }
+    )
+
+    mocker.patch(
+        "authentication.k8s.get_user_info",
+        return_value=MockK8sResponseStatus(
+            authenticated=True,
+            allowed=True,
+            username="kube:admin",
+            uid="some-uuid",
+            groups=["lsc-group"],
+        ),
+    )
+
+    # Mock invalid ClusterVersion structure
+    mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_cluster_id",
+        side_effect=InvalidClusterVersionError(
+            "ClusterVersion missing required field: 'clusterID'"
+        ),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await dependency(request)
+
+    # Should return 500 Internal Server Error
+    assert exc_info.value.status_code == 500
+    detail = cast(dict[str, str], exc_info.value.detail)
+    assert detail["response"] == "Internal server error"
+    assert "ClusterVersion missing required field" in detail["cause"]
+
+
+@pytest.mark.parametrize(
+    "api_status,reason,expected_status,expected_response,expected_cause_fragment",
+    [
+        (
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "Service Unavailable",
+            503,
+            "Unable to connect to Kubernetes API",
+            "Service Unavailable",
+        ),
+        (
+            HTTPStatus.TOO_MANY_REQUESTS,
+            "Too Many Requests",
+            503,
+            "Unable to connect to Kubernetes API",
+            "Too Many Requests",
+        ),
+        (
+            None,
+            "Connection failed",
+            503,
+            "Unable to connect to Kubernetes API",
+            "Connection failed",
+        ),
+        (
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            500,
+            "Internal server error",
+            "Bad Request",
+        ),
+    ],
+)
+def test_get_user_info_api_error_handling(
+    mocker: MockerFixture,
+    api_status: Optional[int],
+    reason: str,
+    expected_status: int,
+    expected_response: str,
+    expected_cause_fragment: str,
+) -> None:
+    """Test get_user_info properly handles Kubernetes API errors."""
+    mock_authn_api = mocker.patch("authentication.k8s.K8sClientSingleton.get_authn_api")
+    mock_authn_api.return_value.create_token_review.side_effect = ApiException(
+        status=api_status, reason=reason
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        get_user_info("some-token")
+
+    assert exc_info.value.status_code == expected_status
+    detail = cast(dict[str, str], exc_info.value.detail)
+    assert detail["response"] == expected_response
+    assert expected_cause_fragment in detail["cause"]

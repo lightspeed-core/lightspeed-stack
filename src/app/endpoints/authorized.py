@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
-from models.responses import AuthorizedResponse, ForbiddenResponse, UnauthorizedResponse
 from log import get_logger
+from models.responses import AuthorizedResponse, ForbiddenResponse, UnauthorizedResponse
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["authorized"])

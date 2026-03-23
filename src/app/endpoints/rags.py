@@ -11,6 +11,7 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from log import get_logger
 from models.config import Action, ByokRag
 from models.responses import (
     ForbiddenResponse,
@@ -22,7 +23,6 @@ from models.responses import (
     UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
-from log import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["rags"])

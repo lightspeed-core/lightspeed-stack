@@ -63,18 +63,18 @@ Download a local embedding model such as `sentence-transformers/all-mpnet-base-v
 
 ## Automatic Configuration Enrichment
 
-For users with BYOK or OKP/Solr configurations, you can automatically enrich your `run.yaml` file using the `llama_stack_configuration.py` script:
+For users with BYOK or OKP configurations, you can automatically enrich your `run.yaml` file using the `llama_stack_configuration.py` script:
 
 ```bash
-# Enrich run.yaml with BYOK and/or Solr configurations from lightspeed-stack.yaml
+# Enrich run.yaml with BYOK and/or OKP configurations from lightspeed-stack.yaml
 uv run src/llama_stack_configuration.py -c lightspeed-stack.yaml -i run.yaml -o run_enriched.yaml
 ```
 
 This script automatically adds the necessary:
 - **Storage backends** for BYOK vector databases
-- **Vector IO providers** for BYOK and Solr
+- **Vector IO providers** for BYOK and OKP
 - **Vector stores** and **embedding models** registration
-- **Solr provider configuration** when `okp` is enabled in your RAG configuration
+- **OKP provider configuration** when `okp` is enabled in your RAG configuration
 
 The script reads your `lightspeed-stack.yaml` configuration and enriches a base `run.yaml` file with all required Llama Stack sections, eliminating the need to manually configure complex vector store setups.
 
@@ -295,12 +295,12 @@ Currently, tool calling is not supported out of the box. Some experimental patch
 
 The RAG tool calls where not working properly when experimenting with `mistralai/Mistral-7B-Instruct-v0.3` on vLLM.
 
-### Solr Vector IO
+### OKP/Solr Vector IO
 
 The OKP (Offline Knowledge Portal) Solr Vector IO is a read-only vector search provider that integrates with Apache Solr for enhanced vector search capabilities. It enables retrieving contextual information from Solr-indexed Red Hat documents to enhance query responses with support for hybrid search and chunk window expansion.
 
 
-#### How to Enable Solr Vector IO
+#### How to Enable OKP/Solr Vector IO
 
 **1. Configure Lightspeed Stack (`lightspeed-stack.yaml`):**
 
@@ -312,9 +312,12 @@ rag:
     - okp               # expose OKP as the file_search tool
 
 okp:
+  rhokp_url: ${env.RH_SERVER_OKP}   # OKP base URL (env var or literal URL)
   offline: true         # true = use parent_id for source URLs (offline mode)
                         # false = use reference_url (online mode)
 ```
+
+Set `rhokp_url` to the base URL of your OKP server. Use `${env.RH_SERVER_OKP}` to read the URL from the environment; when omitted or empty, a default from the application constants is used.
 
 > [!NOTE]
 > When `okp` is listed in `rag.inline` or `rag.tool`, Lightspeed Stack automatically enriches
@@ -344,11 +347,12 @@ curl -sX POST http://localhost:8080/v1/query \
 **Query Filtering:**
 
 To further filter the OKP context, set the `chunk_filter_query` field in the `okp` section of
-`lightspeed-stack.yaml`. Filters follow the Solr key:value format and are applied as a static
+`lightspeed-stack.yaml`. Filters follow the OKP key:value format and are applied as a static
 `fq` parameter on every OKP search request.
 
 ```yaml
 okp:
+  rhokp_url: ${env.RH_SERVER_OKP}
   chunk_filter_query: "product:*openshift*"
 ```
 
@@ -357,8 +361,8 @@ okp:
 
 **Prerequisites:**
 
-- Solr must be running and accessible at the configured URL
-  for instructions on how to pull and run the OKP Solr image visit: https://github.com/lightspeed-core/lightspeed-providers/lightspeed_stack_providers/providers/remote/solr_vector_io/solr_vector_io/README.md
+- The OKP server must be running and accessible at the URL given in `okp.rhokp_url` (or `${env.RH_SERVER_OKP}`).
+  For instructions on how to pull and run the OKP image, visit: https://github.com/lightspeed-core/lightspeed-providers/lightspeed_stack_providers/providers/remote/solr_vector_io/solr_vector_io/README.md
 
 
 **Chunk volume:**
