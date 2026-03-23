@@ -677,7 +677,6 @@ class ResponsesRequest(BaseModel):
             configured shields are used.
         solr: LCORE-specific Solr vector_io provider query parameters (e.g. filter
             queries). Optional.
-        no_tools: Whether to disable tool RAG. Defaults to False.
     """
 
     input: ResponseInput
@@ -704,7 +703,6 @@ class ResponsesRequest(BaseModel):
     generate_topic_summary: Optional[bool] = True
     shield_ids: Optional[list[str]] = None
     solr: Optional[dict[str, Any]] = None
-    no_tools: Optional[bool] = False
 
     model_config = {
         "extra": "forbid",

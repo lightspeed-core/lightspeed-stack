@@ -241,7 +241,7 @@ async def responses_endpoint_handler(
             query=input_text,
             vector_store_ids=vector_store_ids,
             solr=responses_request.solr,
-            no_tools=responses_request.no_tools or False,
+            no_tools=responses_request.tool_choice is None,
         ),
     )
     if moderation_result.decision == "passed":
