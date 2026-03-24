@@ -72,6 +72,7 @@ dependencies = [
     "jinja2>=3.1.0",
     # To be able to fix multiple CVEs, also LCORE-1117
     "requests>=2.33.0",
+    "pypdf>=6.9.2",
 ]
 
 
