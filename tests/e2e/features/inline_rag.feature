@@ -1,9 +1,9 @@
-@InlineRAG
 Feature: Inline RAG (BYOK) support tests
 
   Background:
     Given The service is started locally
       And REST API service prefix is /v1
+      And The service uses the lightspeed-stack-inline-rag.yaml configuration
 
   Scenario: Check if inline RAG source is registered
     Given The system is in default state
