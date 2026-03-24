@@ -59,7 +59,7 @@ jinja2==3.1.6
     # via uv-dynamic-versioning
 markupsafe==3.0.3
     # via jinja2
-maturin==1.10.2
+maturin==1.12.6
     # via fastuuid
 packaging==26.0
     # via

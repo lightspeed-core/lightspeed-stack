@@ -149,11 +149,6 @@ pandas==2.3.3 \
     --hash=sha256:e3a18fae723b808514670a4a0172f9939cdbb095abd5eef1f34cf5ae1b99f424
 peft==0.18.1 \
     --hash=sha256:026817e68c93fcc0569360afa0ee4fb74b06b0a4268240f922bc2bc0a691bcc1
-pillow==12.1.1 \
-    --hash=sha256:58c0a6787ac12753fba61035713f939f33946c970fe48a5756ed1a36c22d2e79 \
-    --hash=sha256:98ab177b9de8751ec5b1dbb7597b45c7edc358f7e16e5764ae93c976c6433f9f \
-    --hash=sha256:dd45829dc58e931ebef6a4b7eb122efef838a8d37848d5ec857a79d4c7e8f543 \
-    --hash=sha256:fcf5fa3497ec5c32843367d1133bc6b6d273e82d2fc86cd6d309cc09e7e457cf
 prometheus-client==0.24.1 \
     --hash=sha256:fe601e041eac55bad8f46da2f3c54f2ab6cd8a8272d9595742c83980e95ed5e4
 prompt-toolkit==3.0.52 \
