@@ -25,6 +25,7 @@ providers:
       api_key: ${env.AZURE_API_KEY}
       base_url: https://ols-test.openai.azure.com/openai/v1
       api_version: 2024-02-15-preview
+      allowed_models: ["gpt-4o-mini"]
   - provider_id: openai
     provider_type: remote::openai
     config:
