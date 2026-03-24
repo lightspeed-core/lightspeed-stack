@@ -338,7 +338,6 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
 
     # Build x-llamastack-provider-data header from MCP tool headers
     extra_headers = _build_provider_data_headers(tools)
-
     return ResponsesApiParams(
         input=input_text,
         model=model,
@@ -1000,8 +999,8 @@ async def check_model_configured(
         for model in models:
             if model.id == model_id:
                 return True
-            # Workaround to llama-stack bug
-            # TODO(are-ces): fix upstream
+            
+            # Workaround to llama-stack watsonx bug
             if model_id.startswith("watsonx/") and model.id == model_id.removeprefix(
                 "watsonx/"
             ):
@@ -1080,6 +1079,14 @@ async def select_model_for_responses(
 
     model = llm_models[0]
     logger.info("Selected first LLM model: %s", model.id)
+
+    # Workaround to llama-stack bug for watsonx
+    # model needs to be "watsonx/<model_id>" in the response request
+    metadata = model.custom_metadata or {}
+    if metadata.get("provider_id") == "watsonx":
+        provider_resource_id = metadata.get("provider_resource_id")
+        if isinstance(provider_resource_id, str):
+            return provider_resource_id
     return model.id
 
 
