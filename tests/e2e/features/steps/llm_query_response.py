@@ -150,6 +150,19 @@ def check_rag_chunks_present(context: Context) -> None:
     ), "rag_chunks is empty — inline RAG did not inject any chunks"
 
 
+@then("The response should contain non-empty referenced_documents")
+def check_referenced_documents_present(context: Context) -> None:
+    """Check that the response contains non-empty referenced_documents."""
+    assert context.response is not None
+    response_json = context.response.json()
+    assert (
+        "referenced_documents" in response_json
+    ), "referenced_documents field missing from response"
+    assert (
+        len(response_json["referenced_documents"]) > 0
+    ), "referenced_documents is empty — no documents were referenced"
+
+
 @then("The response should contain following fragments")
 def check_fragments_in_response(context: Context) -> None:
     """Check that all specified fragments are present in the LLM response.

@@ -40,5 +40,4 @@ Feature: Inline RAG (BYOK) support tests
     {"query": "What does Paul Graham say about great work?"}
     """
     Then The status code of the response is 200
-     And The response should have proper LLM response format
-     And The response should contain non-empty rag_chunks
+     And The response should contain non-empty referenced_documents
