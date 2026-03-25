@@ -260,6 +260,12 @@ jobs:
             exit 1
           }
 
+      # Wait for watsonx library mode to finish before running server mode
+      # watsonx has a rate limit of 2 calls / second
+      - name: Wait for watsonx library mode to finish
+        if: matrix.environment == 'watsonx' && matrix.mode == 'server'
+        run: sleep 2400  # 40 minutes
+
       # watsonx has a different convention than "<provider>/<model>"
       - name: Set watsonx test overrides
         if: matrix.environment == 'watsonx'
