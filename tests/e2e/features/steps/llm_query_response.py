@@ -176,7 +176,21 @@ def check_fragments_in_response(context: Context) -> None:
     """
     assert context.response is not None
     response_json = context.response.json()
-    response = response_json["response"]
+
+    # Support both query endpoint format (response field) and responses API format (output array)
+    if "response" in response_json:
+        response = response_json["response"]
+    else:
+        # Responses API format: extract text from output messages
+        response = " ".join(
+            part.get("text", "")
+            for item in response_json.get("output", [])
+            if item.get("type") == "message"
+            for part in (
+                item.get("content") if isinstance(item.get("content"), list) else []
+            )
+            if part.get("type") == "output_text"
+        )
 
     assert context.table is not None, "Fragments are not specified in table"
 
