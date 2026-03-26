@@ -8,6 +8,7 @@ from functools import cached_property
 from pathlib import Path
 from re import Pattern
 from typing import Any, Literal, Optional, Self
+from urllib.parse import urlparse
 
 import jsonpath_ng
 import yaml
@@ -233,6 +234,31 @@ class ProxyConfiguration(ConfigurationBase):
         description="Comma-separated list of hostnames or IP addresses that "
         "should bypass the proxy (e.g., localhost,127.0.0.1,.internal).",
     )
+
+    @field_validator("http_proxy", "https_proxy")
+    @classmethod
+    def validate_proxy_url(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that proxy URLs have a scheme and host.
+
+        Parameters:
+            v: Proxy URL string or None.
+
+        Returns:
+            The validated URL string, or None.
+
+        Raises:
+            ValueError: If the URL is missing a scheme or host.
+        """
+        if v is None:
+            return v
+        parsed = urlparse(v)
+        if not parsed.scheme:
+            raise ValueError(
+                f"Proxy URL '{v}' is missing a scheme (e.g., http:// or https://)"
+            )
+        if not parsed.hostname:
+            raise ValueError(f"Proxy URL '{v}' is missing a hostname")
+        return v
 
 
 class NetworkingConfiguration(ConfigurationBase):

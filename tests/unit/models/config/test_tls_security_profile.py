@@ -121,7 +121,22 @@ class TestProxyConfiguration:
         )
         assert proxy.http_proxy == "http://proxy:8080"
         assert proxy.https_proxy == "http://proxy:8080"
-        assert proxy.no_proxy == "localhost,127.0.0.1"
+
+    def test_invalid_proxy_url_no_scheme(self) -> None:
+        """Test that proxy URL without scheme is rejected."""
+        with pytest.raises(ValueError, match="missing a scheme"):
+            ProxyConfiguration(http_proxy="://proxy:8080")
+
+    def test_invalid_proxy_url_no_host(self) -> None:
+        """Test that proxy URL without hostname is rejected."""
+        with pytest.raises(ValueError, match="missing a hostname"):
+            ProxyConfiguration(https_proxy="http://")
+
+    def test_valid_proxy_url_with_path(self) -> None:
+        """Test that proxy URL with path is accepted."""
+        proxy = ProxyConfiguration(https_proxy="http://proxy:8080/path")
+        assert proxy.https_proxy == "http://proxy:8080/path"
+        assert proxy.no_proxy is None
 
 
 class TestNetworkingConfiguration:
