@@ -229,5 +229,5 @@ app_routes_paths = [
 # RestApiMetricsMiddleware (registered last) is outermost.  This ensures metrics
 # always observe a status code — including 500s synthesised by the exception
 # middleware — rather than seeing a raw exception with no response.
-app.add_middleware(GlobalExceptionMiddleware)
+#app.add_middleware(GlobalExceptionMiddleware)
 app.add_middleware(RestApiMetricsMiddleware)

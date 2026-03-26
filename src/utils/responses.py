@@ -27,6 +27,9 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseInputToolChoice as ToolChoice,
 )
 from llama_stack_api.openai_responses import (
+    OpenAIResponseInputToolChoiceAllowedTools as AllowedTools,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
 )
 from llama_stack_api.openai_responses import (
@@ -415,6 +418,55 @@ def extract_vector_store_ids_from_tools(
         if tool.type == "file_search":
             vector_store_ids.extend(tool.vector_store_ids)
     return vector_store_ids
+
+
+def _tool_matches_allowed_entry(tool: InputTool, entry: dict[str, str]) -> bool:
+    """Return True if the tool satisfies every key in the allowlist entry.
+
+    ``OpenAIResponseInputToolChoiceAllowedTools.tools`` entries use string keys
+    and values (e.g. ``type``, ``server_label``, ``name``); each must match the
+    corresponding attribute on the tool.
+
+    Parameters:
+        tool: A configured input tool.
+        entry: One allowlist entry from ``allowed_tools.tools``.
+
+    Returns:
+        True if all entry keys match the tool.
+    """
+    for key, value in entry.items():
+        if not hasattr(tool, key):
+            return False
+        attr = getattr(tool, key)
+        if attr is None:
+            return False
+        if attr != value and str(attr) != value:
+            return False
+    return True
+
+
+def filter_tools_by_allowed_entries(
+    tools: list[InputTool],
+    allowed_entries: list[dict[str, str]],
+) -> list[InputTool]:
+    """Keep tools that match at least one allowlist entry.
+
+    If ``allowed_entries`` is empty, no tools are kept (strict allowlist).
+
+    Parameters:
+        tools: Tools to filter (typically after translation / preparation).
+        allowed_entries: Entries from ``OpenAIResponseInputToolChoiceAllowedTools.tools``.
+
+    Returns:
+        A sublist of ``tools`` matching the allowlist.
+    """
+    if not allowed_entries:
+        return []
+    return [
+        t
+        for t in tools
+        if any(_tool_matches_allowed_entry(t, e) for e in allowed_entries)
+    ]
 
 
 def resolve_vector_store_ids(
@@ -1332,10 +1384,19 @@ async def resolve_tool_choice(
 ) -> tuple[Optional[list[InputTool]], Optional[ToolChoice], Optional[list[str]]]:
     """Resolve tools and tool_choice for the Responses API.
 
-    If the request includes tools, uses them as-is and derives vector_store_ids
-    from tool configs; otherwise loads tools via prepare_tools (using all
-    configured vector stores) and honors tool_choice "none" via the no_tools
-    flag. When no tools end up configured, tool_choice is cleared to None.
+    If ``tool_choice`` is ``none``, always returns ``(None, None, None)`` — no
+    tools are sent to Llama Stack, even when the request included explicit
+    ``tools`` (e.g. file_search).
+
+    If ``tool_choice`` is ``allowed_tools``, it is rewritten for downstream
+    services: tools are filtered to those matching the allowlist entries, and
+    ``tool_choice`` becomes ``auto`` or ``required`` per the allowlist ``mode``.
+
+    If the request includes tools and tool_choice is not ``none``, uses them
+    (after allowlist filtering) and derives vector_store_ids from the prepared
+    tools; otherwise loads tools via prepare_tools (using all configured vector
+    stores), then applies allowlist filtering when present. When no tools end
+    up configured, tool_choice is cleared to None.
 
     Args:
         tools: Tools from the request, or None to use LCORE-configured tools.
@@ -1349,35 +1410,46 @@ async def resolve_tool_choice(
         prepared_tools is the list of tools to use, or None if none configured;
         prepared_tool_choice is the resolved tool choice, or None when there
         are no tools; vector_store_ids is extracted from tools (in user-facing format)
-        when provided, otherwise None.
+        when provided, otherwise None (also None when tool_choice is ``none``).
     """
+    if isinstance(tool_choice, ToolChoiceMode) and tool_choice == ToolChoiceMode.none:
+        return None, None, None
+
+    allowed_filters: Optional[list[dict[str, str]]] = None
+    if isinstance(tool_choice, AllowedTools):
+        allowed_filters = tool_choice.tools
+        tool_choice = ToolChoiceMode(tool_choice.mode)
+
     prepared_tools: Optional[list[InputTool]] = None
-    client = AsyncLlamaStackClientHolder().get_client()
     if tools:  # explicitly specified in request
-        # Per-request override of vector stores (user-facing rag_ids)
-        vector_store_ids = extract_vector_store_ids_from_tools(tools)
-        # Translate user-facing rag_ids to llama-stack vector_store_ids in each file_search tool
         byok_rags = configuration.configuration.byok_rag
         prepared_tools = translate_tools_vector_store_ids(tools, byok_rags)
+        if allowed_filters is not None:
+            prepared_tools = filter_tools_by_allowed_entries(
+                prepared_tools, allowed_filters
+            )
+        if not prepared_tools:
+            return None, None, None
+        vector_store_ids_list = extract_vector_store_ids_from_tools(prepared_tools)
+        vector_store_ids = vector_store_ids_list if vector_store_ids_list else None
         prepared_tool_choice = tool_choice or ToolChoiceMode.auto
     else:
-        # Vector stores were not overwritten in request, use all configured vector stores
         vector_store_ids = None
-        # Get all tools configured in LCORE (returns None or non-empty list)
-        no_tools = (
-            isinstance(tool_choice, ToolChoiceMode)
-            and tool_choice == ToolChoiceMode.none
-        )
-        # Vector stores are prepared in llama-stack format
+        client = AsyncLlamaStackClientHolder().get_client()
         prepared_tools = await prepare_tools(
             client=client,
-            vector_store_ids=vector_store_ids,  # allow all configured vector stores
-            no_tools=no_tools,
+            vector_store_ids=vector_store_ids,
+            no_tools=False,
             token=token,
             mcp_headers=mcp_headers,
             request_headers=request_headers,
         )
-        # If there are no tools, tool_choice cannot be set at all - LLS implicit behavior
+        if allowed_filters is not None and prepared_tools:
+            prepared_tools = filter_tools_by_allowed_entries(
+                prepared_tools, allowed_filters
+            )
+        if not prepared_tools:
+            prepared_tools = None
         prepared_tool_choice = tool_choice if prepared_tools else None
 
     return prepared_tools, prepared_tool_choice, vector_store_ids

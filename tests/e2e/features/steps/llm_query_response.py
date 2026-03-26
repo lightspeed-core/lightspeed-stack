@@ -2,6 +2,7 @@
 
 import json
 import os
+from typing import Any, cast
 
 import requests
 from behave import step, then  # pyright: ignore[reportAttributeAccessIssue]
@@ -11,6 +12,73 @@ from tests.e2e.utils.utils import replace_placeholders
 
 # Longer timeout for Prow/OpenShift with CPU-based vLLM
 DEFAULT_LLM_TIMEOUT = 180 if os.getenv("RUNNING_PROW") else 60
+
+# Responses API ``output`` item types that indicate tool listing or invocation.
+_RESPONSE_TOOL_OUTPUT_ITEM_TYPES = frozenset(
+    {
+        "file_search_call",
+        "mcp_call",
+        "mcp_list_tools",
+        "function_call",
+        "web_search_call",
+    }
+)
+
+
+def _collect_output_item_types(response_body: dict[str, Any]) -> list[str]:
+    """Collect ``type`` from each top-level ``output`` item in a Responses API JSON body."""
+    output = cast(list[dict[str, Any]], response_body["output"])
+    return [item["type"] for item in output]
+
+
+@then("The responses output should not include any tool invocation item types")
+def responses_output_should_not_include_tool_items(context: Context) -> None:
+    """Assert no tool-related items appear in the Responses JSON ``output`` array."""
+    assert context.response is not None, "Request needs to be performed first"
+    response_json = cast(dict[str, Any], context.response.json())
+    types_found = _collect_output_item_types(response_json)
+    bad = [t for t in types_found if t in _RESPONSE_TOOL_OUTPUT_ITEM_TYPES]
+    assert not bad, (
+        "Expected no tool-related output items, but found types "
+        f"{bad!r} among all output types {types_found!r}"
+    )
+
+
+@then('The responses output should include an item with type "{item_type}"')
+def responses_output_should_include_item_type(context: Context, item_type: str) -> None:
+    """Assert at least one ``output`` item has the given ``type``."""
+    assert context.response is not None, "Request needs to be performed first"
+    response_json = cast(dict[str, Any], context.response.json())
+    types_found = _collect_output_item_types(response_json)
+    assert item_type in types_found, (
+        f"Expected output item type {item_type!r} not found; "
+        f"had types {types_found!r}"
+    )
+
+
+@then('The responses output should not include an item with type "{item_type}"')
+def responses_output_should_not_include_item_type(context: Context, item_type: str) -> None:
+    """Assert no ``output`` item has the given ``type``."""
+    assert context.response is not None, "Request needs to be performed first"
+    response_json = cast(dict[str, Any], context.response.json())
+    types_found = _collect_output_item_types(response_json)
+    assert item_type not in types_found, (
+        f"Expected output item type {item_type!r} to be absent; "
+        f"but found types {types_found!r}"
+    )
+
+
+@then("The responses output should include an item with one of these types")
+def responses_output_should_include_one_of_types(context: Context) -> None:
+    """Assert at least one output item type matches a row in the scenario table."""
+    assert context.response is not None, "Request needs to be performed first"
+    assert context.table is not None, "Table with column 'item type' is required"
+    allowed = [row["item type"].strip() for row in context.table]
+    response_json = cast(dict[str, Any], context.response.json())
+    types_found = _collect_output_item_types(response_json)
+    assert any(
+        a in types_found for a in allowed
+    ), f"Expected at least one of {allowed!r} in output types {types_found!r}"
 
 
 @step("I wait for the response to be completed")
@@ -134,6 +202,28 @@ def check_llm_response_not_truncated(context: Context) -> None:
     assert context.response is not None
     response_json = context.response.json()
     assert response_json["truncated"] is False
+
+
+@then("The responses output_text should contain following fragments")
+def check_fragments_in_responses_output_text(context: Context) -> None:
+    """Check that fragments from the scenario table appear in JSON ``output_text``.
+
+    Used for POST ``/v1/responses`` (query endpoint uses the ``response`` field).
+    """
+    assert context.response is not None, "Request needs to be performed first"
+    response_json = context.response.json()
+    assert (
+        "output_text" in response_json
+    ), f"Expected 'output_text' in JSON body, got keys: {list(response_json.keys())}"
+    output_text = response_json["output_text"]
+
+    assert context.table is not None, "Fragments are not specified in table"
+
+    for fragment in context.table:
+        expected = fragment["Fragments in LLM response"]
+        assert (
+            expected in output_text
+        ), f"Fragment '{expected}' not found in output_text: '{output_text}'"
 
 
 @then("The response should contain following fragments")

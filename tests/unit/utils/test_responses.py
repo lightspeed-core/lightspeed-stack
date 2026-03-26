@@ -4,15 +4,30 @@
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import pytest
 from fastapi import HTTPException
 from llama_stack_api.openai_responses import (
+    OpenAIResponseInputTool as InputTool,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseInputToolChoiceAllowedTools,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputToolFileSearch as InputToolFileSearch,
 )
 from llama_stack_api.openai_responses import (
+    OpenAIResponseInputToolFunction as InputToolFunction,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputToolMCP as InputToolMCP,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseInputToolWebSearch as InputToolWebSearch,
 )
 from llama_stack_api.openai_responses import (
     OpenAIResponseMCPApprovalRequest as MCPApprovalRequest,
@@ -54,6 +69,7 @@ from utils.responses import (
     extract_text_from_response_items,
     extract_token_usage,
     extract_vector_store_ids_from_tools,
+    filter_tools_by_allowed_entries,
     get_mcp_tools,
     get_rag_tools,
     get_topic_summary,
@@ -62,6 +78,7 @@ from utils.responses import (
     parse_referenced_documents,
     prepare_responses_params,
     prepare_tools,
+    resolve_tool_choice,
     resolve_vector_store_ids,
 )
 
@@ -861,6 +878,472 @@ class TestGetTopicSummary:
             await get_topic_summary("test question", mock_client, "model1")
 
 
+class TestResolveToolChoice:
+    """Tests for resolve_tool_choice (ToolChoiceMode, AllowedTools, explicit/implicit tools)."""
+
+    @staticmethod
+    def _passthrough_translate(mocker: MockerFixture) -> None:
+        mocker.patch(
+            "utils.responses.translate_tools_vector_store_ids",
+            side_effect=lambda t, _: t,
+        )
+
+    @pytest.mark.asyncio
+    async def test_tool_choice_none_clears_explicit_tools(
+        self, mocker: MockerFixture
+    ) -> None:
+        """ToolChoiceMode.none yields no tools even when the request listed tools."""
+        mock_get_client = mocker.patch(
+            "utils.responses.AsyncLlamaStackClientHolder.get_client"
+        )
+        tools = cast(
+            list[InputTool],
+            [InputToolFileSearch(vector_store_ids=["vs1"])],
+        )
+        prepared_tools, prepared_choice, vector_store_ids = await resolve_tool_choice(
+            tools,
+            ToolChoiceMode.none,
+            "token",
+        )
+        assert prepared_tools is None
+        assert prepared_choice is None
+        assert vector_store_ids is None
+        mock_get_client.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_tool_choice_none_without_explicit_tools_skips_client(
+        self, mocker: MockerFixture
+    ) -> None:
+        """ToolChoiceMode.none returns early without calling prepare_tools path."""
+        mock_get_client = mocker.patch(
+            "utils.responses.AsyncLlamaStackClientHolder.get_client"
+        )
+        mock_prepare = mocker.patch(
+            "utils.responses.prepare_tools",
+            new_callable=mocker.AsyncMock,
+        )
+        out = await resolve_tool_choice(None, ToolChoiceMode.none, "token")
+        assert out == (None, None, None)
+        mock_get_client.assert_not_called()
+        mock_prepare.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_explicit_tools_tool_choice_auto(self, mocker: MockerFixture) -> None:
+        """Explicit tools with ToolChoiceMode.auto pass through after BYOK translation."""
+        self._passthrough_translate(mocker)
+        tools = cast(
+            list[InputTool],
+            [InputToolFileSearch(vector_store_ids=["vs1"])],
+        )
+        prepared, choice, vs_ids = await resolve_tool_choice(
+            tools,
+            ToolChoiceMode.auto,
+            "token",
+        )
+        assert prepared is not None and prepared[0].type == "file_search"
+        assert choice == ToolChoiceMode.auto
+        assert vs_ids == ["vs1"]
+
+    @pytest.mark.asyncio
+    async def test_explicit_tools_tool_choice_required(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Explicit tools with ToolChoiceMode.required are preserved."""
+        self._passthrough_translate(mocker)
+        tools = cast(
+            list[InputTool],
+            [InputToolFileSearch(vector_store_ids=["vs1"])],
+        )
+        prepared, choice, _vs = await resolve_tool_choice(
+            tools,
+            ToolChoiceMode.required,
+            "token",
+        )
+        assert prepared is not None
+        assert choice == ToolChoiceMode.required
+
+    @pytest.mark.asyncio
+    async def test_explicit_tools_omitted_tool_choice_defaults_to_auto(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When tool_choice is None and tools are explicit, default is auto."""
+        self._passthrough_translate(mocker)
+        tools = cast(
+            list[InputTool],
+            [InputToolFileSearch(vector_store_ids=["vs1"])],
+        )
+        prepared, choice, _vs = await resolve_tool_choice(tools, None, "token")
+        assert prepared is not None
+        assert choice == ToolChoiceMode.auto
+
+    @pytest.mark.asyncio
+    async def test_allowed_tools_required_filters_explicit_to_file_search(
+        self, mocker: MockerFixture
+    ) -> None:
+        """AllowedTools mode=required filters to allowlist; vector_store_ids from result."""
+        self._passthrough_translate(mocker)
+        allowed = OpenAIResponseInputToolChoiceAllowedTools(
+            mode="required",
+            tools=[{"type": "file_search"}],
+        )
+        tools = cast(
+            list[InputTool],
+            [
+                InputToolFileSearch(vector_store_ids=["vs1"]),
+                InputToolMCP(server_label="s1", server_url="http://example.com"),
+            ],
+        )
+        prepared, choice, vs_ids = await resolve_tool_choice(tools, allowed, "token")
+        assert prepared is not None
+        assert len(prepared) == 1
+        assert prepared[0].type == "file_search"
+        assert choice == ToolChoiceMode.required
+        assert vs_ids == ["vs1"]
+
+    @pytest.mark.asyncio
+    async def test_allowed_tools_auto_explicit_same_filter(
+        self, mocker: MockerFixture
+    ) -> None:
+        """AllowedTools mode=auto maps to ToolChoiceMode.auto after filtering."""
+        self._passthrough_translate(mocker)
+        allowed = OpenAIResponseInputToolChoiceAllowedTools(
+            mode="auto",
+            tools=[{"type": "mcp", "server_label": "keep"}],
+        )
+        tools = cast(
+            list[InputTool],
+            [
+                InputToolMCP(server_label="keep", server_url="http://a"),
+                InputToolMCP(server_label="drop", server_url="http://b"),
+            ],
+        )
+        prepared, choice, vs_ids = await resolve_tool_choice(tools, allowed, "token")
+        assert prepared is not None and len(prepared) == 1
+        assert prepared[0].type == "mcp"
+        assert getattr(prepared[0], "server_label") == "keep"
+        assert choice == ToolChoiceMode.auto
+        assert vs_ids is None
+
+    @pytest.mark.asyncio
+    async def test_allowed_tools_no_match_returns_none_tuple(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When allowlist excludes all tools, return (None, None, None)."""
+        self._passthrough_translate(mocker)
+        allowed = OpenAIResponseInputToolChoiceAllowedTools(
+            mode="auto",
+            tools=[{"type": "mcp", "server_label": "other"}],
+        )
+        tools = cast(
+            list[InputTool],
+            [InputToolFileSearch(vector_store_ids=["vs1"])],
+        )
+        assert await resolve_tool_choice(tools, allowed, "token") == (None, None, None)
+
+    @pytest.mark.asyncio
+    async def test_allowed_tools_multiple_allowlist_entries_or_semantics(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Multiple allowlist rows match as OR: keep tools matching any entry."""
+        self._passthrough_translate(mocker)
+        allowed = OpenAIResponseInputToolChoiceAllowedTools(
+            mode="auto",
+            tools=[
+                {"type": "file_search"},
+                {"type": "mcp", "server_label": "b"},
+            ],
+        )
+        tools = cast(
+            list[InputTool],
+            [
+                InputToolFileSearch(vector_store_ids=["vs"]),
+                InputToolMCP(server_label="a", server_url="http://a"),
+                InputToolMCP(server_label="b", server_url="http://b"),
+            ],
+        )
+        prepared, _choice, _vs = await resolve_tool_choice(tools, allowed, "token")
+        assert prepared is not None
+        assert len(prepared) == 2
+        types = {t.type for t in prepared}
+        assert types == {"file_search", "mcp"}
+
+    @pytest.mark.asyncio
+    async def test_allowed_tools_function_tool_filtered_by_type_and_name(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Allowlist can target function tools by type and name."""
+        self._passthrough_translate(mocker)
+        allowed = OpenAIResponseInputToolChoiceAllowedTools(
+            mode="required",
+            tools=[{"type": "function", "name": "keep_fn"}],
+        )
+        tools = cast(
+            list[InputTool],
+            [
+                InputToolFunction(name="keep_fn", parameters={}),
+                InputToolFunction(name="drop_fn", parameters={}),
+            ],
+        )
+        prepared, choice, vs_ids = await resolve_tool_choice(tools, allowed, "token")
+        assert prepared is not None and len(prepared) == 1
+        assert getattr(prepared[0], "name") == "keep_fn"
+        assert choice == ToolChoiceMode.required
+        assert vs_ids is None
+
+    @pytest.mark.asyncio
+    async def test_allowed_tools_web_search_must_match_type_literal(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Web search variants only match if allowlist type matches tool.type exactly."""
+        self._passthrough_translate(mocker)
+        allowed = OpenAIResponseInputToolChoiceAllowedTools(
+            mode="auto",
+            tools=[{"type": "web_search"}],
+        )
+        tools = cast(
+            list[InputTool],
+            [
+                InputToolWebSearch(type="web_search"),
+                InputToolWebSearch(type="web_search_preview"),
+            ],
+        )
+        prepared, choice, _vs = await resolve_tool_choice(tools, allowed, "token")
+        assert prepared is not None and len(prepared) == 1
+        assert prepared[0].type == "web_search"
+        assert choice is not None and choice == ToolChoiceMode.auto
+
+    @pytest.mark.asyncio
+    async def test_implicit_tool_choice_auto_calls_prepare_tools(
+        self, mocker: MockerFixture
+    ) -> None:
+        """No explicit tools: ToolChoiceMode.auto uses prepare_tools output."""
+        fs = InputToolFileSearch(vector_store_ids=["vs1"])
+        mocker.patch(
+            "utils.responses.prepare_tools",
+            new_callable=mocker.AsyncMock,
+            return_value=[fs],
+        )
+        mock_get_client = mocker.patch(
+            "utils.responses.AsyncLlamaStackClientHolder.get_client"
+        )
+        prepared, choice, vs_ids = await resolve_tool_choice(
+            None,
+            ToolChoiceMode.auto,
+            "token",
+        )
+        assert prepared == [fs]
+        assert choice == ToolChoiceMode.auto
+        assert vs_ids is None
+        mock_get_client.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_implicit_tool_choice_required_calls_prepare_tools(
+        self, mocker: MockerFixture
+    ) -> None:
+        """No explicit tools: ToolChoiceMode.required passes through when tools exist."""
+        fs = InputToolFileSearch(vector_store_ids=["vs1"])
+        mocker.patch(
+            "utils.responses.prepare_tools",
+            new_callable=mocker.AsyncMock,
+            return_value=[fs],
+        )
+        mocker.patch("utils.responses.AsyncLlamaStackClientHolder.get_client")
+        prepared, choice, _vs = await resolve_tool_choice(
+            None,
+            ToolChoiceMode.required,
+            "token",
+        )
+        assert prepared == [fs]
+        assert choice == ToolChoiceMode.required
+
+    @pytest.mark.asyncio
+    async def test_implicit_prepare_tools_returns_none_clears_tool_choice(
+        self, mocker: MockerFixture
+    ) -> None:
+        """When prepare_tools returns None, tool_choice is cleared."""
+        mocker.patch(
+            "utils.responses.prepare_tools",
+            new_callable=mocker.AsyncMock,
+            return_value=None,
+        )
+        mocker.patch("utils.responses.AsyncLlamaStackClientHolder.get_client")
+        prepared, choice, vs_ids = await resolve_tool_choice(
+            None,
+            ToolChoiceMode.auto,
+            "token",
+        )
+        assert prepared is None
+        assert choice is None
+        assert vs_ids is None
+
+    @pytest.mark.asyncio
+    async def test_allowed_tools_applies_after_prepare_tools(
+        self, mocker: MockerFixture
+    ) -> None:
+        """No explicit tools: AllowedTools filters prepare_tools output."""
+        fs = InputToolFileSearch(vector_store_ids=["vs1"])
+        mcp = InputToolMCP(server_label="s1", server_url="http://x")
+        mocker.patch(
+            "utils.responses.prepare_tools",
+            new_callable=mocker.AsyncMock,
+            return_value=[fs, mcp],
+        )
+        mock_get_client = mocker.patch(
+            "utils.responses.AsyncLlamaStackClientHolder.get_client"
+        )
+        allowed = OpenAIResponseInputToolChoiceAllowedTools(
+            mode="auto",
+            tools=[{"type": "mcp", "server_label": "s1"}],
+        )
+        prepared, choice, vs_ids = await resolve_tool_choice(
+            None,
+            allowed,
+            "token",
+        )
+        assert prepared is not None
+        assert len(prepared) == 1
+        assert prepared[0].type == "mcp"
+        assert choice == ToolChoiceMode.auto
+        assert vs_ids is None
+        mock_get_client.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_allowed_tools_implicit_required_mode_after_prepare(
+        self, mocker: MockerFixture
+    ) -> None:
+        """AllowedTools with mode=required after implicit prepare_tools."""
+        mcp = InputToolMCP(server_label="s1", server_url="http://x")
+        mocker.patch(
+            "utils.responses.prepare_tools",
+            new_callable=mocker.AsyncMock,
+            return_value=[mcp],
+        )
+        mocker.patch("utils.responses.AsyncLlamaStackClientHolder.get_client")
+        allowed = OpenAIResponseInputToolChoiceAllowedTools(
+            mode="required",
+            tools=[{"type": "mcp"}],
+        )
+        _prepared, choice, _vs = await resolve_tool_choice(None, allowed, "token")
+        assert choice == ToolChoiceMode.required
+
+
+class TestFilterToolsByAllowedEntries:
+    """Tests for filter_tools_by_allowed_entries (per-type matching)."""
+
+    def test_file_search_type_only_keeps_all_file_search(self) -> None:
+        """One entry ``{type: file_search}`` keeps every file_search tool."""
+        tools = cast(
+            list[InputTool],
+            [
+                InputToolFileSearch(vector_store_ids=["a"]),
+                InputToolFileSearch(vector_store_ids=["b"]),
+            ],
+        )
+        out = filter_tools_by_allowed_entries(tools, [{"type": "file_search"}])
+        assert len(out) == 2
+
+    def test_empty_allowlist_keeps_nothing(self) -> None:
+        """Empty allowlist removes every tool."""
+        tools = cast(
+            list[InputTool],
+            [InputToolFileSearch(vector_store_ids=["a"])],
+        )
+        assert filter_tools_by_allowed_entries(tools, []) == []
+
+    def test_mcp_type_only_matches_all_mcp_tools(self) -> None:
+        """``{type: mcp}`` keeps every MCP tool regardless of server_label."""
+        tools = cast(
+            list[InputTool],
+            [
+                InputToolMCP(server_label="a", server_url="http://a"),
+                InputToolMCP(server_label="b", server_url="http://b"),
+            ],
+        )
+        out = filter_tools_by_allowed_entries(tools, [{"type": "mcp"}])
+        assert len(out) == 2
+
+    def test_mcp_type_and_server_label_specific(self) -> None:
+        """Restrict to one MCP server using type + server_label."""
+        tools = cast(
+            list[InputTool],
+            [
+                InputToolMCP(server_label="keep", server_url="http://a"),
+                InputToolMCP(server_label="other", server_url="http://b"),
+            ],
+        )
+        out = filter_tools_by_allowed_entries(
+            tools,
+            [{"type": "mcp", "server_label": "keep"}],
+        )
+        assert len(out) == 1
+        assert getattr(out[0], "server_label") == "keep"
+
+    def test_function_type_and_name(self) -> None:
+        """Function tools match on type and name."""
+        tools = cast(
+            list[InputTool],
+            [
+                InputToolFunction(name="fn_a", parameters={}),
+                InputToolFunction(name="fn_b", parameters={}),
+            ],
+        )
+        out = filter_tools_by_allowed_entries(
+            tools,
+            [{"type": "function", "name": "fn_b"}],
+        )
+        assert len(out) == 1
+        assert getattr(out[0], "name") == "fn_b"
+
+    def test_web_search_type_literal_must_match(self) -> None:
+        """web_search vs web_search_preview require distinct allowlist entries."""
+        tools = cast(
+            list[InputTool],
+            [
+                InputToolWebSearch(type="web_search"),
+                InputToolWebSearch(type="web_search_preview"),
+            ],
+        )
+        out = filter_tools_by_allowed_entries(
+            tools,
+            [{"type": "web_search_preview"}],
+        )
+        assert len(out) == 1
+        assert out[0].type == "web_search_preview"
+
+    def test_multiple_allowlist_entries_or_semantics(self) -> None:
+        """A tool is kept if it matches any allowlist entry."""
+        tools = cast(
+            list[InputTool],
+            [
+                InputToolFileSearch(vector_store_ids=["x"]),
+                InputToolMCP(server_label="m", server_url="http://m"),
+            ],
+        )
+        out = filter_tools_by_allowed_entries(
+            tools,
+            [
+                {"type": "function", "name": "nope"},
+                {"type": "mcp", "server_label": "m"},
+            ],
+        )
+        assert len(out) == 1
+        assert out[0].type == "mcp"
+
+    def test_no_entry_matches_returns_empty(self) -> None:
+        """When no tool satisfies any entry, result is empty."""
+        tools = cast(
+            list[InputTool],
+            [InputToolFileSearch(vector_store_ids=["a"])],
+        )
+        assert (
+            filter_tools_by_allowed_entries(
+                tools,
+                [{"type": "mcp", "server_label": "only"}],
+            )
+            == []
+        )
+
+
 class TestPrepareTools:
     """Tests for prepare_tools function."""
 
@@ -1404,9 +1887,9 @@ class TestPrepareResponsesParams:
 
         # The result should contain extra_headers with x-llamastack-provider-data
         dumped = result.model_dump()
-        assert (
-            dumped["extra_headers"] is not None
-        ), "extra_headers should not be None when MCP tools have headers"
+        assert dumped["extra_headers"] is not None, (
+            "extra_headers should not be None when MCP tools have headers"
+        )
         assert "x-llamastack-provider-data" in dumped["extra_headers"]
 
         provider_data = json.loads(

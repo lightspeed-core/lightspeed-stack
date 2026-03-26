@@ -234,7 +234,7 @@ async def responses_endpoint_handler(
         request.headers,
     )
 
-    # Build RAG context from Inline RAG sources
+    #Build RAG context from Inline RAG sources
     inline_rag_context = await build_rag_context(
         client,
         moderation_result.decision,
@@ -242,6 +242,7 @@ async def responses_endpoint_handler(
         vector_store_ids,
         responses_request.solr,
     )
+
     if moderation_result.decision == "passed":
         responses_request.input = append_inline_rag_context_to_responses_input(
             responses_request.input, inline_rag_context.context_text
@@ -662,6 +663,7 @@ async def handle_non_streaming_response(
             )
     else:
         try:
+            print("API Params: ", api_params.model_dump(exclude_none=True))
             api_response = cast(
                 OpenAIResponseObject,
                 await client.responses.create(
