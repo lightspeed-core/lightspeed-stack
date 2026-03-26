@@ -158,6 +158,7 @@ Global service configuration.
 | service |  | This section contains Lightspeed Core Stack service configuration. |
 | llama_stack |  | This section contains Llama Stack configuration. Lightspeed Core Stack service can call Llama Stack in library mode or in server mode. |
 | user_data_collection |  | This section contains configuration for subsystem that collects user data(transcription history and feedbacks). |
+| networking |  | Configuration for outgoing network connections, including proxy settings, TLS security profiles, and custom CA certificates. |
 | database |  | Configuration for database to store conversation IDs and other runtime data |
 | mcp_servers | array | MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Servers can also be registered dynamically at runtime via the `POST /v1/mcp-servers` API endpoint. Only MCP servers defined in lightspeed-stack.yaml or registered via the API are available to the agents. Tools configured in the llama-stack run.yaml are not accessible to lightspeed-core agents. |
 | authentication |  | Authentication configuration |
@@ -381,6 +382,25 @@ Useful resources:
 | timeout | integer | Timeout in seconds for requests to the MCP server. If not specified, the default timeout from Llama Stack will be used. Note: This field is reserved for future use when Llama Stack adds timeout support. |
 
 
+## NetworkingConfiguration
+
+
+Networking configuration for outgoing connections.
+
+Central configuration for all outgoing network connections from the
+Lightspeed Stack, including proxy settings, TLS security profiles,
+and custom CA certificates. These settings apply to connections to
+Llama Stack, MCP servers, Splunk, and other external services.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| proxy |  | HTTP proxy settings for outgoing connections. |
+| tls_security_profile |  | TLS security settings for outgoing connections. |
+| extra_ca | array | List of paths to additional CA certificate files to trust. |
+| certificate_directory | string | Directory where the merged CA bundle will be stored. |
+
+
 ## OkpConfiguration
 
 
@@ -424,6 +444,23 @@ Useful resources:
 | ssl_mode | string | SSL mode |
 | gss_encmode | string | This option determines whether or with what priority a secure GSS TCP/IP connection will be negotiated with the server. |
 | ca_cert_path | string | Path to CA certificate |
+
+
+## ProxyConfiguration
+
+
+HTTP proxy configuration for outgoing connections.
+
+Configures proxy settings for all outgoing HTTP/HTTPS traffic from the
+Lightspeed Stack. When set, these values take precedence over the
+HTTP_PROXY/HTTPS_PROXY/NO_PROXY environment variables.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| http_proxy | string | Proxy URL for HTTP connections (e.g., http://proxy:8080). |
+| https_proxy | string | Proxy URL for HTTPS connections (e.g., http://proxy:8080). |
+| no_proxy | string | Comma-separated list of hostnames or IPs that should bypass the proxy. |
 
 
 ## QuotaHandlersConfiguration
@@ -613,6 +650,25 @@ Useful resources:
 | tls_certificate_path | string | SSL/TLS certificate file path for HTTPS support. |
 | tls_key_path | string | SSL/TLS private key file path for HTTPS support. |
 | tls_key_password | string | Path to file containing the password to decrypt the SSL/TLS private key. |
+
+
+## TLSSecurityProfile
+
+
+TLS security profile for outgoing connections.
+
+Configures TLS security settings for outgoing HTTP connections. Supports
+OpenShift-compatible predefined profiles and a Custom profile with
+user-defined settings.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string | TLS profile type: OldType, IntermediateType, ModernType, or Custom. |
+| minTLSVersion | string | Minimum TLS version: VersionTLS10 through VersionTLS13. |
+| ciphers | array | List of allowed cipher suites. |
+| caCertPath | string | Path to CA certificate file for verifying server certificates. |
+| skipTLSVerification | boolean | Skip TLS verification (testing only, insecure). |
 
 
 ## UserDataCollection

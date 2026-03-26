@@ -31,6 +31,7 @@ import constants
 from log import get_logger
 from utils import checks
 from utils.mcp_auth_headers import resolve_authorization_headers
+from utils.tls import TLS_CIPHERS, TLSProfiles, TLSProtocolVersion
 
 logger = get_logger(__name__)
 
@@ -86,6 +87,199 @@ class TLSConfiguration(ConfigurationBase):
             Self: The validated model instance.
         """
         return self
+
+
+class TLSSecurityProfile(ConfigurationBase):
+    """TLS security profile for outgoing connections.
+
+    Configures TLS security settings for outgoing HTTP connections (to LLM
+    providers, MCP servers, Splunk, etc.). Supports OpenShift-compatible
+    predefined profiles (OldType, IntermediateType, ModernType) and a Custom
+    profile with user-defined settings.
+
+    Example configuration::
+
+        networking:
+          tls_security_profile:
+            type: ModernType
+            minTLSVersion: VersionTLS13
+
+    Useful resources:
+
+      - `OpenShift TLS Security Profiles
+        <https://docs.openshift.com/container-platform/latest/
+        security/tls-security-profiles.html>`_
+    """
+
+    profile_type: Optional[str] = Field(
+        None,
+        alias="type",
+        title="Profile type",
+        description="TLS profile type: OldType, IntermediateType, ModernType, or Custom.",
+    )
+
+    min_tls_version: Optional[str] = Field(
+        None,
+        alias="minTLSVersion",
+        title="Minimum TLS version",
+        description="Minimum TLS version: VersionTLS10, VersionTLS11, "
+        "VersionTLS12, VersionTLS13.",
+    )
+
+    ciphers: Optional[list[str]] = Field(
+        None,
+        title="Ciphers",
+        description="List of allowed cipher suites. When omitted, the profile "
+        "default ciphers are used. For Custom profiles, this is required.",
+    )
+
+    ca_cert_path: Optional[FilePath] = Field(
+        None,
+        alias="caCertPath",
+        title="CA certificate path",
+        description="Path to a CA certificate file for verifying server "
+        "certificates. Use this for interception proxies or internal CAs.",
+    )
+
+    skip_tls_verification: bool = Field(
+        False,
+        alias="skipTLSVerification",
+        title="Skip TLS verification",
+        description="Skip TLS certificate verification. Only use for testing — "
+        "this disables all certificate validation and is insecure.",
+    )
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    @model_validator(mode="after")
+    def check_tls_security_profile(self) -> Self:
+        """Validate TLS security profile configuration.
+
+        Checks that profile_type is a recognized TLS profile name,
+        min_tls_version is a recognized protocol version, and ciphers
+        are valid for the selected profile.
+
+        Returns:
+            Self: The validated model instance.
+
+        Raises:
+            ValueError: If any field contains an invalid value.
+        """
+        if self.profile_type is not None:
+            try:
+                profile = TLSProfiles(self.profile_type)
+            except ValueError as e:
+                valid = [p.value for p in TLSProfiles]
+                raise ValueError(
+                    f"Invalid TLS profile type '{self.profile_type}'. "
+                    f"Valid types: {valid}"
+                ) from e
+
+            # Validate ciphers against profile when not Custom
+            if self.ciphers is not None and profile != TLSProfiles.CUSTOM_TYPE:
+                supported = TLS_CIPHERS.get(profile, ())
+                for cipher in self.ciphers:
+                    if cipher not in supported:
+                        raise ValueError(
+                            f"Unsupported cipher '{cipher}' for profile "
+                            f"'{self.profile_type}'. "
+                            f"Use profile 'Custom' for arbitrary ciphers."
+                        )
+
+        if self.min_tls_version is not None:
+            try:
+                TLSProtocolVersion(self.min_tls_version)
+            except ValueError as e:
+                valid = [v.value for v in TLSProtocolVersion]
+                raise ValueError(
+                    f"Invalid TLS version '{self.min_tls_version}'. "
+                    f"Valid versions: {valid}"
+                ) from e
+
+        return self
+
+
+class ProxyConfiguration(ConfigurationBase):
+    """HTTP proxy configuration for outgoing connections.
+
+    Configures proxy settings for all outgoing HTTP/HTTPS traffic from the
+    Lightspeed Stack. When set, these values take precedence over the
+    HTTP_PROXY/HTTPS_PROXY/NO_PROXY environment variables.
+
+    Example configuration::
+
+        networking:
+          proxy:
+            https_proxy: http://proxy.corp.example.com:8080
+            no_proxy: localhost,127.0.0.1,.internal.corp
+    """
+
+    http_proxy: Optional[str] = Field(
+        None,
+        title="HTTP proxy URL",
+        description="Proxy URL for HTTP connections (e.g., http://proxy:8080).",
+    )
+
+    https_proxy: Optional[str] = Field(
+        None,
+        title="HTTPS proxy URL",
+        description="Proxy URL for HTTPS connections (e.g., http://proxy:8080). "
+        "This is typically the same as http_proxy.",
+    )
+
+    no_proxy: Optional[str] = Field(
+        None,
+        title="No-proxy list",
+        description="Comma-separated list of hostnames or IP addresses that "
+        "should bypass the proxy (e.g., localhost,127.0.0.1,.internal).",
+    )
+
+
+class NetworkingConfiguration(ConfigurationBase):
+    """Networking configuration for outgoing connections.
+
+    Central configuration for all outgoing network connections from the
+    Lightspeed Stack, including proxy settings, TLS security profiles,
+    and custom CA certificates. These settings apply to connections to
+    Llama Stack, MCP servers, Splunk, and other external services.
+
+    Example configuration::
+
+        networking:
+          proxy:
+            https_proxy: http://proxy.corp.example.com:8080
+            no_proxy: localhost,127.0.0.1
+          tls_security_profile:
+            type: IntermediateType
+          extra_ca:
+            - /etc/pki/tls/certs/corporate-ca.pem
+    """
+
+    proxy: Optional[ProxyConfiguration] = Field(
+        None,
+        title="Proxy configuration",
+        description="HTTP proxy settings for outgoing connections.",
+    )
+
+    tls_security_profile: Optional[TLSSecurityProfile] = Field(
+        None,
+        title="TLS security profile",
+        description="TLS security settings for outgoing connections.",
+    )
+
+    extra_ca: list[FilePath] = Field(
+        default_factory=list,
+        title="Extra CA certificates",
+        description="List of paths to additional CA certificate files to trust. "
+        "These are merged with the system CA bundle for certificate verification.",
+    )
+
+    certificate_directory: Optional[Path] = Field(
+        None,
+        title="Certificate directory",
+        description="Directory where the merged CA bundle will be stored. "
+        "Defaults to a temporary directory if not specified.",
+    )
 
 
 class CORSConfiguration(ConfigurationBase):
@@ -1824,6 +2018,13 @@ class Configuration(ConfigurationBase):
         title="User data collection configuration",
         description="This section contains configuration for subsystem that collects user data"
         "(transcription history and feedbacks).",
+    )
+
+    networking: Optional[NetworkingConfiguration] = Field(
+        None,
+        title="Networking configuration",
+        description="Configuration for outgoing network connections, including "
+        "proxy settings, TLS security profiles, and custom CA certificates.",
     )
 
     database: DatabaseConfiguration = Field(

@@ -151,6 +151,7 @@ def test_dump_configuration(tmp_path: Path) -> None:
                 "transcripts_enabled": False,
                 "transcripts_storage": None,
             },
+            "networking": None,
             "mcp_servers": [],
             "authentication": {
                 "module": "noop",
@@ -488,6 +489,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "transcripts_enabled": False,
                 "transcripts_storage": None,
             },
+            "networking": None,
             "mcp_servers": [],
             "authentication": {
                 "module": "noop",
@@ -718,6 +720,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 "transcripts_enabled": False,
                 "transcripts_storage": None,
             },
+            "networking": None,
             "mcp_servers": [],
             "authentication": {
                 "module": "noop",
@@ -928,6 +931,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 "transcripts_enabled": False,
                 "transcripts_storage": None,
             },
+            "networking": None,
             "mcp_servers": [],
             "authentication": {
                 "module": "noop",
@@ -1128,6 +1132,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 "transcripts_enabled": False,
                 "transcripts_storage": None,
             },
+            "networking": None,
             "mcp_servers": [],
             "authentication": {
                 "module": "noop",
