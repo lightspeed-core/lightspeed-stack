@@ -27,6 +27,8 @@ jobs:
       RHAIIS_API_KEY: ${{ secrets.RHAIIS_API_KEY }}
       RHAIIS_MODEL: ${{ vars.RHAIIS_MODEL }}
       FAISS_VECTOR_STORE_ID: ${{ vars.FAISS_VECTOR_STORE_ID }}
+      E2E_DEFAULT_MODEL_OVERRIDE: ${{ vars.RHAIIS_MODEL }}
+      E2E_DEFAULT_PROVIDER_OVERRIDE: vllm
 
     steps:
       - uses: actions/checkout@v4
