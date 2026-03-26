@@ -221,9 +221,3 @@ DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)-8s %(name)s:%(lineno)d %(message)
 LIGHTSPEED_STACK_DISABLE_RICH_HANDLER_ENV_VAR = "LIGHTSPEED_STACK_DISABLE_RICH_HANDLER"
 
 DEFAULT_VIOLATION_MESSAGE = "I cannot process this request due to policy restrictions."
-
-# Networking configuration constants
-# Default TLS security profile when no profile is configured
-DEFAULT_TLS_PROFILE = "IntermediateType"
-# Default minimum TLS version (safe default for Custom profiles without explicit version)
-DEFAULT_MIN_TLS_VERSION = "VersionTLS12"

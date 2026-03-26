@@ -19,10 +19,6 @@ The profiles are:
 import ssl
 from enum import StrEnum
 
-from log import get_logger
-
-logger = get_logger(__name__)
-
 
 class TLSProfiles(StrEnum):
     """TLS profile type names matching the OpenShift API specification."""
