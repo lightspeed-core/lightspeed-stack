@@ -6,7 +6,6 @@ This module can be used in two ways:
 """
 
 import os
-import re
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Optional
@@ -156,24 +155,6 @@ def construct_storage_backends_section(
     return output
 
 
-def _resolve_env_var(value: str) -> str:
-    """Resolve ``${env.VAR}`` and ``${env.VAR:=default}`` patterns.
-
-    Parameters:
-        value: A string that may contain an environment-variable reference.
-
-    Returns:
-        The resolved value if a matching env var is set, the default if one is
-        provided, or the original string unchanged.
-    """
-    match = re.match(r"^\$\{env\.(\w+)(?::=([^}]*))?\}$", value)
-    if match:
-        var_name = match.group(1)
-        default = match.group(2)
-        return os.environ.get(var_name, default if default is not None else value)
-    return value
-
-
 def construct_vector_stores_section(
     ls_config: dict[str, Any], byok_rag: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
@@ -206,7 +187,7 @@ def construct_vector_stores_section(
     # Resolve ${env.VAR} patterns so comparisons work when existing entries
     # use environment variable references and new entries have resolved values.
     existing_store_ids = {
-        _resolve_env_var(vs.get("vector_store_id", "")) for vs in output
+        replace_env_vars(vs.get("vector_store_id", "")) for vs in output
     }
     added = 0
     for brag in byok_rag:

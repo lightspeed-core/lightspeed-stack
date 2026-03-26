@@ -54,6 +54,15 @@ def configure_service(context: Context, config_name: str) -> None:
         config_path = f"tests/e2e/configuration/{mode_dir}/{config_name}"
     create_config_backup("lightspeed-stack.yaml")
     switch_config(config_path)
+
+
+@given("The service is restarted")
+def restart_service(context: Context) -> None:
+    """Restart the lightspeed-stack container and wait for it to be healthy.
+
+    Parameters:
+        context (Context): Behave context.
+    """
     restart_container("lightspeed-stack")
     # Library mode needs extra time to load embedding models after restart
     wait_for_container_health("lightspeed-stack", max_attempts=12)
