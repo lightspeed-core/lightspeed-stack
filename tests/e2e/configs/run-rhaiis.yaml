@@ -137,10 +137,6 @@ registered_resources:
     provider_id: vllm
     model_type: llm
     provider_model_id: ${env.RHAIIS_MODEL}
-  - model_id: openai/gpt-4o-mini
-    provider_id: openai
-    model_type: llm
-    provider_model_id: gpt-4o-mini
   - model_id: all-mpnet-base-v2
     model_type: embedding
     provider_id: sentence-transformers
