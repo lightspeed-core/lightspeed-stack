@@ -66,7 +66,4 @@ Feature: Inline RAG (BYOK) support tests
     {"input": "What is the title of the article from Paul?", "model": "{PROVIDER}/{MODEL}", "stream": true, "instructions": "You are an assistant. Write only lowercase letters"}
     """
     Then The status code of the response is 200
-     And I wait for the response to be completed
-     And The streamed response should contain following fragments
-         | Fragments in LLM response |
-         | great work                |
+     And The body of the response contains great work
