@@ -13,7 +13,7 @@ MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
 PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # RHOAI llama-stack image
-LLAMA_STACK_IMAGE="${LLAMA_STACK_IMAGE:-quay.io/rhoai/odh-llama-stack-core-rhel9:rhoai-3.4-ea.2"
+LLAMA_STACK_IMAGE="${LLAMA_STACK_IMAGE:-quay.io/rhoai/odh-llama-stack-core-rhel9:rhoai-3.4-ea.2}"
 echo "Using llama-stack image: $LLAMA_STACK_IMAGE"
 export LLAMA_STACK_IMAGE
 
