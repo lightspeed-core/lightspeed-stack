@@ -8,14 +8,15 @@ export RUNNING_PROW=true
 #========================================
 # 1. GLOBAL CONFIG
 #========================================
-NAMESPACE="e2e-rhoai-dsc"
+NAMESPACE="${NAMESPACE:-e2e-rhoai-dsc}"
+export NAMESPACE
 MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
 PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# RHOAI llama-stack image
-LLAMA_STACK_IMAGE="${LLAMA_STACK_IMAGE:-quay.io/rhoai/odh-llama-stack-core-rhel9:rhoai-3.4-ea.2}"
-echo "Using llama-stack image: $LLAMA_STACK_IMAGE"
-export LLAMA_STACK_IMAGE
+# RHOAI llama-stack image (unused when building from source via llama-stack-openai.yaml)
+# LLAMA_STACK_IMAGE="${LLAMA_STACK_IMAGE:-quay.io/rhoai/odh-llama-stack-core-rhel9:rhoai-3.4-ea.2}"
+# echo "Using llama-stack image: $LLAMA_STACK_IMAGE"
+# export LLAMA_STACK_IMAGE
 
 #========================================
 # 2. ENVIRONMENT SETUP
@@ -56,6 +57,22 @@ create_secret() {
 
 create_secret hf-token-secret --from-literal=token="$HUGGING_FACE_HUB_TOKEN"
 create_secret vllm-api-key-secret --from-literal=key="$VLLM_API_KEY"
+create_secret openai-api-key-secret --from-literal=key=""
+
+# MCP token secrets for lightspeed-stack
+REPO_ROOT="$(cd "$PIPELINE_DIR/../../.." && pwd)"
+if [ -f "$REPO_ROOT/tests/e2e/secrets/mcp-token" ]; then
+  oc create secret generic mcp-file-auth-token -n "$NAMESPACE" \
+    --from-file=token="$REPO_ROOT/tests/e2e/secrets/mcp-token" \
+    --dry-run=client -o yaml | oc apply -n "$NAMESPACE" -f -
+  echo "✅ mcp-file-auth-token secret applied"
+fi
+if [ -f "$REPO_ROOT/tests/e2e/secrets/invalid-mcp-token" ]; then
+  oc create secret generic mcp-invalid-file-auth-token -n "$NAMESPACE" \
+    --from-file=token="$REPO_ROOT/tests/e2e/secrets/invalid-mcp-token" \
+    --dry-run=client -o yaml | oc apply -n "$NAMESPACE" -f -
+  echo "✅ mcp-invalid-file-auth-token secret applied"
+fi
 
 # Create Quay pull secret for llama-stack images
 echo "Creating Quay pull secret..."
@@ -79,7 +96,7 @@ curl -sL -o tool_chat_template_llama3.1_json.jinja \
     || { echo "❌ Failed to download jinja template"; exit 1; }
 
 oc create configmap vllm-chat-template -n "$NAMESPACE" \
-    --from-file=tool_chat_template_llama3.1_json.jinja --dry-run=client -o yaml | oc apply -f -
+    --from-file=tool_chat_template_llama3.1_json.jinja --dry-run=client -o yaml | oc apply -n "$NAMESPACE" -f -
 
 
 #========================================
@@ -162,18 +179,18 @@ REPO_ROOT="$(cd "$PIPELINE_DIR/../../.." && pwd)"
 echo "Creating mock server ConfigMaps..."
 oc create configmap mock-jwks-script -n "$NAMESPACE" \
     --from-file=server.py="$REPO_ROOT/tests/e2e/mock_jwks_server/server.py" \
-    --dry-run=client -o yaml | oc apply -f -
+    --dry-run=client -o yaml | oc apply -n "$NAMESPACE" -f -
 
 oc create configmap mock-mcp-script -n "$NAMESPACE" \
     --from-file=server.py="$REPO_ROOT/tests/e2e/mock_mcp_server/server.py" \
-    --dry-run=client -o yaml | oc apply -f -
+    --dry-run=client -o yaml | oc apply -n "$NAMESPACE" -f -
 
 # Deploy mock server pods and services
 echo "Deploying mock-jwks..."
-oc apply -f "$PIPELINE_DIR/manifests/lightspeed/mock-jwks.yaml"
+oc apply -n "$NAMESPACE" -f "$PIPELINE_DIR/manifests/lightspeed/mock-jwks.yaml"
 
 echo "Deploying mock-mcp..."
-oc apply -f "$PIPELINE_DIR/manifests/lightspeed/mock-mcp.yaml"
+oc apply -n "$NAMESPACE" -f "$PIPELINE_DIR/manifests/lightspeed/mock-mcp.yaml"
 
 # Wait for mock servers to be ready
 echo "Waiting for mock servers to be ready..."
@@ -189,7 +206,39 @@ oc wait pod/mock-jwks pod/mock-mcp \
 echo "✅ Mock servers deployed"
 
 #========================================
-# 8. DEPLOY LIGHTSPEED STACK AND LLAMA STACK
+# 8. BUILD LLAMA STACK IMAGE
+#========================================
+echo "===== Building llama-stack image ====="
+LLAMA_STACK_IMAGE="image-registry.openshift-image-registry.svc:5000/${NAMESPACE}/llama-stack-e2e:latest"
+export LLAMA_STACK_IMAGE
+
+# Create BuildConfig (idempotent)
+oc new-build --name=llama-stack-e2e \
+  --binary \
+  --strategy=docker \
+  --image="registry.access.redhat.com/ubi9/ubi-minimal" \
+  --to="llama-stack-e2e:latest" \
+  -n "$NAMESPACE" 2>/dev/null || echo "BuildConfig llama-stack-e2e already exists"
+
+# Patch BuildConfig to use test.containerfile instead of Dockerfile
+oc patch bc llama-stack-e2e -n "$NAMESPACE" --type=json \
+  -p '[{"op":"replace","path":"/spec/strategy/dockerStrategy/dockerfilePath","value":"test.containerfile"}]' 2>/dev/null || true
+
+# Build from repo root
+oc start-build llama-stack-e2e \
+  --from-dir="$REPO_ROOT" \
+  --follow \
+  -n "$NAMESPACE" || { echo "❌ llama-stack image build failed"; exit 1; }
+
+echo "✅ llama-stack image built: $LLAMA_STACK_IMAGE"
+
+# Allow default SA to pull from the internal registry
+oc policy add-role-to-user system:image-puller \
+  system:serviceaccount:${NAMESPACE}:default \
+  -n "$NAMESPACE" 2>/dev/null || true
+
+#========================================
+# 9. DEPLOY LIGHTSPEED STACK AND LLAMA STACK
 #========================================
 echo "===== Deploying Services ====="
 
@@ -313,6 +362,15 @@ for i in $(seq 1 36); do
   fi
   if [ $i -eq 36 ]; then
     echo "❌ Port-forward to lightspeed-stack never became ready (3 min)"
+    echo ""
+    echo "DEBUG: lightspeed-stack-service logs:"
+    oc logs lightspeed-stack-service -n "$NAMESPACE" --tail=100 || true
+    echo ""
+    echo "DEBUG: llama-stack-service logs:"
+    oc logs llama-stack-service -n "$NAMESPACE" --tail=100 || true
+    echo ""
+    echo "DEBUG: Pod status:"
+    oc get pods -n "$NAMESPACE" -o wide || true
     kill $PF_LCS_PID 2>/dev/null || true
     kill $PF_JWKS_PID 2>/dev/null || true
     exit 1

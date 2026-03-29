@@ -22,13 +22,14 @@ spec:
             secretKeyRef:
               name: llama-stack-ip-secret
               key: key
-        # Same vars as docker-compose / server-mode YAML (${env.FAISS_VECTOR_STORE_ID} in byok_rag).
         - name: FAISS_VECTOR_STORE_ID
           valueFrom:
             secretKeyRef:
               name: faiss-vector-store-secret
               key: id
               optional: true
+        - name: KV_RAG_PATH
+          value: "/app-root/src/.llama/storage/rag/kv_store.db"
       image: ${LIGHTSPEED_STACK_IMAGE}
       ports:
         - containerPort: 8080
