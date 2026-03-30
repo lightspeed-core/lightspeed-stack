@@ -632,7 +632,7 @@ async def test_query_v2_endpoint_with_mcp_list_tools(
     mock_mcp_list = mocker.MagicMock()
     mock_mcp_list.type = "mcp_list_tools"
     mock_mcp_list.id = "mcplist-101"
-    mock_mcp_list.server_label = "kubernetes-server"
+    mock_mcp_list.server_label = "server1"
     mock_mcp_list.tools = [mock_tool1, mock_tool2]
 
     mock_message = mocker.MagicMock()
@@ -728,12 +728,12 @@ async def test_query_v2_endpoint_with_multiple_tool_types(
         mcp_headers={},
     )
 
-    # Verify response includes multiple tool calls
+    # Verify response includes server-deployed tool calls only
+    # (function_call items are client-provided and excluded)
     assert response.tool_calls is not None
-    assert len(response.tool_calls) == 2
+    assert len(response.tool_calls) == 1
     tool_names = [tc.name for tc in response.tool_calls]
     assert "knowledge_search" in tool_names or "file_search" in tool_names
-    assert "calculate" in tool_names
 
 
 @pytest.mark.asyncio
