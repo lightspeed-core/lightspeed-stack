@@ -67,6 +67,7 @@ echo "✅ GPU capacity available."
 echo "GPU nodes ready:"
 oc get nodes -l nvidia.com/gpu.present=true -o custom-columns=NAME:.metadata.name,GPU:.status.capacity.nvidia\\.com/gpu,INSTANCE:.metadata.labels.node\\.kubernetes\\.io/instance-type
 
+echo "DEBUG NS: before vLLM deploy -> $(oc get ns e2e-rhoai-dsc -o jsonpath='{.status.phase}' 2>&1)"
 echo "Applying vLLM manifests..."
 
 envsubst < "$BASE_DIR/manifests/vllm/vllm-runtime-gpu.yaml" | oc apply -f -

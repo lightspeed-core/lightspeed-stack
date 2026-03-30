@@ -43,6 +43,7 @@ oc whoami
 #========================================
 echo "===== Creating namespace & secrets ====="
 oc get ns "$NAMESPACE" >/dev/null 2>&1 || oc create namespace "$NAMESPACE"
+echo "DEBUG NS: after create -> $(oc get ns $NAMESPACE -o jsonpath='{.status.phase}' 2>&1)"
 
 # Create NFD and NVIDIA namespaces
 oc apply -f "$PIPELINE_DIR/manifests/namespaces/nfd.yaml"
@@ -102,6 +103,7 @@ oc create configmap vllm-chat-template -n "$NAMESPACE" \
 #========================================
 # 5. DEPLOY vLLM
 #========================================
+echo "DEBUG NS: before pipeline-vllm -> $(oc get ns $NAMESPACE -o jsonpath='{.status.phase}' 2>&1)"
 echo "===== Deploying vLLM ====="
 ./pipeline-vllm.sh
 oc get pods -n "$NAMESPACE"

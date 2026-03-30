@@ -94,3 +94,4 @@ echo "--> Applying DataScienceCluster from ds-cluster.yaml..."
 oc apply -f "$BASE_DIR/manifests/operators/ds-cluster.yaml"
 
 echo "All files applied successfully. The DataScienceCluster is now provisioning."
+echo "DEBUG NS: after bootstrap -> $(oc get ns e2e-rhoai-dsc -o jsonpath='{.status.phase}' 2>&1)"
