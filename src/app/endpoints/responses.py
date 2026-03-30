@@ -510,6 +510,7 @@ def _should_filter_mcp_chunk(
     if event_type and (
         event_type.startswith("response.mcp_call.")
         or event_type.startswith("response.mcp_list_tools.")
+        or event_type.startswith("response.mcp_approval_request.")
     ):
         output_index = getattr(chunk, "output_index", None)
         if output_index in server_mcp_output_indices:
