@@ -13,6 +13,7 @@ from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaSta
 from pytest_mock import MockerFixture
 
 from app.endpoints.responses import (
+    _is_server_mcp_output_item,
     handle_non_streaming_response,
     handle_streaming_response,
     responses_endpoint_handler,
@@ -1372,3 +1373,55 @@ class TestHandleStreamingResponse:
             )
 
         assert exc_info.value.status_code == 503
+
+
+class TestIsServerMcpOutputItem:
+    """Tests for _is_server_mcp_output_item helper."""
+
+    def test_mcp_call_with_matching_label(self) -> None:
+        """Test mcp_call item with a configured server_label returns True."""
+        item: dict[str, Any] = {"type": "mcp_call", "server_label": "my-server"}
+        assert _is_server_mcp_output_item(item, {"my-server"}) is True
+
+    def test_mcp_call_with_non_matching_label(self) -> None:
+        """Test mcp_call item with unconfigured server_label returns False."""
+        item: dict[str, Any] = {"type": "mcp_call", "server_label": "client-server"}
+        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+
+    def test_mcp_list_tools_with_matching_label(self) -> None:
+        """Test mcp_list_tools item with configured label returns True."""
+        item: dict[str, Any] = {"type": "mcp_list_tools", "server_label": "fs"}
+        assert _is_server_mcp_output_item(item, {"fs", "other"}) is True
+
+    def test_mcp_approval_request_with_matching_label(self) -> None:
+        """Test mcp_approval_request item with configured label returns True."""
+        item: dict[str, Any] = {
+            "type": "mcp_approval_request",
+            "server_label": "tool-a",
+        }
+        assert _is_server_mcp_output_item(item, {"tool-a"}) is True
+
+    def test_mcp_call_missing_server_label(self) -> None:
+        """Test mcp_call without server_label returns False."""
+        item: dict[str, Any] = {"type": "mcp_call"}
+        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+
+    def test_message_type_returns_false(self) -> None:
+        """Test non-MCP type returns False."""
+        item: dict[str, Any] = {"type": "message", "role": "assistant"}
+        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+
+    def test_function_call_type_returns_false(self) -> None:
+        """Test function_call type returns False."""
+        item: dict[str, Any] = {"type": "function_call", "name": "get_weather"}
+        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+
+    def test_empty_configured_labels(self) -> None:
+        """Test mcp_call with empty configured labels returns False."""
+        item: dict[str, Any] = {"type": "mcp_call", "server_label": "any-server"}
+        assert _is_server_mcp_output_item(item, set()) is False
+
+    def test_file_search_call_returns_false(self) -> None:
+        """Test file_search_call type returns False."""
+        item: dict[str, Any] = {"type": "file_search_call"}
+        assert _is_server_mcp_output_item(item, {"my-server"}) is False
