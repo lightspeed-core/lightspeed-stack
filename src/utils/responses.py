@@ -10,28 +10,74 @@ from fastapi import HTTPException
 from llama_stack_api import OpenAIResponseObject
 from llama_stack_api.openai_responses import (
     OpenAIResponseContentPartRefusal as ContentPartRefusal,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputMessageContent as InputMessageContent,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputMessageContentFile as InputFilePart,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputMessageContentText as InputTextPart,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputTool as InputTool,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputToolChoice as ToolChoice,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputToolFileSearch as InputToolFileSearch,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseInputToolMCP as InputToolMCP,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseMCPApprovalRequest as MCPApprovalRequest,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseMCPApprovalResponse as MCPApprovalResponse,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseMessage as ResponseMessage,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseObject as ResponseObject,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutput as ResponseOutput,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageContent as OutputMessageContent,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageContentOutputText as OutputTextPart,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageFileSearchToolCall as FileSearchCall,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageFunctionToolCall as FunctionCall,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageMCPCall as MCPCall,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageMCPListTools as MCPListTools,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseUsage as ResponseUsage,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseUsageInputTokensDetails as UsageInputTokensDetails,
+)
+from llama_stack_api.openai_responses import (
     OpenAIResponseUsageOutputTokensDetails as UsageOutputTokensDetails,
 )
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
@@ -999,7 +1045,7 @@ async def check_model_configured(
         for model in models:
             if model.id == model_id:
                 return True
-            
+
             # Workaround to llama-stack watsonx bug
             if model_id.startswith("watsonx/") and model.id == model_id.removeprefix(
                 "watsonx/"
