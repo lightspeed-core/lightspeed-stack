@@ -13,6 +13,8 @@ from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaSta
 from pytest_mock import MockerFixture
 
 from app.endpoints.responses import (
+    _is_server_mcp_output_item,
+    _should_filter_mcp_chunk,
     handle_non_streaming_response,
     handle_streaming_response,
     responses_endpoint_handler,
@@ -1372,3 +1374,193 @@ class TestHandleStreamingResponse:
             )
 
         assert exc_info.value.status_code == 503
+
+
+class TestIsServerMcpOutputItem:
+    """Tests for _is_server_mcp_output_item helper."""
+
+    def test_mcp_call_with_matching_label(self) -> None:
+        """Test mcp_call item with a configured server_label returns True."""
+        item: dict[str, Any] = {"type": "mcp_call", "server_label": "my-server"}
+        assert _is_server_mcp_output_item(item, {"my-server"}) is True
+
+    def test_mcp_call_with_non_matching_label(self) -> None:
+        """Test mcp_call item with unconfigured server_label returns False."""
+        item: dict[str, Any] = {"type": "mcp_call", "server_label": "client-server"}
+        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+
+    def test_mcp_list_tools_with_matching_label(self) -> None:
+        """Test mcp_list_tools item with configured label returns True."""
+        item: dict[str, Any] = {"type": "mcp_list_tools", "server_label": "fs"}
+        assert _is_server_mcp_output_item(item, {"fs", "other"}) is True
+
+    def test_mcp_approval_request_with_matching_label(self) -> None:
+        """Test mcp_approval_request item with configured label returns True."""
+        item: dict[str, Any] = {
+            "type": "mcp_approval_request",
+            "server_label": "tool-a",
+        }
+        assert _is_server_mcp_output_item(item, {"tool-a"}) is True
+
+    def test_mcp_call_missing_server_label(self) -> None:
+        """Test mcp_call without server_label returns False."""
+        item: dict[str, Any] = {"type": "mcp_call"}
+        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+
+    def test_message_type_returns_false(self) -> None:
+        """Test non-MCP type returns False."""
+        item: dict[str, Any] = {"type": "message", "role": "assistant"}
+        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+
+    def test_function_call_type_returns_false(self) -> None:
+        """Test function_call type returns False."""
+        item: dict[str, Any] = {"type": "function_call", "name": "get_weather"}
+        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+
+    def test_empty_configured_labels(self) -> None:
+        """Test mcp_call with empty configured labels returns False."""
+        item: dict[str, Any] = {"type": "mcp_call", "server_label": "any-server"}
+        assert _is_server_mcp_output_item(item, set()) is False
+
+    def test_file_search_call_returns_false(self) -> None:
+        """Test file_search_call type returns False."""
+        item: dict[str, Any] = {"type": "file_search_call"}
+        assert _is_server_mcp_output_item(item, {"my-server"}) is False
+
+
+class TestShouldFilterMcpChunk:
+    """Tests for _should_filter_mcp_chunk helper."""
+
+    def test_filters_mcp_call_substream_events(self, mocker: MockerFixture) -> None:
+        """Test that response.mcp_call.* events are filtered for tracked indices."""
+        chunk = mocker.Mock()
+        chunk.output_index = 5
+        server_mcp_output_indices: set[int] = {5}
+        assert (
+            _should_filter_mcp_chunk(
+                chunk,
+                "response.mcp_call.in_progress",
+                {"server-a"},
+                server_mcp_output_indices,
+            )
+            is True
+        )
+
+    def test_filters_mcp_list_tools_substream_events(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that response.mcp_list_tools.* events are filtered for tracked indices."""
+        chunk = mocker.Mock()
+        chunk.output_index = 3
+        server_mcp_output_indices: set[int] = {3}
+        assert (
+            _should_filter_mcp_chunk(
+                chunk,
+                "response.mcp_list_tools.in_progress",
+                {"server-a"},
+                server_mcp_output_indices,
+            )
+            is True
+        )
+
+    def test_filters_mcp_approval_request_substream_events(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that response.mcp_approval_request.* events are filtered for tracked indices."""
+        chunk = mocker.Mock()
+        chunk.output_index = 7
+        server_mcp_output_indices: set[int] = {7}
+        assert (
+            _should_filter_mcp_chunk(
+                chunk,
+                "response.mcp_approval_request.in_progress",
+                {"server-a"},
+                server_mcp_output_indices,
+            )
+            is True
+        )
+
+    def test_does_not_filter_untracked_mcp_approval_request(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that mcp_approval_request events for untracked indices pass through."""
+        chunk = mocker.Mock()
+        chunk.output_index = 7
+        server_mcp_output_indices: set[int] = {99}
+        assert (
+            _should_filter_mcp_chunk(
+                chunk,
+                "response.mcp_approval_request.in_progress",
+                {"server-a"},
+                server_mcp_output_indices,
+            )
+            is False
+        )
+
+    def test_does_not_filter_untracked_mcp_call(self, mocker: MockerFixture) -> None:
+        """Test that mcp_call events for untracked indices pass through."""
+        chunk = mocker.Mock()
+        chunk.output_index = 10
+        server_mcp_output_indices: set[int] = {5}
+        assert (
+            _should_filter_mcp_chunk(
+                chunk,
+                "response.mcp_call.completed",
+                {"server-a"},
+                server_mcp_output_indices,
+            )
+            is False
+        )
+
+    def test_filters_output_item_added_for_server_mcp(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that output_item.added for server MCP items is filtered and tracked."""
+        item = mocker.Mock()
+        item.type = "mcp_approval_request"
+        item.server_label = "server-a"
+        chunk = mocker.Mock()
+        chunk.item = item
+        chunk.output_index = 2
+        server_mcp_output_indices: set[int] = set()
+        assert (
+            _should_filter_mcp_chunk(
+                chunk,
+                "response.output_item.added",
+                {"server-a"},
+                server_mcp_output_indices,
+            )
+            is True
+        )
+        assert 2 in server_mcp_output_indices
+
+    def test_filters_output_item_done_for_server_mcp(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that output_item.done for server MCP items is filtered and cleaned up."""
+        item = mocker.Mock()
+        item.type = "mcp_approval_request"
+        chunk = mocker.Mock()
+        chunk.item = item
+        chunk.output_index = 2
+        server_mcp_output_indices: set[int] = {2}
+        assert (
+            _should_filter_mcp_chunk(
+                chunk,
+                "response.output_item.done",
+                {"server-a"},
+                server_mcp_output_indices,
+            )
+            is True
+        )
+        assert 2 not in server_mcp_output_indices
+
+    def test_does_not_filter_non_mcp_event(self, mocker: MockerFixture) -> None:
+        """Test that non-MCP events pass through."""
+        chunk = mocker.Mock()
+        assert (
+            _should_filter_mcp_chunk(
+                chunk, "response.output_text.delta", {"server-a"}, set()
+            )
+            is False
+        )
