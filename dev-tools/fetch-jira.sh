@@ -17,10 +17,17 @@ set -euo pipefail
 # shellcheck source=jira-common.sh
 . "$(dirname "$0")/jira-common.sh"
 
-if [ $# -lt 1 ]; then
-    echo "Usage: fetch-jira.sh <ticket-number-or-key>"
-    echo "Example: fetch-jira.sh 1234  or  fetch-jira.sh LCORE-1234"
-    exit 1
+if [ $# -lt 1 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    echo "Usage: fetch-jira.sh <ticket> [additional-tickets...]"
+    echo ""
+    echo "Fetches JIRA ticket content including description, status, and child issues."
+    echo "Bare numbers default to LCORE- prefix."
+    echo ""
+    echo "Examples:"
+    echo "  fetch-jira.sh 1234              Fetch LCORE-1234"
+    echo "  fetch-jira.sh LCORE-1234        Same"
+    echo "  fetch-jira.sh 836 509 777       Fetch multiple tickets"
+    if [ $# -lt 1 ]; then exit 1; else exit 0; fi
 fi
 
 ensure_jira_credentials

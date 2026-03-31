@@ -40,9 +40,10 @@ TODO: Context, options table, recommendation. Link to the relevant background se
 
 TODO: One subsection per JIRA. Each JIRA's agentic tool instruction should point to the spec doc (the permanent reference), not this spike doc.
 
+<!-- type: Task -->
 ### LCORE-???? TODO fill in title
 
-TODO: Use the format from `docs/contributing/templates/jira-ticket-template.md`.
+TODO: Use the format from `docs/contributing/templates/jira-ticket-template.md`. Change type above to Story if user-facing.
 
 **Description**: TODO
 

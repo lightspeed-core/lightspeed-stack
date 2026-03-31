@@ -1,3 +1,4 @@
+<!-- type: Task -->
 ### LCORE-???? TODO fill in title
 
 **User story** (if Story, delete if Task): As a TODO [persona], I want to TODO [action], so that TODO [reason/impact]. Use Story for user-facing changes, Task for feature work that does not represent a distinct user story.

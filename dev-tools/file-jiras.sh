@@ -2,19 +2,19 @@
 # File JIRA sub-tickets from a spike doc.
 #
 # Usage:
-#   file-jiras.sh <spike-doc.md> <parent-ticket>
+#   file-jiras.sh --spike-doc <path> --feature-ticket <key>
+#   file-jiras.sh --spike-doc spike.md --feature-ticket LCORE-1311
+#   file-jiras.sh --spike-doc spike.md --feature-ticket 1311
 #
-# Example:
-#   file-jiras.sh docs/design/conversation-compaction/conversation-compaction-spike.md LCORE-1311
-#
-# Prerequisites:
-#   ~/.config/jira/credentials.json with email, token, instance.
+# Bare numbers default to LCORE- prefix.
 #
 # The script:
 #   1. Parses JIRA sections from the spike doc (### LCORE-???? headings)
-#   2. Writes each to /tmp/jiras/NN-short-name.md
-#   3. Opens an interactive menu: view, edit, drop, file
-#   4. Files selected tickets via Jira REST API
+#   2. Auto-generates an Epic stub (ticket #0)
+#   3. Reads <!-- type: Task/Story/Epic --> metadata from each ticket
+#   4. Opens an interactive menu: view, edit, drop, file
+#   5. Files Epic first, then children under it
+#   6. Links spike ticket to Epic with "Informs" relationship
 
 set -euo pipefail
 
@@ -22,17 +22,44 @@ set -euo pipefail
 . "$(dirname "$0")/jira-common.sh"
 
 JIRA_DIR="/tmp/jiras"
+EPIC_KEY=""
+SPIKE_TICKET_KEY=""
 
 # --- Argument parsing ---
 
-if [ $# -lt 2 ]; then
-    echo "Usage: file-jiras.sh <spike-doc.md> <parent-ticket>"
-    echo "Example: file-jiras.sh docs/design/.../spike.md LCORE-1311"
+show_help() {
+    echo "Usage: file-jiras.sh --spike-doc <path> --feature-ticket <key>"
+    echo ""
+    echo "Options:"
+    echo "  --spike-doc        Path to the spike doc containing proposed JIRAs"
+    echo "  --feature-ticket   Parent feature ticket (e.g., LCORE-1311 or 1311)"
+    echo "  --help             Show this help"
+    echo ""
+    echo "Example:"
+    echo "  file-jiras.sh --spike-doc docs/design/.../spike.md --feature-ticket 1311"
+}
+
+SPIKE_DOC=""
+FEATURE_TICKET=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --spike-doc) SPIKE_DOC="$2"; shift 2 ;;
+        --feature-ticket) FEATURE_TICKET="$2"; shift 2 ;;
+        --help|-h) show_help; exit 0 ;;
+        *) echo "Unknown argument: $1"; show_help; exit 1 ;;
+    esac
+done
+
+if [ -z "$SPIKE_DOC" ] || [ -z "$FEATURE_TICKET" ]; then
+    show_help
     exit 1
 fi
 
-SPIKE_DOC="$1"
-PARENT_TICKET="$2"
+# Bare number → LCORE- prefix
+if echo "$FEATURE_TICKET" | grep -qE '^[0-9]+$'; then
+    FEATURE_TICKET="LCORE-$FEATURE_TICKET"
+fi
 
 if [ ! -f "$SPIKE_DOC" ]; then
     echo "Error: spike doc not found: $SPIKE_DOC"
@@ -41,31 +68,56 @@ fi
 
 ensure_jira_credentials
 
+PROJECT_KEY="${FEATURE_TICKET%%-*}"
+
 # --- Parse spike doc ---
 
 rm -rf "$JIRA_DIR"
 mkdir -p "$JIRA_DIR"
 
-python3 - "$SPIKE_DOC" "$JIRA_DIR" << 'PYEOF'
+python3 - "$SPIKE_DOC" "$JIRA_DIR" "$FEATURE_TICKET" << 'PYEOF'
 import re
 import sys
 from pathlib import Path
 
 spike_doc = Path(sys.argv[1]).read_text()
 out_dir = Path(sys.argv[2])
+feature_ticket = sys.argv[3]
 
-# Split on ### LCORE-???? headings
+# --- Extract spike ticket key from metadata table ---
+spike_key_match = re.search(r'\*\*Spike\*\*.*?(LCORE-\d+)', spike_doc)
+spike_key = spike_key_match.group(1) if spike_key_match else ""
+
+# --- Extract one-line problem statement for Epic description ---
+problem_match = re.search(r'\*\*The problem\*\*:\s*(.+?)(?:\n\n|\n\*\*)', spike_doc, re.DOTALL)
+problem_line = problem_match.group(1).strip().split('\n')[0] if problem_match else ""
+
+# --- Generate Epic stub ---
+# Derive Epic title from the spike doc's parent directory name
+spike_path = Path(sys.argv[1])
+feature_dir = spike_path.parent.name
+if feature_dir and feature_dir not in ('design', 'docs', '.'):
+    epic_title = f"Implement {feature_dir.replace('-', ' ')}"
+else:
+    epic_title = "TODO: Epic title"
+
+epic_content = f"<!-- type: Epic -->\n### {epic_title}\n\n"
+if problem_line:
+    epic_content += f"**Description**: {problem_line}\n"
+else:
+    epic_content += "**Description**: TODO\n"
+
+(out_dir / "00-epic.md").write_text(epic_content)
+
+# --- Parse JIRA sections ---
 pattern = r'^### (LCORE-\?{4}.*?)$'
 sections = re.split(pattern, spike_doc, flags=re.MULTILINE)
 
-# sections[0] is everything before the first JIRA heading
-# Then alternating: heading, body, heading, body, ...
 count = 0
 for i in range(1, len(sections), 2):
     heading = sections[i].strip()
     body = sections[i + 1].strip() if i + 1 < len(sections) else ""
 
-    # Stop if we hit a non-JIRA heading (e.g., "# PoC results")
     if not heading.startswith("LCORE-"):
         break
 
@@ -79,63 +131,176 @@ for i in range(1, len(sections), 2):
     # Strip "LCORE-????: " prefix to get clean title
     clean_title = re.sub(r'^LCORE-\?+:?\s*', '', heading).strip()
 
+    # Extract type from <!-- type: ... --> if present, otherwise default to Task
+    type_match = re.search(r'<!--\s*type:\s*(\w+)\s*-->', body)
+    if type_match:
+        ticket_type = type_match.group(1)
+    else:
+        ticket_type = "Task"
+
     # Extract short name for filename
     short_name = re.sub(r'[^a-z0-9]+', '-', clean_title.lower()).strip('-')
     if not short_name:
         short_name = f"ticket-{count}"
 
     filename = f"{count:02d}-{short_name}.md"
-    content = f"### {clean_title}\n\n{body}\n"
+
+    # Ensure type metadata is present at top
+    if not type_match:
+        content = f"<!-- type: {ticket_type} -->\n### {clean_title}\n\n{body}\n"
+    else:
+        content = f"### {clean_title}\n\n{body}\n"
+        # Make sure the <!-- type --> is at the very top
+        content = re.sub(r'(<!--\s*type:\s*\w+\s*-->)\n?', '', content)
+        content = f"<!-- type: {ticket_type} -->\n{content}"
+
     (out_dir / filename).write_text(content)
 
-print(f"Parsed {count} JIRAs from {sys.argv[1]}")
+# Write metadata file for the script to read
+meta = {"spike_ticket": spike_key, "count": count}
+import json
+(out_dir / ".meta.json").write_text(json.dumps(meta))
+
+print(f"Parsed {count} JIRAs + 1 Epic from {sys.argv[1]}")
+if spike_key:
+    print(f"Spike ticket: {spike_key}")
 PYEOF
 
-# --- Count tickets ---
-
-TICKET_COUNT=$(find "$JIRA_DIR" -maxdepth 1 -name '*.md' | wc -l)
-if [ "$TICKET_COUNT" -eq 0 ]; then
-    echo "No JIRA sections found in $SPIKE_DOC"
-    echo "Expected headings like: ### LCORE-???? Title"
-    exit 1
+# --- Read metadata ---
+if [ -f "$JIRA_DIR/.meta.json" ]; then
+    SPIKE_TICKET_KEY=$(python3 -c "import json; print(json.load(open('$JIRA_DIR/.meta.json')).get('spike_ticket', ''))")
 fi
 
 # --- Helper functions ---
 
+get_type() {
+    local f="$1"
+    grep -o '<!-- type: [A-Za-z]* -->' "$f" 2>/dev/null | head -1 | sed 's/<!-- type: //;s/ -->//' || echo "Task"
+}
+
 show_summary() {
     echo ""
-    echo "  #  File                                         Title"
-    echo "  -- -------------------------------------------- ----------------------------------------"
-    i=1
+    printf "  %-3s %-7s %-40s %s\n" "#" "Type" "Title" "Filed as"
+    printf "  %-3s %-7s %-40s %s\n" "---" "-------" "----------------------------------------" "--------------------"
+    local i=0
     for f in "$JIRA_DIR"/*.md; do
-        title=$(head -1 "$f" | sed 's/^### //')
-        fname=$(basename "$f")
-        printf "  %-2d %-44s %s\n" "$i" "$fname" "$title"
+        local title
+        title=$(grep '^### ' "$f" | head -1 | sed 's/^### //')
+        local ttype
+        ttype=$(get_type "$f")
+        local filed_as
+        if [ "$ttype" = "Epic" ]; then
+            if [ -n "$EPIC_KEY" ]; then
+                filed_as="FILED: $EPIC_KEY"
+            else
+                filed_as="→ child of $FEATURE_TICKET"
+            fi
+        else
+            if [ -n "$EPIC_KEY" ]; then
+                filed_as="→ child of $EPIC_KEY"
+            else
+                filed_as="→ child of Epic #0"
+            fi
+        fi
+        printf "  %-3d %-7s %-40s %s\n" "$i" "$ttype" "$title" "$filed_as"
         i=$((i + 1))
     done
     echo ""
-    echo "Parent: $PARENT_TICKET"
-    echo "Total: $TICKET_COUNT tickets"
+    if [ -n "$SPIKE_TICKET_KEY" ]; then
+        echo "  Spike ticket $SPIKE_TICKET_KEY will be linked to Epic with \"Informs\""
+    fi
     echo ""
 }
 
 get_file_by_number() {
-    find "$JIRA_DIR" -maxdepth 1 -name '*.md' | sort | sed -n "${1}p"
+    find "$JIRA_DIR" -maxdepth 1 -name '*.md' | sort | sed -n "$((${1} + 1))p"
 }
 
-file_ticket() {
+ensure_epic_key() {
+    # If we already have an Epic key, nothing to do
+    if [ -n "$EPIC_KEY" ]; then
+        return 0
+    fi
+
+    echo ""
+    echo "  No Epic filed yet. Children need an Epic parent."
+    echo "    1. File Epic #0 first, then continue"
+    echo "    2. Enter an existing Epic key (e.g., LCORE-1600)"
+    echo "    3. File without Epic (Blocks link to $FEATURE_TICKET instead)"
+    printf "  Choice (1/2/3): "
+    read -r choice < /dev/tty
+
+    case "$choice" in
+        1)
+            local epic_file
+            epic_file=$(find "$JIRA_DIR" -maxdepth 1 -name '*.md' | sort | head -1)
+            local epic_type
+            epic_type=$(get_type "$epic_file")
+            if [ "$epic_type" != "Epic" ]; then
+                echo "  Error: first ticket is not an Epic. Edit it or re-order files." >&2
+                return 1
+            fi
+            EPIC_KEY=$(file_single_ticket "$epic_file" "Epic" "$FEATURE_TICKET" "")
+            if [ -z "$EPIC_KEY" ]; then
+                echo "  Epic filing failed." >&2
+                return 1
+            fi
+            # Link spike ticket to Epic
+            if [ -n "$SPIKE_TICKET_KEY" ]; then
+                link_spike_to_epic
+            fi
+            ;;
+        2)
+            printf "  Epic key: "
+            read -r EPIC_KEY < /dev/tty
+            ;;
+        3)
+            EPIC_KEY="__NONE__"
+            ;;
+        *)
+            echo "  Invalid choice."
+            return 1
+            ;;
+    esac
+}
+
+link_spike_to_epic() {
+    if [ -z "$SPIKE_TICKET_KEY" ] || [ -z "$EPIC_KEY" ] || [ "$EPIC_KEY" = "__NONE__" ]; then
+        return
+    fi
+    local link_payload
+    link_payload=$(python3 -c "
+import json
+print(json.dumps({
+    'type': {'name': 'Informs'},
+    'inwardIssue': {'key': '$SPIKE_TICKET_KEY'},
+    'outwardIssue': {'key': '$EPIC_KEY'}
+}))
+")
+    curl -sS --connect-timeout 10 --max-time 30 \
+        -u "$JIRA_EMAIL:$JIRA_TOKEN" \
+        -H "Content-Type: application/json" \
+        -X POST "$JIRA_INSTANCE/rest/api/3/issueLink" \
+        -d "$link_payload" >/dev/null 2>&1 && \
+        echo "  Linked: $SPIKE_TICKET_KEY informs $EPIC_KEY" >&2 || \
+        echo "  Warning: failed to link $SPIKE_TICKET_KEY to $EPIC_KEY" >&2
+}
+
+file_single_ticket() {
     local ticket_file="$1"
+    local issue_type="$2"
+    local parent_key="$3"
+
     local title
-    title=$(head -1 "$ticket_file" | sed 's/^### //')
+    title=$(grep '^### ' "$ticket_file" | head -1 | sed 's/^### //')
 
     # Check for duplicates
-    local project_key="${PARENT_TICKET%%-*}"
     local url_title
     url_title=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$title")
     local dup_check
     dup_check=$(curl -sS --connect-timeout 10 --max-time 30 \
         -u "$JIRA_EMAIL:$JIRA_TOKEN" \
-        "$JIRA_INSTANCE/rest/api/3/search/jql?jql=project%3D${project_key}%20AND%20summary~%22${url_title}%22&fields=key,summary&maxResults=5" 2>/dev/null || echo "{}")
+        "$JIRA_INSTANCE/rest/api/3/search/jql?jql=project%3D${PROJECT_KEY}%20AND%20summary~%22${url_title}%22&fields=key,summary&maxResults=5" 2>/dev/null || echo "{}")
 
     local dup_count_file
     dup_count_file=$(mktemp)
@@ -175,11 +340,11 @@ except Exception as e:
         fi
     fi
 
-    # Extract description body (everything after the heading)
+    # Extract description body (everything after the heading, skip type comment)
     local body
-    body=$(tail -n +3 "$ticket_file")
+    body=$(sed '1{/^<!--/d}' "$ticket_file" | tail -n +2)
 
-    # Build ADF description from the body text
+    # Build ADF description
     local adf_desc
     adf_desc=$(python3 - "$body" << 'ADFEOF'
 import json
@@ -188,40 +353,22 @@ import sys
 
 
 def parse_inline(text):
-    """Convert markdown inline formatting to ADF text nodes with marks."""
     nodes = []
-    # Match: **bold**, *italic*, `code`, [text](url), plain text
     pattern = r'(\*\*.*?\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\([^)]+\))'
     parts = re.split(pattern, text)
     for part in parts:
         if not part:
             continue
         if part.startswith("**") and part.endswith("**"):
-            nodes.append({
-                "type": "text",
-                "text": part[2:-2],
-                "marks": [{"type": "strong"}]
-            })
+            nodes.append({"type": "text", "text": part[2:-2], "marks": [{"type": "strong"}]})
         elif part.startswith("*") and part.endswith("*") and not part.startswith("**"):
-            nodes.append({
-                "type": "text",
-                "text": part[1:-1],
-                "marks": [{"type": "em"}]
-            })
+            nodes.append({"type": "text", "text": part[1:-1], "marks": [{"type": "em"}]})
         elif part.startswith("`") and part.endswith("`"):
-            nodes.append({
-                "type": "text",
-                "text": part[1:-1],
-                "marks": [{"type": "code"}]
-            })
+            nodes.append({"type": "text", "text": part[1:-1], "marks": [{"type": "code"}]})
         elif part.startswith("["):
             m = re.match(r'\[([^\]]+)\]\(([^)]+)\)', part)
             if m:
-                nodes.append({
-                    "type": "text",
-                    "text": m.group(1),
-                    "marks": [{"type": "link", "attrs": {"href": m.group(2)}}]
-                })
+                nodes.append({"type": "text", "text": m.group(1), "marks": [{"type": "link", "attrs": {"href": m.group(2)}}]})
             else:
                 nodes.append({"type": "text", "text": part})
         else:
@@ -234,77 +381,54 @@ def make_paragraph(text):
 
 
 def parse_block(para):
-    """Convert a markdown block (paragraph, list, heading, code) to ADF node(s)."""
-    # Heading
     m = re.match(r'^(#{1,6})\s+(.*)', para)
     if m:
         level = len(m.group(1))
         return {"type": "heading", "attrs": {"level": level}, "content": parse_inline(m.group(2))}
-
-    # Bullet list
     if para.startswith("- "):
         items = [line.lstrip("- ").strip() for line in para.split("\n") if line.strip().startswith("- ")]
         list_items = [{"type": "listItem", "content": [make_paragraph(item)]} for item in items]
         if list_items:
             return {"type": "bulletList", "content": list_items}
-
-    # Numbered list
     if re.match(r'^\d+[\.\)]\s', para):
         items = [re.sub(r'^\d+[\.\)]\s*', '', line).strip() for line in para.split("\n") if re.match(r'^\s*\d+[\.\)]\s', line)]
         list_items = [{"type": "listItem", "content": [make_paragraph(item)]} for item in items]
         if list_items:
             return {"type": "orderedList", "content": list_items}
-
-    # Code block
     if para.startswith("```"):
         code = para.strip("`").strip()
         return {"type": "codeBlock", "content": [{"type": "text", "text": code}]}
-
-    # Plain paragraph
     return make_paragraph(para)
 
 
 text = sys.argv[1]
-
-# Strip the redundant "**Description**:" line — Jira already has a Description field
 text = re.sub(r'^\*\*Description\*\*:\s*', '', text).strip()
-
 paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-
 content = []
 for para in paragraphs:
     node = parse_block(para)
     if node:
         content.append(node)
-
 doc = {"version": 1, "type": "doc", "content": content}
 print(json.dumps(doc))
 ADFEOF
     )
 
-    # Create the issue
+    # Build payload
     local payload
-    payload=$(python3 - "${PARENT_TICKET%%-*}" "$title" "$adf_desc" "$PARENT_TICKET" << 'PAYEOF'
+    payload=$(python3 - "$PROJECT_KEY" "$title" "$adf_desc" "$parent_key" "$issue_type" << 'PAYEOF'
 import json
 import sys
 
-project_key, summary, adf_desc_json, parent_ticket = sys.argv[1:5]
-print(json.dumps({
-    "fields": {
-        "project": {"key": project_key},
-        "issuetype": {"name": "Task"},
-        "summary": summary,
-        "description": json.loads(adf_desc_json),
-    },
-    "update": {
-        "issuelinks": [{
-            "add": {
-                "type": {"name": "Blocks"},
-                "outwardIssue": {"key": parent_ticket},
-            }
-        }]
-    }
-}))
+project_key, summary, adf_desc_json, parent_key, issue_type = sys.argv[1:6]
+fields = {
+    "project": {"key": project_key},
+    "issuetype": {"name": issue_type},
+    "summary": summary,
+    "description": json.loads(adf_desc_json),
+    "parent": {"key": parent_key},
+}
+print(json.dumps({"fields": fields}))
 PAYEOF
 )
 
@@ -323,7 +447,7 @@ PAYEOF
     if [ "$http_code" = "201" ]; then
         local key
         key=$(echo "$body_resp" | python3 -c "import sys,json; print(json.load(sys.stdin)['key'])")
-        echo "  Created: $key — $title" >&2
+        echo "  Created: $key — $title ($issue_type)" >&2
         echo "  $JIRA_INSTANCE/browse/$key" >&2
         echo "$key"
         return 0
@@ -331,6 +455,31 @@ PAYEOF
         echo "  FAILED ($http_code): $title" >&2
         echo "  $body_resp" >&2
         return 1
+    fi
+}
+
+file_ticket() {
+    local ticket_file="$1"
+    local ttype
+    ttype=$(get_type "$ticket_file")
+
+    if [ "$ttype" = "Epic" ]; then
+        EPIC_KEY=$(file_single_ticket "$ticket_file" "Epic" "$FEATURE_TICKET" "")
+        if [ -n "$EPIC_KEY" ] && [ -n "$SPIKE_TICKET_KEY" ]; then
+            link_spike_to_epic
+        fi
+        echo "$EPIC_KEY"
+    else
+        # Need an Epic key for children
+        if [ -z "$EPIC_KEY" ]; then
+            ensure_epic_key || return 1
+        fi
+        if [ "$EPIC_KEY" = "__NONE__" ]; then
+            # Fallback: Blocks link (filed as standalone Task linked to feature)
+            file_single_ticket "$ticket_file" "$ttype" "$FEATURE_TICKET" ""
+        else
+            file_single_ticket "$ticket_file" "$ttype" "$EPIC_KEY" ""
+        fi
     fi
 }
 
@@ -349,7 +498,7 @@ while true; do
                 for f in "$JIRA_DIR"/*.md; do
                     echo ""
                     echo "════════════════════════════════════════════════════════════"
-                    echo "  $(basename "$f")"
+                    echo "  $(basename "$f")  [$(get_type "$f")]"
                     echo "════════════════════════════════════════════════════════════"
                     echo ""
                     cat "$f"
@@ -361,7 +510,7 @@ while true; do
                     if [ -n "$f" ]; then
                         echo ""
                         echo "════════════════════════════════════════════════════════════"
-                        echo "  $(basename "$f")"
+                        echo "  $(basename "$f")  [$(get_type "$f")]"
                         echo "════════════════════════════════════════════════════════════"
                         echo ""
                         cat "$f"
@@ -405,7 +554,6 @@ while true; do
                     if [ -n "$f" ]; then
                         echo "  Dropped: $(basename "$f")"
                         rm "$f"
-                        TICKET_COUNT=$((TICKET_COUNT - 1))
                     else
                         echo "  No ticket #$n"
                     fi
