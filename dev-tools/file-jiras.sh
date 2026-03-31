@@ -18,7 +18,9 @@
 
 set -euo pipefail
 
-CREDS="$HOME/.config/jira/credentials.json"
+# shellcheck source=jira-common.sh
+. "$(dirname "$0")/jira-common.sh"
+
 JIRA_DIR="/tmp/jiras"
 
 # --- Argument parsing ---
@@ -37,19 +39,7 @@ if [ ! -f "$SPIKE_DOC" ]; then
     exit 1
 fi
 
-# --- Credentials ---
-
-if [ ! -f "$CREDS" ]; then
-    echo "Error: Jira credentials not found at $CREDS"
-    echo "Create it with:"
-    echo '  {"email": "you@redhat.com", "token": "...", "instance": "https://redhat.atlassian.net"}'
-    echo "Get a token at: https://id.atlassian.com/manage-profile/security/api-tokens"
-    exit 1
-fi
-
-JIRA_EMAIL=$(python3 -c "import json; print(json.load(open('$CREDS'))['email'])")
-JIRA_TOKEN=$(python3 -c "import json; print(json.load(open('$CREDS'))['token'])")
-JIRA_INSTANCE=$(python3 -c "import json; print(json.load(open('$CREDS'))['instance'])")
+ensure_jira_credentials
 
 # --- Parse spike doc ---
 
