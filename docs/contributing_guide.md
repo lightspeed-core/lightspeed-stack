@@ -150,9 +150,12 @@ Templates for all of the above are in
 the spike, see
 [how to organize PoC output](contributing/howto-organize-poc-output.md).
 
-**Claude Code shortcuts**: `/spike`, `/spec-doc`, and `/file-jiras` automate
-parts of this process.  Use `dev-tools/file-jiras.sh` directly for JIRA filing
-without Claude Code.
+**Claude Code shortcuts**: `/spike` (or `/spike 1234` / `/spike LCORE-1234`),
+`/spec-doc`, and `/file-jiras` automate parts of this process.
+
+**CLI tools** (work without Claude Code):
+- `dev-tools/fetch-jira.sh <ticket>` — fetch JIRA ticket content and linked issues
+- `dev-tools/file-jiras.sh <spike-doc> <parent-ticket>` — parse and file JIRAs from a spike doc
 
 ## AI assistants
 

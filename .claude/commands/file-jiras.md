@@ -7,9 +7,10 @@ JIRAs to file.  They will also provide the parent JIRA ticket number.
 
 ## Credentials
 
-Jira credentials must be in `~/.config/jira/credentials.json`.  If this file
-doesn't exist, tell the user to create it (see `dev-tools/file-jiras.sh` for
-the format and instructions).
+Jira credentials are managed by `dev-tools/jira-common.sh`.  If
+`~/.config/jira/credentials.json` doesn't exist, the script creates it
+with FIXMEs for the user to fill in.  API tokens can be created at
+https://id.atlassian.com/manage-profile/security/api-tokens
 
 ## Process
 
@@ -19,6 +20,8 @@ the format and instructions).
 2. Read every file in `/tmp/jiras/`.  For each, verify:
    - Content matches the corresponding section in the spike doc (no truncation,
      no extra content swallowed from subsequent sections).
+   - File size is reasonable (a single JIRA should be under ~3KB; if any file
+     is much larger, the parser likely grabbed too much).
 
 3. Report any issues to the user.  If all files look correct, tell the user
    to run the script interactively — provide the full command including `cd`

@@ -4,7 +4,10 @@ A spike is a time-boxed research task that produces a design recommendation and
 proposed JIRAs.  This document describes how to run one in the Lightspeed Core
 project.
 
-**Claude Code shortcut**: `/spike` runs this process interactively.
+**Claude Code shortcut**: `/spike` runs this process interactively. You can
+also use `/spike LCORE-1234` or `/spike 1234` (default project is LCORE, so
+the `LCORE-` prefix gets prepended automatically) to have Claude Code fetch
+the respective JIRA ticket using `dev-tools/fetch-jira.sh`.
 
 ## Outputs
 
@@ -153,7 +156,10 @@ Once all decisions are confirmed:
    [jira-ticket-template.md](templates/jira-ticket-template.md).
    Use `dev-tools/file-jiras.sh` to parse and file them from the spike doc
    (Claude Code shortcut: `/file-jiras`).
-3. Each sub-JIRA's agentic tool instruction should point to the **spec doc**
+3. Ensure all four categories are covered across the filed tickets:
+   implementation, integration tests, e2e tests, and documentation.
+   Not every category needs its own ticket — combine where it makes sense.
+4. Each sub-JIRA's agentic tool instruction should point to the **spec doc**
    (not the spike doc), since the spec doc is the permanent reference.
 
 ### 10. Prepare for merge

@@ -10,7 +10,7 @@ ensure_jira_credentials() {
         cat > "$JIRA_CREDS" << 'CREDS'
 {
   "email": "FIXME: your Red Hat email (e.g., user@redhat.com)",
-  "token": "FIXME: your Jira API token (get one at https://id.atlassian.com/manage-profile/security/api-tokens)",
+  "token": "FIXME: create a token at https://id.atlassian.com/manage-profile/security/api-tokens",
   "instance": "https://redhat.atlassian.net"
 }
 CREDS
