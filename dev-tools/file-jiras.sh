@@ -45,9 +45,15 @@ JIRA_DIR=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --spike-doc) SPIKE_DOC="$2"; shift 2 ;;
-        --feature-ticket) FEATURE_TICKET="$2"; shift 2 ;;
-        --output-dir) JIRA_DIR="$2"; shift 2 ;;
+        --spike-doc)
+            [ $# -ge 2 ] || { echo "Error: --spike-doc requires a value"; exit 1; }
+            SPIKE_DOC="$2"; shift 2 ;;
+        --feature-ticket)
+            [ $# -ge 2 ] || { echo "Error: --feature-ticket requires a value"; exit 1; }
+            FEATURE_TICKET="$2"; shift 2 ;;
+        --output-dir)
+            [ $# -ge 2 ] || { echo "Error: --output-dir requires a value"; exit 1; }
+            JIRA_DIR="$2"; shift 2 ;;
         --help|-h) show_help; exit 0 ;;
         *) echo "Unknown argument: $1"; show_help; exit 1 ;;
     esac
@@ -90,13 +96,23 @@ get_key() {
     grep -o '<!-- key: [A-Z]*-[0-9]* -->' "$f" 2>/dev/null | head -1 | sed 's/<!-- key: //;s/ -->//' || true
 }
 
+# Portable sed -i (macOS requires '' argument, GNU doesn't)
+_sed_i() {
+    if sed --version 2>/dev/null | grep -q GNU; then
+        sed -i "$@"
+    else
+        sed -i '' "$@"
+    fi
+}
+
 set_key() {
     local f="$1"
     local key="$2"
     if grep -q '<!-- key:' "$f" 2>/dev/null; then
-        sed -i "s/<!-- key: [A-Z]*-[0-9]* -->/<!-- key: $key -->/" "$f"
+        _sed_i "s/<!-- key: [A-Za-z]*-[A-Za-z0-9]* -->/<!-- key: $key -->/" "$f"
     else
-        sed -i "1a\\<!-- key: $key -->" "$f"
+        _sed_i "1a\\
+<!-- key: $key -->" "$f"
     fi
 }
 
@@ -567,7 +583,11 @@ file_ticket() {
         if [ -n "$epic_existing" ]; then
             EPIC_KEY="$epic_existing"
         fi
-        EPIC_KEY=$(file_single_ticket "$ticket_file" "Epic" "$FEATURE_TICKET")
+        local filed_key
+        filed_key=$(file_single_ticket "$ticket_file" "Epic" "$FEATURE_TICKET")
+        if [ -n "$filed_key" ]; then
+            EPIC_KEY="$filed_key"
+        fi
         if [ -n "$EPIC_KEY" ] && [ -n "$SPIKE_TICKET_KEY" ]; then
             link_spike_to_epic
         fi

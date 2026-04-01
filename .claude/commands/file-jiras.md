@@ -11,7 +11,8 @@ Run `sh dev-tools/file-jiras.sh --help` to see the full usage.
 
 Jira credentials are managed by `dev-tools/jira-common.sh`.  If
 `~/.config/jira/credentials.json` doesn't exist, the script creates it
-with FIXMEs for the user to fill in.  API tokens can be created at
+with FIXMEs and exits — the user must fill in their credentials before
+re-running.  API tokens can be created at
 https://id.atlassian.com/manage-profile/security/api-tokens
 
 ## Process
@@ -19,7 +20,8 @@ https://id.atlassian.com/manage-profile/security/api-tokens
 1. Run `dev-tools/file-jiras.sh --spike-doc <path> --feature-ticket <key>`
    with `echo "quit"` piped in, so it parses and exits without filing.
 
-2. Read every file in `/tmp/jiras/`.  For each, verify:
+2. Read every file in the output directory (default: `docs/design/<feature>/jiras/`).
+   For each, verify:
    - Content matches the corresponding section in the spike doc (no truncation,
      no extra content swallowed from subsequent sections).
    - File size is reasonable (a single JIRA should be under ~3KB; if any file

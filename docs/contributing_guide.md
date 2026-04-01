@@ -143,8 +143,9 @@ automate parts of the process.  The underlying skill definitions are in
 3. **Get decisions confirmed** — open a PR with the spike doc and spec doc.
    Reviewers confirm or override the design decisions.
 
-4. **File implementation tickets** (`/file-jiras` or `dev-tools/file-jiras.sh`)
-   — once decisions are confirmed, file the JIRA sub-tickets.  Each ticket
+4. **File implementation tickets** (`/file-jiras` or
+   `dev-tools/file-jiras.sh --spike-doc <path> --feature-ticket <key>`) —
+   once decisions are confirmed, file the JIRA sub-tickets.  Each ticket
    references the spec doc.  The tool auto-creates an Epic under the feature
    ticket and files children under it.
 
