@@ -32,7 +32,7 @@ show_help() {
     echo "Options:"
     echo "  --spike-doc        Path to the spike doc containing proposed JIRAs"
     echo "  --feature-ticket   Parent feature ticket (e.g., LCORE-1311 or 1311)"
-    echo "  --output-dir       Directory for parsed ticket files (default: /tmp/jiras/<feature-dir>/)"
+    echo "  --output-dir       Directory for parsed ticket files (default: <spike-doc-dir>/jiras/)"
     echo "  --help             Show this help"
     echo ""
     echo "Example:"
@@ -68,15 +68,10 @@ if [ ! -f "$SPIKE_DOC" ]; then
     exit 1
 fi
 
-# Default output dir: /tmp/jiras/<feature-name>/
+# Default output dir: docs/design/<feature>/jiras/ (next to the spike doc)
 if [ -z "$JIRA_DIR" ]; then
-    FEATURE_DIR=$(dirname "$SPIKE_DOC")
-    FEATURE_DIR_NAME=$(basename "$FEATURE_DIR")
-    # If the parent dir is generic (tmp, ., /), derive from the filename instead
-    if [ "$FEATURE_DIR_NAME" = "." ] || [ "$FEATURE_DIR_NAME" = "/" ] || [ "$FEATURE_DIR_NAME" = "tmp" ]; then
-        FEATURE_DIR_NAME=$(basename "$SPIKE_DOC" .md | sed 's/-spike$//')
-    fi
-    JIRA_DIR="/tmp/jiras/$FEATURE_DIR_NAME"
+    SPIKE_DIR=$(dirname "$SPIKE_DOC")
+    JIRA_DIR="$SPIKE_DIR/jiras"
 fi
 
 ensure_jira_credentials
@@ -331,6 +326,34 @@ print(json.dumps({
         -d "$link_payload" >/dev/null 2>&1 && \
         echo "  Linked: $SPIKE_TICKET_KEY informs $EPIC_KEY" >&2 || \
         echo "  Warning: failed to link $SPIKE_TICKET_KEY to $EPIC_KEY" >&2
+}
+
+update_spike_doc_keys() {
+    # Replace LCORE-???? with actual ticket keys in the spike doc
+    # Match by title: each filed ticket's title maps to a ### LCORE-???? heading
+    local updated=0
+    for f in "$JIRA_DIR"/*.md; do
+        local ttype
+        ttype=$(get_type "$f")
+        [ "$ttype" = "Epic" ] && continue
+        local key
+        key=$(get_key "$f")
+        [ -z "$key" ] && continue
+        local title
+        title=$(grep '^### ' "$f" | head -1 | sed 's/^### //')
+        [ -z "$title" ] && continue
+        # Escape title for sed
+        local escaped_title
+        escaped_title=$(printf '%s\n' "$title" | sed 's/[&/\]/\\&/g')
+        # Replace "### LCORE-???? <title>" with "### <key> <title>" in spike doc
+        if grep -q "### LCORE-?*.*$escaped_title" "$SPIKE_DOC" 2>/dev/null; then
+            sed -i "s/### LCORE-?*[[:space:]]*${escaped_title}/### ${key} ${escaped_title}/" "$SPIKE_DOC"
+            updated=$((updated + 1))
+        fi
+    done
+    if [ "$updated" -gt 0 ]; then
+        echo "  Updated $updated ticket numbers in $SPIKE_DOC" >&2
+    fi
 }
 
 file_single_ticket() {
@@ -685,7 +708,12 @@ while true; do
             fi
             if [ -n "$created_keys" ]; then
                 echo ""
-                echo "Created:$created_keys"
+                echo "Filed:$created_keys"
+                printf "\n  Update spike doc with filed ticket numbers? (y/n): "
+                read -r update_spike < /dev/tty
+                if [ "$update_spike" = "y" ] || [ "$update_spike" = "Y" ]; then
+                    update_spike_doc_keys
+                fi
             fi
             show_summary
             ;;
