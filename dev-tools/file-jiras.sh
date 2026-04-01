@@ -131,12 +131,19 @@ for i in range(1, len(sections), 2):
     # Strip "LCORE-????: " prefix to get clean title
     clean_title = re.sub(r'^LCORE-\?+:?\s*', '', heading).strip()
 
-    # Extract type from <!-- type: ... --> if present, otherwise default to Task
-    type_match = re.search(r'<!--\s*type:\s*(\w+)\s*-->', body)
-    if type_match:
-        ticket_type = type_match.group(1)
-    else:
-        ticket_type = "Task"
+    # Extract type: look in the preceding section's last line (the comment
+    # sits on the line before the ### heading), then fall back to body.
+    ticket_type = "Task"
+    if i > 0:
+        preceding = sections[i - 1] if i - 1 >= 0 else ""
+        for line in preceding.strip().split('\n')[-3:]:
+            m = re.search(r'<!--\s*type:\s*(\w+)\s*-->', line)
+            if m:
+                ticket_type = m.group(1)
+                break
+
+    # Strip any <!-- type: ... --> that leaked into body from the next ticket
+    body = re.sub(r'\n<!--\s*type:\s*\w+\s*-->\s*$', '', body).strip()
 
     # Extract short name for filename
     short_name = re.sub(r'[^a-z0-9]+', '-', clean_title.lower()).strip('-')
@@ -145,14 +152,8 @@ for i in range(1, len(sections), 2):
 
     filename = f"{count:02d}-{short_name}.md"
 
-    # Ensure type metadata is present at top
-    if not type_match:
-        content = f"<!-- type: {ticket_type} -->\n### {clean_title}\n\n{body}\n"
-    else:
-        content = f"### {clean_title}\n\n{body}\n"
-        # Make sure the <!-- type --> is at the very top
-        content = re.sub(r'(<!--\s*type:\s*\w+\s*-->)\n?', '', content)
-        content = f"<!-- type: {ticket_type} -->\n{content}"
+    # Write with type metadata at top
+    content = f"<!-- type: {ticket_type} -->\n### {clean_title}\n\n{body}\n"
 
     (out_dir / filename).write_text(content)
 

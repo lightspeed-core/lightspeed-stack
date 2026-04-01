@@ -155,7 +155,7 @@ the spike, see
 
 **CLI tools** (work without Claude Code):
 - `dev-tools/fetch-jira.sh <ticket>` — fetch JIRA ticket content and linked issues
-- `dev-tools/file-jiras.sh <spike-doc> <parent-ticket>` — parse and file JIRAs from a spike doc
+- `dev-tools/file-jiras.sh --spike-doc <path> --feature-ticket <key>` — parse and file JIRAs from a spike doc
 
 ## AI assistants
 

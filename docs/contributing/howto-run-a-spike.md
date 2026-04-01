@@ -154,8 +154,10 @@ Once all decisions are confirmed:
 1. Update the parent feature ticket description to point to the spec doc.
 2. File sub-JIRAs under the parent ticket using
    [jira-ticket-template.md](templates/jira-ticket-template.md).
-   Use `dev-tools/file-jiras.sh` to parse and file them from the spike doc
-   (Claude Code shortcut: `/file-jiras`).
+   Use `dev-tools/file-jiras.sh --spike-doc <path> --feature-ticket <key>`
+   to parse and file them from the spike doc (Claude Code shortcut:
+   `/file-jiras`).  The script auto-creates an Epic under the feature
+   ticket and files children under it.
 3. Ensure all four categories are covered across the filed tickets:
    implementation, integration tests, e2e tests, and documentation.
    Not every category needs its own ticket — combine where it makes sense.
