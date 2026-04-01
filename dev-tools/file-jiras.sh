@@ -18,7 +18,7 @@
 
 set -euo pipefail
 
-# shellcheck source=jira-common.sh
+# shellcheck disable=SC1091
 . "$(dirname "$0")/jira-common.sh"
 
 EPIC_KEY=""

@@ -25,7 +25,11 @@ CREDS
         exit 1
     fi
 
+    # Variables below are used by the sourcing scripts (file-jiras.sh, fetch-jira.sh)
+    # shellcheck disable=SC2034
     JIRA_EMAIL=$(python3 -c "import json; print(json.load(open('$JIRA_CREDS'))['email'])")
+    # shellcheck disable=SC2034
     JIRA_TOKEN=$(python3 -c "import json; print(json.load(open('$JIRA_CREDS'))['token'])")
+    # shellcheck disable=SC2034
     JIRA_INSTANCE=$(python3 -c "import json; print(json.load(open('$JIRA_CREDS'))['instance'])")
 }

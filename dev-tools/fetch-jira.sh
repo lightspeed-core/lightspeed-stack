@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-# shellcheck source=jira-common.sh
+# shellcheck disable=SC1091
 . "$(dirname "$0")/jira-common.sh"
 
 if [ $# -lt 1 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
