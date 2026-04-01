@@ -103,7 +103,7 @@ set_key() {
 # --- Parse spike doc ---
 
 if [ -d "$JIRA_DIR" ] && ls "$JIRA_DIR"/*.md >/dev/null 2>&1; then
-    printf "Existing ticket files found in $JIRA_DIR/. Re-parse (existing files will be overwritten)? (y/n): " >&2
+    printf "Existing ticket files found in $JIRA_DIR/. Re-parse (existing ticket files will be overwritten)? (y/n): " >&2
     read -r reparse
     if [ "$reparse" != "y" ] && [ "$reparse" != "Y" ]; then
         echo "Using existing files."
@@ -125,8 +125,14 @@ spike_doc = Path(sys.argv[1]).read_text()
 out_dir = Path(sys.argv[2])
 feature_ticket = sys.argv[3]
 
-# --- Extract spike ticket key from metadata table ---
+# --- Extract spike ticket key from metadata table or first paragraph ---
 spike_key_match = re.search(r'\*\*Spike\*\*.*?(LCORE-\d+)', spike_doc)
+if not spike_key_match:
+    # Try "deliverable for LCORE-XXXX" pattern
+    spike_key_match = re.search(r'deliverable for (LCORE-\d+)', spike_doc)
+if not spike_key_match:
+    # Try first LCORE- reference in the first 500 chars
+    spike_key_match = re.search(r'(LCORE-\d+)', spike_doc[:500])
 spike_key = spike_key_match.group(1) if spike_key_match else ""
 
 # --- Extract one-line problem statement for Epic description ---
@@ -326,34 +332,6 @@ print(json.dumps({
         -d "$link_payload" >/dev/null 2>&1 && \
         echo "  Linked: $SPIKE_TICKET_KEY informs $EPIC_KEY" >&2 || \
         echo "  Warning: failed to link $SPIKE_TICKET_KEY to $EPIC_KEY" >&2
-}
-
-update_spike_doc_keys() {
-    # Replace LCORE-???? with actual ticket keys in the spike doc
-    # Match by title: each filed ticket's title maps to a ### LCORE-???? heading
-    local updated=0
-    for f in "$JIRA_DIR"/*.md; do
-        local ttype
-        ttype=$(get_type "$f")
-        [ "$ttype" = "Epic" ] && continue
-        local key
-        key=$(get_key "$f")
-        [ -z "$key" ] && continue
-        local title
-        title=$(grep '^### ' "$f" | head -1 | sed 's/^### //')
-        [ -z "$title" ] && continue
-        # Escape title for sed
-        local escaped_title
-        escaped_title=$(printf '%s\n' "$title" | sed 's/[&/\]/\\&/g')
-        # Replace "### LCORE-???? <title>" with "### <key> <title>" in spike doc
-        if grep -q "### LCORE-?*.*$escaped_title" "$SPIKE_DOC" 2>/dev/null; then
-            sed -i "s/### LCORE-?*[[:space:]]*${escaped_title}/### ${key} ${escaped_title}/" "$SPIKE_DOC"
-            updated=$((updated + 1))
-        fi
-    done
-    if [ "$updated" -gt 0 ]; then
-        echo "  Updated $updated ticket numbers in $SPIKE_DOC" >&2
-    fi
 }
 
 file_single_ticket() {
@@ -595,8 +573,19 @@ file_ticket() {
         fi
         echo "$EPIC_KEY"
     else
-        # Need an Epic key for children
-        if [ -z "$EPIC_KEY" ]; then
+        # Need an Epic key for children — refresh from Epic file if not set
+        if [ -z "$EPIC_KEY" ] || [ "$EPIC_KEY" = "__NONE__" ]; then
+            local epic_file
+            epic_file=$(find "$JIRA_DIR" -maxdepth 1 -name '00-epic.md' 2>/dev/null | head -1)
+            if [ -n "$epic_file" ]; then
+                local ek
+                ek=$(get_key "$epic_file")
+                if [ -n "$ek" ]; then
+                    EPIC_KEY="$ek"
+                fi
+            fi
+        fi
+        if [ -z "$EPIC_KEY" ] || [ "$EPIC_KEY" = "__NONE__" ]; then
             ensure_epic_key || return 1
         fi
         if [ "$EPIC_KEY" = "__NONE__" ]; then
@@ -709,11 +698,6 @@ while true; do
             if [ -n "$created_keys" ]; then
                 echo ""
                 echo "Filed:$created_keys"
-                printf "\n  Update spike doc with filed ticket numbers? (y/n): "
-                read -r update_spike < /dev/tty
-                if [ "$update_spike" = "y" ] || [ "$update_spike" = "Y" ]; then
-                    update_spike_doc_keys
-                fi
             fi
             show_summary
             ;;
