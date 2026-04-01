@@ -124,12 +124,16 @@ Happy hacking!
 When implementing a new feature or significant change, we take the proposal,
 run a spike for it, present the findings for review, make decisions about the
 scope and design, create a permanent document with the feature specification,
-and file ready-for-implementation JIRA tickets:
+and file ready-for-implementation JIRA tickets.
 
-1. **Run a spike** (`/spike` or `/spike LCORE-1234`) — research the problem,
-   evaluate design alternatives, build a PoC if needed, document decisions and
-   recommendations.  The spike produces two documents and a set of proposed JIRAs.
-   → [How to run a spike](contributing/howto-run-a-spike.md)
+The steps below reference Claude Code slash commands (e.g., `/spike`) that
+automate parts of the process.  The underlying skill definitions are in
+`.claude/commands/` and can be adapted for other AI coding tools.
+
+1. **Run a spike** (`/spike` or `/spike LCORE-1234` or `/spike 1234`) — research
+   the problem, evaluate design alternatives, build a PoC if needed, document
+   decisions and recommendations.  The spike produces two documents and a set of
+   proposed JIRAs. → [How to run a spike](contributing/howto-run-a-spike.md)
 
 2. **Write a spec doc** (`/spec-doc`) — the permanent in-repo feature spec.
    Records the approved design: requirements, architecture, implementation

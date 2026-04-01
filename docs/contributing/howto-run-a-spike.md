@@ -5,9 +5,8 @@ proposed JIRAs.  This document describes how to run one in the Lightspeed Core
 project.
 
 **Claude Code shortcut**: `/spike` runs this process interactively. You can
-also use `/spike LCORE-1234` or `/spike 1234` (default project is LCORE, so
-the `LCORE-` prefix gets prepended automatically) to have Claude Code fetch
-the respective JIRA ticket using `dev-tools/fetch-jira.sh`.
+also use `/spike LCORE-1234` or `/spike 1234` (defaults to LCORE) to have
+Claude Code fetch the respective JIRA ticket using `dev-tools/fetch-jira.sh`.
 
 ## Outputs
 
@@ -160,7 +159,7 @@ Once all decisions are confirmed:
    ticket and files children under it.
 3. Ensure all four categories are covered across the filed tickets:
    implementation, integration tests, e2e tests, and documentation.
-   Not every category needs its own ticket — combine where it makes sense.
+   Where it makes sense, combine work into fewer tickets.
 4. Each sub-JIRA's agentic tool instruction should point to the **spec doc**
    (not the spike doc), since the spec doc is the permanent reference.
 5. After filing, update the spike doc: replace `LCORE-????` placeholders with
