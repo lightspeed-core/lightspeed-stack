@@ -21,18 +21,18 @@ set -euo pipefail
 # shellcheck source=jira-common.sh
 . "$(dirname "$0")/jira-common.sh"
 
-JIRA_DIR="/tmp/jiras"
 EPIC_KEY=""
 SPIKE_TICKET_KEY=""
 
 # --- Argument parsing ---
 
 show_help() {
-    echo "Usage: file-jiras.sh --spike-doc <path> --feature-ticket <key>"
+    echo "Usage: file-jiras.sh --spike-doc <path> --feature-ticket <key> [--output-dir <path>]"
     echo ""
     echo "Options:"
     echo "  --spike-doc        Path to the spike doc containing proposed JIRAs"
     echo "  --feature-ticket   Parent feature ticket (e.g., LCORE-1311 or 1311)"
+    echo "  --output-dir       Directory for parsed ticket files (default: /tmp/jiras/<feature-dir>/)"
     echo "  --help             Show this help"
     echo ""
     echo "Example:"
@@ -41,11 +41,13 @@ show_help() {
 
 SPIKE_DOC=""
 FEATURE_TICKET=""
+JIRA_DIR=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --spike-doc) SPIKE_DOC="$2"; shift 2 ;;
         --feature-ticket) FEATURE_TICKET="$2"; shift 2 ;;
+        --output-dir) JIRA_DIR="$2"; shift 2 ;;
         --help|-h) show_help; exit 0 ;;
         *) echo "Unknown argument: $1"; show_help; exit 1 ;;
     esac
@@ -66,12 +68,55 @@ if [ ! -f "$SPIKE_DOC" ]; then
     exit 1
 fi
 
+# Default output dir: /tmp/jiras/<feature-dir-name>/
+if [ -z "$JIRA_DIR" ]; then
+    FEATURE_DIR=$(dirname "$SPIKE_DOC")
+    FEATURE_DIR_NAME=$(basename "$FEATURE_DIR")
+    if [ "$FEATURE_DIR_NAME" = "." ] || [ "$FEATURE_DIR_NAME" = "/" ] || [ "$FEATURE_DIR_NAME" = "tmp" ]; then
+        FEATURE_DIR_NAME="default"
+    fi
+    JIRA_DIR="/tmp/jiras/$FEATURE_DIR_NAME"
+fi
+
 ensure_jira_credentials
 
 PROJECT_KEY="${FEATURE_TICKET%%-*}"
 
+# --- Helper functions (needed before parse for key detection) ---
+
+get_type() {
+    local f="$1"
+    grep -o '<!-- type: [A-Za-z]* -->' "$f" 2>/dev/null | head -1 | sed 's/<!-- type: //;s/ -->//' || echo "Task"
+}
+
+get_key() {
+    local f="$1"
+    grep -o '<!-- key: [A-Z]*-[0-9]* -->' "$f" 2>/dev/null | head -1 | sed 's/<!-- key: //;s/ -->//' || true
+}
+
+set_key() {
+    local f="$1"
+    local key="$2"
+    if grep -q '<!-- key:' "$f" 2>/dev/null; then
+        sed -i "s/<!-- key: [A-Z]*-[0-9]* -->/<!-- key: $key -->/" "$f"
+    else
+        sed -i "1a\\<!-- key: $key -->" "$f"
+    fi
+}
+
 # --- Parse spike doc ---
 
+if [ -d "$JIRA_DIR" ] && ls "$JIRA_DIR"/*.md >/dev/null 2>&1; then
+    printf "Existing ticket files found in $JIRA_DIR/. Re-parse? (y/n): " >&2
+    read -r reparse
+    if [ "$reparse" != "y" ] && [ "$reparse" != "Y" ]; then
+        echo "Using existing files."
+        # Skip to interactive loop
+        SKIP_PARSE=1
+    fi
+fi
+
+if [ "${SKIP_PARSE:-}" != "1" ]; then
 rm -rf "$JIRA_DIR"
 mkdir -p "$JIRA_DIR"
 
@@ -167,17 +212,20 @@ if spike_key:
     print(f"Spike ticket: {spike_key}")
 PYEOF
 
+fi  # end SKIP_PARSE
+
 # --- Read metadata ---
 if [ -f "$JIRA_DIR/.meta.json" ]; then
     SPIKE_TICKET_KEY=$(python3 -c "import json; print(json.load(open('$JIRA_DIR/.meta.json')).get('spike_ticket', ''))")
 fi
 
-# --- Helper functions ---
+# Check if Epic already has a key from a previous session
+EPIC_FILE=$(find "$JIRA_DIR" -maxdepth 1 -name '00-epic.md' 2>/dev/null | head -1)
+if [ -n "$EPIC_FILE" ]; then
+    EPIC_KEY=$(get_key "$EPIC_FILE")
+fi
 
-get_type() {
-    local f="$1"
-    grep -o '<!-- type: [A-Za-z]* -->' "$f" 2>/dev/null | head -1 | sed 's/<!-- type: //;s/ -->//' || echo "Task"
-}
+# --- Helper functions ---
 
 show_summary() {
     echo ""
@@ -189,8 +237,12 @@ show_summary() {
         title=$(grep '^### ' "$f" | head -1 | sed 's/^### //')
         local ttype
         ttype=$(get_type "$f")
+        local existing_key
+        existing_key=$(get_key "$f")
         local filed_as
-        if [ "$ttype" = "Epic" ]; then
+        if [ -n "$existing_key" ]; then
+            filed_as="FILED: $existing_key"
+        elif [ "$ttype" = "Epic" ]; then
             if [ -n "$EPIC_KEY" ]; then
                 filed_as="FILED: $EPIC_KEY"
             else
@@ -241,7 +293,7 @@ ensure_epic_key() {
                 echo "  Error: first ticket is not an Epic. Edit it or re-order files." >&2
                 return 1
             fi
-            EPIC_KEY=$(file_single_ticket "$epic_file" "Epic" "$FEATURE_TICKET" "")
+            EPIC_KEY=$(file_single_ticket "$epic_file" "Epic" "$FEATURE_TICKET")
             if [ -z "$EPIC_KEY" ]; then
                 echo "  Epic filing failed." >&2
                 return 1
@@ -294,6 +346,10 @@ file_single_ticket() {
 
     local title
     title=$(grep '^### ' "$ticket_file" | head -1 | sed 's/^### //')
+
+    # Check if this ticket already has a key (update instead of create)
+    local existing_key
+    existing_key=$(get_key "$ticket_file")
 
     # Check for duplicates
     local url_title
@@ -415,9 +471,47 @@ print(json.dumps(doc))
 ADFEOF
     )
 
-    # Build payload
-    local payload
-    payload=$(python3 - "$PROJECT_KEY" "$title" "$adf_desc" "$parent_key" "$issue_type" << 'PAYEOF'
+    if [ -n "$existing_key" ]; then
+        # UPDATE existing ticket
+        local update_payload
+        update_payload=$(python3 - "$title" "$adf_desc" << 'UPDEOF'
+import json
+import sys
+
+summary, adf_desc_json = sys.argv[1:3]
+fields = {
+    "summary": summary,
+    "description": json.loads(adf_desc_json),
+}
+print(json.dumps({"fields": fields}))
+UPDEOF
+)
+        local response
+        response=$(curl -sS --connect-timeout 10 --max-time 30 -w "\n%{http_code}" \
+            -u "$JIRA_EMAIL:$JIRA_TOKEN" \
+            -H "Content-Type: application/json" \
+            -X PUT "$JIRA_INSTANCE/rest/api/3/issue/$existing_key" \
+            -d "$update_payload")
+
+        local http_code
+        http_code=$(echo "$response" | tail -1)
+
+        if [ "$http_code" = "204" ]; then
+            echo "  Updated: $existing_key — $title ($issue_type)" >&2
+            echo "  $JIRA_INSTANCE/browse/$existing_key" >&2
+            echo "$existing_key"
+            return 0
+        else
+            local body_resp
+            body_resp=$(echo "$response" | sed '$d')
+            echo "  FAILED update ($http_code): $existing_key — $title" >&2
+            echo "  $body_resp" >&2
+            return 1
+        fi
+    else
+        # CREATE new ticket
+        local payload
+        payload=$(python3 - "$PROJECT_KEY" "$title" "$adf_desc" "$parent_key" "$issue_type" << 'PAYEOF'
 import json
 import sys
 
@@ -432,30 +526,32 @@ fields = {
 print(json.dumps({"fields": fields}))
 PAYEOF
 )
+        local response
+        response=$(curl -sS --connect-timeout 10 --max-time 30 -w "\n%{http_code}" \
+            -u "$JIRA_EMAIL:$JIRA_TOKEN" \
+            -H "Content-Type: application/json" \
+            -X POST "$JIRA_INSTANCE/rest/api/3/issue" \
+            -d "$payload")
 
-    local response
-    response=$(curl -sS --connect-timeout 10 --max-time 30 -w "\n%{http_code}" \
-        -u "$JIRA_EMAIL:$JIRA_TOKEN" \
-        -H "Content-Type: application/json" \
-        -X POST "$JIRA_INSTANCE/rest/api/3/issue" \
-        -d "$payload")
+        local http_code
+        http_code=$(echo "$response" | tail -1)
+        local body_resp
+        body_resp=$(echo "$response" | sed '$d')
 
-    local http_code
-    http_code=$(echo "$response" | tail -1)
-    local body_resp
-    body_resp=$(echo "$response" | sed '$d')
-
-    if [ "$http_code" = "201" ]; then
-        local key
-        key=$(echo "$body_resp" | python3 -c "import sys,json; print(json.load(sys.stdin)['key'])")
-        echo "  Created: $key — $title ($issue_type)" >&2
-        echo "  $JIRA_INSTANCE/browse/$key" >&2
-        echo "$key"
-        return 0
-    else
-        echo "  FAILED ($http_code): $title" >&2
-        echo "  $body_resp" >&2
-        return 1
+        if [ "$http_code" = "201" ]; then
+            local key
+            key=$(echo "$body_resp" | python3 -c "import sys,json; print(json.load(sys.stdin)['key'])")
+            echo "  Created: $key — $title ($issue_type)" >&2
+            echo "  $JIRA_INSTANCE/browse/$key" >&2
+            # Write key back into the file
+            set_key "$ticket_file" "$key"
+            echo "$key"
+            return 0
+        else
+            echo "  FAILED ($http_code): $title" >&2
+            echo "  $body_resp" >&2
+            return 1
+        fi
     fi
 }
 
@@ -465,7 +561,13 @@ file_ticket() {
     ttype=$(get_type "$ticket_file")
 
     if [ "$ttype" = "Epic" ]; then
-        EPIC_KEY=$(file_single_ticket "$ticket_file" "Epic" "$FEATURE_TICKET" "")
+        # Check if Epic already has a key (pre-existing)
+        local epic_existing
+        epic_existing=$(get_key "$ticket_file")
+        if [ -n "$epic_existing" ]; then
+            EPIC_KEY="$epic_existing"
+        fi
+        EPIC_KEY=$(file_single_ticket "$ticket_file" "Epic" "$FEATURE_TICKET")
         if [ -n "$EPIC_KEY" ] && [ -n "$SPIKE_TICKET_KEY" ]; then
             link_spike_to_epic
         fi
@@ -477,9 +579,9 @@ file_ticket() {
         fi
         if [ "$EPIC_KEY" = "__NONE__" ]; then
             # Fallback: Blocks link (filed as standalone Task linked to feature)
-            file_single_ticket "$ticket_file" "$ttype" "$FEATURE_TICKET" ""
+            file_single_ticket "$ticket_file" "$ttype" "$FEATURE_TICKET"
         else
-            file_single_ticket "$ticket_file" "$ttype" "$EPIC_KEY" ""
+            file_single_ticket "$ticket_file" "$ttype" "$EPIC_KEY"
         fi
     fi
 }
