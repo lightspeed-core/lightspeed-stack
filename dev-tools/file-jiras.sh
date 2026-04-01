@@ -68,12 +68,13 @@ if [ ! -f "$SPIKE_DOC" ]; then
     exit 1
 fi
 
-# Default output dir: /tmp/jiras/<feature-dir-name>/
+# Default output dir: /tmp/jiras/<feature-name>/
 if [ -z "$JIRA_DIR" ]; then
     FEATURE_DIR=$(dirname "$SPIKE_DOC")
     FEATURE_DIR_NAME=$(basename "$FEATURE_DIR")
+    # If the parent dir is generic (tmp, ., /), derive from the filename instead
     if [ "$FEATURE_DIR_NAME" = "." ] || [ "$FEATURE_DIR_NAME" = "/" ] || [ "$FEATURE_DIR_NAME" = "tmp" ]; then
-        FEATURE_DIR_NAME="default"
+        FEATURE_DIR_NAME=$(basename "$SPIKE_DOC" .md | sed 's/-spike$//')
     fi
     JIRA_DIR="/tmp/jiras/$FEATURE_DIR_NAME"
 fi
@@ -107,7 +108,7 @@ set_key() {
 # --- Parse spike doc ---
 
 if [ -d "$JIRA_DIR" ] && ls "$JIRA_DIR"/*.md >/dev/null 2>&1; then
-    printf "Existing ticket files found in $JIRA_DIR/. Re-parse? (y/n): " >&2
+    printf "Existing ticket files found in $JIRA_DIR/. Re-parse (existing files will be overwritten)? (y/n): " >&2
     read -r reparse
     if [ "$reparse" != "y" ] && [ "$reparse" != "Y" ]; then
         echo "Using existing files."
@@ -146,11 +147,7 @@ if feature_dir and feature_dir not in ('design', 'docs', '.'):
 else:
     epic_title = "TODO: Epic title"
 
-epic_content = f"<!-- type: Epic -->\n### {epic_title}\n\n"
-if problem_line:
-    epic_content += f"**Description**: {problem_line}\n"
-else:
-    epic_content += "**Description**: TODO\n"
+epic_content = f"<!-- type: Epic -->\n### {epic_title}\n"
 
 (out_dir / "00-epic.md").write_text(epic_content)
 
@@ -229,8 +226,8 @@ fi
 
 show_summary() {
     echo ""
-    printf "  %-3s %-7s %-40s %s\n" "#" "Type" "Title" "Filed as"
-    printf "  %-3s %-7s %-40s %s\n" "---" "-------" "----------------------------------------" "--------------------"
+    printf "  %-3s %-7s %-13s %-35s %s\n" "#" "Type" "Status" "Title" "Parent"
+    printf "  %-3s %-7s %-13s %-35s %s\n" "---" "-------" "-------------" "-----------------------------------" "--------------------"
     local i=0
     for f in "$JIRA_DIR"/*.md; do
         local title
@@ -239,23 +236,20 @@ show_summary() {
         ttype=$(get_type "$f")
         local existing_key
         existing_key=$(get_key "$f")
-        local filed_as
+        local status parent
         if [ -n "$existing_key" ]; then
-            filed_as="FILED: $existing_key"
-        elif [ "$ttype" = "Epic" ]; then
-            if [ -n "$EPIC_KEY" ]; then
-                filed_as="FILED: $EPIC_KEY"
-            else
-                filed_as="→ child of $FEATURE_TICKET"
-            fi
+            status="filed:$existing_key"
         else
-            if [ -n "$EPIC_KEY" ]; then
-                filed_as="→ child of $EPIC_KEY"
-            else
-                filed_as="→ child of Epic #0"
-            fi
+            status="new"
         fi
-        printf "  %-3d %-7s %-40s %s\n" "$i" "$ttype" "$title" "$filed_as"
+        if [ "$ttype" = "Epic" ]; then
+            parent="$FEATURE_TICKET"
+        elif [ -n "$EPIC_KEY" ] && [ "$EPIC_KEY" != "__NONE__" ]; then
+            parent="$EPIC_KEY"
+        else
+            parent="Epic #0"
+        fi
+        printf "  %-3d %-7s %-13s %-35s %s\n" "$i" "$ttype" "$status" "$title" "$parent"
         i=$((i + 1))
     done
     echo ""
@@ -351,6 +345,8 @@ file_single_ticket() {
     local existing_key
     existing_key=$(get_key "$ticket_file")
 
+    # Skip duplicate check for updates — we already know the ticket
+    if [ -z "$existing_key" ]; then
     # Check for duplicates
     local url_title
     url_title=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$title")
@@ -396,10 +392,11 @@ except Exception as e:
             return 1
         fi
     fi
+    fi  # end skip duplicate check for updates
 
-    # Extract description body (everything after the heading, skip type comment)
+    # Extract description body (everything after the heading, skip metadata comments)
     local body
-    body=$(sed '1{/^<!--/d}' "$ticket_file" | tail -n +2)
+    body=$(grep -v '^<!-- \(type\|key\):' "$ticket_file" | tail -n +2)
 
     # Build ADF description
     local adf_desc
@@ -472,17 +469,19 @@ ADFEOF
     )
 
     if [ -n "$existing_key" ]; then
-        # UPDATE existing ticket
+        # UPDATE existing ticket (summary, description, parent)
         local update_payload
-        update_payload=$(python3 - "$title" "$adf_desc" << 'UPDEOF'
+        update_payload=$(python3 - "$title" "$adf_desc" "$parent_key" << 'UPDEOF'
 import json
 import sys
 
-summary, adf_desc_json = sys.argv[1:3]
+summary, adf_desc_json, parent_key = sys.argv[1:4]
 fields = {
     "summary": summary,
     "description": json.loads(adf_desc_json),
 }
+if parent_key:
+    fields["parent"] = {"key": parent_key}
 print(json.dumps({"fields": fields}))
 UPDEOF
 )
