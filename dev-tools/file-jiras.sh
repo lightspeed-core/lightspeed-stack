@@ -148,7 +148,7 @@ if feature_dir and feature_dir not in ('design', 'docs', '.'):
 else:
     epic_title = "TODO: Epic title"
 
-epic_content = f"<!-- type: Epic -->\n### {epic_title}\n"
+epic_content = f"<!-- type: Epic -->\n<!-- key: LCORE-xxxx -->\n### {epic_title}\n"
 
 (out_dir / "00-epic.md").write_text(epic_content)
 
@@ -195,8 +195,8 @@ for i in range(1, len(sections), 2):
 
     filename = f"{count:02d}-{short_name}.md"
 
-    # Write with type metadata at top
-    content = f"<!-- type: {ticket_type} -->\n### {clean_title}\n\n{body}\n"
+    # Write with type and key metadata at top
+    content = f"<!-- type: {ticket_type} -->\n<!-- key: LCORE-xxxx -->\n### {clean_title}\n\n{body}\n"
 
     (out_dir / filename).write_text(content)
 

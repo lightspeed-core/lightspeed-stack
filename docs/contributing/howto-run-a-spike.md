@@ -163,6 +163,10 @@ Once all decisions are confirmed:
    Not every category needs its own ticket — combine where it makes sense.
 4. Each sub-JIRA's agentic tool instruction should point to the **spec doc**
    (not the spike doc), since the spec doc is the permanent reference.
+5. After filing, update the spike doc: replace `LCORE-????` placeholders with
+   the actual ticket keys.  The filed ticket files in
+   `docs/design/<feature>/jiras/` have `<!-- key: LCORE-XXXX -->` metadata
+   that maps each ticket to its filed key.
 
 ### 10. Prepare for merge
 
