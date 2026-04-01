@@ -697,16 +697,14 @@ while true; do
             fi
             if [ -n "$created_keys" ]; then
                 echo ""
-                echo "Filed:$created_keys"
+                echo "Done:$created_keys"
             fi
             # Refresh EPIC_KEY from file (subshell can't propagate variable changes)
-            local epic_file
-            epic_file=$(find "$JIRA_DIR" -maxdepth 1 -name '00-epic.md' 2>/dev/null | head -1)
-            if [ -n "$epic_file" ]; then
-                local ek
-                ek=$(get_key "$epic_file")
-                if [ -n "$ek" ]; then
-                    EPIC_KEY="$ek"
+            _epic_file=$(find "$JIRA_DIR" -maxdepth 1 -name '00-epic.md' 2>/dev/null | head -1)
+            if [ -n "$_epic_file" ]; then
+                _ek=$(get_key "$_epic_file")
+                if [ -n "$_ek" ]; then
+                    EPIC_KEY="$_ek"
                 fi
             fi
             show_summary
