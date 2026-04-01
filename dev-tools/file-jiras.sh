@@ -103,7 +103,7 @@ set_key() {
 # --- Parse spike doc ---
 
 if [ -d "$JIRA_DIR" ] && ls "$JIRA_DIR"/*.md >/dev/null 2>&1; then
-    printf "Existing ticket files found in $JIRA_DIR/. Re-parse (existing ticket files will be overwritten)? (y/n): " >&2
+    printf "Existing ticket files found in %s/. Re-parse (existing ticket files will be overwritten)? (y/n): " "$JIRA_DIR" >&2
     read -r reparse
     if [ "$reparse" != "y" ] && [ "$reparse" != "Y" ]; then
         echo "Using existing files."
