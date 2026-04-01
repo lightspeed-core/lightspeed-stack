@@ -239,3 +239,9 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true
 disable_error_code = "attr-defined"
+
+[tool.uv]
+environments = [
+  "sys_platform == 'linux' and platform_machine == 'x86_64'",
+  "sys_platform == 'linux' and platform_machine == 'aarch64'",
+]
