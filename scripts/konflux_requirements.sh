@@ -22,7 +22,7 @@ NO_WHEEL_PACKAGES="markupsafe"
 # Generate requirements list from pyproject.toml from both indexes
 uv pip compile pyproject.toml -o "$RAW_REQ_FILE" \
 		--group llslibdev \
-		--python-platform x86_64-unknown-linux-gnu \
+		--universal \
 		--python-version 3.12 \
 		--refresh \
 		--index ${RHOAI_INDEX_URL} \
