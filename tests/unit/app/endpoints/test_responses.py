@@ -18,6 +18,7 @@ from app.endpoints.responses import (
     responses_endpoint_handler,
 )
 from configuration import AppConfig
+from constants import DEFAULT_SYSTEM_PROMPT
 from models.config import Action
 from models.database.conversations import UserConversation
 from models.requests import ResponsesRequest
@@ -1372,3 +1373,244 @@ class TestHandleStreamingResponse:
             )
 
         assert exc_info.value.status_code == 503
+
+
+class TestResponsesInstructionResolution:
+    """Tests for server-side instruction resolution in responses_endpoint_handler."""
+
+    @pytest.mark.asyncio
+    async def test_default_instructions_applied_when_client_omits_them(
+        self,
+        dummy_request: Request,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """When client sends no instructions, the server default is applied."""
+        responses_request = ResponsesRequest(input="Hello")
+        assert responses_request.instructions is None
+
+        _patch_base(mocker, minimal_config)
+        mocker.patch("utils.prompts.configuration", minimal_config)
+        _patch_client(mocker)
+        _patch_resolve_response_context(mocker, conversation="conv_new_123")
+        mocker.patch(
+            f"{MODULE}.select_model_for_responses",
+            new=mocker.AsyncMock(return_value="provider/model1"),
+        )
+        mocker.patch(
+            f"{MODULE}.check_model_configured",
+            new=mocker.AsyncMock(return_value=True),
+        )
+        _patch_rag(mocker)
+        _patch_moderation(mocker, decision="passed")
+
+        mock_handler = mocker.AsyncMock(
+            return_value=_make_responses_response(
+                output_text="Reply", conversation="conv_new_123"
+            )
+        )
+        mocker.patch(f"{MODULE}.handle_non_streaming_response", new=mock_handler)
+
+        await responses_endpoint_handler(
+            request=dummy_request,
+            responses_request=responses_request,
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        # The request passed to handle_non_streaming_response should have
+        # instructions resolved to the default system prompt.
+        call_kwargs = mock_handler.call_args[1]
+        assert call_kwargs["request"].instructions == DEFAULT_SYSTEM_PROMPT
+
+    @pytest.mark.asyncio
+    async def test_client_provided_instructions_pass_through(
+        self,
+        dummy_request: Request,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """When client provides instructions, they are used as-is."""
+        custom_instructions = "You are a RHEL expert."
+        responses_request = ResponsesRequest(
+            input="Hello", instructions=custom_instructions
+        )
+
+        _patch_base(mocker, minimal_config)
+        mocker.patch("utils.prompts.configuration", minimal_config)
+        _patch_client(mocker)
+        _patch_resolve_response_context(mocker, conversation="conv_new_123")
+        mocker.patch(
+            f"{MODULE}.select_model_for_responses",
+            new=mocker.AsyncMock(return_value="provider/model1"),
+        )
+        mocker.patch(
+            f"{MODULE}.check_model_configured",
+            new=mocker.AsyncMock(return_value=True),
+        )
+        _patch_rag(mocker)
+        _patch_moderation(mocker, decision="passed")
+
+        mock_handler = mocker.AsyncMock(
+            return_value=_make_responses_response(
+                output_text="Reply", conversation="conv_new_123"
+            )
+        )
+        mocker.patch(f"{MODULE}.handle_non_streaming_response", new=mock_handler)
+
+        await responses_endpoint_handler(
+            request=dummy_request,
+            responses_request=responses_request,
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        call_kwargs = mock_handler.call_args[1]
+        assert call_kwargs["request"].instructions == custom_instructions
+
+    @pytest.mark.asyncio
+    async def test_configured_system_prompt_used_when_no_client_instructions(
+        self,
+        dummy_request: Request,
+        mocker: MockerFixture,
+    ) -> None:
+        """When config has a custom system_prompt and client sends none, use it."""
+        cfg = AppConfig()
+        cfg.init_from_dict(
+            {
+                "name": "test",
+                "service": {"host": "localhost", "port": 8080},
+                "llama_stack": {
+                    "api_key": "test-key",
+                    "url": "http://test.com:1234",
+                    "use_as_library_client": False,
+                },
+                "user_data_collection": {},
+                "authentication": {"module": "noop"},
+                "authorization": {"access_rules": []},
+                "customization": {
+                    "system_prompt": "You are a deployment assistant.",
+                },
+            }
+        )
+
+        responses_request = ResponsesRequest(input="Hello")
+
+        _patch_base(mocker, cfg)
+        # Also patch configuration in prompts module so get_system_prompt sees it
+        mocker.patch("utils.prompts.configuration", cfg)
+        _patch_client(mocker)
+        _patch_resolve_response_context(mocker, conversation="conv_new_123")
+        mocker.patch(
+            f"{MODULE}.select_model_for_responses",
+            new=mocker.AsyncMock(return_value="provider/model1"),
+        )
+        mocker.patch(
+            f"{MODULE}.check_model_configured",
+            new=mocker.AsyncMock(return_value=True),
+        )
+        _patch_rag(mocker)
+        _patch_moderation(mocker, decision="passed")
+
+        mock_handler = mocker.AsyncMock(
+            return_value=_make_responses_response(
+                output_text="Reply", conversation="conv_new_123"
+            )
+        )
+        mocker.patch(f"{MODULE}.handle_non_streaming_response", new=mock_handler)
+
+        await responses_endpoint_handler(
+            request=dummy_request,
+            responses_request=responses_request,
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        call_kwargs = mock_handler.call_args[1]
+        assert call_kwargs["request"].instructions == "You are a deployment assistant."
+
+    @pytest.mark.asyncio
+    async def test_client_instructions_rejected_when_disabled(
+        self,
+        dummy_request: Request,
+        mocker: MockerFixture,
+    ) -> None:
+        """When disable_query_system_prompt is set, client instructions raise 422."""
+        cfg = AppConfig()
+        cfg.init_from_dict(
+            {
+                "name": "test",
+                "service": {"host": "localhost", "port": 8080},
+                "llama_stack": {
+                    "api_key": "test-key",
+                    "url": "http://test.com:1234",
+                    "use_as_library_client": False,
+                },
+                "user_data_collection": {},
+                "authentication": {"module": "noop"},
+                "authorization": {"access_rules": []},
+                "customization": {
+                    "disable_query_system_prompt": True,
+                },
+            }
+        )
+
+        responses_request = ResponsesRequest(
+            input="Hello", instructions="Custom instructions"
+        )
+
+        _patch_base(mocker, cfg)
+        mocker.patch("utils.prompts.configuration", cfg)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await responses_endpoint_handler(
+                request=dummy_request,
+                responses_request=responses_request,
+                auth=MOCK_AUTH,
+                mcp_headers={},
+            )
+
+        assert exc_info.value.status_code == 422
+        assert isinstance(exc_info.value.detail, dict)
+        assert "instructions field" in exc_info.value.detail.get("cause", "")
+
+    @pytest.mark.asyncio
+    async def test_streaming_response_uses_resolved_instructions(
+        self,
+        dummy_request: Request,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """When streaming, instructions are resolved the same way as non-streaming."""
+        responses_request = ResponsesRequest(input="Hello", stream=True)
+        assert responses_request.instructions is None
+
+        _patch_base(mocker, minimal_config)
+        mocker.patch("utils.prompts.configuration", minimal_config)
+        _patch_client(mocker)
+        _patch_resolve_response_context(mocker, conversation="conv_new_123")
+        mocker.patch(
+            f"{MODULE}.select_model_for_responses",
+            new=mocker.AsyncMock(return_value="provider/model1"),
+        )
+        mocker.patch(
+            f"{MODULE}.check_model_configured",
+            new=mocker.AsyncMock(return_value=True),
+        )
+        _patch_rag(mocker)
+        _patch_moderation(mocker, decision="passed")
+
+        mock_handler = mocker.AsyncMock(
+            return_value=mocker.Mock(spec=StreamingResponse)
+        )
+        mocker.patch(f"{MODULE}.handle_streaming_response", new=mock_handler)
+
+        await responses_endpoint_handler(
+            request=dummy_request,
+            responses_request=responses_request,
+            auth=MOCK_AUTH,
+            mcp_headers={},
+        )
+
+        call_kwargs = mock_handler.call_args[1]
+        assert call_kwargs["request"].instructions == DEFAULT_SYSTEM_PROMPT

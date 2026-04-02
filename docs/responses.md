@@ -24,6 +24,7 @@ This document describes the LCORE implementation of the OpenResponses API, expos
   * [Output Representation](#output-representation)
   * [Tool Configuration Differences](#tool-configuration-differences)
   * [LCORE-Specific Extensions](#lcore-specific-extensions-2)
+  * [System Prompt Resolution](#system-prompt-resolution)
   * [Streaming Differences](#streaming-differences)
 * [Examples](#examples)
   * [Basic Request (Non-Streaming)](#basic-request-non-streaming)
@@ -540,6 +541,19 @@ The API introduces extensions that are not part of the OpenResponses specificati
 - `shield_ids` (request) — Optional list of safety shield IDs to apply. If omitted, all configured shields are used.
 - `solr` (request) — Solr vector_io provider query parameters (e.g. filter queries).
 - `available_quotas` (response) — Provides real-time quota information from all configured quota limiters.
+
+### System Prompt Resolution
+
+The `instructions` field on the `/v1/responses` endpoint follows the same server-side system prompt resolution logic used by `/v1/query`. When the server processes a request, the `instructions` value is resolved using the following precedence (highest to lowest):
+
+1. **Client-provided `instructions`** — If the request includes a non-null `instructions` value and per-request customization is allowed, it is used as-is.
+2. **Custom profile default prompt** — If a custom profile is configured and defines a `"default"` prompt, that prompt is used.
+3. **Configured system prompt** — If `customization.system_prompt` is set in the server configuration, it is used.
+4. **Built-in default** — The hardcoded default system prompt (`"You are a helpful assistant"`) is used as a last resort.
+
+If the server configuration sets `disable_query_system_prompt` to `true`, any request that includes a non-null `instructions` value is rejected with a `422 Unprocessable Entity` error. The error message references the `instructions` field specifically.
+
+This means that even when `instructions` is omitted from the request, the response will always contain a resolved `instructions` value reflecting the server-side default or configured system prompt.
 
 ### Streaming Differences
 

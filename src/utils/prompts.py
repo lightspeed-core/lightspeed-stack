@@ -9,9 +9,11 @@ from configuration import configuration
 from models.responses import UnprocessableEntityResponse
 
 
-def get_system_prompt(system_prompt: Optional[str]) -> str:
+def get_system_prompt(
+    system_prompt: Optional[str], field_name: str = "system_prompt"
+) -> str:
     """
-    Resolve which system prompt to use for a query.
+    Resolve which system prompt to use for a request.
 
     get_system_prompt resolves the system prompt with the following precedence
     (highest to lowest):
@@ -23,8 +25,9 @@ def get_system_prompt(system_prompt: Optional[str]) -> str:
 
     Parameters:
     ----------
-        system_prompt: Optional per-request system prompt from the query; may be
-            None.
+        system_prompt: Optional per-request system prompt; may be None.
+        field_name: Name of the request field carrying the system prompt, used
+            in error messages (e.g. "system_prompt" or "instructions").
 
     Returns:
     -------
@@ -35,7 +38,7 @@ def get_system_prompt(system_prompt: Optional[str]) -> str:
         HTTPException: 422 Unprocessable Entity when per-request system prompts
             are disabled (disable_query_system_prompt) and a non-None
             `system_prompt` is provided; the response instructs the client to
-            remove the system_prompt field from the request.
+            remove the relevant field from the request.
     """
     system_prompt_disabled = (
         configuration.customization is not None
@@ -45,9 +48,9 @@ def get_system_prompt(system_prompt: Optional[str]) -> str:
         response = UnprocessableEntityResponse(
             response="System prompt customization is disabled",
             cause=(
-                "This instance does not support customizing the system prompt in the "
-                "query request (disable_query_system_prompt is set). Please remove the "
-                "system_prompt field from your request."
+                "This instance does not support customizing the system prompt "
+                "(disable_query_system_prompt is set). Please remove the "
+                f"{field_name} field from your request."
             ),
         )
         raise HTTPException(**response.model_dump())
