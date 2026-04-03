@@ -335,7 +335,8 @@ async def handle_streaming_response(
                 inline_rag_context=inline_rag_context,
             )
         except RuntimeError as e:  # library mode wraps 413 into runtime error
-            if "context_length" in str(e).lower():
+            error_msg = str(e).lower()
+            if "context_length" in error_msg or "context length" in error_msg:
                 error_response = PromptTooLongResponse(model=api_params.model)
                 raise HTTPException(**error_response.model_dump()) from e
             raise e
@@ -696,7 +697,8 @@ async def handle_non_streaming_response(
                 )
 
         except RuntimeError as e:
-            if "context_length" in str(e).lower():
+            error_msg = str(e).lower()
+            if "context_length" in error_msg or "context length" in error_msg:
                 error_response = PromptTooLongResponse(model=api_params.model)
                 raise HTTPException(**error_response.model_dump()) from e
             raise e
