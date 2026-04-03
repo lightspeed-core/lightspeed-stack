@@ -3,6 +3,7 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from llama_stack_api import ConversationNotFoundError
 from llama_stack_client import (
     APIConnectionError,
     APIStatusError,
@@ -275,7 +276,8 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
         ).model_dump()
         raise HTTPException(**response) from e
 
-    except APIStatusError as e:
+    except (APIStatusError, ConversationNotFoundError) as e:
+        # In library mode, ConversationNotFoundError is raised instead of APIStatusError
         logger.error("Conversation not found: %s", e)
         response = NotFoundResponse(
             resource="conversation", resource_id=normalized_conv_id
@@ -382,7 +384,8 @@ async def delete_conversation_endpoint_handler(
         response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
 
-    except APIStatusError:
+    except (APIStatusError, ConversationNotFoundError):
+        # In library mode, ConversationNotFoundError is raised instead of APIStatusError
         logger.warning(
             "Conversation %s in LlamaStack not found. Treating as already deleted.",
             normalized_conv_id,
@@ -519,7 +522,8 @@ async def update_conversation_endpoint_handler(
         ).model_dump()
         raise HTTPException(**response) from e
 
-    except APIStatusError as e:
+    except (APIStatusError, ConversationNotFoundError) as e:
+        # In library mode, ConversationNotFoundError is raised instead of APIStatusError
         logger.error("Conversation not found: %s", e)
         response = NotFoundResponse(
             resource="conversation", resource_id=normalized_conv_id

@@ -303,7 +303,8 @@ async def retrieve_response(
         response = cast(OpenAIResponseObject, response)
 
     except RuntimeError as e:  # library mode wraps 413 into runtime error
-        if "context_length" in str(e).lower():
+        error_msg = str(e).lower()
+        if "context_length" in error_msg or "context length" in error_msg:
             error_response = PromptTooLongResponse(model=responses_params.model)
             raise HTTPException(**error_response.model_dump()) from e
         raise e

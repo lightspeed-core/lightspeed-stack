@@ -354,7 +354,8 @@ async def retrieve_response_generator(
         )
     # Handle know LLS client errors only at stream creation time and shield execution
     except RuntimeError as e:  # library mode wraps 413 into runtime error
-        if "context_length" in str(e).lower():
+        error_msg = str(e).lower()
+        if "context_length" in error_msg or "context length" in error_msg:
             error_response = PromptTooLongResponse(model=responses_params.model)
             raise HTTPException(**error_response.model_dump()) from e
         raise e
@@ -588,9 +589,10 @@ async def generate_response(
 
     # Handle known LLS client errors during response generation time
     except RuntimeError as e:  # library mode wraps 413 into runtime error
+        error_msg = str(e).lower()
         error_response = (
             PromptTooLongResponse(model=responses_params.model)
-            if "context_length" in str(e).lower()
+            if "context_length" in error_msg or "context length" in error_msg
             else InternalServerErrorResponse.generic()
         )
         yield stream_http_error_event(error_response, context.query_request.media_type)
@@ -836,6 +838,7 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
             error_response = (
                 PromptTooLongResponse(model=context.model_id)
                 if "context_length" in error_message.lower()
+                or "context length" in error_message.lower()
                 else InternalServerErrorResponse.query_failed(error_message)
             )
             yield stream_http_error_event(error_response, media_type)
