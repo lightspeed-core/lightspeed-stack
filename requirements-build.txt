@@ -8,10 +8,11 @@ calver==2025.10.20
     # via trove-classifiers
 cython==3.2.4
     # via oracledb
-dunamai==1.26.0
+dunamai==1.26.1
     # via uv-dynamic-versioning
 flit-core==3.12.0
     # via
+    #   click
     #   jinja2
     #   packaging
     #   pathspec
@@ -39,6 +40,7 @@ hatchling==1.29.0
     #   filelock
     #   hatch-fancy-pypi-readme
     #   hatch-vcs
+    #   mcp
     #   opentelemetry-api
     #   opentelemetry-distro
     #   opentelemetry-exporter-otlp
@@ -50,6 +52,7 @@ hatchling==1.29.0
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
     #   pydantic-settings
+    #   pygments
     #   pythainlp
     #   starlette
     #   uv-dynamic-versioning
@@ -69,7 +72,7 @@ packaging==26.0
     #   wheel
 pathspec==1.0.4
     # via hatchling
-pdm-backend==2.4.7
+pdm-backend==2.4.8
     # via fastapi
 pluggy==1.6.0
     # via hatchling
@@ -96,7 +99,9 @@ tomlkit==0.14.0
 trove-classifiers==2026.1.14.14
     # via hatchling
 uv-dynamic-versioning==0.14.0
-    # via a2a-sdk
+    # via
+    #   a2a-sdk
+    #   mcp
 vcs-versioning==1.1.1
     # via setuptools-scm
 wheel==0.46.3
@@ -106,14 +111,12 @@ wheel==0.46.3
     #   azure-identity
     #   cachetools
     #   litellm
-    #   oci
     #   oracledb
     #   sentence-transformers
     #   tornado
+    #   tzdata
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==82.0.0
-    # via charset-normalizer
 setuptools==82.0.1
     # via
     #   authlib
@@ -123,17 +126,18 @@ setuptools==82.0.1
     #   cachetools
     #   calver
     #   certifi
+    #   charset-normalizer
     #   emoji
     #   google-api-core
     #   google-cloud-bigquery
     #   googleapis-common-protos
     #   greenlet
+    #   grpc-google-iam-v1
     #   llama-stack
     #   llama-stack-api
     #   markupsafe
     #   maturin
     #   multiprocess
-    #   oci
     #   oracledb
     #   pathspec
     #   pluggy
@@ -155,4 +159,5 @@ setuptools==82.0.1
     #   tornado
     #   trl
     #   trove-classifiers
+    #   tzdata
     #   vcs-versioning
