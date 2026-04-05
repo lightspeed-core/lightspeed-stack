@@ -66,6 +66,7 @@ maturin==1.10.2
     # via fastuuid
 packaging==26.0
     # via
+    #   dunamai
     #   hatchling
     #   setuptools-scm
     #   vcs-versioning
