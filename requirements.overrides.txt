@@ -7,7 +7,7 @@ aiohttp==3.13.3
 aiosqlite==0.22.1
 cryptography==46.0.5
 anyio==4.12.1
-datasets==4.5.0
+# datasets==4.5.0
 pandas==2.3.3
 pyarrow==23.0.0
 pillow==12.1.1
