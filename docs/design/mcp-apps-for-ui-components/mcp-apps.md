@@ -464,6 +464,138 @@ The system will enrich tool results with the full UI resource content fetched fr
 - **Atomic rendering**: All data needed arrives together
 - **No extra endpoints**: Eliminates `/v1/mcp-ui-resources` complexity
 
+3.1. Bidirectional Communication Architecture
+
+**Key Insight:** Lightspeed-stack is **NOT involved** in the bidirectional communication between the client and the MCP Apps UI. This communication happens entirely client-side via postMessage.
+
+**Communication Flow:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 1: Initial Query                                           │
+│                                                                  │
+│  Client App → POST /v1/query → Lightspeed-stack                │
+│  Response includes: tool_result.ui_resource.content (HTML)      │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 2: Client Renders UI (Lightspeed-stack done)              │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ Client Application (Browser/Desktop)                     │  │
+│  │                                                           │  │
+│  │  ┌────────────────────────────────────────────────────┐  │  │
+│  │  │ Sandboxed iframe                                    │  │  │
+│  │  │ (ui_resource.content rendered)                      │  │  │
+│  │  │                                                      │  │  │
+│  │  │ <html>                                               │  │  │
+│  │  │   import { App } from '@mcp/ext-apps'               │  │  │
+│  │  │                                                      │  │  │
+│  │  │   app.ontoolresult = (result) => {                  │  │  │
+│  │  │     renderTable(result.content) // Display data     │  │  │
+│  │  │   }                                                  │  │  │
+│  │  └────────────────────────────────────────────────────┘  │  │
+│  │                                                           │  │
+│  │  Client JS receives tool_result.content                  │  │
+│  │  Client sends to iframe via postMessage ─────────────────┤  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 3: UI Calls Tool (Client → Lightspeed, NOT iframe direct) │
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │ iframe                                                  │    │
+│  │   app.callTool("get_pod_details", {name: "pod-1"})  ──┐│    │
+│  └────────────────────────────────────────────────────────│┘    │
+│                                                            │     │
+│  Client JS receives postMessage ←─────────────────────────┘     │
+│  Client makes NEW HTTP request ↓                                │
+│                                                                  │
+│  POST /v1/query (with new tool call) → Lightspeed-stack        │
+│  Response includes new tool result                              │
+│  Client sends to iframe via postMessage                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Lightspeed-stack's Responsibilities:**
+
+| Responsibility | Lightspeed-stack | Client Application |
+|----------------|------------------|-------------------|
+| Fetch HTML from llama-stack | ✅ Yes | ❌ No |
+| Include HTML in response | ✅ Yes | ❌ No |
+| Render iframe | ❌ No | ✅ Yes |
+| Handle postMessage events | ❌ No | ✅ Yes |
+| Send tool results to iframe | ❌ No | ✅ Yes |
+| Receive tool calls from iframe | ❌ No | ✅ Yes |
+| Execute tool calls | ✅ Yes (via /v1/query) | ❌ No |
+
+**Key Points:**
+
+1. **Lightspeed-stack is stateless**: No WebSocket, no SSE connection to client, no postMessage handling
+2. **UI communicates with client, not server**: All postMessage happens between iframe and client JS
+3. **Tool calls from UI = new HTTP requests**: When UI calls a tool, client makes a fresh `POST /v1/query`
+4. **Client implements MCP Apps protocol**: Client must use `@modelcontextprotocol/ext-apps` library or equivalent
+
+**Client Implementation Example:**
+
+```javascript
+// Client-side code (NOT lightspeed-stack)
+const response = await fetch('/v1/query', {
+  method: 'POST',
+  body: JSON.stringify({ query: 'List namespaces' })
+});
+
+const data = await response.json();
+
+// If tool result has UI resource
+if (data.tool_results[0].ui_resource) {
+  const iframe = document.createElement('iframe');
+  iframe.sandbox = 'allow-scripts allow-same-origin';
+  iframe.srcdoc = data.tool_results[0].ui_resource.content;
+  document.body.appendChild(iframe);
+
+  // Listen for tool calls from UI
+  window.addEventListener('message', async (event) => {
+    if (event.source === iframe.contentWindow) {
+      const message = JSON.parse(event.data);
+
+      if (message.method === 'tools/call') {
+        // Make NEW request to lightspeed-stack
+        const toolResult = await fetch('/v1/query', {
+          method: 'POST',
+          body: JSON.stringify({
+            query: `Execute tool ${message.params.name} with ${JSON.stringify(message.params.arguments)}`
+          })
+        });
+
+        // Send result back to iframe
+        iframe.contentWindow.postMessage(
+          JSON.stringify({ id: message.id, result: toolResult }),
+          '*'
+        );
+      }
+    }
+  });
+
+  // Send initial tool result to iframe
+  iframe.contentWindow.postMessage(
+    JSON.stringify({
+      method: 'ui/toolResult',
+      params: { content: data.tool_results[0].content }
+    }),
+    '*'
+  );
+}
+```
+
+**Why This Architecture?**
+
+- **Stateless backend**: Lightspeed-stack remains a simple REST API, no WebSocket overhead
+- **Client flexibility**: Different clients (web, desktop, mobile) can implement postMessage handling differently
+- **Security**: Iframe sandbox prevents UI from directly accessing lightspeed-stack APIs
+- **Standard HTTP**: Tool calls from UI are just normal query requests
+
 4. Security Considerations
 
 **Client-Side Sandbox Isolation**

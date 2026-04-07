@@ -92,6 +92,31 @@ When building `build_tool_call_summary()`, how do we determine which MCP server 
 
 **Recommendation**: **C**. MCP server URL is already known in the query flow context. Pass it to `build_tool_call_summary()` as a parameter.
 
+### Decision 7: Bidirectional communication handling?
+
+MCP Apps UIs communicate bidirectionally with the host via postMessage. Where does this communication happen?
+
+| Component | Role |
+|-----------|------|
+| **Lightspeed-stack** | Delivers HTML content in response, then done (stateless) |
+| **Client application** | Renders iframe, handles ALL postMessage communication |
+
+**Key Clarification:** Lightspeed-stack is **NOT involved** in bidirectional communication. This happens entirely client-side.
+
+**Flow:**
+1. Client sends query → Lightspeed returns HTML in `ui_resource.content`
+2. Client renders iframe with HTML
+3. Client sends tool result to iframe via postMessage (client-side only)
+4. If UI calls a tool → Client makes NEW `POST /v1/query` to Lightspeed
+5. Client sends new result to iframe (client-side only)
+
+**Why this matters:**
+- Lightspeed-stack remains stateless (no WebSocket, no SSE to clients)
+- Clients must implement postMessage handling (using `@modelcontextprotocol/ext-apps` library)
+- Tool calls from UI are just normal HTTP requests to `/v1/query`
+
+**Recommendation**: Document this clearly so clients know they're responsible for postMessage implementation. See design doc section 3.1 for full architecture.
+
 ## Proposed JIRAs
 
 Each JIRA includes an agentic tool instruction pointing to the spec doc (not this spike).
@@ -768,7 +793,21 @@ As of January 2026 announcement:
 
 **Lightspeed position**: By adding MCP Apps support, Lightspeed joins the leading AI platforms in supporting interactive UI components from MCP servers.
 
-## Appendix D: Security considerations for UI resource rendering
+## Appendix D: Bidirectional communication and security
+
+**Important:** See design doc section 3.1 "Bidirectional Communication Architecture" for complete details.
+
+### Client Responsibilities
+
+The client application (NOT lightspeed-stack) is responsible for:
+
+1. **Rendering iframe**: Use sandboxed iframe with `ui_resource.content`
+2. **postMessage handling**: Listen for messages from iframe
+3. **Sending tool results**: Push tool result data to iframe via postMessage
+4. **Receiving tool calls**: When UI calls a tool, make NEW `POST /v1/query` request to lightspeed-stack
+5. **MCP Apps protocol**: Implement using `@modelcontextprotocol/ext-apps` library or equivalent
+
+### Security Considerations
 
 From MCP Apps specification and industry best practices:
 
