@@ -649,6 +649,8 @@ async def infer_endpoint(  # pylint: disable=R0914
     if quota_id is not None:
         check_tokens_available(configuration.quota_limiters, quota_id)
 
+    check_configuration_loaded(configuration)
+
     request_id = get_suid()
 
     logger.info("Processing rlsapi v1 /infer request %s", request_id)
