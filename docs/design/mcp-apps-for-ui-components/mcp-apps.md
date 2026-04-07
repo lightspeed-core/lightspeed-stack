@@ -640,6 +640,126 @@ display_text(response.tool_results[0].content)  # Ignores ui_resource
 - **No breaking changes** to existing clients
 - **Progressive enhancement** for web clients
 
+3.3. Response Format: Regular vs Streaming API
+
+Both query endpoints (`POST /v1/query` and `POST /v1/streaming_query`) include `ui_resource` data, but differ in delivery timing.
+
+**Regular Query API (POST /v1/query)**
+
+Returns a single JSON response with all data:
+
+```json
+{
+  "completion_message": {
+    "role": "assistant",
+    "content": "Based on the pod resource usage, here are the top consumers...",
+    "stop_reason": "end_of_turn",
+    "tool_calls": [...],
+    "tool_results": [
+      {
+        "tool_name": "get_pod_resource_usage",
+        "content": "{\"pods\": [...]}",
+        "ui_resource": {
+          "resource_uri": "ui://kube-mcp/pod-usage-chart",
+          "server_name": "kubernetes-mcp-server",
+          "content": "<!DOCTYPE html><html>...</html>",
+          "mime_type": "text/html",
+          "is_binary": false
+        }
+      }
+    ]
+  }
+}
+```
+
+**Characteristics:**
+- Single HTTP response
+- All data arrives together atomically
+- Client receives `ui_resource` and completion text simultaneously
+- Simple to parse - standard JSON deserialization
+
+**Streaming Query API (POST /v1/streaming_query)**
+
+Returns Server-Sent Events (SSE) stream with multiple events:
+
+```
+event: tool_call
+data: {"tool_name": "get_pod_resource_usage", "arguments": {...}}
+
+event: tool_result
+data: {
+  "tool_name": "get_pod_resource_usage",
+  "content": "{\"pods\": [...]}",
+  "ui_resource": {
+    "resource_uri": "ui://kube-mcp/pod-usage-chart",
+    "server_name": "kubernetes-mcp-server",
+    "content": "<!DOCTYPE html><html>...</html>",
+    "mime_type": "text/html",
+    "is_binary": false
+  }
+}
+
+event: chunk
+data: {"delta": "Based on the "}
+
+event: chunk
+data: {"delta": "pod resource usage, "}
+
+event: chunk
+data: {"delta": "here are the top consumers..."}
+
+event: done
+data: {"stop_reason": "end_of_turn"}
+```
+
+**Characteristics:**
+- Multiple SSE events streamed over time
+- `ui_resource` arrives in `tool_result` event (immediately after tool execution)
+- Completion text streams word-by-word in subsequent `chunk` events
+- Client can render UI component before completion text finishes streaming
+
+**Key UX Difference:**
+
+| Aspect | Regular API | Streaming API |
+|--------|-------------|---------------|
+| **User perception** | All content appears at once | UI appears first, text streams after |
+| **Time to first UI render** | When response completes | As soon as tool executes |
+| **Perceived latency** | Higher (wait for full response) | Lower (progressive rendering) |
+
+**Implementation Notes:**
+
+- Both formats include identical `ui_resource` structure
+- HTML content (~5-50KB) is sent as single complete string in both formats
+- HTML is NOT chunked across multiple events in streaming mode
+- Streaming mode provides better UX for long-running queries where tool execution completes before text generation
+
+**Client Implementation Differences:**
+
+```javascript
+// Regular API - simple fetch
+const response = await fetch('/v1/query', {
+  method: 'POST',
+  body: JSON.stringify({ query: '...' })
+});
+const data = await response.json();
+if (data.tool_results[0]?.ui_resource) {
+  renderIframe(data.tool_results[0].ui_resource.content);
+}
+
+// Streaming API - SSE handling
+const eventSource = new EventSource('/v1/streaming_query');
+eventSource.addEventListener('tool_result', (event) => {
+  const data = JSON.parse(event.data);
+  if (data.ui_resource) {
+    renderIframe(data.ui_resource.content);  // Render immediately
+  }
+});
+eventSource.addEventListener('chunk', (event) => {
+  const data = JSON.parse(event.data);
+  appendTextDelta(data.delta);  // Stream text after UI
+});
+```
+
 4. Security Considerations
 
 **Client-Side Sandbox Isolation**
