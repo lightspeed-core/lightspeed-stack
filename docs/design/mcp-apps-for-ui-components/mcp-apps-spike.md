@@ -117,6 +117,70 @@ MCP Apps UIs communicate bidirectionally with the host via postMessage. Where do
 
 **Recommendation**: Document this clearly so clients know they're responsible for postMessage implementation. See design doc section 3.1 for full architecture.
 
+### Decision 8: Client compatibility - how to handle CLI vs web clients?
+
+Lightspeed-stack serves multiple client types with different UI capabilities:
+
+| Client | Interface | Can Render MCP Apps? |
+|--------|-----------|---------------------|
+| OpenShift Lightspeed | Web (Console) | ✅ Yes |
+| Ansible Lightspeed | Web/VS Code | ✅ Probably |
+| RHEL Lightspeed | CLI (terminal) | ❌ No (text-only) |
+
+**Problem:** CLI clients cannot render HTML/iframes. What do we do with `ui_resource` field?
+
+| Option | Description | Pros | Cons |
+|--------|-------------|------|------|
+| **A** | Always include `ui_resource` | Simple, no negotiation needed, graceful degradation | Wastes bandwidth for CLI clients |
+| **B** | Conditional via header (`X-MCP-Apps-Support: true`) | No wasted bandwidth, explicit capability | Adds complexity, requires client changes |
+| **C** | Configuration-based per client | Admin control | Requires client identification mechanism |
+
+**Analysis:**
+
+**Option A (Always Include):**
+- CLI clients simply ignore `ui_resource` field (JSON spec allows this)
+- Tool result `content` always present (CLI gets usable text)
+- No capability negotiation needed
+- HTML content is small (~10-50KB), bandwidth not a concern
+- Future-proof: clients can opt-in without server changes
+
+**Option B (Header-based):**
+```http
+POST /v1/query
+X-MCP-Apps-Support: true
+```
+- Lightspeed only includes `ui_resource` if header present
+- Saves bandwidth but adds conditional logic
+- Requires updating all web clients to send header
+
+**Option C (Config-based):**
+- Admin configures which client types get `ui_resource`
+- Requires client identification (User-Agent? API key?)
+- Less flexible than per-request headers
+
+**Recommendation**: **Option A** (Always include `ui_resource`)
+
+**Rationale:**
+- **Simplicity**: No capability negotiation in v1
+- **Backward compatible**: Existing clients ignore unknown fields
+- **Graceful degradation**: CLI clients use `content`, web clients use `ui_resource`
+- **Bandwidth**: 10-50KB HTML not a bottleneck (tool results can be much larger)
+- **Progressive enhancement**: Web clients get richer UX without breaking CLI
+
+**Client behavior:**
+```python
+# Web client - renders UI
+if response.tool_results[0].ui_resource:
+    render_iframe(ui_resource.content)
+else:
+    display_text(tool_results[0].content)
+
+# CLI client - ignores UI
+print(response.tool_results[0].content)  # ui_resource ignored
+```
+
+**Future enhancement:** If bandwidth becomes an issue, add `X-MCP-Apps-Support` header in v2 without breaking changes.
+
 ## Proposed JIRAs
 
 Each JIRA includes an agentic tool instruction pointing to the spec doc (not this spike).

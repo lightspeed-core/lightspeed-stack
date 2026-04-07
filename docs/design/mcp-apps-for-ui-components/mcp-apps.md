@@ -596,6 +596,50 @@ if (data.tool_results[0].ui_resource) {
 - **Security**: Iframe sandbox prevents UI from directly accessing lightspeed-stack APIs
 - **Standard HTTP**: Tool calls from UI are just normal query requests
 
+3.2. Client Compatibility
+
+**Lightspeed-stack Client Landscape:**
+
+| Client | Interface | MCP Apps Support |
+|--------|-----------|------------------|
+| **OpenShift Lightspeed** | Web (OpenShift Console) | ✅ **Full support** (HTML/iframe rendering) |
+| **Ansible Lightspeed** | Web/VS Code | ✅ **Full support** (if web-based) |
+| **RHEL Lightspeed** | CLI (terminal) | ❌ **No support** (text-only, no HTML rendering) |
+
+**Design Decision: Always Include ui_resource**
+
+The `ui_resource` field will be included in responses whenever a tool has `_meta.ui.resourceUri`, regardless of client type.
+
+**Rationale:**
+
+1. **Graceful degradation**: CLI clients simply ignore the `ui_resource` field and use `content` (text/JSON)
+2. **Simplicity**: No capability negotiation or conditional logic needed
+3. **Backward compatibility**: Existing clients already ignore unknown JSON fields
+4. **Bandwidth**: HTML content is small (~10-50KB), not a bottleneck
+5. **Future-proof**: Clients can opt-in to MCP Apps support without server changes
+
+**Client Behavior:**
+
+```python
+# Web client (OpenShift Console) - renders UI
+response = await query(...)
+if response.tool_results[0].ui_resource:
+    render_iframe(response.tool_results[0].ui_resource.content)
+else:
+    display_text(response.tool_results[0].content)
+
+# CLI client (RHEL Lightspeed) - ignores UI
+response = await query(...)
+display_text(response.tool_results[0].content)  # Ignores ui_resource
+```
+
+**Guarantees:**
+
+- Tool result `content` field **always present** (CLI clients get usable data)
+- `ui_resource` field is **optional** (clients can safely ignore)
+- **No breaking changes** to existing clients
+- **Progressive enhancement** for web clients
+
 4. Security Considerations
 
 **Client-Side Sandbox Isolation**
@@ -652,10 +696,10 @@ Feature: MCP Apps UI Resource Integration
 - Status: Proposed via [llama-stack issue #5430](https://github.com/llamastack/llama-stack/issues/5430)
 - **Action:** Monitor issue for maintainer feedback and implementation timeline
 
-**Q2: Client Capabilities**
-- How do clients declare MCP Apps support?
-- Should `/v1/query` check client capabilities before including ui_resource?
-- **Action:** Define client capability negotiation mechanism
+**Q2: Should we add X-MCP-Apps-Support header in future?**
+- Current: Always include `ui_resource` (simple, graceful degradation)
+- Future enhancement: Optional header to skip `ui_resource` for CLI clients
+- **Action:** Monitor bandwidth usage; add header in v2 if needed
 
 
 ## References
