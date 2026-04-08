@@ -544,6 +544,47 @@ def _should_filter_mcp_chunk(
     return False
 
 
+def _populate_turn_summary(
+    response_object: OpenAIResponseObject,
+    turn_summary: TurnSummary,
+    api_params: ResponsesApiParams,
+    inline_rag_context: RAGContext,
+    filter_server_tools: bool,
+) -> None:
+    """Populate turn summary with metadata extracted from the final response object.
+
+    Args:
+        response_object: The completed response object from Llama Stack
+        turn_summary: TurnSummary to populate
+        api_params: ResponsesApiParams
+        inline_rag_context: Inline RAG context used for the response
+        filter_server_tools: Whether to filter server-deployed MCP tool events
+    """
+    turn_summary.id = response_object.id
+    vector_store_ids = extract_vector_store_ids_from_tools(api_params.tools)
+    tool_rag_docs = parse_referenced_documents(
+        response_object, vector_store_ids, configuration.rag_id_mapping
+    )
+    turn_summary.referenced_documents = deduplicate_referenced_documents(
+        inline_rag_context.referenced_documents + tool_rag_docs
+    )
+    for item in response_object.output:
+        if filter_server_tools and not is_server_deployed_output(item):
+            continue
+        tool_call, tool_result = build_tool_call_summary(item)
+        if tool_call:
+            turn_summary.tool_calls.append(tool_call)
+        if tool_result:
+            turn_summary.tool_results.append(tool_result)
+
+    tool_rag_chunks = parse_rag_chunks(
+        response_object,
+        vector_store_ids,
+        configuration.rag_id_mapping,
+    )
+    turn_summary.rag_chunks = inline_rag_context.rag_chunks + tool_rag_chunks
+
+
 async def response_generator(
     stream: AsyncIterator[OpenAIResponseObjectStream],
     user_input: ResponseInput,
@@ -656,29 +697,13 @@ async def response_generator(
 
     # Extract response metadata from final response object
     if latest_response_object:
-        turn_summary.id = latest_response_object.id
-        vector_store_ids = extract_vector_store_ids_from_tools(api_params.tools)
-        tool_rag_docs = parse_referenced_documents(
-            latest_response_object, vector_store_ids, configuration.rag_id_mapping
-        )
-        turn_summary.referenced_documents = deduplicate_referenced_documents(
-            inline_rag_context.referenced_documents + tool_rag_docs
-        )
-        for item in latest_response_object.output:
-            if filter_server_tools and not is_server_deployed_output(item):
-                continue
-            tool_call, tool_result = build_tool_call_summary(item)
-            if tool_call:
-                turn_summary.tool_calls.append(tool_call)
-            if tool_result:
-                turn_summary.tool_results.append(tool_result)
-
-        tool_rag_chunks = parse_rag_chunks(
+        _populate_turn_summary(
             latest_response_object,
-            vector_store_ids,
-            configuration.rag_id_mapping,
+            turn_summary,
+            api_params,
+            inline_rag_context,
+            filter_server_tools,
         )
-        turn_summary.rag_chunks = inline_rag_context.rag_chunks + tool_rag_chunks
 
     client = AsyncLlamaStackClientHolder().get_client()
     # Explicitly append the turn to conversation if context passed by previous response
