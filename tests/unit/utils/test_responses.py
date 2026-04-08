@@ -64,6 +64,7 @@ from models.requests import QueryRequest
 from utils.responses import (
     _build_chunk_attributes,
     _increment_llm_call_metric,
+    _merge_tools,
     _resolve_source_for_result,
     build_mcp_tool_call_from_arguments_done,
     build_tool_call_summary,
@@ -78,6 +79,7 @@ from utils.responses import (
     get_rag_tools,
     get_topic_summary,
     get_vector_store_ids,
+    is_server_deployed_output,
     parse_arguments_string,
     parse_referenced_documents,
     prepare_responses_params,
@@ -3168,3 +3170,330 @@ class TestGetRAGToolsWithConfig:
         assert tools is not None
         assert tools[0].type == constants.DEFAULT_RAG_TOOL
         assert tools[0].vector_store_ids == ["vs1"]
+
+
+class TestIsServerDeployedOutput:
+    """Tests for is_server_deployed_output function."""
+
+    def test_function_call_returns_false(self, mocker: MockerFixture) -> None:
+        """Test that function_call items are always client-side."""
+        item = mocker.Mock()
+        item.type = "function_call"
+        assert is_server_deployed_output(item) is False
+
+    def test_mcp_call_server_label_matches(self, mocker: MockerFixture) -> None:
+        """Test mcp_call with matching server_label is server-deployed."""
+        mock_config = mocker.Mock()
+        mock_server = mocker.Mock()
+        mock_server.name = "my-server"
+        mock_config.mcp_servers = [mock_server]
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        item = mocker.Mock()
+        item.type = "mcp_call"
+        item.server_label = "my-server"
+        assert is_server_deployed_output(item) is True
+
+    def test_mcp_call_server_label_not_configured(self, mocker: MockerFixture) -> None:
+        """Test mcp_call with non-matching server_label is client-side."""
+        mock_config = mocker.Mock()
+        mock_server = mocker.Mock()
+        mock_server.name = "server-a"
+        mock_config.mcp_servers = [mock_server]
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        item = mocker.Mock()
+        item.type = "mcp_call"
+        item.server_label = "client-server"
+        assert is_server_deployed_output(item) is False
+
+    def test_mcp_list_tools_server_deployed(self, mocker: MockerFixture) -> None:
+        """Test mcp_list_tools with matching server_label is server-deployed."""
+        mock_config = mocker.Mock()
+        mock_server = mocker.Mock()
+        mock_server.name = "fs"
+        mock_config.mcp_servers = [mock_server]
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        item = mocker.Mock()
+        item.type = "mcp_list_tools"
+        item.server_label = "fs"
+        assert is_server_deployed_output(item) is True
+
+    def test_mcp_approval_request_client_side(self, mocker: MockerFixture) -> None:
+        """Test mcp_approval_request with unmatched label is client-side."""
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = []
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        item = mocker.Mock()
+        item.type = "mcp_approval_request"
+        item.server_label = "client-mcp"
+        assert is_server_deployed_output(item) is False
+
+    def test_mcp_call_no_server_label(self, mocker: MockerFixture) -> None:
+        """Test mcp_call without server_label returns True (default server-side)."""
+        item = mocker.Mock()
+        item.type = "mcp_call"
+        item.server_label = None
+        assert is_server_deployed_output(item) is True
+
+    def test_message_returns_true(self) -> None:
+        """Test message items are treated as server-side."""
+        item = make_output_item(item_type="message", role="assistant", content="hi")
+        assert is_server_deployed_output(item) is True
+
+    def test_file_search_call_returns_true(self, mocker: MockerFixture) -> None:
+        """Test file_search_call items are treated as server-side."""
+        item = mocker.Mock()
+        item.type = "file_search_call"
+        assert is_server_deployed_output(item) is True
+
+    def test_web_search_call_returns_true(self, mocker: MockerFixture) -> None:
+        """Test web_search_call items are treated as server-side."""
+        item = mocker.Mock()
+        item.type = "web_search_call"
+        assert is_server_deployed_output(item) is True
+
+
+class TestMergeTools:
+    """Tests for _merge_tools function."""
+
+    def test_merge_no_conflicts(self) -> None:
+        """Test merging client and server tools without conflicts."""
+        client_tools: list = [
+            InputToolMCP(server_label="client-mcp", server_url="http://client"),
+        ]
+        server_tools: list = [
+            InputToolMCP(server_label="server-mcp", server_url="http://server"),
+            InputToolFileSearch(type="file_search", vector_store_ids=["vs1"]),
+        ]
+        result = _merge_tools(client_tools, server_tools)
+        assert len(result) == 3
+        # Client tools come first
+        assert result[0] == client_tools[0]
+        assert result[1] == server_tools[0]
+        assert result[2] == server_tools[1]
+
+    def test_merge_mcp_label_conflict_raises_409(self) -> None:
+        """Test that conflicting MCP server_labels raise a 409 error."""
+        client_tools: list = [
+            InputToolMCP(server_label="shared-label", server_url="http://client"),
+        ]
+        server_tools: list = [
+            InputToolMCP(server_label="shared-label", server_url="http://server"),
+        ]
+        with pytest.raises(HTTPException) as exc_info:
+            _merge_tools(client_tools, server_tools)
+        assert exc_info.value.status_code == 409
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "shared-label" in detail["cause"]
+
+    def test_merge_file_search_conflict_raises_409(self) -> None:
+        """Test that duplicate file_search tools raise a 409 error."""
+        client_tools: list = [
+            InputToolFileSearch(type="file_search", vector_store_ids=["client-vs"]),
+        ]
+        server_tools: list = [
+            InputToolFileSearch(type="file_search", vector_store_ids=["server-vs"]),
+        ]
+        with pytest.raises(HTTPException) as exc_info:
+            _merge_tools(client_tools, server_tools)
+        assert exc_info.value.status_code == 409
+        detail = exc_info.value.detail
+        assert isinstance(detail, dict)
+        assert "file_search" in detail["cause"]
+
+    def test_merge_empty_server_tools(self) -> None:
+        """Test merging when server has no tools."""
+        client_tools: list = [
+            InputToolMCP(server_label="client-mcp", server_url="http://client"),
+        ]
+        result = _merge_tools(client_tools, [])
+        assert len(result) == 1
+        assert result[0] == client_tools[0]
+
+    def test_merge_empty_client_tools(self) -> None:
+        """Test merging when client has no tools."""
+        server_tools: list = [
+            InputToolMCP(server_label="server-mcp", server_url="http://server"),
+        ]
+        result = _merge_tools([], server_tools)
+        assert len(result) == 1
+        assert result[0] == server_tools[0]
+
+    def test_merge_client_mcp_does_not_conflict_with_different_server_mcp(
+        self,
+    ) -> None:
+        """Test client MCP with different label does not conflict with server MCP."""
+        client_tools: list = [
+            InputToolMCP(server_label="client-a", server_url="http://a"),
+            InputToolMCP(server_label="client-b", server_url="http://b"),
+        ]
+        server_tools: list = [
+            InputToolMCP(server_label="server-c", server_url="http://c"),
+        ]
+        result = _merge_tools(client_tools, server_tools)
+        assert len(result) == 3
+
+
+class TestResolveToolChoiceMerge:
+    """Tests for resolve_tool_choice with server-tool merging."""
+
+    @pytest.mark.asyncio
+    async def test_client_tools_without_merge_header(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test client tools used as-is without merge header."""
+        mock_client = mocker.AsyncMock()
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.responses.AsyncLlamaStackClientHolder",
+            return_value=mock_holder,
+        )
+        mock_config = mocker.Mock()
+        mock_config.configuration.byok_rag = []
+        mock_config.mcp_servers = []
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        client_tool = InputToolMCP(server_label="my-tool", server_url="http://tool")
+        tools, tool_choice = await resolve_tool_choice(
+            tools=[client_tool],
+            tool_choice=None,
+            token="tok",
+            request_headers={},
+        )
+        assert tools is not None
+        assert len(tools) == 1
+        assert tool_choice == "auto"
+
+    @pytest.mark.asyncio
+    async def test_client_tools_with_merge_header(self, mocker: MockerFixture) -> None:
+        """Test client tools merged with server tools when header is set."""
+        mock_client = mocker.AsyncMock()
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.responses.AsyncLlamaStackClientHolder",
+            return_value=mock_holder,
+        )
+        mock_config = mocker.Mock()
+        mock_config.configuration.byok_rag = []
+        mock_config.mcp_servers = []
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        server_mcp = InputToolMCP(
+            server_label="server-tool", server_url="http://server"
+        )
+        mocker.patch(
+            "utils.responses.prepare_tools",
+            new=mocker.AsyncMock(return_value=[server_mcp]),
+        )
+
+        client_tool = InputToolMCP(
+            server_label="client-tool", server_url="http://client"
+        )
+        tools, tool_choice = await resolve_tool_choice(
+            tools=[client_tool],
+            tool_choice=None,
+            token="tok",
+            request_headers={"X-LCS-Merge-Server-Tools": "true"},
+        )
+        assert tools is not None
+        assert len(tools) == 2
+        assert tool_choice == "auto"
+
+    @pytest.mark.asyncio
+    async def test_merge_header_conflict_raises_409(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test 409 when merge header is set and tools conflict."""
+        mock_client = mocker.AsyncMock()
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.responses.AsyncLlamaStackClientHolder",
+            return_value=mock_holder,
+        )
+        mock_config = mocker.Mock()
+        mock_config.configuration.byok_rag = []
+        mock_config.mcp_servers = []
+        mocker.patch("utils.responses.configuration", mock_config)
+
+        conflicting_server = InputToolMCP(
+            server_label="same-label", server_url="http://server"
+        )
+        mocker.patch(
+            "utils.responses.prepare_tools",
+            new=mocker.AsyncMock(return_value=[conflicting_server]),
+        )
+
+        client_tool = InputToolMCP(
+            server_label="same-label", server_url="http://client"
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            await resolve_tool_choice(
+                tools=[client_tool],
+                tool_choice=None,
+                token="tok",
+                request_headers={"X-LCS-Merge-Server-Tools": "true"},
+            )
+        assert exc_info.value.status_code == 409
+
+    @pytest.mark.asyncio
+    async def test_no_tools_uses_prepare_tools(self, mocker: MockerFixture) -> None:
+        """Test that no client tools falls through to prepare_tools."""
+        mock_client = mocker.AsyncMock()
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.responses.AsyncLlamaStackClientHolder",
+            return_value=mock_holder,
+        )
+        server_tool = InputToolFileSearch(type="file_search", vector_store_ids=["vs1"])
+        mock_prepare = mocker.AsyncMock(return_value=[server_tool])
+        mocker.patch("utils.responses.prepare_tools", new=mock_prepare)
+
+        tools, _ = await resolve_tool_choice(
+            tools=None,
+            tool_choice=None,
+            token="tok",
+        )
+        assert tools is not None
+        assert len(tools) == 1
+        mock_prepare.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_merge_header_no_server_tools_returns_client_only(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test merge header with no server tools returns client tools unchanged."""
+        mock_client = mocker.AsyncMock()
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(
+            "utils.responses.AsyncLlamaStackClientHolder",
+            return_value=mock_holder,
+        )
+        mock_config = mocker.Mock()
+        mock_config.configuration.byok_rag = []
+        mock_config.mcp_servers = []
+        mocker.patch("utils.responses.configuration", mock_config)
+        mocker.patch(
+            "utils.responses.prepare_tools",
+            new=mocker.AsyncMock(return_value=None),
+        )
+
+        client_tool = InputToolMCP(
+            server_label="client-tool", server_url="http://client"
+        )
+        tools, _ = await resolve_tool_choice(
+            tools=[client_tool],
+            tool_choice=None,
+            token="tok",
+            request_headers={"X-LCS-Merge-Server-Tools": "true"},
+        )
+        assert tools is not None
+        assert len(tools) == 1

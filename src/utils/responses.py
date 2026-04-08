@@ -95,6 +95,7 @@ from models.config import ByokRag
 from models.database.conversations import UserConversation
 from models.requests import QueryRequest
 from models.responses import (
+    ConflictResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
     ServiceUnavailableResponse,
@@ -1401,11 +1402,47 @@ async def select_model_for_responses(
     return model.id
 
 
+def is_server_deployed_output(output_item: ResponseOutput) -> bool:
+    """Check if a response output item belongs to a tool deployed by LCS.
+
+    In the hybrid architecture clients may provide their own tools (function
+    tools or MCP servers running locally) alongside server-configured tools.
+    This function identifies items that belong to LCS-deployed tools so that
+    only those are included in server-side processing (turn summary, metrics,
+    storage).  Client tool output items are still returned in the response
+    to the caller but are not processed internally.
+
+    Args:
+        output_item: A ResponseOutput item from the response.
+
+    Returns:
+        True if the item should be processed by LCS, False for client tools.
+    """
+    item_type = getattr(output_item, "type", None)
+
+    # function_call items are always from client-provided tools;
+    # LCS only configures file_search and mcp tools.
+    if item_type == "function_call":
+        return False
+
+    # MCP items: check server_label against configured servers
+    if item_type in ("mcp_call", "mcp_list_tools", "mcp_approval_request"):
+        server_label = getattr(output_item, "server_label", None)
+        if server_label is not None:
+            configured_labels = {s.name for s in configuration.mcp_servers}
+            return server_label in configured_labels
+
+    # file_search_call, web_search_call, message, and unknown types
+    # are treated as server-side.
+    return True
+
+
 def build_turn_summary(
     response: Optional[OpenAIResponseObject],
     model: str,
     vector_store_ids: Optional[list[str]] = None,
     rag_id_mapping: Optional[dict[str, str]] = None,
+    filter_server_tools: bool = False,
 ) -> TurnSummary:
     """Build a TurnSummary from a ResponseObject.
 
@@ -1414,6 +1451,8 @@ def build_turn_summary(
         model: The model identifier in "provider/model" format
         vector_store_ids: Vector store IDs used in the query for source resolution.
         rag_id_mapping: Mapping from vector_db_id to user-facing rag_id.
+        filter_server_tools: When True, skip client-provided tool output items
+            so only server-deployed tool calls are included in the summary.
 
     Returns:
         TurnSummary with extracted response text, referenced_documents, rag_chunks,
@@ -1435,6 +1474,8 @@ def build_turn_summary(
     )
 
     for item in response.output:
+        if filter_server_tools and not is_server_deployed_output(item):
+            continue
         tool_call, tool_result = build_tool_call_summary(item)
         if tool_call:
             summary.tool_calls.append(tool_call)
@@ -1602,6 +1643,45 @@ def extract_attachments_text(response_input: ResponseInput) -> str:
     return "\n\n".join(file_data_parts)
 
 
+def _merge_tools(
+    client_tools: list[InputTool],
+    server_tools: list[InputTool],
+) -> list[InputTool]:
+    """Merge server-configured tools into client-provided tools, rejecting conflicts.
+
+    Raises an HTTP 409 error when a client tool conflicts with a
+    server-configured tool.  Conflicts are detected by:
+    - MCP tools: matching ``server_label``
+    - file_search tools: client provides file_search when server also configures one
+
+    Args:
+        client_tools: Tools explicitly provided by the client.
+        server_tools: Tools loaded from server configuration.
+
+    Returns:
+        Merged list with client tools first, followed by non-conflicting server tools.
+
+    Raises:
+        HTTPException: 409 if a client tool conflicts with a server-configured tool.
+    """
+    server_mcp_labels: set[str] = {
+        t.server_label for t in server_tools if isinstance(t, InputToolMCP)
+    }
+    has_server_file_search = any(
+        isinstance(t, InputToolFileSearch) for t in server_tools
+    )
+
+    for tool in client_tools:
+        if isinstance(tool, InputToolMCP) and tool.server_label in server_mcp_labels:
+            error_response = ConflictResponse.mcp_tool(tool.server_label)
+            raise HTTPException(**error_response.model_dump())
+        if isinstance(tool, InputToolFileSearch) and has_server_file_search:
+            error_response = ConflictResponse.file_search()
+            raise HTTPException(**error_response.model_dump())
+
+    return list(client_tools) + list(server_tools)
+
+
 async def resolve_tool_choice(
     tools: Optional[list[InputTool]],
     tool_choice: Optional[ToolChoice],
@@ -1616,6 +1696,12 @@ async def resolve_tool_choice(
 
     When tools is omitted, load tools from LCORE configuration via prepare_tools.
     When tools are present, translate vector store IDs using BYOK configuration.
+
+    When the request includes tools and the ``X-LCS-Merge-Server-Tools: true``
+    header is set, client-provided tools are merged with server-configured
+    tools (RAG, MCP).  Conflicts (e.g. a client MCP tool with the same
+    server_label as a server-configured one, or duplicate file_search tools)
+    are rejected with a 409 error.
 
     When filters are present, apply them to prepared tools and overwrite tool choice mode.
 
@@ -1635,9 +1721,38 @@ async def resolve_tool_choice(
     if isinstance(tool_choice, ToolChoiceMode) and tool_choice == ToolChoiceMode.none:
         return None, None
 
-    if tools is None:
+    prepared_tools: Optional[list[InputTool]] = None
+    client = AsyncLlamaStackClientHolder().get_client()
+
+    merge_server_tools = (
+        request_headers is not None
+        and request_headers.get("X-LCS-Merge-Server-Tools", "").lower() == "true"
+    )
+
+    if tools:  # explicitly specified in request
+        # Per-request override of vector stores (user-facing rag_ids)
+        vector_store_ids = extract_vector_store_ids_from_tools(tools)
+        # Translate user-facing rag_ids to llama-stack vector_store_ids in each file_search tool
+        byok_rags = configuration.configuration.byok_rag
+        prepared_tools = translate_tools_vector_store_ids(tools, byok_rags)
+        prepared_tools = apply_mcp_headers_to_explicit_tools(
+            prepared_tools, token, mcp_headers, request_headers
+        )
+
+        # Optionally merge server-configured tools (RAG, MCP) with client tools
+        if merge_server_tools:
+            server_tools = await prepare_tools(
+                client=client,
+                vector_store_ids=vector_store_ids,
+                no_tools=False,
+                token=token,
+                mcp_headers=mcp_headers,
+                request_headers=request_headers,
+            )
+            if server_tools:
+                prepared_tools = _merge_tools(prepared_tools, server_tools)
+    else:
         # Register all tools configured in LCORE configuration
-        client = AsyncLlamaStackClientHolder().get_client()
         prepared_tools = await prepare_tools(
             client=client,
             vector_store_ids=None,  # allow all vector stores configured
@@ -1645,13 +1760,6 @@ async def resolve_tool_choice(
             token=token,
             mcp_headers=mcp_headers,
             request_headers=request_headers,
-        )
-    else:
-        # Pass tools explicitly configured for this request
-        byok_rags = configuration.configuration.byok_rag
-        prepared_tools = translate_tools_vector_store_ids(tools, byok_rags)
-        prepared_tools = apply_mcp_headers_to_explicit_tools(
-            prepared_tools, token, mcp_headers, request_headers
         )
 
     if isinstance(tool_choice, AllowedTools):

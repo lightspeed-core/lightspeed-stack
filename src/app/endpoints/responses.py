@@ -40,6 +40,7 @@ from log import get_logger
 from models.config import Action
 from models.requests import ResponsesRequest
 from models.responses import (
+    ConflictResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
@@ -78,6 +79,7 @@ from utils.responses import (
     extract_vector_store_ids_from_tools,
     get_topic_summary,
     get_zero_usage,
+    is_server_deployed_output,
     parse_rag_chunks,
     parse_referenced_documents,
     resolve_tool_choice,
@@ -114,6 +116,9 @@ responses_response: dict[int | str, dict[str, Any]] = {
     ),
     404: NotFoundResponse.openapi_response(
         examples=["model", "conversation", "provider"]
+    ),
+    409: ConflictResponse.openapi_response(
+        examples=["mcp tool conflict", "file search conflict"]
     ),
     413: PromptTooLongResponse.openapi_response(),
     422: UnprocessableEntityResponse.openapi_response(),
@@ -248,6 +253,10 @@ async def responses_endpoint_handler(
         request.headers,
     )
 
+    filter_server_tools = (
+        request.headers.get("X-LCS-Merge-Server-Tools", "").lower() == "true"
+    )
+
     # Build RAG context from Inline RAG sources
     inline_rag_context = await build_rag_context(
         client,
@@ -274,6 +283,7 @@ async def responses_endpoint_handler(
         started_at=started_at,
         moderation_result=moderation_result,
         inline_rag_context=inline_rag_context,
+        filter_server_tools=filter_server_tools,
     )
 
 
@@ -285,6 +295,7 @@ async def handle_streaming_response(
     started_at: datetime,
     moderation_result: ShieldModerationResult,
     inline_rag_context: RAGContext,
+    filter_server_tools: bool = False,
 ) -> StreamingResponse:
     """Handle streaming response from Responses API.
 
@@ -296,6 +307,7 @@ async def handle_streaming_response(
         started_at: Timestamp when the conversation started
         moderation_result: Result of shield moderation check
         inline_rag_context: Inline RAG context to be used for the response
+        filter_server_tools: Whether to filter server-deployed MCP tool events from the stream
     Returns:
         StreamingResponse with SSE-formatted events
     """
@@ -334,6 +346,7 @@ async def handle_streaming_response(
                 user_id=auth[0],
                 turn_summary=turn_summary,
                 inline_rag_context=inline_rag_context,
+                filter_server_tools=filter_server_tools,
             )
         except RuntimeError as e:  # library mode wraps 413 into runtime error
             if is_context_length_error(str(e)):
@@ -405,7 +418,9 @@ async def shield_violation_generator(
         output_text="",
         **echoed_params,
     )
-    created_response_dict = created_response_object.model_dump(exclude_none=True)
+    created_response_dict = created_response_object.model_dump(
+        exclude_none=True, by_alias=True
+    )
     created_event = {
         "type": "response.created",
         "sequence_number": 0,
@@ -421,7 +436,9 @@ async def shield_violation_generator(
         output_index=0,
         sequence_number=1,
     )
-    data_json = json.dumps(item_added_event.model_dump(exclude_none=True))
+    data_json = json.dumps(
+        item_added_event.model_dump(exclude_none=True, by_alias=True)
+    )
     yield f"event: response.output_item.added\ndata: {data_json}\n\n"
 
     # 3. Send response.output_item.done event
@@ -431,7 +448,7 @@ async def shield_violation_generator(
         output_index=0,
         sequence_number=2,
     )
-    data_json = json.dumps(item_done_event.model_dump(exclude_none=True))
+    data_json = json.dumps(item_done_event.model_dump(exclude_none=True, by_alias=True))
     yield f"event: response.output_item.done\ndata: {data_json}\n\n"
 
     # 4. Send response.completed event with status "completed" and output populated
@@ -447,7 +464,9 @@ async def shield_violation_generator(
         output_text=moderation_result.message,
         **echoed_params,
     )
-    completed_response_dict = completed_response_object.model_dump(exclude_none=True)
+    completed_response_dict = completed_response_object.model_dump(
+        exclude_none=True, by_alias=True
+    )
     completed_event = {
         "type": "response.completed",
         "sequence_number": 3,
@@ -459,6 +478,113 @@ async def shield_violation_generator(
     yield "data: [DONE]\n\n"
 
 
+def _is_server_mcp_output_item(
+    item: dict[str, Any], configured_mcp_labels: set[str]
+) -> bool:
+    """Check if a serialized output item is a server-deployed MCP tool call.
+
+    Args:
+        item: A dict from the serialized response output array.
+        configured_mcp_labels: Set of server_label names configured in LCS.
+
+    Returns:
+        True if the item is an MCP call/list/approval from a server-deployed MCP server.
+    """
+    item_type = item.get("type")
+    if item_type in ("mcp_call", "mcp_list_tools", "mcp_approval_request"):
+        return item.get("server_label") in configured_mcp_labels
+    return False
+
+
+def _should_filter_mcp_chunk(
+    chunk: OpenAIResponseObjectStream,
+    event_type: Optional[str],
+    configured_mcp_labels: set[str],
+    server_mcp_output_indices: set[int],
+) -> bool:
+    """Check if a streaming chunk is a server-deployed MCP event that should be filtered.
+
+    Args:
+        chunk: The streaming chunk to check.
+        event_type: The event type of the chunk.
+        configured_mcp_labels: Set of server_label names configured in LCS.
+        server_mcp_output_indices: Tracked output indices of server-deployed MCP calls.
+
+    Returns:
+        True if the chunk should be filtered out from the client stream.
+    """
+    if event_type == "response.output_item.added":
+        item_added_chunk = cast(OutputItemAddedChunk, chunk)
+        item = item_added_chunk.item
+        item_type = getattr(item, "type", None)
+        if item_type in ("mcp_call", "mcp_list_tools", "mcp_approval_request"):
+            server_label = getattr(item, "server_label", None)
+            if server_label in configured_mcp_labels:
+                server_mcp_output_indices.add(item_added_chunk.output_index)
+                return True
+
+    if event_type and (
+        event_type.startswith("response.mcp_call.")
+        or event_type.startswith("response.mcp_list_tools.")
+        or event_type.startswith("response.mcp_approval_request.")
+    ):
+        output_index = getattr(chunk, "output_index", None)
+        if output_index in server_mcp_output_indices:
+            return True
+
+    if event_type == "response.output_item.done":
+        item_done_chunk = cast(OutputItemDoneChunk, chunk)
+        item = item_done_chunk.item
+        item_type = getattr(item, "type", None)
+        if item_type in ("mcp_call", "mcp_list_tools", "mcp_approval_request"):
+            if item_done_chunk.output_index in server_mcp_output_indices:
+                server_mcp_output_indices.discard(item_done_chunk.output_index)
+                return True
+
+    return False
+
+
+def _populate_turn_summary(
+    response_object: OpenAIResponseObject,
+    turn_summary: TurnSummary,
+    api_params: ResponsesApiParams,
+    inline_rag_context: RAGContext,
+    filter_server_tools: bool,
+) -> None:
+    """Populate turn summary with metadata extracted from the final response object.
+
+    Args:
+        response_object: The completed response object from Llama Stack
+        turn_summary: TurnSummary to populate
+        api_params: ResponsesApiParams
+        inline_rag_context: Inline RAG context used for the response
+        filter_server_tools: Whether to filter server-deployed MCP tool events
+    """
+    turn_summary.id = response_object.id
+    vector_store_ids = extract_vector_store_ids_from_tools(api_params.tools)
+    tool_rag_docs = parse_referenced_documents(
+        response_object, vector_store_ids, configuration.rag_id_mapping
+    )
+    turn_summary.referenced_documents = deduplicate_referenced_documents(
+        inline_rag_context.referenced_documents + tool_rag_docs
+    )
+    for item in response_object.output:
+        if filter_server_tools and not is_server_deployed_output(item):
+            continue
+        tool_call, tool_result = build_tool_call_summary(item)
+        if tool_call:
+            turn_summary.tool_calls.append(tool_call)
+        if tool_result:
+            turn_summary.tool_results.append(tool_result)
+
+    tool_rag_chunks = parse_rag_chunks(
+        response_object,
+        vector_store_ids,
+        configuration.rag_id_mapping,
+    )
+    turn_summary.rag_chunks = inline_rag_context.rag_chunks + tool_rag_chunks
+
+
 async def response_generator(
     stream: AsyncIterator[OpenAIResponseObjectStream],
     user_input: ResponseInput,
@@ -466,6 +592,7 @@ async def response_generator(
     user_id: str,
     turn_summary: TurnSummary,
     inline_rag_context: RAGContext,
+    filter_server_tools: bool = False,
 ) -> AsyncIterator[str]:
     """Generate SSE-formatted streaming response with LCORE-enriched events.
 
@@ -476,6 +603,7 @@ async def response_generator(
         user_id: User ID for quota retrieval
         turn_summary: TurnSummary to populate during streaming
         inline_rag_context: Inline RAG context to be used for the response
+        filter_server_tools: Whether to filter server-deployed MCP tool events from the stream
     Yields:
         SSE-formatted strings for streaming events, ending with [DONE]
     """
@@ -485,12 +613,25 @@ async def response_generator(
 
     latest_response_object: Optional[OpenAIResponseObject] = None
     sequence_number = 0
+    configured_mcp_labels = (
+        {s.name for s in configuration.mcp_servers} if filter_server_tools else set()
+    )
+    # Track output indices of server-deployed MCP calls to filter their events
+    server_mcp_output_indices: set[int] = set()
 
     async for chunk in stream:
         event_type = getattr(chunk, "type", None)
         logger.debug("Processing streaming chunk, type: %s", event_type)
 
-        chunk_dict = chunk.model_dump(exclude_none=True)
+        # Filter out streaming events for server-deployed MCP tools.
+        # These are handled internally by LCS and should not be forwarded
+        # to clients that don't understand the mcp_call item type.
+        if _should_filter_mcp_chunk(
+            chunk, event_type, configured_mcp_labels, server_mcp_output_indices
+        ):
+            continue
+
+        chunk_dict = chunk.model_dump(exclude_none=True, by_alias=True)
 
         # Create own sequence number for chunks to maintain order
         chunk_dict["sequence_number"] = sequence_number
@@ -506,6 +647,15 @@ async def response_generator(
                         configuration.rag_id_mapping,
                     )
                 )
+            # Remove server-deployed MCP items from the output array so
+            # clients only see item types they understand (message, function_call, etc.)
+            output = chunk_dict["response"].get("output")
+            if output is not None:
+                chunk_dict["response"]["output"] = [
+                    item
+                    for item in output
+                    if not _is_server_mcp_output_item(item, configured_mcp_labels)
+                ]
 
         # Intermediate response - no quota consumption and text yet
         if event_type == "response.in_progress":
@@ -547,27 +697,13 @@ async def response_generator(
 
     # Extract response metadata from final response object
     if latest_response_object:
-        turn_summary.id = latest_response_object.id
-        vector_store_ids = extract_vector_store_ids_from_tools(api_params.tools)
-        tool_rag_docs = parse_referenced_documents(
-            latest_response_object, vector_store_ids, configuration.rag_id_mapping
-        )
-        turn_summary.referenced_documents = deduplicate_referenced_documents(
-            inline_rag_context.referenced_documents + tool_rag_docs
-        )
-        for item in latest_response_object.output:
-            tool_call, tool_result = build_tool_call_summary(item)
-            if tool_call:
-                turn_summary.tool_calls.append(tool_call)
-            if tool_result:
-                turn_summary.tool_results.append(tool_result)
-
-        tool_rag_chunks = parse_rag_chunks(
+        _populate_turn_summary(
             latest_response_object,
-            vector_store_ids,
-            configuration.rag_id_mapping,
+            turn_summary,
+            api_params,
+            inline_rag_context,
+            filter_server_tools,
         )
-        turn_summary.rag_chunks = inline_rag_context.rag_chunks + tool_rag_chunks
 
     client = AsyncLlamaStackClientHolder().get_client()
     # Explicitly append the turn to conversation if context passed by previous response
@@ -639,6 +775,7 @@ async def handle_non_streaming_response(
     started_at: datetime,
     moderation_result: ShieldModerationResult,
     inline_rag_context: RAGContext,
+    filter_server_tools: bool = False,
 ) -> ResponsesResponse:
     """Handle non-streaming response from Responses API.
 
@@ -650,6 +787,7 @@ async def handle_non_streaming_response(
         started_at: Timestamp when the conversation started
         moderation_result: Result of shield moderation check
         inline_rag_context: Inline RAG context to be used for the response
+        filter_server_tools: Whether to filter server-deployed MCP tool output
     Returns:
         ResponsesResponse with the completed response
     """
@@ -728,6 +866,7 @@ async def handle_non_streaming_response(
         api_params.model,
         vector_store_ids,
         configuration.rag_id_mapping,
+        filter_server_tools=filter_server_tools,
     )
     turn_summary.referenced_documents = deduplicate_referenced_documents(
         inline_rag_context.referenced_documents + turn_summary.referenced_documents
