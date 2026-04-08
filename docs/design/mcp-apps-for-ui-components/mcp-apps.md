@@ -14,7 +14,7 @@ This document outlines the design for integrating [MCP Apps](https://modelcontex
 3. Fetch UI resources **inline during query processing** via `client.resources.read()`
 4. Include full HTML content directly in query response `ui_resource.content` field
 
-**Key Benefit:** Single request flow - clients receive tool results and UI resources together, eliminating the need for separate endpoints and additional round trips.
+**Key Benefit:** Single request flow - clients receive tool results with enriched UI resources together.
 
 This approach minimizes custom code in Lightspeed while providing maximum value to the broader llama-stack community.
 
@@ -31,7 +31,7 @@ Lightspeed Core Stack already supports:
 **Limitations:**
 - Tools return only text/JSON results
 - Complex data (performance metrics, resource lists, cost analysis) returned as "text walls"
-- No support for interactive UI components
+- No support for interactive UI components (charts, dashboards etc)
 
 ### MCP Apps Protocol Overview
 
@@ -107,28 +107,6 @@ Based on [official MCP Apps documentation](https://modelcontextprotocol.io/docs/
 │  - Returns text/JSON results   │
 └────────────────────────────────┘
 ```
-
-### Integration Challenges
-
-**Challenge 1: Llama Stack Version**
-- Current version: `llama-stack==0.5.2`, `llama-stack-api==0.5.2`
-- MCP Apps announced: January 26, 2026
-- **Issue**: llama-stack 0.5.2 likely predates MCP Apps support
-- **Evidence**: No `ui_resource` fields in current API, no resources endpoint usage
-
-**Challenge 2: UI Resource Fetching**
-- MCP Apps requires fetching `ui://` resources from MCP servers
-- Current code only interacts with Llama Stack, not directly with MCP servers
-- **Need**: Direct MCP protocol implementation or Llama Stack upgrade
-
-**Challenge 3: Response Model Extension**
-- Current `ToolResultSummary.content` is a string
-- **Need**: Additional field for UI resource data (HTML, metadata, permissions)
-
-**Challenge 4: Client Compatibility**
-- Lightspeed clients (chat UIs, agents) must handle UI resource rendering
-- Requires sandboxed iframe implementation
-- **Scope**: This design focuses on backend; client implementation is separate
 
 ## Design 
 
@@ -251,22 +229,7 @@ class ToolResultSummary(BaseModel):
 
 **Cache Invalidation Strategy:**
 
-The cache needs to stay synchronized with MCP server tool definitions. Several strategies are considered:
-
-| Strategy | Trigger | Pros | Cons |
-|----------|---------|------|------|
-| **On-Demand (Recommended)** | Refresh on every `/v1/tools` call | Simple, always fresh, no stale data | Higher latency on tools list endpoint |
-| **TTL-based** | Refresh if cache older than N seconds | Lower latency, still relatively fresh | May serve stale data briefly |
-| **Manual Refresh** | Admin API `/v1/tools/refresh` | Full control, on-demand | Requires manual intervention |
-| **Webhook** | MCP server notifies on changes | Instant updates | Requires MCP server support (not standard) |
-
-**Recommendation:** **On-Demand Refresh** - Update cache on every `GET /v1/tools` call
-
-**Rationale:**
-- `/v1/tools` endpoint already calls `client.toolgroups.list()` which fetches fresh data
-- Tool listings are not latency-sensitive (typically called once at session start)
-- Guarantees cache consistency without added complexity
-- No risk of stale metadata causing incorrect UI resource references
+The cache will be updated with MCP server tool definitions on every `GET /v1/tools` call:
 
 **Implementation:**
 
@@ -336,13 +299,14 @@ class ToolDefinitionCache(metaclass=Singleton):
 
 2. Implementation Roadmap
 
-The rollout can be done in two phases following the release of the Llama Stack Resources API.
+The section discusses the implementation in lightspeed-stack, and assumes that the [Resources API is available
+in llama-stack](https://github.com/llamastack/llama-stack/issues/5430).
 
-**Phase 1: Llama Stack Integration**
+**Llama Stack Integration**
 
-Upgrade llama-stack and llama-stack-client dependencies. This phase establishes the foundation for calling `client.resources.read()` to fetch UI resources.
+Upgrade llama-stack and llama-stack-client dependencies to the release that Resources API is available in. This phase establishes the foundation for calling `client.resources.read()` to fetch UI resources.
 
-**Phase 2: Response Enrichment**
+**Response Enrichment**
 
 The response pipeline will be modified to detect UI-capable tools and fetch their HTML content:
 
