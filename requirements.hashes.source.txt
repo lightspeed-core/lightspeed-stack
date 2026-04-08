@@ -434,6 +434,9 @@ google-cloud-resource-manager==1.17.0 \
 google-cloud-storage==3.10.1 \
     --hash=sha256:97db9aa4460727982040edd2bd13ff3d5e2260b5331ad22895802da1fc2a5286 \
     --hash=sha256:a72f656759b7b99bda700f901adcb3425a828d4a29f911bc26b3ea79c5b1217f
+google-genai==1.70.0 \
+    --hash=sha256:36b67b0fc6f319e08d1f1efd808b790107b1809c8743a05d55dfcf9d9fad7719 \
+    --hash=sha256:b74c24549d8b4208f4c736fd11857374788e1ffffc725de45d706e35c97fceee
 google-resumable-media==2.8.2 \
     --hash=sha256:82b6d8ccd11765268cdd2a2123f417ec806b8eef3000a9a38dfe3033da5fb220 \
     --hash=sha256:f3354a182ebd193ae3f42e3ef95e6c9b10f128320de23ac7637236713b1acd70

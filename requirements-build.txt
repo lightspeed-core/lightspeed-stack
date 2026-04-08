@@ -6,14 +6,37 @@
 #
 calver==2025.10.20
     # via trove-classifiers
+certifi==2026.2.25
+    # via requests
+cffi==2.0.0
+    # via cryptography
+charset-normalizer==3.4.7
+    # via requests
+coherent-licensed==0.5.2
+    # via
+    #   jaraco-context
+    #   jaraco-functools
+    #   keyring
+cryptography==46.0.7
+    # via secretstorage
 cython==3.2.4
     # via oracledb
+docutils==0.22.4
+    # via readme-renderer
 dunamai==1.26.1
     # via uv-dynamic-versioning
 flit-core==3.12.0
     # via
     #   click
+    #   coherent-licensed
+    #   docutils
+    #   id
+    #   idna
+    #   jeepney
     #   jinja2
+    #   markdown-it-py
+    #   mdurl
+    #   more-itertools
     #   packaging
     #   pathspec
     #   pypdf
@@ -28,6 +51,7 @@ hatch-vcs==0.5.0
     #   attrs
     #   chardet
     #   filelock
+    #   urllib3
 hatchling==1.26.3
     # via
     #   hatch-fancy-pypi-readme
@@ -57,18 +81,49 @@ hatchling==1.29.0
     #   pythainlp
     #   python-multipart
     #   starlette
+    #   urllib3
     #   uv-dynamic-versioning
     #   uvicorn
     #   wcwidth
+id==1.6.1
+    # via twine
+idna==3.11
+    # via requests
+jaraco-classes==3.4.0
+    # via keyring
+jaraco-context==6.1.2
+    # via keyring
+jaraco-functools==4.4.0
+    # via keyring
+jeepney==0.9.0
+    # via
+    #   keyring
+    #   secretstorage
 jinja2==3.1.6
     # via uv-dynamic-versioning
+keyring==25.7.0
+    # via twine
+markdown-it-py==4.0.0
+    # via rich
 markupsafe==3.0.3
     # via jinja2
 maturin==1.10.2
-    # via fastuuid
+    # via
+    #   cryptography
+    #   fastuuid
+    #   nh3
+mdurl==0.1.2
+    # via markdown-it-py
+more-itertools==11.0.1
+    # via
+    #   jaraco-classes
+    #   jaraco-functools
+nh3==0.3.4
+    # via readme-renderer
 packaging==26.0
     # via
     #   dunamai
+    #   google-genai
     #   hatchling
     #   setuptools-scm
     #   vcs-versioning
@@ -79,6 +134,8 @@ pdm-backend==2.4.8
     # via fastapi
 pkgconfig==1.6.0
     # via aiohttp
+pkginfo==1.12.1.2
+    # via google-genai
 pluggy==1.6.0
     # via hatchling
 poetry-core==2.3.2
@@ -88,6 +145,26 @@ poetry-core==2.3.2
     #   pkgconfig
     #   rich
     #   tomlkit
+pycparser==3.0
+    # via cffi
+pygments==2.20.0
+    # via
+    #   readme-renderer
+    #   rich
+readme-renderer==44.0
+    # via twine
+requests-toolbelt==1.0.0
+    # via twine
+requests==2.33.1
+    # via
+    #   requests-toolbelt
+    #   twine
+rfc3986==2.0.0
+    # via twine
+rich==14.3.3
+    # via twine
+secretstorage==3.5.0
+    # via keyring
 semantic-version==2.10.0
     # via setuptools-rust
 setuptools-rust==1.12.1
@@ -95,15 +172,31 @@ setuptools-rust==1.12.1
 setuptools-scm==10.0.5
     # via
     #   hatch-vcs
+    #   jaraco-classes
+    #   jaraco-context
+    #   jaraco-functools
+    #   keyring
     #   llama-stack
     #   llama-stack-api
     #   pluggy
     #   setuptools-rust
     #   tenacity
+    #   twine
+setuptools-scm==9.2.2
+    # via
+    #   hatch-vcs
+    #   urllib3
 tomlkit==0.14.0
     # via uv-dynamic-versioning
 trove-classifiers==2026.1.14.14
     # via hatchling
+twine==6.2.0
+    # via google-genai
+urllib3==2.6.3
+    # via
+    #   id
+    #   requests
+    #   twine
 uv-dynamic-versioning==0.14.0
     # via
     #   a2a-sdk
@@ -116,8 +209,10 @@ wheel==0.46.3
     #   azure-core
     #   azure-identity
     #   cachetools
+    #   google-genai
     #   litellm
     #   oracledb
+    #   pycparser
     #   sentence-transformers
     #   tornado
     #   tzdata
@@ -133,13 +228,20 @@ setuptools==82.0.1
     #   cachetools
     #   calver
     #   certifi
+    #   cffi
     #   charset-normalizer
+    #   cryptography
     #   emoji
     #   google-api-core
     #   google-cloud-bigquery
+    #   google-genai
     #   googleapis-common-protos
     #   greenlet
     #   grpc-google-iam-v1
+    #   jaraco-classes
+    #   jaraco-context
+    #   jaraco-functools
+    #   keyring
     #   llama-stack
     #   llama-stack-api
     #   markupsafe
@@ -152,11 +254,14 @@ setuptools==82.0.1
     #   proto-plus
     #   psutil
     #   pyasn1
+    #   pycparser
     #   pycryptodomex
     #   pyjwt
     #   python-dotenv
+    #   readme-renderer
     #   regex
     #   requests
+    #   secretstorage
     #   semver
     #   sentence-transformers
     #   setuptools-rust
@@ -166,5 +271,6 @@ setuptools==82.0.1
     #   tornado
     #   trl
     #   trove-classifiers
+    #   twine
     #   tzdata
     #   vcs-versioning
