@@ -515,7 +515,7 @@ const data = await response.json();
 // If tool result has UI resource
 if (data.tool_results[0].ui_resource) {
   const iframe = document.createElement('iframe');
-  iframe.sandbox = 'allow-scripts allow-same-origin';
+  iframe.sandbox = 'allow-scripts';
   iframe.srcdoc = data.tool_results[0].ui_resource.content;
   document.body.appendChild(iframe);
 
@@ -728,8 +728,13 @@ eventSource.addEventListener('chunk', (event) => {
 
 **Client-Side Sandbox Isolation**
 - UI resources MUST be rendered in sandboxed iframes
-- Recommended sandbox attributes: `sandbox="allow-scripts allow-same-origin"`
-- CSP headers to restrict external resource loading
+- Recommended sandbox attributes: `sandbox="allow-scripts"`
+- The `allow-scripts` sandbox enables JavaScript execution while blocking:
+  - Access to parent window origin (no `allow-same-origin`)
+  - Form submissions (`allow-forms`)
+  - Navigation of top-level browsing context (`allow-top-navigation`)
+  - Pop-ups (`allow-popups`)
+- This provides maximum isolation while enabling MCP Apps UI functionality
 
 **Server-Side Validation**
 - MCP servers are trusted (pre-registered in config)
@@ -739,7 +744,7 @@ eventSource.addEventListener('chunk', (event) => {
 **Content Trust Model**
 - HTML content comes from registered MCP servers only
 - No user-provided or untrusted HTML content
-- Respect `_meta.ui.csp` from tool definition for additional restrictions
+- UI resources isolated from parent page context via iframe sandbox
 
 5. Testing Strategy
 
