@@ -2,9 +2,9 @@
 
 ## Overview
 
-**The problem**: Lightspeed Core Stack currently supports MCP tool calling but tools return only text/JSON results. Complex data like Kubernetes cluster metrics, real-time dashboards, or cost analysis are returned as "text walls" that are difficult to visualize. The [MCP Apps extension](https://modelcontextprotocol.io/docs/extensions/apps) (announced January 26, 2026) enables MCP servers to return interactive UI components (charts, tables, dashboards) that render directly in conversation streams, but llama-stack (the intermediary layer) lacks support for the Resources API needed to fetch these UI components.
+**The problem**: Lightspeed Core Stack currently supports MCP tool calling but tools return only text/JSON results. Complex data like Kubernetes cluster metrics, real-time dashboards, or cost analysis are returned as "text walls" that are difficult to visualize. The [MCP Apps extension](https://modelcontextprotocol.io/docs/extensions/apps) (announced January 26, 2026) enables MCP servers to return interactive UI components (charts, tables, dashboards) that render directly in conversation streams, but llama-stack (the intermediary layer) lacks two critical APIs: (1) Resources API to fetch UI components, and (2) Tool Invocation API for bidirectional communication.
 
-**The recommendation**: Contribute Resources API support to llama-stack (via [issue #5430](https://github.com/llamastack/llama-stack/issues/5430)), then integrate into Lightspeed by fetching UI resources inline during query processing. This approach minimizes custom code in Lightspeed while providing MCP Apps support to the broader llama-stack community.
+**The recommendation**: Contribute both APIs to llama-stack (via [issue #5430](https://github.com/llamastack/llama-stack/issues/5430) for Resources API and [issue #5512](https://github.com/llamastack/llama-stack/issues/5512) for Tool Invocation), then integrate into Lightspeed by fetching UI resources inline during query processing and exposing `/v1/tools/invoke` for direct tool calls. This approach minimizes custom code in Lightspeed while providing MCP Apps support to the broader llama-stack community.
 
 **PoC validation**: Successfully tested MCP integration with kubernetes-mcp-server. No PoC built for UI resource fetching yet - blocked on llama-stack Resources API implementation.
 
@@ -107,13 +107,14 @@ MCP Apps UIs communicate bidirectionally with the host via postMessage. Where do
 1. Client sends query → Lightspeed returns HTML in `ui_resource.content`
 2. Client renders iframe with HTML
 3. Client sends tool result to iframe via postMessage (client-side only)
-4. If UI calls a tool → Client makes NEW `POST /v1/query` to Lightspeed
+4. If UI calls a tool → Client makes NEW `POST /v1/tools/invoke` to Lightspeed
 5. Client sends new result to iframe (client-side only)
 
 **Why this matters:**
 - Lightspeed-stack remains stateless (no WebSocket, no SSE to clients)
 - Clients must implement postMessage handling (using `@modelcontextprotocol/ext-apps` library)
-- Tool calls from UI are just normal HTTP requests to `/v1/query`
+- Tool calls from UI use direct invocation endpoint `/v1/tools/invoke` (not `/v1/query`)
+- Direct invocation is deterministic, fast, and token-free (see [llama-stack issue #5512](https://github.com/llamastack/llama-stack/issues/5512))
 
 **Recommendation**: Document this clearly so clients know they're responsible for postMessage implementation. See design doc section 3.1 for full architecture.
 
@@ -241,9 +242,59 @@ To verify:
 
 <!-- type: Task -->
 <!-- key: LCORE-???? -->
-### LCORE-???? Upgrade llama-stack dependencies to version with Resources API
+### LCORE-???? Implement llama-stack Tool Invocation API for MCP Apps bidirectional communication
 
-**Description**: Upgrade `llama-stack` and `llama-stack-client` dependencies to the version that includes Resources API support. This unblocks MCP Apps implementation in Lightspeed.
+**Description**: Implement direct tool invocation endpoint in llama-stack as proposed in [issue #5512](https://github.com/llamastack/llama-stack/issues/5512). This enables MCP Apps UIs to call tools programmatically without LLM overhead, supporting bidirectional communication.
+
+**Scope**:
+
+- Expose existing `invoke_tool()` method from `ToolRuntime` protocol as HTTP endpoint
+- Add FastAPI route `POST /v1/tools/invoke` to `llama_stack_api/tools/fastapi_routes.py`
+- Create request/response models: `InvokeToolRequest`, `InvokeToolResponse`
+- Pass through authorization headers to tool runtime
+- Handle errors gracefully (return error in response, not HTTP 500)
+- Add unit tests for endpoint
+- Add integration tests with MCP server
+- Update llama-stack documentation
+
+**Acceptance criteria**:
+
+- `POST /v1/tools/invoke` endpoint accepts `tool_name` and `arguments`
+- Endpoint calls `ToolRuntimeRouter.invoke_tool()` internally
+- Response includes `result` field with tool output
+- Authorization headers passed through to MCP servers
+- Error responses include descriptive `error` field
+- Unit tests cover success and error cases
+- Integration test verifies end-to-end tool invocation
+- PR submitted to llama-stack repository and merged
+
+**Agentic tool instruction**:
+
+```text
+Read the full implementation proposal in https://github.com/llamastack/llama-stack/issues/5512.
+
+Key files to create/modify in llama-stack repo:
+- src/llama_stack_api/tools/models.py (add InvokeToolRequest, InvokeToolResponse)
+- src/llama_stack_api/tools/fastapi_routes.py (add POST /tools/invoke route)
+- src/llama_stack_api/tools/api.py (update if needed)
+
+The internal invoke_tool() method already exists in ToolRuntimeRouter.
+Just need to expose it via HTTP endpoint.
+
+To verify:
+1. Start llama-stack with test MCP server
+2. Call POST /v1/tools/invoke with tool_name and arguments
+3. Verify result returned in response
+4. Test with invalid tool name, verify error field populated
+```
+
+---
+
+<!-- type: Task -->
+<!-- key: LCORE-???? -->
+### LCORE-???? Upgrade llama-stack dependencies to version with Resources API and Tool Invocation
+
+**Description**: Upgrade `llama-stack` and `llama-stack-client` dependencies to the version that includes Resources API and Tool Invocation API support. This unblocks MCP Apps implementation in Lightspeed.
 
 **Scope**:
 
@@ -255,8 +306,9 @@ To verify:
 
 **Acceptance criteria**:
 
-- `pyproject.toml` specifies llama-stack version with Resources API
+- `pyproject.toml` specifies llama-stack version with Resources API and Tool Invocation API
 - `client.resources` attribute exists and is callable
+- `client.tools.invoke` method exists and is callable
 - All existing tests pass (no regressions)
 - `uv run make verify` passes (linters)
 
@@ -636,9 +688,63 @@ To verify: Validate spec with Swagger Editor or similar tool.
 
 <!-- type: Task -->
 <!-- key: LCORE-???? -->
+### LCORE-???? Implement /v1/tools/invoke endpoint for direct tool invocation
+
+**Description**: Add `POST /v1/tools/invoke` endpoint to lightspeed-stack that enables direct tool invocation for MCP Apps bidirectional communication. This endpoint passes through to llama-stack's tool invocation API.
+
+**Scope**:
+
+- Create request model `InvokeToolRequest` in `src/models/requests.py` with fields: `tool_name`, `arguments`
+- Create response model `InvokeToolResponse` in `src/models/responses.py` with fields: `tool_name`, `result`, `error`
+- Add `POST /tools/invoke` endpoint to `src/app/endpoints/tools.py`
+- Apply `@authorize(Action.INVOKE_TOOL)` decorator for RBAC
+- Accept and pass through MCP headers via `mcp_headers_dependency`
+- Call `client.tools.invoke()` with tool name, arguments, and MCP headers
+- Handle errors gracefully (return error in response, not HTTP exception)
+- Add OpenAPI response documentation
+
+**Acceptance criteria**:
+
+- `POST /v1/tools/invoke` endpoint accepts JSON body with `tool_name` and `arguments`
+- Endpoint requires authentication (same as `/v1/query`)
+- RBAC enforces `INVOKE_TOOL` action permission
+- MCP headers (OAuth, Bearer tokens) passed through to llama-stack
+- Successful invocation returns tool result in response
+- Failed invocation returns descriptive error message (not HTTP 500)
+- OpenAPI spec includes new endpoint with examples
+- `uv run make verify` passes
+
+**Agentic tool instruction**:
+
+```text
+Read the "Direct Tool Invocation Endpoint" section (3.4) and "Implementation Roadmap - Step 3"
+in docs/design/mcp-apps-for-ui-components/mcp-apps.md.
+
+Key files to create/modify:
+- src/models/requests.py (add InvokeToolRequest)
+- src/models/responses.py (add InvokeToolResponse)
+- src/app/endpoints/tools.py (add invoke_tool_endpoint function)
+- src/models/config.py (add Action.INVOKE_TOOL if needed)
+
+The endpoint implementation is shown in the design doc. Key points:
+1. Use existing patterns from query.py (auth, mcp_headers, client access)
+2. Call await client.tools.invoke(tool_name=..., arguments=..., extra_headers=...)
+3. Wrap in try/except to return errors gracefully
+
+To verify:
+1. Start lightspeed-stack with kubernetes-mcp-server
+2. Call POST /v1/tools/invoke with tool_name="list_namespaces" and arguments={}
+3. Verify result contains namespace list
+4. Test with invalid tool name, verify error field populated
+```
+
+---
+
+<!-- type: Task -->
+<!-- key: LCORE-???? -->
 ### LCORE-???? Document MCP Apps feature and client integration guide
 
-**Description**: Create user-facing documentation explaining MCP Apps support, how to enable it, and how clients should handle `ui_resource` fields in responses.
+**Description**: Create user-facing documentation explaining MCP Apps support, how to enable it, and how clients should handle `ui_resource` fields in responses and implement bidirectional communication.
 
 **Scope**:
 
@@ -647,6 +753,7 @@ To verify: Validate spec with Swagger Editor or similar tool.
   - How Lightspeed supports UI resources
   - Example response with ui_resource field
   - Client implementation guide (rendering HTML in sandboxed iframe)
+  - Bidirectional communication via `/v1/tools/invoke` endpoint
   - Security considerations for rendering untrusted HTML
 - Update main README or feature index to link to MCP Apps docs
 
@@ -660,7 +767,7 @@ To verify: Validate spec with Swagger Editor or similar tool.
 **Agentic tool instruction**:
 
 ```text
-Read the "Summary" and "API Specification" sections in
+Read the "Summary", "API Specification", and "Bidirectional Communication" sections in
 docs/design/mcp-apps-for-ui-components/mcp-apps.md.
 Key files to create: docs/features/mcp-apps.md.
 
@@ -668,7 +775,9 @@ Include:
 1. Feature overview
 2. Example response showing ui_resource field
 3. Client rendering guide (sandboxed iframe pattern from section 4)
-4. Link to https://modelcontextprotocol.io/docs/extensions/apps
+4. Bidirectional communication via POST /v1/tools/invoke
+5. Example client code for handling tool calls from UI
+6. Link to https://modelcontextprotocol.io/docs/extensions/apps
 
 Follow existing docs/ structure and markdown style.
 

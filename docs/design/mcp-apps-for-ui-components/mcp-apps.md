@@ -6,15 +6,21 @@ This document outlines the design for integrating [MCP Apps](https://modelcontex
 
 **Key Goal:** Enable Lightspeed to act as an MCP Host capable of discovering, fetching, and returning UI resources with full HTML content from MCP servers that support the MCP Apps extension.
 
-**Chosen Approach:** Extend Llama Stack with Resources API (see [llama-stack issue #5430](https://github.com/llamastack/llama-stack/issues/5430))
+**Chosen Approach:** Extend Llama Stack with two new APIs:
+- Resources API for fetching UI resources ([issue #5430](https://github.com/llamastack/llama-stack/issues/5430))
+- Tool Invocation API for bidirectional communication ([issue #5512](https://github.com/llamastack/llama-stack/issues/5512))
 
 **Implementation Strategy:**
-1. Contribute/wait for Resources API implementation in llama-stack
+1. Contribute/wait for Resources API and Tool Invocation API in llama-stack
 2. Upgrade llama-stack dependencies when available
 3. Fetch UI resources **inline during query processing** via `client.resources.read()`
 4. Include full HTML content directly in query response `ui_resource.content` field
+5. Add `POST /v1/tools/invoke` endpoint for direct tool calls from MCP Apps UIs
 
-**Key Benefit:** Single request flow - clients receive tool results with enriched UI resources together.
+**Key Benefits:**
+- **Single request flow**: Clients receive tool results with enriched UI resources together
+- **Direct tool invocation**: MCP Apps UIs can call tools deterministically without LLM overhead
+- **Minimal custom code**: Leverages llama-stack implementation, benefits entire ecosystem
 
 This approach minimizes custom code in Lightspeed while providing maximum value to the broader llama-stack community.
 
@@ -392,6 +398,34 @@ async def build_tool_call_summary(
 **Key Simplification:**
 UI resources are fetched **during query processing** and included directly in the response. No separate endpoint needed - the client receives everything in one request.
 
+**Step 3: Add direct tool invocation endpoint**
+
+For MCP Apps bidirectional communication, add `POST /v1/tools/invoke` endpoint:
+
+```python
+# In src/app/endpoints/tools.py
+
+@router.post("/tools/invoke")
+@authorize(Action.INVOKE_TOOL)
+async def invoke_tool_endpoint(
+    request: InvokeToolRequest,
+    auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
+    mcp_headers: McpHeaders = Depends(mcp_headers_dependency),
+) -> InvokeToolResponse:
+    """Invoke a tool directly (for MCP Apps bidirectional communication)."""
+    client = AsyncLlamaStackClientHolder().get_client()
+
+    result = await client.tools.invoke(
+        tool_name=request.tool_name,
+        arguments=request.arguments,
+        extra_headers=build_mcp_headers(configuration, mcp_headers, request.headers, token),
+    )
+
+    return InvokeToolResponse(tool_name=request.tool_name, result=result)
+```
+
+**Dependency:** Requires llama-stack to expose `invoke_tool` as HTTP endpoint. See [llama-stack issue #5512](https://github.com/llamastack/llama-stack/issues/5512).
+
 3. API Specification
 
 **Modified Query Response (POST /v1/query)**
@@ -476,8 +510,8 @@ The system will enrich tool results with the full UI resource content fetched fr
 │  Client JS receives postMessage ←─────────────────────────┘     │
 │  Client makes NEW HTTP request ↓                                │
 │                                                                  │
-│  POST /v1/query (with new tool call) → Lightspeed-stack        │
-│  Response includes new tool result                              │
+│  POST /v1/tools/invoke → Lightspeed-stack                       │
+│  Response includes tool result                                  │
 │  Client sends to iframe via postMessage                         │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -492,14 +526,15 @@ The system will enrich tool results with the full UI resource content fetched fr
 | Handle postMessage events | ❌ No | ✅ Yes |
 | Send tool results to iframe | ❌ No | ✅ Yes |
 | Receive tool calls from iframe | ❌ No | ✅ Yes |
-| Execute tool calls | ✅ Yes (via /v1/query) | ❌ No |
+| Execute tool calls | ✅ Yes (via /v1/tools/invoke) | ❌ No |
 
 **Key Points:**
 
 1. **Lightspeed-stack is stateless**: No WebSocket, no SSE connection to client, no postMessage handling
 2. **UI communicates with client, not server**: All postMessage happens between iframe and client JS
-3. **Tool calls from UI = new HTTP requests**: When UI calls a tool, client makes a fresh `POST /v1/query`
+3. **Tool calls from UI = new HTTP requests**: When UI calls a tool, client makes a fresh `POST /v1/tools/invoke`
 4. **Client implements MCP Apps protocol**: Client must use `@modelcontextprotocol/ext-apps` library or equivalent
+5. **Direct tool invocation required**: Uses `/v1/tools/invoke` endpoint (not `/v1/query`) for deterministic, fast execution
 
 **Client Implementation Example:**
 
@@ -525,17 +560,21 @@ if (data.tool_results[0].ui_resource) {
       const message = JSON.parse(event.data);
 
       if (message.method === 'tools/call') {
-        // Make NEW request to lightspeed-stack
-        const toolResult = await fetch('/v1/query', {
+        // Make direct tool invocation request to lightspeed-stack
+        const toolResponse = await fetch('/v1/tools/invoke', {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            query: `Execute tool ${message.params.name} with ${JSON.stringify(message.params.arguments)}`
+            tool_name: message.params.name,
+            arguments: message.params.arguments
           })
         });
 
+        const toolResult = await toolResponse.json();
+
         // Send result back to iframe
         iframe.contentWindow.postMessage(
-          JSON.stringify({ id: message.id, result: toolResult }),
+          JSON.stringify({ id: message.id, result: toolResult.result }),
           '*'
         );
       }
@@ -724,6 +763,62 @@ eventSource.addEventListener('chunk', (event) => {
 });
 ```
 
+3.4. Direct Tool Invocation Endpoint
+
+MCP Apps UIs need to call tools directly when users interact (e.g., clicking "Refresh" in a dashboard).
+
+A direct tool invocation endpoint is required for deterministic, fast, token-free tool execution. See [llama-stack issue #5512](https://github.com/llamastack/llama-stack/issues/5512) for full justification and proposed API design for a `POST /v1/tools/invoke` endpoint.
+
+**Request:**
+```json
+{
+  "tool_name": "get_pod_metrics",
+  "arguments": { "namespace": "production" }
+}
+```
+
+**Response:**
+```json
+{
+  "tool_name": "get_pod_metrics",
+  "result": { "pods": [...] },
+  "error": null
+}
+```
+
+**Implementation Dependencies:**
+
+1. **Llama Stack**: Must expose `invoke_tool` as HTTP endpoint ([issue #5512](https://github.com/llamastack/llama-stack/issues/5512))
+2. **Lightspeed-stack**: Add passthrough endpoint `POST /v1/tools/invoke` that calls llama-stack
+3. **Authorization**: Use same auth model as `/v1/query` (RBAC action: `INVOKE_TOOL`)
+
+**Lightspeed Implementation:**
+
+```python
+# src/app/endpoints/tools.py
+
+@router.post("/tools/invoke")
+@authorize(Action.INVOKE_TOOL)
+async def invoke_tool_endpoint(
+    request: InvokeToolRequest,
+    auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
+    mcp_headers: McpHeaders = Depends(mcp_headers_dependency),
+) -> InvokeToolResponse:
+    """Invoke a tool directly (for MCP Apps bidirectional communication)."""
+    client = AsyncLlamaStackClientHolder().get_client()
+
+    result = await client.tools.invoke(
+        tool_name=request.tool_name,
+        arguments=request.arguments,
+        extra_headers=build_mcp_headers(...),
+    )
+
+    return InvokeToolResponse(
+        tool_name=request.tool_name,
+        result=result,
+    )
+```
+
 4. Security Considerations
 
 **Client-Side Sandbox Isolation**
@@ -781,11 +876,16 @@ Feature: MCP Apps UI Resource Integration
 
 ### Open Questions
 
-**Q1: Llama Stack Implementation Timeline**
+**Q1: Llama Stack Resources API Implementation**
 - Status: Proposed via [llama-stack issue #5430](https://github.com/llamastack/llama-stack/issues/5430)
 - **Action:** Monitor issue for maintainer feedback and implementation timeline
 
-**Q2: Should we add X-MCP-Apps-Support header in future?**
+**Q2: Llama Stack Tool Invocation Endpoint**
+- Status: Proposed via [llama-stack issue #5512](https://github.com/llamastack/llama-stack/issues/5512)
+- Requirement: Bidirectional communication for MCP Apps UIs
+- **Action:** Monitor issue; MCP Apps support is blocked until this is available
+
+**Q3: Should we add X-MCP-Apps-Support header in future?**
 - Current: Always include `ui_resource` (simple, graceful degradation)
 - Future enhancement: Optional header to skip `ui_resource` for CLI clients
 - **Action:** Monitor bandwidth usage; add header in v2 if needed
@@ -799,6 +899,7 @@ Feature: MCP Apps UI Resource Integration
 - [MCP Apps Build Guide](https://modelcontextprotocol.io/extensions/apps/build)
 - [MCP Apps API Documentation](https://apps.extensions.modelcontextprotocol.io/api/)
 - [Llama Stack Resources API Proposal (Issue #5430)](https://github.com/llamastack/llama-stack/issues/5430)
+- [Llama Stack Tool Invocation Endpoint Proposal (Issue #5512)](https://github.com/llamastack/llama-stack/issues/5512)
 - [Lightspeed Core Stack Demo (MCP Integration)](demo.md)
 
 ## Appendix A: Example MCP Server with UI
