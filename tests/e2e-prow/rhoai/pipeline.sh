@@ -388,6 +388,8 @@ done
 
 export E2E_LSC_HOSTNAME="localhost"
 export E2E_JWKS_HOSTNAME="localhost"
+export E2E_DEFAULT_MODEL_OVERRIDE="$MODEL_NAME"
+export E2E_DEFAULT_PROVIDER_OVERRIDE="vllm"
 echo "LCS accessible at: http://$E2E_LSC_HOSTNAME:8080"
 echo "Mock JWKS accessible at: http://$E2E_JWKS_HOSTNAME:8000"
 
