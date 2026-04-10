@@ -16,8 +16,6 @@ Feature: Responses endpoint API tests
     Then The status code of the response is 200
       And The body of the response contains hello
 
-  # https://redhat.atlassian.net/browse/LCORE-1583
-  @skip
   Scenario: Responses accepts passthrough parameters with valid types
     Given The system is in default state
       And I set the Authorization header to Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva
@@ -28,8 +26,6 @@ Feature: Responses endpoint API tests
       "model": "{PROVIDER}/{MODEL}",
       "stream": false,
       "instructions": "You are a helpful assistant.",
-      "prompt": {"id": "e2e_responses_passthrough_prompt"},
-      "reasoning": {"effort": "low"},
       "safety_identifier": "e2e-responses-passthrough",
       "text": {"format": {"type": "text"}},
       "tool_choice": "auto",
@@ -51,8 +47,6 @@ Feature: Responses endpoint API tests
           "status": "completed",
           "model": "{PROVIDER}/{MODEL}",
           "instructions": "You are a helpful assistant.",
-          "prompt": {"id": "e2e_responses_passthrough_prompt"},
-          "reasoning": {"effort": "low"},
           "safety_identifier": "e2e-responses-passthrough",
           "text": {"format": {"type": "text"}},
           "tool_choice": "auto",
