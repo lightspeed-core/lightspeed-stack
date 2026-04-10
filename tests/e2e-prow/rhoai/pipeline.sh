@@ -8,7 +8,7 @@ export RUNNING_PROW=true
 #========================================
 # 1. GLOBAL CONFIG
 #========================================
-NAMESPACE="${NAMESPACE:-e2e-rhoai-dsc}"
+NAMESPACE="e2e-rhoai-dsc"
 export NAMESPACE
 MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
 PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,10 +22,10 @@ PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 2. ENVIRONMENT SETUP
 #========================================
 echo "===== Setting up environment variables ====="
-export HUGGING_FACE_HUB_TOKEN=$(cat /var/run/huggingface/hf-token-ces-lcore-test || true)
-export VLLM_API_KEY=$(cat /var/run/vllm/vllm-api-key-lcore-test || true)
-export QUAY_ROBOT_NAME=$(cat /var/run/quay-aipcc-name/lcore-quay-name-lcore-test || true)
-export QUAY_ROBOT_PASSWORD=$(cat /var/run/quay-aipcc-password/lcore-quay-password-lcore-test || true)
+# export HUGGING_FACE_HUB_TOKEN=$(cat /var/run/huggingface/hf-token-ces-lcore-test || true)
+# export VLLM_API_KEY=$(cat /var/run/vllm/vllm-api-key-lcore-test || true)
+# export QUAY_ROBOT_NAME=$(cat /var/run/quay-aipcc-name/lcore-quay-name-lcore-test || true)
+# export QUAY_ROBOT_PASSWORD=$(cat /var/run/quay-aipcc-password/lcore-quay-password-lcore-test || true)
 
 
 [[ -n "$HUGGING_FACE_HUB_TOKEN" ]] && echo "✅ HUGGING_FACE_HUB_TOKEN is set" || { echo "❌ Missing HUGGING_FACE_HUB_TOKEN"; exit 1; }
