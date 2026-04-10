@@ -1033,6 +1033,11 @@ class Action(str, Enum):
     A2A_MESSAGE = "a2a_message"
     A2A_JSONRPC = "a2a_jsonrpc"
 
+    # Vector store management
+    MANAGE_VECTOR_STORES = "manage_vector_stores"
+    READ_VECTOR_STORES = "read_vector_stores"
+    MANAGE_FILES = "manage_files"
+
 
 class AccessRule(ConfigurationBase):
     """Rule defining what actions a role can perform."""

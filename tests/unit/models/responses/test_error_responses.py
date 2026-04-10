@@ -81,7 +81,7 @@ class TestBadRequestResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 1
+        assert expected_count == 2
 
         # Verify example structure
         assert "conversation_id" in examples

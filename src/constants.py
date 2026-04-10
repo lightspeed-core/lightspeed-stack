@@ -128,6 +128,10 @@ SUPPORTED_AUTHENTICATION_MODULES = frozenset(
 DEFAULT_AUTHENTICATION_MODULE = AUTH_MOD_NOOP
 # Maximum allowed size for base64-encoded x-rh-identity header (bytes)
 DEFAULT_RH_IDENTITY_MAX_HEADER_SIZE = 8192
+
+# Maximum allowed file upload size (bytes) - 100MB default
+# Protects against DoS attacks via large file uploads
+DEFAULT_MAX_FILE_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
 DEFAULT_JWT_UID_CLAIM = "user_id"
 DEFAULT_JWT_USER_NAME_CLAIM = "username"
 

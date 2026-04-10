@@ -28,6 +28,7 @@ from app.endpoints import (
     stream_interrupt,
     streaming_query,
     tools,
+    vector_stores,
 )
 
 
@@ -54,6 +55,7 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(shields.router, prefix="/v1")
     app.include_router(providers.router, prefix="/v1")
     app.include_router(rags.router, prefix="/v1")
+    app.include_router(vector_stores.router, prefix="/v1")
     # Query endpoints
     app.include_router(query.router, prefix="/v1")
     app.include_router(streaming_query.router, prefix="/v1")
