@@ -20,15 +20,23 @@ wait_for_operator() {
 }
 
 # APPLY OPERATOR SUBSCRIPTIONS
+NAMESPACE="${NAMESPACE:-e2e-rhoai-dsc}"
+ns_check() { echo "DEBUG NS ($1): $(oc get ns $NAMESPACE -o jsonpath='{.status.phase}' 2>&1)"; }
+
+ns_check "before operatorgroups"
 echo "--> Applying OperatorGroups from operatorgroup.yaml..."
 oc apply -f "$BASE_DIR/manifests/operators/operatorgroup.yaml"
+ns_check "after operatorgroups"
 
 sleep 10
+ns_check "after 10s sleep (post operatorgroups)"
 
 echo "--> Applying Operator Subscriptions from operators.yaml..."
 oc apply -f "$BASE_DIR/manifests/operators/operators.yaml"
+ns_check "after operator subscriptions"
 
 sleep 10
+ns_check "after 10s sleep (post subscriptions)"
 
 # WAIT FOR GPU OPERATOR NAMESPACE AND OPERATORGROUP
 echo "--> Ensuring GPU Operator namespace and OperatorGroup are ready..."
@@ -50,8 +58,11 @@ echo "--> Waiting for Operators to be installed. This can take several minutes..
 oc wait --for=condition=established --timeout=300s crd/clusterserviceversions.operators.coreos.com
 
 wait_for_operator "operators.coreos.com/servicemeshoperator.openshift-operators" "openshift-operators" "Service Mesh Operator"
+ns_check "after Service Mesh Operator ready"
 wait_for_operator "operators.coreos.com/serverless-operator.openshift-operators" "openshift-operators" "Serverless Operator"
+ns_check "after Serverless Operator ready"
 wait_for_operator "operators.coreos.com/rhods-operator.openshift-operators" "openshift-operators" "RHODS Operator"
+ns_check "after RHODS Operator ready"
 
 # Verify GPU operator InstallPlan was created before waiting for CSV
 echo "  -> Verifying GPU Operator InstallPlan was created..."
@@ -79,19 +90,32 @@ done
 echo "  -> InstallPlan created successfully"
 
 wait_for_operator "operators.coreos.com/gpu-operator-certified.nvidia-gpu-operator" "nvidia-gpu-operator" "GPU Operator"
+ns_check "after GPU Operator ready"
 wait_for_operator "operators.coreos.com/nfd.openshift-nfd" "openshift-nfd" "NFD Operator"
+ns_check "after NFD Operator ready"
 
 echo "  -> Waiting for NFD CRD to be established..."
 oc wait --for=condition=established --timeout=300s crd/nodefeaturediscoveries.nfd.openshift.io
 
 echo "--> All operators are ready."
+ns_check "after all operators ready"
 
 oc get csv -n openshift-operators
 oc get csv -n nvidia-gpu-operator
 oc get csv -n openshift-nfd
 
+ns_check "before DSC apply"
 echo "--> Applying DataScienceCluster from ds-cluster.yaml..."
 oc apply -f "$BASE_DIR/manifests/operators/ds-cluster.yaml"
+ns_check "immediately after DSC apply"
+sleep 5
+ns_check "5s after DSC apply"
+sleep 10
+ns_check "15s after DSC apply"
+
+echo "--> Checking DSCInitialization and DSC status..."
+oc get dsci -A -o jsonpath='{range .items[*]}DSCI: {.metadata.name} applicationsNS: {.spec.applicationsNamespace}{"\n"}{end}' 2>/dev/null || echo "No DSCInitialization found"
+oc get dsc -A -o jsonpath='{range .items[*]}DSC: {.metadata.name} phase: {.status.phase}{"\n"}{end}' 2>/dev/null || echo "No DSC status yet"
 
 echo "All files applied successfully. The DataScienceCluster is now provisioning."
-echo "DEBUG NS: after bootstrap -> $(oc get ns e2e-rhoai-dsc -o jsonpath='{.status.phase}' 2>&1)"
+ns_check "end of bootstrap"

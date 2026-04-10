@@ -39,16 +39,22 @@ oc version
 oc whoami
 
 #========================================
-# 3. CREATE NAMESPACE & SECRETS
+# 3. BOOTSTRAP OPERATORS & DSC (before namespace — DSC operator may delete it)
+#========================================
+echo "===== Bootstrapping operators ====="
+# Create NFD and NVIDIA namespaces (needed by operator subscriptions)
+oc apply -f "$PIPELINE_DIR/manifests/namespaces/nfd.yaml"
+oc apply -f "$PIPELINE_DIR/manifests/namespaces/nvidia-operator.yaml"
+
+# Install operators and apply DataScienceCluster (this may delete/recreate namespaces)
+"$PIPELINE_DIR/scripts/bootstrap.sh" "$PIPELINE_DIR"
+
+#========================================
+# 4. CREATE NAMESPACE & SECRETS (after DSC settles)
 #========================================
 echo "===== Creating namespace & secrets ====="
 oc get ns "$NAMESPACE" >/dev/null 2>&1 || oc create namespace "$NAMESPACE"
 echo "DEBUG NS: after create -> $(oc get ns $NAMESPACE -o jsonpath='{.status.phase}' 2>&1)"
-
-# Create NFD and NVIDIA namespaces
-oc apply -f "$PIPELINE_DIR/manifests/namespaces/nfd.yaml"
-oc apply -f "$PIPELINE_DIR/manifests/namespaces/nvidia-operator.yaml"
-
 
 create_secret() {
     local name=$1; shift
@@ -88,7 +94,7 @@ oc secrets link default quay-lightspeed-pull-secret --for=pull -n "$NAMESPACE" 2
 
 
 #========================================
-# 4. CONFIGMAPS
+# 5. CONFIGMAPS
 #========================================
 echo "===== Setting up configmaps ====="
 
@@ -101,11 +107,13 @@ oc create configmap vllm-chat-template -n "$NAMESPACE" \
 
 
 #========================================
-# 5. DEPLOY vLLM
+# 6. DEPLOY vLLM (GPU setup + deploy, bootstrap already done)
 #========================================
-echo "DEBUG NS: before pipeline-vllm -> $(oc get ns $NAMESPACE -o jsonpath='{.status.phase}' 2>&1)"
 echo "===== Deploying vLLM ====="
-./pipeline-vllm.sh
+"$PIPELINE_DIR/scripts/gpu-setup.sh" "$PIPELINE_DIR"
+source "$PIPELINE_DIR/scripts/fetch-vllm-image.sh"
+"$PIPELINE_DIR/scripts/deploy-vllm.sh" "$PIPELINE_DIR"
+"$PIPELINE_DIR/scripts/get-vllm-pod-info.sh"
 oc get pods -n "$NAMESPACE"
 
 
