@@ -15,7 +15,6 @@ apis:
 benchmarks: []
 datasets: []
 image_name: starter
-external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR}
 
 providers:
   inference:

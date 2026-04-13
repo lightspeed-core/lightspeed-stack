@@ -214,6 +214,10 @@ class ResponsesApiParams(BaseModel):
         default=None,
         description="Reasoning configuration for the response",
     )
+    safety_identifier: Optional[str] = Field(
+        default=None,
+        description="Stable identifier for safety monitoring and abuse detection",
+    )
     store: bool = Field(description="Whether to store the response")
     stream: bool = Field(description="Whether to stream the response")
     temperature: Optional[float] = Field(
