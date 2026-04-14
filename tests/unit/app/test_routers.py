@@ -28,6 +28,7 @@ from app.endpoints import (
     stream_interrupt,
     streaming_query,
     tools,
+    vector_stores,
 )
 from app.routers import include_routers
 
@@ -109,7 +110,7 @@ def test_include_routers() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 22
+    assert len(app.routers) == 23
     assert root.router in app.get_routers()
     assert info.router in app.get_routers()
     assert models.router in app.get_routers()
@@ -132,6 +133,7 @@ def test_include_routers() -> None:
     assert a2a.router in app.get_routers()
     assert stream_interrupt.router in app.get_routers()
     assert responses.router in app.get_routers()
+    assert vector_stores.router in app.get_routers()
 
 
 def test_check_prefixes() -> None:
@@ -139,7 +141,7 @@ def test_check_prefixes() -> None:
 
     Verify that include_routers registers the expected routers with their configured URL prefixes.
 
-    Asserts that 21 routers are registered on a MockFastAPI instance and that
+    Asserts that 23 routers are registered on a MockFastAPI instance and that
     each router's prefix matches the expected value (e.g., root, health,
     authorized, metrics use an empty prefix; most API routers use "/v1";
     conversations_v2 uses "/v2").
@@ -148,7 +150,7 @@ def test_check_prefixes() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 22
+    assert len(app.routers) == 23
     assert app.get_router_prefix(root.router) == ""
     assert app.get_router_prefix(info.router) == "/v1"
     assert app.get_router_prefix(models.router) == "/v1"
@@ -172,3 +174,4 @@ def test_check_prefixes() -> None:
     assert app.get_router_prefix(a2a.router) == ""
     assert app.get_router_prefix(stream_interrupt.router) == "/v1"
     assert app.get_router_prefix(responses.router) == "/v1"
+    assert app.get_router_prefix(vector_stores.router) == "/v1"
