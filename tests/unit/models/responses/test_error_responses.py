@@ -81,7 +81,7 @@ class TestBadRequestResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 1
+        assert expected_count == 2
 
         # Verify example structure
         assert "conversation_id" in examples
@@ -472,7 +472,7 @@ class TestNotFoundResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 6
+        assert expected_count == 8
 
         # Verify all labeled examples are present
         assert "conversation" in examples
@@ -481,6 +481,8 @@ class TestNotFoundResponse:
         assert "rag" in examples
         assert "streaming request" in examples
         assert "mcp server" in examples
+        assert "vector store" in examples
+        assert "file" in examples
 
         # Verify example structure for one example
         conversation_example = examples["conversation"]
