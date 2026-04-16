@@ -108,7 +108,7 @@ The following fields are LCORE-specific request extensions and are not part of t
 |-------|------|-------------|----------|
 | `generate_topic_summary` | boolean | Generate topic summary for new conversations. Default: true | No |
 | `shield_ids` | array[string] | Shield IDs to apply. If omitted, all configured shields in LCORE are used | No |
-| `solr` | dictionary | Solr vector_io provider query parameters | No |
+| `solr` | object | Optional `mode` and `filters`. Legacy top-level filter-only objects are still accepted. | No |
 
 
 ### Field Mappings
@@ -599,7 +599,7 @@ The API introduces extensions that are not part of the OpenResponses specificati
 
 - `generate_topic_summary` (request) — When set to `true` and a new conversation is created, a topic summary is automatically generated and stored in conversation metadata.
 - `shield_ids` (request) — Optional list of safety shield IDs to apply. If omitted, all configured shields are used.
-- `solr` (request) — Solr vector_io provider query parameters (e.g. filter queries).
+- `solr` (request) — Object with optional `mode` (`semantic`, `hybrid`, or `lexical`) and `filters` (Solr vector_io provider payload). Legacy filter-only objects (no `mode`/`filters` wrapper) still work.
 - `available_quotas` (response) — Provides real-time quota information from all configured quota limiters.
 
 ### System Prompt Resolution

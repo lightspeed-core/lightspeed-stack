@@ -339,7 +339,7 @@ curl -sX POST http://localhost:8080/v1/query \
 2. Vector search is performed with configurable parameters:
    - `k`: Number of results (default: 5)
    - `score_threshold`: Minimum similarity score (default: 0.0)  
-   - `mode`: Search mode (default: "hybrid")
+   - `mode`: Search mode (default: "hybrid"). Per-request configurable.
 3. Results include document metadata and source URLs
 4. Document URLs are built based on the `offline` setting:
    - **Offline mode**: Uses `parent_id` with Mimir base URL
@@ -357,8 +357,19 @@ okp:
   chunk_filter_query: "product:*openshift*"
 ```
 
-> [!NOTE]
-> This static filter is a temporary work-around until dynamic per-request filtering is supported.
+Per-request filtering is also available on all inference endpoints via request field **`solr`**: `mode` (`semantic`, `hybrid`, or `lexical`) and `filters` (key:value format). Legacy payloads that omit `mode`/`filters` and send filter key:value pairs at the top level still work with `mode` set to `hybrid`. 
+
+Example:
+
+```json
+{
+  "query": "How do I configure routes?",
+  "solr": {
+    "mode": "hybrid",
+    "filters": { "fq": ["product:*openshift*"] }
+  }
+}
+```
 
 **Prerequisites:**
 
