@@ -17,7 +17,7 @@ def mock_request_factory_fixture(mocker: MockerFixture) -> Callable[..., Any]:
 
     def _create(rh_identity: Any = None) -> Any:
         mock_request = mocker.Mock()
-        mock_request.headers = {"User-Agent": "CLA/0.5.0"}
+        mock_request.headers = {"User-Agent": "CLA/0.5.1"}
 
         if rh_identity is not None:
             mock_request.state = mocker.Mock()
