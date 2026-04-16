@@ -255,24 +255,26 @@ async def responses_endpoint_handler(
     )
 
     if filter_server_tools:
-        responses_request.tools, responses_request.tool_choice = (
-            await resolve_client_tool_choice(
-                responses_request.tools,
-                responses_request.tool_choice,
-                auth[1],
-                mcp_headers,
-                request.headers,
-            )
+        (
+            responses_request.tools,
+            responses_request.tool_choice,
+        ) = await resolve_client_tool_choice(
+            responses_request.tools,
+            responses_request.tool_choice,
+            auth[1],
+            mcp_headers,
+            request.headers,
         )
     else:
-        responses_request.tools, responses_request.tool_choice = (
-            await resolve_tool_choice(
-                responses_request.tools,
-                responses_request.tool_choice,
-                auth[1],
-                mcp_headers,
-                request.headers,
-            )
+        (
+            responses_request.tools,
+            responses_request.tool_choice,
+        ) = await resolve_tool_choice(
+            responses_request.tools,
+            responses_request.tool_choice,
+            auth[1],
+            mcp_headers,
+            request.headers,
         )
 
     # Build RAG context from Inline RAG sources
@@ -496,6 +498,37 @@ async def shield_violation_generator(
     yield "data: [DONE]\n\n"
 
 
+def _sanitize_response_dict(
+    response_dict: dict[str, Any],
+    configured_mcp_labels: set[str],
+) -> None:
+    """Sanitize a serialized response object in-place to remove internal details.
+
+    Strips fields that expose server-side implementation details from the
+    response object before it is forwarded to the client:
+
+    - ``instructions``: the server-side system prompt
+    - ``tools``: server-deployed MCP tool definitions are removed; client-
+      provided tools (those whose ``server_label`` is not in
+      ``configured_mcp_labels``) are preserved
+
+    Args:
+        response_dict: Mutable dict produced by ``model_dump`` on a response
+            object.  Modified in-place.
+        configured_mcp_labels: Set of ``server_label`` values that identify
+            server-deployed MCP servers.
+    """
+    response_dict.pop("instructions", None)
+
+    tools = response_dict.get("tools")
+    if tools is not None:
+        response_dict["tools"] = [
+            tool
+            for tool in tools
+            if tool.get("server_label") not in configured_mcp_labels
+        ]
+
+
 def _is_server_mcp_output_item(
     item: dict[str, Any], configured_mcp_labels: set[str]
 ) -> bool:
@@ -631,9 +664,7 @@ async def response_generator(
 
     latest_response_object: Optional[OpenAIResponseObject] = None
     sequence_number = 0
-    configured_mcp_labels = (
-        {s.name for s in configuration.mcp_servers} if filter_server_tools else set()
-    )
+    configured_mcp_labels = {s.name for s in configuration.mcp_servers}
     # Track output indices of server-deployed MCP calls to filter their events
     server_mcp_output_indices: set[int] = set()
 
@@ -657,6 +688,7 @@ async def response_generator(
 
         if "response" in chunk_dict:
             chunk_dict["response"]["conversation"] = normalized_conv_id
+            _sanitize_response_dict(chunk_dict["response"], configured_mcp_labels)
             tools = chunk_dict["response"].get("tools")
             if tools is not None:
                 chunk_dict["response"]["tools"] = (
@@ -904,7 +936,9 @@ async def handle_non_streaming_response(
             skip_userid_check=skip_userid_check,
             topic_summary=topic_summary,
         )
+    configured_mcp_labels = {s.name for s in configuration.mcp_servers}
     response_dict = api_response.model_dump(exclude_none=True)
+    _sanitize_response_dict(response_dict, configured_mcp_labels)
     tools = response_dict.get("tools")
     if tools is not None:
         response_dict["tools"] = translate_vector_store_ids_to_user_facing(
