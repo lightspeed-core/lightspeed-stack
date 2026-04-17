@@ -1,0 +1,203 @@
+# Llama Stack pod for Prow: uses pre-built image with enrichment + RAG restore.
+#
+# Requires: ConfigMap llama-stack-config (run.yaml), ConfigMap rag-data (kv_store.db.gz),
+#           ConfigMap lightspeed-stack-config (lightspeed-stack.yaml).
+# Requires: Image built as ${LLAMA_STACK_IMAGE} (set by pipeline.sh).
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: llama-stack-service
+  labels:
+    pod: llama-stack-service
+spec:
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  initContainers:
+    - name: setup-rag-data
+      image: busybox:latest
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          mkdir -p /data/src/.llama/storage/rag /data/src/.llama/storage/files /data/.e2e-rag-seed
+          if [ ! -f /rag-data/kv_store.db.gz ]; then
+            echo "FATAL: missing /rag-data/kv_store.db.gz"
+            ls -la /rag-data || true
+            exit 1
+          fi
+          gunzip -c /rag-data/kv_store.db.gz > /data/.e2e-rag-seed/kv_store.db
+          cp -f /data/.e2e-rag-seed/kv_store.db /data/src/.llama/storage/rag/kv_store.db
+          chmod -R 777 /data
+          echo "RAG data extracted successfully"
+      volumeMounts:
+        - name: rag-storage
+          mountPath: /data
+        - name: rag-data
+          mountPath: /rag-data
+    - name: materialize-run-yaml
+      image: busybox:latest
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          cp /cm/run.yaml /work/run.yaml
+          chmod 664 /work/run.yaml
+      volumeMounts:
+        - name: config-cm
+          mountPath: /cm
+          readOnly: true
+        - name: rag-storage
+          mountPath: /work
+  containers:
+    - name: llama-stack-container
+      image: ${LLAMA_STACK_IMAGE}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      workingDir: /opt/app-root
+      env:
+        - name: PYTHONPATH
+          value: "/opt/app-root/src"
+        - name: HOME
+          value: "/opt/app-root/src"
+        - name: KV_STORE_PATH
+          value: "/opt/app-root/src/.llama/storage/kv_store.db"
+        - name: KV_RAG_PATH
+          value: "/opt/app-root/src/.llama/storage/rag/kv_store.db"
+        - name: SQL_STORE_PATH
+          value: "/opt/app-root/src/.llama/storage/sql_store.db"
+        - name: KSVC_URL
+          valueFrom:
+            secretKeyRef:
+              name: api-url-secret
+              key: key
+        - name: VLLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: vllm-api-key-secret
+              key: key
+        - name: INFERENCE_MODEL
+          value: "meta-llama/Llama-3.1-8B-Instruct"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openai-api-key-secret
+              key: key
+              optional: true
+        - name: E2E_OPENAI_MODEL
+          value: "gpt-4o-mini"
+        - name: FAISS_VECTOR_STORE_ID
+          valueFrom:
+            secretKeyRef:
+              name: faiss-vector-store-secret
+              key: id
+        - name: E2E_LLAMA_HOSTNAME
+          valueFrom:
+            secretKeyRef:
+              name: llama-stack-ip-secret
+              key: key
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          RAG_SEED="/opt/app-root/src/.llama/storage/.e2e-rag-seed/kv_store.db"
+          RAG_CM_GZ="/opt/app-root/rag-data-cm/kv_store.db.gz"
+          RAG_WORK="${KV_RAG_PATH:-/opt/app-root/src/.llama/storage/rag/kv_store.db}"
+          restore_rag_seed() {
+            mkdir -p "$(dirname "$RAG_WORK")"
+            if [[ -f "$RAG_CM_GZ" ]]; then
+              RAG_WORK="$RAG_WORK" RAG_CM_GZ="$RAG_CM_GZ" python3 -c 'import gzip, os, shutil, sys; r, g = os.environ["RAG_WORK"], os.environ["RAG_CM_GZ"]; t = r + ".tmp"; i = gzip.open(g, "rb"); o = open(t, "wb"); shutil.copyfileobj(i, o); i.close(); o.close(); sz = os.path.getsize(t); (sz >= 1048576) or (print("FATAL: RAG from ConfigMap too small:", sz, file=sys.stderr) or sys.exit(1)); os.replace(t, r); os.chmod(r, 0o664)' || exit 1
+            elif [[ -f "$RAG_SEED" ]]; then
+              cp -f "$RAG_SEED" "$RAG_WORK"
+              chmod 664 "$RAG_WORK" 2>/dev/null || true
+            fi
+          }
+          restore_rag_seed
+          INPUT_CONFIG="${LLAMA_STACK_CONFIG:-/opt/app-root/run.yaml}"
+          ENRICHED_CONFIG="/opt/app-root/run.yaml"
+          LIGHTSPEED_CONFIG="${LIGHTSPEED_CONFIG:-/opt/app-root/lightspeed-stack.yaml}"
+          ENV_FILE="/opt/app-root/.env"
+          if [[ -f "$LIGHTSPEED_CONFIG" ]]; then
+            echo "Enriching llama-stack config..."
+            ENRICHMENT_FAILED=0
+            python3 /opt/app-root/src/llama_stack_configuration.py \
+              -c "$LIGHTSPEED_CONFIG" \
+              -i "$INPUT_CONFIG" \
+              -o "$ENRICHED_CONFIG" \
+              -e "$ENV_FILE" 2>&1 || ENRICHMENT_FAILED=1
+            if [[ -f "$ENV_FILE" ]]; then
+              set -a && . "$ENV_FILE" && set +a
+            fi
+            if [[ -f "$ENRICHED_CONFIG" ]] && [[ "$ENRICHMENT_FAILED" -eq 0 ]]; then
+              echo "Using enriched config: $ENRICHED_CONFIG"
+              restore_rag_seed
+              exec llama stack run "$ENRICHED_CONFIG"
+            fi
+          fi
+          echo "Using original config: $INPUT_CONFIG"
+          restore_rag_seed
+          exec llama stack run "$INPUT_CONFIG"
+      ports:
+        - containerPort: 8321
+      readinessProbe:
+        httpGet:
+          path: /v1/health
+          port: 8321
+        initialDelaySeconds: 20
+        periodSeconds: 5
+        failureThreshold: 36
+      livenessProbe:
+        httpGet:
+          path: /v1/health
+          port: 8321
+        initialDelaySeconds: 120
+        periodSeconds: 20
+        failureThreshold: 3
+      volumeMounts:
+        - name: rag-storage
+          mountPath: /opt/app-root/src/.llama/storage
+        - name: lightspeed-config
+          mountPath: /opt/app-root/lightspeed-stack.yaml
+          subPath: lightspeed-stack.yaml
+          readOnly: true
+        - name: rag-data
+          mountPath: /opt/app-root/rag-data-cm
+          readOnly: true
+  volumes:
+    - name: rag-storage
+      emptyDir: {}
+    - name: config-cm
+      configMap:
+        name: llama-stack-config
+    - name: lightspeed-config
+      configMap:
+        name: lightspeed-stack-config
+    - name: rag-data
+      configMap:
+        name: rag-data

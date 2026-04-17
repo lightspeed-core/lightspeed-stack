@@ -292,9 +292,9 @@ cmd_restart_llama_stack() {
     else
         # Prow: vLLM Llama Stack image (matches pipeline.sh / pipeline-services.sh)
         if command -v envsubst >/dev/null 2>&1; then
-            envsubst < "$MANIFEST_DIR/llama-stack.yaml" | oc apply -n "$NAMESPACE" -f -
+            envsubst < "$MANIFEST_DIR/llama-stack-prow.yaml" | oc apply -n "$NAMESPACE" -f -
         else
-            sed "s|\${LLAMA_STACK_IMAGE}|${LLAMA_STACK_IMAGE:-}|g" "$MANIFEST_DIR/llama-stack.yaml" |
+            sed "s|\${LLAMA_STACK_IMAGE}|${LLAMA_STACK_IMAGE:-}|g" "$MANIFEST_DIR/llama-stack-prow.yaml" |
                 oc apply -n "$NAMESPACE" -f -
         fi
         wait_for_pod "llama-stack-service" 24

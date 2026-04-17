@@ -4,7 +4,7 @@ BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NAMESPACE="${NAMESPACE:-e2e-rhoai-dsc}"
 
 # Deploy llama-stack (substitute only LLAMA_STACK_IMAGE, leave other ${} intact)
-envsubst '${LLAMA_STACK_IMAGE}' < "$BASE_DIR/manifests/lightspeed/llama-stack.yaml" | oc apply -n "$NAMESPACE" -f -
+envsubst '${LLAMA_STACK_IMAGE}' < "$BASE_DIR/manifests/lightspeed/llama-stack-prow.yaml" | oc apply -n "$NAMESPACE" -f -
 
 oc wait pod/llama-stack-service \
   -n "$NAMESPACE" --for=condition=Ready --timeout=600s
