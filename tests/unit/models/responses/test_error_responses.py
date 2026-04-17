@@ -85,6 +85,7 @@ class TestBadRequestResponse:
 
         # Verify example structure
         assert "conversation_id" in examples
+        assert "file_upload" in examples
         conversation_example = examples["conversation_id"]
         assert "value" in conversation_example
         assert "detail" in conversation_example["value"]
@@ -269,13 +270,16 @@ class TestForbiddenResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 5
+        assert expected_count == 7
 
         # Verify all labeled examples are present
         assert "conversation read" in examples
         assert "conversation delete" in examples
         assert "endpoint" in examples
+        assert "prompt read" in examples
+        assert "prompt manage" in examples
         assert "feedback" in examples
+        assert "model override" in examples
 
         # Verify example structure for one example
         feedback_example = examples["feedback"]
@@ -506,7 +510,7 @@ class TestNotFoundResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 8
+        assert expected_count == 9
 
         # Verify all labeled examples are present
         assert "conversation" in examples
@@ -517,6 +521,7 @@ class TestNotFoundResponse:
         assert "mcp server" in examples
         assert "vector store" in examples
         assert "file" in examples
+        assert "prompt" in examples
 
         # Verify example structure for one example
         conversation_example = examples["conversation"]

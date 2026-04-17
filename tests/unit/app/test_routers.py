@@ -18,6 +18,7 @@ from app.endpoints import (
     mcp_servers,
     metrics,
     models,
+    prompts,
     providers,
     query,
     rags,
@@ -115,7 +116,7 @@ def test_include_routers() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 23
+    assert len(app.routers) == 24
     assert root.router in app.get_routers()
     assert info.router in app.get_routers()
     assert models.router in app.get_routers()
@@ -124,6 +125,7 @@ def test_include_routers() -> None:
     assert mcp_servers.router in app.get_routers()
     assert shields.router in app.get_routers()
     assert providers.router in app.get_routers()
+    assert prompts.router in app.get_routers()
     assert query.router in app.get_routers()
     assert streaming_query.router in app.get_routers()
     assert config.router in app.get_routers()
@@ -146,7 +148,7 @@ def test_check_prefixes() -> None:
 
     Verify that include_routers registers the expected routers with their configured URL prefixes.
 
-    Asserts that 23 routers are registered on a MockFastAPI instance and that
+    Asserts that 24 routers are registered on a MockFastAPI instance and that
     each router's prefix matches the expected value (e.g., root, health,
     authorized, metrics use an empty prefix; most API routers use "/v1";
     conversations_v2 uses "/v2").
@@ -155,7 +157,7 @@ def test_check_prefixes() -> None:
     include_routers(app)
 
     # are all routers added?
-    assert len(app.routers) == 23
+    assert len(app.routers) == 24
     assert app.get_router_prefix(root.router) == ""
     assert app.get_router_prefix(info.router) == "/v1"
     assert app.get_router_prefix(models.router) == "/v1"
@@ -164,6 +166,7 @@ def test_check_prefixes() -> None:
     assert app.get_router_prefix(mcp_servers.router) == "/v1"
     assert app.get_router_prefix(shields.router) == "/v1"
     assert app.get_router_prefix(providers.router) == "/v1"
+    assert app.get_router_prefix(prompts.router) == "/v1"
     assert app.get_router_prefix(rags.router) == "/v1"
     assert app.get_router_prefix(query.router) == "/v1"
     assert app.get_router_prefix(streaming_query.router) == "/v1"

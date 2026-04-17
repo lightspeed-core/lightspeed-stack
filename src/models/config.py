@@ -1038,6 +1038,10 @@ class Action(str, Enum):
     READ_VECTOR_STORES = "read_vector_stores"
     MANAGE_FILES = "manage_files"
 
+    # Llama Stack stored prompt templates (/v1/prompts)
+    MANAGE_PROMPTS = "manage_prompts"
+    READ_PROMPTS = "read_prompts"
+
 
 class AccessRule(ConfigurationBase):
     """Rule defining what actions a role can perform."""
