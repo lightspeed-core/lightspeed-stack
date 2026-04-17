@@ -24,7 +24,7 @@ from app.endpoints.responses import (
     responses_endpoint_handler,
 )
 from configuration import AppConfig
-from constants import DEFAULT_SYSTEM_PROMPT
+from constants import DEFAULT_SYSTEM_PROMPT, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
 from models.config import Action, ModelContextProtocolServer
 from models.database.conversations import UserConversation
 from models.requests import ResponsesRequest
@@ -1874,16 +1874,28 @@ class TestShouldFilterMcpChunk:
 class TestSanitizeResponseDict:
     """Unit tests for _sanitize_response_dict."""
 
-    def test_strips_instructions(self) -> None:
-        """Test that instructions field is removed."""
-        d: dict[str, Any] = {"instructions": "system prompt", "model": "m"}
-        _sanitize_response_dict(d, set())
-        assert "instructions" not in d
+    def test_substituted_instructions_replaced_with_placeholder(self) -> None:
+        """Test that substituted instructions are replaced with the slug constant."""
+        d: dict[str, Any] = {"instructions": "secret server prompt", "model": "m"}
+        _sanitize_response_dict(d, set(), instructions_substituted=True)
+        assert d["instructions"] == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
 
-    def test_no_error_when_instructions_absent(self) -> None:
-        """Test that missing instructions field does not raise."""
+    def test_client_instructions_preserved_when_not_substituted(self) -> None:
+        """Test that client-provided instructions are echoed back unchanged."""
+        d: dict[str, Any] = {"instructions": "my custom prompt", "model": "m"}
+        _sanitize_response_dict(d, set(), instructions_substituted=False)
+        assert d["instructions"] == "my custom prompt"
+
+    def test_substituted_instructions_set_even_when_absent(self) -> None:
+        """Test that placeholder is set even when instructions field is missing."""
         d: dict[str, Any] = {"model": "m"}
-        _sanitize_response_dict(d, set())
+        _sanitize_response_dict(d, set(), instructions_substituted=True)
+        assert d["instructions"] == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+
+    def test_no_error_when_instructions_absent_and_not_substituted(self) -> None:
+        """Test that missing instructions field with no substitution does not raise."""
+        d: dict[str, Any] = {"model": "m"}
+        _sanitize_response_dict(d, set(), instructions_substituted=False)
         assert "instructions" not in d
 
     def test_strips_server_mcp_tools(self) -> None:
@@ -1895,7 +1907,9 @@ class TestSanitizeResponseDict:
                 {"name": "client-tool"},
             ]
         }
-        _sanitize_response_dict(d, {"server-a", "server-b"})
+        _sanitize_response_dict(
+            d, {"server-a", "server-b"}, instructions_substituted=False
+        )
         assert d["tools"] == [{"name": "client-tool"}]
 
     def test_preserves_client_tools(self) -> None:
@@ -1906,13 +1920,13 @@ class TestSanitizeResponseDict:
                 {"name": "client-tool"},
             ]
         }
-        _sanitize_response_dict(d, {"server-a"})
+        _sanitize_response_dict(d, {"server-a"}, instructions_substituted=False)
         assert d["tools"] == [{"name": "client-tool"}]
 
     def test_no_error_when_tools_absent(self) -> None:
         """Test that missing tools field does not raise."""
         d: dict[str, Any] = {"model": "m"}
-        _sanitize_response_dict(d, {"server-a"})
+        _sanitize_response_dict(d, {"server-a"}, instructions_substituted=False)
         assert "tools" not in d
 
     def test_empty_configured_mcp_labels_preserves_all_tools(self) -> None:
@@ -1923,10 +1937,10 @@ class TestSanitizeResponseDict:
                 {"name": "client-tool"},
             ]
         }
-        _sanitize_response_dict(d, set())
+        _sanitize_response_dict(d, set(), instructions_substituted=False)
         assert len(d["tools"]) == 2
 
-    def test_all_fields_sanitized_together(self) -> None:
+    def test_all_fields_sanitized_together_with_substitution(self) -> None:
         """Test that all sanitizations are applied in a single call."""
         d: dict[str, Any] = {
             "instructions": "secret prompt",
@@ -1936,8 +1950,23 @@ class TestSanitizeResponseDict:
                 {"name": "client-tool"},
             ],
         }
-        _sanitize_response_dict(d, {"mcp-server"})
-        assert "instructions" not in d
+        _sanitize_response_dict(d, {"mcp-server"}, instructions_substituted=True)
+        assert d["instructions"] == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+        assert d["model"] == "google-vertex/publishers/google/models/gemini"
+        assert d["tools"] == [{"name": "client-tool"}]
+
+    def test_all_fields_sanitized_together_without_substitution(self) -> None:
+        """Test that client instructions are preserved while tools are still filtered."""
+        d: dict[str, Any] = {
+            "instructions": "client prompt",
+            "model": "google-vertex/publishers/google/models/gemini",
+            "tools": [
+                {"server_label": "mcp-server", "name": "server-tool"},
+                {"name": "client-tool"},
+            ],
+        }
+        _sanitize_response_dict(d, {"mcp-server"}, instructions_substituted=False)
+        assert d["instructions"] == "client prompt"
         assert d["model"] == "google-vertex/publishers/google/models/gemini"
         assert d["tools"] == [{"name": "client-tool"}]
 

@@ -228,3 +228,8 @@ DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname)-8s %(name)s:%(lineno)d %(message)
 LIGHTSPEED_STACK_DISABLE_RICH_HANDLER_ENV_VAR = "LIGHTSPEED_STACK_DISABLE_RICH_HANDLER"
 
 DEFAULT_VIOLATION_MESSAGE = "I cannot process this request due to policy restrictions."
+
+# Placeholder slug used in responses when the server substituted its own
+# system prompt for the client's instructions.  Avoids leaking the actual
+# server prompt back to the client.
+SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER = "<server prompt applied>"

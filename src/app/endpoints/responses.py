@@ -36,6 +36,7 @@ from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from constants import SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
 from log import get_logger
 from models.config import Action
 from models.requests import ResponsesRequest
@@ -179,8 +180,13 @@ async def responses_endpoint_handler(
 
     responses_request = responses_request.model_copy(deep=True)
     check_configuration_loaded(configuration)
+    client_instructions = responses_request.instructions
     responses_request.instructions = get_system_prompt(
         responses_request.instructions, field_name="instructions"
+    )
+    instructions_substituted = (
+        client_instructions is None
+        or client_instructions != responses_request.instructions
     )
     started_at = datetime.now(UTC)
     user_id = auth[0]
@@ -304,6 +310,7 @@ async def responses_endpoint_handler(
         moderation_result=moderation_result,
         inline_rag_context=inline_rag_context,
         filter_server_tools=filter_server_tools,
+        instructions_substituted=instructions_substituted,
     )
 
 
@@ -316,6 +323,7 @@ async def handle_streaming_response(
     moderation_result: ShieldModerationResult,
     inline_rag_context: RAGContext,
     filter_server_tools: bool = False,
+    instructions_substituted: bool = False,
 ) -> StreamingResponse:
     """Handle streaming response from Responses API.
 
@@ -328,6 +336,7 @@ async def handle_streaming_response(
         moderation_result: Result of shield moderation check
         inline_rag_context: Inline RAG context to be used for the response
         filter_server_tools: Whether to filter server-deployed MCP tool events from the stream
+        instructions_substituted: Whether the server substituted the instructions
     Returns:
         StreamingResponse with SSE-formatted events
     """
@@ -367,6 +376,7 @@ async def handle_streaming_response(
                 turn_summary=turn_summary,
                 inline_rag_context=inline_rag_context,
                 filter_server_tools=filter_server_tools,
+                instructions_substituted=instructions_substituted,
             )
         except RuntimeError as e:  # library mode wraps 413 into runtime error
             if is_context_length_error(str(e)):
@@ -501,13 +511,18 @@ async def shield_violation_generator(
 def _sanitize_response_dict(
     response_dict: dict[str, Any],
     configured_mcp_labels: set[str],
+    instructions_substituted: bool,
 ) -> None:
     """Sanitize a serialized response object in-place to remove internal details.
 
     Strips fields that expose server-side implementation details from the
     response object before it is forwarded to the client:
 
-    - ``instructions``: the server-side system prompt
+    - ``instructions``: when the server substituted its own system prompt
+      (because the client sent ``None`` or a different value was resolved),
+      the value is replaced with a placeholder slug to avoid leaking the
+      actual prompt.  When the client provided their own instructions and
+      they were used as-is, the value is left unchanged.
     - ``tools``: server-deployed MCP tool definitions are removed; client-
       provided tools (those whose ``server_label`` is not in
       ``configured_mcp_labels``) are preserved
@@ -517,8 +532,12 @@ def _sanitize_response_dict(
             object.  Modified in-place.
         configured_mcp_labels: Set of ``server_label`` values that identify
             server-deployed MCP servers.
+        instructions_substituted: Whether the server substituted the
+            instructions (True) or the client provided them (False).
     """
-    response_dict.pop("instructions", None)
+    if instructions_substituted:
+        response_dict["instructions"] = SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+    # else: leave instructions as-is (echo back client's value)
 
     tools = response_dict.get("tools")
     if tools is not None:
@@ -644,6 +663,7 @@ async def response_generator(
     turn_summary: TurnSummary,
     inline_rag_context: RAGContext,
     filter_server_tools: bool = False,
+    instructions_substituted: bool = False,
 ) -> AsyncIterator[str]:
     """Generate SSE-formatted streaming response with LCORE-enriched events.
 
@@ -655,6 +675,7 @@ async def response_generator(
         turn_summary: TurnSummary to populate during streaming
         inline_rag_context: Inline RAG context to be used for the response
         filter_server_tools: Whether to filter server-deployed MCP tool events from the stream
+        instructions_substituted: Whether the server substituted the instructions
     Yields:
         SSE-formatted strings for streaming events, ending with [DONE]
     """
@@ -688,7 +709,11 @@ async def response_generator(
 
         if "response" in chunk_dict:
             chunk_dict["response"]["conversation"] = normalized_conv_id
-            _sanitize_response_dict(chunk_dict["response"], configured_mcp_labels)
+            _sanitize_response_dict(
+                chunk_dict["response"],
+                configured_mcp_labels,
+                instructions_substituted,
+            )
             tools = chunk_dict["response"].get("tools")
             if tools is not None:
                 chunk_dict["response"]["tools"] = (
@@ -826,6 +851,7 @@ async def handle_non_streaming_response(
     moderation_result: ShieldModerationResult,
     inline_rag_context: RAGContext,
     filter_server_tools: bool = False,
+    instructions_substituted: bool = False,
 ) -> ResponsesResponse:
     """Handle non-streaming response from Responses API.
 
@@ -838,6 +864,7 @@ async def handle_non_streaming_response(
         moderation_result: Result of shield moderation check
         inline_rag_context: Inline RAG context to be used for the response
         filter_server_tools: Whether to filter server-deployed MCP tool output
+        instructions_substituted: Whether the server substituted the instructions
     Returns:
         ResponsesResponse with the completed response
     """
@@ -938,7 +965,9 @@ async def handle_non_streaming_response(
         )
     configured_mcp_labels = {s.name for s in configuration.mcp_servers}
     response_dict = api_response.model_dump(exclude_none=True)
-    _sanitize_response_dict(response_dict, configured_mcp_labels)
+    _sanitize_response_dict(
+        response_dict, configured_mcp_labels, instructions_substituted
+    )
     tools = response_dict.get("tools")
     if tools is not None:
         response_dict["tools"] = translate_vector_store_ids_to_user_facing(
