@@ -197,7 +197,7 @@ SOLR_VECTOR_SEARCH_DEFAULT_MODE = "hybrid"
 SOLR_CHUNK_FILTER_QUERY = "is_chunk:true"
 
 # SOLR OKP RAG - default base URL when okp.rhokp_url is unset in configuration
-RH_SERVER_OKP_DEFAULT_URL = "http://localhost:8081"
+RH_SERVER_OKP_DEFAULT_URL = "http://localhost:8081/solr"
 
 SOLR_PROVIDER_ID = "okp_solr"
 
