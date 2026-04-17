@@ -42,25 +42,24 @@ class YamlDumper(yaml.Dumper):  # pylint: disable=too-many-ancestors
 
 
 def _raw_byok_rag_store_list(raw_byok_rag: Any) -> list[Any]:
-    """Return BYOK store definitions from raw Lightspeed YAML (list or section dict).
+    """Return BYOK store definitions from raw Lightspeed YAML.
 
-    Always returns a ``list`` suitable for :func:`enrich_byok_rag` (each item is
-    expected to be a mapping with ``.get``).
+    Only a YAML list is accepted as BYOK stores. Each list item is expected to be
+    a mapping with ``.get`` for :func:`enrich_byok_rag`.
 
-    For the section form ``byok_rag: { entries: ..., relevance_cutoff_score: ... }``,
-    only ``entries`` is used: a ``list`` is returned as-is, a single ``dict`` is
-    wrapped as a one-element list, and ``None``, strings, or other types yield
-    ``[]``.
+    Parameters:
+    ----------
+        raw_byok_rag (Any):
+            Raw parsed YAML value (may be a list, ``None``, or other types).
+
+    Returns:
+    -------
+        list[Any]:
+            The input list returned as-is when ``raw_byok_rag`` is a list;
+            otherwise an empty list (``[]`` for ``None`` or any non-list type).
     """
     if isinstance(raw_byok_rag, list):
         return raw_byok_rag
-    if isinstance(raw_byok_rag, dict):
-        entries = raw_byok_rag.get("entries")
-        if isinstance(entries, list):
-            return entries
-        if isinstance(entries, dict):
-            return [entries]
-        return []
     return []
 
 

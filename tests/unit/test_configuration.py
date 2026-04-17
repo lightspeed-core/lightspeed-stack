@@ -1186,6 +1186,45 @@ def test_score_multiplier_mapping_with_custom_values(tmp_path: Path) -> None:
     assert cfg.score_multiplier_mapping == {"vs-001": 1.5, "vs-002": 0.75}
 
 
+def test_relevance_cutoff_mapping_first_wins_duplicate_vector_db_id(
+    tmp_path: Path,
+) -> None:
+    """First BYOK entry wins when two entries share the same vector_db_id."""
+    db_file1 = tmp_path / "test1.db"
+    db_file1.touch()
+    db_file2 = tmp_path / "test2.db"
+    db_file2.touch()
+    cfg = AppConfig()
+    cfg.init_from_dict(
+        {
+            "name": "test",
+            "service": {"host": "localhost", "port": 8080},
+            "llama_stack": {
+                "api_key": "k",
+                "url": "http://test.com:1234",
+                "use_as_library_client": False,
+            },
+            "user_data_collection": {},
+            "authentication": {"module": "noop"},
+            "byok_rag": [
+                {
+                    "rag_id": "kb1",
+                    "vector_db_id": "vs-dup",
+                    "db_path": str(db_file1),
+                    "relevance_cutoff_score": 0.2,
+                },
+                {
+                    "rag_id": "kb2",
+                    "vector_db_id": "vs-dup",
+                    "db_path": str(db_file2),
+                    "relevance_cutoff_score": 0.9,
+                },
+            ],
+        }
+    )
+    assert cfg.relevance_cutoff_mapping == {"vs-dup": 0.2}
+
+
 def test_score_multiplier_mapping_not_loaded() -> None:
     """Test that score_multiplier_mapping raises when config not loaded."""
     cfg = AppConfig()

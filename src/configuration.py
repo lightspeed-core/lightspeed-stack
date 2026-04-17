@@ -479,8 +479,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         byok_mapping = {
-            brag.vector_db_id: brag.rag_id
-            for brag in self._configuration.byok_rag.entries
+            brag.vector_db_id: brag.rag_id for brag in self._configuration.byok_rag
         }
 
         rag = self._configuration.rag
@@ -506,8 +505,30 @@ class AppConfig:  # pylint: disable=too-many-public-methods
             raise LogicError("logic error: configuration is not loaded")
         return {
             brag.vector_db_id: brag.score_multiplier
-            for brag in self._configuration.byok_rag.entries
+            for brag in self._configuration.byok_rag
         }
+
+    @property
+    def relevance_cutoff_mapping(self) -> dict[str, float]:
+        """Return mapping from vector_db_id to relevance_cutoff_score from BYOK RAG config.
+
+        If ``byok_rag`` lists the same ``vector_db_id`` more than once, the first
+        occurrence wins.
+
+        Returns:
+            dict[str, float]: Mapping where keys are llama-stack ``vector_db_id`` values
+            and values are per-store raw-score cutoffs before score_multiplier weighting.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        mapping: dict[str, float] = {}
+        for brag in self._configuration.byok_rag:
+            if brag.vector_db_id not in mapping:
+                mapping[brag.vector_db_id] = brag.relevance_cutoff_score
+        return mapping
 
     @property
     def inline_solr_enabled(self) -> bool:

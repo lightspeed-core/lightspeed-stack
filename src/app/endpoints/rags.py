@@ -163,7 +163,7 @@ async def get_rag_endpoint_handler(
 
     # Resolve user-facing rag_id to llama-stack vector_db_id
     vector_db_id = _resolve_rag_id_to_vector_db_id(
-        rag_id, configuration.configuration.byok_rag.entries
+        rag_id, configuration.configuration.byok_rag
     )
 
     try:

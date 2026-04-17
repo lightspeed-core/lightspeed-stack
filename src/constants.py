@@ -186,7 +186,7 @@ TOOL_RAG_MAX_CHUNKS = 10  # retrieved from RAG as a tool
 
 # Inline RAG constants
 BYOK_RAG_MAX_CHUNKS = 10  # retrieved from BYOK RAG
-# Default minimum raw similarity for BYOK vector stores only (``byok_rag.relevance_cutoff_score``)
+# Default minimum raw similarity per BYOK store (``ByokRag.relevance_cutoff_score``)
 DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE = 0.3
 OKP_RAG_MAX_CHUNKS = 5  # retrieved from OKP RAG
 

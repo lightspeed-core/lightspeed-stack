@@ -40,12 +40,14 @@ byok_rag:
     embedding_dimension: 1024
     vector_db_id: vs_123       # Llama-stack vector_store_id
     db_path: /tmp/ocp.faiss
+    relevance_cutoff_score: 0.3   # Optional per store; min raw score before score_multiplier (inline BYOK only)
     score_multiplier: 1.0      # Weight for this vector store's results (Inline RAG only)
   - rag_id: knowledge-base     # referenced in rag.inline / rag.tool
     rag_type: inline::faiss
     embedding_dimension: 384
     vector_db_id: vs_456       # Llama-stack vector_store_id
     db_path: /tmp/kb.faiss
+    relevance_cutoff_score: 0.3
     score_multiplier: 1.2      # Weight for this vector store's results (Inline RAG only)
 
 # RAG configuration

@@ -30,37 +30,16 @@ from models.config import (
 # =============================================================================
 
 
-def test_raw_byok_rag_store_list_legacy_list() -> None:
-    """Bare list form returns the same sequence."""
+def test_raw_byok_rag_store_list_returns_list_as_is() -> None:
+    """YAML list form returns the same sequence."""
     raw = [{"rag_id": "a"}]
     assert _raw_byok_rag_store_list(raw) is raw
 
 
-def test_raw_byok_rag_store_list_section_with_entries_list() -> None:
-    """Section dict with entries list returns that list."""
-    entries = [{"rag_id": "x"}]
-    assert (
-        _raw_byok_rag_store_list({"relevance_cutoff_score": 0.3, "entries": entries})
-        is entries
-    )
-
-
-def test_raw_byok_rag_store_list_section_with_single_entry_dict() -> None:
-    """Section dict may use a single mapping for entries (wrap as one-element list)."""
-    one = {"rag_id": "solo", "vector_db_id": "vs1", "db_path": "/d.db"}
-    out = _raw_byok_rag_store_list({"entries": one})
-    assert out == [one]
-
-
-def test_raw_byok_rag_store_list_section_entries_invalid_or_missing() -> None:
-    """None, strings, or missing entries yield an empty list."""
-    assert _raw_byok_rag_store_list({"entries": None}) == []
-    assert _raw_byok_rag_store_list({"entries": "not-a-list"}) == []
+def test_raw_byok_rag_store_list_non_list_yields_empty() -> None:
+    """Only a list is used; mappings and other types yield []."""
+    assert _raw_byok_rag_store_list({"entries": [{"rag_id": "x"}]}) == []
     assert _raw_byok_rag_store_list({}) == []
-
-
-def test_raw_byok_rag_store_list_non_sequence_top_level() -> None:
-    """Non-list, non-dict input yields []."""
     assert _raw_byok_rag_store_list(None) == []
     assert _raw_byok_rag_store_list("byok") == []
 

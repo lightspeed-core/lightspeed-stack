@@ -25,12 +25,14 @@ from utils.vector_search import (
 )
 
 
-def _byok_rag_section_mock(mocker: MockerFixture, entries: list[Any]) -> Any:
-    """Build a mock ``byok_rag`` section with ``entries`` and cutoff."""
-    section = mocker.Mock()
-    section.entries = entries
-    section.relevance_cutoff_score = 0.0
-    return section
+def _byok_rag_list_mock(_mocker: MockerFixture, entries: list[Any]) -> list[Any]:
+    """Normalize mocked BYOK entries for ``configuration.byok_rag``."""
+    for entry in entries:
+        if not isinstance(getattr(entry, "relevance_cutoff_score", None), (int, float)):
+            entry.relevance_cutoff_score = (
+                constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
+            )
+    return entries
 
 
 class TestIsSolrEnabled:
@@ -424,7 +426,7 @@ class TestFetchByokRag:
         """Test when no inline BYOK sources are configured."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.configuration.rag.inline = []
-        config_mock.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
+        config_mock.configuration.byok_rag = _byok_rag_list_mock(mocker, [])
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
@@ -443,10 +445,11 @@ class TestFetchByokRag:
         byok_rag_mock.rag_id = "rag_1"
         byok_rag_mock.vector_db_id = "vs_1"
         config_mock.configuration.rag.inline = ["rag_1"]
-        config_mock.configuration.byok_rag = _byok_rag_section_mock(
+        config_mock.configuration.byok_rag = _byok_rag_list_mock(
             mocker, [byok_rag_mock]
         )
         config_mock.score_multiplier_mapping = {"vs_1": 1.5}
+        config_mock.relevance_cutoff_mapping = {"vs_1": 0.0}
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         mocker.patch("utils.vector_search.configuration", config_mock)
 
@@ -483,11 +486,12 @@ class TestFetchByokRag:
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "my-kb"
         byok_rag_mock.vector_db_id = "vs-internal-001"
-        config_mock.configuration.byok_rag = _byok_rag_section_mock(
+        config_mock.configuration.byok_rag = _byok_rag_list_mock(
             mocker, [byok_rag_mock]
         )
         config_mock.configuration.rag.inline = ["my-kb"]
         config_mock.score_multiplier_mapping = {"vs-internal-001": 1.0}
+        config_mock.relevance_cutoff_mapping = {"vs-internal-001": 0.0}
         config_mock.rag_id_mapping = {"vs-internal-001": "my-kb"}
         mocker.patch("utils.vector_search.configuration", config_mock)
 
@@ -525,11 +529,12 @@ class TestFetchByokRag:
         byok_rag_2 = mocker.Mock()
         byok_rag_2.rag_id = "kb-part2"
         byok_rag_2.vector_db_id = "vs-bbb-222"
-        config_mock.configuration.byok_rag = _byok_rag_section_mock(
+        config_mock.configuration.byok_rag = _byok_rag_list_mock(
             mocker, [byok_rag_1, byok_rag_2]
         )
         config_mock.configuration.rag.inline = ["kb-part1", "kb-part2"]
         config_mock.score_multiplier_mapping = {"vs-aaa-111": 1.0, "vs-bbb-222": 1.0}
+        config_mock.relevance_cutoff_mapping = {"vs-aaa-111": 0.0, "vs-bbb-222": 0.0}
         config_mock.rag_id_mapping = {
             "vs-aaa-111": "kb-part1",
             "vs-bbb-222": "kb-part2",
@@ -570,7 +575,7 @@ class TestFetchByokRag:
         """Test that BYOK inline RAG is skipped when rag.inline is empty."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.configuration.rag.inline = []
-        config_mock.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
+        config_mock.configuration.byok_rag = _byok_rag_list_mock(mocker, [])
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
@@ -590,7 +595,7 @@ class TestFetchByokRag:
         """Test that a request vector_store_id not registered in rag.inline is filtered out."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.configuration.rag.inline = ["registered-id"]
-        config_mock.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
+        config_mock.configuration.byok_rag = _byok_rag_list_mock(mocker, [])
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
@@ -612,12 +617,13 @@ class TestFetchByokRag:
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "rag_1"
         byok_rag_mock.vector_db_id = "vs_1"
-        section = mocker.Mock()
-        section.entries = [byok_rag_mock]
-        section.relevance_cutoff_score = 0.5
+        byok_rag_mock.relevance_cutoff_score = 0.5
         config_mock.configuration.rag.inline = ["rag_1"]
-        config_mock.configuration.byok_rag = section
+        config_mock.configuration.byok_rag = _byok_rag_list_mock(
+            mocker, [byok_rag_mock]
+        )
         config_mock.score_multiplier_mapping = {"vs_1": 1.0}
+        config_mock.relevance_cutoff_mapping = {"vs_1": 0.5}
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         mocker.patch("utils.vector_search.configuration", config_mock)
 
@@ -700,7 +706,7 @@ class TestBuildRagContext:
         """Test when both BYOK inline and Solr inline are not configured."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.configuration.rag.inline = []
-        config_mock.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
+        config_mock.configuration.byok_rag = _byok_rag_list_mock(mocker, [])
         config_mock.inline_solr_enabled = False
         mocker.patch("utils.vector_search.configuration", config_mock)
 
@@ -720,11 +726,12 @@ class TestBuildRagContext:
         byok_rag_mock.rag_id = "rag_1"
         byok_rag_mock.vector_db_id = "vs_1"
         config_mock.configuration.rag.inline = ["rag_1"]
-        config_mock.configuration.byok_rag = _byok_rag_section_mock(
+        config_mock.configuration.byok_rag = _byok_rag_list_mock(
             mocker, [byok_rag_mock]
         )
         config_mock.inline_solr_enabled = False
         config_mock.score_multiplier_mapping = {"vs_1": 1.0}
+        config_mock.relevance_cutoff_mapping = {"vs_1": 0.0}
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         mocker.patch("utils.vector_search.configuration", config_mock)
 

@@ -79,7 +79,7 @@ Both modes rely on:
 
 Inline RAG additionally supports:
 - **Score Multiplier**: Optional weight applied per BYOK vector store when mixing multiple sources. Allows custom prioritization of content.
-- **Relevance cutoff (`relevance_cutoff_score`)**: Optional minimum **raw** similarity score from each BYOK vector store during **Inline RAG**. Chunks below the cutoff are dropped **before** `score_multiplier` is applied. It applies only to BYOK stores listed under `byok_rag`; it does not affect OKP/Solr inline RAG (which uses separate query defaults) and is not used for Tool RAG (`file_search`). The default matches `DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE` in `src/constants.py` (currently `0.3`). Set to `0.0` to disable filtering for BYOK inline retrieval.
+- **Relevance cutoff (`relevance_cutoff_score`)**: Optional minimum **raw** similarity score, configured **per BYOK store** (each `byok_rag` entry) during **Inline RAG**. Chunks below the cutoff are dropped **before** `score_multiplier` is applied. It applies only to BYOK stores listed under `byok_rag`; it does not affect OKP/Solr inline RAG (which uses separate query defaults) and is not used for Tool RAG (`file_search`). If an entry omits `relevance_cutoff_score`, it defaults to `DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE` in `src/constants.py` (currently `0.3`). Set to `0.0` to disable filtering for that store.
 
 > [!NOTE]
 > OKP and BYOK scores are not directly comparable (different scoring systems), so
@@ -281,22 +281,19 @@ registered_resources:
 > section of `lightspeed-stack.yaml`. The lightspeed-stack service automatically generates the required configuration
 > at startup.
 >
-> Preferred shape: an object with `entries` (list of stores) and optional `relevance_cutoff_score`:
+> Preferred shape: a YAML list of stores. Set optional `relevance_cutoff_score` on **each** store, or rely on the default from `src/constants.py`:
 >
 > ```yaml
 > byok_rag:
->   relevance_cutoff_score: 0.3   # Optional; min raw score per BYOK store before score_multiplier (BYOK only)
->   entries:
->     - rag_id: my-docs           # Unique identifier for this knowledge source
->       rag_type: inline::faiss
->       embedding_model: sentence-transformers/all-mpnet-base-v2
->       embedding_dimension: 768
->       vector_db_id: your-index-id  # Llama Stack vector store ID (from index generation)
->       db_path: /path/to/vector_db/faiss_store.db
->       score_multiplier: 1.0       # Optional: weight results when mixing multiple sources
+>   - rag_id: my-docs           # Unique identifier for this knowledge source
+>     rag_type: inline::faiss
+>     embedding_model: sentence-transformers/all-mpnet-base-v2
+>     embedding_dimension: 768
+>     vector_db_id: your-index-id  # Llama Stack vector store ID (from index generation)
+>     db_path: /path/to/vector_db/faiss_store.db
+>     relevance_cutoff_score: 0.3   # Optional per store; min raw score before score_multiplier (BYOK inline only)
+>     score_multiplier: 1.0         # Optional: weight results when mixing multiple sources
 > ```
->
-> Legacy: a bare list is still accepted and is treated as `entries` (same fields as each list item above).
 >
 > When multiple BYOK sources are configured, `score_multiplier` adjusts the relative importance of
 > each store's results during Inline RAG retrieval. Values above 1.0 boost a store; below 1.0 reduce it.
