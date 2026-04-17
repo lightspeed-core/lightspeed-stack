@@ -73,14 +73,21 @@ def _build_query_params(solr: Optional[dict[str, Any]] = None) -> dict[str, Any]
 
 
 def _extract_byok_rag_chunks(
-    search_response: Any, vector_store_id: str, weight: float
+    search_response: Any,
+    vector_store_id: str,
+    weight: float,
+    byok_raw_cutoff_score: float,
 ) -> list[dict[str, Any]]:
-    """Extract and weight result chunks from vector search for BYOK RAG.
+    """Extract and weight result chunks from vector search for BYOK RAG only.
+
+    Chunks whose raw retrieval score is below ``byok_raw_cutoff_score`` are
+    dropped before applying the per-store weight. This is not used for OKP/Solr.
 
     Args:
         search_response: Response from vector_io.query
-        vector_store_id: ID of the vector store that produced these results
-        weight: Score multiplier to apply to this store's results
+        vector_store_id: ID of the BYOK vector store that produced these results
+        weight: Score multiplier to apply to this store's remaining results
+        byok_raw_cutoff_score: Minimum raw similarity score (``byok_rag.relevance_cutoff_score``)
 
     Returns:
         List of result dictionaries with weighted scores
@@ -89,6 +96,14 @@ def _extract_byok_rag_chunks(
     for chunk, score in zip(
         search_response.chunks, search_response.scores, strict=True
     ):
+        if score < byok_raw_cutoff_score:
+            logger.debug(
+                "  [%s] BYOK: dropping chunk: raw score=%.4f < cutoff=%.4f",
+                vector_store_id,
+                score,
+                byok_raw_cutoff_score,
+            )
+            continue
         weighted_score = score * weight
         doc_id = (
             chunk.metadata.get("document_id", chunk.chunk_id)
@@ -164,14 +179,16 @@ async def _query_store_for_byok_rag(
     vector_store_id: str,
     query: str,
     weight: float,
+    byok_raw_cutoff_score: float,
 ) -> list[dict[str, Any]]:
-    """Query a single vector store for BYOK RAG.
+    """Query a single **BYOK** vector store for inline RAG (not OKP/Solr).
 
     Args:
         client: AsyncLlamaStackClient for vector_io queries
-        vector_store_id: ID of the vector store to query
+        vector_store_id: ID of the BYOK vector store to query
         query: Search query string
         weight: Score multiplier to apply
+        byok_raw_cutoff_score: Minimum raw score before weighting (BYOK config only)
 
     Returns:
         List of weighted result dictionaries, or empty list on error
@@ -185,7 +202,9 @@ async def _query_store_for_byok_rag(
                 "mode": "vector",
             },
         )
-        return _extract_byok_rag_chunks(search_response, vector_store_id, weight)
+        return _extract_byok_rag_chunks(
+            search_response, vector_store_id, weight, byok_raw_cutoff_score
+        )
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.warning("Failed to search '%s': %s", vector_store_id, e)
         return []
@@ -333,12 +352,15 @@ async def _fetch_byok_rag(
     query: str,
     vector_store_ids: Optional[list[str]] = None,  # User-facing
 ) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
-    """Fetch chunks and documents from BYOK RAG sources.
+    """Fetch chunks and documents from BYOK RAG sources only.
+
+    Applies ``configuration.byok_rag.relevance_cutoff_score`` to raw scores from
+    BYOK vector stores. OKP/Solr inline RAG is implemented in ``_fetch_solr_rag``
+    and does not use that setting.
 
     Args:
         client: The AsyncLlamaStackClient to use for the request
         query: The search query
-        configuration: Application configuration
         vector_store_ids: Optional list of vector store IDs to query.
             If provided, only these stores will be queried. If None, all stores
             (excluding Solr) will be queried.
@@ -366,7 +388,7 @@ async def _fetch_byok_rag(
 
     # Translate user-facing rag_ids to llama-stack ids
     vector_store_ids_to_query: list[str] = resolve_vector_store_ids(
-        rag_ids_to_query, configuration.configuration.byok_rag
+        rag_ids_to_query, configuration.configuration.byok_rag.entries
     )
 
     # Request-level override: filter out Solr store, use the rest
@@ -386,7 +408,7 @@ async def _fetch_byok_rag(
         score_multiplier_mapping = configuration.score_multiplier_mapping
         rag_id_mapping = configuration.rag_id_mapping
 
-        # Query all vector stores in parallel
+        # BYOK stores only: byok_rag.relevance_cutoff_score (OKP/Solr does not use it).
         results_per_store = await asyncio.gather(
             *[
                 _query_store_for_byok_rag(
@@ -394,12 +416,13 @@ async def _fetch_byok_rag(
                     vector_store_id,
                     query,
                     score_multiplier_mapping.get(vector_store_id, 1.0),
+                    configuration.configuration.byok_rag.relevance_cutoff_score,
                 )
                 for vector_store_id in vector_store_ids_to_query
             ]
         )
 
-        # Flatten, sort by weighted score, and take top results
+        # Flatten, sort by weighted score, take top results
         all_results: list[dict[str, Any]] = []
         for store_results in results_per_store:
             all_results.extend(store_results)
@@ -520,7 +543,9 @@ async def build_rag_context(
 ) -> RAGContext:
     """Build RAG context by fetching and merging chunks from all enabled sources.
 
-    Enabled sources can be BYOK and/or Solr OKP.
+    Enabled sources can be BYOK and/or Solr OKP. BYOK raw-score cutoff comes only
+    from ``byok_rag.relevance_cutoff_score``; OKP uses ``_build_query_params`` (e.g.
+    Solr ``score_threshold``), not the BYOK cutoff.
 
     Args:
         client: The AsyncLlamaStackClient to use for the request

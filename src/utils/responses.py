@@ -236,7 +236,7 @@ async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-position
     #      If rag.inline is configured, but not rag.tool, tool RAG is disabled.
     #   3. All registered vector DBs: fallback when neither rag.tool nor rag.inline are configured.
     #      IDs fetched from llama-stack are already internal and need no translation.
-    byok_rags = configuration.configuration.byok_rag
+    byok_rags = configuration.configuration.byok_rag.entries
 
     is_tool_rag_enabled = len(configuration.configuration.rag.tool) > 0
     is_inline_rag_enabled = len(configuration.configuration.rag.inline) > 0
@@ -1708,7 +1708,7 @@ async def _resolve_client_tools(
     # Per-request override of vector stores (user-facing rag_ids)
     vector_store_ids = extract_vector_store_ids_from_tools(tools) or None
     # Translate user-facing rag_ids to llama-stack vector_store_ids in each file_search tool
-    byok_rags = configuration.configuration.byok_rag
+    byok_rags = configuration.configuration.byok_rag.entries
     prepared_tools = translate_tools_vector_store_ids(tools, byok_rags)
     prepared_tools = apply_mcp_headers_to_explicit_tools(
         prepared_tools, token, mcp_headers, request_headers
@@ -1803,7 +1803,7 @@ async def resolve_tool_choice(
         )
     else:
         # Pass tools explicitly configured for this request
-        byok_rags = configuration.configuration.byok_rag
+        byok_rags = configuration.configuration.byok_rag.entries
         prepared_tools = translate_tools_vector_store_ids(tools, byok_rags)
         prepared_tools = apply_mcp_headers_to_explicit_tools(
             prepared_tools, token, mcp_headers, request_headers

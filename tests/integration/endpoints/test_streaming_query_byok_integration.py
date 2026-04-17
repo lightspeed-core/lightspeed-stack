@@ -246,7 +246,10 @@ def byok_config_fixture(test_config: AppConfig, mocker: MockerFixture) -> AppCon
         "score_multiplier": 1.0,
     }
 
-    test_config.configuration.byok_rag = [byok_entry]
+    _br = mocker.MagicMock()
+    _br.entries = [byok_entry]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["test-knowledge"]
 
     return test_config
@@ -271,7 +274,10 @@ def byok_tool_config_fixture(
         "score_multiplier": 1.0,
     }
 
-    test_config.configuration.byok_rag = [byok_entry]
+    _br = mocker.MagicMock()
+    _br.entries = [byok_entry]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = []
     test_config.configuration.rag.tool = ["test-knowledge"]
 
@@ -345,7 +351,10 @@ async def test_streaming_query_byok_inline_rag_with_request_vector_store_ids(
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
+    _br = mocker.MagicMock()
+    _br.entries = [entry_a, entry_b]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["source-a"]
 
     mock_holder_class = mocker.patch(
@@ -409,7 +418,10 @@ async def test_streaming_query_byok_request_vector_store_ids_filters_configured_
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
+    _br = mocker.MagicMock()
+    _br.entries = [entry_a, entry_b]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch(
@@ -689,7 +701,10 @@ async def test_streaming_query_byok_combined_inline_and_tool_rag(
     byok_entry.rag_id = "test-knowledge"
     byok_entry.vector_db_id = "vs-byok-knowledge"
     byok_entry.score_multiplier = 1.0
-    test_config.configuration.byok_rag = [byok_entry]
+    _br = mocker.MagicMock()
+    _br.entries = [byok_entry]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["test-knowledge"]
     test_config.configuration.rag.tool = ["test-knowledge"]
 
@@ -744,7 +759,7 @@ async def test_streaming_query_byok_combined_inline_and_tool_rag(
 
 
 @pytest.mark.asyncio
-async def test_streaming_query_byok_only_configured_rag_id_is_queried(
+async def test_streaming_query_byok_only_configured_rag_id_is_queried(  # pylint: disable=too-many-locals
     test_config: AppConfig,
     mocker: MockerFixture,
     test_request: Request,
@@ -772,7 +787,10 @@ async def test_streaming_query_byok_only_configured_rag_id_is_queried(
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
+    _br = mocker.MagicMock()
+    _br.entries = [entry_a, entry_b]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["source-a"]
 
     mock_holder_class = mocker.patch(
@@ -851,7 +869,10 @@ async def test_streaming_query_byok_score_multiplier_shifts_priority(  # pylint:
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 5.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
+    _br = mocker.MagicMock()
+    _br.entries = [entry_a, entry_b]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch(
@@ -933,7 +954,10 @@ async def test_streaming_query_byok_max_chunks_caps_context(  # pylint: disable=
     entry.vector_db_id = "vs-big-source"
     entry.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry]
+    _br = mocker.MagicMock()
+    _br.entries = [entry]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["big-source"]
 
     mock_holder_class = mocker.patch(
@@ -1009,7 +1033,10 @@ async def test_streaming_query_byok_max_chunks_caps_across_multiple_sources(  # 
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
+    _br = mocker.MagicMock()
+    _br.entries = [entry_a, entry_b]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch(

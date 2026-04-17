@@ -479,7 +479,8 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         byok_mapping = {
-            brag.vector_db_id: brag.rag_id for brag in self._configuration.byok_rag
+            brag.vector_db_id: brag.rag_id
+            for brag in self._configuration.byok_rag.entries
         }
 
         rag = self._configuration.rag
@@ -505,7 +506,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
             raise LogicError("logic error: configuration is not loaded")
         return {
             brag.vector_db_id: brag.score_multiplier
-            for brag in self._configuration.byok_rag
+            for brag in self._configuration.byok_rag.entries
         }
 
     @property

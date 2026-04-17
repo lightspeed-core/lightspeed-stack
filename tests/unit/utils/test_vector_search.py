@@ -1,5 +1,7 @@
 """Unit tests for vector search utilities."""
 
+from typing import Any
+
 import pytest
 from pydantic import AnyUrl
 from pytest_mock import MockerFixture
@@ -21,6 +23,14 @@ from utils.vector_search import (
     _is_solr_enabled,
     build_rag_context,
 )
+
+
+def _byok_rag_section_mock(mocker: MockerFixture, entries: list[Any]) -> Any:
+    """Build a mock ``byok_rag`` section with ``entries`` and cutoff."""
+    section = mocker.Mock()
+    section.entries = entries
+    section.relevance_cutoff_score = 0.0
+    return section
 
 
 class TestIsSolrEnabled:
@@ -97,7 +107,10 @@ class TestExtractByokRagChunks:
         search_response.scores = [0.9, 0.8]
 
         result = _extract_byok_rag_chunks(
-            search_response, vector_store_id="test_store", weight=1.5
+            search_response,
+            vector_store_id="test_store",
+            weight=1.5,
+            byok_raw_cutoff_score=0.0,
         )
 
         assert len(result) == 2
@@ -119,12 +132,41 @@ class TestExtractByokRagChunks:
         search_response.scores = [0.75]
 
         result = _extract_byok_rag_chunks(
-            search_response, vector_store_id="test_store", weight=1.0
+            search_response,
+            vector_store_id="test_store",
+            weight=1.0,
+            byok_raw_cutoff_score=0.0,
         )
 
         assert len(result) == 1
         assert result[0]["doc_id"] == "chunk_id"
         assert result[0]["metadata"] == {}
+
+    def test_extract_skips_chunks_below_raw_cutoff(self, mocker: MockerFixture) -> None:
+        """Raw scores below the BYOK cutoff are not included."""
+        chunk_hi = mocker.Mock()
+        chunk_hi.content = "Hi"
+        chunk_hi.chunk_id = "a"
+        chunk_hi.metadata = {}
+        chunk_lo = mocker.Mock()
+        chunk_lo.content = "Lo"
+        chunk_lo.chunk_id = "b"
+        chunk_lo.metadata = {}
+
+        search_response = mocker.Mock()
+        search_response.chunks = [chunk_hi, chunk_lo]
+        search_response.scores = [0.9, 0.2]
+
+        result = _extract_byok_rag_chunks(
+            search_response,
+            vector_store_id="vs",
+            weight=0.5,
+            byok_raw_cutoff_score=0.5,
+        )
+        assert len(result) == 1
+        assert result[0]["content"] == "Hi"
+        assert result[0]["score"] == 0.9
+        assert result[0]["weighted_score"] == 0.45
 
 
 class TestFormatRagContext:
@@ -382,7 +424,7 @@ class TestFetchByokRag:
         """Test when no inline BYOK sources are configured."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.configuration.rag.inline = []
-        config_mock.configuration.byok_rag = []
+        config_mock.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
@@ -401,7 +443,9 @@ class TestFetchByokRag:
         byok_rag_mock.rag_id = "rag_1"
         byok_rag_mock.vector_db_id = "vs_1"
         config_mock.configuration.rag.inline = ["rag_1"]
-        config_mock.configuration.byok_rag = [byok_rag_mock]
+        config_mock.configuration.byok_rag = _byok_rag_section_mock(
+            mocker, [byok_rag_mock]
+        )
         config_mock.score_multiplier_mapping = {"vs_1": 1.5}
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         mocker.patch("utils.vector_search.configuration", config_mock)
@@ -439,7 +483,9 @@ class TestFetchByokRag:
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "my-kb"
         byok_rag_mock.vector_db_id = "vs-internal-001"
-        config_mock.configuration.byok_rag = [byok_rag_mock]
+        config_mock.configuration.byok_rag = _byok_rag_section_mock(
+            mocker, [byok_rag_mock]
+        )
         config_mock.configuration.rag.inline = ["my-kb"]
         config_mock.score_multiplier_mapping = {"vs-internal-001": 1.0}
         config_mock.rag_id_mapping = {"vs-internal-001": "my-kb"}
@@ -479,7 +525,9 @@ class TestFetchByokRag:
         byok_rag_2 = mocker.Mock()
         byok_rag_2.rag_id = "kb-part2"
         byok_rag_2.vector_db_id = "vs-bbb-222"
-        config_mock.configuration.byok_rag = [byok_rag_1, byok_rag_2]
+        config_mock.configuration.byok_rag = _byok_rag_section_mock(
+            mocker, [byok_rag_1, byok_rag_2]
+        )
         config_mock.configuration.rag.inline = ["kb-part1", "kb-part2"]
         config_mock.score_multiplier_mapping = {"vs-aaa-111": 1.0, "vs-bbb-222": 1.0}
         config_mock.rag_id_mapping = {
@@ -522,7 +570,7 @@ class TestFetchByokRag:
         """Test that BYOK inline RAG is skipped when rag.inline is empty."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.configuration.rag.inline = []
-        config_mock.configuration.byok_rag = []
+        config_mock.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
@@ -542,7 +590,7 @@ class TestFetchByokRag:
         """Test that a request vector_store_id not registered in rag.inline is filtered out."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.configuration.rag.inline = ["registered-id"]
-        config_mock.configuration.byok_rag = []
+        config_mock.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
@@ -554,6 +602,45 @@ class TestFetchByokRag:
         assert rag_chunks == []
         assert referenced_docs == []
         client_mock.vector_io.query.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_byok_relevance_cutoff_drops_low_raw_scores(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Chunks with raw retrieval score below BYOK relevance_cutoff_score are excluded."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        byok_rag_mock = mocker.Mock()
+        byok_rag_mock.rag_id = "rag_1"
+        byok_rag_mock.vector_db_id = "vs_1"
+        section = mocker.Mock()
+        section.entries = [byok_rag_mock]
+        section.relevance_cutoff_score = 0.5
+        config_mock.configuration.rag.inline = ["rag_1"]
+        config_mock.configuration.byok_rag = section
+        config_mock.score_multiplier_mapping = {"vs_1": 1.0}
+        config_mock.rag_id_mapping = {"vs_1": "rag_1"}
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        chunk_hi = mocker.Mock()
+        chunk_hi.content = "Keep"
+        chunk_hi.chunk_id = "c1"
+        chunk_hi.metadata = {}
+
+        chunk_lo = mocker.Mock()
+        chunk_lo.content = "Drop"
+        chunk_lo.chunk_id = "c2"
+        chunk_lo.metadata = {}
+
+        search_response = mocker.Mock()
+        search_response.chunks = [chunk_hi, chunk_lo]
+        search_response.scores = [0.9, 0.3]
+
+        client_mock = mocker.AsyncMock()
+        client_mock.vector_io.query.return_value = search_response
+
+        rag_chunks, _referenced_docs = await _fetch_byok_rag(client_mock, "q")
+        assert len(rag_chunks) == 1
+        assert rag_chunks[0].content == "Keep"
 
 
 class TestFetchSolrRag:
@@ -613,7 +700,7 @@ class TestBuildRagContext:
         """Test when both BYOK inline and Solr inline are not configured."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.configuration.rag.inline = []
-        config_mock.configuration.byok_rag = []
+        config_mock.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
         config_mock.inline_solr_enabled = False
         mocker.patch("utils.vector_search.configuration", config_mock)
 
@@ -633,7 +720,9 @@ class TestBuildRagContext:
         byok_rag_mock.rag_id = "rag_1"
         byok_rag_mock.vector_db_id = "vs_1"
         config_mock.configuration.rag.inline = ["rag_1"]
-        config_mock.configuration.byok_rag = [byok_rag_mock]
+        config_mock.configuration.byok_rag = _byok_rag_section_mock(
+            mocker, [byok_rag_mock]
+        )
         config_mock.inline_solr_enabled = False
         config_mock.score_multiplier_mapping = {"vs_1": 1.0}
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
@@ -657,4 +746,3 @@ class TestBuildRagContext:
 
         assert len(context.rag_chunks) > 0
         assert "BYOK content" in context.context_text
-        assert "file_search found" in context.context_text

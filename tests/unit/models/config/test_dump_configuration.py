@@ -8,6 +8,7 @@ from pathlib import Path
 
 from pydantic import SecretStr
 
+import constants
 from models.config import (
     ByokRag,
     Configuration,
@@ -189,7 +190,10 @@ def test_dump_configuration(tmp_path: Path) -> None:
                 "sqlite": None,
                 "type": None,
             },
-            "byok_rag": [],
+            "byok_rag": {
+                "entries": [],
+                "relevance_cutoff_score": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+            },
             "quota_handlers": {
                 "sqlite": None,
                 "postgres": None,
@@ -531,7 +535,10 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "sqlite": None,
                 "type": None,
             },
-            "byok_rag": [],
+            "byok_rag": {
+                "entries": [],
+                "relevance_cutoff_score": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+            },
             "quota_handlers": {
                 "sqlite": None,
                 "postgres": None,
@@ -765,7 +772,10 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 "sqlite": None,
                 "type": None,
             },
-            "byok_rag": [],
+            "byok_rag": {
+                "entries": [],
+                "relevance_cutoff_score": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+            },
             "quota_handlers": {
                 "sqlite": None,
                 "postgres": None,
@@ -979,17 +989,20 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 "sqlite": None,
                 "type": None,
             },
-            "byok_rag": [
-                {
-                    "db_path": "tests/configuration/rag.txt",
-                    "embedding_dimension": 768,
-                    "embedding_model": "sentence-transformers/all-mpnet-base-v2",
-                    "rag_id": "rag_id",
-                    "rag_type": "inline::faiss",
-                    "vector_db_id": "vector_db_id",
-                    "score_multiplier": 1.0,
-                },
-            ],
+            "byok_rag": {
+                "entries": [
+                    {
+                        "db_path": "tests/configuration/rag.txt",
+                        "embedding_dimension": 768,
+                        "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+                        "rag_id": "rag_id",
+                        "rag_type": "inline::faiss",
+                        "vector_db_id": "vector_db_id",
+                        "score_multiplier": 1.0,
+                    },
+                ],
+                "relevance_cutoff_score": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+            },
             "quota_handlers": {
                 "sqlite": None,
                 "postgres": None,
@@ -1183,7 +1196,10 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 "sqlite": None,
                 "type": None,
             },
-            "byok_rag": [],
+            "byok_rag": {
+                "entries": [],
+                "relevance_cutoff_score": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+            },
             "quota_handlers": {
                 "sqlite": None,
                 "postgres": None,

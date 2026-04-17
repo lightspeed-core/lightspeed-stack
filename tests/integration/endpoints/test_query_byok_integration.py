@@ -265,7 +265,10 @@ def byok_config_fixture(test_config: AppConfig, mocker: MockerFixture) -> AppCon
     }
 
     # Patch the loaded configuration's byok_rag and rag.inline
-    test_config.configuration.byok_rag = [byok_entry]
+    _br = mocker.MagicMock()
+    _br.entries = [byok_entry]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["test-knowledge"]
 
     return test_config
@@ -294,7 +297,10 @@ def byok_tool_config_fixture(
         "score_multiplier": 1.0,
     }
 
-    test_config.configuration.byok_rag = [byok_entry]
+    _br = mocker.MagicMock()
+    _br.entries = [byok_entry]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = []
     test_config.configuration.rag.tool = ["test-knowledge"]
 
@@ -425,7 +431,10 @@ async def test_query_byok_inline_rag_with_request_vector_store_ids(
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
+    _br = mocker.MagicMock()
+    _br.entries = [entry_a, entry_b]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["source-a"]
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
@@ -486,7 +495,10 @@ async def test_query_byok_request_vector_store_ids_filters_configured_stores(
     entry_b.score_multiplier = 1.0
 
     # Both sources are in config
-    test_config.configuration.byok_rag = [entry_a, entry_b]
+    _br = mocker.MagicMock()
+    _br.entries = [entry_a, entry_b]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
@@ -684,7 +696,10 @@ async def test_query_byok_combined_inline_and_tool_rag(  # pylint: disable=too-m
     byok_entry.rag_id = "test-knowledge"
     byok_entry.vector_db_id = "vs-byok-knowledge"
     byok_entry.score_multiplier = 1.0
-    test_config.configuration.byok_rag = [byok_entry]
+    _br = mocker.MagicMock()
+    _br.entries = [byok_entry]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["test-knowledge"]
     test_config.configuration.rag.tool = ["test-knowledge"]
 
@@ -800,7 +815,10 @@ async def test_query_byok_inline_rag_only_configured_rag_id_is_queried(
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
+    _br = mocker.MagicMock()
+    _br.entries = [entry_a, entry_b]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["source-a"]
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
@@ -871,7 +889,10 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 5.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
+    _br = mocker.MagicMock()
+    _br.entries = [entry_a, entry_b]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
@@ -926,6 +947,61 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
     assert first_chunk.score > second_chunk.score
 
 
+@pytest.mark.asyncio
+async def test_query_byok_cutoff_applied_before_multiplier(
+    test_config: AppConfig,
+    mocker: MockerFixture,
+    test_request: Request,
+    test_auth: AuthTuple,
+) -> None:
+    """Chunks below relevance_cutoff_score are dropped before score_multiplier.
+
+    With cutoff 0.5 and per-store multiplier 10.0, a raw score of 0.4 would
+    become 4.0 only after surviving the cutoff step; because 0.4 < 0.5, the
+    chunk must be removed and must not appear in the response even with a
+    large multiplier.
+    """
+    entry = mocker.MagicMock()
+    entry.rag_id = "cutoff-test"
+    entry.vector_db_id = "vs-cutoff-test"
+    entry.score_multiplier = 10.0
+
+    _br = mocker.MagicMock()
+    _br.entries = [entry]
+    _br.relevance_cutoff_score = 0.5
+    test_config.configuration.byok_rag = _br
+    test_config.configuration.rag.inline = ["cutoff-test"]
+
+    mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
+    mock_client = _build_base_mock_client(mocker)
+
+    low_score_resp = _make_vector_io_response(
+        mocker,
+        [
+            ("Content below raw cutoff", "doc-below", 0.4),
+        ],
+    )
+    mock_client.vector_io.query = mocker.AsyncMock(return_value=low_score_resp)
+
+    mock_vs_resp = mocker.MagicMock()
+    mock_vs_resp.data = []
+    mock_client.vector_stores.list.return_value = mock_vs_resp
+
+    mock_holder_class.return_value.get_client.return_value = mock_client
+
+    query_request = QueryRequest(query="test query")
+
+    response = await query_endpoint_handler(
+        request=test_request,
+        query_request=query_request,
+        auth=test_auth,
+        mcp_headers={},
+    )
+
+    assert response.rag_chunks is not None
+    assert len(response.rag_chunks) == 0
+
+
 # ==============================================================================
 # BYOK_RAG_MAX_CHUNKS Capping Tests
 # ==============================================================================
@@ -953,7 +1029,10 @@ async def test_query_byok_max_chunks_caps_retrieved_results(  # pylint: disable=
     entry.vector_db_id = "vs-big-source"
     entry.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry]
+    _br = mocker.MagicMock()
+    _br.entries = [entry]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["big-source"]
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
@@ -1025,7 +1104,10 @@ async def test_query_byok_max_chunks_caps_across_multiple_sources(  # pylint: di
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
+    _br = mocker.MagicMock()
+    _br.entries = [entry_a, entry_b]
+    _br.relevance_cutoff_score = 0.0
+    test_config.configuration.byok_rag = _br
     test_config.configuration.rag.inline = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")

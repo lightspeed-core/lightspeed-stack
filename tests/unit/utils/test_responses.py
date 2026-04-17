@@ -90,6 +90,14 @@ from utils.responses import (
 )
 
 
+def _byok_rag_section_mock(mocker: MockerFixture, entries: list[Any]) -> Any:
+    """Mock ``configuration.byok_rag`` with ``entries`` and default cutoff."""
+    section = mocker.Mock()
+    section.entries = entries
+    section.relevance_cutoff_score = 0.0
+    return section
+
+
 class MockOutputItem:  # pylint: disable=too-few-public-methods
     """Mock Responses API output item."""
 
@@ -1643,7 +1651,9 @@ class TestPrepareToolsTranslatesVectorStoreIds:
         mock_byok_rag.rag_id = "ocp_docs"
         mock_byok_rag.vector_db_id = "vs-001"
         mock_config = mocker.Mock()
-        mock_config.configuration.byok_rag = [mock_byok_rag]
+        mock_config.configuration.byok_rag = _byok_rag_section_mock(
+            mocker, [mock_byok_rag]
+        )
         mock_config.configuration.rag.tool = []
         mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
@@ -1664,7 +1674,7 @@ class TestPrepareToolsTranslatesVectorStoreIds:
 
         # Configure empty BYOK RAG
         mock_config = mocker.Mock()
-        mock_config.configuration.byok_rag = []
+        mock_config.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
         mock_config.configuration.rag.tool = []
         mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
@@ -1694,7 +1704,9 @@ class TestPrepareToolsTranslatesVectorStoreIds:
         mock_byok_rag.rag_id = "vs-internal"
         mock_byok_rag.vector_db_id = "vs-translated"
         mock_config = mocker.Mock()
-        mock_config.configuration.byok_rag = [mock_byok_rag]
+        mock_config.configuration.byok_rag = _byok_rag_section_mock(
+            mocker, [mock_byok_rag]
+        )
         mock_config.configuration.rag.tool = []
         mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
@@ -1717,7 +1729,7 @@ class TestPrepareToolsVectorStoreResolution:
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         mock_config = mocker.Mock()
-        mock_config.configuration.byok_rag = []
+        mock_config.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
         mock_config.configuration.rag.tool = ["rag-tool-id-1", "rag-tool-id-2"]
         mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
@@ -1742,7 +1754,9 @@ class TestPrepareToolsVectorStoreResolution:
         mock_byok_rag.rag_id = "ocp_docs"
         mock_byok_rag.vector_db_id = "vs-001"
         mock_config = mocker.Mock()
-        mock_config.configuration.byok_rag = [mock_byok_rag]
+        mock_config.configuration.byok_rag = _byok_rag_section_mock(
+            mocker, [mock_byok_rag]
+        )
         mock_config.configuration.rag.tool = ["ocp_docs"]
         mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
@@ -1760,7 +1774,7 @@ class TestPrepareToolsVectorStoreResolution:
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         mock_config = mocker.Mock()
-        mock_config.configuration.byok_rag = []
+        mock_config.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
         mock_config.configuration.rag.tool = []
         mock_config.configuration.rag.inline = [
             "inline-store-id"
@@ -1782,7 +1796,7 @@ class TestPrepareToolsVectorStoreResolution:
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         mock_config = mocker.Mock()
-        mock_config.configuration.byok_rag = []
+        mock_config.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
         mock_config.configuration.rag.tool = ["config-id-1"]
         mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
@@ -1807,7 +1821,7 @@ class TestPrepareToolsVectorStoreResolution:
         mocker.patch("utils.responses.get_mcp_tools", return_value=None)
 
         mock_config = mocker.Mock()
-        mock_config.configuration.byok_rag = []
+        mock_config.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
         mock_config.configuration.rag.tool = []
         mock_config.configuration.rag.inline = []
         mocker.patch("utils.responses.configuration", mock_config)
@@ -3355,7 +3369,7 @@ class TestResolveToolChoiceMerge:
             return_value=mock_holder,
         )
         mock_config = mocker.Mock()
-        mock_config.configuration.byok_rag = []
+        mock_config.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
         mock_config.mcp_servers = []
         mocker.patch("utils.responses.configuration", mock_config)
 
@@ -3380,7 +3394,7 @@ class TestResolveToolChoiceMerge:
             return_value=mock_holder,
         )
         mock_config = mocker.Mock()
-        mock_config.configuration.byok_rag = []
+        mock_config.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
         mock_config.mcp_servers = []
         mocker.patch("utils.responses.configuration", mock_config)
 
@@ -3417,7 +3431,7 @@ class TestResolveToolChoiceMerge:
             return_value=mock_holder,
         )
         mock_config = mocker.Mock()
-        mock_config.configuration.byok_rag = []
+        mock_config.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
         mock_config.mcp_servers = []
         mocker.patch("utils.responses.configuration", mock_config)
 
@@ -3476,7 +3490,7 @@ class TestResolveToolChoiceMerge:
             return_value=mock_holder,
         )
         mock_config = mocker.Mock()
-        mock_config.configuration.byok_rag = []
+        mock_config.configuration.byok_rag = _byok_rag_section_mock(mocker, [])
         mock_config.mcp_servers = []
         mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch(

@@ -6,12 +6,13 @@ import pytest
 from pydantic import ValidationError
 
 from constants import (
+    DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
     DEFAULT_EMBEDDING_DIMENSION,
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_RAG_TYPE,
     DEFAULT_SCORE_MULTIPLIER,
 )
-from models.config import ByokRag
+from models.config import ByokRag, ByokRagSection, Configuration
 
 
 def test_byok_rag_configuration_default_values() -> None:
@@ -188,4 +189,91 @@ def test_byok_rag_configuration_score_multiplier_must_be_positive() -> None:
             vector_db_id="vector_db_id",
             db_path="tests/configuration/rag.txt",
             score_multiplier=0.0,
+        )
+
+
+def test_byok_rag_section_explicit_null_yields_defaults() -> None:
+    """``byok_rag: null`` in YAML normalizes to defaults (empty entries, default cutoff)."""
+    cfg = Configuration.model_validate(
+        {
+            "name": "t",
+            "service": {"host": "localhost", "port": 8080},
+            "llama_stack": {
+                "api_key": "k",
+                "url": "http://x:1",
+                "use_as_library_client": False,
+            },
+            "user_data_collection": {},
+            "authentication": {"module": "noop"},
+            "byok_rag": None,
+        }
+    )
+    assert cfg.byok_rag.entries == []
+    assert (
+        cfg.byok_rag.relevance_cutoff_score == DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
+    )
+
+
+def test_byok_rag_section_object_and_legacy_list_in_configuration() -> None:
+    """``byok_rag`` accepts a section object or a legacy list of stores."""
+    db_path = "tests/configuration/rag.txt"
+    from_list = Configuration.model_validate(
+        {
+            "name": "t",
+            "service": {"host": "localhost", "port": 8080},
+            "llama_stack": {
+                "api_key": "k",
+                "url": "http://x:1",
+                "use_as_library_client": False,
+            },
+            "user_data_collection": {},
+            "authentication": {"module": "noop"},
+            "byok_rag": [
+                {
+                    "rag_id": "r1",
+                    "vector_db_id": "vs1",
+                    "db_path": db_path,
+                },
+            ],
+        }
+    )
+    assert from_list.byok_rag.entries[0].rag_id == "r1"
+    assert (
+        from_list.byok_rag.relevance_cutoff_score
+        == DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
+    )
+
+    from_obj = Configuration.model_validate(
+        {
+            "name": "t",
+            "service": {"host": "localhost", "port": 8080},
+            "llama_stack": {
+                "api_key": "k",
+                "url": "http://x:1",
+                "use_as_library_client": False,
+            },
+            "user_data_collection": {},
+            "authentication": {"module": "noop"},
+            "byok_rag": {
+                "entries": [
+                    {
+                        "rag_id": "r2",
+                        "vector_db_id": "vs2",
+                        "db_path": db_path,
+                    },
+                ],
+                "relevance_cutoff_score": 0.42,
+            },
+        }
+    )
+    assert from_obj.byok_rag.entries[0].rag_id == "r2"
+    assert from_obj.byok_rag.relevance_cutoff_score == 0.42
+
+
+def test_byok_rag_section_rejects_negative_cutoff() -> None:
+    """relevance_cutoff_score must be non-negative."""
+    with pytest.raises(ValidationError):
+        _ = ByokRagSection(
+            entries=[],
+            relevance_cutoff_score=-0.1,
         )
