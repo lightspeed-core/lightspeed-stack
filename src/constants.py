@@ -233,3 +233,8 @@ DEFAULT_VIOLATION_MESSAGE = "I cannot process this request due to policy restric
 # system prompt for the client's instructions.  Avoids leaking the actual
 # server prompt back to the client.
 SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER = "<server prompt applied>"
+# Input size limits for API request validation
+# Maximum character length for the question field in /v1/infer requests (32 KiB)
+RLSAPI_V1_QUESTION_MAX_LENGTH = 32_768
+# Maximum character length for the serialized /v1/responses request body (64 KiB)
+RESPONSES_REQUEST_MAX_SIZE = 65_536

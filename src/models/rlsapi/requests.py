@@ -2,6 +2,7 @@
 
 from pydantic import Field, field_validator
 
+from constants import RLSAPI_V1_QUESTION_MAX_LENGTH
 from models.config import ConfigurationBase
 
 # Character validation patterns for fields flowing into Splunk telemetry.
@@ -177,7 +178,7 @@ class RlsapiV1InferRequest(ConfigurationBase):
     question: str = Field(
         ...,
         min_length=1,
-        max_length=10_240,
+        max_length=RLSAPI_V1_QUESTION_MAX_LENGTH,
         description="User question",
         examples=["How do I list files?", "How do I configure SELinux?"],
     )

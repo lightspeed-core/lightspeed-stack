@@ -14676,7 +14676,7 @@
                 "properties": {
                     "question": {
                         "type": "string",
-                        "maxLength": 10240,
+                        "maxLength": 32768,
                         "minLength": 1,
                         "title": "Question",
                         "description": "User question",

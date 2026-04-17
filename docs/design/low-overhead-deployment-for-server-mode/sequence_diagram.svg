@@ -1,0 +1,156 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" height="962px" preserveAspectRatio="none" style="width:811px;height:962px;background:#FFFFFF;" version="1.1" viewBox="0 0 811 962" width="811px" zoomAndPan="magnify">
+  <defs/>
+  <g>
+    <rect fill="none" height="501.7891" style="stroke:#000000;stroke-width:1.5;" width="795" x="10" y="98.2969"/>
+    <rect fill="none" height="250.1953" style="stroke:#000000;stroke-width:1.5;" width="795" x="10" y="614.0859"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="68" x2="68" y1="81.2969" y2="881.2813"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="196" x2="196" y1="81.2969" y2="881.2813"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="307" x2="307" y1="81.2969" y2="881.2813"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="423" x2="423" y1="81.2969" y2="881.2813"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="535" x2="535" y1="81.2969" y2="881.2813"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="641" x2="641" y1="81.2969" y2="881.2813"/>
+    <line style="stroke:#181818;stroke-width:0.5;stroke-dasharray:5.0,5.0;" x1="747" x2="747" y1="81.2969" y2="881.2813"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="91" x="20" y="77.9951">Administrator</text>
+    <ellipse cx="68.5" cy="13.5" fill="#E2E2F0" rx="8" ry="8" style="stroke:#181818;stroke-width:0.5;"/>
+    <path d="M68.5,21.5 L68.5,48.5 M55.5,29.5 L81.5,29.5 M68.5,48.5 L55.5,63.5 M68.5,48.5 L81.5,63.5 " fill="none" style="stroke:#181818;stroke-width:0.5;"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="91" x="20" y="893.2764">Administrator</text>
+    <ellipse cx="68.5" cy="905.0781" fill="#E2E2F0" rx="8" ry="8" style="stroke:#181818;stroke-width:0.5;"/>
+    <path d="M68.5,913.0781 L68.5,940.0781 M55.5,921.0781 L81.5,921.0781 M68.5,940.0781 L55.5,955.0781 M68.5,940.0781 L81.5,955.0781 " fill="none" style="stroke:#181818;stroke-width:0.5;"/>
+    <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="95" x="149" y="33.7031"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="77" x="158" y="53.6982">Lightspeed</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="81" x="156" y="69.9951">core runner</text>
+    <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="95" x="149" y="880.2813"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="77" x="158" y="900.2764">Lightspeed</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="81" x="156" y="916.5732">core runner</text>
+    <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="106" x="254" y="33.7031"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="92" x="261" y="53.6982">Configuration</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="43" x="285.5" y="69.9951">loader</text>
+    <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="106" x="254" y="880.2813"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="92" x="261" y="900.2764">Configuration</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="43" x="285.5" y="916.5732">loader</text>
+    <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="106" x="370" y="33.7031"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="92" x="377" y="53.6982">Configuration</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="68" x="389" y="69.9951">generator</text>
+    <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="106" x="370" y="880.2813"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="92" x="377" y="900.2764">Configuration</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="68" x="389" y="916.5732">generator</text>
+    <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="98" x="486" y="33.7031"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="77" x="496.5" y="53.6982">Lightspeed</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="84" x="493" y="69.9951">core service</text>
+    <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="98" x="486" y="880.2813"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="77" x="496.5" y="900.2764">Lightspeed</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="84" x="493" y="916.5732">core service</text>
+    <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="95" x="594" y="33.7031"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="81" x="601" y="53.6982">Llama Stack</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="46" x="618.5" y="69.9951">runner</text>
+    <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="95" x="594" y="880.2813"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="81" x="601" y="900.2764">Llama Stack</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="46" x="618.5" y="916.5732">runner</text>
+    <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="95" x="700" y="33.7031"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="81" x="707" y="53.6982">Llama Stack</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="49" x="723" y="69.9951">service</text>
+    <rect fill="#E2E2F0" height="46.5938" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="95" x="700" y="880.2813"/>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="81" x="707" y="900.2764">Llama Stack</text>
+    <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="49" x="723" y="916.5732">service</text>
+    <path d="M10,98.2969 L74,98.2969 L74,105.4297 L64,115.4297 L10,115.4297 L10,98.2969 " fill="#EEEEEE" style="stroke:#000000;stroke-width:1.5;"/>
+    <rect fill="none" height="501.7891" style="stroke:#000000;stroke-width:1.5;" width="795" x="10" y="98.2969"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="19" x="25" y="111.3638">alt</text>
+    <text fill="#000000" font-family="sans-serif" font-size="11" font-weight="bold" lengthAdjust="spacing" textLength="57" x="89" y="110.5073">[Startup]</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="194.5" x2="184.5" y1="136.5625" y2="132.5625"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="194.5" x2="184.5" y1="136.5625" y2="140.5625"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="68.5" x2="195.5" y1="136.5625" y2="136.5625"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="32" x="75.5" y="131.4966">Start</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="305" x2="295" y1="195.9609" y2="191.9609"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="305" x2="295" y1="195.9609" y2="199.9609"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="306" y1="195.9609" y2="195.9609"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="32" x="203.5" y="160.6294">Read</text>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="38" x="203.5" y="175.7622">global</text>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="83" x="203.5" y="190.895">configuration</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="197.5" x2="207.5" y1="240.2266" y2="236.2266"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="197.5" x2="207.5" y1="240.2266" y2="244.2266"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="306" y1="240.2266" y2="240.2266"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="40" x="213.5" y="220.0278">Global</text>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="83" x="213.5" y="235.1606">configuration</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="421" x2="411" y1="314.7578" y2="310.7578"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="421" x2="411" y1="314.7578" y2="318.7578"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="422" y1="314.7578" y2="314.7578"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="60" x="203.5" y="264.2935">Generate</text>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="39" x="203.5" y="279.4263">Llama</text>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="36" x="203.5" y="294.5591">Stack</text>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="83" x="203.5" y="309.6919">configuration</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="639.5" x2="629.5" y1="359.0234" y2="355.0234"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="639.5" x2="629.5" y1="359.0234" y2="363.0234"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="640.5" y1="359.0234" y2="359.0234"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="32" x="203.5" y="338.8247">Start</text>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="79" x="203.5" y="353.9575">Llama Stack</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="745.5" x2="735.5" y1="388.1563" y2="384.1563"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="745.5" x2="735.5" y1="388.1563" y2="392.1563"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="641.5" x2="746.5" y1="388.1563" y2="388.1563"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="48" x="648.5" y="383.0903">Startup</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="642.5" x2="652.5" y1="417.2891" y2="413.2891"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="642.5" x2="652.5" y1="417.2891" y2="421.2891"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="641.5" x2="746.5" y1="417.2891" y2="417.2891"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="82" x="658.5" y="412.2231">Status + PID</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="197.5" x2="207.5" y1="446.4219" y2="442.4219"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="197.5" x2="207.5" y1="446.4219" y2="450.4219"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="640.5" y1="446.4219" y2="446.4219"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="82" x="213.5" y="441.356">Status + PID</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="533" x2="523" y1="475.5547" y2="471.5547"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="533" x2="523" y1="475.5547" y2="479.5547"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="534" y1="475.5547" y2="475.5547"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="48" x="203.5" y="470.4888">Startup</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="197.5" x2="207.5" y1="504.6875" y2="500.6875"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="197.5" x2="207.5" y1="504.6875" y2="508.6875"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="534" y1="504.6875" y2="504.6875"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="82" x="213.5" y="499.6216">Status + PID</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="745.5" x2="735.5" y1="533.8203" y2="529.8203"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="745.5" x2="735.5" y1="533.8203" y2="537.8203"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="535" x2="746.5" y1="533.8203" y2="533.8203"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="27" x="542" y="528.7544">Ping</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="536" x2="546" y1="562.9531" y2="558.9531"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="536" x2="546" y1="562.9531" y2="566.9531"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="535" x2="746.5" y1="562.9531" y2="562.9531"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="42" x="552" y="557.8872">Status</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="69.5" x2="79.5" y1="592.0859" y2="588.0859"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="69.5" x2="79.5" y1="592.0859" y2="596.0859"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="68.5" x2="195.5" y1="592.0859" y2="592.0859"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="104" x="85.5" y="587.02">Services started</text>
+    <path d="M10,614.0859 L74,614.0859 L74,621.2188 L64,631.2188 L10,631.2188 L10,614.0859 " fill="#EEEEEE" style="stroke:#000000;stroke-width:1.5;"/>
+    <rect fill="none" height="250.1953" style="stroke:#000000;stroke-width:1.5;" width="795" x="10" y="614.0859"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="19" x="25" y="627.1528">alt</text>
+    <text fill="#000000" font-family="sans-serif" font-size="11" font-weight="bold" lengthAdjust="spacing" textLength="74" x="89" y="626.2964">[Teardown]</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="194.5" x2="184.5" y1="652.3516" y2="648.3516"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="194.5" x2="184.5" y1="652.3516" y2="656.3516"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="68.5" x2="195.5" y1="652.3516" y2="652.3516"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="61" x="75.5" y="647.2856">Teardown</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="639.5" x2="629.5" y1="681.4844" y2="677.4844"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="639.5" x2="629.5" y1="681.4844" y2="685.4844"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="640.5" y1="681.4844" y2="681.4844"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="113" x="203.5" y="676.4185">Stop Llama Stack</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="745.5" x2="735.5" y1="710.6172" y2="706.6172"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="745.5" x2="735.5" y1="710.6172" y2="714.6172"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="641.5" x2="746.5" y1="710.6172" y2="710.6172"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="30" x="648.5" y="705.5513">Stop</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="642.5" x2="652.5" y1="739.75" y2="735.75"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="642.5" x2="652.5" y1="739.75" y2="743.75"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="641.5" x2="746.5" y1="739.75" y2="739.75"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="42" x="658.5" y="734.6841">Status</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="197.5" x2="207.5" y1="768.8828" y2="764.8828"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="197.5" x2="207.5" y1="768.8828" y2="772.8828"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="640.5" y1="768.8828" y2="768.8828"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="42" x="213.5" y="763.8169">Status</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="533" x2="523" y1="798.0156" y2="794.0156"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="533" x2="523" y1="798.0156" y2="802.0156"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="534" y1="798.0156" y2="798.0156"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="138" x="203.5" y="792.9497">Stop Lightspeed Core</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="197.5" x2="207.5" y1="827.1484" y2="823.1484"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="197.5" x2="207.5" y1="827.1484" y2="831.1484"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="196.5" x2="534" y1="827.1484" y2="827.1484"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="42" x="213.5" y="822.0825">Status</text>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="69.5" x2="79.5" y1="856.2813" y2="852.2813"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="69.5" x2="79.5" y1="856.2813" y2="860.2813"/>
+    <line style="stroke:#181818;stroke-width:1.0;" x1="68.5" x2="195.5" y1="856.2813" y2="856.2813"/>
+    <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="54" x="85.5" y="851.2153">Stopped</text>
+  </g>
+</svg>

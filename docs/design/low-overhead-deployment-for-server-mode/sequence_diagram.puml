@@ -1,0 +1,36 @@
+@startuml
+actor       admin      as "Administrator"
+participant runner     as "Lightspeed\ncore runner"
+participant cfg_1      as "Configuration\nloader"
+participant cfg_2      as "Configuration\ngenerator"
+participant lcore      as "Lightspeed\ncore service"
+participant ls_runner  as "Llama Stack\nrunner"
+participant ls_service as "Llama Stack\nservice"
+
+alt Startup
+admin ->> runner: Start
+runner ->> cfg_1: Read\nglobal\nconfiguration
+cfg_1 ->> runner: Global\nconfiguration
+runner ->> cfg_2: Generate\nLlama\nStack\nconfiguration
+runner ->> ls_runner: Start\nLlama Stack
+ls_runner ->> ls_service: Startup
+ls_service ->> ls_runner: Status + PID
+ls_runner ->> runner: Status + PID
+runner ->> lcore: Startup
+lcore ->> runner: Status + PID
+lcore ->> ls_service: Ping
+ls_service ->> lcore: Status
+runner ->> admin: Services started
+end
+
+alt Teardown
+admin ->> runner: Teardown
+runner ->> ls_runner: Stop Llama Stack
+ls_runner ->> ls_service: Stop
+ls_service ->> ls_runner: Status
+ls_runner ->> runner: Status
+runner ->> lcore: Stop Lightspeed Core
+lcore ->> runner: Status
+runner ->> admin: Stopped
+end
+@enduml

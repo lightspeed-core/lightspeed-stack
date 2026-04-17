@@ -7,6 +7,7 @@ from typing import Any, Optional
 import pytest
 from pydantic import BaseModel, ValidationError
 
+from constants import RLSAPI_V1_QUESTION_MAX_LENGTH
 from models.rlsapi.requests import (
     RlsapiV1Attachment,
     RlsapiV1CLA,
@@ -642,7 +643,7 @@ class TestGetInputSourceEdgeCases:
         (RlsapiV1Attachment, "contents", 65_536),
         (RlsapiV1Terminal, "output", 65_536),
         (RlsapiV1Context, "stdin", 65_536),
-        (RlsapiV1InferRequest, "question", 10_240),
+        (RlsapiV1InferRequest, "question", RLSAPI_V1_QUESTION_MAX_LENGTH),
     ],
     ids=[
         "attachment-contents",

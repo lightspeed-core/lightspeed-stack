@@ -539,7 +539,7 @@ async def test_rlsapi_v1_infer_skip_rag(
 @pytest.mark.parametrize(
     "json",
     (
-        ({"question": "?" * 10_241}),
+        ({"question": "?" * (constants.RLSAPI_V1_QUESTION_MAX_LENGTH + 1)}),
         ({"question": "Q", "context": {"stdin": "a" * 65_537}}),
         ({"question": "Q", "context": {"attachments": {"contents": "A" * 65_537}}}),
         ({"question": "Q", "context": {"terminal": {"output": "T" * 65_537}}}),

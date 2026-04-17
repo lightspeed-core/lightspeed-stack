@@ -2,6 +2,7 @@
 
 # pylint: disable=too-many-lines
 
+import json
 from enum import Enum
 from typing import Any, Optional, Self
 
@@ -32,6 +33,7 @@ from constants import (
     MCP_AUTH_OAUTH,
     MEDIA_TYPE_JSON,
     MEDIA_TYPE_TEXT,
+    RESPONSES_REQUEST_MAX_SIZE,
 )
 from log import get_logger
 from utils import suid
@@ -737,6 +739,40 @@ class ResponsesRequest(BaseModel):
             ]
         },
     }
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_body_size(cls, values: Any) -> Any:
+        """Validate that the request body does not exceed the maximum allowed size.
+
+        Serializes the raw request payload to JSON and checks the total character
+        count against the 65,536-character limit.  This guard runs before field
+        coercion so that the limit reflects only what the client actually sent,
+        not the expanded representation produced by Pydantic's defaults.
+
+        Parameters:
+            values: The raw input dict (or other object) passed to the model.
+
+        Returns:
+            Any: ``values`` unchanged when the size check passes.
+
+        Raises:
+            ValueError: If the JSON-serialized size of ``values`` exceeds
+                65,536 characters.
+        """
+        try:
+            serialized = json.dumps(values)
+        except (TypeError, ValueError):
+            # Non-JSON-serializable payload (e.g. programmatic use with Pydantic
+            # model instances).  The size guard only applies to wire-format HTTP
+            # requests which FastAPI always parses into JSON-compatible dicts.
+            return values
+        if len(serialized) > RESPONSES_REQUEST_MAX_SIZE:
+            raise ValueError(
+                f"Request body size ({len(serialized)} characters) exceeds maximum "
+                f"allowed size of {RESPONSES_REQUEST_MAX_SIZE} characters"
+            )
+        return values
 
     @model_validator(mode="after")
     def validate_conversation_and_previous_response_id_mutually_exclusive(self) -> Self:
