@@ -112,7 +112,6 @@ class TestExtractByokRagChunks:
             search_response,
             vector_store_id="test_store",
             weight=1.5,
-            byok_raw_cutoff_score=0.0,
         )
 
         assert len(result) == 2
@@ -137,15 +136,14 @@ class TestExtractByokRagChunks:
             search_response,
             vector_store_id="test_store",
             weight=1.0,
-            byok_raw_cutoff_score=0.0,
         )
 
         assert len(result) == 1
         assert result[0]["doc_id"] == "chunk_id"
         assert result[0]["metadata"] == {}
 
-    def test_extract_skips_chunks_below_raw_cutoff(self, mocker: MockerFixture) -> None:
-        """Raw scores below the BYOK cutoff are not included."""
+    def test_extract_maps_all_chunks_from_response(self, mocker: MockerFixture) -> None:
+        """Extraction maps every chunk returned by vector_io (server applies score_threshold)."""
         chunk_hi = mocker.Mock()
         chunk_hi.content = "Hi"
         chunk_hi.chunk_id = "a"
@@ -163,12 +161,10 @@ class TestExtractByokRagChunks:
             search_response,
             vector_store_id="vs",
             weight=0.5,
-            byok_raw_cutoff_score=0.5,
         )
-        assert len(result) == 1
-        assert result[0]["content"] == "Hi"
-        assert result[0]["score"] == 0.9
+        assert len(result) == 2
         assert result[0]["weighted_score"] == 0.45
+        assert result[1]["weighted_score"] == 0.1
 
 
 class TestFormatRagContext:
@@ -514,7 +510,11 @@ class TestFetchByokRag:
         client_mock.vector_io.query.assert_called_once_with(
             vector_store_id="vs-internal-001",
             query="test query",
-            params={"max_chunks": constants.BYOK_RAG_MAX_CHUNKS, "mode": "vector"},
+            params={
+                "max_chunks": constants.BYOK_RAG_MAX_CHUNKS,
+                "mode": "vector",
+                "score_threshold": 0.0,
+            },
         )
 
     @pytest.mark.asyncio
@@ -609,10 +609,10 @@ class TestFetchByokRag:
         client_mock.vector_io.query.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_byok_relevance_cutoff_drops_low_raw_scores(
+    async def test_byok_relevance_cutoff_passed_as_score_threshold(
         self, mocker: MockerFixture
     ) -> None:
-        """Chunks with raw retrieval score below BYOK relevance_cutoff_score are excluded."""
+        """vector_io.query receives score_threshold from BYOK relevance_cutoff_mapping."""
         config_mock = mocker.Mock(spec=AppConfig)
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "rag_1"
@@ -632,14 +632,9 @@ class TestFetchByokRag:
         chunk_hi.chunk_id = "c1"
         chunk_hi.metadata = {}
 
-        chunk_lo = mocker.Mock()
-        chunk_lo.content = "Drop"
-        chunk_lo.chunk_id = "c2"
-        chunk_lo.metadata = {}
-
         search_response = mocker.Mock()
-        search_response.chunks = [chunk_hi, chunk_lo]
-        search_response.scores = [0.9, 0.3]
+        search_response.chunks = [chunk_hi]
+        search_response.scores = [0.9]
 
         client_mock = mocker.AsyncMock()
         client_mock.vector_io.query.return_value = search_response
@@ -647,6 +642,8 @@ class TestFetchByokRag:
         rag_chunks, _referenced_docs = await _fetch_byok_rag(client_mock, "q")
         assert len(rag_chunks) == 1
         assert rag_chunks[0].content == "Keep"
+        call_kwargs = client_mock.vector_io.query.call_args.kwargs
+        assert call_kwargs["params"]["score_threshold"] == 0.5
 
 
 class TestFetchSolrRag:

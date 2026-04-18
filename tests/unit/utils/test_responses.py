@@ -8,6 +8,7 @@ from typing import Any, Optional, cast
 
 import pytest
 from fastapi import HTTPException
+from llama_stack_api import SearchRankingOptions
 from llama_stack_api.openai_responses import (
     AllowedToolsFilter,
     OpenAIResponseInputToolChoiceAllowedTools,
@@ -87,6 +88,7 @@ from utils.responses import (
     resolve_client_tool_choice,
     resolve_tool_choice,
     resolve_vector_store_ids,
+    translate_tools_vector_store_ids,
 )
 
 
@@ -380,16 +382,49 @@ class TestGetRAGTools:
 
     def test_get_rag_tools_empty_list(self) -> None:
         """Test get_rag_tools returns empty list for empty vector store IDs."""
-        assert not get_rag_tools([])
+        assert not get_rag_tools([], [])
 
     def test_get_rag_tools_with_vector_stores(self) -> None:
-        """Test get_rag_tools returns correct tool format for vector stores."""
-        tools = get_rag_tools(["db1", "db2"])
+        """Test get_rag_tools returns one file_search tool per vector store."""
+        tools = get_rag_tools(["db1", "db2"], [])
         assert isinstance(tools, list)
-        assert len(tools) == 1
-        assert tools[0].type == "file_search"
-        assert tools[0].vector_store_ids == ["db1", "db2"]
+        assert len(tools) == 2
+        assert all(t.type == "file_search" for t in tools)
+        assert tools[0].vector_store_ids == ["db1"]
+        assert tools[1].vector_store_ids == ["db2"]
         assert tools[0].max_num_results == 10
+        assert tools[0].ranking_options is not None
+        assert tools[0].ranking_options.score_threshold == (
+            constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
+        )
+        assert tools[1].ranking_options is not None
+        assert tools[1].ranking_options.score_threshold == (
+            constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
+        )
+
+    def test_get_rag_tools_per_store_cutoff(self) -> None:
+        """Each tool uses its store's relevance_cutoff_score as score_threshold."""
+        byok_rags = [
+            ByokRag(
+                rag_id="a",
+                vector_db_id="vs-low",
+                db_path="tests/configuration/rag.txt",
+                relevance_cutoff_score=0.2,
+            ),
+            ByokRag(
+                rag_id="b",
+                vector_db_id="vs-high",
+                db_path="tests/configuration/rag.txt",
+                relevance_cutoff_score=0.55,
+            ),
+        ]
+        tools = get_rag_tools(["vs-low", "vs-high"], byok_rags)
+        assert tools is not None
+        assert len(tools) == 2
+        assert tools[0].ranking_options is not None
+        assert tools[0].ranking_options.score_threshold == 0.2
+        assert tools[1].ranking_options is not None
+        assert tools[1].ranking_options.score_threshold == 0.55
 
 
 class TestGetMCPTools:
@@ -1487,9 +1522,10 @@ class TestPrepareTools:
 
         result = await prepare_tools(mock_client, ["vs1", "vs2"], False, "token")
         assert result is not None
-        assert len(result) == 1
-        assert result[0].type == "file_search"
-        assert result[0].vector_store_ids == ["vs1", "vs2"]
+        assert len(result) == 2
+        assert all(t.type == "file_search" for t in result)
+        assert result[0].vector_store_ids == ["vs1"]
+        assert result[1].vector_store_ids == ["vs2"]
 
     @pytest.mark.asyncio
     async def test_prepare_tools_fetch_vector_stores(
@@ -1510,8 +1546,9 @@ class TestPrepareTools:
 
         result = await prepare_tools(mock_client, None, False, "token")
         assert result is not None
-        assert len(result) == 1
-        assert result[0].vector_store_ids == ["vs1", "vs2"]
+        assert len(result) == 2
+        assert result[0].vector_store_ids == ["vs1"]
+        assert result[1].vector_store_ids == ["vs2"]
 
     @pytest.mark.asyncio
     async def test_prepare_tools_connection_error(self, mocker: MockerFixture) -> None:
@@ -1637,6 +1674,92 @@ class TestResolveVectorStoreIds:
         assert result == ["vs-a", "vs-b"]
 
 
+class TestTranslateToolsVectorStoreIds:
+    """Tests for translate_tools_vector_store_ids."""
+
+    def test_sets_ranking_when_omitted(self) -> None:
+        """file_search tools get ranking_options from BYOK cutoffs when unset."""
+        byok_rags = [
+            ByokRag(
+                rag_id="x",
+                vector_db_id="vs1",
+                db_path="tests/configuration/rag.txt",
+                relevance_cutoff_score=0.4,
+            )
+        ]
+        tools_in: list[InputTool] = [
+            InputToolFileSearch(vector_store_ids=["x"]),
+        ]
+        out = translate_tools_vector_store_ids(tools_in, byok_rags)
+        fs = cast(InputToolFileSearch, out[0])
+        assert fs.vector_store_ids == ["vs1"]
+        assert fs.ranking_options is not None
+        assert fs.ranking_options.score_threshold == 0.4
+
+    def test_preserves_client_ranking_options(self) -> None:
+        """Client score_threshold above store cutoff is kept (floor does not lower it)."""
+        byok_rags = [
+            ByokRag(
+                rag_id="x",
+                vector_db_id="vs1",
+                db_path="tests/configuration/rag.txt",
+            )
+        ]
+        custom = SearchRankingOptions(score_threshold=0.88)
+        tools_in: list[InputTool] = [
+            InputToolFileSearch(vector_store_ids=["x"], ranking_options=custom),
+        ]
+        out = translate_tools_vector_store_ids(tools_in, byok_rags)
+        fs = cast(InputToolFileSearch, out[0])
+        assert fs.ranking_options is not None
+        assert fs.ranking_options.score_threshold == 0.88
+
+    def test_client_ranking_floor_raises_below_store_cutoff(self) -> None:
+        """Effective score_threshold is max(client, store_cutoff)."""
+        byok_rags = [
+            ByokRag(
+                rag_id="x",
+                vector_db_id="vs1",
+                db_path="tests/configuration/rag.txt",
+                relevance_cutoff_score=0.5,
+            )
+        ]
+        custom = SearchRankingOptions(score_threshold=0.1)
+        tools_in: list[InputTool] = [
+            InputToolFileSearch(vector_store_ids=["x"], ranking_options=custom),
+        ]
+        out = translate_tools_vector_store_ids(tools_in, byok_rags)
+        fs = cast(InputToolFileSearch, out[0])
+        assert fs.ranking_options is not None
+        assert fs.ranking_options.score_threshold == 0.5
+
+    def test_splits_multiple_stores_into_separate_tools(self) -> None:
+        """One client file_search with multiple stores becomes one tool per store."""
+        byok_rags = [
+            ByokRag(
+                rag_id="a",
+                vector_db_id="vs-a",
+                db_path="tests/configuration/rag.txt",
+                relevance_cutoff_score=0.2,
+            ),
+            ByokRag(
+                rag_id="b",
+                vector_db_id="vs-b",
+                db_path="tests/configuration/rag.txt",
+                relevance_cutoff_score=0.6,
+            ),
+        ]
+        tools_in: list[InputTool] = [
+            InputToolFileSearch(vector_store_ids=["a", "b"]),
+        ]
+        out = translate_tools_vector_store_ids(tools_in, byok_rags)
+        assert len(out) == 2
+        assert cast(InputToolFileSearch, out[0]).vector_store_ids == ["vs-a"]
+        assert cast(InputToolFileSearch, out[0]).ranking_options.score_threshold == 0.2
+        assert cast(InputToolFileSearch, out[1]).vector_store_ids == ["vs-b"]
+        assert cast(InputToolFileSearch, out[1]).ranking_options.score_threshold == 0.6
+
+
 class TestPrepareToolsTranslatesVectorStoreIds:
     """Tests that prepare_tools translates BYOK IDs before building RAG tools."""
 
@@ -1735,9 +1858,10 @@ class TestPrepareToolsVectorStoreResolution:
         result = await prepare_tools(mock_client, None, False, "token")
 
         assert result is not None
-        assert len(result) == 1
-        assert result[0].type == "file_search"
-        assert result[0].vector_store_ids == ["rag-tool-id-1", "rag-tool-id-2"]
+        assert len(result) == 2
+        assert all(t.type == "file_search" for t in result)
+        assert result[0].vector_store_ids == ["rag-tool-id-1"]
+        assert result[1].vector_store_ids == ["rag-tool-id-2"]
         mock_client.vector_stores.list.assert_not_called()
 
     @pytest.mark.asyncio
@@ -3173,11 +3297,11 @@ class TestGetRAGToolsWithConfig:
     def test_returns_empty_when_no_vector_store_ids(self) -> None:
         """Test get_rag_tools returns empty list when no vector store IDs are provided."""
         # pylint: disable-next=use-implicit-booleaness-not-comparison
-        assert get_rag_tools([]) == []
+        assert get_rag_tools([], []) == []
 
     def test_returns_tools_when_stores_provided(self) -> None:
         """Test get_rag_tools returns tools when vector store IDs are provided."""
-        tools = get_rag_tools(["vs1"])
+        tools = get_rag_tools(["vs1"], [])
         assert tools is not None
         assert tools[0].type == constants.DEFAULT_RAG_TOOL
         assert tools[0].vector_store_ids == ["vs1"]

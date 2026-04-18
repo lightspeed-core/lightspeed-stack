@@ -7,7 +7,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
 from fastapi import HTTPException
-from llama_stack_api import OpenAIResponseObject
+from llama_stack_api import OpenAIResponseObject, SearchRankingOptions
 from llama_stack_api.openai_responses import (
     OpenAIResponseContentPartRefusal as ContentPartRefusal,
 )
@@ -251,7 +251,7 @@ async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-position
         effective_ids = await get_vector_store_ids(client, None)
 
     # Add RAG tools if vector stores are available
-    rag_tools = get_rag_tools(effective_ids)
+    rag_tools = get_rag_tools(effective_ids, byok_rags)
     if rag_tools:
         toolgroups.extend(rag_tools)
 
@@ -639,10 +639,51 @@ def resolve_vector_store_ids(
     return [rag_id_to_vector_db_id.get(vs_id, vs_id) for vs_id in vector_store_ids]
 
 
+def file_search_score_threshold_for_store(
+    vector_store_id: str, byok_rags: list[ByokRag]
+) -> float:
+    """Return the configured relevance cutoff for one resolved vector store (tool RAG).
+
+    Parameters:
+    ----------
+        vector_store_id: Llama-stack vector store ID (e.g. BYOK ``vector_db_id``).
+        byok_rags: BYOK configuration entries.
+
+    Returns:
+    -------
+        Solr/OKP default for the Solr store ID; ``relevance_cutoff_score`` for
+        configured BYOK stores; otherwise ``DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE``.
+    """
+    vector_db_to_cutoff = {
+        br.vector_db_id: br.relevance_cutoff_score for br in byok_rags
+    }
+    if vector_store_id == constants.SOLR_DEFAULT_VECTOR_STORE_ID:
+        return constants.SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD
+    if vector_store_id in vector_db_to_cutoff:
+        return vector_db_to_cutoff[vector_store_id]
+    return constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
+
+
+def file_search_ranking_options_for_store(
+    vector_store_id: str, byok_rags: list[ByokRag]
+) -> SearchRankingOptions:
+    """Build ``SearchRankingOptions`` with ``score_threshold`` for a single store."""
+    return SearchRankingOptions(
+        score_threshold=file_search_score_threshold_for_store(
+            vector_store_id, byok_rags
+        )
+    )
+
+
 def translate_tools_vector_store_ids(
     tools: list[InputTool], byok_rags: list[ByokRag]
 ) -> list[InputTool]:
     """Translate user-facing vector_store_ids to llama-stack IDs in each file_search tool.
+
+    Each resolved store becomes its own ``file_search`` tool with that store's
+    ``ranking_options.score_threshold``. If the client omits ``ranking_options``,
+    the store cutoff is used; if present, the effective threshold is
+    ``max(client score_threshold, store_cutoff)``.
 
     Parameters:
     ----------
@@ -651,27 +692,56 @@ def translate_tools_vector_store_ids(
 
     Returns:
     -------
-        New list of tools with file_search vector_store_ids translated; other tools
+        New list of tools with file_search entries expanded per store; other tools
         unchanged.
     """
     result: list[InputTool] = []
     for tool in tools:
-        if tool.type == "file_search":
-            resolved_ids = resolve_vector_store_ids(tool.vector_store_ids, byok_rags)
-            result.append(tool.model_copy(update={"vector_store_ids": resolved_ids}))
-        else:
+        if tool.type != "file_search":
             result.append(tool)
+            continue
+
+        file_tool = cast(InputToolFileSearch, tool)
+        resolved_ids = resolve_vector_store_ids(file_tool.vector_store_ids, byok_rags)
+
+        for vs_id in resolved_ids:
+            store_cutoff = file_search_score_threshold_for_store(vs_id, byok_rags)
+            if file_tool.ranking_options is None:
+                ranking = file_search_ranking_options_for_store(vs_id, byok_rags)
+            else:
+                client_ro = file_tool.ranking_options
+                client_st = client_ro.score_threshold
+                client_val = 0.0 if client_st is None else float(client_st)
+                ranking = client_ro.model_copy(
+                    update={"score_threshold": max(client_val, store_cutoff)}
+                )
+            result.append(
+                InputToolFileSearch(
+                    type="file_search",
+                    vector_store_ids=[vs_id],
+                    max_num_results=file_tool.max_num_results,
+                    filters=file_tool.filters,
+                    ranking_options=ranking,
+                )
+            )
+
     return result
 
 
-def get_rag_tools(vector_store_ids: list[str]) -> Optional[list[InputToolFileSearch]]:
+def get_rag_tools(
+    vector_store_ids: list[str], byok_rags: list[ByokRag]
+) -> Optional[list[InputToolFileSearch]]:
     """Convert vector store IDs to tools format for Responses API.
+
+    Emits one ``file_search`` tool per store so each has its own
+    ``ranking_options.score_threshold``.
 
     Args:
         vector_store_ids: List of vector store identifiers
+        byok_rags: BYOK RAG entries used to set ``ranking_options.score_threshold``
 
     Returns:
-        List containing file_search tool configuration, or empty list if no stores available
+        List containing file_search tool configurations, or empty list if no stores available
     """
     if vector_store_ids == []:
         return []
@@ -679,9 +749,11 @@ def get_rag_tools(vector_store_ids: list[str]) -> Optional[list[InputToolFileSea
     return [
         InputToolFileSearch(
             type="file_search",
-            vector_store_ids=vector_store_ids,
+            vector_store_ids=[vs_id],
             max_num_results=constants.TOOL_RAG_MAX_CHUNKS,
+            ranking_options=file_search_ranking_options_for_store(vs_id, byok_rags),
         )
+        for vs_id in vector_store_ids
     ]
 
 

@@ -971,7 +971,18 @@ async def test_query_byok_cutoff_applied_before_multiplier(
             ("Content below raw cutoff", "doc-below", 0.4),
         ],
     )
-    mock_client.vector_io.query = mocker.AsyncMock(return_value=low_score_resp)
+
+    async def _vector_io_query_side_effect(*_args: Any, **kwargs: Any) -> Any:
+        params = kwargs.get("params") or {}
+        raw_st = params.get("score_threshold", 0.0)
+        score_threshold = float(raw_st) if raw_st is not None else 0.0
+        if score_threshold <= 0.4:
+            return low_score_resp
+        return _make_vector_io_response(mocker, [])
+
+    mock_client.vector_io.query = mocker.AsyncMock(
+        side_effect=_vector_io_query_side_effect
+    )
 
     mock_vs_resp = mocker.MagicMock()
     mock_vs_resp.data = []

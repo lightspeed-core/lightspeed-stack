@@ -76,19 +76,17 @@ def _extract_byok_rag_chunks(
     search_response: Any,
     vector_store_id: str,
     weight: float,
-    byok_raw_cutoff_score: float,
 ) -> list[dict[str, Any]]:
     """Extract and weight result chunks from vector search for BYOK RAG only.
 
-    Chunks whose raw retrieval score is below ``byok_raw_cutoff_score`` are
-    dropped before applying the per-store weight. This is not used for OKP/Solr.
+    Raw-score filtering uses ``score_threshold`` in :meth:`vector_io.query`
+    params (see :func:`_query_store_for_byok_rag`); this only maps chunks to
+    weighted result dicts. Not used for OKP/Solr.
 
     Args:
         search_response: Response from vector_io.query
         vector_store_id: ID of the BYOK vector store that produced these results
         weight: Score multiplier to apply to this store's remaining results
-        byok_raw_cutoff_score: Minimum raw similarity score for this store
-            (``ByokRag.relevance_cutoff_score``).
 
     Returns:
         List of result dictionaries with weighted scores
@@ -97,14 +95,6 @@ def _extract_byok_rag_chunks(
     for chunk, score in zip(
         search_response.chunks, search_response.scores, strict=True
     ):
-        if score < byok_raw_cutoff_score:
-            logger.debug(
-                "  [%s] BYOK: dropping chunk: raw score=%.4f < cutoff=%.4f",
-                vector_store_id,
-                score,
-                byok_raw_cutoff_score,
-            )
-            continue
         weighted_score = score * weight
         doc_id = (
             chunk.metadata.get("document_id", chunk.chunk_id)
@@ -189,7 +179,8 @@ async def _query_store_for_byok_rag(
         vector_store_id: ID of the BYOK vector store to query
         query: Search query string
         weight: Score multiplier to apply
-        byok_raw_cutoff_score: Minimum raw score before weighting (BYOK config only)
+        byok_raw_cutoff_score: Passed as ``score_threshold`` in ``vector_io.query``
+            params (``ByokRag.relevance_cutoff_score`` / mapping default).
 
     Returns:
         List of weighted result dictionaries, or empty list on error
@@ -201,11 +192,10 @@ async def _query_store_for_byok_rag(
             params={
                 "max_chunks": constants.BYOK_RAG_MAX_CHUNKS,
                 "mode": "vector",
+                "score_threshold": byok_raw_cutoff_score,
             },
         )
-        return _extract_byok_rag_chunks(
-            search_response, vector_store_id, weight, byok_raw_cutoff_score
-        )
+        return _extract_byok_rag_chunks(search_response, vector_store_id, weight)
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.warning("Failed to search '%s': %s", vector_store_id, e)
         return []
@@ -356,8 +346,9 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
     """Fetch chunks and documents from BYOK RAG sources only.
 
     Applies each entry's ``relevance_cutoff_score`` (via ``relevance_cutoff_mapping``)
-    to raw scores from BYOK vector stores. OKP/Solr inline RAG is implemented in
-    ``_fetch_solr_rag`` and does not use that setting.
+    as ``score_threshold`` on ``vector_io.query`` for each BYOK store. OKP/Solr
+    inline RAG is implemented in ``_fetch_solr_rag`` and does not use that
+    setting.
 
     Args:
         client: The AsyncLlamaStackClient to use for the request
@@ -418,10 +409,7 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
                     vector_store_id,
                     query,
                     score_multiplier_mapping.get(vector_store_id, 1.0),
-                    relevance_cutoff_mapping.get(
-                        vector_store_id,
-                        constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
-                    ),
+                    relevance_cutoff_mapping[vector_store_id],
                 )
                 for vector_store_id in vector_store_ids_to_query
             ]
@@ -548,9 +536,10 @@ async def build_rag_context(
 ) -> RAGContext:
     """Build RAG context by fetching and merging chunks from all enabled sources.
 
-    Enabled sources can be BYOK and/or Solr OKP. BYOK raw-score cutoffs come from
-    each ``ByokRag.relevance_cutoff_score``; OKP uses ``_build_query_params`` (e.g.
-    Solr ``score_threshold``), not the BYOK cutoffs.
+    Enabled sources can be BYOK and/or Solr OKP. BYOK uses ``score_threshold`` in
+    ``vector_io.query`` from each ``ByokRag.relevance_cutoff_score``; OKP uses
+    ``_build_query_params`` (e.g. Solr ``score_threshold``), not the BYOK
+    per-store config keys.
 
     Args:
         client: The AsyncLlamaStackClient to use for the request
