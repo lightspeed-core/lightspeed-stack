@@ -692,12 +692,40 @@ async def _create_a2a_app(
     return a2a_app.build()
 
 
-@router.api_route("/a2a", methods=["GET", "POST"], response_model=None)
+@router.get(
+    "/a2a",
+    response_model=None,
+    operation_id="handle_a2a_jsonrpc_a2a_get",
+)
 @authorize(Action.A2A_JSONRPC)
-async def handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-statements
+async def handle_a2a_jsonrpc_get(
     request: Request,
     auth: Annotated[AuthTuple, Depends(auth_dependency)],
     mcp_headers: McpHeaders = Depends(mcp_headers_dependency),
+) -> Response | StreamingResponse:
+    """Handle GET on ``/a2a`` for A2A JSON-RPC (same handler as POST)."""
+    return await _handle_a2a_jsonrpc(request, auth, mcp_headers)
+
+
+@router.post(
+    "/a2a",
+    response_model=None,
+    operation_id="handle_a2a_jsonrpc_a2a_post",
+)
+@authorize(Action.A2A_JSONRPC)
+async def handle_a2a_jsonrpc_post(
+    request: Request,
+    auth: Annotated[AuthTuple, Depends(auth_dependency)],
+    mcp_headers: McpHeaders = Depends(mcp_headers_dependency),
+) -> Response | StreamingResponse:
+    """Handle POST on ``/a2a`` for A2A JSON-RPC (same handler as GET)."""
+    return await _handle_a2a_jsonrpc(request, auth, mcp_headers)
+
+
+async def _handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-statements
+    request: Request,
+    auth: AuthTuple,
+    mcp_headers: McpHeaders,
 ) -> Response | StreamingResponse:
     """
     Handle A2A JSON-RPC requests following the A2A protocol specification.

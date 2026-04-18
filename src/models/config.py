@@ -2,12 +2,13 @@
 
 # pylint: disable=too-many-lines
 
+import math
 import re
 from enum import Enum
 from functools import cached_property
 from pathlib import Path
 from re import Pattern
-from typing import Any, Literal, Optional, Self
+from typing import Annotated, Any, Literal, Optional
 
 import jsonpath_ng
 import yaml
@@ -15,6 +16,7 @@ from jsonpath_ng.exceptions import JSONPathError
 from pydantic import (
     AnyHttpUrl,
     BaseModel,
+    BeforeValidator,
     ConfigDict,
     Field,
     FilePath,
@@ -26,6 +28,7 @@ from pydantic import (
     model_validator,
 )
 from pydantic.dataclasses import dataclass
+from typing_extensions import Self  # noqa: UP035
 
 import constants
 from log import get_logger
@@ -1612,6 +1615,39 @@ class ByokRag(ConfigurationBase):
         description="Path to RAG database.",
     )
 
+    relevance_cutoff_score: float = Field(
+        constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+        ge=0,
+        title="BYOK inline RAG relevance cutoff",
+        description="Minimum raw similarity score from this **BYOK** vector store "
+        "before score_multiplier weighting. Chunks below this threshold are dropped "
+        "immediately after retrieval from this store only. Does not apply to OKP/Solr. "
+        "Set to 0.0 to disable filtering for this store.",
+    )
+
+    @field_validator("relevance_cutoff_score")
+    @classmethod
+    def validate_relevance_cutoff_score(cls, value: float) -> float:
+        """Reject non-finite values (e.g. ``.inf`` or ``.nan`` from YAML).
+
+        Parameters:
+        ----------
+            value: Cutoff after coercion to ``float``.
+
+        Returns:
+        -------
+            The same finite value.
+
+        Raises:
+        ------
+            ValueError: If ``value`` is not finite.
+        """
+        if not math.isfinite(value):
+            raise ValueError(
+                "relevance_cutoff_score must be a finite number (not inf, -inf, or nan)"
+            )
+        return value
+
     score_multiplier: float = Field(
         constants.DEFAULT_SCORE_MULTIPLIER,
         gt=0,
@@ -1620,6 +1656,30 @@ class ByokRag(ConfigurationBase):
         "Used to weight results when querying multiple knowledge sources. "
         "Values > 1 boost this store's results; values < 1 reduce them.",
     )
+
+
+def _normalize_byok_rag_input(value: Any) -> Any:
+    """Normalize ``byok_rag`` YAML to a list of :class:`ByokRag` definitions.
+
+    ``null`` becomes ``[]``. The value must otherwise be a YAML list of store
+    mappings (not a mapping at the top level).
+
+    Raises:
+        ValueError: If ``value`` is a dict or other non-list type (other than ``None``).
+    """
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    raise ValueError(
+        "byok_rag must be a YAML list of BYOK store definitions, not a mapping."
+    )
+
+
+ByokRagListValidated = Annotated[
+    list[ByokRag],
+    BeforeValidator(_normalize_byok_rag_input),
+]
 
 
 class QuotaLimiterConfiguration(ConfigurationBase):
@@ -1908,11 +1968,13 @@ class Configuration(ConfigurationBase):
         description="Conversation history configuration.",
     )
 
-    byok_rag: list[ByokRag] = Field(
+    byok_rag: ByokRagListValidated = Field(
         default_factory=list,
         title="BYOK RAG configuration",
         description="BYOK RAG configuration. This configuration can be used to "
-        "reconfigure Llama Stack through its run.yaml configuration file",
+        "reconfigure Llama Stack through its run.yaml configuration file. "
+        "Use ``byok_rag: [ ... ]`` (a list of stores). Each store may set "
+        "``relevance_cutoff_score`` (BYOK inline RAG only; not used for OKP/Solr).",
     )
 
     a2a_state: A2AStateConfiguration = Field(

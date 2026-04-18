@@ -41,6 +41,28 @@ class YamlDumper(yaml.Dumper):  # pylint: disable=too-many-ancestors
         return super().increase_indent(flow, False)
 
 
+def _raw_byok_rag_store_list(raw_byok_rag: Any) -> list[Any]:
+    """Return BYOK store definitions from raw Lightspeed YAML.
+
+    Only a YAML list is accepted as BYOK stores. Each list item is expected to be
+    a mapping with ``.get`` for :func:`enrich_byok_rag`.
+
+    Parameters:
+    ----------
+        raw_byok_rag (Any):
+            Raw parsed YAML value (may be a list, ``None``, or other types).
+
+    Returns:
+    -------
+        list[Any]:
+            The input list returned as-is when ``raw_byok_rag`` is a list;
+            otherwise an empty list (``[]`` for ``None`` or any non-list type).
+    """
+    if isinstance(raw_byok_rag, list):
+        return raw_byok_rag
+    return []
+
+
 # =============================================================================
 # Enrichment: Azure Entra ID
 # =============================================================================
@@ -619,7 +641,7 @@ def generate_configuration(
     setup_azure_entra_id_token(config.get("azure_entra_id"), env_file)
 
     # Enrichment: BYOK RAG
-    enrich_byok_rag(ls_config, config.get("byok_rag", []))
+    enrich_byok_rag(ls_config, _raw_byok_rag_store_list(config.get("byok_rag", [])))
 
     # Enrichment: Solr - enabled when "okp" appears in either inline or tool list
     enrich_solr(ls_config, config.get("rag", {}), config.get("okp", {}))

@@ -186,10 +186,13 @@ TOOL_RAG_MAX_CHUNKS = 10  # retrieved from RAG as a tool
 
 # Inline RAG constants
 BYOK_RAG_MAX_CHUNKS = 10  # retrieved from BYOK RAG
+# Default minimum raw similarity per BYOK store (``ByokRag.relevance_cutoff_score``)
+DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE = 0.3
 OKP_RAG_MAX_CHUNKS = 5  # retrieved from OKP RAG
 
 # Solr OKP constants
 SOLR_VECTOR_SEARCH_DEFAULT_K = 5
+# Default score_threshold in vector_io.query params for the OKP/Solr vector store
 SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD = 0.3
 SOLR_VECTOR_SEARCH_DEFAULT_MODE = "hybrid"
 

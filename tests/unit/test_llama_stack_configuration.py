@@ -7,6 +7,7 @@ import pytest
 import yaml
 
 from llama_stack_configuration import (
+    _raw_byok_rag_store_list,
     construct_models_section,
     construct_storage_backends_section,
     construct_vector_io_providers_section,
@@ -23,6 +24,25 @@ from models.config import (
     ServiceConfiguration,
     UserDataCollection,
 )
+
+# =============================================================================
+# Test _raw_byok_rag_store_list
+# =============================================================================
+
+
+def test_raw_byok_rag_store_list_returns_list_as_is() -> None:
+    """YAML list form returns the same sequence."""
+    raw = [{"rag_id": "a"}]
+    assert _raw_byok_rag_store_list(raw) is raw
+
+
+def test_raw_byok_rag_store_list_non_list_yields_empty() -> None:
+    """Only a list is used; mappings and other types yield []."""
+    assert _raw_byok_rag_store_list({"entries": [{"rag_id": "x"}]}) == []
+    assert _raw_byok_rag_store_list({}) == []
+    assert _raw_byok_rag_store_list(None) == []
+    assert _raw_byok_rag_store_list("byok") == []
+
 
 # =============================================================================
 # Test construct_vector_stores_section

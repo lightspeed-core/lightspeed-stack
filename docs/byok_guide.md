@@ -79,10 +79,11 @@ Both modes rely on:
 
 Inline RAG additionally supports:
 - **Score Multiplier**: Optional weight applied per BYOK vector store when mixing multiple sources. Allows custom prioritization of content.
+- **Relevance cutoff (`relevance_cutoff_score`)**: Optional minimum **raw** similarity score, configured **per BYOK store** (each `byok_rag` entry) during **Inline RAG**. Chunks below the cutoff are dropped **before** `score_multiplier` is applied. It applies only to BYOK stores listed under `byok_rag`; it does not affect OKP/Solr inline RAG (which uses separate query defaults) and is not used for Tool RAG (`file_search`). If an entry omits `relevance_cutoff_score`, it defaults to `DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE` in `src/constants.py` (currently `0.3`). Set to `0.0` to disable filtering for that store.
 
 > [!NOTE]
 > OKP and BYOK scores are not directly comparable (different scoring systems), so
-> `score_multiplier` does not apply to OKP results. To control the amount of retrieved
+> `score_multiplier` and `relevance_cutoff_score` do not apply to OKP results. To control the amount of retrieved
 > context, set the `BYOK_RAG_MAX_CHUNKS` and `OKP_RAG_MAX_CHUNKS` constants in `src/constants.py`
 > (defaults: 10 and 5 respectively). For Tool RAG, use `TOOL_RAG_MAX_CHUNKS` (default: 10).
 
@@ -280,6 +281,8 @@ registered_resources:
 > section of `lightspeed-stack.yaml`. The lightspeed-stack service automatically generates the required configuration
 > at startup.
 >
+> Preferred shape: a YAML list of stores. Set optional `relevance_cutoff_score` on **each** store, or rely on the default from `src/constants.py`:
+>
 > ```yaml
 > byok_rag:
 >   - rag_id: my-docs           # Unique identifier for this knowledge source
@@ -288,11 +291,13 @@ registered_resources:
 >     embedding_dimension: 768
 >     vector_db_id: your-index-id  # Llama Stack vector store ID (from index generation)
 >     db_path: /path/to/vector_db/faiss_store.db
->     score_multiplier: 1.0       # Optional: weight results when mixing multiple sources
+>     relevance_cutoff_score: 0.3   # Optional per store; min raw score before score_multiplier (BYOK inline only)
+>     score_multiplier: 1.0         # Optional: weight results when mixing multiple sources
 > ```
 >
 > When multiple BYOK sources are configured, `score_multiplier` adjusts the relative importance of
 > each store's results during Inline RAG retrieval. Values above 1.0 boost a store; below 1.0 reduce it.
+> `relevance_cutoff_score` filters by raw retrieval score first; weighting applies only to chunks that pass the cutoff.
 
 ### Step 5: Configure RAG Strategy
 
@@ -319,10 +324,10 @@ okp:
 
 Both modes can be enabled simultaneously. Choose based on your latency and control preferences:
 
-| Mode | When context is fetched | Tool call needed | score_multiplier |
-|------|------------------------|------------------|-----------------|
-| Inline RAG | With every query | No | Yes (BYOK only) |
-| Tool RAG | On LLM demand | Yes | No |
+| Mode | When context is fetched | Tool call needed | score_multiplier | relevance_cutoff_score |
+|------|------------------------|------------------|------------------|------------------------|
+| Inline RAG | With every query | No | Yes (BYOK only) | Yes (BYOK only) |
+| Tool RAG | On LLM demand | Yes | No | No |
 
 > [!TIP]
 > A ready-to-use example combining BYOK and OKP is available at

@@ -254,6 +254,7 @@ def byok_config_fixture(test_config: AppConfig, mocker: MockerFixture) -> AppCon
     byok_entry.rag_id = "test-knowledge"
     byok_entry.vector_db_id = "vs-byok-knowledge"
     byok_entry.score_multiplier = 1.0
+    byok_entry.relevance_cutoff_score = 0.0
     byok_entry.model_dump.return_value = {
         "rag_id": "test-knowledge",
         "rag_type": "inline::faiss",
@@ -262,6 +263,7 @@ def byok_config_fixture(test_config: AppConfig, mocker: MockerFixture) -> AppCon
         "vector_db_id": "vs-byok-knowledge",
         "db_path": "/tmp/test-db",
         "score_multiplier": 1.0,
+        "relevance_cutoff_score": 0.0,
     }
 
     # Patch the loaded configuration's byok_rag and rag.inline
@@ -284,6 +286,7 @@ def byok_tool_config_fixture(
     byok_entry.rag_id = "test-knowledge"
     byok_entry.vector_db_id = "vs-byok-knowledge"
     byok_entry.score_multiplier = 1.0
+    byok_entry.relevance_cutoff_score = 0.0
     byok_entry.model_dump.return_value = {
         "rag_id": "test-knowledge",
         "rag_type": "inline::faiss",
@@ -292,6 +295,7 @@ def byok_tool_config_fixture(
         "vector_db_id": "vs-byok-knowledge",
         "db_path": "/tmp/test-db",
         "score_multiplier": 1.0,
+        "relevance_cutoff_score": 0.0,
     }
 
     test_config.configuration.byok_rag = [byok_entry]
@@ -419,11 +423,13 @@ async def test_query_byok_inline_rag_with_request_vector_store_ids(
     entry_a.rag_id = "source-a"
     entry_a.vector_db_id = "vs-source-a"
     entry_a.score_multiplier = 1.0
+    entry_a.relevance_cutoff_score = 0.0
 
     entry_b = mocker.MagicMock()
     entry_b.rag_id = "source-b"
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
+    entry_b.relevance_cutoff_score = 0.0
 
     test_config.configuration.byok_rag = [entry_a, entry_b]
     test_config.configuration.rag.inline = ["source-a"]
@@ -484,6 +490,8 @@ async def test_query_byok_request_vector_store_ids_filters_configured_stores(
     entry_b.rag_id = "source-b"
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
+    entry_a.relevance_cutoff_score = 0.0
+    entry_b.relevance_cutoff_score = 0.0
 
     # Both sources are in config
     test_config.configuration.byok_rag = [entry_a, entry_b]
@@ -684,6 +692,7 @@ async def test_query_byok_combined_inline_and_tool_rag(  # pylint: disable=too-m
     byok_entry.rag_id = "test-knowledge"
     byok_entry.vector_db_id = "vs-byok-knowledge"
     byok_entry.score_multiplier = 1.0
+    byok_entry.relevance_cutoff_score = 0.0
     test_config.configuration.byok_rag = [byok_entry]
     test_config.configuration.rag.inline = ["test-knowledge"]
     test_config.configuration.rag.tool = ["test-knowledge"]
@@ -794,11 +803,13 @@ async def test_query_byok_inline_rag_only_configured_rag_id_is_queried(
     entry_a.rag_id = "source-a"
     entry_a.vector_db_id = "vs-source-a"
     entry_a.score_multiplier = 1.0
+    entry_a.relevance_cutoff_score = 0.0
 
     entry_b = mocker.MagicMock()
     entry_b.rag_id = "source-b"
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
+    entry_b.relevance_cutoff_score = 0.0
 
     test_config.configuration.byok_rag = [entry_a, entry_b]
     test_config.configuration.rag.inline = ["source-a"]
@@ -865,11 +876,13 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
     entry_a.rag_id = "source-a"
     entry_a.vector_db_id = "vs-source-a"
     entry_a.score_multiplier = 1.0
+    entry_a.relevance_cutoff_score = 0.0
 
     entry_b = mocker.MagicMock()
     entry_b.rag_id = "source-b"
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 5.0
+    entry_b.relevance_cutoff_score = 0.0
 
     test_config.configuration.byok_rag = [entry_a, entry_b]
     test_config.configuration.rag.inline = ["source-a", "source-b"]
@@ -926,6 +939,69 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
     assert first_chunk.score > second_chunk.score
 
 
+@pytest.mark.asyncio
+async def test_query_byok_cutoff_applied_before_multiplier(
+    test_config: AppConfig,
+    mocker: MockerFixture,
+    test_request: Request,
+    test_auth: AuthTuple,
+) -> None:
+    """Chunks below relevance_cutoff_score are dropped before score_multiplier.
+
+    With cutoff 0.5 and per-store multiplier 10.0, a raw score of 0.4 would
+    become 4.0 only after surviving the cutoff step; because 0.4 < 0.5, the
+    chunk must be removed and must not appear in the response even with a
+    large multiplier.
+    """
+    entry = mocker.MagicMock()
+    entry.rag_id = "cutoff-test"
+    entry.vector_db_id = "vs-cutoff-test"
+    entry.score_multiplier = 10.0
+    entry.relevance_cutoff_score = 0.5
+
+    test_config.configuration.byok_rag = [entry]
+    test_config.configuration.rag.inline = ["cutoff-test"]
+
+    mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
+    mock_client = _build_base_mock_client(mocker)
+
+    low_score_resp = _make_vector_io_response(
+        mocker,
+        [
+            ("Content below raw cutoff", "doc-below", 0.4),
+        ],
+    )
+
+    async def _vector_io_query_side_effect(*_args: Any, **kwargs: Any) -> Any:
+        params = kwargs.get("params") or {}
+        raw_st = params.get("score_threshold", 0.0)
+        score_threshold = float(raw_st) if raw_st is not None else 0.0
+        if score_threshold <= 0.4:
+            return low_score_resp
+        return _make_vector_io_response(mocker, [])
+
+    mock_client.vector_io.query = mocker.AsyncMock(
+        side_effect=_vector_io_query_side_effect
+    )
+
+    mock_vs_resp = mocker.MagicMock()
+    mock_vs_resp.data = []
+    mock_client.vector_stores.list.return_value = mock_vs_resp
+
+    mock_holder_class.return_value.get_client.return_value = mock_client
+
+    query_request = QueryRequest(query="test query")
+
+    response = await query_endpoint_handler(
+        request=test_request,
+        query_request=query_request,
+        auth=test_auth,
+        mcp_headers={},
+    )
+
+    assert not response.rag_chunks
+
+
 # ==============================================================================
 # BYOK_RAG_MAX_CHUNKS Capping Tests
 # ==============================================================================
@@ -952,6 +1028,7 @@ async def test_query_byok_max_chunks_caps_retrieved_results(  # pylint: disable=
     entry.rag_id = "big-source"
     entry.vector_db_id = "vs-big-source"
     entry.score_multiplier = 1.0
+    entry.relevance_cutoff_score = 0.0
 
     test_config.configuration.byok_rag = [entry]
     test_config.configuration.rag.inline = ["big-source"]
@@ -1024,6 +1101,8 @@ async def test_query_byok_max_chunks_caps_across_multiple_sources(  # pylint: di
     entry_b.rag_id = "source-b"
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
+    entry_a.relevance_cutoff_score = 0.0
+    entry_b.relevance_cutoff_score = 0.0
 
     test_config.configuration.byok_rag = [entry_a, entry_b]
     test_config.configuration.rag.inline = ["source-a", "source-b"]

@@ -509,6 +509,28 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         }
 
     @property
+    def relevance_cutoff_mapping(self) -> dict[str, float]:
+        """Return mapping from vector_db_id to relevance_cutoff_score from BYOK RAG config.
+
+        If ``byok_rag`` lists the same ``vector_db_id`` more than once, the first
+        occurrence wins.
+
+        Returns:
+            dict[str, float]: Mapping where keys are llama-stack ``vector_db_id`` values
+            and values are per-store raw-score cutoffs before score_multiplier weighting.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        mapping: dict[str, float] = {}
+        for brag in self._configuration.byok_rag:
+            if brag.vector_db_id not in mapping:
+                mapping[brag.vector_db_id] = brag.relevance_cutoff_score
+        return mapping
+
+    @property
     def inline_solr_enabled(self) -> bool:
         """Return whether OKP is included in the inline RAG list.
 
