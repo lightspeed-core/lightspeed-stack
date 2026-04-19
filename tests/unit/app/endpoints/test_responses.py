@@ -17,14 +17,15 @@ from pytest_mock import MockerFixture
 
 from app.endpoints.responses import (
     _is_server_mcp_output_item,
+    _sanitize_response_dict,
     _should_filter_mcp_chunk,
     handle_non_streaming_response,
     handle_streaming_response,
     responses_endpoint_handler,
 )
 from configuration import AppConfig
-from constants import DEFAULT_SYSTEM_PROMPT
-from models.config import Action
+from constants import DEFAULT_SYSTEM_PROMPT, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+from models.config import Action, ModelContextProtocolServer
 from models.database.conversations import UserConversation
 from models.requests import ResponsesRequest
 from models.responses import ResponsesResponse
@@ -1868,3 +1869,296 @@ class TestShouldFilterMcpChunk:
             )
             is False
         )
+
+
+class TestSanitizeResponseDict:
+    """Unit tests for _sanitize_response_dict."""
+
+    def test_substituted_instructions_replaced_with_placeholder(self) -> None:
+        """Test that substituted instructions are replaced with the slug constant."""
+        d: dict[str, Any] = {"instructions": "secret server prompt", "model": "m"}
+        _sanitize_response_dict(d, set(), instructions_substituted=True)
+        assert d["instructions"] == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+
+    def test_client_instructions_preserved_when_not_substituted(self) -> None:
+        """Test that client-provided instructions are echoed back unchanged."""
+        d: dict[str, Any] = {"instructions": "my custom prompt", "model": "m"}
+        _sanitize_response_dict(d, set(), instructions_substituted=False)
+        assert d["instructions"] == "my custom prompt"
+
+    def test_substituted_instructions_set_even_when_absent(self) -> None:
+        """Test that placeholder is set even when instructions field is missing."""
+        d: dict[str, Any] = {"model": "m"}
+        _sanitize_response_dict(d, set(), instructions_substituted=True)
+        assert d["instructions"] == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+
+    def test_no_error_when_instructions_absent_and_not_substituted(self) -> None:
+        """Test that missing instructions field with no substitution does not raise."""
+        d: dict[str, Any] = {"model": "m"}
+        _sanitize_response_dict(d, set(), instructions_substituted=False)
+        assert "instructions" not in d
+
+    def test_strips_server_mcp_tools(self) -> None:
+        """Test that server-deployed MCP tools are removed from tools array."""
+        d: dict[str, Any] = {
+            "tools": [
+                {"server_label": "server-a", "name": "tool1"},
+                {"server_label": "server-b", "name": "tool2"},
+                {"name": "client-tool"},
+            ]
+        }
+        _sanitize_response_dict(
+            d, {"server-a", "server-b"}, instructions_substituted=False
+        )
+        assert d["tools"] == [{"name": "client-tool"}]
+
+    def test_preserves_client_tools(self) -> None:
+        """Test that client-provided tools are preserved."""
+        d: dict[str, Any] = {
+            "tools": [
+                {"server_label": "server-a", "name": "server-tool"},
+                {"name": "client-tool"},
+            ]
+        }
+        _sanitize_response_dict(d, {"server-a"}, instructions_substituted=False)
+        assert d["tools"] == [{"name": "client-tool"}]
+
+    def test_no_error_when_tools_absent(self) -> None:
+        """Test that missing tools field does not raise."""
+        d: dict[str, Any] = {"model": "m"}
+        _sanitize_response_dict(d, {"server-a"}, instructions_substituted=False)
+        assert "tools" not in d
+
+    def test_empty_configured_mcp_labels_preserves_all_tools(self) -> None:
+        """Test that empty configured_mcp_labels preserves all tools."""
+        d: dict[str, Any] = {
+            "tools": [
+                {"server_label": "server-a", "name": "tool1"},
+                {"name": "client-tool"},
+            ]
+        }
+        _sanitize_response_dict(d, set(), instructions_substituted=False)
+        assert len(d["tools"]) == 2
+
+    def test_all_fields_sanitized_together_with_substitution(self) -> None:
+        """Test that all sanitizations are applied in a single call."""
+        d: dict[str, Any] = {
+            "instructions": "secret prompt",
+            "model": "google-vertex/publishers/google/models/gemini",
+            "tools": [
+                {"server_label": "mcp-server", "name": "server-tool"},
+                {"name": "client-tool"},
+            ],
+        }
+        _sanitize_response_dict(d, {"mcp-server"}, instructions_substituted=True)
+        assert d["instructions"] == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+        assert d["model"] == "google-vertex/publishers/google/models/gemini"
+        assert d["tools"] == [{"name": "client-tool"}]
+
+    def test_all_fields_sanitized_together_without_substitution(self) -> None:
+        """Test that client instructions are preserved while tools are still filtered."""
+        d: dict[str, Any] = {
+            "instructions": "client prompt",
+            "model": "google-vertex/publishers/google/models/gemini",
+            "tools": [
+                {"server_label": "mcp-server", "name": "server-tool"},
+                {"name": "client-tool"},
+            ],
+        }
+        _sanitize_response_dict(d, {"mcp-server"}, instructions_substituted=False)
+        assert d["instructions"] == "client prompt"
+        assert d["model"] == "google-vertex/publishers/google/models/gemini"
+        assert d["tools"] == [{"name": "client-tool"}]
+
+
+class TestMcpEventsFilteredUnconditionally:
+    """Integration test: MCP events are filtered regardless of X-LCS-Merge-Server-Tools."""
+
+    @pytest.mark.asyncio
+    async def test_mcp_events_filtered_without_merge_server_tools_header(
+        self,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test MCP streaming events are filtered even without X-LCS-Merge-Server-Tools header."""
+        mcp_server = ModelContextProtocolServer(
+            name="server-a",
+            provider_id="model-context-protocol",
+            url="http://mcp.example.com",
+        )
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = [mcp_server]
+        mock_config.quota_limiters = minimal_config.quota_limiters
+        mock_config.rag_id_mapping = {}
+
+        request = _request_with_model_and_conv("Hi", model="provider/model1")
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_moderation = mocker.Mock()
+        mock_moderation.decision = "passed"
+
+        mcp_item = mocker.Mock()
+        mcp_item.type = "mcp_call"
+        mcp_item.server_label = "server-a"
+
+        mcp_added_chunk = mocker.Mock()
+        mcp_added_chunk.type = "response.output_item.added"
+        mcp_added_chunk.item = mcp_item
+        mcp_added_chunk.output_index = 0
+        mcp_added_chunk.model_dump.return_value = {
+            "type": "response.output_item.added",
+            "output_index": 0,
+        }
+
+        completed_chunk = mocker.Mock()
+        completed_chunk.type = "response.completed"
+        completed_chunk.response = mocker.Mock()
+        completed_chunk.response.id = "r1"
+        completed_chunk.response.output = []
+        completed_chunk.response.usage = mocker.Mock(
+            input_tokens=1, output_tokens=2, total_tokens=3
+        )
+        completed_chunk.model_dump.return_value = {
+            "type": "response.completed",
+            "response": {"id": "r1"},
+        }
+
+        async def mock_stream() -> Any:
+            yield mcp_added_chunk
+            yield completed_chunk
+
+        mock_client.responses.create = mocker.AsyncMock(return_value=mock_stream())
+
+        mocker.patch(f"{MODULE}.configuration", mock_config)
+        mocker.patch(f"{MODULE}.get_available_quotas", return_value={})
+        mocker.patch(f"{MODULE}.extract_token_usage", return_value=mocker.Mock())
+        mocker.patch(f"{MODULE}.consume_query_tokens")
+        mocker.patch(f"{MODULE}.extract_vector_store_ids_from_tools", return_value=[])
+        mocker.patch(
+            f"{MODULE}.build_turn_summary",
+            return_value=TurnSummary(referenced_documents=[]),
+        )
+        mocker.patch(
+            f"{MODULE}.get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+        mocker.patch(f"{MODULE}.store_query_results")
+        mocker.patch(
+            f"{MODULE}.normalize_conversation_id",
+            return_value=VALID_CONV_ID_NORMALIZED,
+        )
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+
+        response = await handle_streaming_response(
+            client=mock_client,
+            request=request,
+            auth=MOCK_AUTH,
+            input_text="Hi",
+            started_at=datetime.now(UTC),
+            moderation_result=mock_moderation,
+            inline_rag_context=RAGContext(),
+            filter_server_tools=False,
+        )
+        collected: list[str] = []
+        async for part in response.body_iterator:
+            chunk_str = (
+                part.decode("utf-8")
+                if isinstance(part, bytes)
+                else (part if isinstance(part, str) else bytes(part).decode("utf-8"))
+            )
+            collected.append(chunk_str)
+        body = "".join(collected)
+        assert "response.output_item.added" not in body
+        assert "response.completed" in body
+
+    @pytest.mark.asyncio
+    async def test_mcp_events_filtered_with_no_mcp_servers_configured(
+        self,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test that non-MCP output_item.added events pass through when no MCP servers configured.
+
+        When no MCP servers are configured, configured_mcp_labels is empty and no events
+        are filtered.
+        """
+        request = _request_with_model_and_conv("Hi", model="provider/model1")
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_moderation = mocker.Mock()
+        mock_moderation.decision = "passed"
+
+        text_item = mocker.Mock()
+        text_item.type = "message"
+
+        text_added_chunk = mocker.Mock()
+        text_added_chunk.type = "response.output_item.added"
+        text_added_chunk.item = text_item
+        text_added_chunk.output_index = 0
+        text_added_chunk.model_dump.return_value = {
+            "type": "response.output_item.added",
+            "output_index": 0,
+        }
+
+        completed_chunk = mocker.Mock()
+        completed_chunk.type = "response.completed"
+        completed_chunk.response = mocker.Mock()
+        completed_chunk.response.id = "r1"
+        completed_chunk.response.output = []
+        completed_chunk.response.usage = mocker.Mock(
+            input_tokens=1, output_tokens=2, total_tokens=3
+        )
+        completed_chunk.model_dump.return_value = {
+            "type": "response.completed",
+            "response": {"id": "r1"},
+        }
+
+        async def mock_stream() -> Any:
+            yield text_added_chunk
+            yield completed_chunk
+
+        mock_client.responses.create = mocker.AsyncMock(return_value=mock_stream())
+
+        mocker.patch(f"{MODULE}.configuration", minimal_config)
+        mocker.patch(f"{MODULE}.get_available_quotas", return_value={})
+        mocker.patch(f"{MODULE}.extract_token_usage", return_value=mocker.Mock())
+        mocker.patch(f"{MODULE}.consume_query_tokens")
+        mocker.patch(f"{MODULE}.extract_vector_store_ids_from_tools", return_value=[])
+        mocker.patch(
+            f"{MODULE}.build_turn_summary",
+            return_value=TurnSummary(referenced_documents=[]),
+        )
+        mocker.patch(
+            f"{MODULE}.get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+        mocker.patch(f"{MODULE}.store_query_results")
+        mocker.patch(
+            f"{MODULE}.normalize_conversation_id",
+            return_value=VALID_CONV_ID_NORMALIZED,
+        )
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+
+        response = await handle_streaming_response(
+            client=mock_client,
+            request=request,
+            auth=MOCK_AUTH,
+            input_text="Hi",
+            started_at=datetime.now(UTC),
+            moderation_result=mock_moderation,
+            inline_rag_context=RAGContext(),
+            filter_server_tools=False,
+        )
+        collected: list[str] = []
+        async for part in response.body_iterator:
+            chunk_str = (
+                part.decode("utf-8")
+                if isinstance(part, bytes)
+                else (part if isinstance(part, str) else bytes(part).decode("utf-8"))
+            )
+            collected.append(chunk_str)
+        body = "".join(collected)
+        assert "response.output_item.added" in body
+        assert "response.completed" in body

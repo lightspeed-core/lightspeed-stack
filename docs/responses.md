@@ -613,7 +613,7 @@ The `instructions` field on the `/v1/responses` endpoint follows the same server
 
 If the server configuration sets `disable_query_system_prompt` to `true`, any request that includes a non-null `instructions` value is rejected with a `422 Unprocessable Entity` error. The error message references the `instructions` field specifically.
 
-This means that even when `instructions` is omitted from the request, the response will always contain a resolved `instructions` value reflecting the server-side default or configured system prompt.
+If the server substituted the system prompt, the response sets `instructions` to the placeholder `<server prompt applied>` instead of echoing the actual prompt. If the client provided their own `instructions`, they are echoed back unchanged. Server-deployed MCP tool definitions are also filtered from the response `tools` array; client-provided tools are preserved.
 
 ### Streaming Differences
 

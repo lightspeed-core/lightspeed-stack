@@ -240,6 +240,10 @@ DEFAULT_VIOLATION_MESSAGE: Final[str] = (
     "I cannot process this request due to policy restrictions."
 )
 
+# Placeholder slug used in responses when the server substituted its own
+# system prompt for the client's instructions.  Avoids leaking the actual
+# server prompt back to the client.
+SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER = "<server prompt applied>"
 # Input size limits for API request validation
 # Maximum character length for the question field in /v1/infer requests (32 KiB)
 RLSAPI_V1_QUESTION_MAX_LENGTH: Final[int] = 32_768
