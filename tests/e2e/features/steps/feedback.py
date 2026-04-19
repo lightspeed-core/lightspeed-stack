@@ -12,7 +12,7 @@ from behave import (  # pyright: ignore[reportAttributeAccessIssue]  # pyright: 
 )
 from behave.runner import Context
 
-from tests.e2e.features.steps.common_http import access_rest_api_endpoint_get
+from tests.e2e.features.steps.common_http import access_rest_api_endpoint
 from tests.e2e.utils.utils import (
     absolute_repo_path,
     is_prow_environment,
@@ -24,10 +24,18 @@ from tests.e2e.utils.utils import (
 DEFAULT_TIMEOUT = 10
 
 
+def _register_feedback_conversation_cleanup(context: Context) -> None:
+    """Mark that ``after_feature`` should DELETE tracked conversations (see ``environment``)."""
+    context.feedback_e2e_conversation_cleanup = True
+    if not hasattr(context, "feedback_conversations"):
+        context.feedback_conversations = []
+
+
 @step("The feedback is enabled")  # type: ignore[reportCallIssue]
 def enable_feedback(context: Context) -> None:
     """Enable the feedback endpoint and assert success."""
     assert context is not None
+    _register_feedback_conversation_cleanup(context)
     payload = {"status": True}
     access_feedback_put_endpoint(context, payload)
 
@@ -36,6 +44,7 @@ def enable_feedback(context: Context) -> None:
 def disable_feedback(context: Context) -> None:
     """Disable the feedback endpoint and assert success."""
     assert context is not None
+    _register_feedback_conversation_cleanup(context)
     payload = {"status": False}
     access_feedback_put_endpoint(context, payload)
 
@@ -101,7 +110,7 @@ def access_feedback_post_endpoint(
 @when("I retreive the current feedback status")  # type: ignore[reportCallIssue]
 def access_feedback_get_endpoint(context: Context) -> None:
     """Retrieve the current feedback status via GET request."""
-    access_rest_api_endpoint_get(context, "feedback/status")
+    access_rest_api_endpoint(context, "feedback/status", "GET")
 
 
 @given("A new conversation is initialized")  # type: ignore[reportCallIssue]
@@ -142,6 +151,7 @@ def create_conversation_with_user_id(
     body = response.json()
     context.conversation_id = body["conversation_id"]
     assert context.conversation_id, "Conversation was not created."
+    _register_feedback_conversation_cleanup(context)
     context.feedback_conversations.append(context.conversation_id)
     context.response = response
 

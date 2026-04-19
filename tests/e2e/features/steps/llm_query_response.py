@@ -197,23 +197,6 @@ def ask_question_in_same_conversation(context: Context, endpoint: str) -> None:
     )
 
 
-@then("The response should have proper LLM response format")
-def check_llm_response_format(context: Context) -> None:
-    """Check the format of response from the service with LLM-generated answer."""
-    assert context.response is not None
-    response_json = context.response.json()
-    assert "conversation_id" in response_json
-    assert "response" in response_json
-
-
-@then("The response should not be truncated")
-def check_llm_response_not_truncated(context: Context) -> None:
-    """Check that the response from LLM is not truncated."""
-    assert context.response is not None
-    response_json = context.response.json()
-    assert response_json["truncated"] is False
-
-
 @then("The response should contain non-empty rag_chunks")
 def check_rag_chunks_present(context: Context) -> None:
     """Check that the response contains non-empty rag_chunks from inline RAG."""

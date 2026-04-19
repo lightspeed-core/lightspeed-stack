@@ -87,17 +87,3 @@ def llama_stack_connection_broken(context: Context) -> None:
         return
 
     _llama_stack_disrupt_once["applied"] = True
-
-
-@given("the service is stopped")
-def stop_service(context: Context) -> None:
-    """Stop service.
-
-    Stop a service used by the current test scenario.
-
-    Parameters:
-    ----------
-        context (Context): Behave step context carrying scenario state and configuration.
-    """
-    # TODO: add step implementation
-    assert context is not None

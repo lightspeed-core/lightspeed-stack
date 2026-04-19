@@ -3,7 +3,7 @@
 This module provides functions to manage MCP toolgroups and shields on a running
 Llama Stack instance during end-to-end tests: unregister MCP toolgroups when
 switching configurations or testing MCP auth, and unregister/re-register shields
-(e.g. for the @disable-shields tag).
+(e.g. from the ``Given shields are disabled for this scenario`` step).
 
 Only applies when running Llama Stack as a separate service (server mode).
 Requires E2E_LLAMA_STACK_URL or E2E_LLAMA_HOSTNAME and E2E_LLAMA_PORT.
