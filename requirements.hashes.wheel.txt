@@ -226,8 +226,8 @@ torch==2.9.1 \
     --hash=sha256:e42ab849b64444059f5eda352d61c9c3a078f30797e48e2972857182c9a00cf8
 tqdm==4.67.3 \
     --hash=sha256:d798b33fcc041b9a42c57f462b9c068a5a15c2dbcef1c87695d80c7074770a4d
-transformers==4.57.6 \
-    --hash=sha256:7c35d073118fad72b1745bd3dad3149d9bf2cacca3b16a7ed8f47f1a0bec119d
+transformers==5.0.0 \
+    --hash=sha256:d17545021abc14a7e631ce23023a50cd6962968fc6bdbae5ed3ede2b9bb4b9d7
 tree-sitter==0.25.2 \
     --hash=sha256:05bc490c99a846e0e91d9dd0c5067de48b35b46d4c3f18fc2cc9ac08a4ec71fe \
     --hash=sha256:3aa0cf6b0964495ada302c3eb966bf6f41a01279d8e31c019e4b0129a93d5a55 \
