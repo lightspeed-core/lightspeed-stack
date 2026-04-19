@@ -73,9 +73,6 @@ grpcio-status==1.76.0 \
     --hash=sha256:257105544721149a1fabeb0465dc622add2a7b6f1be07df4ea9ddcb741113cfa
 h11==0.16.0 \
     --hash=sha256:a485f5bfa77401603f78cff4db5bb4dbaadb947a3da8eae068cd05b6bb4aab66
-hf-xet==1.2.0 \
-    --hash=sha256:a14cc5078bf43efc85ad180ec02372e5a84d134de095c0a9740f7e0407df7866 \
-    --hash=sha256:acb8669cac4d9aa8e8ad31a92d99353fe2f0d4463b8aaa54f2b93a33e222149d
 httpcore==1.0.9 \
     --hash=sha256:5af3f1b09e795d5548d5030be3d4191e65113cfdac21968c82bf0cddf15ec313
 httpx==0.28.1 \
