@@ -6,13 +6,18 @@
 #
 calver==2025.10.20
     # via trove-classifiers
+coherent-licensed==0.5.2
+    # via zipp
 cython==3.2.4
-    # via oracledb
+    # via
+    #   lxml
+    #   oracledb
 dunamai==1.26.1
     # via uv-dynamic-versioning
 flit-core==3.12.0
     # via
     #   click
+    #   coherent-licensed
     #   jinja2
     #   packaging
     #   pathspec
@@ -23,6 +28,7 @@ hatch-fancy-pypi-readme==25.1.0
     #   attrs
     #   llama-stack-client
     #   openai
+    #   pydantic
 hatch-vcs==0.5.0
     # via
     #   attrs
@@ -38,6 +44,7 @@ hatchling==1.29.0
     #   a2a-sdk
     #   attrs
     #   chardet
+    #   docstring-parser
     #   filelock
     #   hatch-fancy-pypi-readme
     #   hatch-vcs
@@ -52,6 +59,7 @@ hatchling==1.29.0
     #   opentelemetry-proto
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
+    #   pydantic
     #   pydantic-settings
     #   pygments
     #   pythainlp
@@ -65,10 +73,11 @@ jinja2==3.1.6
 markupsafe==3.0.3
     # via jinja2
 maturin==1.10.2
-    # via fastuuid
-packaging==26.0
     # via
-    #   dunamai
+    #   fastuuid
+    #   pydantic-core
+packaging==26.1
+    # via
     #   hatchling
     #   setuptools-scm
     #   vcs-versioning
@@ -100,6 +109,7 @@ setuptools-scm==10.0.5
     #   pluggy
     #   setuptools-rust
     #   tenacity
+    #   zipp
 tomlkit==0.14.0
     # via uv-dynamic-versioning
 trove-classifiers==2026.1.14.14
@@ -117,12 +127,16 @@ wheel==0.46.3
     #   azure-identity
     #   cachetools
     #   litellm
+    #   oci
     #   oracledb
     #   sentence-transformers
     #   tornado
     #   tzdata
+    #   wrapt
 
 # The following packages are considered to be unsafe in a requirements file:
+setuptools==78.1.1
+    # via oci
 setuptools==82.0.1
     # via
     #   aiohttp
@@ -140,8 +154,10 @@ setuptools==82.0.1
     #   googleapis-common-protos
     #   greenlet
     #   grpc-google-iam-v1
+    #   joserfc
     #   llama-stack
     #   llama-stack-api
+    #   lxml
     #   markupsafe
     #   maturin
     #   multiprocess
@@ -149,6 +165,7 @@ setuptools==82.0.1
     #   pathspec
     #   pluggy
     #   polyleven
+    #   prometheus-client
     #   proto-plus
     #   psutil
     #   pyasn1
@@ -168,3 +185,5 @@ setuptools==82.0.1
     #   trove-classifiers
     #   tzdata
     #   vcs-versioning
+    #   wrapt
+    #   zipp
