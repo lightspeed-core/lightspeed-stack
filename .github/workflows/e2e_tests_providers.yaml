@@ -2,9 +2,7 @@
 name: E2E Inference Provider Tests
 
 on: 
-  schedule:
-    - cron: "0 0 * * *"  # Runs once a day at midnight UTC
-  workflow_dispatch:
+  push
 
 jobs:
   e2e_tests:
@@ -29,7 +27,7 @@ jobs:
             e2e_default_model: google/gemini-2.5-flash
             e2e_default_provider: google-vertex
           - environment: watsonx
-            e2e_default_model: meta-llama/llama-3-3-70b-instruct
+            e2e_default_model: watsonx/meta-llama/llama-3-3-70b-instruct
             e2e_default_provider: watsonx
           - environment: bedrock
             e2e_default_model: deepseek.v3-v1:0
@@ -287,11 +285,15 @@ jobs:
           echo "Testing /v1/models and verifying expected LLM is registered..."
           echo "Expected: provider_id=${EXPECTED_PROVIDER} provider_resource_id=${EXPECTED_MODEL}"
 
-          MODEL_JSON=$(curl -sfS "http://localhost:8080/v1/models?model_type=llm") || {
-            echo "❌ GET /v1/models?model_type=llm failed"
+          CURL_EC=0
+          MODEL_JSON=$(curl -sS "http://localhost:8080/v1/models?model_type=llm") || CURL_EC=$?
+          echo "GET /v1/models?model_type=llm response:"
+          echo "$MODEL_JSON"
+          if [ "$CURL_EC" -ne 0 ]; then
+            echo "❌ GET /v1/models?model_type=llm failed (curl exit $CURL_EC)"
             show_logs
             exit 1
-          }
+          fi
 
           if ! echo "$MODEL_JSON" | jq -e --arg p "$EXPECTED_PROVIDER" --arg m "$EXPECTED_MODEL" \
             '.models | any(.provider_id == $p and .provider_resource_id == $m)' >/dev/null
@@ -309,7 +311,11 @@ jobs:
       # watsonx has a rate limit of 2 calls / second
       - name: Wait for watsonx library mode to finish
         if: matrix.environment == 'watsonx' && matrix.mode == 'server'
-        run: sleep 7200  # 120 minutes
+        run: sleep 3600  # 120 minutes
+
+      - name: Remove the prefix for watsonx default model
+        if: matrix.environment == 'watsonx'
+        run: echo "E2E_DEFAULT_MODEL_OVERRIDE=meta-llama/llama-3-3-70b-instruct" >> $GITHUB_ENV
 
       - name: Run e2e tests
         env:

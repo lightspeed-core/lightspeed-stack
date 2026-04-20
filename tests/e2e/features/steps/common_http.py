@@ -15,6 +15,7 @@ from tests.e2e.utils.utils import (
     http_response_json_or_responses_sse_terminal,
     normalize_endpoint,
     replace_placeholders,
+    request_with_transient_retry,
     validate_json,
     validate_json_partially,
 )
@@ -217,20 +218,22 @@ def access_rest_api_endpoint(context: Context, endpoint: str, method: str) -> No
     base = f"http://{context.hostname}:{context.port}"
     path = f"{context.api_prefix}/{endpoint}".replace("//", "/")
     url = base + path
-
-    if method in ["GET", "DELETE"]:
-        data = None
-    else:
-        assert context.text is not None, "Payload needs to be specified"
-        data = json.loads(context.text)
     headers = context.auth_headers if hasattr(context, "auth_headers") else {}
     # initial value
     context.response = None
 
-    # perform REST API call
-    context.response = requests.request(
-        method, url, json=data, headers=headers, timeout=DEFAULT_TIMEOUT
-    )
+    # GET/DELETE: do not pass json= (even None); some stacks mishandle it.
+    # All methods: retry transient RST/connection errors after restarts in CI.
+    if method in ("GET", "DELETE"):
+        context.response = request_with_transient_retry(
+            method=method, url=url, headers=headers, timeout=DEFAULT_TIMEOUT
+        )
+    else:
+        assert context.text is not None, "Payload needs to be specified"
+        data = json.loads(context.text)
+        context.response = request_with_transient_retry(
+            method=method, url=url, json=data, headers=headers, timeout=DEFAULT_TIMEOUT
+        )
 
 
 @then('The status message of the response is "{expected_message}"')

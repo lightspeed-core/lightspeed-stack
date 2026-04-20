@@ -8,7 +8,7 @@ import requests
 from behave import step, then  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
 
-from tests.e2e.utils.utils import replace_placeholders
+from tests.e2e.utils.utils import replace_placeholders, request_with_transient_retry
 
 # Longer timeout for Prow/OpenShift with CPU-based vLLM
 DEFAULT_LLM_TIMEOUT = 180 if os.getenv("RUNNING_PROW") else 120
@@ -107,7 +107,9 @@ def ask_question(context: Context, endpoint: str) -> None:
     json_str = replace_placeholders(context, context.text or "{}")
 
     data = json.loads(json_str)
-    context.response = requests.post(url, json=data, timeout=DEFAULT_LLM_TIMEOUT)
+    context.response = request_with_transient_retry(
+        method="POST", url=url, json=data, timeout=DEFAULT_LLM_TIMEOUT
+    )
 
 
 def _read_streamed_response(response: requests.Response) -> str:
@@ -137,8 +139,9 @@ def ask_question_authorized(context: Context, endpoint: str) -> None:
         endpoint == "responses" and bool(data.get("stream"))
     )
     if use_sse:
-        resp = requests.post(
-            url,
+        resp = request_with_transient_retry(
+            method="POST",
+            url=url,
             json=data,
             headers=context.auth_headers,
             timeout=DEFAULT_LLM_TIMEOUT,
@@ -149,8 +152,12 @@ def ask_question_authorized(context: Context, endpoint: str) -> None:
         resp._content = body.encode(resp.encoding or "utf-8")
         context.response = resp
     else:
-        context.response = requests.post(
-            url, json=data, headers=context.auth_headers, timeout=DEFAULT_LLM_TIMEOUT
+        context.response = request_with_transient_retry(
+            method="POST",
+            url=url,
+            json=data,
+            headers=context.auth_headers,
+            timeout=DEFAULT_LLM_TIMEOUT,
         )
 
 
@@ -192,8 +199,8 @@ def ask_question_in_same_conversation(context: Context, endpoint: str) -> None:
     headers = context.auth_headers if hasattr(context, "auth_headers") else {}
     data["conversation_id"] = context.response_data["conversation_id"]
 
-    context.response = requests.post(
-        url, json=data, headers=headers, timeout=DEFAULT_LLM_TIMEOUT
+    context.response = request_with_transient_retry(
+        method="POST", url=url, json=data, headers=headers, timeout=DEFAULT_LLM_TIMEOUT
     )
 
 

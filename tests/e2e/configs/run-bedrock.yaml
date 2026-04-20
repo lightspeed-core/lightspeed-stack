@@ -1,4 +1,5 @@
 version: 2
+image_name: starter
 
 apis:
 - agents
@@ -11,10 +12,9 @@ apis:
 - scoring
 - tool_runtime
 - vector_io
-      
+
 benchmarks: []
 datasets: []
-image_name: starter
 # external_providers_dir: /opt/app-root/src/.llama/providers.d
 
 providers:
@@ -37,7 +37,7 @@ providers:
       metadata_store:
         table_name: files_metadata
         backend: sql_default
-      storage_dir: ${env.SQLITE_STORE_DIR:=~/.llama/storage/files}
+      storage_dir: ~/.llama/storage/files
     provider_id: meta-reference-files
     provider_type: inline::localfs
   safety:
@@ -63,13 +63,7 @@ providers:
   - config: {} # Enable MCP (Model Context Protocol) support
     provider_id: model-context-protocol
     provider_type: remote::model-context-protocol
-  vector_io:
-  - config: # Define the storage backend for RAG
-      persistence:
-        namespace: vector_io::faiss
-        backend: kv_default
-    provider_id: faiss
-    provider_type: inline::faiss
+  vector_io: []
   agents:
   - config:
       persistence:
@@ -135,7 +129,7 @@ storage:
       namespace: prompts
       backend: kv_default
 registered_resources:
-  models: 
+  models:
   - model_id: custom-bedrock-model
     model_type: llm
     provider_id: aws-bedrock
@@ -159,6 +153,8 @@ registered_resources:
     provider_id: rag-runtime
 vector_stores:
   default_provider_id: faiss
-  default_embedding_model:
+  default_embedding_model: # Define the default embedding model for RAG
     provider_id: sentence-transformers
     model_id: all-mpnet-base-v2
+safety:
+  default_shield_id: llama-guard

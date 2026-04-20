@@ -12,7 +12,7 @@ apis:
 - scoring
 - tool_runtime
 - vector_io
-      
+
 benchmarks: []
 datasets: []
 # external_providers_dir: /opt/app-root/src/.llama/providers.d
@@ -30,7 +30,7 @@ providers:
     provider_type: remote::openai
     config:
       api_key: ${env.OPENAI_API_KEY}
-      allowed_models: ["${env.E2E_OPENAI_MODEL:gpt-4o-mini}"]
+      allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"]
   - config: {}
     provider_id: sentence-transformers
     provider_type: inline::sentence-transformers
@@ -48,23 +48,24 @@ providers:
     provider_id: llama-guard
     provider_type: inline::llama-guard
   scoring:
-  - config: {}
-    provider_id: basic
+  - provider_id: basic
     provider_type: inline::basic
+    config: {}
+  - provider_id: llm-as-judge
+    provider_type: inline::llm-as-judge
+    config: {}
+  - provider_id: braintrust
+    provider_type: inline::braintrust
+    config:
+      openai_api_key: '********'
   tool_runtime:
-  - config: {}
+  - config: {} # Enable the RAG tool
     provider_id: rag-runtime
     provider_type: inline::rag-runtime
   - config: {} # Enable MCP (Model Context Protocol) support
     provider_id: model-context-protocol
     provider_type: remote::model-context-protocol
-  vector_io:
-  - config:
-      persistence:
-        namespace: vector_io::faiss
-        backend: kv_rag
-    provider_id: faiss
-    provider_type: inline::faiss
+  vector_io: []
   agents:
   - config:
       persistence:
@@ -111,9 +112,6 @@ storage:
     kv_default:
       type: kv_sqlite
       db_path: ${env.KV_STORE_PATH:=~/.llama/storage/kv_store.db}
-    kv_rag: # Define the storage backend type for RAG
-      type: kv_sqlite
-      db_path: ${env.KV_RAG_PATH:=~/.llama/storage/rag/kv_store.db}
     sql_default:
       type: sql_sqlite
       db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
@@ -148,20 +146,16 @@ registered_resources:
   - shield_id: llama-guard
     provider_id: llama-guard
     provider_shield_id: openai/gpt-4o-mini
-  vector_stores: 
-  - embedding_dimension: 768
-    embedding_model: sentence-transformers/all-mpnet-base-v2
-    provider_id: faiss
-    vector_store_id: ${env.FAISS_VECTOR_STORE_ID}
+  vector_stores: []
   datasets: []
   scoring_fns: []
   benchmarks: []
   tool_groups:
-  - toolgroup_id: builtin::rag
+  - toolgroup_id: builtin::rag # Register the RAG tool
     provider_id: rag-runtime
 vector_stores:
   default_provider_id: faiss
-  default_embedding_model:
+  default_embedding_model: # Define the default embedding model for RAG
     provider_id: sentence-transformers
     model_id: all-mpnet-base-v2
 safety:

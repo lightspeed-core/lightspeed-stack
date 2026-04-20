@@ -2,9 +2,7 @@
 name: RHAIIS E2E Tests
 
 on:
-  schedule:
-    - cron: "0 0 * * *"  # Runs once a day at midnight UTC
-  workflow_dispatch:
+  push
 
 
 jobs:
@@ -119,7 +117,15 @@ jobs:
 
       - name: Test RHAIIS connectivity
         run: |  
-          curl -f ${RHAIIS_URL}:${RHAIIS_PORT}/v1/models   -H "Authorization: Bearer ${RHAIIS_API_KEY}"  
+          echo "GET ${RHAIIS_URL}:${RHAIIS_PORT}/v1/models"
+          RESP=$(curl -sS -w "\n%{http_code}" "${RHAIIS_URL}:${RHAIIS_PORT}/v1/models" \
+            -H "Authorization: Bearer ${RHAIIS_API_KEY}" || printf '\n000')
+          HTTP_CODE=$(echo "$RESP" | tail -n1)
+          BODY=$(echo "$RESP" | sed '$d')
+          echo "HTTP $HTTP_CODE"
+          echo "Response body:"
+          echo "$BODY"
+          [ "$HTTP_CODE" = "200" ]
 
       - name: Docker Login for quay access
         if: matrix.mode == 'server'
@@ -180,11 +186,15 @@ jobs:
           echo "Testing /v1/models and verifying expected LLM is registered..."
           echo "Expected: provider_id=${EXPECTED_PROVIDER} provider_resource_id=${EXPECTED_MODEL}"
 
-          MODEL_JSON=$(curl -sfS "http://localhost:8080/v1/models?model_type=llm") || {
-            echo "❌ GET /v1/models?model_type=llm failed"
+          CURL_EC=0
+          MODEL_JSON=$(curl -sS "http://localhost:8080/v1/models?model_type=llm") || CURL_EC=$?
+          echo "GET /v1/models?model_type=llm response:"
+          echo "$MODEL_JSON"
+          if [ "$CURL_EC" -ne 0 ]; then
+            echo "❌ GET /v1/models?model_type=llm failed (curl exit $CURL_EC)"
             show_logs
             exit 1
-          }
+          fi
 
           if ! echo "$MODEL_JSON" | jq -e --arg p "$EXPECTED_PROVIDER" --arg m "$EXPECTED_MODEL" \
             '.models | any(.provider_id == $p and .provider_resource_id == $m)' >/dev/null

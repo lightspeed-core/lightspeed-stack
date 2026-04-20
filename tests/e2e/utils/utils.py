@@ -60,6 +60,38 @@ def is_prow_environment() -> bool:
     return os.getenv("RUNNING_PROW") is not None
 
 
+# Transient connection resets (e.g. errno 104) after container restarts in CI/Docker.
+E2E_HTTP_TRANSIENT_MAX_ATTEMPTS: int = 3
+E2E_HTTP_TRANSIENT_DELAY_S: float = 0.5
+
+
+def request_with_transient_retry(
+    **kwargs: Any,
+) -> requests.Response:
+    """Call :func:`requests.request`, retrying on transient :exc:`~requests.exceptions.ConnectionError`.
+
+    Parameters:
+        **kwargs: Forwarded to :func:`requests.request` (``method``, ``url``, ``json``,
+            ``headers``, ``timeout``, ``stream``, etc.).
+
+    Returns:
+        Successful :class:`requests.Response`.
+
+    Raises:
+        The last :exc:`requests.exceptions.ConnectionError` if all attempts fail.
+    """
+    last_err: BaseException | None = None
+    for attempt in range(E2E_HTTP_TRANSIENT_MAX_ATTEMPTS):
+        try:
+            return requests.request(**kwargs)
+        except requests.exceptions.ConnectionError as exc:
+            last_err = exc
+            if attempt < E2E_HTTP_TRANSIENT_MAX_ATTEMPTS - 1:
+                time.sleep(E2E_HTTP_TRANSIENT_DELAY_S)
+    assert last_err is not None
+    raise last_err
+
+
 def cluster_lightspeed_config_dir() -> str:
     """Directory of Lightspeed YAML files used for Prow/Konflux (ConfigMap sources).
 
