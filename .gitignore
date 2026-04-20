@@ -197,3 +197,6 @@ requirements.*.backup
 
 # Local run files
 local-run.yaml
+
+# Sisyphus planning files
+.sisyphus/
