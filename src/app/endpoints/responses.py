@@ -184,10 +184,7 @@ async def responses_endpoint_handler(
     responses_request.instructions = get_system_prompt(
         responses_request.instructions, field_name="instructions"
     )
-    instructions_substituted = (
-        client_instructions is None
-        or client_instructions != responses_request.instructions
-    )
+    instructions_substituted = client_instructions is None
     started_at = datetime.now(UTC)
     user_id = auth[0]
 

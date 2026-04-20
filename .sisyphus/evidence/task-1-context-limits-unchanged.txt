@@ -1,0 +1,6 @@
+tests/unit/models/rlsapi/test_requests.py:642:        (RlsapiV1Attachment, "contents", 65_536),
+tests/unit/models/rlsapi/test_requests.py:643:        (RlsapiV1Terminal, "output", 65_536),
+tests/unit/models/rlsapi/test_requests.py:644:        (RlsapiV1Context, "stdin", 65_536),
+src/models/rlsapi/requests.py:34:        max_length=65_536,
+src/models/rlsapi/requests.py:54:        max_length=65_536,
+src/models/rlsapi/requests.py:134:        max_length=65_536,
