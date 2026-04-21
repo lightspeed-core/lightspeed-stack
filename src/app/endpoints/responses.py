@@ -639,7 +639,12 @@ def _sanitize_response_dict(
       they were used as-is, the value is left unchanged.
     - ``tools``: server-deployed MCP tool definitions are removed; client-
       provided tools (those whose ``server_label`` is not in
-      ``configured_mcp_labels``) are preserved
+      ``configured_mcp_labels``) are preserved.
+    - ``output``: server-deployed MCP output items (``mcp_list_tools``,
+      ``mcp_call``, ``mcp_approval_request``) are stripped so clients only
+      see item types they understand (``message``, ``function_call``, etc.).
+    - ``model``: the provider routing prefix (everything before the last
+      ``/``) is stripped so clients see only the model name.
 
     Args:
         response_dict: Mutable dict produced by ``model_dump`` on a response
@@ -659,6 +664,17 @@ def _sanitize_response_dict(
             for tool in tools
             if tool.get("server_label") not in configured_mcp_labels
         ]
+
+    if output := response_dict.get("output"):
+        response_dict["output"] = [
+            item
+            for item in output
+            if not _is_server_mcp_output_item(item, configured_mcp_labels)
+        ]
+
+    model = response_dict.get("model")
+    if model and "/" in model:
+        response_dict["model"] = model.rsplit("/", 1)[-1]
 
 
 def _is_server_mcp_output_item(
@@ -835,16 +851,6 @@ async def response_generator(
                         configuration.rag_id_mapping,
                     )
                 )
-            # Remove server-deployed MCP items from the output array so
-            # clients only see item types they understand (message, function_call, etc.)
-            output = chunk_dict["response"].get("output")
-            if output is not None:
-                chunk_dict["response"]["output"] = [
-                    item
-                    for item in output
-                    if not _is_server_mcp_output_item(item, configured_mcp_labels)
-                ]
-
         # Intermediate response - no quota consumption and text yet
         if event_type == "response.in_progress":
             chunk_dict["response"]["available_quotas"] = {}
