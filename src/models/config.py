@@ -1786,6 +1786,17 @@ class OkpConfiguration(ConfigurationBase):
     )
 
 
+class RerankerConfiguration(ConfigurationBase):
+    """Reranker configuration for RAG chunk reranking."""
+
+    enabled: bool = True
+    model_id: str = "meta-llama/llama-cross-encoder-base"
+    provider_id: str = "meta-reference"
+    top_k_multiplier: float = 2.0  # fetch 2x, rerank, keep top_k
+    byok_boost: float = 1.2
+    okp_boost: float = 1.0
+
+
 class AzureEntraIdConfiguration(ConfigurationBase):
     """Microsoft Entra ID authentication attributes for Azure."""
 
@@ -1935,6 +1946,12 @@ class Configuration(ConfigurationBase):
         title="OKP configuration",
         description=f"OKP provider settings. Only used when '{constants.OKP_RAG_ID}' is listed "
         "in rag.inline or rag.tool.",
+    )
+
+    reranker: RerankerConfiguration = Field(
+        default_factory=RerankerConfiguration,
+        title="Reranker configuration",
+        description="Configuration for neural reranking of RAG chunks using llama-stack.",
     )
 
     @model_validator(mode="after")

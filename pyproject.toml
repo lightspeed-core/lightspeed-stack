@@ -72,6 +72,8 @@ dependencies = [
     "jinja2>=3.1.0",
     # To be able to fix multiple CVEs, also LCORE-1117
     "requests>=2.33.0",
+    # Used for RAG chunk reranking (cross-encoder)
+    "sentence-transformers>=2.0.0",
 ]
 
 
