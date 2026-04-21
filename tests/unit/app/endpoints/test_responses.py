@@ -1940,6 +1940,50 @@ class TestSanitizeResponseDict:
         _sanitize_response_dict(d, set(), instructions_substituted=False)
         assert len(d["tools"]) == 2
 
+    def test_strips_server_mcp_items_from_output(self) -> None:
+        """Test that server-deployed MCP output items are removed from output array."""
+        d: dict[str, Any] = {
+            "instructions": "prompt",
+            "output": [
+                {"type": "mcp_list_tools", "server_label": "okp", "tools": [{"name": "search_portal"}]},
+                {"type": "message", "role": "assistant", "content": [{"text": "hello"}]},
+                {"type": "mcp_call", "server_label": "okp", "id": "call-1"},
+            ],
+        }
+        _sanitize_response_dict(d, {"okp"}, instructions_substituted=False)
+        assert len(d["output"]) == 1
+        assert d["output"][0]["type"] == "message"
+
+    def test_preserves_non_server_mcp_output_items(self) -> None:
+        """Test that client MCP output items and regular items are preserved."""
+        d: dict[str, Any] = {
+            "output": [
+                {"type": "mcp_list_tools", "server_label": "client-mcp", "tools": []},
+                {"type": "message", "role": "assistant", "content": []},
+                {"type": "function_call", "name": "my_func"},
+            ],
+        }
+        _sanitize_response_dict(d, {"okp"}, instructions_substituted=False)
+        assert len(d["output"]) == 3
+
+    def test_no_error_when_output_absent(self) -> None:
+        """Test that missing output field does not raise."""
+        d: dict[str, Any] = {"model": "m"}
+        _sanitize_response_dict(d, {"okp"}, instructions_substituted=False)
+        assert "output" not in d
+
+    def test_strips_provider_prefix_from_model(self) -> None:
+        """Test that provider routing prefix is stripped from model field."""
+        d: dict[str, Any] = {"model": "google-vertex/publishers/google/models/gemini-2.5-flash"}
+        _sanitize_response_dict(d, set(), instructions_substituted=False)
+        assert d["model"] == "gemini-2.5-flash"
+
+    def test_model_without_slash_preserved(self) -> None:
+        """Test that model names without provider prefix are left unchanged."""
+        d: dict[str, Any] = {"model": "gemini-2.5-flash"}
+        _sanitize_response_dict(d, set(), instructions_substituted=False)
+        assert d["model"] == "gemini-2.5-flash"
+
     def test_all_fields_sanitized_together_with_substitution(self) -> None:
         """Test that all sanitizations are applied in a single call."""
         d: dict[str, Any] = {
@@ -1949,11 +1993,17 @@ class TestSanitizeResponseDict:
                 {"server_label": "mcp-server", "name": "server-tool"},
                 {"name": "client-tool"},
             ],
+            "output": [
+                {"type": "mcp_list_tools", "server_label": "mcp-server", "tools": []},
+                {"type": "message", "role": "assistant", "content": []},
+            ],
         }
         _sanitize_response_dict(d, {"mcp-server"}, instructions_substituted=True)
         assert d["instructions"] == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
-        assert d["model"] == "google-vertex/publishers/google/models/gemini"
+        assert d["model"] == "gemini"
         assert d["tools"] == [{"name": "client-tool"}]
+        assert len(d["output"]) == 1
+        assert d["output"][0]["type"] == "message"
 
     def test_all_fields_sanitized_together_without_substitution(self) -> None:
         """Test that client instructions are preserved while tools are still filtered."""
@@ -1964,11 +2014,17 @@ class TestSanitizeResponseDict:
                 {"server_label": "mcp-server", "name": "server-tool"},
                 {"name": "client-tool"},
             ],
+            "output": [
+                {"type": "mcp_list_tools", "server_label": "mcp-server", "tools": []},
+                {"type": "message", "role": "assistant", "content": []},
+            ],
         }
         _sanitize_response_dict(d, {"mcp-server"}, instructions_substituted=False)
         assert d["instructions"] == "client prompt"
-        assert d["model"] == "google-vertex/publishers/google/models/gemini"
+        assert d["model"] == "gemini"
         assert d["tools"] == [{"name": "client-tool"}]
+        assert len(d["output"]) == 1
+        assert d["output"][0]["type"] == "message"
 
 
 class TestMcpEventsFilteredUnconditionally:
