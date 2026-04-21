@@ -51,7 +51,7 @@ Feature: Responses endpoint streaming API tests
         {
           "object": "response",
           "status": "completed",
-          "model": "{PROVIDER}/{MODEL}",
+          "model": "{MODEL_SHORT}",
           "instructions": "You are a helpful assistant.",
           "prompt": {"id": "e2e_responses_passthrough_prompt"},
           "reasoning": {"effort": "low"},
@@ -173,7 +173,7 @@ Feature: Responses endpoint streaming API tests
         {
           "object": "response",
           "status": "completed",
-          "model": "{PROVIDER}/{MODEL}",
+          "model": "{MODEL_SHORT}",
           "output": [
             {
               "type": "message",

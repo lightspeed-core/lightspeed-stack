@@ -111,6 +111,7 @@ def before_all(context: Context) -> None:
     # Only override if the variables contain actual values (skip if empty)
     if model_override and provider_override:
         context.default_model = model_override
+        context.default_model_short = context.default_model.rsplit("/", 1)[-1]
         context.default_provider = provider_override
         print(
             f"Using override LLM: {context.default_model} (provider: {context.default_provider})"
@@ -120,6 +121,7 @@ def before_all(context: Context) -> None:
 
         if llm_model:
             context.default_model = llm_model["model_id"]
+            context.default_model_short = context.default_model.rsplit("/", 1)[-1]
             context.default_provider = llm_model["provider_id"]
             print(
                 f"Detected LLM: {context.default_model} (provider: {context.default_provider})"
@@ -127,6 +129,7 @@ def before_all(context: Context) -> None:
         else:
             # Fallback for development
             context.default_model = FALLBACK_MODEL
+            context.default_model_short = context.default_model.rsplit("/", 1)[-1]
             context.default_provider = FALLBACK_PROVIDER
             print(
                 f"⚠ Could not detect models, using fallback: {context.default_provider}/{context.default_model}"
