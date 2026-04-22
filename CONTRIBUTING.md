@@ -18,6 +18,7 @@
     * [Pre-commit hook settings](#pre-commit-hook-settings)
 * [Code coverage measurement](#code-coverage-measurement)
 * [Linters](#linters)
+    * [OpenAPI (Spectral)](#openapi-spectral)
     * [Type hints checks](#type-hints-checks)
     * [Ruff](#ruff)
     * [Pylint](#pylint)
@@ -48,6 +49,7 @@
 - git
 - Python 3.12 or 3.13
 - pip
+- **Node.js** (18 or newer; **npm** and **`npx`** ship with Node). **`make verify`** runs **`lint-openapi`**, which calls **`npx --yes @stoplight/spectral-cli@6`** (see `Makefile`). If **`npx`** is not installed, **`lint-openapi` is skipped** with a message so **`make verify` still succeeds** locally; install Node to run the OpenAPI check. **CI** always runs Spectral (see `.github/workflows/openapi_spectral.yaml`).
 
 The development requires at least [Python 3.12](https://docs.python.org/3/whatsnew/3.12.html) due to significant improvement on performance, optimizations which benefit modern ML, AI, LLM, NL stacks, and improved asynchronous processing capabilities. It is also possible to use Python 3.13.
 
@@ -57,6 +59,7 @@ The development requires at least [Python 3.12](https://docs.python.org/3/whatsn
 
 1. `pip install --user uv`
 1. `uv --version` -- should return no error
+1. Install [Node.js](https://nodejs.org/en/download) (LTS is fine) or use your OS package manager, e.g. Fedora: `sudo dnf install nodejs`, macOS with [Homebrew](https://brew.sh/): `brew install node`. Confirm `node --version` and `npx --version` work. CI uses Node 22 for Spectral (see `.github/workflows/openapi_spectral.yaml`).
 
 
 
@@ -216,6 +219,10 @@ Code coverage reports are generated in JSON and also in format compatible with [
 ## Linters
 
 _Black_, _Ruff_, Pyright, _Pylint_, __Pydocstyle__, __Mypy__, and __Bandit__ tools are used as linters. There are a bunch of linter rules enabled for this repository. All of them are specified in `pyproject.toml`, such as in sections `[tool.ruff]` and `[tool.pylint."MESSAGES CONTROL"]`. Some specific rules can be disabled using `ignore` parameter (empty now).
+
+### OpenAPI (Spectral)
+
+OpenAPI is linted with [Spectral](https://stoplight.io/open-api/) via **`npx --yes @stoplight/spectral-cli@6`** in the **`lint-openapi`** target (`make lint-openapi`, part of **`make verify`**). If **`npx`** is missing, **`lint-openapi`** skips Spectral locally; install **Node.js** to run it (see [Prerequisites](#prerequisites) and [Tooling installation](#tooling-installation)). **CI** always runs the Spectral step. If you introduce a **new** router tag (`APIRouter(tags=[...])`), you must also extend the global tag list in `src/app/main.py` and regenerate `docs/openapi.json`. See **[docs/contributing/openapi-tags-and-spectral.md](docs/contributing/openapi-tags-and-spectral.md)**.
 
 
 ### Type hints checks

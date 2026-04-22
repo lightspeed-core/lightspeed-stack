@@ -13,3 +13,15 @@ The schema generator **`scripts/generate_openapi_schema.py`** passes **`tags=app
 ```bash
 uv run scripts/generate_openapi_schema.py docs/openapi.json
 ```
+
+## Linting (`make lint-openapi`)
+
+Spectral is configured in **`.spectral.yaml`** (extends `spectral:oas`). Run:
+
+```bash
+make lint-openapi
+```
+
+This is part of **`make verify`**. If **`npx`** is not on your **`PATH`**, the Makefile **skips** Spectral and prints a short message so **`make verify`** can still pass; install Node.js to run the check locally. **CI** (`.github/workflows/openapi_spectral.yaml`) always runs Spectral. Failures are driven by **error**-severity rules.
+
+The rule **`oas3-valid-media-example`** (examples must match schemas) is **turned off** in **`.spectral.yaml`** because the generated spec carries many partial examples and produced hundreds of noisy warnings. Turn it back on when examples are brought in line with schemas.
