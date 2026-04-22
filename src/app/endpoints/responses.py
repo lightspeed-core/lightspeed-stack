@@ -447,7 +447,7 @@ async def handle_streaming_response(
                 **api_params.model_dump(exclude_none=True)
             )
             generator = response_generator(
-                stream=cast(AsyncIterator[OpenAIResponseObjectStream], response),
+                stream=cast("AsyncIterator[OpenAIResponseObjectStream]", response),
                 user_input=request.input,
                 api_params=api_params,
                 user_id=auth[0],
@@ -697,7 +697,7 @@ def _should_filter_mcp_chunk(
         True if the chunk should be filtered out from the client stream.
     """
     if event_type == "response.output_item.added":
-        item_added_chunk = cast(OutputItemAddedChunk, chunk)
+        item_added_chunk = cast("OutputItemAddedChunk", chunk)
         item = item_added_chunk.item
         item_type = getattr(item, "type", None)
         if item_type in ("mcp_call", "mcp_list_tools", "mcp_approval_request"):
@@ -716,7 +716,7 @@ def _should_filter_mcp_chunk(
             return True
 
     if event_type == "response.output_item.done":
-        item_done_chunk = cast(OutputItemDoneChunk, chunk)
+        item_done_chunk = cast("OutputItemDoneChunk", chunk)
         item = item_done_chunk.item
         item_type = getattr(item, "type", None)
         if item_type in ("mcp_call", "mcp_list_tools", "mcp_approval_request"):
@@ -857,7 +857,7 @@ async def response_generator(
             "response.failed",
         ):
             latest_response_object = cast(
-                OpenAIResponseObject, cast(Any, chunk).response
+                "OpenAIResponseObject", cast("Any", chunk).response
             )
 
             # Extract and consume tokens if any were used
@@ -1044,7 +1044,7 @@ async def handle_non_streaming_response(
     else:
         try:
             api_response = cast(
-                OpenAIResponseObject,
+                "OpenAIResponseObject",
                 await client.responses.create(
                     **api_params.model_dump(exclude_none=True)
                 ),

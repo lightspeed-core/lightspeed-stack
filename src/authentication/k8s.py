@@ -140,7 +140,7 @@ class K8sClientSingleton:
                 logger.info("Failed to initialize Kubernetes client: %s", e)
                 raise
         # At this point _instance is guaranteed to be initialized
-        return cast(Self, cls._instance)
+        return cast("Self", cls._instance)
 
     @classmethod
     def get_authn_api(cls) -> kubernetes.client.AuthenticationV1Api:
@@ -204,7 +204,7 @@ class K8sClientSingleton:
             custom_objects_api = cls.get_custom_objects_api()
             # Kubernetes API always returns dict for custom objects
             version_data = cast(
-                dict,
+                "dict",
                 custom_objects_api.get_cluster_custom_object(
                     "config.openshift.io", "v1", "clusterversions", "version"
                 ),
@@ -334,7 +334,7 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReviewStatus]
     )
     try:
         response = cast(
-            kubernetes.client.V1TokenReview,
+            "kubernetes.client.V1TokenReview",
             auth_api.create_token_review(token_review),
         )
         status = response.status
@@ -450,7 +450,7 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
             raise HTTPException(**response.model_dump())
 
         # Cast user to proper type for type checking
-        user = cast(kubernetes.client.V1UserInfo, user_info.user)
+        user = cast("kubernetes.client.V1UserInfo", user_info.user)
 
         if user.username == "kube:admin":
             try:
@@ -484,7 +484,7 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
                 )
             )
             sar_response = cast(
-                kubernetes.client.V1SubjectAccessReview,
+                "kubernetes.client.V1SubjectAccessReview",
                 authorization_api.create_subject_access_review(sar),
             )
 
@@ -497,10 +497,10 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
             raise HTTPException(**response.model_dump()) from e
 
         sar_status = cast(
-            kubernetes.client.V1SubjectAccessReviewStatus, sar_response.status
+            "kubernetes.client.V1SubjectAccessReviewStatus", sar_response.status
         )
-        user_uid = cast(str, user.uid)
-        username = cast(str, user.username)
+        user_uid = cast("str", user.uid)
+        username = cast("str", user.username)
 
         if not sar_status.allowed:
             response = ForbiddenResponse.endpoint(user_id=user_uid)

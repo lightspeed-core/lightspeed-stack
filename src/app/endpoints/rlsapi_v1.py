@@ -302,7 +302,7 @@ async def _call_llm(
         stream=False,
         store=False,
     )
-    return cast(OpenAIResponseObject, response)
+    return cast("OpenAIResponseObject", response)
 
 
 def _get_cla_version(request: Request) -> str:
@@ -694,7 +694,7 @@ async def infer_endpoint(  # pylint: disable=R0914
         response = await _call_llm(
             input_source,
             instructions,
-            tools=cast(list[Any], mcp_tools),
+            tools=cast("list[Any]", mcp_tools),
             model_id=model_id,
         )
         response_text = extract_text_from_response_items(response.output)

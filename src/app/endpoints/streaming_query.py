@@ -456,7 +456,7 @@ async def _persist_interrupted_turn(
         await append_turn_to_conversation(
             context.client,
             responses_params.conversation,
-            cast(str, responses_params.input),
+            cast("str", responses_params.input),
             INTERRUPTED_RESPONSE_MESSAGE,
         )
     except Exception:  # pylint: disable=broad-except
@@ -726,9 +726,9 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
 
         # Store MCP call item info for later lookup when arguments.done event occurs
         elif event_type == "response.output_item.added":
-            item_added_chunk = cast(OutputItemAddedChunk, chunk)
+            item_added_chunk = cast("OutputItemAddedChunk", chunk)
             if item_added_chunk.item.type == "mcp_call":
-                mcp_call_item = cast(MCPCall, item_added_chunk.item)
+                mcp_call_item = cast("MCPCall", item_added_chunk.item)
                 mcp_calls[item_added_chunk.output_index] = (
                     mcp_call_item.id,
                     mcp_call_item.name,
@@ -736,7 +736,7 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
 
         # Text streaming - emit token delta
         elif event_type == "response.output_text.delta":
-            delta_chunk = cast(TextDeltaChunk, chunk)
+            delta_chunk = cast("TextDeltaChunk", chunk)
             text_parts.append(delta_chunk.delta)
             yield stream_event(
                 {
@@ -750,12 +750,12 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
 
         # Final text of the output (capture, but emit at response.completed)
         elif event_type == "response.output_text.done":
-            text_done_chunk = cast(TextDoneChunk, chunk)
+            text_done_chunk = cast("TextDoneChunk", chunk)
             turn_summary.llm_response = text_done_chunk.text
 
         # Emit tool call when MCP call arguments are done
         elif event_type == "response.mcp_call.arguments.done":
-            mcp_arguments_done_chunk = cast(MCPArgsDoneChunk, chunk)
+            mcp_arguments_done_chunk = cast("MCPArgsDoneChunk", chunk)
             tool_call = build_mcp_tool_call_from_arguments_done(
                 mcp_arguments_done_chunk.output_index,
                 mcp_arguments_done_chunk.arguments,
@@ -773,7 +773,7 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
         # For mcp_call, only emit result (call was already emitted when arguments.done)
         # For other types, emit both call and result
         elif event_type == "response.output_item.done":
-            output_item_done_chunk = cast(OutputItemDoneChunk, chunk)
+            output_item_done_chunk = cast("OutputItemDoneChunk", chunk)
             item_type = output_item_done_chunk.item.type
             # Skip message items as they are parsed separately
             if item_type == "message":
@@ -786,7 +786,7 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
             # If output_index is in dict, process in else branch (emit both call and result)
             if item_type == "mcp_call" and output_index not in mcp_calls:
                 # Call was already emitted during arguments.done, only emit result
-                mcp_call_item = cast(MCPCall, output_item_done_chunk.item)
+                mcp_call_item = cast("MCPCall", output_item_done_chunk.item)
                 tool_result = build_tool_result_from_mcp_output_item_done(mcp_call_item)
                 turn_summary.tool_results.append(tool_result)
                 yield stream_event(
@@ -818,7 +818,7 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
         # Completed response - capture final text and response object
         elif event_type == "response.completed":
             latest_response_object = cast(
-                OpenAIResponseObject, getattr(chunk, "response")  # noqa: B009
+                "OpenAIResponseObject", getattr(chunk, "response")  # noqa: B009
             )
             turn_summary.llm_response = turn_summary.llm_response or "".join(text_parts)
             yield stream_event(
@@ -834,7 +834,7 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
         # Incomplete or failed response - emit error
         elif event_type in ("response.incomplete", "response.failed"):
             latest_response_object = cast(
-                OpenAIResponseObject, getattr(chunk, "response")  # noqa: B009
+                "OpenAIResponseObject", getattr(chunk, "response")  # noqa: B009
             )
             error_message = (
                 latest_response_object.error.message

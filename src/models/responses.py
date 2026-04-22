@@ -1692,7 +1692,8 @@ class ResponsesResponse(AbstractSuccessfulResponse):
         json_example = model_examples[0] if model_examples else None
 
         schema_extra = (
-            cast(dict[str, Any], dict(cls.model_config)).get("json_schema_extra") or {}
+            cast("dict[str, Any]", dict(cls.model_config)).get("json_schema_extra")
+            or {}
         )
         sse_example = schema_extra.get("sse_example", "")
 

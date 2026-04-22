@@ -45,7 +45,7 @@ async def register_mcp_servers_async(
     if configuration.llama_stack.use_as_library_client:
         # Library client - use async interface
         client = cast(
-            AsyncLlamaStackAsLibraryClient, AsyncLlamaStackClientHolder().get_client()
+            "AsyncLlamaStackAsLibraryClient", AsyncLlamaStackClientHolder().get_client()
         )
         await client.initialize()
         await _register_mcp_toolgroups_async(client, configuration.mcp_servers, logger)

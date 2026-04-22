@@ -308,7 +308,7 @@ async def retrieve_response(
         response = await client.responses.create(
             **responses_params.model_dump(exclude_none=True)
         )
-        response = cast(OpenAIResponseObject, response)
+        response = cast("OpenAIResponseObject", response)
 
     except RuntimeError as e:  # library mode wraps 413 into runtime error
         if is_context_length_error(str(e)):

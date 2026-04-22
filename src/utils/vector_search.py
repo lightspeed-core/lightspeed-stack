@@ -697,7 +697,7 @@ def append_inline_rag_context_to_responses_input(
     for item in input_value:
         if item.type != "message" or item.role != "user":
             continue
-        message = cast(ResponseMessage, item)
+        message = cast("ResponseMessage", item)
         content = message.content
         if isinstance(content, str):
             message.content = content + "\n\n" + inline_rag_context_text
