@@ -120,7 +120,7 @@ Feature: Responses endpoint API tests
         {
           "object": "response",
           "status": "completed",
-          "model": "{MODEL_SHORT}",
+          "model": "{PROVIDER}/{MODEL}",
           "output": [
             {
               "type": "message",

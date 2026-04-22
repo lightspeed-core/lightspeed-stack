@@ -1983,18 +1983,32 @@ class TestSanitizeResponseDict:
         _sanitize_response_dict(d, {"okp"}, instructions_substituted=False)
         assert "output" not in d
 
-    def test_strips_provider_prefix_from_model(self) -> None:
-        """Test that provider routing prefix is stripped from model field."""
+    def test_strips_provider_prefix_from_model_when_substituted(self) -> None:
+        """Test that provider routing prefix is stripped when server substituted the model."""
         d: dict[str, Any] = {
             "model": "google-vertex/publishers/google/models/gemini-2.5-flash"
         }
-        _sanitize_response_dict(d, set(), instructions_substituted=False)
+        _sanitize_response_dict(
+            d, set(), instructions_substituted=False, model_substituted=True
+        )
         assert d["model"] == "gemini-2.5-flash"
+
+    def test_preserves_client_model_when_not_substituted(self) -> None:
+        """Test that client-specified model is echoed back unchanged."""
+        d: dict[str, Any] = {
+            "model": "google-vertex/publishers/google/models/gemini-2.5-flash"
+        }
+        _sanitize_response_dict(
+            d, set(), instructions_substituted=False, model_substituted=False
+        )
+        assert d["model"] == "google-vertex/publishers/google/models/gemini-2.5-flash"
 
     def test_model_without_slash_preserved(self) -> None:
         """Test that model names without provider prefix are left unchanged."""
         d: dict[str, Any] = {"model": "gemini-2.5-flash"}
-        _sanitize_response_dict(d, set(), instructions_substituted=False)
+        _sanitize_response_dict(
+            d, set(), instructions_substituted=False, model_substituted=True
+        )
         assert d["model"] == "gemini-2.5-flash"
 
     def test_all_fields_sanitized_together_with_substitution(self) -> None:
@@ -2011,7 +2025,12 @@ class TestSanitizeResponseDict:
                 {"type": "message", "role": "assistant", "content": []},
             ],
         }
-        _sanitize_response_dict(d, {"mcp-server"}, instructions_substituted=True)
+        _sanitize_response_dict(
+            d,
+            {"mcp-server"},
+            instructions_substituted=True,
+            model_substituted=True,
+        )
         assert d["instructions"] == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
         assert d["model"] == "gemini"
         assert d["tools"] == [{"name": "client-tool"}]
@@ -2019,7 +2038,7 @@ class TestSanitizeResponseDict:
         assert d["output"][0]["type"] == "message"
 
     def test_all_fields_sanitized_together_without_substitution(self) -> None:
-        """Test that client instructions are preserved while tools are still filtered."""
+        """Test that client instructions and model are preserved while tools are still filtered."""
         d: dict[str, Any] = {
             "instructions": "client prompt",
             "model": "google-vertex/publishers/google/models/gemini",
@@ -2032,9 +2051,14 @@ class TestSanitizeResponseDict:
                 {"type": "message", "role": "assistant", "content": []},
             ],
         }
-        _sanitize_response_dict(d, {"mcp-server"}, instructions_substituted=False)
+        _sanitize_response_dict(
+            d,
+            {"mcp-server"},
+            instructions_substituted=False,
+            model_substituted=False,
+        )
         assert d["instructions"] == "client prompt"
-        assert d["model"] == "gemini"
+        assert d["model"] == "google-vertex/publishers/google/models/gemini"
         assert d["tools"] == [{"name": "client-tool"}]
         assert len(d["output"]) == 1
         assert d["output"][0]["type"] == "message"
@@ -2144,10 +2168,11 @@ class TestSanitizesOutputAndModel:
             moderation_result=mock_moderation,
             inline_rag_context=RAGContext(),
             instructions_substituted=True,
+            model_substituted=True,
         )
 
         assert isinstance(response, ResponsesResponse)
-        # Model provider prefix should be stripped
+        # Model provider prefix should be stripped when server-substituted
         assert response.model == "gemini-2.5-flash"
         # Instructions should be replaced with placeholder
         assert response.instructions == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
@@ -2256,6 +2281,7 @@ class TestSanitizesOutputAndModel:
             inline_rag_context=RAGContext(),
             filter_server_tools=False,
             instructions_substituted=True,
+            model_substituted=True,
         )
         collected: list[str] = []
         async for part in response.body_iterator:
