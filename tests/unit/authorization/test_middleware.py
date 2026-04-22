@@ -262,7 +262,7 @@ class TestPerformAuthorizationCheck:
 
         assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
         assert exc_info.value.status_code == 403
-        detail = cast(dict[str, str], exc_info.value.detail)
+        detail = cast("dict[str, str]", exc_info.value.detail)
         assert detail["response"] == (
             "User does not have permission to access this endpoint"
         )

@@ -200,7 +200,7 @@ async def test_auth_dependency_invalid_token(mocker: MockerFixture) -> None:
 
     # Check if the correct status code is returned for unauthorized access
     assert exc_info.value.status_code == 401
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["response"] == ("Missing or invalid credentials provided by client")
     assert detail["cause"] == "Invalid or expired Kubernetes token"
 
@@ -236,7 +236,7 @@ async def test_auth_dependency_no_token(mocker: MockerFixture) -> None:
 
     # Check if the correct status code is returned for unauthorized access
     assert exc_info.value.status_code == 401
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["response"] == ("Missing or invalid credentials provided by client")
     assert detail["cause"] == "No Authorization header found"
 
@@ -395,7 +395,7 @@ async def test_auth_dependency_no_token_readiness_liveness_endpoints_2(
 
         # Check if the correct status code is returned for unauthorized access
         assert exc_info.value.status_code == 401
-        detail = cast(dict[str, str], exc_info.value.detail)
+        detail = cast("dict[str, str]", exc_info.value.detail)
         assert detail["response"] == (
             "Missing or invalid credentials provided by client"
         )
@@ -474,7 +474,7 @@ async def test_auth_dependency_no_token_normal_endpoints(
 
         # Check if the correct status code is returned for unauthorized access
         assert exc_info.value.status_code == 401
-        detail = cast(dict[str, str], exc_info.value.detail)
+        detail = cast("dict[str, str]", exc_info.value.detail)
         assert detail["response"] == (
             "Missing or invalid credentials provided by client"
         )
@@ -790,7 +790,7 @@ async def test_kube_admin_cluster_id_api_connection_error_returns_503(
 
     # Should return 503 Service Unavailable
     assert exc_info.value.status_code == 503
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["response"] == "Unable to connect to Kubernetes API"
     assert "Service Unavailable" in detail["cause"]
 
@@ -837,7 +837,7 @@ async def test_kube_admin_cluster_version_not_found_returns_500(
 
     # Should return 500 Internal Server Error
     assert exc_info.value.status_code == 500
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["response"] == "Internal server error"
     assert "ClusterVersion 'version' resource not found" in detail["cause"]
 
@@ -892,7 +892,7 @@ async def test_kube_admin_cluster_version_permission_error_returns_500(
 
     # Should return 500 Internal Server Error
     assert exc_info.value.status_code == 500
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["response"] == "Internal server error"
     assert "Insufficient permissions" in detail["cause"]
 
@@ -939,7 +939,7 @@ async def test_kube_admin_invalid_cluster_version_returns_500(
 
     # Should return 500 Internal Server Error
     assert exc_info.value.status_code == 500
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["response"] == "Internal server error"
     assert "Missing or invalid 'clusterID' in ClusterVersion" in detail["cause"]
 
@@ -995,6 +995,6 @@ def test_get_user_info_api_error_handling(
         get_user_info("some-token")
 
     assert exc_info.value.status_code == expected_status
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["response"] == expected_response
     assert expected_cause_fragment in detail["cause"]

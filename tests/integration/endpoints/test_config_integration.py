@@ -86,5 +86,5 @@ async def test_config_endpoint_fails_without_configuration(
     assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
     assert isinstance(exc_info.value.detail, dict)
     assert "response" in exc_info.value.detail
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert "configuration is not loaded" in detail["response"].lower()

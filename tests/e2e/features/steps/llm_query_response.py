@@ -32,7 +32,7 @@ def _response_contains_fragment(text: str, fragment: str) -> bool:
 
 def _collect_output_item_types(response_body: dict[str, Any]) -> list[str]:
     """Collect ``type`` from each top-level ``output`` item in a Responses API JSON body."""
-    output = cast(list[dict[str, Any]], response_body["output"])
+    output = cast("list[dict[str, Any]]", response_body["output"])
     return [item["type"] for item in output]
 
 
@@ -40,7 +40,7 @@ def _collect_output_item_types(response_body: dict[str, Any]) -> list[str]:
 def responses_output_should_not_include_tool_items(context: Context) -> None:
     """Assert no tool-related items appear in the Responses JSON ``output`` array."""
     assert context.response is not None, "Request needs to be performed first"
-    response_json = cast(dict[str, Any], context.response.json())
+    response_json = cast("dict[str, Any]", context.response.json())
     types_found = _collect_output_item_types(response_json)
     bad = [t for t in types_found if t in _RESPONSE_TOOL_OUTPUT_ITEM_TYPES]
     assert not bad, (
@@ -53,7 +53,7 @@ def responses_output_should_not_include_tool_items(context: Context) -> None:
 def responses_output_should_include_item_type(context: Context, item_type: str) -> None:
     """Assert at least one ``output`` item has the given ``type``."""
     assert context.response is not None, "Request needs to be performed first"
-    response_json = cast(dict[str, Any], context.response.json())
+    response_json = cast("dict[str, Any]", context.response.json())
     types_found = _collect_output_item_types(response_json)
     assert item_type in types_found, (
         f"Expected output item type {item_type!r} not found; "
@@ -67,7 +67,7 @@ def responses_output_should_not_include_item_type(
 ) -> None:
     """Assert no ``output`` item has the given ``type``."""
     assert context.response is not None, "Request needs to be performed first"
-    response_json = cast(dict[str, Any], context.response.json())
+    response_json = cast("dict[str, Any]", context.response.json())
     types_found = _collect_output_item_types(response_json)
     assert item_type not in types_found, (
         f"Expected output item type {item_type!r} to be absent; "
@@ -81,7 +81,7 @@ def responses_output_should_include_one_of_types(context: Context) -> None:
     assert context.response is not None, "Request needs to be performed first"
     assert context.table is not None, "Table with column 'item type' is required"
     allowed = [row["item type"].strip() for row in context.table]
-    response_json = cast(dict[str, Any], context.response.json())
+    response_json = cast("dict[str, Any]", context.response.json())
     types_found = _collect_output_item_types(response_json)
     assert any(
         a in types_found for a in allowed

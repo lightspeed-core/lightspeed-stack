@@ -900,7 +900,7 @@ class TestResolveToolChoice:
         "tools_arg",
         [
             cast(
-                list[InputTool],
+                "list[InputTool]",
                 [InputToolFileSearch(vector_store_ids=["vs1"])],
             ),
             None,
@@ -936,7 +936,7 @@ class TestResolveToolChoice:
         """Explicit tools with auto or omitted tool_choice pass through."""
         self._passthrough_translate(mocker)
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [InputToolFileSearch(vector_store_ids=["vs1"])],
         )
         prepared, resolved_choice = await resolve_tool_choice(
@@ -954,7 +954,7 @@ class TestResolveToolChoice:
         """Explicit tools with ToolChoiceMode.required are preserved."""
         self._passthrough_translate(mocker)
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [InputToolFileSearch(vector_store_ids=["vs1"])],
         )
         prepared, choice = await resolve_tool_choice(
@@ -973,7 +973,7 @@ class TestResolveToolChoice:
         self._passthrough_translate(mocker)
         tool_choice_obj = ToolChoiceFileSearch()
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [InputToolFileSearch(vector_store_ids=["vs1"])],
         )
         prepared, choice = await resolve_tool_choice(
@@ -1014,7 +1014,7 @@ class TestResolveToolChoice:
             tools=[{"type": "file_search"}],
         )
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolFileSearch(vector_store_ids=["vs1"]),
                 InputToolMCP(server_label="s1", server_url="http://example.com"),
@@ -1037,7 +1037,7 @@ class TestResolveToolChoice:
             tools=[{"type": "mcp", "server_label": "keep"}],
         )
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolMCP(server_label="keep", server_url="http://a"),
                 InputToolMCP(server_label="drop", server_url="http://b"),
@@ -1060,7 +1060,7 @@ class TestResolveToolChoice:
             tools=[{"type": "mcp", "server_label": "other"}],
         )
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [InputToolFileSearch(vector_store_ids=["vs1"])],
         )
         assert await resolve_tool_choice(tools, allowed, "token") == (None, None)
@@ -1076,7 +1076,7 @@ class TestResolveToolChoice:
             tools=[{"type": "function", "name": "keep_fn"}],
         )
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolFunction(name="keep_fn", parameters={}),
                 InputToolFunction(name="drop_fn", parameters={}),
@@ -1098,7 +1098,7 @@ class TestResolveToolChoice:
             tools=[{"type": "web_search"}],
         )
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolWebSearch(type="web_search"),
                 InputToolWebSearch(type="web_search_preview"),
@@ -1230,7 +1230,7 @@ class TestFilterToolsByAllowedEntries:
     def test_file_search_type_only_keeps_all_file_search(self) -> None:
         """One entry ``{type: file_search}`` keeps every file_search tool."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolFileSearch(vector_store_ids=["a"]),
                 InputToolFileSearch(vector_store_ids=["b"]),
@@ -1243,7 +1243,7 @@ class TestFilterToolsByAllowedEntries:
     def test_empty_allowlist_keeps_nothing(self) -> None:
         """Empty allowlist removes every tool."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [InputToolFileSearch(vector_store_ids=["a"])],
         )
         assert not filter_tools_by_allowed_entries(tools, [])
@@ -1251,7 +1251,7 @@ class TestFilterToolsByAllowedEntries:
     def test_mcp_type_only_matches_all_mcp_tools(self) -> None:
         """``{type: mcp}`` keeps every MCP tool regardless of server_label."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolMCP(server_label="a", server_url="http://a"),
                 InputToolMCP(server_label="b", server_url="http://b"),
@@ -1264,7 +1264,7 @@ class TestFilterToolsByAllowedEntries:
     def test_mcp_type_and_server_label_specific(self) -> None:
         """Restrict to one MCP server using type + server_label."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolMCP(server_label="keep", server_url="http://a"),
                 InputToolMCP(server_label="other", server_url="http://b"),
@@ -1281,7 +1281,7 @@ class TestFilterToolsByAllowedEntries:
     def test_function_type_and_name(self) -> None:
         """Function tools match on type and name."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolFunction(name="fn_a", parameters={}),
                 InputToolFunction(name="fn_b", parameters={}),
@@ -1298,7 +1298,7 @@ class TestFilterToolsByAllowedEntries:
     def test_web_search_type_literal_must_match(self) -> None:
         """web_search vs web_search_preview require distinct allowlist entries."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolWebSearch(type="web_search"),
                 InputToolWebSearch(type="web_search_preview"),
@@ -1315,7 +1315,7 @@ class TestFilterToolsByAllowedEntries:
     def test_multiple_allowlist_entries_or_semantics(self) -> None:
         """A tool is kept if it matches any allowlist entry."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolFileSearch(vector_store_ids=["x"]),
                 InputToolMCP(server_label="m", server_url="http://m"),
@@ -1335,7 +1335,7 @@ class TestFilterToolsByAllowedEntries:
     def test_no_entry_matches_returns_empty(self) -> None:
         """When no tool satisfies any entry, result is empty."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [InputToolFileSearch(vector_store_ids=["a"])],
         )
         assert not filter_tools_by_allowed_entries(
@@ -1346,7 +1346,7 @@ class TestFilterToolsByAllowedEntries:
     def test_mcp_name_grouped_by_server_narrows_allowed_tools(self) -> None:
         """MCP ``name`` is grouped by ``server_label`` and applied after generic match."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolMCP(
                     server_label="keep",
@@ -1366,7 +1366,7 @@ class TestFilterToolsByAllowedEntries:
     def test_mcp_allowed_tools_none_projects_to_entry_names(self) -> None:
         """``allowed_tools`` None permits any name; projection narrows to grouped names."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolMCP(
                     server_label="s",
@@ -1386,7 +1386,7 @@ class TestFilterToolsByAllowedEntries:
     def test_mcp_server_without_name_in_allowlist_skips_projection(self) -> None:
         """Any MCP entry without ``name`` for that server disables name narrowing."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolMCP(
                     server_label="s",
@@ -1409,7 +1409,7 @@ class TestFilterToolsByAllowedEntries:
     def test_mcp_allowed_tools_filter_tool_names_none(self) -> None:
         """AllowedToolsFilter with ``tool_names`` None does not block grouped names."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolMCP(
                     server_label="s",
@@ -1429,7 +1429,7 @@ class TestFilterToolsByAllowedEntries:
     def test_mcp_allowed_tools_filter_intersects_with_grouped_names(self) -> None:
         """AllowedToolsFilter with explicit ``tool_names`` intersects grouped allowlist names."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolMCP(
                     server_label="s",
@@ -1449,7 +1449,7 @@ class TestFilterToolsByAllowedEntries:
     def test_mcp_name_not_permitted_drops_tool(self) -> None:
         """Empty intersection between grouped names and ``allowed_tools`` drops the tool."""
         tools = cast(
-            list[InputTool],
+            "list[InputTool]",
             [
                 InputToolMCP(
                     server_label="s",

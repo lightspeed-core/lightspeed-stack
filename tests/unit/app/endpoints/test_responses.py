@@ -457,7 +457,7 @@ class TestResponsesEndpointHandler:
             OpenAIResponseMessage(role="user", content="What is K8s?"),
         ]
         responses_request = ResponsesRequest(
-            input=cast(Any, structured_input),
+            input=cast("Any", structured_input),
         )
         _patch_base(mocker, minimal_config)
         _patch_client(mocker)

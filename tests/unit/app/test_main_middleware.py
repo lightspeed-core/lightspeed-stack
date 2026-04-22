@@ -79,7 +79,7 @@ async def test_global_exception_middleware_catches_unexpected_exception() -> Non
 
     expected_response = InternalServerErrorResponse.generic()
     expected_detail = expected_response.model_dump()["detail"]
-    detail_dict = cast(dict[str, str], detail)
+    detail_dict = cast("dict[str, str]", detail)
     assert detail_dict["response"] == expected_detail["response"]
     assert detail_dict["cause"] == expected_detail["cause"]
 
@@ -101,7 +101,7 @@ async def test_global_exception_middleware_passes_through_http_exception() -> No
         await middleware(_make_scope(), _noop_receive, collector)
 
     assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
-    detail = cast(dict[str, str], exc_info.value.detail)
+    detail = cast("dict[str, str]", exc_info.value.detail)
     assert detail["response"] == "Test error"
     assert detail["cause"] == "This is a test"
 
