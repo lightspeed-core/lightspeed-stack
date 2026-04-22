@@ -489,7 +489,7 @@ def wait_for_lightspeed_stack_http_ready(
 
 
 def replace_placeholders(context: Context, text: str) -> str:
-    """Replace {MODEL}, {MODEL_SHORT}, {PROVIDER}, and {VECTOR_STORE_ID} placeholders from context.
+    """Replace {MODEL}, {PROVIDER}, and {VECTOR_STORE_ID} placeholders from context.
 
     Parameters:
     ----------
@@ -502,7 +502,6 @@ def replace_placeholders(context: Context, text: str) -> str:
         String with placeholders replaced by actual values
     """
     result = text.replace("{MODEL}", context.default_model)
-    result = result.replace("{MODEL_SHORT}", context.default_model_short)
     result = result.replace("{PROVIDER}", context.default_provider)
     vector_store_id = getattr(context, "faiss_vector_store_id", None) or ""
     result = result.replace("{VECTOR_STORE_ID}", vector_store_id)

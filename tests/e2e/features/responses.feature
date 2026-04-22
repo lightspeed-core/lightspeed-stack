@@ -52,7 +52,7 @@ Feature: Responses endpoint API tests
         {
           "object": "response",
           "status": "completed",
-          "model": "{MODEL_SHORT}",
+          "model": "{PROVIDER}/{MODEL}",
           "instructions": "You are a helpful assistant.",
           "prompt": {"id": "e2e_responses_passthrough_prompt"},
           "reasoning": {"effort": "low"},
