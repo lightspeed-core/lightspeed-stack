@@ -2183,6 +2183,7 @@ class TestSanitizesOutputAndModel:
         assert len(response.output) == 1
 
     def _make_streaming_completed_chunk(self, mocker: MockerFixture) -> Any:
+        """Build a mocked response.completed chunk containing sanitizable fields."""
         completed_chunk = mocker.Mock()
         completed_chunk.type = "response.completed"
         completed_chunk.response = mocker.Mock()
