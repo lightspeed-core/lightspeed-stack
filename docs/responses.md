@@ -399,7 +399,7 @@ The following response attributes are inherited directly from the LLS OpenAPI sp
 | `completed_at` | integer | Completion time (Unix), if set |
 | `error` | object | Error details if failed or incompleted |
 | `id` | string | Unique response ID or moderation ID |
-| `model` | string | Model ID (provider/model) used |
+| `model` | string | Model used for generation. If the client specified `model` in the request, it is echoed unchanged; if the server selected the model, the provider routing prefix is stripped (see [Model Selection](#model-selection)) |
 | `object` | string | Always `"response"` |
 | `output` | array[object] | Structured output (messages, tool calls, etc.) |
 | `parallel_tool_calls` | boolean | Parallel tool calls allowed |
@@ -514,6 +514,8 @@ In OpenResponses the `model` field is required; in LCORE it is optional. If you 
 2. **Default model** — If a default model is configured, that model is used.
 3. **First available** — Otherwise, the first available LLM model is used.
 4. If no model can be selected (e.g. no default and no LLM models), the request fails with 404 (model not found).
+
+**Model in response:** If the client specified a `model` in the request, it is echoed back unchanged in the response. If the server selected the model (because `model` was omitted from the request), the provider routing prefix is stripped and only the base model name is returned (e.g. `google-vertex/publishers/google/models/gemini-2.5-flash` → `gemini-2.5-flash`). This prevents leaking server infrastructure details and follows the same pattern as [System Prompt Resolution](#system-prompt-resolution).
 
 ### Output Representation
 
