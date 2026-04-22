@@ -100,11 +100,6 @@ jsonschema-specifications==2025.9.1 \
     --hash=sha256:065ec57323001f79634013c12250a476952e6ce834a17cfd5227343cec3c4aee
 kubernetes==35.0.0 \
     --hash=sha256:2b6649b48b000f7b5b14eb2e6939f0709dddc0a7e4475ed98d4264e191c9f09f
-lxml==6.0.2 \
-    --hash=sha256:74e99f281150ad91087de3937768f2290a15ae00623d46c16512aa89e826f7ab \
-    --hash=sha256:806632cf9f93af4d98229bfd94b4436dba3fba52167cb67b9125d7f7de00fad5 \
-    --hash=sha256:90f2c723c7c3c2a2fcc5591ccc6abf3fdf35eda5f3ef84a0ff6f4380dd2e7a9d \
-    --hash=sha256:b6836b56be051ebaf5adb68ca280460ecb68cb89ae0bb5d11737ee49b912ac3e
 markdown-it-py==4.0.0 \
     --hash=sha256:4ca21586bdc83c96a1318ffc854698e1fdcad60a3e8051d249f10ef210c945c0
 mdurl==0.1.2 \
