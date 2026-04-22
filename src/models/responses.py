@@ -1700,13 +1700,15 @@ class ResponsesResponse(AbstractSuccessfulResponse):
             "application/json": {"example": json_example} if json_example else {},
             "text/event-stream": {
                 "schema": {"type": "string"},
-                "description": "SSE stream of events",
                 "example": sse_example,
             },
         }
 
         return {
-            "description": SUCCESSFUL_RESPONSE_DESCRIPTION,
+            "description": (
+                f"{SUCCESSFUL_RESPONSE_DESCRIPTION}. "
+                "For `text/event-stream`, the body is a Server-Sent Events stream."
+            ),
             "model": cls,
             "content": content,
         }

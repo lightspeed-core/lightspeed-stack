@@ -8927,7 +8927,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Successful response",
+                        "description": "Successful response. For `text/event-stream`, the body is a Server-Sent Events stream.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8984,8 +8984,7 @@
                                 "schema": {
                                     "type": "string"
                                 },
-                                "example": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"in_progress\",\"model\":\"openai/gpt-4o-mini\",\"output\":[],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{},\"output_text\":\"\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"sequence_number\":1,\"response_id\":\"resp_abc\",\"output_index\":0,\"item\":{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"in_progress\",\"role\":\"assistant\",\"content\":[]}}\n\n...\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":30,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"completed\",\"model\":\"openai/gpt-4o-mini\",\"output\":[{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\",\"annotations\":[]}]}],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"usage\":{\"input_tokens\":10,\"output_tokens\":6,\"total_tokens\":16,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{\"daily\":1000,\"monthly\":50000},\"output_text\":\"Hello! How can I help?\"}}\n\ndata: [DONE]\n\n",
-                                "description": "SSE stream of events"
+                                "example": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"in_progress\",\"model\":\"openai/gpt-4o-mini\",\"output\":[],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{},\"output_text\":\"\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"sequence_number\":1,\"response_id\":\"resp_abc\",\"output_index\":0,\"item\":{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"in_progress\",\"role\":\"assistant\",\"content\":[]}}\n\n...\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":30,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"completed\",\"model\":\"openai/gpt-4o-mini\",\"output\":[{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\",\"annotations\":[]}]}],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"usage\":{\"input_tokens\":10,\"output_tokens\":6,\"total_tokens\":16,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{\"daily\":1000,\"monthly\":50000},\"output_text\":\"Hello! How can I help?\"}}\n\ndata: [DONE]\n\n"
                             }
                         }
                     },
@@ -10322,15 +10321,30 @@
                 "tags": [
                     "a2a"
                 ],
-                "summary": "Handle A2A Jsonrpc",
-                "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
+                "summary": "Handle A2A JSON-RPC GET",
+                "description": "Handle GET on /a2a for A2A JSON-RPC requests following the A2A protocol specification.",
                 "operationId": "handle_a2a_jsonrpc_a2a_get",
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "Successful response: buffered JSON-RPC or HTTP payload for non-streaming calls, or a Server-Sent Events stream when the JSON-RPC method is message/stream.",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "type": "object",
+                                    "description": "JSON-RPC 2.0 response or A2A-over-HTTP payload"
+                                },
+                                "example": {
+                                    "jsonrpc": "2.0",
+                                    "id": "1",
+                                    "result": {}
+                                }
+                            },
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "text/event-stream"
+                                },
+                                "example": "data: {\"jsonrpc\":\"2.0\",\"id\":\"1\",\"result\":{}}\n\n"
                             }
                         }
                     }
@@ -10340,15 +10354,30 @@
                 "tags": [
                     "a2a"
                 ],
-                "summary": "Handle A2A Jsonrpc",
-                "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
-                "operationId": "handle_a2a_jsonrpc_a2a_get",
+                "summary": "Handle A2A JSON-RPC POST",
+                "description": "Handle POST on /a2a for A2A JSON-RPC requests following the A2A protocol specification.",
+                "operationId": "handle_a2a_jsonrpc_a2a_post",
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "Successful response: buffered JSON-RPC or HTTP payload for non-streaming calls, or a Server-Sent Events stream when the JSON-RPC method is message/stream.",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "type": "object",
+                                    "description": "JSON-RPC 2.0 response or A2A-over-HTTP payload"
+                                },
+                                "example": {
+                                    "jsonrpc": "2.0",
+                                    "id": "1",
+                                    "result": {}
+                                }
+                            },
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "text/event-stream"
+                                },
+                                "example": "data: {\"jsonrpc\":\"2.0\",\"id\":\"1\",\"result\":{}}\n\n"
                             }
                         }
                     }

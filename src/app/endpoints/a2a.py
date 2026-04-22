@@ -36,6 +36,7 @@ from llama_stack_client import APIConnectionError
 from starlette.responses import Response, StreamingResponse
 
 from a2a_storage import A2AContextStore, A2AStorageFactory
+from app.endpoints.a2a_openapi import a2a_jsonrpc_responses
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
@@ -692,12 +693,94 @@ async def _create_a2a_app(
     return a2a_app.build()
 
 
-@router.api_route("/a2a", methods=["GET", "POST"], response_model=None)
+@router.get(
+    "/a2a",
+    response_model=None,
+    responses=a2a_jsonrpc_responses,
+    operation_id="handle_a2a_jsonrpc_a2a_get",
+    summary="Handle A2A JSON-RPC GET",
+    description=(
+        "Handle GET on /a2a for A2A JSON-RPC requests following the A2A protocol specification."
+    ),
+)
 @authorize(Action.A2A_JSONRPC)
-async def handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-statements
+async def handle_a2a_jsonrpc_get(
     request: Request,
     auth: Annotated[AuthTuple, Depends(auth_dependency)],
     mcp_headers: McpHeaders = Depends(mcp_headers_dependency),
+) -> Response | StreamingResponse:
+    """Serve A2A JSON-RPC over HTTP GET on ``/a2a``.
+
+    Thin wrapper that delegates to ``_handle_a2a_jsonrpc`` so GET and POST share
+    the same processing path while keeping distinct OpenAPI operation metadata.
+
+    Args:
+        request: Incoming ASGI/FastAPI request (body, scope, headers).
+        auth: Resolved authentication tuple from ``auth_dependency`` (user
+            identity and bearer token used to build the per-request A2A app).
+        mcp_headers: MCP-related headers from ``mcp_headers_dependency``, forwarded
+            into the A2A executor for downstream tool/context propagation.
+
+    Returns:
+        ``Response`` with the full buffered JSON-RPC (or HTTP) payload when the
+        request is non-streaming, or ``StreamingResponse`` (SSE) when the
+        JSON-RPC method is ``message/stream`` and chunks are streamed to the
+        client. Error conditions are generally expressed as JSON-RPC or HTTP
+        responses rather than by raising from this wrapper.
+
+    Raises:
+        HTTPException: If authentication or ``@authorize`` rejects the request
+            before or while entering the handler chain.
+    """
+    return await _handle_a2a_jsonrpc(request, auth, mcp_headers)
+
+
+@router.post(
+    "/a2a",
+    response_model=None,
+    responses=a2a_jsonrpc_responses,
+    operation_id="handle_a2a_jsonrpc_a2a_post",
+    summary="Handle A2A JSON-RPC POST",
+    description=(
+        "Handle POST on /a2a for A2A JSON-RPC requests following the A2A protocol specification."
+    ),
+)
+@authorize(Action.A2A_JSONRPC)
+async def handle_a2a_jsonrpc_post(
+    request: Request,
+    auth: Annotated[AuthTuple, Depends(auth_dependency)],
+    mcp_headers: McpHeaders = Depends(mcp_headers_dependency),
+) -> Response | StreamingResponse:
+    """Serve A2A JSON-RPC over HTTP POST on ``/a2a``.
+
+    Thin wrapper that delegates to ``_handle_a2a_jsonrpc`` so GET and POST share
+    the same processing path while keeping distinct OpenAPI operation metadata.
+
+    Args:
+        request: Incoming ASGI/FastAPI request (body, scope, headers).
+        auth: Resolved authentication tuple from ``auth_dependency`` (user
+            identity and bearer token used to build the per-request A2A app).
+        mcp_headers: MCP-related headers from ``mcp_headers_dependency``, forwarded
+            into the A2A executor for downstream tool/context propagation.
+
+    Returns:
+        ``Response`` with the full buffered JSON-RPC (or HTTP) payload when the
+        request is non-streaming, or ``StreamingResponse`` (SSE) when the
+        JSON-RPC method is ``message/stream`` and chunks are streamed to the
+        client. Error conditions are generally expressed as JSON-RPC or HTTP
+        responses rather than by raising from this wrapper.
+
+    Raises:
+        HTTPException: If authentication or ``@authorize`` rejects the request
+            before or while entering the handler chain.
+    """
+    return await _handle_a2a_jsonrpc(request, auth, mcp_headers)
+
+
+async def _handle_a2a_jsonrpc(  # pylint: disable=too-many-locals,too-many-statements
+    request: Request,
+    auth: AuthTuple,
+    mcp_headers: McpHeaders,
 ) -> Response | StreamingResponse:
     """
     Handle A2A JSON-RPC requests following the A2A protocol specification.
