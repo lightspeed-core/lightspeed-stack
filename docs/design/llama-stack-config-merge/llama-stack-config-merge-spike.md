@@ -240,7 +240,80 @@ available. Not a decision; a fact to note in the spec doc.
 ## Proposed JIRAs
 
 Each JIRA's agentic-tool instruction points to the spec doc
-(`llama-stack-config-merge.md`), the permanent reference.
+(`llama-stack-config-merge.md`), the permanent reference. The first JIRA
+(authoring e2e feature files) is the intentional kickoff — it happens
+before feature implementation so the test shape is not influenced by
+implementation choices.
+
+<!-- type: Story -->
+<!-- key: LCORE-???? -->
+### LCORE-???? E2E feature files for unified mode (no step implementation)
+
+**User story**: As a Lightspeed Core e2e engineer, I want the behave
+feature files for unified-mode scenarios written before the feature
+implementation lands, so that the test shape reflects the feature's
+intended behavior rather than the chosen implementation, and any
+architectural gaps surface early.
+
+**Description**: Author behave `.feature` files under `tests/e2e/features/`
+that describe the behaviors required of unified mode. Step definitions
+(Python glue) are explicitly **not** part of this ticket — they are
+covered by a later sibling ticket (LCORE-???? — Implement step
+definitions). The feature files can be submitted for review and land
+before implementation of the feature itself begins.
+
+**Scope**:
+- `.feature` files covering, at minimum, these R1–R11 surfaces from the
+  spec doc:
+  - Boot LCORE with unified `lightspeed-stack.yaml` (no external
+    `run.yaml`); `/liveness`, `/readiness`, and `/v1/query` succeed.
+  - Boot LCORE with legacy config
+    (`library_client_config_path` + external `run.yaml`); same result.
+  - Setting both `llama_stack.config` and
+    `llama_stack.library_client_config_path` fails at config-load time
+    with a clear error that mentions `--migrate-config`.
+  - Migration tool: `lightspeed-stack --migrate-config ...` produces a
+    unified file that drives equivalent Llama Stack behavior.
+  - `native_override` deep-merges onto the baseline with list
+    replacement (tested on a scalar key and a list key).
+  - `profile:` path (absolute and relative-to-config-dir) loads the
+    referenced baseline.
+  - Secrets appear as `${env.FOO}` references in the synthesized
+    `run.yaml` on disk; never resolved to raw values.
+  - Legacy mode emits a one-line deprecation WARN at startup; unified
+    mode does not.
+- Additions to `tests/e2e/test_list.txt` so behave discovers the new
+  files.
+- Gherkin scenarios authored from the spec doc (`R1..R11`) only; author
+  must avoid reading the implementation JIRAs' scope sections while
+  drafting scenarios.
+
+**Acceptance criteria**:
+- behave parses every new `.feature` file without syntax errors.
+- behave marks all new scenario steps as `undefined` (step definitions
+  land in LCORE-????).
+- `uv run make test-e2e` remains green (new scenarios are skipped or
+  reported undefined, not failing).
+- Any ambiguity or architectural tension uncovered while authoring is
+  captured either as a comment in the spec doc or as a new sub-JIRA.
+
+**Blocks**: LCORE-???? (Implement behave step definitions for unified
+mode).
+
+**Agentic tool instruction**:
+```text
+Read "Requirements" (R1..R11) and "Use Cases" in
+docs/design/llama-stack-config-merge/llama-stack-config-merge.md.
+Do NOT read the other JIRAs' scope sections or the synthesizer/schema
+implementation code while authoring; the point of this ticket is to
+produce feature files uncontaminated by implementation detail.
+Key files to create: tests/e2e/features/unified-mode-*.feature plus
+additions to tests/e2e/test_list.txt. Do NOT create step definitions in
+tests/e2e/features/steps/.
+To verify: `uv run behave --dry-run tests/e2e/features/unified-mode-*.feature`
+parses successfully; `uv run make test-e2e` still green with the new
+scenarios reported as undefined.
+```
 
 <!-- type: Task -->
 <!-- key: LCORE-???? -->
@@ -378,6 +451,56 @@ configs similarly.
 Read "Migration paths" in docs/design/llama-stack-config-merge/llama-stack-config-merge.md.
 Key files: tests/e2e/configs/, tests/e2e/configuration/, tests/e2e-prow/rhoai/.
 To verify: `uv run make test-e2e` green.
+```
+
+<!-- type: Task -->
+<!-- key: LCORE-???? -->
+### LCORE-???? Implement behave step definitions for unified-mode feature files
+
+**Description**: Implement the Python step definitions
+(`@given`/`@when`/`@then` functions) under `tests/e2e/features/steps/`
+for the `.feature` files authored in LCORE-???? (E2E feature files
+kickoff). After this ticket lands, the scenarios transition from
+`undefined` to fully executing.
+
+The feature files are taken as-is — do not modify the Gherkin to make
+implementation easier. If a scenario cannot be implemented faithfully,
+raise it against the spec doc (and possibly back to LCORE-???? kickoff)
+rather than quietly weakening the test.
+
+**Scope**:
+- Step definitions for every step pattern in the new `.feature` files.
+- Fixtures or helpers under `tests/e2e/features/steps/` as needed
+  (e.g., temp-dir config authoring, subprocess start/stop for LCORE,
+  HTTP client helpers reusing existing `tests/e2e/` patterns).
+- CI wiring so the new scenarios run as part of `uv run make test-e2e`.
+
+**Acceptance criteria**:
+- behave reports zero `undefined` steps across the new `.feature`
+  files.
+- `uv run make test-e2e` runs the new scenarios and they pass.
+- No Gherkin edit was made to accommodate implementation constraints
+  (or if any edit was made, it is documented in a PR comment with
+  explicit rationale).
+
+**Blocked by**:
+- LCORE-???? (E2E feature files for unified mode — the `.feature`
+  files being implemented against).
+- LCORE-???? (Unified schema + synthesizer), LCORE-????
+  (Migration tool), LCORE-???? (LS container entrypoint + deployment)
+  — the feature under test must exist.
+
+**Agentic tool instruction**:
+```text
+Read "Architecture" and "Requirements" in
+docs/design/llama-stack-config-merge/llama-stack-config-merge.md.
+Key files to create: tests/e2e/features/steps/unified-mode*.py (or
+extend existing step-definition modules if patterns reuse cleanly).
+Do not modify tests/e2e/features/unified-mode-*.feature — take the
+Gherkin as-is. If a scenario genuinely cannot be implemented faithfully,
+file a sub-ticket rather than changing the Gherkin quietly.
+To verify: `uv run make test-e2e` runs every new scenario green and
+behave reports zero undefined steps.
 ```
 
 <!-- type: Story -->
