@@ -590,6 +590,246 @@ def enrich_solr(  # pylint: disable=too-many-locals
 
 
 # =============================================================================
+# Synthesis for Unified Mode (LCORE-836)
+# =============================================================================
+
+
+DEFAULT_BASELINE_RESOURCE = "default_run.yaml"
+
+PROVIDER_TYPE_MAP: dict[str, str] = {
+    "openai": "remote::openai",
+    "sentence_transformers": "inline::sentence-transformers",
+    "azure": "remote::azure",
+    "vertexai": "remote::vertexai",
+    "watsonx": "remote::watsonx",
+    "vllm_rhaiis": "remote::vllm",
+    "vllm_rhel_ai": "remote::vllm",
+}
+
+
+def load_default_baseline() -> dict[str, Any]:
+    """Load LCORE's built-in default Llama Stack baseline config.
+
+    Returns:
+        dict[str, Any]: The default baseline run.yaml parsed as a dict.
+    """
+    # importlib.resources-style load; `src/data/default_run.yaml` is shipped
+    # with the package.
+    baseline_path = Path(__file__).parent / "data" / DEFAULT_BASELINE_RESOURCE
+    logger.info("Loading built-in default baseline from %s", baseline_path)
+    with open(baseline_path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def deep_merge_list_replace(
+    base: dict[str, Any], overlay: dict[str, Any]
+) -> dict[str, Any]:
+    """Deep-merge `overlay` onto `base`.
+
+    Maps are merged recursively. Lists and scalars in `overlay` replace the
+    corresponding entry in `base` (no append semantics). Result is a new dict;
+    neither argument is mutated.
+
+    Parameters:
+        base: The base mapping.
+        overlay: The mapping whose values take precedence.
+
+    Returns:
+        dict[str, Any]: A new mapping with overlay applied on top of base.
+    """
+    import copy  # pylint: disable=import-outside-toplevel
+
+    result: dict[str, Any] = copy.deepcopy(base)
+    for key, value in overlay.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge_list_replace(result[key], value)
+        else:
+            result[key] = copy.deepcopy(value)
+    return result
+
+
+def apply_high_level_inference(
+    ls_config: dict[str, Any], inference: dict[str, Any]
+) -> None:
+    """Apply a high-level `inference` block into `ls_config['providers']['inference']`.
+
+    Replaces the inference provider list entirely. Use `native_override` for
+    additive tweaks.
+
+    Parameters:
+        ls_config: Llama Stack config dict (modified in place).
+        inference: High-level inference section as a dict (with 'providers' list).
+    """
+    providers_out: list[dict[str, Any]] = []
+    for provider in inference.get("providers", []):
+        p_type = provider["type"]
+        entry: dict[str, Any] = {
+            "provider_id": p_type,
+            "provider_type": PROVIDER_TYPE_MAP[p_type],
+        }
+        cfg: dict[str, Any] = {}
+        if provider.get("api_key_env"):
+            cfg["api_key"] = f"${{env.{provider['api_key_env']}}}"
+        if provider.get("allowed_models"):
+            cfg["allowed_models"] = provider["allowed_models"]
+        if provider.get("extra"):
+            cfg.update(provider["extra"])
+        if cfg:
+            entry["config"] = cfg
+        providers_out.append(entry)
+
+    if "providers" not in ls_config:
+        ls_config["providers"] = {}
+    ls_config["providers"]["inference"] = providers_out
+    logger.info(
+        "Applied high-level inference section: %s provider entries",
+        len(providers_out),
+    )
+
+
+def synthesize_configuration(
+    lcs_config: dict[str, Any],
+    config_file_dir: Optional[Path] = None,
+    default_baseline: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    """Synthesize a full Llama Stack run.yaml from a unified-mode LCORE config.
+
+    Pipeline:
+        1. Baseline = profile file (if set) else `default_baseline` (if provided)
+           else LCORE's built-in default.
+        2. Apply existing top-level enrichment (BYOK RAG, Solr/OKP).
+           Azure Entra ID is intentionally not run here (side-effect on .env).
+        3. Apply high-level sections (inference, and later storage/safety/...).
+        4. Deep-merge (list-replace) `native_override`.
+
+    Precedence: profile < high-level sections < native_override.
+
+    Parameters:
+        lcs_config: Full lightspeed-stack.yaml content as a dict (env-expanded).
+        config_file_dir: Directory containing the lightspeed-stack.yaml, used
+            to resolve relative `profile:` paths. If None, relative paths are
+            resolved against the current working directory.
+        default_baseline: Override for the baseline when `profile:` is unset
+            (primarily for tests). If None, LCORE's built-in baseline is used.
+
+    Returns:
+        dict[str, Any]: The synthesized Llama Stack run.yaml as a dict.
+
+    Raises:
+        ValueError: If llama_stack.config is not present in `lcs_config`.
+    """
+    unified = (lcs_config.get("llama_stack") or {}).get("config")
+    if unified is None:
+        raise ValueError(
+            "synthesize_configuration called without llama_stack.config set"
+        )
+
+    # 1. Baseline
+    profile = unified.get("profile")
+    baseline_kind = unified.get("baseline", "default")
+    if profile:
+        profile_path = Path(profile)
+        if not profile_path.is_absolute() and config_file_dir is not None:
+            profile_path = config_file_dir / profile_path
+        logger.info("Loading unified-mode profile baseline from %s", profile_path)
+        with open(profile_path, "r", encoding="utf-8") as f:
+            ls_config: dict[str, Any] = yaml.safe_load(f)
+    elif baseline_kind == "empty":
+        logger.info("Unified mode: starting from empty baseline")
+        ls_config = {}
+    elif default_baseline is not None:
+        import copy  # pylint: disable=import-outside-toplevel
+
+        ls_config = copy.deepcopy(default_baseline)
+    else:
+        ls_config = load_default_baseline()
+
+    dedupe_providers_vector_io(ls_config)
+
+    # 2. Existing enrichment (BYOK RAG, Solr/OKP) — Azure stays out (file side-effect).
+    enrich_byok_rag(ls_config, lcs_config.get("byok_rag", []))
+    enrich_solr(ls_config, lcs_config.get("rag", {}), lcs_config.get("okp", {}))
+
+    # 3. High-level sections
+    inference = unified.get("inference")
+    if inference is not None:
+        apply_high_level_inference(ls_config, inference)
+
+    # 4. native_override — deep-merge (list-replace)
+    native_override = unified.get("native_override") or {}
+    if native_override:
+        ls_config = deep_merge_list_replace(ls_config, native_override)
+
+    dedupe_providers_vector_io(ls_config)
+    return ls_config
+
+
+def migrate_config_dumb(
+    run_yaml_path: str,
+    lightspeed_yaml_path: str,
+    output_path: str,
+) -> None:
+    """Lossless lift-and-shift migration: fold run.yaml into lightspeed-stack.yaml.
+
+    Reads the legacy two-file configuration (run.yaml + lightspeed-stack.yaml)
+    and writes a unified single-file configuration where the entire run.yaml
+    content is placed under `llama_stack.config.native_override`. Removes any
+    `llama_stack.library_client_config_path` that referenced the old run.yaml.
+
+    This is the "dumb" migration mode — preserves 100% of the existing
+    Llama Stack schema content. A future `--smart` mode (out of scope for this
+    PoC) would factor portions into high-level sections.
+
+    Parameters:
+        run_yaml_path: Path to the existing Llama Stack run.yaml.
+        lightspeed_yaml_path: Path to the existing lightspeed-stack.yaml.
+        output_path: Path to write the unified lightspeed-stack.yaml.
+    """
+    logger.info("Reading %s and %s for migration", lightspeed_yaml_path, run_yaml_path)
+
+    with open(run_yaml_path, "r", encoding="utf-8") as f:
+        run_yaml_content: dict[str, Any] = yaml.safe_load(f)
+
+    with open(lightspeed_yaml_path, "r", encoding="utf-8") as f:
+        lcs_yaml: dict[str, Any] = yaml.safe_load(f)
+
+    llama_stack_section = lcs_yaml.setdefault("llama_stack", {})
+    llama_stack_section.pop("library_client_config_path", None)
+    # `baseline: empty` is required for true lossless round-trip: default baseline
+    # would add extra keys not present in the source run.yaml.
+    llama_stack_section["config"] = {
+        "baseline": "empty",
+        "native_override": run_yaml_content,
+    }
+
+    logger.info("Writing unified configuration to %s", output_path)
+    with open(output_path, "w", encoding="utf-8") as f:
+        yaml.dump(lcs_yaml, f, Dumper=YamlDumper, default_flow_style=False)
+
+
+def synthesize_to_file(
+    lcs_config: dict[str, Any],
+    output_file: str,
+    config_file_dir: Optional[Path] = None,
+) -> None:
+    """Synthesize unified-mode Llama Stack config and write it to disk.
+
+    Secrets are never resolved — env-var references like `${env.FOO}` are
+    preserved verbatim in the output.
+
+    Parameters:
+        lcs_config: lightspeed-stack.yaml as a dict.
+        output_file: Path to write the synthesized run.yaml.
+        config_file_dir: Directory for resolving relative profile paths.
+    """
+    ls_config = synthesize_configuration(lcs_config, config_file_dir=config_file_dir)
+    logger.info("Writing synthesized Llama Stack configuration to %s", output_file)
+    Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+    with open(output_file, "w", encoding="utf-8") as f:
+        yaml.dump(ls_config, f, Dumper=YamlDumper, default_flow_style=False)
+
+
+# =============================================================================
 # Main Generation Function (service/container mode only)
 # =============================================================================
 
@@ -638,9 +878,15 @@ def generate_configuration(
 
 
 def main() -> None:
-    """CLI entry point."""
+    """CLI entry point.
+
+    Auto-detects the mode:
+    - Unified mode: `llama_stack.config` present in the lightspeed config file.
+      Synthesizes the full run.yaml (no `-i/--input` needed); writes to `-o`.
+    - Legacy mode: requires `-i/--input` run.yaml; enriches it and writes to `-o`.
+    """
     parser = ArgumentParser(
-        description="Enrich Llama Stack config with Lightspeed values",
+        description="Produce Llama Stack run.yaml from Lightspeed config.",
     )
     parser.add_argument(
         "-c",
@@ -652,13 +898,14 @@ def main() -> None:
         "-i",
         "--input",
         default="run.yaml",
-        help="Input Llama Stack config (default: run.yaml)",
+        help="Input Llama Stack config for legacy-mode enrichment "
+        "(default: run.yaml; ignored in unified mode)",
     )
     parser.add_argument(
         "-o",
         "--output",
         default="run_.yaml",
-        help="Output enriched config (default: run_.yaml)",
+        help="Output run.yaml path (default: run_.yaml)",
     )
     parser.add_argument(
         "-e",
@@ -672,7 +919,19 @@ def main() -> None:
         config = yaml.safe_load(f)
         config = replace_env_vars(config)
 
-    generate_configuration(args.input, args.output, config, args.env_file)
+    unified_present = (config.get("llama_stack") or {}).get("config") is not None
+    if unified_present:
+        logger.info("Unified mode detected (llama_stack.config present)")
+        # Azure Entra ID side-effect (writes .env) stays part of boot — still run it.
+        setup_azure_entra_id_token(config.get("azure_entra_id"), args.env_file)
+        synthesize_to_file(
+            config,
+            args.output,
+            config_file_dir=Path(args.config).resolve().parent,
+        )
+    else:
+        logger.info("Legacy mode detected (no llama_stack.config)")
+        generate_configuration(args.input, args.output, config, args.env_file)
 
 
 if __name__ == "__main__":
