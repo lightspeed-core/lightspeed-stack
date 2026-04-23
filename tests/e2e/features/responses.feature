@@ -159,7 +159,15 @@ Feature: Responses endpoint API tests
       And the body of the response has the following structure
         """
         {
-          "model": "{MODEL}"
+          "object": "response",
+          "status": "completed",
+          "model": "{MODEL}",
+          "output": [
+            {
+              "type": "message",
+              "role": "assistant"
+            }
+          ]
         }
         """
 
