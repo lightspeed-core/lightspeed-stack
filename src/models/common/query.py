@@ -82,8 +82,38 @@ class SolrVectorSearchRequest(BaseModel):
     )
     filters: Optional[dict[str, Any]] = Field(
         None,
-        description="Solr provider filter payload passed through as params['solr'].",
-        examples=[{"fq": ["product:*openshift*", "product_version:*4.16*"]}],
+        description=(
+            "Solr provider filter payload passed through as params['solr']. "
+            "Supports structured metadata filters (eq, ne, in, nin comparison operators). "
+            "Legacy filter-only objects (e.g. fq) are still accepted."
+        ),
+        examples=[
+            {
+                "filters": {
+                    "type": "eq",
+                    "key": "product",
+                    "value": "openshift_container_platform",
+                }
+            },
+            {
+                "filters": {
+                    "type": "and",
+                    "filters": [
+                        {
+                            "type": "eq",
+                            "key": "product",
+                            "value": "openshift_container_platform",
+                        },
+                        {
+                            "type": "in",
+                            "key": "version",
+                            "value": ["4.14", "4.15", "4.16"],
+                        },
+                    ],
+                }
+            },
+            {"fq": ["product:*openshift*"]},
+        ],
     )
 
     @model_validator(mode="before")
