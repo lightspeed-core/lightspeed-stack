@@ -206,4 +206,3 @@ echo ""
 echo "ClusterPolicy Status:"
 oc get clusterpolicy gpu-cluster-policy -o jsonpath='{.status.state}'
 echo ""
-echo "DEBUG NS: after gpu-setup -> $(oc get ns e2e-rhoai-dsc -o jsonpath='{.status.phase}' 2>&1)"

@@ -38,7 +38,7 @@ spec:
           fi
           gunzip -c /rag-data/kv_store.db.gz > /data/.e2e-rag-seed/kv_store.db
           cp -f /data/.e2e-rag-seed/kv_store.db /data/src/.llama/storage/rag/kv_store.db
-          chmod -R 777 /data
+          chmod -R 777 /data/src /data/.e2e-rag-seed
           echo "RAG data extracted successfully"
       volumeMounts:
         - name: rag-storage
@@ -111,6 +111,8 @@ spec:
               optional: true
         - name: E2E_OPENAI_MODEL
           value: "gpt-4o-mini"
+        - name: LLAMA_STACK_CONFIG
+          value: "/opt/app-root/src/.llama/storage/run.yaml"
         - name: FAISS_VECTOR_STORE_ID
           valueFrom:
             secretKeyRef:

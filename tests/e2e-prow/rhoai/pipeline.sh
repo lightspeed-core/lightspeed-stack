@@ -54,7 +54,6 @@ oc apply -f "$PIPELINE_DIR/manifests/namespaces/nvidia-operator.yaml"
 #========================================
 echo "===== Creating namespace & secrets ====="
 oc get ns "$NAMESPACE" >/dev/null 2>&1 || oc create namespace "$NAMESPACE"
-echo "DEBUG NS: after create -> $(oc get ns $NAMESPACE -o jsonpath='{.status.phase}' 2>&1)"
 
 create_secret() {
     local name=$1; shift
