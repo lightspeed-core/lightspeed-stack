@@ -67,13 +67,88 @@ class TestBuildQueryParams:
         assert params["mode"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE
         assert "solr" not in params
 
-    def test_with_solr_filters(self) -> None:
-        """Test parameters when solr filters are provided."""
-        solr = SolrVectorSearchRequest.model_validate({"filter": "value"})
+    def test_with_legacy_solr_filters(self) -> None:
+        """Test parameters when legacy solr filters are provided."""
+        solr = SolrVectorSearchRequest.model_validate(
+            {
+                "filters": {
+                    "fq": ["platform:openshift"],
+                },
+            },
+        )
         params = _build_query_params(solr=solr)
 
-        assert params["solr"] == {"filter": "value"}
+        assert params["solr"] == {"fq": ["platform:openshift"]}
         assert params["k"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+        assert "filters" not in params
+
+    def test_with_structured_metadata_filters(self) -> None:
+        """Test parameters with structured metadata filter format."""
+        solr = SolrVectorSearchRequest.model_validate(
+            {
+                "filters": {
+                    "filters": {
+                        "type": "eq",
+                        "key": "platform",
+                        "value": "openshift",
+                    },
+                },
+            },
+        )
+        params = _build_query_params(solr=solr)
+
+        # Filters should be extracted to top-level
+        assert "filters" in params
+        assert params["filters"]["type"] == "eq"
+        assert params["filters"]["key"] == "platform"
+        assert params["filters"]["value"] == "openshift"
+        assert params["k"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+        # No remaining solr params
+        assert "solr" not in params
+
+    def test_with_filters_and_other_solr_params(self) -> None:
+        """Test parameters with both filters and other solr-specific params."""
+        solr = SolrVectorSearchRequest.model_validate(
+            {
+                "filters": {
+                    "filters": {
+                        "type": "in",
+                        "key": "version",
+                        "value": ["4.14", "4.15"],
+                    },
+                    "custom_param": "value",
+                },
+            },
+        )
+        params = _build_query_params(solr=solr)
+
+        # Filters extracted to top-level
+        assert params["filters"]["type"] == "in"
+        assert params["filters"]["key"] == "version"
+        # Other params remain under solr key
+        assert params["solr"] == {"custom_param": "value"}
+        assert params["k"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+
+    def test_with_compound_filter(self) -> None:
+        """Test parameters with compound AND filter."""
+        solr = SolrVectorSearchRequest.model_validate(
+            {
+                "filters": {
+                    "filters": {
+                        "type": "and",
+                        "filters": [
+                            {"type": "eq", "key": "platform", "value": "openshift"},
+                            {"type": "ne", "key": "status", "value": "archived"},
+                        ],
+                    },
+                },
+            },
+        )
+        params = _build_query_params(solr=solr)
+
+        assert params["filters"]["type"] == "and"
+        assert len(params["filters"]["filters"]) == 2
+        assert "solr" not in params
 
     def test_custom_mode(self) -> None:
         """Request mode overrides the default Solr vector_io mode."""
@@ -86,7 +161,8 @@ class TestBuildQueryParams:
     def test_mode_with_solr_filters(self) -> None:
         """Custom mode is combined with solr filter payload."""
         solr = SolrVectorSearchRequest(
-            mode="semantic", filters={"fq": ["product:*openshift*"]}
+            mode="semantic",
+            filters={"fq": ["product:*openshift*"]},
         )
         params = _build_query_params(solr=solr)
 
@@ -95,7 +171,9 @@ class TestBuildQueryParams:
 
     def test_mode_with_only_filters(self) -> None:
         """Mode is set to default value when only filters are provided."""
-        solr = SolrVectorSearchRequest(filters={"fq": ["product:*openshift*"]})
+        solr = SolrVectorSearchRequest(
+            filters={"fq": ["product:*openshift*"]},
+        )
         params = _build_query_params(solr=solr)
 
         assert params["mode"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE
