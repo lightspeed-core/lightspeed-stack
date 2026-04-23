@@ -36,11 +36,14 @@ RUN mkdir -p /opt/app-root/src/.llama/storage \
     chown -R 1001:0 /opt/app-root && \
     chmod -R 775 /opt/app-root
 
-# Copy enrichment scripts for runtime config enrichment
+# Copy enrichment / unified-mode synthesis scripts for runtime config production
 COPY src/llama_stack_configuration.py /opt/app-root/llama_stack_configuration.py
+COPY src/data /opt/app-root/data
 COPY scripts/llama-stack-entrypoint.sh /opt/app-root/enrich-entrypoint.sh
 RUN chmod +x /opt/app-root/enrich-entrypoint.sh && \
-    chown 1001:0 /opt/app-root/enrich-entrypoint.sh /opt/app-root/llama_stack_configuration.py
+    chown -R 1001:0 /opt/app-root/enrich-entrypoint.sh \
+                    /opt/app-root/llama_stack_configuration.py \
+                    /opt/app-root/data
 
 # Switch back to the original user
 USER 1001
