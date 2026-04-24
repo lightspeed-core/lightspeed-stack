@@ -282,12 +282,34 @@ class QueryRequest(BaseModel):
     solr: Optional[SolrVectorSearchRequest] = Field(
         None,
         description=(
-            "Solr inline RAG config: mode (semantic, hybrid, lexical) and filters; "
-            "a legacy filter-only object (e.g. fq) is still accepted."
+            "Solr inline RAG config: mode (semantic, hybrid, lexical) and filters. "
+            "Supports structured metadata filters (eq, ne, in, nin comparison operators). "
+            "Legacy filter-only objects (e.g. fq) are still accepted."
         ),
         examples=[
-            {"mode": "hybrid", "filters": {"fq": ["product:*openshift*"]}},
-            {"filters": {"fq": ["product:*openshift*", "product_version:*4.16*"]}},
+            {
+                "mode": "hybrid",
+                "filters": {
+                    "filters": {
+                        "type": "eq",
+                        "key": "platform",
+                        "value": "openshift"
+                    }
+                }
+            },
+            {
+                "mode": "semantic",
+                "filters": {
+                    "filters": {
+                        "type": "and",
+                        "filters": [
+                            {"type": "eq", "key": "platform", "value": "openshift"},
+                            {"type": "in", "key": "version", "value": ["4.14", "4.15", "4.16"]}
+                        ]
+                    }
+                }
+            },
+            {"filters": {"fq": ["product:*openshift*"]}},
         ],
     )
 
@@ -752,7 +774,9 @@ class ResponsesRequest(BaseModel):
             topic summary for new conversations. Defaults to True.
         shield_ids: LCORE-specific list of safety shield IDs to apply. If None, all
             configured shields are used.
-        solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
+        solr: Optional Solr inline RAG options (mode, filters). Supports
+            structured metadata filters (eq, ne, in, nin comparison operators).
+            Legacy filter-only dicts are still accepted.
     """
 
     input: ResponseInput

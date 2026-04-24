@@ -61,9 +61,11 @@ def _build_query_params(
 
     Args:
         solr: Optional structured Solr request (mode and filters from the API).
+            - mode: Solr search mode (semantic, hybrid, lexical)
+            - filters: Solr filter payload, may contain structured metadata filters
 
     Returns:
-        Parameter dictionary for ``vector_io.query``.
+        Parameter dictionary for ``vector_io.query`` with extracted filters at top level.
     """
     resolved_mode = (
         solr.mode
@@ -79,8 +81,21 @@ def _build_query_params(
     logger.debug("query_request.solr: %s", solr)
 
     if solr is not None and solr.filters is not None:
-        params["solr"] = solr.filters
-        logger.debug("Final params with solr filters: %s", params)
+        # Extract structured metadata filters if present in solr.filters dict
+        # Filters need to be at top-level params for vector_io.query
+        if isinstance(solr.filters, dict) and "filters" in solr.filters:
+            params["filters"] = solr.filters["filters"]
+            logger.debug("Extracted filters from solr.filters: %s", params["filters"])
+
+            # Pass remaining solr.filters content (legacy fq, etc.) to params["solr"]
+            remaining_filters = {k: v for k, v in solr.filters.items() if k != "filters"}
+            if remaining_filters:
+                params["solr"] = remaining_filters
+                logger.debug("Remaining solr.filters: %s", remaining_filters)
+        else:
+            # Legacy format: entire solr.filters dict is passed as params["solr"]
+            params["solr"] = solr.filters
+            logger.debug("Legacy solr.filters format: %s", params["solr"])
     else:
         logger.debug("No solr filters provided")
 
