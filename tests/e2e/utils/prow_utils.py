@@ -197,7 +197,7 @@ def remove_configmap_backup(backup_key: str) -> None:
 
 
 def _recreate_configmap(configmap_name: str, source_file: str) -> None:
-    """Delete and recreate a ConfigMap from a file.
+    """Update a ConfigMap from a file via oc apply.
 
     Args:
         configmap_name: Name of the ConfigMap.
@@ -205,6 +205,8 @@ def _recreate_configmap(configmap_name: str, source_file: str) -> None:
     """
     result = run_e2e_ops("update-configmap", [configmap_name, source_file], timeout=60)
     if result.returncode != 0:
+        print(f"update-configmap stdout: {result.stdout}")
+        print(f"update-configmap stderr: {result.stderr}")
         raise subprocess.CalledProcessError(
             result.returncode, "update-configmap", result.stderr
         )

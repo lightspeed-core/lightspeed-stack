@@ -541,16 +541,24 @@ cmd_wait_for_pod() {
 cmd_update_configmap() {
     local configmap_name="${1:?ConfigMap name required}"
     local source_file="${2:?Source file required}"
-    
+
     echo "Updating ConfigMap $configmap_name from $source_file..."
-    
-    # Delete existing configmap
-    oc delete configmap "$configmap_name" -n "$NAMESPACE" --ignore-not-found=true
-    
-    # Create new configmap from the source file
-    oc create configmap "$configmap_name" -n "$NAMESPACE" \
-        --from-file="lightspeed-stack.yaml=$source_file"
-    
+
+    if [[ ! -f "$source_file" ]]; then
+        echo "ERROR: source file does not exist: $source_file" >&2
+        return 1
+    fi
+
+    # Use dry-run + apply to avoid the delete-then-create race.
+    # If delete succeeds but create fails the ConfigMap is gone and every
+    # subsequent attempt cascades into failure.
+    if ! oc create configmap "$configmap_name" -n "$NAMESPACE" \
+            --from-file="lightspeed-stack.yaml=$source_file" \
+            --dry-run=client -o yaml | oc apply -n "$NAMESPACE" -f -; then
+        echo "ERROR: oc apply for ConfigMap $configmap_name failed" >&2
+        return 1
+    fi
+
     echo "✓ ConfigMap $configmap_name updated successfully"
 }
 
