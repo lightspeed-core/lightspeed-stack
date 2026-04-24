@@ -24,7 +24,7 @@ spec:
         - --port
         - "8080"
         - --max-model-len
-        - "2048"
+        - "32768"
       image: quay.io/rh-ee-cpompeia/vllm-cpu:latest
       name: kserve-container
       env:

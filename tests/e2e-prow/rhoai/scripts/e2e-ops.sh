@@ -32,6 +32,7 @@ MANIFEST_DIR="$SCRIPT_DIR/../manifests/lightspeed"
 # Written by pipeline.sh when it starts LCS port-forward; e2e-ops kills this PID before rebinding 8080.
 E2E_LSC_PORT_FORWARD_PID_FILE="${E2E_LSC_PORT_FORWARD_PID_FILE:-/tmp/e2e-lightspeed-port-forward.pid}"
 E2E_LLAMA_PORT_FORWARD_PID_FILE="${E2E_LLAMA_PORT_FORWARD_PID_FILE:-/tmp/e2e-llama-port-forward.pid}"
+E2E_JWKS_PORT_FORWARD_PID_FILE="${E2E_JWKS_PORT_FORWARD_PID_FILE:-/tmp/e2e-jwks-port-forward.pid}"
 
 # ============================================================================
 # Helper functions
@@ -148,6 +149,23 @@ kill_stale_llama_forward() {
     free_local_tcp_port "$port"
 }
 
+# Kill anything likely to hold the mock-jwks local forward (localhost:8000).
+kill_stale_jwks_forward() {
+    local port="${1:-8000}"
+    local saved_pf
+    if [[ -f "$E2E_JWKS_PORT_FORWARD_PID_FILE" ]]; then
+        read -r saved_pf <"$E2E_JWKS_PORT_FORWARD_PID_FILE" 2>/dev/null || true
+        if [[ "$saved_pf" =~ ^[0-9]+$ ]]; then
+            kill -9 "$saved_pf" 2>/dev/null || true
+        fi
+    fi
+    pkill -9 -f "port-forward.*mock-jwks.*${port}:${port}" 2>/dev/null || true
+    pkill -9 -f "oc port-forward svc/mock-jwks ${port}:${port}" 2>/dev/null || true
+    free_local_tcp_port "$port"
+    sleep 1
+    free_local_tcp_port "$port"
+}
+
 # After oc port-forward dies in <2s, show recent oc stderr from the log file.
 e2e_ops_emit_port_forward_immediate_failure_diag() {
     echo "[e2e-ops] /tmp/port-forward.log (tail 25):"
@@ -242,16 +260,12 @@ cmd_restart_lightspeed() {
         sleep 2
     }
     
-    # Apply manifest (expand LIGHTSPEED_STACK_IMAGE)
+    # Apply manifest (expand LIGHTSPEED_STACK_IMAGE only; filter prevents blanking other $VAR refs)
     LIGHTSPEED_STACK_IMAGE="${LIGHTSPEED_STACK_IMAGE:-quay.io/lightspeed-core/lightspeed-stack:dev-latest}"
     export LIGHTSPEED_STACK_IMAGE
     _ls_manifest="$MANIFEST_DIR/lightspeed-stack.yaml"
-    if command -v envsubst >/dev/null 2>&1; then
-        envsubst < "$_ls_manifest" | oc apply -n "$NAMESPACE" -f -
-    else
-        sed "s|\${LIGHTSPEED_STACK_IMAGE}|${LIGHTSPEED_STACK_IMAGE}|g" "$_ls_manifest" |
-            oc apply -n "$NAMESPACE" -f -
-    fi
+    sed "s|\${LIGHTSPEED_STACK_IMAGE}|${LIGHTSPEED_STACK_IMAGE}|g" "$_ls_manifest" |
+        oc apply -n "$NAMESPACE" -f -
     
     # Wait for pod to be ready (TCP probe passes when app listens on 8080)
     wait_for_pod "lightspeed-stack-service" 40
@@ -259,9 +273,10 @@ cmd_restart_lightspeed() {
     # Re-label pod for service discovery
     oc label pod lightspeed-stack-service pod=lightspeed-stack-service -n "$NAMESPACE" --overwrite
     
-    # Re-establish port-forward
+    # Re-establish port-forwards
     cmd_restart_port_forward
-    
+    cmd_restart_jwks_port_forward || echo "⚠️  Mock JWKS port-forward failed (RBAC tests may fail)"
+
     echo "✓ Lightspeed restart complete"
 }
 
@@ -291,12 +306,9 @@ cmd_restart_llama_stack() {
         fi
     else
         # Prow: vLLM Llama Stack image (matches pipeline.sh / pipeline-services.sh)
-        if command -v envsubst >/dev/null 2>&1; then
-            envsubst < "$MANIFEST_DIR/llama-stack-prow.yaml" | oc apply -n "$NAMESPACE" -f -
-        else
-            sed "s|\${LLAMA_STACK_IMAGE}|${LLAMA_STACK_IMAGE:-}|g" "$MANIFEST_DIR/llama-stack-prow.yaml" |
-                oc apply -n "$NAMESPACE" -f -
-        fi
+        # Use sed instead of envsubst to avoid blanking $VAR references in embedded bash scripts
+        sed "s|\${LLAMA_STACK_IMAGE}|${LLAMA_STACK_IMAGE:-}|g" "$MANIFEST_DIR/llama-stack-prow.yaml" |
+            oc apply -n "$NAMESPACE" -f -
         wait_for_pod "llama-stack-service" 24
         echo "Labeling pod for service..."
         oc label pod llama-stack-service pod=llama-stack-service -n "$NAMESPACE" --overwrite
@@ -453,6 +465,66 @@ cmd_restart_llama_port_forward() {
     return 1
 }
 
+cmd_restart_jwks_port_forward() {
+    local local_port="${LOCAL_JWKS_PORT:-8000}"
+    local remote_port="${REMOTE_JWKS_PORT:-8000}"
+    local max_attempts=4
+    local pf_pid
+    local jwks_pf_log="/tmp/port-forward-jwks.log"
+
+    # Check if existing forward is still alive
+    if [[ -f "$E2E_JWKS_PORT_FORWARD_PID_FILE" ]]; then
+        local saved_pf
+        read -r saved_pf <"$E2E_JWKS_PORT_FORWARD_PID_FILE" 2>/dev/null || true
+        if [[ "$saved_pf" =~ ^[0-9]+$ ]] && kill -0 "$saved_pf" 2>/dev/null; then
+            local http_code
+            http_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 "http://127.0.0.1:$local_port/tokens" 2>/dev/null) || http_code="000"
+            if [[ "$http_code" != "000" ]]; then
+                echo "✓ Mock JWKS port-forward already healthy (PID: $saved_pf)"
+                return 0
+            fi
+        fi
+    fi
+
+    echo "Re-establishing mock-jwks port-forward on $local_port:$remote_port..."
+
+    for ((attempt=1; attempt<=max_attempts; attempt++)); do
+        kill_stale_jwks_forward "$local_port"
+        sleep 2
+
+        echo "JWKS port-forward attempt $attempt/$max_attempts"
+
+        : >"$jwks_pf_log"
+        nohup oc port-forward svc/mock-jwks "$local_port:$remote_port" -n "$NAMESPACE" \
+            </dev/null >"$jwks_pf_log" 2>&1 &
+        pf_pid=$!
+        disown "$pf_pid" 2>/dev/null || true
+        sleep 3
+
+        if ! kill -0 "$pf_pid" 2>/dev/null; then
+            echo "JWKS port-forward process exited immediately"
+            continue
+        fi
+
+        local http_code
+        http_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:$local_port/tokens" 2>/dev/null) || http_code="000"
+        if [[ "$http_code" != "000" ]]; then
+            echo "$pf_pid" >"$E2E_JWKS_PORT_FORWARD_PID_FILE"
+            echo "✓ Mock JWKS port-forward established (PID: $pf_pid)"
+            return 0
+        fi
+
+        if [[ $attempt -lt $max_attempts ]]; then
+            echo "JWKS forward attempt $attempt failed, retrying..."
+            kill -9 "$pf_pid" 2>/dev/null || true
+            sleep 2
+        fi
+    done
+
+    echo "Failed to establish mock-jwks port-forward on :$local_port"
+    return 1
+}
+
 cmd_wait_for_pod() {
     local pod_name="${1:?Pod name required}"
     local max_attempts="${2:-24}"
@@ -514,6 +586,9 @@ case "$COMMAND" in
         ;;
     restart-llama-port-forward)
         cmd_restart_llama_port_forward
+        ;;
+    restart-jwks-port-forward)
+        cmd_restart_jwks_port_forward
         ;;
     restart-port-forward)
         cmd_restart_port_forward
