@@ -190,21 +190,28 @@ verify_connectivity() {
     local max_attempts="${1:-6}"
     local local_port="${LOCAL_PORT:-8080}"
     local http_code=""
-    
+
     for ((attempt=1; attempt<=max_attempts; attempt++)); do
-        # Check readiness endpoint - accept 200 or 401 (auth required but service is up)
+        # First check /readiness to see if port-forward is alive (accept 200 or 401)
         http_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://localhost:$local_port/readiness" 2>/dev/null) || http_code="000"
-        
+
         if [[ "$http_code" == "200" || "$http_code" == "401" ]]; then
-            return 0
+            # Port-forward works; now verify the app is fully initialized by hitting
+            # a real endpoint. /v1/models requires the Llama Stack handshake to complete.
+            local models_code
+            models_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://localhost:$local_port/v1/models" 2>/dev/null) || models_code="000"
+            if [[ "$models_code" == "200" ]]; then
+                return 0
+            fi
+            echo "[e2e-ops] /readiness=$http_code but /v1/models=$models_code (app still initializing, attempt $attempt/$max_attempts)"
         fi
-        
+
         if [[ $attempt -lt $max_attempts ]]; then
-            sleep 2
+            sleep 5
         fi
     done
-    
-    echo "Connectivity check failed (HTTP: ${http_code:-unknown})"
+
+    echo "Connectivity check failed (readiness: ${http_code:-unknown})"
     return 1
 }
 
