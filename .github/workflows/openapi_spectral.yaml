@@ -1,0 +1,42 @@
+# OpenAPI: regenerate check (Spectral + committed docs/openapi.json drift).
+# - scripts/generate_openapi_schema.py builds the spec from FastAPI (app.main).
+# - CI fails if docs/openapi.json does not match generator output (run locally:
+#   uv run scripts/generate_openapi_schema.py docs/openapi.json).
+name: OpenAPI (Spectral)
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  spectral:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        # Same pattern as local dev (CONTRIBUTING.md): dev + llslibdev for a full app import.
+        run: uv sync --group dev --group llslibdev
+      - name: Install PDM
+        # scripts/generate_openapi_schema.py asserts OpenAPI info.version matches `pdm show --version`.
+        run: uv pip install pdm
+      - name: Verify docs/openapi.json matches generator
+        run: |
+          set -euo pipefail
+          uv run python scripts/generate_openapi_schema.py /tmp/openapi-generated.json
+          if ! diff -u docs/openapi.json /tmp/openapi-generated.json; then
+            echo "::error::docs/openapi.json is out of date. Regenerate with: uv run scripts/generate_openapi_schema.py docs/openapi.json"
+            exit 1
+          fi
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Spectral lint
+        run: npx --yes @stoplight/spectral-cli@6 lint docs/openapi.json --fail-severity error --display-only-failures

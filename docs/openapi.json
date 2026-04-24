@@ -17,7 +17,7 @@
     },
     "servers": [
         {
-            "url": "http://localhost:8080/",
+            "url": "http://localhost:8080",
             "description": "Locally running service"
         }
     ],
@@ -8927,7 +8927,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Successful response",
+                        "description": "Successful response. For `text/event-stream`, the body is a Server-Sent Events stream.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8984,8 +8984,7 @@
                                 "schema": {
                                     "type": "string"
                                 },
-                                "example": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"in_progress\",\"model\":\"openai/gpt-4o-mini\",\"output\":[],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{},\"output_text\":\"\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"sequence_number\":1,\"response_id\":\"resp_abc\",\"output_index\":0,\"item\":{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"in_progress\",\"role\":\"assistant\",\"content\":[]}}\n\n...\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":30,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"completed\",\"model\":\"openai/gpt-4o-mini\",\"output\":[{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\",\"annotations\":[]}]}],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"usage\":{\"input_tokens\":10,\"output_tokens\":6,\"total_tokens\":16,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{\"daily\":1000,\"monthly\":50000},\"output_text\":\"Hello! How can I help?\"}}\n\ndata: [DONE]\n\n",
-                                "description": "SSE stream of events"
+                                "example": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"in_progress\",\"model\":\"openai/gpt-4o-mini\",\"output\":[],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{},\"output_text\":\"\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"sequence_number\":1,\"response_id\":\"resp_abc\",\"output_index\":0,\"item\":{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"in_progress\",\"role\":\"assistant\",\"content\":[]}}\n\n...\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":30,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"completed\",\"model\":\"openai/gpt-4o-mini\",\"output\":[{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\",\"annotations\":[]}]}],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"usage\":{\"input_tokens\":10,\"output_tokens\":6,\"total_tokens\":16,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{\"daily\":1000,\"monthly\":50000},\"output_text\":\"Hello! How can I help?\"}}\n\ndata: [DONE]\n\n"
                             }
                         }
                     },
@@ -10322,15 +10321,30 @@
                 "tags": [
                     "a2a"
                 ],
-                "summary": "Handle A2A Jsonrpc",
-                "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
+                "summary": "Handle A2A JSON-RPC GET",
+                "description": "Handle GET on /a2a for A2A JSON-RPC requests following the A2A protocol specification.",
                 "operationId": "handle_a2a_jsonrpc_a2a_get",
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "Successful response: buffered JSON-RPC or HTTP payload for non-streaming calls, or a Server-Sent Events stream when the JSON-RPC method is message/stream.",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "type": "object",
+                                    "description": "JSON-RPC 2.0 response or A2A-over-HTTP payload"
+                                },
+                                "example": {
+                                    "jsonrpc": "2.0",
+                                    "id": "1",
+                                    "result": {}
+                                }
+                            },
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "text/event-stream"
+                                },
+                                "example": "data: {\"jsonrpc\":\"2.0\",\"id\":\"1\",\"result\":{}}\n\n"
                             }
                         }
                     }
@@ -10340,15 +10354,30 @@
                 "tags": [
                     "a2a"
                 ],
-                "summary": "Handle A2A Jsonrpc",
-                "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
-                "operationId": "handle_a2a_jsonrpc_a2a_get",
+                "summary": "Handle A2A JSON-RPC POST",
+                "description": "Handle POST on /a2a for A2A JSON-RPC requests following the A2A protocol specification.",
+                "operationId": "handle_a2a_jsonrpc_a2a_post",
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "Successful response: buffered JSON-RPC or HTTP payload for non-streaming calls, or a Server-Sent Events stream when the JSON-RPC method is message/stream.",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "type": "object",
+                                    "description": "JSON-RPC 2.0 response or A2A-over-HTTP payload"
+                                },
+                                "example": {
+                                    "jsonrpc": "2.0",
+                                    "id": "1",
+                                    "result": {}
+                                }
+                            },
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "text/event-stream"
+                                },
+                                "example": "data: {\"jsonrpc\":\"2.0\",\"id\":\"1\",\"result\":{}}\n\n"
                             }
                         }
                     }
@@ -16563,21 +16592,29 @@
                     "solr": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "$ref": "#/components/schemas/SolrVectorSearchRequest"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Solr",
-                        "description": "Solr-specific query parameters including filter queries",
+                        "description": "Solr inline RAG config: mode (semantic, hybrid, lexical) and filters; a legacy filter-only object (e.g. fq) is still accepted.",
                         "examples": [
                             {
-                                "fq": [
-                                    "product:*openshift*",
-                                    "product_version:*4.16*"
-                                ]
+                                "filters": {
+                                    "fq": [
+                                        "product:*openshift*"
+                                    ]
+                                },
+                                "mode": "hybrid"
+                            },
+                            {
+                                "filters": {
+                                    "fq": [
+                                        "product:*openshift*",
+                                        "product_version:*4.16*"
+                                    ]
+                                }
                             }
                         ]
                     }
@@ -16588,7 +16625,7 @@
                     "query"
                 ],
                 "title": "QueryRequest",
-                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    system_prompt: The optional system prompt.\n    attachments: The optional attachments.\n    no_tools: Whether to bypass all tools and MCP servers (default: False).\n    generate_topic_summary: Whether to generate topic summary for new conversations.\n    media_type: The optional media type for response format (application/json or text/plain).\n    vector_store_ids: The optional list of specific vector store IDs to query for RAG.\n    shield_ids: The optional list of safety shield IDs to apply.\n\nExample:\n    ```python\n    query_request = QueryRequest(query=\"Tell me about Kubernetes\")\n    ```",
+                "description": "Model representing a request for the LLM (Language Model).\n\nAttributes:\n    query: The query string.\n    conversation_id: The optional conversation ID (UUID).\n    provider: The optional provider.\n    model: The optional model.\n    system_prompt: The optional system prompt.\n    attachments: The optional attachments.\n    no_tools: Whether to bypass all tools and MCP servers (default: False).\n    generate_topic_summary: Whether to generate topic summary for new conversations.\n    media_type: The optional media type for response format (application/json or text/plain).\n    vector_store_ids: The optional list of specific vector store IDs to query for RAG.\n    shield_ids: The optional list of safety shield IDs to apply.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.\n\nExample:\n    ```python\n    query_request = QueryRequest(query=\"Tell me about Kubernetes\")\n    ```",
                 "examples": [
                     {
                         "attachments": [
@@ -17653,14 +17690,12 @@
                     "solr": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "$ref": "#/components/schemas/SolrVectorSearchRequest"
                             },
                             {
                                 "type": "null"
                             }
-                        ],
-                        "title": "Solr"
+                        ]
                     }
                 },
                 "additionalProperties": false,
@@ -17669,7 +17704,7 @@
                     "input"
                 ],
                 "title": "ResponsesRequest",
-                "description": "Model representing a request for the Responses API following LCORE specification.\n\nAttributes:\n    input: Input text or structured input items containing the query.\n    model: Model identifier in format \"provider/model\". Auto-selected if not provided.\n    conversation: Conversation ID linking to an existing conversation. Accepts both\n        OpenAI and LCORE formats. Mutually exclusive with previous_response_id.\n    include: Explicitly specify output item types that are excluded by default but\n        should be included in the response.\n    instructions: System instructions or guidelines provided to the model (acts as\n        the system prompt).\n    max_infer_iters: Maximum number of inference iterations the model can perform.\n    max_output_tokens: Maximum number of tokens allowed in the response.\n    max_tool_calls: Maximum number of tool calls allowed in a single response.\n    metadata: Custom metadata dictionary with key-value pairs for tracking or logging.\n    parallel_tool_calls: Whether the model can make multiple tool calls in parallel.\n    previous_response_id: Identifier of the previous response in a multi-turn\n        conversation. Mutually exclusive with conversation.\n    prompt: Prompt object containing a template with variables for dynamic\n        substitution.\n    reasoning: Reasoning configuration for the response.\n    safety_identifier: Safety identifier for the response.\n    store: Whether to store the response in conversation history. Defaults to True.\n    stream: Whether to stream the response as it is generated. Defaults to False.\n    temperature: Sampling temperature controlling randomness (typically 0.0\u20132.0).\n    text: Text response configuration specifying output format constraints (JSON\n        schema, JSON object, or plain text).\n    tool_choice: Tool selection strategy (\"auto\", \"required\", \"none\", or specific\n        tool configuration).\n    tools: List of tools available to the model (file search, web search, function\n        calls, MCP tools). Defaults to all tools available to the model.\n    generate_topic_summary: LCORE-specific flag indicating whether to generate a\n        topic summary for new conversations. Defaults to True.\n    shield_ids: LCORE-specific list of safety shield IDs to apply. If None, all\n        configured shields are used.\n    solr: LCORE-specific Solr vector_io provider query parameters (e.g. filter\n        queries). Optional.",
+                "description": "Model representing a request for the Responses API following LCORE specification.\n\nAttributes:\n    input: Input text or structured input items containing the query.\n    model: Model identifier in format \"provider/model\". Auto-selected if not provided.\n    conversation: Conversation ID linking to an existing conversation. Accepts both\n        OpenAI and LCORE formats. Mutually exclusive with previous_response_id.\n    include: Explicitly specify output item types that are excluded by default but\n        should be included in the response.\n    instructions: System instructions or guidelines provided to the model (acts as\n        the system prompt).\n    max_infer_iters: Maximum number of inference iterations the model can perform.\n    max_output_tokens: Maximum number of tokens allowed in the response.\n    max_tool_calls: Maximum number of tool calls allowed in a single response.\n    metadata: Custom metadata dictionary with key-value pairs for tracking or logging.\n    parallel_tool_calls: Whether the model can make multiple tool calls in parallel.\n    previous_response_id: Identifier of the previous response in a multi-turn\n        conversation. Mutually exclusive with conversation.\n    prompt: Prompt object containing a template with variables for dynamic\n        substitution.\n    reasoning: Reasoning configuration for the response.\n    safety_identifier: Safety identifier for the response.\n    store: Whether to store the response in conversation history. Defaults to True.\n    stream: Whether to stream the response as it is generated. Defaults to False.\n    temperature: Sampling temperature controlling randomness (typically 0.0\u20132.0).\n    text: Text response configuration specifying output format constraints (JSON\n        schema, JSON object, or plain text).\n    tool_choice: Tool selection strategy (\"auto\", \"required\", \"none\", or specific\n        tool configuration).\n    tools: List of tools available to the model (file search, web search, function\n        calls, MCP tools). Defaults to all tools available to the model.\n    generate_topic_summary: LCORE-specific flag indicating whether to generate a\n        topic summary for new conversations. Defaults to True.\n    shield_ids: LCORE-specific list of safety shield IDs to apply. If None, all\n        configured shields are used.\n    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.",
                 "examples": [
                     {
                         "generate_topic_summary": true,
@@ -18734,6 +18769,57 @@
                         ]
                     }
                 ]
+            },
+            "SolrVectorSearchRequest": {
+                "properties": {
+                    "mode": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "semantic",
+                                    "hybrid",
+                                    "lexical"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Mode",
+                        "description": "Solr vector_io search mode. When omitted, the server default ('hybrid') is used.",
+                        "examples": [
+                            "hybrid",
+                            "semantic",
+                            "lexical"
+                        ]
+                    },
+                    "filters": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Filters",
+                        "description": "Solr provider filter payload passed through as params['solr'].",
+                        "examples": [
+                            {
+                                "fq": [
+                                    "product:*openshift*",
+                                    "product_version:*4.16*"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "SolrVectorSearchRequest",
+                "description": "LCORE Solr inline RAG options for ``vector_io.query`` (mode and provider filters).\n\nAttributes:\n    mode: Solr vector_io search mode. When omitted, the server default (hybrid) is used.\n    filters: Solr provider filter payload passed through as params['solr'].\n\nLegacy clients may send a plain JSON object with filter keys only;\nthat object is accepted as filters with mode unset (server default applies)."
             },
             "SplunkConfiguration": {
                 "properties": {
@@ -19830,5 +19916,103 @@
                 ]
             }
         }
-    }
+    },
+    "tags": [
+        {
+            "name": "a2a",
+            "description": "Agent-to-Agent (A2A) protocol."
+        },
+        {
+            "name": "authorized",
+            "description": "Authorization probe."
+        },
+        {
+            "name": "config",
+            "description": "Service configuration."
+        },
+        {
+            "name": "conversations_v1",
+            "description": "Conversations API v1."
+        },
+        {
+            "name": "conversations_v2",
+            "description": "Conversations API v2."
+        },
+        {
+            "name": "feedback",
+            "description": "User feedback."
+        },
+        {
+            "name": "health",
+            "description": "Health and readiness probes."
+        },
+        {
+            "name": "info",
+            "description": "Service information."
+        },
+        {
+            "name": "mcp-auth",
+            "description": "MCP client authentication options."
+        },
+        {
+            "name": "mcp-servers",
+            "description": "MCP server registration."
+        },
+        {
+            "name": "metrics",
+            "description": "Prometheus metrics."
+        },
+        {
+            "name": "models",
+            "description": "LLM models."
+        },
+        {
+            "name": "prompts",
+            "description": "Prompt management."
+        },
+        {
+            "name": "providers",
+            "description": "Inference providers."
+        },
+        {
+            "name": "query",
+            "description": "Non-streaming query."
+        },
+        {
+            "name": "rags",
+            "description": "RAG configuration."
+        },
+        {
+            "name": "responses",
+            "description": "OpenAI-compatible Responses API."
+        },
+        {
+            "name": "rlsapi-v1",
+            "description": "RLS API v1 (inference)."
+        },
+        {
+            "name": "root",
+            "description": "Service root."
+        },
+        {
+            "name": "shields",
+            "description": "Safety shields."
+        },
+        {
+            "name": "streaming_query",
+            "description": "Streaming query (SSE)."
+        },
+        {
+            "name": "streaming_query_interrupt",
+            "description": "Streaming interrupt."
+        },
+        {
+            "name": "tools",
+            "description": "Tools."
+        },
+        {
+            "name": "vector-stores",
+            "description": "Vector stores and files."
+        }
+    ]
 }
