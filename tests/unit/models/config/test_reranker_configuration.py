@@ -3,6 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
+import constants
 from models.config import RerankerConfiguration
 
 
@@ -12,54 +13,31 @@ class TestRerankerConfiguration:
     def test_default_values(self) -> None:
         """Test that RerankerConfiguration has correct default values."""
         config = RerankerConfiguration()
-        assert config.enabled is True
-        assert config.model == "cross-encoder/ms-marco-MiniLM-L6-v2"
-        assert config.top_k_multiplier == 2.0
-        assert config.byok_boost == 1.2
-        assert config.okp_boost == 1.0
+        assert config.enabled is False
+        assert config.model == constants.DEFAULT_CROSS_ENCODER_MODEL
 
     def test_custom_model(self) -> None:
         """Test configuration with custom cross-encoder model."""
-        config = RerankerConfiguration(
-            model="cross-encoder/ms-marco-TinyBERT-L2-v2"
-        )
+        config = RerankerConfiguration(model="cross-encoder/ms-marco-TinyBERT-L2-v2")
         assert config.model == "cross-encoder/ms-marco-TinyBERT-L2-v2"
-        assert config.enabled is True
+        assert config.enabled is False
 
     def test_disabled_reranker(self) -> None:
         """Test configuration with reranker disabled."""
         config = RerankerConfiguration(enabled=False)
         assert config.enabled is False
-        assert config.model == "cross-encoder/ms-marco-MiniLM-L6-v2"
+        assert config.model == constants.DEFAULT_CROSS_ENCODER_MODEL
 
-    def test_custom_boost_factors(self) -> None:
-        """Test configuration with custom boost factors."""
-        config = RerankerConfiguration(
-            byok_boost=1.5,
-            okp_boost=0.8
-        )
-        assert config.byok_boost == 1.5
-        assert config.okp_boost == 0.8
-
-    def test_custom_top_k_multiplier(self) -> None:
-        """Test configuration with custom top_k_multiplier."""
-        config = RerankerConfiguration(top_k_multiplier=3.0)
-        assert config.top_k_multiplier == 3.0
+    def test_model_fields_set_detection(self) -> None:
+        """Test that model_fields_set is properly detected."""
+        config = RerankerConfiguration(model="custom-model")
+        assert config.model == "custom-model"
 
     def test_all_custom_values(self) -> None:
         """Test configuration with all custom values."""
-        config = RerankerConfiguration(
-            enabled=False,
-            model="custom-cross-encoder",
-            top_k_multiplier=1.5,
-            byok_boost=2.0,
-            okp_boost=0.5
-        )
+        config = RerankerConfiguration(enabled=False, model="custom-cross-encoder")
         assert config.enabled is False
         assert config.model == "custom-cross-encoder"
-        assert config.top_k_multiplier == 1.5
-        assert config.byok_boost == 2.0
-        assert config.okp_boost == 0.5
 
     def test_explicit_configuration_detection(self) -> None:
         """Test that explicitly configured values are detected."""

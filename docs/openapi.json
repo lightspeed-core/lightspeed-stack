@@ -12023,6 +12023,11 @@
                         "$ref": "#/components/schemas/OkpConfiguration",
                         "title": "OKP configuration",
                         "description": "OKP provider settings. Only used when 'okp' is listed in rag.inline or rag.tool."
+                    },
+                    "reranker": {
+                        "$ref": "#/components/schemas/RerankerConfiguration",
+                        "title": "Reranker configuration",
+                        "description": "Configuration for neural reranking of RAG chunks using cross-encoder."
                     }
                 },
                 "additionalProperties": false,
@@ -17819,6 +17824,26 @@
                 "type": "object",
                 "title": "ReferencedDocument",
                 "description": "Model representing a document referenced in generating a response.\n\nAttributes:\n    doc_url: Url to the referenced doc.\n    doc_title: Title of the referenced doc."
+            },
+            "RerankerConfiguration": {
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Reranker enabled",
+                        "description": "When True, reranking applied to RAG chunks. When False, reranking is disabled and original scoring used.",
+                        "default": false
+                    },
+                    "model": {
+                        "type": "string",
+                        "title": "Reranker model",
+                        "description": "Cross-encoder model name for reranking RAG chunks. Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers.",
+                        "default": "cross-encoder/ms-marco-MiniLM-L6-v2"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "RerankerConfiguration",
+                "description": "Reranker configuration for RAG chunk reranking."
             },
             "ResponseInput": {
                 "anyOf": [

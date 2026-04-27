@@ -21,188 +21,52 @@ from log import get_logger
 from models.common.query import SolrVectorSearchRequest
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import RAGChunk, RAGContext, ReferencedDocument
+from utils.reranker import apply_byok_rerank_boost, rerank_chunks_with_cross_encoder
 from utils.responses import resolve_vector_store_ids
 
 logger = get_logger(__name__)
 
-# Lazy-loaded cross-encoder models for reranking RAG chunks (CPU-bound, use in thread).
-# Cache models by name to avoid reloading the same model multiple times.
-# Not a constant; pylint invalid-name is disabled for this module-level singleton.
-_cross_encoder_models: dict[str, Any] = {}  # pylint: disable=invalid-name
 
 
-def _get_cross_encoder(model_name: str) -> Any:
-    """Return the lazy-loaded cross-encoder model for reranking.
-
-    Args:
-        model_name: Name of the cross-encoder model to load.
-
-    Returns:
-        Loaded CrossEncoder model instance, or None if loading fails.
-    """
-    if model_name not in _cross_encoder_models:
-        try:
-            from sentence_transformers import (  # pylint: disable=import-outside-toplevel
-                CrossEncoder,
-            )
-
-            _cross_encoder_models[model_name] = CrossEncoder(model_name)
-            logger.info("Loaded cross-encoder for RAG reranking: %s", model_name)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.warning(
-                "Could not load cross-encoder for reranking (%s): %s", model_name, e
-            )
-            _cross_encoder_models[model_name] = None
-    return _cross_encoder_models[model_name]
-
-
-async def _rerank_chunks_with_cross_encoder(
-    query: str,
-    chunks: list[RAGChunk],
-    top_k: int,
-    model_name: str = "cross-encoder/ms-marco-MiniLM-L6-v2",
-) -> list[RAGChunk]:
-    """Rerank chunks using configurable cross-encoder model.
-
-    Args:
-        query: The search query
-        chunks: RAG chunks to rerank
-        top_k: Number of top chunks to return
-        model_name: Cross-encoder model name to use
-
-    Returns:
-        Top top_k chunks sorted by cross-encoder score (descending)
-    """
-    if not chunks:
-        return []
-
-    try:
-        # Get the cached cross-encoder model
-        model = _get_cross_encoder(model_name)
-        if model is None:
-            raise RuntimeError(f"Failed to load cross-encoder model: {model_name}")
-
-        logger.debug("Using cross-encoder model: %s", model_name)
-
-        # Create query-chunk pairs for scoring
-        pairs = [(query, chunk.content) for chunk in chunks]
-        scores = model.predict(pairs)
-
-        if hasattr(scores, "tolist"):
-            scores = scores.tolist()
-
-        # Normalize scores to [0,1] range using min-max normalization
-        if len(scores) > 1:
-            min_score = min(scores)
-            max_score = max(scores)
-            score_range = max_score - min_score
-            if score_range > 0:
-                normalized_scores = [(score - min_score) / score_range for score in scores]
-            else:
-                # All scores are identical, assign 0.5 to all
-                normalized_scores = [0.5] * len(scores)
-        else:
-            # Single score, assign 1.0
-            normalized_scores = [1.0] * len(scores)
-
-        # Combine normalized scores with chunks and sort by score (descending)
-        indexed = list(zip(normalized_scores, chunks, strict=True))
-        indexed.sort(key=lambda x: x[0], reverse=True)
-        top_indexed = indexed[:top_k]
-
-        # Return RAGChunk list with normalized cross-encoder scores [0,1]
-        return [
-            RAGChunk(
-                content=chunk.content,
-                source=chunk.source,
-                score=float(score),
-                attributes=chunk.attributes,
-            )
-            for score, chunk in top_indexed
-        ]
-
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.warning(
-            "Cross-encoder reranking failed, falling back to original scoring: %s", e
-        )
-        # Fallback: sort by original score and take top_k
-        sorted_chunks = sorted(
-            chunks,
-            key=lambda c: c.score if c.score is not None else float("-inf"),
-            reverse=True,
-        )
-        return sorted_chunks[:top_k]
-
-
-def _apply_byok_rerank_boost(
-    chunks: list[RAGChunk], boost: float = constants.BYOK_RAG_RERANK_BOOST
-) -> list[RAGChunk]:
-    """Apply a score multiplier to BYOK chunks (source != OKP) and re-sort by score.
-
-    Args:
-        chunks: RAG chunks after reranking (may be from BYOK or Solr).
-        boost: Multiplier applied to BYOK chunk scores. Solr chunks unchanged.
-
-    Returns:
-        Same chunks with BYOK scores boosted, sorted by score descending.
-    """
-    boosted = []
-    for chunk in chunks:
-        score = chunk.score if chunk.score is not None else float("-inf")
-        if chunk.source != constants.OKP_RAG_ID:
-            score = score * boost
-        boosted.append(
-            RAGChunk(
-                content=chunk.content,
-                source=chunk.source,
-                score=score,
-                attributes=chunk.attributes,
-            )
-        )
-    boosted.sort(
-        key=lambda c: c.score if c.score is not None else float("-inf"),
-        reverse=True,
-    )
-    return boosted
-
-
-def _referenced_documents_from_rag_chunks(
-    rag_chunks: list[RAGChunk],
+def _filter_documents_for_chunks(
+    all_documents: list[ReferencedDocument],
+    final_chunks: list[RAGChunk],
 ) -> list[ReferencedDocument]:
-    """Build referenced documents list from RAG chunks (e.g. after reranking).
+    """Filter documents to match the final set of chunks after reranking.
 
     Args:
-        rag_chunks: RAG chunks with source and attributes (doc_url, title, etc.).
+        all_documents: All documents extracted from both BYOK and Solr sources.
+        final_chunks: Final chunks after merging and reranking.
 
     Returns:
-        Deduplicated list of ReferencedDocument from chunk attributes.
+        Filtered list of documents that correspond to the final chunks.
     """
-    seen: set[str] = set()
-    result: list[ReferencedDocument] = []
-    for chunk in rag_chunks:
+    # Create a set of unique identifiers from final chunks
+    final_chunk_identifiers = set()
+    for chunk in final_chunks:
         attrs = chunk.attributes or {}
+        # Use same logic as original extraction to identify documents
         doc_url = (
             attrs.get("reference_url") or attrs.get("doc_url") or attrs.get("docs_url")
         )
         doc_id = attrs.get("document_id") or attrs.get("doc_id")
         dedup_key = doc_url or doc_id or chunk.source or ""
-        if not dedup_key or dedup_key in seen:
-            continue
-        seen.add(dedup_key)
-        parsed_url: Optional[AnyUrl] = None
-        if doc_url:
-            try:
-                parsed_url = AnyUrl(doc_url)
-            except Exception:  # pylint: disable=broad-exception-caught
-                parsed_url = None
-        result.append(
-            ReferencedDocument(
-                doc_title=attrs.get("title"),
-                doc_url=parsed_url,
-                source=chunk.source,
-            )
-        )
-    return result
+        if dedup_key:
+            final_chunk_identifiers.add(dedup_key)
+
+    # Filter documents that match final chunk identifiers
+    filtered_documents = []
+    seen = set()
+    for doc in all_documents:
+        # Build same dedup key for document
+        doc_url_str = str(doc.doc_url) if doc.doc_url else None
+        dedup_key = doc_url_str or doc.source or ""
+
+        if dedup_key in final_chunk_identifiers and dedup_key not in seen:
+            seen.add(dedup_key)
+            filtered_documents.append(doc)
+
+    return filtered_documents
 
 
 def _get_okp_base_url() -> AnyUrl:
@@ -234,7 +98,6 @@ def _get_solr_vector_store_ids() -> list[str]:
 
 
 def _build_query_params(
-    
     solr: Optional[SolrVectorSearchRequest] = None,
     k: Optional[int] = None,
 ) -> dict[str, Any]:
@@ -289,7 +152,9 @@ def _extract_byok_rag_chunks(
     ):
         weighted_score = score * weight
         doc_id = (
-            chunk.metadata.get("document_id", chunk.chunk_id)
+            chunk.metadata.get("document_id")
+            or chunk.metadata.get("doc_id")
+            or chunk.chunk_id
             if chunk.metadata
             else chunk.chunk_id
         )
@@ -436,7 +301,11 @@ def _process_byok_rag_chunks_for_documents(
 
     for result in result_chunks:
         metadata = result.get("metadata", {})
-        doc_id = result.get("doc_id") or metadata.get("document_id")
+        doc_id = (
+            result.get("doc_id")
+            or metadata.get("document_id")
+            or metadata.get("doc_id")
+        )
         title = metadata.get("title")
         reference_url = (
             metadata.get("reference_url")
@@ -643,7 +512,6 @@ async def _fetch_solr_rag(  # pylint: disable=too-many-locals
     client: AsyncLlamaStackClient,
     query: str,
     solr: Optional[SolrVectorSearchRequest] = None,
-    max_chunks: Optional[int] = None,
 ) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
     """Fetch chunks and documents from Solr RAG source.
 
@@ -661,7 +529,7 @@ async def _fetch_solr_rag(  # pylint: disable=too-many-locals
     """
     rag_chunks: list[RAGChunk] = []
     referenced_documents: list[ReferencedDocument] = []
-    limit = max_chunks if max_chunks is not None else constants.OKP_RAG_MAX_CHUNKS
+    limit = constants.OKP_RAG_MAX_CHUNKS
 
     if not _is_solr_enabled():
         logger.info("OKP vector IO is disabled, skipping OKP search")
@@ -719,7 +587,7 @@ async def _fetch_solr_rag(  # pylint: disable=too-many-locals
     return rag_chunks, referenced_documents
 
 
-async def build_rag_context(  # pylint: disable=too-many-locals
+async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branches
     client: AsyncLlamaStackClient,
     moderation_decision: str,  # pylint: disable=unused-argument
     query: str,
@@ -742,6 +610,9 @@ async def build_rag_context(  # pylint: disable=too-many-locals
     Returns:
         RAGContext containing formatted context text and referenced documents
     """
+    if moderation_decision == "blocked":
+        return RAGContext()
+
     pool_size = 2 * constants.BYOK_RAG_MAX_CHUNKS
     top_k = constants.BYOK_RAG_MAX_CHUNKS
 
@@ -751,27 +622,33 @@ async def build_rag_context(  # pylint: disable=too-many-locals
     )
     solr_chunks_task = _fetch_solr_rag(client, query, solr)
 
-    (byok_chunks, _), (solr_chunks, _) = await asyncio.gather(
+    (byok_chunks, byok_documents), (solr_chunks, solr_documents) = await asyncio.gather(
         byok_chunks_task, solr_chunks_task
     )
 
     # Merge: combine and sort by score, keep top 2*BYOK_RAG_MAX_CHUNKS
     merged = byok_chunks + solr_chunks
     merged.sort(
-        key=lambda c: c.score if c.score is not None else float("-inf"),
-        reverse=True,
+        key=lambda c: c.score if c.score is not None else float("-inf"), reverse=True
     )
     merged = merged[:pool_size]
 
     # Rerank full pool with cross-encoder if enabled; boost BYOK then take top_k
     if configuration.reranker.enabled:
-        reranked = await _rerank_chunks_with_cross_encoder(
-            query, merged, pool_size, model_name=configuration.reranker.model
+        logger.info(
+            "Reranker enabled: processing %d chunks with model '%s'",
+            len(merged),
+            configuration.reranker.model,
         )
-        context_chunks = _apply_byok_rerank_boost(reranked)[:top_k]
+        reranked = await rerank_chunks_with_cross_encoder(query, merged, pool_size)
+        context_chunks = apply_byok_rerank_boost(reranked)[:top_k]
+        logger.info(
+            "Reranker completed: returned %d top chunks after BYOK boost",
+            len(context_chunks),
+        )
     else:
-        # Skip reranking, just apply boost and take top_k from original scores
-        context_chunks = _apply_byok_rerank_boost(merged)[:top_k]
+        logger.info("Reranker disabled: using original vector similarity scores")
+        context_chunks = merged[:top_k]
 
     context_text = _format_rag_context(context_chunks, query)
 
@@ -781,8 +658,9 @@ async def build_rag_context(  # pylint: disable=too-many-locals
         len(context_text),
     )
 
-    # Referenced documents from final chunks only (after reranking)
-    top_documents = _referenced_documents_from_rag_chunks(context_chunks)
+    # Filter documents to match final chunks (after reranking)
+    all_documents = byok_documents + solr_documents
+    top_documents = _filter_documents_for_chunks(all_documents, context_chunks)
 
     return RAGContext(
         context_text=context_text,

@@ -181,6 +181,9 @@ DEFAULT_EMBEDDING_MODEL: Final[str] = "sentence-transformers/all-mpnet-base-v2"
 # Default embedding vector dimension for the sentence transformer model
 DEFAULT_EMBEDDING_DIMENSION: Final[int] = 768
 
+# Default sentence transformer cross encoder model for reranking RAG chunk scores
+DEFAULT_CROSS_ENCODER_MODEL: Final[str] = "cross-encoder/ms-marco-MiniLM-L6-v2"
+
 # quota limiters constants
 USER_QUOTA_LIMITER: Final[str] = "user_limiter"
 CLUSTER_QUOTA_LIMITER: Final[str] = "cluster_limiter"
@@ -193,7 +196,7 @@ TOOL_RAG_MAX_CHUNKS: Final[int] = 10  # retrieved from RAG as a tool
 BYOK_RAG_MAX_CHUNKS: Final[int] = 10  # retrieved from BYOK RAG
 OKP_RAG_MAX_CHUNKS: Final[int] = 5  # retrieved from OKP RAG
 # Score multiplier applied to BYOK chunks after cross-encoder reranking (Solr chunks unchanged)
-BYOK_RAG_RERANK_BOOST = 1.2
+BYOK_RAG_RERANK_BOOST: Final[float] = 1.2
 
 # Solr OKP constants
 SOLR_VECTOR_SEARCH_DEFAULT_K: Final[int] = 5
