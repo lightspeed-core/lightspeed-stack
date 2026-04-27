@@ -1,5 +1,7 @@
 """Unit tests for vector search utilities."""
 
+import sys
+import unittest.mock
 import pytest
 from pydantic import AnyUrl
 from pytest_mock import MockerFixture
@@ -9,6 +11,7 @@ from configuration import AppConfig
 from models.requests import SolrVectorSearchRequest
 from utils.types import RAGChunk
 from utils.vector_search import (
+    _apply_byok_rerank_boost,
     _build_document_url,
     _build_query_params,
     _convert_solr_chunks_to_rag_format,
@@ -17,9 +20,11 @@ from utils.vector_search import (
     _fetch_byok_rag,
     _fetch_solr_rag,
     _format_rag_context,
+    _get_cross_encoder,
     _get_okp_base_url,
     _get_solr_vector_store_ids,
     _is_solr_enabled,
+    _rerank_chunks_with_cross_encoder,
     build_rag_context,
 )
 
@@ -719,3 +724,432 @@ class TestBuildRagContext:
         assert len(context.rag_chunks) > 0
         assert "BYOK content" in context.context_text
         assert "file_search found" in context.context_text
+
+    @pytest.mark.asyncio
+    async def test_reranker_enabled_calls_cross_encoder(self, mocker: MockerFixture) -> None:
+        """Test that cross-encoder is called when reranker is enabled."""
+        # Mock configuration with reranker enabled
+        config_mock = mocker.Mock(spec=AppConfig)
+        byok_rag_mock = mocker.Mock()
+        byok_rag_mock.rag_id = "rag_1"
+        byok_rag_mock.vector_db_id = "vs_1"
+        config_mock.configuration.rag.inline = ["rag_1"]
+        config_mock.configuration.byok_rag = [byok_rag_mock]
+        config_mock.inline_solr_enabled = False
+        config_mock.score_multiplier_mapping = {"vs_1": 1.0}
+        config_mock.rag_id_mapping = {"vs_1": "rag_1"}
+        config_mock.reranker.enabled = True
+        config_mock.reranker.model = "test-model"
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        # Mock BYOK search response
+        chunk_mock = mocker.Mock()
+        chunk_mock.content = "BYOK content"
+        chunk_mock.chunk_id = "chunk_1"
+        chunk_mock.metadata = {"document_id": "doc_1"}
+
+        search_response = mocker.Mock()
+        search_response.chunks = [chunk_mock]
+        search_response.scores = [0.9]
+
+        client_mock = mocker.AsyncMock()
+        client_mock.vector_io.query.return_value = search_response
+
+        # Mock cross-encoder reranking function
+        mock_rerank = mocker.patch("utils.vector_search._rerank_chunks_with_cross_encoder")
+        mock_rerank.return_value = [
+            RAGChunk(content="BYOK content", source="rag_1", score=0.95)
+        ]
+
+        context = await build_rag_context(client_mock, "passed", "test query", None)
+
+        # Verify cross-encoder was called
+        mock_rerank.assert_called_once()
+        assert mock_rerank.call_args[0][0] == "test query"  # query parameter
+        assert mock_rerank.call_args[1]["model_name"] == "test-model"  # model_name parameter
+        
+        assert len(context.rag_chunks) > 0
+
+    @pytest.mark.asyncio 
+    async def test_reranker_disabled_skips_cross_encoder(self, mocker: MockerFixture) -> None:
+        """Test that cross-encoder is skipped when reranker is disabled."""
+        # Mock configuration with reranker disabled
+        config_mock = mocker.Mock(spec=AppConfig)
+        byok_rag_mock = mocker.Mock()
+        byok_rag_mock.rag_id = "rag_1" 
+        byok_rag_mock.vector_db_id = "vs_1"
+        config_mock.configuration.rag.inline = ["rag_1"]
+        config_mock.configuration.byok_rag = [byok_rag_mock]
+        config_mock.inline_solr_enabled = False
+        config_mock.score_multiplier_mapping = {"vs_1": 1.0}
+        config_mock.rag_id_mapping = {"vs_1": "rag_1"}
+        config_mock.reranker.enabled = False
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        # Mock BYOK search response
+        chunk_mock = mocker.Mock()
+        chunk_mock.content = "BYOK content"
+        chunk_mock.chunk_id = "chunk_1"
+        chunk_mock.metadata = {"document_id": "doc_1"}
+
+        search_response = mocker.Mock()
+        search_response.chunks = [chunk_mock]
+        search_response.scores = [0.9]
+
+        client_mock = mocker.AsyncMock()
+        client_mock.vector_io.query.return_value = search_response
+
+        # Mock cross-encoder reranking function
+        mock_rerank = mocker.patch("utils.vector_search._rerank_chunks_with_cross_encoder")
+
+        context = await build_rag_context(client_mock, "passed", "test query", None)
+
+        # Verify cross-encoder was NOT called
+        mock_rerank.assert_not_called()
+        
+        assert len(context.rag_chunks) > 0
+
+
+class TestGetCrossEncoder:
+    """Tests for _get_cross_encoder function."""
+
+    def test_loads_model_successfully(self, mocker: MockerFixture) -> None:
+        """Test successful model loading and caching."""
+        # Clear the cache for testing
+        from utils.vector_search import _cross_encoder_models
+        _cross_encoder_models.clear()
+        
+        # Mock the CrossEncoder import and class
+        mock_cross_encoder_class = mocker.Mock()
+        mock_model_instance = mocker.Mock()
+        mock_cross_encoder_class.return_value = mock_model_instance
+        
+        # Mock the import of sentence_transformers
+        mock_sentence_transformers = mocker.Mock()
+        mock_sentence_transformers.CrossEncoder = mock_cross_encoder_class
+        
+        with unittest.mock.patch.dict(sys.modules, {"sentence_transformers": mock_sentence_transformers}):
+            model = _get_cross_encoder("test-model")
+            
+        assert model == mock_model_instance
+        mock_cross_encoder_class.assert_called_once_with("test-model")
+
+    def test_caches_loaded_model(self, mocker: MockerFixture) -> None:
+        """Test that models are cached and not reloaded."""
+        # Clear the cache for testing
+        from utils.vector_search import _cross_encoder_models
+        _cross_encoder_models.clear()
+        
+        mock_cross_encoder_class = mocker.Mock()
+        mock_model_instance = mocker.Mock()
+        mock_cross_encoder_class.return_value = mock_model_instance
+        
+        mock_sentence_transformers = mocker.Mock()
+        mock_sentence_transformers.CrossEncoder = mock_cross_encoder_class
+        
+        with unittest.mock.patch.dict(sys.modules, {"sentence_transformers": mock_sentence_transformers}):
+            # First call should load the model
+            model1 = _get_cross_encoder("test-model")
+            # Second call should return cached model
+            model2 = _get_cross_encoder("test-model")
+            
+        assert model1 == model2 == mock_model_instance
+        mock_cross_encoder_class.assert_called_once()  # Only called once
+
+    def test_handles_import_error(self, mocker: MockerFixture) -> None:
+        """Test graceful handling of sentence_transformers import error."""
+        # Clear the cache for testing
+        from utils.vector_search import _cross_encoder_models
+        _cross_encoder_models.clear()
+        
+        # Mock the import to fail
+        mocker.patch("utils.vector_search.logger")  # Suppress warning logs
+        
+        # Remove the module if it exists and patch import to fail
+        original_modules = sys.modules.copy()
+        if "sentence_transformers" in sys.modules:
+            del sys.modules["sentence_transformers"]
+        
+        def mock_import(name, *args):
+            if name == "sentence_transformers":
+                raise ImportError("Module not found")
+            return original_modules.get(name)
+        
+        mocker.patch("builtins.__import__", side_effect=mock_import)
+        model = _get_cross_encoder("test-model")
+            
+        # Restore original modules
+        sys.modules.update(original_modules)
+                
+        assert model is None
+
+    def test_handles_model_loading_error(self, mocker: MockerFixture) -> None:
+        """Test graceful handling of model instantiation error."""
+        # Clear the cache for testing
+        from utils.vector_search import _cross_encoder_models
+        _cross_encoder_models.clear()
+        
+        mock_cross_encoder_class = mocker.Mock()
+        mock_cross_encoder_class.side_effect = Exception("Model loading failed")
+        
+        mock_sentence_transformers = mocker.Mock()
+        mock_sentence_transformers.CrossEncoder = mock_cross_encoder_class
+        
+        with unittest.mock.patch.dict(sys.modules, {"sentence_transformers": mock_sentence_transformers}):
+            model = _get_cross_encoder("test-model")
+            
+        assert model is None
+
+
+class TestRerankChunksWithCrossEncoder:
+    """Tests for _rerank_chunks_with_cross_encoder function."""
+
+    @pytest.mark.asyncio
+    async def test_empty_chunks(self) -> None:
+        """Test reranking with empty chunks list."""
+        result = await _rerank_chunks_with_cross_encoder("test query", [], 5)
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_successful_reranking(self, mocker: MockerFixture) -> None:
+        """Test successful reranking with score normalization."""
+        # Create test chunks
+        chunks = [
+            RAGChunk(content="Content 1", source="source_1", score=0.5),
+            RAGChunk(content="Content 2", source="source_2", score=0.3),
+            RAGChunk(content="Content 3", source="source_3", score=0.8),
+        ]
+
+        # Mock cross-encoder model and prediction
+        mock_model = mocker.Mock()
+        mock_model.predict.return_value = [2.5, 1.0, 3.0]  # Raw scores
+        
+        # Mock _get_cross_encoder to return our mock model
+        mocker.patch("utils.vector_search._get_cross_encoder", return_value=mock_model)
+
+        result = await _rerank_chunks_with_cross_encoder("test query", chunks, 3)
+
+        # Verify model was called with correct pairs
+        expected_pairs = [
+            ("test query", "Content 1"),
+            ("test query", "Content 2"), 
+            ("test query", "Content 3"),
+        ]
+        mock_model.predict.assert_called_once_with(expected_pairs)
+
+        # Verify results are sorted by normalized scores (highest first)
+        assert len(result) == 3
+        assert result[0].content == "Content 3"  # Score 3.0 -> normalized to 1.0
+        assert result[1].content == "Content 1"  # Score 2.5 -> normalized to 0.75
+        assert result[2].content == "Content 2"  # Score 1.0 -> normalized to 0.0
+
+        # Verify scores are normalized to [0,1]
+        assert result[0].score == 1.0
+        assert result[1].score == 0.75
+        assert result[2].score == 0.0
+
+    @pytest.mark.asyncio
+    async def test_top_k_limiting(self, mocker: MockerFixture) -> None:
+        """Test that top_k limits the number of returned chunks."""
+        chunks = [
+            RAGChunk(content="Content 1", source="source_1", score=0.5),
+            RAGChunk(content="Content 2", source="source_2", score=0.3),
+            RAGChunk(content="Content 3", source="source_3", score=0.8),
+        ]
+
+        mock_model = mocker.Mock()
+        mock_model.predict.return_value = [2.5, 1.0, 3.0]
+        mocker.patch("utils.vector_search._get_cross_encoder", return_value=mock_model)
+
+        result = await _rerank_chunks_with_cross_encoder("test query", chunks, 2)
+
+        assert len(result) == 2  # Limited to top_k=2
+        assert result[0].content == "Content 3"
+        assert result[1].content == "Content 1"
+
+    @pytest.mark.asyncio
+    async def test_identical_scores_normalization(self, mocker: MockerFixture) -> None:
+        """Test normalization when all scores are identical."""
+        chunks = [
+            RAGChunk(content="Content 1", source="source_1", score=0.5),
+            RAGChunk(content="Content 2", source="source_2", score=0.3),
+        ]
+
+        mock_model = mocker.Mock()
+        mock_model.predict.return_value = [1.5, 1.5]  # Identical scores
+        mocker.patch("utils.vector_search._get_cross_encoder", return_value=mock_model)
+
+        result = await _rerank_chunks_with_cross_encoder("test query", chunks, 2)
+
+        # All scores should be 0.5 when identical
+        assert len(result) == 2
+        assert result[0].score == 0.5
+        assert result[1].score == 0.5
+
+    @pytest.mark.asyncio
+    async def test_single_chunk_normalization(self, mocker: MockerFixture) -> None:
+        """Test normalization with single chunk."""
+        chunks = [RAGChunk(content="Content 1", source="source_1", score=0.5)]
+
+        mock_model = mocker.Mock()
+        mock_model.predict.return_value = [2.5]
+        mocker.patch("utils.vector_search._get_cross_encoder", return_value=mock_model)
+
+        result = await _rerank_chunks_with_cross_encoder("test query", chunks, 1)
+
+        # Single chunk should get score 1.0
+        assert len(result) == 1
+        assert result[0].score == 1.0
+
+    @pytest.mark.asyncio
+    async def test_model_loading_failure_fallback(self, mocker: MockerFixture) -> None:
+        """Test fallback to original scores when model loading fails."""
+        chunks = [
+            RAGChunk(content="Content 1", source="source_1", score=0.8),
+            RAGChunk(content="Content 2", source="source_2", score=0.6),
+        ]
+
+        # Mock _get_cross_encoder to return None (loading failed)
+        mocker.patch("utils.vector_search._get_cross_encoder", return_value=None)
+
+        result = await _rerank_chunks_with_cross_encoder("test query", chunks, 2)
+
+        # Should return chunks sorted by original scores
+        assert len(result) == 2
+        assert result[0].content == "Content 1"  # Higher original score
+        assert result[1].content == "Content 2"
+        assert result[0].score == 0.8  # Original scores preserved
+        assert result[1].score == 0.6
+
+    @pytest.mark.asyncio
+    async def test_prediction_failure_fallback(self, mocker: MockerFixture) -> None:
+        """Test fallback when model.predict() raises exception."""
+        chunks = [
+            RAGChunk(content="Content 1", source="source_1", score=0.9),
+            RAGChunk(content="Content 2", source="source_2", score=0.7),
+        ]
+
+        mock_model = mocker.Mock()
+        mock_model.predict.side_effect = Exception("Prediction failed")
+        mocker.patch("utils.vector_search._get_cross_encoder", return_value=mock_model)
+
+        result = await _rerank_chunks_with_cross_encoder("test query", chunks, 2)
+
+        # Should fallback to original scores
+        assert len(result) == 2
+        assert result[0].content == "Content 1"
+        assert result[0].score == 0.9
+
+    @pytest.mark.asyncio
+    async def test_numpy_array_scores(self, mocker: MockerFixture) -> None:
+        """Test handling of numpy array scores from model prediction."""
+        chunks = [RAGChunk(content="Content 1", source="source_1", score=0.5)]
+
+        # Mock numpy array with tolist() method
+        mock_scores = mocker.Mock()
+        mock_scores.tolist.return_value = [2.5]
+        
+        mock_model = mocker.Mock()
+        mock_model.predict.return_value = mock_scores
+        mocker.patch("utils.vector_search._get_cross_encoder", return_value=mock_model)
+
+        result = await _rerank_chunks_with_cross_encoder("test query", chunks, 1)
+
+        # Should successfully handle numpy array conversion
+        assert len(result) == 1
+        assert result[0].score == 1.0
+        mock_scores.tolist.assert_called_once()
+
+
+class TestApplyByokRerankBoost:
+    """Tests for _apply_byok_rerank_boost function."""
+
+    def test_empty_chunks(self) -> None:
+        """Test boost application with empty chunks list."""
+        result = _apply_byok_rerank_boost([])
+        assert result == []
+
+    def test_boost_byok_chunks_only(self) -> None:
+        """Test that only BYOK chunks (non-OKP) get boosted."""
+        chunks = [
+            RAGChunk(content="BYOK content", source="byok_store", score=0.8),
+            RAGChunk(content="OKP content", source=constants.OKP_RAG_ID, score=0.6),
+            RAGChunk(content="Another BYOK", source="another_store", score=0.7),
+        ]
+
+        result = _apply_byok_rerank_boost(chunks, boost=2.0)
+
+        assert len(result) == 3
+        
+        # Find chunks by content for assertion
+        byok_chunk = next(c for c in result if c.content == "BYOK content")
+        okp_chunk = next(c for c in result if c.content == "OKP content")
+        another_byok = next(c for c in result if c.content == "Another BYOK")
+
+        # BYOK chunks should be boosted
+        assert byok_chunk.score == 1.6  # 0.8 * 2.0
+        assert another_byok.score == 1.4  # 0.7 * 2.0
+        
+        # OKP chunk should remain unchanged
+        assert okp_chunk.score == 0.6
+
+    def test_sorting_by_boosted_scores(self) -> None:
+        """Test that chunks are sorted by boosted scores in descending order."""
+        chunks = [
+            RAGChunk(content="Low BYOK", source="byok_store", score=0.5),
+            RAGChunk(content="High OKP", source=constants.OKP_RAG_ID, score=0.9),
+            RAGChunk(content="Mid BYOK", source="another_store", score=0.7),
+        ]
+
+        result = _apply_byok_rerank_boost(chunks, boost=2.0)
+
+        # After boosting: Low BYOK=1.0, High OKP=0.9, Mid BYOK=1.4
+        # Sorted order should be: Mid BYOK (1.4), Low BYOK (1.0), High OKP (0.9)
+        assert result[0].content == "Mid BYOK"
+        assert result[1].content == "Low BYOK" 
+        assert result[2].content == "High OKP"
+
+    def test_default_boost_factor(self) -> None:
+        """Test that default boost factor is applied correctly."""
+        chunks = [RAGChunk(content="BYOK content", source="byok_store", score=0.8)]
+
+        result = _apply_byok_rerank_boost(chunks)  # Using default boost
+
+        # Default boost should be constants.BYOK_RAG_RERANK_BOOST (1.2)
+        assert result[0].score == 0.8 * constants.BYOK_RAG_RERANK_BOOST
+
+    def test_none_scores_handled(self) -> None:
+        """Test handling of chunks with None scores."""
+        chunks = [
+            RAGChunk(content="BYOK with score", source="byok_store", score=0.8),
+            RAGChunk(content="BYOK no score", source="byok_store", score=None),
+            RAGChunk(content="OKP no score", source=constants.OKP_RAG_ID, score=None),
+        ]
+
+        result = _apply_byok_rerank_boost(chunks, boost=2.0)
+
+        assert len(result) == 3
+        
+        # Chunks with None scores should be treated as negative infinity for sorting
+        # but actual score calculation should handle None -> float("-inf") conversion
+        byok_with_score = next(c for c in result if c.content == "BYOK with score")
+        assert byok_with_score.score == 1.6  # 0.8 * 2.0
+
+    def test_preserves_chunk_attributes(self) -> None:
+        """Test that chunk attributes are preserved during boosting."""
+        chunks = [
+            RAGChunk(
+                content="Test content",
+                source="byok_store", 
+                score=0.8,
+                attributes={"title": "Test Doc", "url": "http://example.com"}
+            )
+        ]
+
+        result = _apply_byok_rerank_boost(chunks, boost=1.5)
+
+        assert len(result) == 1
+        assert result[0].content == "Test content"
+        assert result[0].source == "byok_store"
+        assert abs(result[0].score - 1.2) < 1e-10  # 0.8 * 1.5
+        assert result[0].attributes == {"title": "Test Doc", "url": "http://example.com"}
