@@ -198,9 +198,11 @@ verify_connectivity() {
         if [[ "$http_code" == "200" || "$http_code" == "401" ]]; then
             # Port-forward works; now verify the app is fully initialized by hitting
             # a real endpoint. /v1/models requires the Llama Stack handshake to complete.
+            # Accept 200 (no auth) or 401 (auth enabled) — both prove the full app
+            # stack is up, not just the TCP socket.
             local models_code
             models_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://localhost:$local_port/v1/models" 2>/dev/null) || models_code="000"
-            if [[ "$models_code" == "200" ]]; then
+            if [[ "$models_code" == "200" || "$models_code" == "401" ]]; then
                 return 0
             fi
             echo "[e2e-ops] /readiness=$http_code but /v1/models=$models_code (app still initializing, attempt $attempt/$max_attempts)"
