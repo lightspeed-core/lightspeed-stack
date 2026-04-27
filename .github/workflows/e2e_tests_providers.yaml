@@ -2,7 +2,9 @@
 name: E2E Inference Provider Tests
 
 on: 
-  push
+  schedule:
+    - cron: "0 0 * * *"  # Runs once a day at midnight UTC
+  workflow_dispatch:
 
 jobs:
   e2e_tests:
