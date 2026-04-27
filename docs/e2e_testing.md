@@ -84,7 +84,7 @@ tests/e2e-prow/
     │   ├── get-vllm-pod-info.sh
     │   └── gpu-setup.sh
     └── manifests/               # OpenShift/Kubernetes manifests
-        ├── lightspeed/          # Lightspeed stack, llama-stack, mock-jwks, mcp-mock-server
+        ├── lightspeed/          # Lightspeed stack, llama-stack, mock-jwks, mock-mcp
         ├── vllm/                # vLLM runtime and inference services (CPU/GPU)
         ├── operators/           # Operator install (operatorgroup, operators, ds-cluster)
         ├── namespaces/          # NFD, nvidia-operator

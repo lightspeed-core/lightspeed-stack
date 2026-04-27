@@ -3,7 +3,7 @@
 import os
 from collections.abc import Generator
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 from fastapi import Request, Response
@@ -48,8 +48,8 @@ TEST_MODEL_NAME = "test-model"
 def create_mock_llm_response(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     mocker: MockerFixture,
     content: str = "This is a test response about Ansible.",
-    tool_calls: list[Any] | None = None,
-    refusal: str | None = None,
+    tool_calls: Optional[list[Any]] = None,
+    refusal: Optional[str] = None,
     input_tokens: int = 10,
     output_tokens: int = 5,
 ) -> Any:
@@ -98,7 +98,7 @@ def create_mock_llm_response(  # pylint: disable=too-many-arguments,too-many-pos
 
 def create_mock_vector_store_response(
     mocker: MockerFixture,
-    chunks: list[dict[str, Any]] | None = None,
+    chunks: Optional[list[dict[str, Any]]] = None,
 ) -> Any:
     """Create a mock vector store response.
 
@@ -130,7 +130,7 @@ def create_mock_vector_store_response(
 def create_mock_tool_call(
     mocker: MockerFixture,
     tool_name: str = "test_tool",
-    arguments: dict[str, Any] | None = None,
+    arguments: Optional[dict[str, Any]] = None,
     call_id: str = "call-123",
 ) -> Any:
     """Create a mock tool call.

@@ -1,5 +1,7 @@
 """Unit tests for RAGChunk and RAGContext models."""
 
+from pydantic import HttpUrl
+
 from models.responses import ReferencedDocument
 from utils.types import RAGChunk, RAGContext
 
@@ -123,6 +125,7 @@ class TestRAGChunk:
             content="Test content", source="test-source", attributes=attributes
         )
         assert chunk.attributes == attributes
+        assert chunk.attributes is not None
         assert chunk.attributes["doc_url"] == "https://example.com/doc"
 
     def test_attributes_none(self) -> None:
@@ -164,12 +167,12 @@ class TestRAGContext:
         docs = [
             ReferencedDocument(
                 doc_title="Doc 1",
-                doc_url="https://example.com/doc1",
+                doc_url=HttpUrl("https://example.com/doc1"),
                 source="source1",
             ),
             ReferencedDocument(
                 doc_title="Doc 2",
-                doc_url="https://example.com/doc2",
+                doc_url=HttpUrl("https://example.com/doc2"),
                 source="source2",
             ),
         ]
@@ -182,7 +185,9 @@ class TestRAGContext:
         """Test RAGContext with all fields populated."""
         chunks = [RAGChunk(content="Test chunk", source="source1", score=0.95)]
         docs = [
-            ReferencedDocument(doc_title="Test Doc", doc_url="https://example.com/doc")
+            ReferencedDocument(
+                doc_title="Test Doc", doc_url=HttpUrl("https://example.com/doc")
+            )
         ]
         context = RAGContext(
             context_text="Formatted context",

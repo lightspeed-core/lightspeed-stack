@@ -39,6 +39,9 @@ Unit tests for utils/query.py functions.
 ## [test_responses.py](test_responses.py)
 Unit tests for utils/responses.py functions.
 
+## [test_rh_identity.py](test_rh_identity.py)
+Unit tests for utils/rh_identity module.
+
 ## [test_shields.py](test_shields.py)
 Unit tests for utils/shields.py functions.
 

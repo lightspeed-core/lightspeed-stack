@@ -8,7 +8,18 @@ Event formats are in the formats subpackage - see formats.rlsapi for the
 default implementation, or create your own format module.
 """
 
-from observability.formats import InferenceEventData, build_inference_event
+from observability.formats import (
+    InferenceEventData,
+    ResponsesEventData,
+    build_inference_event,
+    build_responses_event,
+)
 from observability.splunk import send_splunk_event
 
-__all__ = ["InferenceEventData", "build_inference_event", "send_splunk_event"]
+__all__ = [
+    "InferenceEventData",
+    "build_inference_event",
+    "ResponsesEventData",
+    "build_responses_event",
+    "send_splunk_event",
+]

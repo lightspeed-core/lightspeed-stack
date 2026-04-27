@@ -27,7 +27,7 @@ Feature: MCP Server Management API tests
         "servers": [
             {
                 "name": "mcp-oauth",
-                "url": "http://mock-mcp:3001",
+                "url": "http://mock-mcp:3000",
                 "provider_id": "model-context-protocol",
                 "source": "config"
             }
@@ -38,7 +38,7 @@ Feature: MCP Server Management API tests
   Scenario: Register duplicate MCP server returns 409
     When I access REST API endpoint "mcp-servers" using HTTP POST method
     """
-    {"name": "mcp-oauth", "url": "http://mock-mcp:3001", "provider_id": "model-context-protocol"}
+    {"name": "mcp-oauth", "url": "http://mock-mcp:3000", "provider_id": "model-context-protocol"}
     """
     Then The status code of the response is 409
     And The body of the response contains already exists
@@ -56,7 +56,7 @@ Feature: MCP Server Management API tests
   Scenario: Register MCP server with missing required fields returns 422
     When I access REST API endpoint "mcp-servers" using HTTP POST method
     """
-    {"url": "http://mock-mcp:3001"}
+    {"url": "http://mock-mcp:3000"}
     """
     Then The status code of the response is 422
     And The body of the response contains name
@@ -64,7 +64,7 @@ Feature: MCP Server Management API tests
   Scenario: Register MCP server with invalid URL scheme returns 422
     When I access REST API endpoint "mcp-servers" using HTTP POST method
     """
-    {"name": "bad-url-server", "url": "ftp://mock-mcp:3001", "provider_id": "model-context-protocol"}
+    {"name": "bad-url-server", "url": "ftp://mock-mcp:3000", "provider_id": "model-context-protocol"}
     """
     Then The status code of the response is 422
     And The body of the response contains scheme
@@ -73,7 +73,7 @@ Feature: MCP Server Management API tests
   Scenario: Register and delete MCP server lifecycle
     When I access REST API endpoint "mcp-servers" using HTTP POST method
     """
-    {"name": "e2e-lifecycle-server", "url": "http://mock-mcp:3001", "provider_id": "model-context-protocol"}
+    {"name": "e2e-lifecycle-server", "url": "http://mock-mcp:3000", "provider_id": "model-context-protocol"}
     """
     Then The status code of the response is 201
     And The body of the response contains e2e-lifecycle-server
@@ -90,7 +90,7 @@ Feature: MCP Server Management API tests
             },
             {
                 "name": "e2e-lifecycle-server",
-                "url": "http://mock-mcp:3001",
+                "url": "http://mock-mcp:3000",
                 "provider_id": "model-context-protocol",
                 "source": "api"
             }

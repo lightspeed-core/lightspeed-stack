@@ -26,6 +26,7 @@ from log import get_logger
 from models.config import Action
 from models.requests import QueryRequest
 from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH,
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
@@ -76,7 +77,7 @@ router = APIRouter(tags=["query"])
 query_response: dict[int | str, dict[str, Any]] = {
     200: QueryResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
+        examples=UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
     ),
     403: ForbiddenResponse.openapi_response(
         examples=["endpoint", "conversation read", "model override"]
@@ -84,11 +85,13 @@ query_response: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(
         examples=["conversation", "model", "provider"]
     ),
-    # 413: PromptTooLongResponse.openapi_response(),
+    413: PromptTooLongResponse.openapi_response(examples=["context window exceeded"]),
     422: UnprocessableEntityResponse.openapi_response(),
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 
@@ -110,7 +113,7 @@ async def query_endpoint_handler(
     - request: The incoming HTTP request (used by middleware).
     - query_request: Request to the LLM.
     - auth: Auth context tuple resolved from the authentication dependency.
-    - mcp_headers: Headers that should be pass to MCP servers.
+    - mcp_headers: Headers that should be passed to MCP servers.
 
     ### Returns:
     - QueryResponse: Contains the conversation ID and the LLM-generated response.
@@ -128,10 +131,12 @@ async def query_endpoint_handler(
     """
     check_configuration_loaded(configuration)
 
-    await check_mcp_auth(configuration, mcp_headers)
-
     started_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     user_id, _, _skip_userid_check, token = auth
+
+    # Check MCP Auth
+    await check_mcp_auth(configuration, mcp_headers, token, request.headers)
+
     # Check token availability
     check_tokens_available(configuration.quota_limiters, user_id)
 

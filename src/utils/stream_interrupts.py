@@ -5,7 +5,7 @@ from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from enum import Enum
 from threading import Lock
-from typing import Any
+from typing import Any, Optional
 
 from log import get_logger
 from utils.types import Singleton
@@ -27,7 +27,7 @@ class ActiveStream:
 
     user_id: str
     task: asyncio.Task[None]
-    on_interrupt: Callable[[], Coroutine[Any, Any, None]] | None = field(
+    on_interrupt: Optional[Callable[[], Coroutine[Any, Any, None]]] = field(
         default=None, repr=False
     )
 
@@ -54,7 +54,7 @@ class StreamInterruptRegistry(metaclass=Singleton):
         request_id: str,
         user_id: str,
         task: asyncio.Task[None],
-        on_interrupt: Callable[[], Coroutine[Any, Any, None]] | None = None,
+        on_interrupt: Optional[Callable[[], Coroutine[Any, Any, None]]] = None,
     ) -> None:
         """Register an active stream task for interrupt support.
 
@@ -124,7 +124,7 @@ class StreamInterruptRegistry(metaclass=Singleton):
         with self._lock:
             self._streams.pop(request_id, None)
 
-    def get_stream(self, request_id: str) -> ActiveStream | None:
+    def get_stream(self, request_id: str) -> Optional[ActiveStream]:
         """Get currently registered stream metadata for tests/introspection.
 
         Parameters:
@@ -133,7 +133,7 @@ class StreamInterruptRegistry(metaclass=Singleton):
 
         Returns:
         -------
-            ActiveStream | None: Registered stream metadata, or None when absent.
+            Optional[ActiveStream]: Registered stream metadata, or None when absent.
         """
         with self._lock:
             return self._streams.get(request_id)

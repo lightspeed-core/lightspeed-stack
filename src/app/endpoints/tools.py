@@ -1,6 +1,6 @@
 """Handler for REST API call to list available tools from MCP servers."""
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from llama_stack_client import APIConnectionError, BadRequestError
@@ -13,6 +13,7 @@ from configuration import configuration
 from log import get_logger
 from models.config import Action
 from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
     ForbiddenResponse,
     InternalServerErrorResponse,
     ServiceUnavailableResponse,
@@ -34,7 +35,7 @@ router = APIRouter(tags=["tools"])
 
 
 def _input_schema_to_parameters(
-    schema: dict[str, Any] | None,
+    schema: Optional[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Convert a JSON Schema input_schema to a flat list of parameter dicts.
 
@@ -92,12 +93,12 @@ def _normalize_tool_dict(tool_dict: dict[str, Any], toolgroup: Any) -> None:
 
 tools_responses: dict[int | str, dict[str, Any]] = {
     200: ToolsResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 
@@ -138,7 +139,8 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
         configuration, mcp_headers, request.headers, token
     )
 
-    await check_mcp_auth(configuration, complete_mcp_headers)
+    # Check MCP Auth
+    await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
     toolgroups_response = []
     try:

@@ -20,7 +20,7 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import trustme
 import yaml
@@ -51,7 +51,7 @@ def _is_docker_mode() -> bool:
     return "llama-stack" in result.stdout
 
 
-def _host_special_dns_from_container(hostname: str) -> str | None:
+def _host_special_dns_from_container(hostname: str) -> Optional[str]:
     """Resolve a host-gateway hostname inside llama-stack to an IPv4 address.
 
     Docker exposes ``host.docker.internal`` or ``host.containers.internal``

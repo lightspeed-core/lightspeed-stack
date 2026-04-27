@@ -14,46 +14,62 @@ Lightspeed Core Service (LCS) service API specification.
 
 ## List of REST API endpoints
 
-| Method | Path                                  | Description |
-|--------|---------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| GET    | `/`                                   | Returns the static HTML index page                                                                                                                   |
-| GET    | `/v1/info`                            | Returns the service name, version and Llama-stack version                                                                                            |
-| GET    | `/v1/models`                          | List of available models                                                                                                                             |
-| GET    | `/v1/tools`                           | Consolidated list of available tools from all configured MCP servers                                                                                 |
-| GET    | `/v1/mcp-auth/client-options`         | List of MCP servers configured to accept client-provided authorization tokens, along with the header names where clients should provide these tokens |
-| GET    | `/v1/mcp-servers`                     | List all registered MCP servers                                                                                                                      |
-| POST   | `/v1/mcp-servers`                     | Register an MCP server dynamically at runtime                                                                                                        |
-| DELETE | `/v1/mcp-servers/{name}`              | Unregister a dynamically registered MCP server                                                                                                       |
-| GET    | `/v1/shields`                         | List of available shields from the Llama Stack service                                                                                               |
-| GET    | `/v1/providers`                       | List all available providers grouped by API type                                                                                                     |
-| GET    | `/v1/providers/{provider_id}`         | Retrieve a single provider identified by its unique ID                                                                                               |
-| GET    | `/v1/rags`                            | List all available RAGs                                                                                                                              |
-| GET    | `/v1/rags/{rag_id}`                   | Retrieve a single RAG identified by its unique ID                                                                                                    |
-| POST   | `/v1/query`                           | Processes a POST request to a query endpoint, forwarding the user's query to a selected Llama Stack LLM and returning the generated response         |
-| POST   | `/v1/streaming_query`                 | Streaming response using Server-Sent Events (SSE) format with content type text/event-stream                                                         |
-| GET    | `/v1/config`                          | Returns the current service configuration                                                                                                            |
-| POST   | `/v1/feedback`                        | Processes a user feedback submission, storing the feedback and returning a confirmation response                                                     |
-| GET    | `/v1/feedback/status`                 | Return the current enabled status of the feedback functionality                                                                                      |
-| PUT    | `/v1/feedback/status`                 | Change the feedback status: enables or disables it                                                                                                   |
-| GET    | `/v1/conversations`                   | Retrieve all conversations for the authenticated user                                                                                                |
-| GET    | `/v1/conversations/{conversation_id}` | Retrieve a conversation by ID using Conversations API                                                                                                |
-| DELETE | `/v1/conversations/{conversation_id}` | Delete a conversation by ID using Conversations API                                                                                                  |
-| PUT    | `/v1/conversations/{conversation_id}` | Update a conversation metadata using Conversations API                                                                                               |
-| GET    | `/v2/conversations`                   | Retrieve all conversations for the authenticated user                                                                                                |
-| GET    | `/v2/conversations/{conversation_id}` | Retrieve a conversation identified by its ID                                                                                                         |
-| DELETE | `/v2/conversations/{conversation_id}` | Delete a conversation identified by its ID                                                                                                           |
-| PUT    | `/v2/conversations/{conversation_id}` | Update a conversation topic summary by ID                                                                                                            |
-| POST   | `/v1/infer`                           | Serves requests from the RHEL Lightspeed Command Line Assistant (CLA)                                                                                |
-| POST   | `/v1/responses`                       | Handle request to the /responses endpoint using Responses API (LCORE specification)                                                                  |
-| GET    | `/readiness`                          | Returns service readiness state                                                                                                                      |
-| GET    | `/liveness`                           | Returns liveness status of the service                                                                                                               |
-| POST   | `/authorized`                         | Returns the authenticated user's ID and username                                                                                                     |
-| GET    | `/metrics`                            | Returns the latest Prometheus metrics in a form of plain text                                                                                        |
-| GET    | `/.well-known/agent-card.json`        | Serve the A2A Agent Card at the well-known location                                                                                                  |
-| GET    | `/.well-known/agent.json`             | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
-| GET    | `/a2a`                                | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
-| POST   | `/a2a`                                | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
-| GET    | `/a2a/health`                         | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
+| Method | Path                                                  | Description                                                                                                                                          |
+|--------|-------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| GET    | `/`                                                   | Returns the static HTML index page                                                                                                                   |
+| GET    | `/v1/info`                                            | Returns the service name, version and Llama-stack version                                                                                            |
+| GET    | `/v1/models`                                          | List of available models                                                                                                                             |
+| GET    | `/v1/tools`                                           | Consolidated list of available tools from all configured MCP servers                                                                                 |
+| GET    | `/v1/mcp-auth/client-options`                         | List of MCP servers configured to accept client-provided authorization tokens, along with the header names where clients should provide these tokens |
+| GET    | `/v1/mcp-servers`                                     | List all registered MCP servers                                                                                                                      |
+| POST   | `/v1/mcp-servers`                                     | Register an MCP server dynamically at runtime                                                                                                        |
+| DELETE | `/v1/mcp-servers/{name}`                              | Unregister a dynamically registered MCP server                                                                                                       |
+| GET    | `/v1/shields`                                         | List of available shields from the Llama Stack service                                                                                               |
+| GET    | `/v1/providers`                                       | List all available providers grouped by API type                                                                                                     |
+| GET    | `/v1/providers/{provider_id}`                         | Retrieve a single provider identified by its unique ID                                                                                               |
+| GET    | `/v1/prompts/`                                        | List prompts                                                                                                                                         |
+| POST   | `/v1/prompts/`                                        | Create prompt                                                                                                                                        |
+| GET    | `/v1/prompts/{prompt_id}`                             | Get prompt                                                                                                                                           |
+| PUT    | `/v1/prompts/{prompt_id}`                             | Update prompt                                                                                                                                        |
+| DELETE | `/v1/prompts/{prompt_id}`                             | Delete prompt                                                                                                                                        |
+| GET    | `/v1/rags`                                            | List all available RAGs                                                                                                                              |
+| GET    | `/v1/rags/{rag_id}`                                   | Retrieve a single RAG identified by its unique ID                                                                                                    |
+| GET    | `/v1/vector-stores`                                   | List Vector Stores                                                                                                                                   |
+| POST   | `/v1/vector-stores`                                   | Create Vector Store                                                                                                                                  |
+| GET    | `/v1/vector-stores/{vector_store_id}`                 | Get Vector Store                                                                                                                                     |
+| PUT    | `/v1/vector-stores/{vector_store_id}`                 | Update Vector Store                                                                                                                                  |
+| DELETE | `/v1/vector-stores/{vector_store_id}`                 | Delete Vector Store                                                                                                                                  |
+| POST   | `/v1/files`                                           | Create File                                                                                                                                          |
+| POST   | `/v1/vector-stores/{vector_store_id}/files`           | Add File To Vector Store                                                                                                                             |
+| GET    | `/v1/vector-stores/{vector_store_id}/files`           | List Vector Store Files                                                                                                                              |
+| GET    | `/v1/vector-stores/{vector_store_id}/files/{file_id}` | Get Vector Store File                                                                                                                                |
+| DELETE | `/v1/vector-stores/{vector_store_id}/files/{file_id}` | Delete Vector Store File                                                                                                                             |
+| POST   | `/v1/query`                                           | Processes a POST request to a query endpoint, forwarding the user's query to a selected Llama Stack LLM and returning the generated response         |
+| POST   | `/v1/streaming_query`                                 | Streaming response using Server-Sent Events (SSE) format with content type text/event-stream                                                         |
+| POST   | `/v1/streaming_query/interrupt`                       | Streaming Query Interrupt Endpoint Handler                                                                                                           |
+| GET    | `/v1/config`                                          | Returns the current service configuration                                                                                                            |
+| POST   | `/v1/feedback`                                        | Processes a user feedback submission, storing the feedback and returning a confirmation response                                                     |
+| GET    | `/v1/feedback/status`                                 | Return the current enabled status of the feedback functionality                                                                                      |
+| PUT    | `/v1/feedback/status`                                 | Change the feedback status: enables or disables it                                                                                                   |
+| GET    | `/v1/conversations`                                   | Retrieve all conversations for the authenticated user                                                                                                |
+| GET    | `/v1/conversations/{conversation_id}`                 | Retrieve a conversation by ID using Conversations API                                                                                                |
+| DELETE | `/v1/conversations/{conversation_id}`                 | Delete a conversation by ID using Conversations API                                                                                                  |
+| PUT    | `/v1/conversations/{conversation_id}`                 | Update a conversation metadata using Conversations API                                                                                               |
+| GET    | `/v2/conversations`                                   | Retrieve all conversations for the authenticated user                                                                                                |
+| GET    | `/v2/conversations/{conversation_id}`                 | Retrieve a conversation identified by its ID                                                                                                         |
+| DELETE | `/v2/conversations/{conversation_id}`                 | Delete a conversation identified by its ID                                                                                                           |
+| PUT    | `/v2/conversations/{conversation_id}`                 | Update a conversation topic summary by ID                                                                                                            |
+| POST   | `/v1/infer`                                           | Serves requests from the RHEL Lightspeed Command Line Assistant (CLA)                                                                                |
+| POST   | `/v1/responses`                                       | Handle request to the /responses endpoint using Responses API (LCORE specification)                                                                  |
+| GET    | `/readiness`                                          | Returns service readiness state                                                                                                                      |
+| GET    | `/liveness`                                           | Returns liveness status of the service                                                                                                               |
+| POST   | `/authorized`                                         | Returns the authenticated user's ID and username                                                                                                     |
+| GET    | `/metrics`                                            | Returns the latest Prometheus metrics in a form of plain text                                                                                        |
+| GET    | `/.well-known/agent-card.json`                        | Serve the A2A Agent Card at the well-known location                                                                                                  |
+| GET    | `/.well-known/agent.json`                             | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
+| GET    | `/a2a`                                                | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
+| POST   | `/a2a`                                                | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
+| GET    | `/a2a/health`                                         | Handle A2A JSON-RPC requests following the A2A protocol specification                                                                                |
 
 
 ## GET `/`
@@ -83,7 +99,6 @@ Handle GET requests to the root ("/") endpoint and returns the static HTML index
 | 401         | Unauthorized        | [UnauthorizedResponse](#unauthorizedresponse) |
 | 403         | Permission denied   | [ForbiddenResponse](#forbiddenresponse)       |
 
-Examples
 
 ```json
 {
@@ -346,7 +361,7 @@ available tools from all configured MCP servers.
 ### Parameters:
 - request: The incoming HTTP request (used by middleware).
 - auth: Authentication tuple from the auth dependency (used by middleware).
-
+- mcp_headers: Headers that should be passed to MCP servers.
 ### Raises:
 - HTTPException: If unable to connect to the Llama Stack server or if tool
   retrieval fails for any reason.
@@ -434,7 +449,7 @@ authenticate with using their own tokens.
 ### Parameters:
 - request: The incoming HTTP request (used by middleware).
 - auth: Authentication tuple from the auth dependency (used by middleware).
-- mcp_headers: Headers that should be pass to MCP servers.
+- mcp_headers: Headers that should be passed to MCP servers.
 
 ### Returns:
 - MCPClientAuthOptionsResponse: List of MCP servers and their
@@ -583,7 +598,7 @@ as a toolgroup with Llama Stack so it becomes available for queries.
 ### Parameters:
 - request: Model containing attributes to dynamically registering an MCP server.
 - auth: Authentication tuple from the auth dependency (used by middleware).
-- body: Headers that should be pass to MCP servers.
+- body: Headers that should be passed to MCP servers.
 
 ### Raises:
 - HTTPException: On duplicate name, Llama Stack connection error, or
@@ -693,7 +708,7 @@ its toolgroup from Llama Stack. Only servers registered via the API
 can be deleted; statically configured servers cannot be removed.
 
 ### Parameters:
-- request: Model containing attributes to dynamically registering an MCP server.
+- request: The incoming HTTP request (used by middleware).
 - auth: Authentication tuple from the auth dependency (used by middleware).
 - name: MCP server name
 
@@ -754,7 +769,6 @@ Examples
 
 
 
-
 ```json
 {
   "detail": {
@@ -797,6 +811,18 @@ Examples
   "detail": {
     "cause": "Connection error while trying to reach backend service.",
     "response": "Unable to connect to Llama Stack"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+    "response": "Unable to connect to Kubernetes API"
   }
 }
 ```
@@ -889,6 +915,16 @@ Examples
 }
 ```
 
+
+
+```json
+{
+  "detail": {
+    "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+    "response": "Unable to connect to Kubernetes API"
+  }
+}
+```
 ## GET `/v1/providers`
 
 > **Providers Endpoint Handler**
@@ -978,6 +1014,14 @@ Examples
 }
 ```
 
+```json
+{
+  "detail": {
+    "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+    "response": "Unable to connect to Kubernetes API"
+  }
+}
+```
 ## GET `/v1/providers/{provider_id}`
 
 > **Get Provider Endpoint Handler**
@@ -1060,7 +1104,6 @@ Examples
 ```
 
 
-
 ```json
 {
   "detail": {
@@ -1089,6 +1132,634 @@ Examples
 }
 ```
 
+
+
+```json
+{
+  "detail": {
+    "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+    "response": "Unable to connect to Kubernetes API"
+  }
+}
+```
+## GET `/v1/prompts`
+
+> **List Prompts Handler**
+
+Handle requests to the GET /prompts endpoint.
+
+Process GET requests that list all stored prompt templates from the Llama
+Stack service. For example:
+
+    curl http://localhost:8080/v1/prompts
+
+### Parameters:
+- request: The incoming HTTP request (used by middleware).
+- auth: Authentication tuple from the auth dependency (used by middleware).
+
+### Raises:
+- HTTPException: If configuration is not loaded, if unable to connect to
+  Llama Stack, or if the prompts API returns an error response.
+
+### Returns:
+- PromptsListResponse: An object containing the list of prompts.
+
+
+
+
+
+### ✅ Responses
+
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [PromptsListResponse](#promptslistresponse)                 |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+
+```json
+{
+  "detail": {
+    "cause": "No Authorization header found",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No token found in Authorization header",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 does not have permission to list or read stored prompts (missing permission: read_prompts).",
+    "response": "User does not have permission to perform this action"
+  }
+}
+```
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Lightspeed Stack configuration has not been initialized.",
+    "response": "Configuration is not loaded"
+  }
+}
+```
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Connection error while trying to reach backend service.",
+    "response": "Unable to connect to Llama Stack"
+  }
+}
+```
+## POST `/v1/prompts`
+
+> **Create Prompt Handler**
+
+Handle requests to the POST /prompts endpoint.
+
+Process requests to create a stored prompt template in Llama Stack. The
+body must include the prompt text and may include template variable names.
+For example:
+
+    curl -X POST http://localhost:8080/v1/prompts \\
+      -H 'Content-Type: application/json' \\
+      -d '{"prompt": "Hello {{name}}", "variables": ["name"]}'
+
+### Parameters:
+- request: The incoming HTTP request (used by middleware).
+- auth: Authentication tuple from the auth dependency (used by middleware).
+- body: Prompt creation parameters.
+
+### Raises:
+- HTTPException: If configuration is not loaded, if unable to connect to
+  Llama Stack, or if the prompts API returns an error response.
+
+### Returns:
+- PromptResourceResponse: The created prompt as returned by Llama Stack.
+
+
+
+
+
+### 📦 Request Body 
+
+[PromptCreateRequest](#promptcreaterequest)
+
+### ✅ Responses
+
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [PromptResourceResponse](#promptresourceresponse)           |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found    | [NotFoundResponse](#notfoundresponse)                       |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                 |
+
+
+```json
+{
+  "detail": {
+    "cause": "No Authorization header found",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No token found in Authorization header",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 does not have permission to create, update, or delete stored prompts (missing permission: manage_prompts).",
+    "response": "User does not have permission to perform this action"
+  }
+}
+```
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Lightspeed Stack configuration has not been initialized.",
+    "response": "Configuration is not loaded"
+  }
+}
+```
+
+
+```json
+{
+  "detail": {
+    "cause": "Connection error while trying to reach backend service.",
+    "response": "Unable to connect to Llama Stack"
+  }
+}
+```
+## GET `/v1/prompts/{prompt_id}`
+
+> **Get Prompt Handler**
+
+Handle requests to the GET /prompts/{prompt_id} endpoint.
+
+Process GET requests to retrieve a single prompt by identifier. The
+``version`` query parameter is optional; when omitted, the latest version is
+returned. For example:
+
+    curl http://localhost:8080/v1/prompts/pmpt_abc123?version=1
+
+### Parameters:
+- request: The incoming HTTP request (used by middleware).
+- prompt_id: The Llama Stack prompt identifier.
+- auth: Authentication tuple from the auth dependency (used by middleware).
+- version: Optional version number (latest when omitted).
+
+### Raises:
+- HTTPException: If configuration is not loaded, if the prompt is not
+  found, if unable to connect to Llama Stack, or if the prompts API returns
+  an error response.
+
+### Returns:
+- PromptResourceResponse: The requested prompt object.
+
+
+
+### 🔗 Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| prompt_id | string | True |  |
+| version |  | False |  |
+
+
+### ✅ Responses
+
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [PromptResourceResponse](#promptresourceresponse)           |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found    | [NotFoundResponse](#notfoundresponse)                       |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                 |
+
+
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No Authorization header found",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No token found in Authorization header",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 does not have permission to list or read stored prompts (missing permission: read_prompts).",
+    "response": "User does not have permission to perform this action"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Prompt with ID pmpt_0123456789abcdef0123456789abcdef01234567 does not exist",
+    "response": "Prompt not found"
+  }
+}
+```
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Lightspeed Stack configuration has not been initialized.",
+    "response": "Configuration is not loaded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Connection error while trying to reach backend service.",
+    "response": "Unable to connect to Llama Stack"
+  }
+}
+```
+## PUT `/v1/prompts/{prompt_id}`
+
+> **Update Prompt Handler**
+
+Handle requests to the PUT /prompts/{prompt_id} endpoint.
+
+Process requests to update a stored prompt; Llama Stack increments the
+version. The body includes the new text, the current version being
+replaced, and optional fields such as ``set_as_default`` and ``variables``.
+For example:
+
+    curl -X PUT http://localhost:8080/v1/prompts/pmpt_abc123 \\
+      -H 'Content-Type: application/json' \\
+      -d '{"prompt": "Hi", "version": 1, "set_as_default": true}'
+
+### Parameters:
+- request: The incoming HTTP request (used by middleware).
+- prompt_id: The Llama Stack prompt identifier.
+- auth: Authentication tuple from the auth dependency (used by middleware).
+- body: Prompt update parameters.
+
+### Raises:
+- HTTPException: If configuration is not loaded, if the prompt is not
+  found, if unable to connect to Llama Stack, or if the prompts API returns
+  an error response.
+
+### Returns:
+- PromptResourceResponse: The updated prompt object returned by Llama Stack.
+
+
+
+### 🔗 Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| prompt_id | string | True |  |
+
+
+### 📦 Request Body 
+
+[PromptUpdateRequest](#promptupdaterequest)
+
+### ✅ Responses
+
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [PromptResourceResponse](#promptresourceresponse)           |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found    | [NotFoundResponse](#notfoundresponse)                       |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                 |
+
+Examples
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No Authorization header found",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No token found in Authorization header",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 does not have permission to create, update, or delete stored prompts (missing permission: manage_prompts).",
+    "response": "User does not have permission to perform this action"
+  }
+}
+```
+
+
+```json
+{
+  "detail": {
+    "cause": "Prompt with ID pmpt_0123456789abcdef0123456789abcdef01234567 does not exist",
+    "response": "Prompt not found"
+  }
+}
+```
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Lightspeed Stack configuration has not been initialized.",
+    "response": "Configuration is not loaded"
+  }
+}
+```
+
+
+```json
+{
+  "detail": {
+    "cause": "Connection error while trying to reach backend service.",
+    "response": "Unable to connect to Llama Stack"
+  }
+}
+```
+## DELETE `/v1/prompts/{prompt_id}`
+
+> **Delete Prompt Handler**
+
+Handle requests to the DELETE /prompts/{prompt_id} endpoint.
+
+Process requests to delete a stored prompt in Llama Stack. The response
+always uses HTTP 200 with a JSON body indicating whether the deletion
+succeeded (same pattern as deleting a conversation in ``/v2``). For example:
+
+    curl -X DELETE http://localhost:8080/v1/prompts/pmpt_abc123
+
+When the prompt does not exist, the response still returns 200 with
+``deleted`` set to false in the body.
+
+### Parameters:
+- request: The incoming HTTP request (used by middleware).
+- prompt_id: The Llama Stack prompt identifier.
+- auth: Authentication tuple from the auth dependency (used by middleware).
+
+### Raises:
+- HTTPException: If configuration is not loaded, if unable to connect to
+  Llama Stack, or if the prompts API returns an error response.
+
+### Returns:
+- PromptDeleteResponse: An object describing whether the prompt was
+  deleted and a human-readable message.
+
+
+
+### 🔗 Parameters
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| prompt_id | string | True |  |
+
+
+### ✅ Responses
+
+| Status Code | Description           | Component                                                   |
+|-------------|-----------------------|-------------------------------------------------------------|
+| 200         | Successful response   | [PromptDeleteResponse](#promptdeleteresponse)               |
+| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
+| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                 |
+
+Examples
+
+
+
+
+
+```json
+{
+  "prompt_id": "pmpt_0123456789abcdef0123456789abcdef01234567",
+  "response": "Prompt deleted successfully",
+  "success": true
+}
+```
+
+
+
+
+```json
+{
+  "prompt_id": "pmpt_0123456789abcdef0123456789abcdef01234567",
+  "response": "Prompt cannot be deleted",
+  "success": false
+}
+```
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No Authorization header found",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "No token found in Authorization header",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 does not have permission to create, update, or delete stored prompts (missing permission: manage_prompts).",
+    "response": "User does not have permission to perform this action"
+  }
+}
+```
+
+```json
+{
+  "detail": {
+    "cause": "Lightspeed Stack configuration has not been initialized.",
+    "response": "Configuration is not loaded"
+  }
+}
+```
+
+
+```json
+{
+  "detail": {
+    "cause": "Connection error while trying to reach backend service.",
+    "response": "Unable to connect to Llama Stack"
+  }
+}
+```
 ## GET `/v1/rags`
 
 > **Rags Endpoint Handler**
@@ -1302,7 +1973,7 @@ user's query to a selected Llama Stack LLM and returning the generated response.
 - request: The incoming HTTP request (used by middleware).
 - query_request: Request to the LLM.
 - auth: Auth context tuple resolved from the authentication dependency.
-- mcp_headers: Headers that should be pass to MCP servers.
+- mcp_headers: Headers that should be passed to MCP servers.
 
 ### Returns:
 - QueryResponse: Contains the conversation ID and the LLM-generated response.
@@ -1585,7 +2256,7 @@ content type text/event-stream.
 - request: The incoming HTTP request (used by middleware).
 - query_request: Request to the LLM.
 - auth: Auth context tuple resolved from the authentication dependency.
-- mcp_headers: Headers that should be pass to MCP servers.
+- mcp_headers: Headers that should be passed to MCP servers.
 
 ### Returns:
 - SSE-formatted events for the query lifecycle.
@@ -6262,6 +6933,46 @@ Useful resources:
 | ca_cert_path |  | Path to CA certificate |
 
 
+## PromptCreateRequest
+
+
+Request body to create a stored prompt template in Llama Stack.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| prompt | string | Prompt text with variable placeholders |
+| variables |  | Variable names allowed in the template |
+
+
+## PromptDeleteResponse
+
+
+Result of deleting a stored prompt (always HTTP 200, like conversations v2).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| prompt_id | string | Prompt identifier that was passed to delete. |
+| success | boolean | Whether Llama Stack deleted the prompt. |
+| response | string | Human-readable outcome. |
+
+
+## PromptResourceResponse
+
+
+A stored prompt template as returned by Llama Stack.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| prompt_id | string | Prompt identifier from Llama Stack |
+| version | integer | Version number for this prompt |
+| is_default |  | Whether this version is the default |
+| prompt |  | Prompt text with placeholders |
+| variables |  | Variable names used in the template |
+
+
 ## PromptTooLongResponse
 
 
@@ -6272,6 +6983,31 @@ Useful resources:
 |-------|------|-------------|
 | status_code | integer | HTTP status code for the errors response |
 | detail |  | The detail model containing error summary and cause |
+
+
+## PromptUpdateRequest
+
+
+Request body to update a stored prompt (creates a new version).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| prompt | string | Updated prompt text |
+| version | integer | Current version being updated |
+| set_as_default |  | Whether the new version becomes the default |
+| variables |  | Updated allowed variable names |
+
+
+## PromptsListResponse
+
+
+List of stored prompt templates returned by Llama Stack.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| data | array | Prompt entries (as returned by Llama Stack list) |
 
 
 ## ProviderHealthStatus

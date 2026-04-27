@@ -7,6 +7,7 @@ from typing import Any, cast
 
 import pytest
 from fastapi import HTTPException, status
+from pydantic import HttpUrl
 from pytest_mock import MockerFixture, MockType
 
 from app.endpoints.conversations_v2 import (
@@ -98,12 +99,12 @@ class TestBuildConversationTurnFromCacheEntry:
         """Test that referenced_documents from cache are included in the assistant message."""
         ref_docs = [
             ReferencedDocument(
-                doc_url="https://docs.example.com/page1",
+                doc_url=HttpUrl("https://docs.example.com/page1"),
                 doc_title="Page 1",
                 source="vs_abc123",
             ),
             ReferencedDocument(
-                doc_url="https://docs.example.com/page2",
+                doc_url=HttpUrl("https://docs.example.com/page2"),
                 doc_title="Page 2",
                 source="vs_abc123",
             ),
@@ -197,7 +198,7 @@ class TestBuildConversationTurnFromCacheEntry:
         """Test that model_dump(exclude_none=True) includes referenced_documents when present."""
         ref_docs = [
             ReferencedDocument(
-                doc_url="https://docs.example.com/page1",
+                doc_url=HttpUrl("https://docs.example.com/page1"),
                 doc_title="Page 1",
             ),
         ]
@@ -564,12 +565,12 @@ class TestGetConversationEndpoint:
         mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
         ref_docs = [
             ReferencedDocument(
-                doc_url="https://docs.example.com/intro",
+                doc_url=HttpUrl("https://docs.example.com/intro"),
                 doc_title="Introduction",
                 source="vs_abc123",
             ),
             ReferencedDocument(
-                doc_url="https://docs.example.com/guide",
+                doc_url=HttpUrl("https://docs.example.com/guide"),
                 doc_title="User Guide",
                 source="vs_abc123",
             ),

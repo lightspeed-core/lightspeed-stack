@@ -49,10 +49,10 @@ benchmarks: ## Run benchmarks
 	uv run python -m pytest -vv tests/benchmarks/
 
 check-types: ## Checks type hints in sources
-	uv run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --ignore-missing-imports --disable-error-code attr-defined src/ tests/unit tests/integration tests/e2e/ dev-tools/
+	uv run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --ignore-missing-imports --disable-error-code attr-defined src/ tests/unit tests/integration tests/e2e/
 
 security-check: ## Check the project for security issues
-	uv run bandit -c pyproject.toml -r src tests dev-tools
+	uv run bandit -c pyproject.toml -r src tests
 
 format: ## Format the code into unified format
 	uv run black .
@@ -99,16 +99,16 @@ shellcheck: ## Run shellcheck
 	shellcheck -- */*.sh
 
 black:	## Check source code using Black code formatter
-	uv run black --check .
+	uv run black --check src tests
 
 pylint:	## Check source code using Pylint static code analyser
-	uv run pylint src tests dev-tools
+	uv run pylint src tests
 
 pyright:	## Check source code using Pyright static type checker
-	uv run pyright src dev-tools
+	uv run pyright src
 
 docstyle:	## Check the docstring style using Docstyle checker
-	uv run pydocstyle -v src dev-tools
+	uv run pydocstyle -v src
 
 ruff:	## Check source code using Ruff linter
 	uv run ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101

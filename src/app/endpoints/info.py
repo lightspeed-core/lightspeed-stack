@@ -13,6 +13,7 @@ from configuration import configuration
 from log import get_logger
 from models.config import Action
 from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
     ForbiddenResponse,
     InfoResponse,
     ServiceUnavailableResponse,
@@ -26,9 +27,11 @@ router = APIRouter(tags=["info"])
 
 get_info_responses: dict[int | str, dict[str, Any]] = {
     200: InfoResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 

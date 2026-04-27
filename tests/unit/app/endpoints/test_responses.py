@@ -1,8 +1,9 @@
 # pylint: disable=redefined-outer-name, too-many-locals, too-many-lines
 """Unit tests for the /responses REST API endpoint (LCORE Responses API)."""
 
+import json
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 import pytest
 from fastapi import HTTPException, Request
@@ -17,14 +18,15 @@ from pytest_mock import MockerFixture
 
 from app.endpoints.responses import (
     _is_server_mcp_output_item,
+    _sanitize_response_dict,
     _should_filter_mcp_chunk,
     handle_non_streaming_response,
     handle_streaming_response,
     responses_endpoint_handler,
 )
 from configuration import AppConfig
-from constants import DEFAULT_SYSTEM_PROMPT
-from models.config import Action
+from constants import DEFAULT_SYSTEM_PROMPT, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+from models.config import Action, ModelContextProtocolServer
 from models.database.conversations import UserConversation
 from models.requests import ResponsesRequest
 from models.responses import ResponsesResponse
@@ -77,7 +79,7 @@ def _patch_resolve_response_context(
     mocker: MockerFixture,
     *,
     conversation: str = "conv_new",
-    user_conversation: UserConversation | None = None,
+    user_conversation: Optional[UserConversation] = None,
     generate_topic_summary: bool = False,
 ) -> None:
     """Patch resolve_response_context to return the given conversation context."""
@@ -666,7 +668,9 @@ class TestHandleNonStreamingResponse:
             "created_at": 0,
             "status": "completed",
             "model": "provider/model1",
-            "output": [mock_refusal],
+            "output": [
+                {"type": "message", "role": "assistant", "content": "Content blocked"}
+            ],
             "usage": {
                 "input_tokens": 0,
                 "output_tokens": 0,
@@ -1868,3 +1872,634 @@ class TestShouldFilterMcpChunk:
             )
             is False
         )
+
+
+class TestSanitizeResponseDict:
+    """Unit tests for _sanitize_response_dict."""
+
+    def test_substituted_instructions_replaced_with_placeholder(self) -> None:
+        """Test that substituted instructions are replaced with the slug constant."""
+        d: dict[str, Any] = {"instructions": "secret server prompt", "model": "m"}
+        _sanitize_response_dict(d, set(), instructions_substituted=True)
+        assert d["instructions"] == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+
+    def test_client_instructions_preserved_when_not_substituted(self) -> None:
+        """Test that client-provided instructions are echoed back unchanged."""
+        d: dict[str, Any] = {"instructions": "my custom prompt", "model": "m"}
+        _sanitize_response_dict(d, set(), instructions_substituted=False)
+        assert d["instructions"] == "my custom prompt"
+
+    def test_substituted_instructions_set_even_when_absent(self) -> None:
+        """Test that placeholder is set even when instructions field is missing."""
+        d: dict[str, Any] = {"model": "m"}
+        _sanitize_response_dict(d, set(), instructions_substituted=True)
+        assert d["instructions"] == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+
+    def test_no_error_when_instructions_absent_and_not_substituted(self) -> None:
+        """Test that missing instructions field with no substitution does not raise."""
+        d: dict[str, Any] = {"model": "m"}
+        _sanitize_response_dict(d, set(), instructions_substituted=False)
+        assert "instructions" not in d
+
+    def test_strips_server_mcp_tools(self) -> None:
+        """Test that server-deployed MCP tools are removed from tools array."""
+        d: dict[str, Any] = {
+            "tools": [
+                {"server_label": "server-a", "name": "tool1"},
+                {"server_label": "server-b", "name": "tool2"},
+                {"name": "client-tool"},
+            ]
+        }
+        _sanitize_response_dict(
+            d, {"server-a", "server-b"}, instructions_substituted=False
+        )
+        assert d["tools"] == [{"name": "client-tool"}]
+
+    def test_preserves_client_tools(self) -> None:
+        """Test that client-provided tools are preserved."""
+        d: dict[str, Any] = {
+            "tools": [
+                {"server_label": "server-a", "name": "server-tool"},
+                {"name": "client-tool"},
+            ]
+        }
+        _sanitize_response_dict(d, {"server-a"}, instructions_substituted=False)
+        assert d["tools"] == [{"name": "client-tool"}]
+
+    def test_no_error_when_tools_absent(self) -> None:
+        """Test that missing tools field does not raise."""
+        d: dict[str, Any] = {"model": "m"}
+        _sanitize_response_dict(d, {"server-a"}, instructions_substituted=False)
+        assert "tools" not in d
+
+    def test_empty_configured_mcp_labels_preserves_all_tools(self) -> None:
+        """Test that empty configured_mcp_labels preserves all tools."""
+        d: dict[str, Any] = {
+            "tools": [
+                {"server_label": "server-a", "name": "tool1"},
+                {"name": "client-tool"},
+            ]
+        }
+        _sanitize_response_dict(d, set(), instructions_substituted=False)
+        assert len(d["tools"]) == 2
+
+    def test_strips_server_mcp_items_from_output(self) -> None:
+        """Test that server-deployed MCP output items are removed from output array."""
+        d: dict[str, Any] = {
+            "instructions": "prompt",
+            "output": [
+                {
+                    "type": "mcp_list_tools",
+                    "server_label": "okp",
+                    "tools": [{"name": "search_portal"}],
+                },
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"text": "hello"}],
+                },
+                {"type": "mcp_call", "server_label": "okp", "id": "call-1"},
+            ],
+        }
+        _sanitize_response_dict(d, {"okp"}, instructions_substituted=False)
+        assert len(d["output"]) == 1
+        assert d["output"][0]["type"] == "message"
+
+    def test_preserves_non_server_mcp_output_items(self) -> None:
+        """Test that client MCP output items and regular items are preserved."""
+        d: dict[str, Any] = {
+            "output": [
+                {"type": "mcp_list_tools", "server_label": "client-mcp", "tools": []},
+                {"type": "message", "role": "assistant", "content": []},
+                {"type": "function_call", "name": "my_func"},
+            ],
+        }
+        _sanitize_response_dict(d, {"okp"}, instructions_substituted=False)
+        assert len(d["output"]) == 3
+
+    def test_no_error_when_output_absent(self) -> None:
+        """Test that missing output field does not raise."""
+        d: dict[str, Any] = {"model": "m"}
+        _sanitize_response_dict(d, {"okp"}, instructions_substituted=False)
+        assert "output" not in d
+
+    def test_strips_provider_prefix_from_model_when_substituted(self) -> None:
+        """Test that provider routing prefix is stripped when server substituted the model."""
+        d: dict[str, Any] = {
+            "model": "google-vertex/publishers/google/models/gemini-2.5-flash"
+        }
+        _sanitize_response_dict(
+            d, set(), instructions_substituted=False, model_substituted=True
+        )
+        assert d["model"] == "gemini-2.5-flash"
+
+    def test_preserves_client_model_when_not_substituted(self) -> None:
+        """Test that client-specified model is echoed back unchanged."""
+        d: dict[str, Any] = {
+            "model": "google-vertex/publishers/google/models/gemini-2.5-flash"
+        }
+        _sanitize_response_dict(
+            d, set(), instructions_substituted=False, model_substituted=False
+        )
+        assert d["model"] == "google-vertex/publishers/google/models/gemini-2.5-flash"
+
+    def test_model_without_slash_preserved(self) -> None:
+        """Test that model names without provider prefix are left unchanged."""
+        d: dict[str, Any] = {"model": "gemini-2.5-flash"}
+        _sanitize_response_dict(
+            d, set(), instructions_substituted=False, model_substituted=True
+        )
+        assert d["model"] == "gemini-2.5-flash"
+
+    def test_all_fields_sanitized_together_with_substitution(self) -> None:
+        """Test that all sanitizations are applied in a single call."""
+        d: dict[str, Any] = {
+            "instructions": "secret prompt",
+            "model": "google-vertex/publishers/google/models/gemini",
+            "tools": [
+                {"server_label": "mcp-server", "name": "server-tool"},
+                {"name": "client-tool"},
+            ],
+            "output": [
+                {"type": "mcp_list_tools", "server_label": "mcp-server", "tools": []},
+                {"type": "message", "role": "assistant", "content": []},
+            ],
+        }
+        _sanitize_response_dict(
+            d,
+            {"mcp-server"},
+            instructions_substituted=True,
+            model_substituted=True,
+        )
+        assert d["instructions"] == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+        assert d["model"] == "gemini"
+        assert d["tools"] == [{"name": "client-tool"}]
+        assert len(d["output"]) == 1
+        assert d["output"][0]["type"] == "message"
+
+    def test_all_fields_sanitized_together_without_substitution(self) -> None:
+        """Test that client instructions and model are preserved while tools are still filtered."""
+        d: dict[str, Any] = {
+            "instructions": "client prompt",
+            "model": "google-vertex/publishers/google/models/gemini",
+            "tools": [
+                {"server_label": "mcp-server", "name": "server-tool"},
+                {"name": "client-tool"},
+            ],
+            "output": [
+                {"type": "mcp_list_tools", "server_label": "mcp-server", "tools": []},
+                {"type": "message", "role": "assistant", "content": []},
+            ],
+        }
+        _sanitize_response_dict(
+            d,
+            {"mcp-server"},
+            instructions_substituted=False,
+            model_substituted=False,
+        )
+        assert d["instructions"] == "client prompt"
+        assert d["model"] == "google-vertex/publishers/google/models/gemini"
+        assert d["tools"] == [{"name": "client-tool"}]
+        assert len(d["output"]) == 1
+        assert d["output"][0]["type"] == "message"
+
+
+class TestSanitizesOutputAndModel:
+    """Integration test: sanitize MCP output, model, and instructions.
+
+    Covers both streaming and non-streaming code paths.
+    """
+
+    @pytest.mark.asyncio
+    async def test_non_streaming_sanitizes_mcp_output_and_model(
+        self,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test that non-streaming response strips MCP items, model prefix, and instructions."""
+        mcp_server = ModelContextProtocolServer(
+            name="server-a",
+            provider_id="model-context-protocol",
+            url="http://mcp.example.com",
+        )
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = [mcp_server]
+        mock_config.quota_limiters = minimal_config.quota_limiters
+        mock_config.rag_id_mapping = {}
+
+        request = _request_with_model_and_conv("Hi", model="provider/model1")
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_moderation = mocker.Mock()
+        mock_moderation.decision = "passed"
+
+        mock_api_response = mocker.Mock(spec=OpenAIResponseObject)
+        mock_api_response.output = []
+        mock_api_response.usage = mocker.Mock(
+            input_tokens=1, output_tokens=2, total_tokens=3
+        )
+        mock_api_response.model_dump.return_value = {
+            "id": "resp_1",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "instructions": "secret system prompt",
+            "model": "google-vertex/publishers/google/models/gemini-2.5-flash",
+            "output": [
+                {
+                    "type": "mcp_list_tools",
+                    "server_label": "server-a",
+                    "tools": [{"name": "search_portal"}],
+                },
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": "hello"}],
+                },
+            ],
+            "usage": {
+                "input_tokens": 1,
+                "output_tokens": 2,
+                "total_tokens": 3,
+                "input_tokens_details": {"cached_tokens": 0},
+                "output_tokens_details": {"reasoning_tokens": 0},
+            },
+        }
+        mock_client.responses.create = mocker.AsyncMock(return_value=mock_api_response)
+
+        mocker.patch(f"{MODULE}.configuration", mock_config)
+        mocker.patch(f"{MODULE}.get_available_quotas", return_value={})
+        mocker.patch(
+            f"{MODULE}.extract_token_usage",
+            return_value=mocker.Mock(input_tokens=1, output_tokens=2),
+        )
+        mocker.patch(f"{MODULE}.consume_query_tokens")
+        mocker.patch(
+            f"{MODULE}.build_turn_summary",
+            return_value=mocker.Mock(
+                referenced_documents=[],
+                rag_chunks=[],
+                token_usage=mocker.Mock(input_tokens=1, output_tokens=2),
+            ),
+        )
+        mocker.patch(
+            f"{MODULE}.extract_text_from_response_items",
+            return_value="hello",
+        )
+        mocker.patch(
+            f"{MODULE}.extract_vector_store_ids_from_tools",
+            return_value=[],
+        )
+        mocker.patch(
+            f"{MODULE}.get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+        mocker.patch(f"{MODULE}.store_query_results")
+        mocker.patch(
+            f"{MODULE}.normalize_conversation_id",
+            return_value=VALID_CONV_ID_NORMALIZED,
+        )
+
+        response = await handle_non_streaming_response(
+            client=mock_client,
+            request=request,
+            auth=MOCK_AUTH,
+            input_text="Hi",
+            started_at=datetime.now(UTC),
+            moderation_result=mock_moderation,
+            inline_rag_context=RAGContext(),
+            instructions_substituted=True,
+            model_substituted=True,
+        )
+
+        assert isinstance(response, ResponsesResponse)
+        # Model provider prefix should be stripped when server-substituted
+        assert response.model == "gemini-2.5-flash"
+        # Instructions should be replaced with placeholder
+        assert response.instructions == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+        # MCP output items should be filtered out
+        output_types = [item.type for item in response.output]
+        assert "mcp_list_tools" not in output_types
+        assert "message" in output_types
+        assert len(response.output) == 1
+
+    def _make_streaming_completed_chunk(self, mocker: MockerFixture) -> Any:
+        """Build a mocked response.completed chunk containing sanitizable fields."""
+        completed_chunk = mocker.Mock()
+        completed_chunk.type = "response.completed"
+        completed_chunk.response = mocker.Mock()
+        completed_chunk.response.id = "r1"
+        completed_chunk.response.output = []
+        completed_chunk.response.usage = mocker.Mock(
+            input_tokens=1, output_tokens=2, total_tokens=3
+        )
+        completed_chunk.model_dump.return_value = {
+            "type": "response.completed",
+            "response": {
+                "id": "r1",
+                "instructions": "secret server prompt",
+                "model": "google-vertex/publishers/google/models/gemini-2.5-flash",
+                "output": [
+                    {
+                        "type": "mcp_list_tools",
+                        "server_label": "server-a",
+                        "tools": [{"name": "search_portal"}],
+                    },
+                    {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [{"type": "output_text", "text": "hello"}],
+                    },
+                ],
+            },
+        }
+        return completed_chunk
+
+    @pytest.mark.asyncio
+    async def test_streaming_sanitizes_mcp_output_model_and_instructions(
+        self,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test streaming response.completed sanitizes MCP items, model prefix, and instructions.
+
+        Verifies model prefix stripping, instructions replacement, and MCP output filtering.
+        """
+        mcp_server = ModelContextProtocolServer(
+            name="server-a",
+            provider_id="model-context-protocol",
+            url="http://mcp.example.com",
+        )
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = [mcp_server]
+        mock_config.quota_limiters = minimal_config.quota_limiters
+        mock_config.rag_id_mapping = {}
+
+        request = _request_with_model_and_conv("Hi", model="provider/model1")
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_moderation = mocker.Mock()
+        mock_moderation.decision = "passed"
+
+        completed_chunk = self._make_streaming_completed_chunk(mocker)
+
+        async def mock_stream() -> Any:
+            yield completed_chunk
+
+        mock_client.responses.create = mocker.AsyncMock(return_value=mock_stream())
+
+        mocker.patch(f"{MODULE}.configuration", mock_config)
+        mocker.patch(f"{MODULE}.get_available_quotas", return_value={})
+        mocker.patch(f"{MODULE}.extract_token_usage", return_value=mocker.Mock())
+        mocker.patch(f"{MODULE}.consume_query_tokens")
+        mocker.patch(f"{MODULE}.extract_vector_store_ids_from_tools", return_value=[])
+        mocker.patch(
+            f"{MODULE}.build_turn_summary",
+            return_value=TurnSummary(referenced_documents=[]),
+        )
+        mocker.patch(
+            f"{MODULE}.get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+        mocker.patch(f"{MODULE}.store_query_results")
+        mocker.patch(
+            f"{MODULE}.normalize_conversation_id",
+            return_value=VALID_CONV_ID_NORMALIZED,
+        )
+        mocker.patch(
+            f"{MODULE}.extract_text_from_response_items",
+            return_value="hello",
+        )
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+
+        response = await handle_streaming_response(
+            client=mock_client,
+            request=request,
+            auth=MOCK_AUTH,
+            input_text="Hi",
+            started_at=datetime.now(UTC),
+            moderation_result=mock_moderation,
+            inline_rag_context=RAGContext(),
+            filter_server_tools=False,
+            instructions_substituted=True,
+            model_substituted=True,
+        )
+        collected: list[str] = []
+        async for part in response.body_iterator:
+            chunk_str = (
+                part.decode("utf-8")
+                if isinstance(part, bytes)
+                else (part if isinstance(part, str) else bytes(part).decode("utf-8"))
+            )
+            collected.append(chunk_str)
+        body = "".join(collected)
+
+        assert "response.completed" in body
+
+        for line in body.split("\n"):
+            if line.startswith("data: ") and line.strip() != "data: [DONE]":
+                data = json.loads(line[len("data: ") :])
+                if data.get("type") == "response.completed":
+                    resp = data["response"]
+                    assert resp["model"] == "gemini-2.5-flash"
+                    assert resp["instructions"] == SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+                    output_types = [item["type"] for item in resp["output"]]
+                    assert "mcp_list_tools" not in output_types
+                    assert "message" in output_types
+                    assert len(resp["output"]) == 1
+                    break
+        else:
+            pytest.fail("response.completed event not found in SSE output")
+
+
+class TestMcpEventsFilteredUnconditionally:
+    """Integration test: MCP events are filtered regardless of X-LCS-Merge-Server-Tools."""
+
+    @pytest.mark.asyncio
+    async def test_mcp_events_filtered_without_merge_server_tools_header(
+        self,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test MCP streaming events are filtered even without X-LCS-Merge-Server-Tools header."""
+        mcp_server = ModelContextProtocolServer(
+            name="server-a",
+            provider_id="model-context-protocol",
+            url="http://mcp.example.com",
+        )
+        mock_config = mocker.Mock()
+        mock_config.mcp_servers = [mcp_server]
+        mock_config.quota_limiters = minimal_config.quota_limiters
+        mock_config.rag_id_mapping = {}
+
+        request = _request_with_model_and_conv("Hi", model="provider/model1")
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_moderation = mocker.Mock()
+        mock_moderation.decision = "passed"
+
+        mcp_item = mocker.Mock()
+        mcp_item.type = "mcp_call"
+        mcp_item.server_label = "server-a"
+
+        mcp_added_chunk = mocker.Mock()
+        mcp_added_chunk.type = "response.output_item.added"
+        mcp_added_chunk.item = mcp_item
+        mcp_added_chunk.output_index = 0
+        mcp_added_chunk.model_dump.return_value = {
+            "type": "response.output_item.added",
+            "output_index": 0,
+        }
+
+        completed_chunk = mocker.Mock()
+        completed_chunk.type = "response.completed"
+        completed_chunk.response = mocker.Mock()
+        completed_chunk.response.id = "r1"
+        completed_chunk.response.output = []
+        completed_chunk.response.usage = mocker.Mock(
+            input_tokens=1, output_tokens=2, total_tokens=3
+        )
+        completed_chunk.model_dump.return_value = {
+            "type": "response.completed",
+            "response": {"id": "r1"},
+        }
+
+        async def mock_stream() -> Any:
+            yield mcp_added_chunk
+            yield completed_chunk
+
+        mock_client.responses.create = mocker.AsyncMock(return_value=mock_stream())
+
+        mocker.patch(f"{MODULE}.configuration", mock_config)
+        mocker.patch(f"{MODULE}.get_available_quotas", return_value={})
+        mocker.patch(f"{MODULE}.extract_token_usage", return_value=mocker.Mock())
+        mocker.patch(f"{MODULE}.consume_query_tokens")
+        mocker.patch(f"{MODULE}.extract_vector_store_ids_from_tools", return_value=[])
+        mocker.patch(
+            f"{MODULE}.build_turn_summary",
+            return_value=TurnSummary(referenced_documents=[]),
+        )
+        mocker.patch(
+            f"{MODULE}.get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+        mocker.patch(f"{MODULE}.store_query_results")
+        mocker.patch(
+            f"{MODULE}.normalize_conversation_id",
+            return_value=VALID_CONV_ID_NORMALIZED,
+        )
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+
+        response = await handle_streaming_response(
+            client=mock_client,
+            request=request,
+            auth=MOCK_AUTH,
+            input_text="Hi",
+            started_at=datetime.now(UTC),
+            moderation_result=mock_moderation,
+            inline_rag_context=RAGContext(),
+            filter_server_tools=False,
+        )
+        collected: list[str] = []
+        async for part in response.body_iterator:
+            chunk_str = (
+                part.decode("utf-8")
+                if isinstance(part, bytes)
+                else (part if isinstance(part, str) else bytes(part).decode("utf-8"))
+            )
+            collected.append(chunk_str)
+        body = "".join(collected)
+        assert "response.output_item.added" not in body
+        assert "response.completed" in body
+
+    @pytest.mark.asyncio
+    async def test_mcp_events_filtered_with_no_mcp_servers_configured(
+        self,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test that non-MCP output_item.added events pass through when no MCP servers configured.
+
+        When no MCP servers are configured, configured_mcp_labels is empty and no events
+        are filtered.
+        """
+        request = _request_with_model_and_conv("Hi", model="provider/model1")
+        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+        mock_moderation = mocker.Mock()
+        mock_moderation.decision = "passed"
+
+        text_item = mocker.Mock()
+        text_item.type = "message"
+
+        text_added_chunk = mocker.Mock()
+        text_added_chunk.type = "response.output_item.added"
+        text_added_chunk.item = text_item
+        text_added_chunk.output_index = 0
+        text_added_chunk.model_dump.return_value = {
+            "type": "response.output_item.added",
+            "output_index": 0,
+        }
+
+        completed_chunk = mocker.Mock()
+        completed_chunk.type = "response.completed"
+        completed_chunk.response = mocker.Mock()
+        completed_chunk.response.id = "r1"
+        completed_chunk.response.output = []
+        completed_chunk.response.usage = mocker.Mock(
+            input_tokens=1, output_tokens=2, total_tokens=3
+        )
+        completed_chunk.model_dump.return_value = {
+            "type": "response.completed",
+            "response": {"id": "r1"},
+        }
+
+        async def mock_stream() -> Any:
+            yield text_added_chunk
+            yield completed_chunk
+
+        mock_client.responses.create = mocker.AsyncMock(return_value=mock_stream())
+
+        mocker.patch(f"{MODULE}.configuration", minimal_config)
+        mocker.patch(f"{MODULE}.get_available_quotas", return_value={})
+        mocker.patch(f"{MODULE}.extract_token_usage", return_value=mocker.Mock())
+        mocker.patch(f"{MODULE}.consume_query_tokens")
+        mocker.patch(f"{MODULE}.extract_vector_store_ids_from_tools", return_value=[])
+        mocker.patch(
+            f"{MODULE}.build_turn_summary",
+            return_value=TurnSummary(referenced_documents=[]),
+        )
+        mocker.patch(
+            f"{MODULE}.get_topic_summary",
+            new=mocker.AsyncMock(return_value=None),
+        )
+        mocker.patch(f"{MODULE}.store_query_results")
+        mocker.patch(
+            f"{MODULE}.normalize_conversation_id",
+            return_value=VALID_CONV_ID_NORMALIZED,
+        )
+        mock_holder = mocker.Mock()
+        mock_holder.get_client.return_value = mock_client
+        mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
+
+        response = await handle_streaming_response(
+            client=mock_client,
+            request=request,
+            auth=MOCK_AUTH,
+            input_text="Hi",
+            started_at=datetime.now(UTC),
+            moderation_result=mock_moderation,
+            inline_rag_context=RAGContext(),
+            filter_server_tools=False,
+        )
+        collected: list[str] = []
+        async for part in response.body_iterator:
+            chunk_str = (
+                part.decode("utf-8")
+                if isinstance(part, bytes)
+                else (part if isinstance(part, str) else bytes(part).decode("utf-8"))
+            )
+            collected.append(chunk_str)
+        body = "".join(collected)
+        assert "response.output_item.added" in body
+        assert "response.completed" in body

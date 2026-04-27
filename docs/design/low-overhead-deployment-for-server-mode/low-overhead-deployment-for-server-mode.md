@@ -467,16 +467,39 @@ deployments.
 
 # Epics created
 
-| Epic       | Description                                                                 | Link                                           |
-|------------|-----------------------------------------------------------------------------|------------------------------------------------|
-| LCORE-???? |                                                                             | https://redhat.atlassian.net/browse/LCORE-???? |
+| Epic       | Description                                                       | Link                                           |
+|------------|-------------------------------------------------------------------|------------------------------------------------|
+| LCORE-1489 | Build custom LLS distribution for LCORE                           | https://redhat.atlassian.net/browse/LCORE-1489 |
+| LCORE-1854 | Ability to start and teardown LLS from container image            | https://redhat.atlassian.net/browse/LCORE-1854 |
+| LCORE-1855 | Ability to start and teardown LLS installed locally               | https://redhat.atlassian.net/browse/LCORE-1855 |
+| LCORE-1856 | Ability for LCORE to run in degraded mode when LLS is not running | https://redhat.atlassian.net/browse/LCORE-1856 |
 
 
 
 # Stories created
 
-| Epic       | Story | Description     | Link            |
-|------------|-------|-----------------|-----------------|
+| Epic       | Story      | Description                                                                        | Link                                           |
+|------------|------------|------------------------------------------------------------------------------------|------------------------------------------------|
+| LCORE-1854 | LCORE-1869 | Implement graceful teardown and cleanup of LLS container                           | https://redhat.atlassian.net/browse/LCORE-1869 |
+| LCORE-1854 | LCORE-1870 | Automate ephemeral resource management for LLS container sessions                  | https://redhat.atlassian.net/browse/LCORE-1870 |
+| LCORE-1854 | LCORE-1873 | Add automated tests for LLS container lifecycle management                         | https://redhat.atlassian.net/browse/LCORE-1873 |
+| LCORE-1854 | LCORE-1872 | Implement LLS container startup with dynamic configuration injection               | https://redhat.atlassian.net/browse/LCORE-1872 |
+| LCORE-1854 | LCORE-1871 | Expose and manage LLS container ports and health checks                            | https://redhat.atlassian.net/browse/LCORE-1871 |
+| LCORE-1854 | LCORE-1874 | Document LLS container startup, teardown, and customization options                | https://redhat.atlassian.net/browse/LCORE-1874 |
+| LCORE-1854 | LCORE-1875 | Support both OpenShift and non-OpenShift environments for LLS container management | https://redhat.atlassian.net/browse/LCORE-1875 |
+| LCORE-1854 | LCORE-1876 | Validate and surface container logs and errors during LLS lifecycle                | https://redhat.atlassian.net/browse/LCORE-1876 |
+| LCORE-1855 | LCORE-1862 | Ensure API and configuration parity with containerized LLS deployment              | https://redhat.atlassian.net/browse/LCORE-1862 |
+| LCORE-1855 | LCORE-1863 | Implement graceful teardown and cleanup for local LLS process                      | https://redhat.atlassian.net/browse/LCORE-1863 |
+| LCORE-1855 | LCORE-1865 | Monitor and report LLS process health and readiness                                | https://redhat.atlassian.net/browse/LCORE-1865 |
+| LCORE-1855 | LCORE-1864 | Implement local LLS process startup logic                                          | https://redhat.atlassian.net/browse/LCORE-1864 |
+| LCORE-1855 | LCORE-1866 | Validate local LLS runtime environment and configuration                           | https://redhat.atlassian.net/browse/LCORE-1866 |
+| LCORE-1855 | LCORE-1867 | Add automated tests for local LLS process lifecycle management                     | https://redhat.atlassian.net/browse/LCORE-1867 |
+| LCORE-1855 | LCORE-1868 | Document local LLS startup, teardown, and customization options                    | https://redhat.atlassian.net/browse/LCORE-1868 |
+| LCORE-1856 | LCORE-1857 | Emit metrics, logs, and events for degraded mode transitions                       | https://redhat.atlassian.net/browse/LCORE-1857 |
+| LCORE-1856 | LCORE-1858 | Implement degraded mode startup logic for LCORE when LLS is unavailable            | https://redhat.atlassian.net/browse/LCORE-1858 |
+| LCORE-1856 | LCORE-1859 | Enhance /health endpoint to report LLS status and degraded mode indicators         | https://redhat.atlassian.net/browse/LCORE-1859 |
+| LCORE-1856 | LCORE-1860 | Test startup and runtime scenarios for LLS failure and recovery                    | https://redhat.atlassian.net/browse/LCORE-1860 |
+| LCORE-1856 | LCORE-1861 | Add and document configuration toggles for degraded mode behavior                  | https://redhat.atlassian.net/browse/LCORE-1861 |
 
 
 

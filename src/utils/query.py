@@ -105,8 +105,8 @@ def store_conversation_into_cache(
 
 
 def validate_model_provider_override(
-    model: str | None,
-    provider: str | None,
+    model: Optional[str],
+    provider: Optional[str],
     authorized_actions: set[Action] | frozenset[Action],
 ) -> None:
     """Validate whether model/provider overrides are allowed by RBAC.

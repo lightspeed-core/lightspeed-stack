@@ -5,7 +5,7 @@ from logging import Logger
 import pytest
 from pytest_mock import MockerFixture
 
-from models.requests import Attachment, QueryRequest
+from models.requests import Attachment, QueryRequest, SolrVectorSearchRequest
 
 
 class TestQueryRequest:
@@ -140,3 +140,23 @@ class TestQueryRequest:
             query="Tell me about Kubernetes", generate_topic_summary=True
         )  # pyright: ignore[reportCallIssue]
         assert qr.generate_topic_summary is True
+
+    def test_solr_legacy_plain_dict(self) -> None:
+        """Legacy clients may send filter keys as a plain object on ``solr``."""
+        qr = QueryRequest(
+            query="q",
+            solr={"fq": ["a:b"]},
+        )  # pyright: ignore[reportCallIssue]
+        solr_request = SolrVectorSearchRequest.model_validate(qr.solr)
+        assert solr_request.mode is None
+        assert solr_request.filters == {"fq": ["a:b"]}
+
+    def test_solr_structured_mode_and_filters(self) -> None:
+        """New clients send ``mode`` and ``filters`` under ``solr``."""
+        qr = QueryRequest(
+            query="q",
+            solr={"mode": "hybrid", "filters": {"fq": ["x:y"]}},
+        )  # pyright: ignore[reportCallIssue]
+        solr_request = SolrVectorSearchRequest.model_validate(qr.solr)
+        assert solr_request.mode == "hybrid"
+        assert solr_request.filters == {"fq": ["x:y"]}

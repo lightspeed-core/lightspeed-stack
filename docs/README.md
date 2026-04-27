@@ -47,6 +47,8 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [Providers](https://lightspeed-core.github.io/lightspeed-stack/providers.html)
 
+[Sentry error tracking](https://lightspeed-core.github.io/lightspeed-stack/sentry.html)
+
 [User data collection](https://lightspeed-core.github.io/lightspeed-stack/user_data_collection.html)
 
 [Database structure](https://lightspeed-core.github.io/lightspeed-stack/DB/index.html)
@@ -72,3 +74,6 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 [CodeRabbitAI](https://lightspeed-core.github.io/lightspeed-stack/demos/lcore/coderabbit.html#/)
 
 [Lunch and Learn 2026](https://lightspeed-core.github.io/lightspeed-stack/demos/lcore/LnL_2026.html#/)
+
+[LCORE weak points for AI-driven agentic flow](https://lightspeed-core.github.io/lightspeed-stack/demos/lcore/weak_points_for_ai.html#/)
+

@@ -85,11 +85,16 @@ class TestBadRequestResponse:
 
         # Verify example structure
         assert "conversation_id" in examples
+        assert "prompt_id" in examples
         conversation_example = examples["conversation_id"]
         assert "value" in conversation_example
         assert "detail" in conversation_example["value"]
         assert conversation_example["value"]["detail"]["response"] == (
             "Invalid conversation ID format"
+        )
+        prompt_example = examples["prompt_id"]
+        assert (
+            prompt_example["value"]["detail"]["response"] == "Invalid prompt ID format"
         )
 
     def test_openapi_response_with_explicit_examples(self) -> None:
@@ -174,7 +179,7 @@ class TestUnauthorizedResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 8
+        assert expected_count == 9
 
         # Verify all labeled examples are present
         assert "missing header" in examples
@@ -185,6 +190,7 @@ class TestUnauthorizedResponse:
         assert "missing claim" in examples
         assert "invalid k8s token" in examples
         assert "invalid jwk token" in examples
+        assert "mcp oauth" in examples
 
         # Verify example structure for one example
         missing_creds_example = examples["missing header"]
@@ -269,13 +275,16 @@ class TestForbiddenResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 5
+        assert expected_count == 7
 
         # Verify all labeled examples are present
         assert "conversation read" in examples
         assert "conversation delete" in examples
         assert "endpoint" in examples
+        assert "prompt read" in examples
+        assert "prompt manage" in examples
         assert "feedback" in examples
+        assert "model override" in examples
 
         # Verify example structure for one example
         feedback_example = examples["feedback"]
@@ -506,7 +515,7 @@ class TestNotFoundResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 8
+        assert expected_count == 9
 
         # Verify all labeled examples are present
         assert "conversation" in examples
@@ -517,6 +526,7 @@ class TestNotFoundResponse:
         assert "mcp server" in examples
         assert "vector store" in examples
         assert "file" in examples
+        assert "prompt" in examples
 
         # Verify example structure for one example
         conversation_example = examples["conversation"]
@@ -723,9 +733,7 @@ class TestPromptTooLongResponse:
 
     def test_constructor_with_default_response(self) -> None:
         """Test PromptTooLongResponse with default response."""
-        response = PromptTooLongResponse(
-            cause="The prompt exceeds the maximum allowed length."
-        )
+        response = PromptTooLongResponse()
         assert isinstance(response, AbstractErrorResponse)
         assert response.status_code == status.HTTP_413_CONTENT_TOO_LARGE
         assert isinstance(response.detail, DetailModel)
@@ -746,7 +754,7 @@ class TestPromptTooLongResponse:
 
         # Verify example count matches schema examples count
         assert len(examples) == expected_count
-        assert expected_count == 1
+        assert expected_count == 2
 
         # Verify example structure
         assert "prompt too long" in examples

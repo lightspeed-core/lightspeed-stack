@@ -7,17 +7,22 @@ from fastapi import APIRouter, Depends
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from log import get_logger
-from models.responses import AuthorizedResponse, ForbiddenResponse, UnauthorizedResponse
+from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
+    AuthorizedResponse,
+    ForbiddenResponse,
+    ServiceUnavailableResponse,
+    UnauthorizedResponse,
+)
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["authorized"])
 
 authorized_responses: dict[int | str, dict[str, Any]] = {
     200: AuthorizedResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
 

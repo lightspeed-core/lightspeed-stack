@@ -111,7 +111,7 @@ oc create configmap mock-jwks-script -n "$NAMESPACE" \
     --from-file=server.py="$REPO_ROOT/tests/e2e/mock_jwks_server/server.py" \
     --dry-run=client -o yaml | oc apply -f -
 
-oc create configmap mcp-mock-server-script -n "$NAMESPACE" \
+oc create configmap mock-mcp-script -n "$NAMESPACE" \
     --from-file=server.py="$REPO_ROOT/tests/e2e/mock_mcp_server/server.py" \
     --dry-run=client -o yaml | oc apply -f -
 
@@ -119,17 +119,17 @@ oc create configmap mcp-mock-server-script -n "$NAMESPACE" \
 log "Deploying mock-jwks..."
 oc apply -n "$NAMESPACE" -f "$PIPELINE_DIR/manifests/lightspeed/mock-jwks.yaml"
 
-log "Deploying mcp-mock-server..."
-oc apply -n "$NAMESPACE" -f "$PIPELINE_DIR/manifests/lightspeed/mcp-mock-server.yaml"
+log "Deploying mock-mcp..."
+oc apply -n "$NAMESPACE" -f "$PIPELINE_DIR/manifests/lightspeed/mock-mcp.yaml"
 
 # Wait for mock servers to be ready
 log "Waiting for mock servers to be ready..."
-oc wait pod/mock-jwks pod/mcp-mock-server \
+oc wait pod/mock-jwks pod/mock-mcp \
     -n "$NAMESPACE" --for=condition=Ready --timeout=120s || {
     echo "⚠️  Mock servers not ready, checking status..."
-    oc get pods -n "$NAMESPACE" | grep -E "mock-jwks|mcp-mock" || true
+    oc get pods -n "$NAMESPACE" | grep -E "mock-jwks|mock-mcp" || true
     oc describe pod mock-jwks -n "$NAMESPACE" 2>/dev/null | tail -20 || true
-    oc describe pod mcp-mock-server -n "$NAMESPACE" 2>/dev/null | tail -20 || true
+    oc describe pod mock-mcp -n "$NAMESPACE" 2>/dev/null | tail -20 || true
     echo "❌ Mock servers failed to become ready"
     exit 1
 }

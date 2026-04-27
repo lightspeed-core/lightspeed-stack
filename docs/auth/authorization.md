@@ -109,6 +109,8 @@ authorization:
 | `get_metrics` | Access metrics | `/metrics` |
 | `feedback` | Submit feedback | `/feedback` |
 | `model_override` | Override model in queries | N/A (permission flag) |
+| `read_prompts` | List and get prompts | `/v1/prompts`, `/v1/prompts/{prompt_id}` |
+| `manage_prompts` | Manage prompts | `/v1/prompts`, `/v1/prompts/{prompt_id}` |
 
 ### Conversation Actions
 

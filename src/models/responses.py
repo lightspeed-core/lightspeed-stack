@@ -48,6 +48,21 @@ SERVICE_UNAVAILABLE_DESCRIPTION = "Service unavailable"
 QUOTA_EXCEEDED_DESCRIPTION = "Quota limit exceeded"
 PROMPT_TOO_LONG_DESCRIPTION = "Prompt is too long"
 INTERNAL_SERVER_ERROR_DESCRIPTION = "Internal server error"
+UNAUTHORIZED_OPENAPI_EXAMPLES: list[str] = [
+    "missing header",
+    "missing token",
+    "expired token",
+    "invalid signature",
+    "invalid key",
+    "missing claim",
+    "invalid k8s token",
+    "invalid jwk token",
+]
+
+UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH: list[str] = [
+    *UNAUTHORIZED_OPENAPI_EXAMPLES,
+    "mcp oauth",
+]
 
 
 class AbstractSuccessfulResponse(BaseModel):
@@ -425,11 +440,11 @@ class ProviderResponse(AbstractSuccessfulResponse):
         ...,
         description="The API this provider implements",
     )
-    config: dict[str, bool | float | str | list[Any] | object | None] = Field(
+    config: dict[str, Any] = Field(
         ...,
         description="Provider configuration parameters",
     )
-    health: dict[str, bool | float | str | list[Any] | object | None] = Field(
+    health: dict[str, Any] = Field(
         ...,
         description="Current health status of the provider",
     )
@@ -1815,10 +1830,10 @@ class BadRequestResponse(AbstractErrorResponse):
                     },
                 },
                 {
-                    "label": "file_upload",
+                    "label": "prompt_id",
                     "detail": {
-                        "response": "Invalid file upload",
-                        "cause": "File upload rejected: Invalid file format",
+                        "response": "Invalid prompt ID format",
+                        "cause": "The prompt ID pmpt_1234567890abcdef has invalid format.",
                     },
                 },
             ]
@@ -1904,6 +1919,15 @@ class UnauthorizedResponse(AbstractErrorResponse):
                         "cause": "Authentication key server returned invalid data",
                     },
                 },
+                {
+                    "label": "mcp oauth",
+                    "detail": {
+                        "response": "Missing or invalid credentials provided by client",
+                        "cause": (
+                            "MCP server at https://mcp.example.com/v1 requires OAuth"
+                        ),
+                    },
+                },
             ]
         }
     }
@@ -1958,6 +1982,26 @@ class ForbiddenResponse(AbstractErrorResponse):
                     "detail": {
                         "response": "User does not have permission to access this endpoint",
                         "cause": "User 6789 is not authorized to access this endpoint.",
+                    },
+                },
+                {
+                    "label": "prompt read",
+                    "detail": {
+                        "response": "User does not have permission to perform this action",
+                        "cause": (
+                            "User 6789 does not have permission to list or read stored prompts "
+                            "(missing permission: read_prompts)."
+                        ),
+                    },
+                },
+                {
+                    "label": "prompt manage",
+                    "detail": {
+                        "response": "User does not have permission to perform this action",
+                        "cause": (
+                            "User 6789 does not have permission to create, update, or delete "
+                            "stored prompts (missing permission: manage_prompts)."
+                        ),
                     },
                 },
                 {
@@ -2152,18 +2196,28 @@ class NotFoundResponse(AbstractErrorResponse):
                         "cause": "File with ID file_abc123 does not exist",
                     },
                 },
+                {
+                    "label": "prompt",
+                    "detail": {
+                        "response": "Prompt not found",
+                        "cause": (
+                            "Prompt with ID "
+                            "pmpt_0123456789abcdef0123456789abcdef01234567 does not exist"
+                        ),
+                    },
+                },
             ]
         }
     }
 
-    def __init__(self, *, resource: str, resource_id: str | None = None):
+    def __init__(self, *, resource: str, resource_id: Optional[str] = None):
         """
         Create a NotFoundResponse for a missing resource and set the HTTP status to 404.
 
         Parameters:
         ----------
             resource (str): Resource type that was not found (e.g., "conversation", "model").
-            resource_id (str | None): Identifier of the missing resource. If None, indicates
+            resource_id (Optional[str]): Identifier of the missing resource. If None, indicates
                 the resource type is not configured (e.g., no model selected).
         """
         response = f"{resource.title()} not found"
@@ -2304,6 +2358,16 @@ class PromptTooLongResponse(AbstractErrorResponse):
         "json_schema_extra": {
             "examples": [
                 {
+                    "label": "context window exceeded",
+                    "detail": {
+                        "response": "Context window exceeded",
+                        "cause": (
+                            "The input exceeds the context window size "
+                            "of model 'gpt-4o-mini'."
+                        ),
+                    },
+                },
+                {
                     "label": "prompt too long",
                     "detail": {
                         "response": "Prompt is too long",
@@ -2318,22 +2382,18 @@ class PromptTooLongResponse(AbstractErrorResponse):
         self,
         *,
         response: str = "Prompt is too long",
-        cause: str | None = None,
-        model: str | None = None,
+        model: Optional[str] = None,
     ) -> None:
         """Initialize a PromptTooLongResponse.
 
         Args:
             response: Short summary of the error. Defaults to "Prompt is too long".
-            cause: Detailed explanation of what caused the error. If not provided,
-                   will be generated to include model information if model is provided.
             model: The model identifier for which the prompt is too long.
         """
-        if cause is None:
-            if model:
-                cause = f"The input exceeds the context window size of model '{model}'."
-            else:
-                cause = "The prompt exceeds the maximum allowed length."
+        if model:
+            cause = f"The input exceeds the context window size of model '{model}'."
+        else:
+            cause = "The prompt exceeds the maximum allowed length."
 
         super().__init__(
             response=response,
@@ -2363,38 +2423,63 @@ class FileTooLargeResponse(AbstractErrorResponse):
                     "label": "backend rejection",
                     "detail": {
                         "response": "Invalid file upload",
-                        "cause": "File upload rejected by Llama Stack: File size exceeds limit",
+                        "cause": "File upload rejected: File size exceeds limit",
                     },
                 },
             ]
         }
     }
 
-    def __init__(
-        self,
+    @classmethod
+    def exceeds_local_limit(
+        cls,
         *,
+        file_size: int,
+        max_size: int,
         response: str = "File too large",
-        cause: str | None = None,
-        file_size: int | None = None,
-        max_size: int | None = None,
-    ) -> None:
-        """Initialize a FileTooLargeResponse.
+    ) -> "FileTooLargeResponse":
+        """Build a 413 when measured bytes exceed the configured upload maximum.
 
-        Args:
-            response: Short summary of the error. Defaults to "File too large".
-            cause: Detailed explanation. If not provided, will be generated from
-                file_size and max_size.
-            file_size: The size of the uploaded file in bytes.
-            max_size: The maximum allowed file size in bytes.
+        Parameters:
+            file_size: Measured size of the upload in bytes.
+            max_size: Configured maximum allowed size in bytes.
+            response: Short summary shown to the client.
+        Returns:
+            FileTooLargeResponse with a cause that includes both sizes and the size in MB (floored).
         """
-        if cause is None and file_size is not None and max_size is not None:
-            cause = (
-                f"File size {file_size} bytes exceeds maximum allowed "
-                f"size of {max_size} bytes ({max_size // (1024 * 1024)} MB)"
-            )
-        elif cause is None:
-            cause = "The uploaded file exceeds the maximum allowed size."
+        cause = (
+            f"File size {file_size} bytes exceeds maximum allowed "
+            f"size of {max_size} bytes ({max_size // (1024 * 1024)} MB)"
+        )
+        return cls(response=response, cause=cause)
 
+    @classmethod
+    def from_backend_rejection(
+        cls,
+        *,
+        message: str,
+        response: str = "Invalid file upload",
+    ) -> "FileTooLargeResponse":
+        """
+        Build a 413 when Llama Stack rejects the upload after we sent it.
+
+        Parameters:
+            message: Error text from the backend.
+            response: Short summary shown to the client.
+
+        Returns:
+            FileTooLargeResponse whose cause prefixes the message with a fixed label.
+        """
+        cause = f"File upload rejected: {message}"
+        return cls(response=response, cause=cause)
+
+    def __init__(self, *, response: str, cause: str) -> None:
+        """Create a 413 Content Too Large error with explicit summary and cause.
+
+        Parameters:
+            response: Short summary of the error.
+            cause: Detailed explanation for operators and clients.
+        """
         super().__init__(
             response=response,
             cause=cause,
@@ -2900,6 +2985,152 @@ class VectorStoresListResponse(AbstractSuccessfulResponse):
             ]
         },
     }
+
+
+class PromptResourceResponse(AbstractSuccessfulResponse):
+    """A stored prompt template as returned by Llama Stack."""
+
+    prompt_id: str = Field(..., description="Prompt identifier from Llama Stack")
+    version: int = Field(..., description="Version number for this prompt")
+    is_default: Optional[bool] = Field(
+        None, description="Whether this version is the default"
+    )
+    prompt: Optional[str] = Field(None, description="Prompt text with placeholders")
+    variables: Optional[list[str]] = Field(
+        None, description="Variable names used in the template"
+    )
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "prompt_id": "pmpt_0123456789abcdef0123456789abcdef01234567",
+                    "version": 1,
+                    "is_default": True,
+                    "prompt": "Summarize: {{text}}",
+                    "variables": ["text"],
+                }
+            ]
+        },
+    }
+
+
+class PromptsListResponse(AbstractSuccessfulResponse):
+    """List of stored prompt templates returned by Llama Stack."""
+
+    data: list[PromptResourceResponse] = Field(
+        default_factory=list,
+        description="Prompt entries (as returned by Llama Stack list)",
+    )
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "data": [
+                        {
+                            "prompt_id": "pmpt_0123456789abcdef0123456789abcdef01234567",
+                            "version": 1,
+                            "is_default": True,
+                            "prompt": "Summarize: {{text}}",
+                            "variables": ["text"],
+                        }
+                    ],
+                }
+            ]
+        },
+    }
+
+
+class PromptDeleteResponse(AbstractSuccessfulResponse):
+    """Result of deleting a stored prompt (always HTTP 200, like conversations v2)."""
+
+    prompt_id: str = Field(
+        ...,
+        description="Prompt identifier that was passed to delete.",
+        examples=["pmpt_0123456789abcdef0123456789abcdef01234567"],
+    )
+    success: bool = Field(
+        ...,
+        description="Whether Llama Stack deleted the prompt.",
+        examples=[True, False],
+    )
+    response: str = Field(
+        ...,
+        description="Human-readable outcome.",
+        examples=[
+            "Prompt deleted successfully",
+            "Prompt cannot be deleted",
+        ],
+    )
+
+    def __init__(self, *, deleted: bool, prompt_id: str) -> None:
+        """Build delete outcome from Llama Stack result.
+
+        Parameters:
+            deleted: True if the backend removed the prompt.
+            prompt_id: Prompt id from the request path.
+        """
+        response_msg = (
+            "Prompt deleted successfully" if deleted else "Prompt cannot be deleted"
+        )
+        super().__init__(
+            prompt_id=prompt_id,  # type: ignore[call-arg]
+            success=deleted,  # type: ignore[call-arg]
+            response=response_msg,  # type: ignore[call-arg]
+        )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "label": "deleted",
+                    "value": {
+                        "prompt_id": "pmpt_0123456789abcdef0123456789abcdef01234567",
+                        "success": True,
+                        "response": "Prompt deleted successfully",
+                    },
+                },
+                {
+                    "label": "not_deleted",
+                    "value": {
+                        "prompt_id": "pmpt_0123456789abcdef0123456789abcdef01234567",
+                        "success": False,
+                        "response": "Prompt cannot be deleted",
+                    },
+                },
+            ]
+        }
+    }
+
+    @classmethod
+    def openapi_response(cls) -> dict[str, Any]:
+        """Build the response spec for HTTP 200 with labeled JSON examples."""
+        schema = cls.model_json_schema()
+        model_examples = schema.get("examples", [])
+
+        named_examples: dict[str, Any] = {}
+
+        for ex in model_examples:
+            label = ex.get("label")
+            if label is None:
+                raise SchemaError(f"Example {ex} in {cls.__name__} has no label")
+
+            value = ex.get("value")
+            if value is None:
+                raise SchemaError(f"Example '{label}' in {cls.__name__} has no value")
+
+            named_examples[label] = {"value": value}
+
+        content = {"application/json": {"examples": named_examples or None}}
+
+        return {
+            "description": SUCCESSFUL_RESPONSE_DESCRIPTION,
+            "model": cls,
+            "content": content,
+        }
 
 
 class FileResponse(AbstractSuccessfulResponse):

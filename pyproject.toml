@@ -58,7 +58,7 @@ dependencies = [
     "jsonpath-ng>=1.6.1",
     "psycopg2-binary>=2.9.10",
     # LCORE-1565
-    "litellm==1.83.0",
+    "litellm==1.83.7",
     "urllib3>=2.6.3",
     # Used for agent card configuration
     "PyYAML>=6.0.0",
@@ -73,6 +73,8 @@ dependencies = [
     # To be able to fix multiple CVEs, also LCORE-1117
     "requests>=2.33.0",
     "datasets>=4.7.0",
+    # Used for error tracking and monitoring
+    "sentry-sdk[fastapi]>=2.58.0",
 ]
 
 
@@ -183,7 +185,7 @@ llslibdev = [
     "google-cloud-aiplatform>=1.130.0",
     # API inference: remote::watsonx
     # LCORE-1565
-    "litellm==1.83.0",
+    "litellm==1.83.7",
     # Other
     "autoevals>=0.0.129",
     "fire>=0.7.0",
@@ -233,7 +235,8 @@ extend-select = ["TID251", "UP006", "UP007", "UP010", "UP017", "UP035", "RUF100"
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 unittest = { msg = "use pytest instead of unittest" }
-"unittest.mock" = { msg = "use pytest-mock instead of unittest.mock" }
+# commented temporarily - Dependabot has problems with this line for some reason
+#"unittest.mock" = { msg = "use pytest-mock instead of unittest.mock" }
 
 [tool.mypy]
 explicit_package_bases = true

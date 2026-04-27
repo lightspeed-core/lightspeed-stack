@@ -4,6 +4,7 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import sentry_sdk  # pyright: ignore[reportMissingImports]
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -22,6 +23,7 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from log import get_logger
 from models.responses import InternalServerErrorResponse
+from sentry import initialize_sentry
 from utils.common import register_mcp_servers_async
 from utils.llama_stack_version import check_llama_stack_version
 
@@ -43,6 +45,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     logger, and database before serving requests.
     """
     configuration.load_configuration(os.environ["LIGHTSPEED_STACK_CONFIG_PATH"])
+
+    initialize_sentry()
 
     azure_config = configuration.configuration.azure_entra_id
     if azure_config is not None:
@@ -81,8 +85,13 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     yield
 
     # Cleanup resources on shutdown
-    await shutdown_background_topic_summary_tasks()
-    await A2AStorageFactory.cleanup()
+    try:
+        await shutdown_background_topic_summary_tasks()
+        await A2AStorageFactory.cleanup()
+    finally:
+        # Flush pending Sentry events after cleanup so any errors during
+        # shutdown are captured before the process exits.
+        sentry_sdk.flush(timeout=2)
     logger.info("App shutdown complete")
 
 

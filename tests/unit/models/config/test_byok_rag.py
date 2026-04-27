@@ -1,7 +1,5 @@
 """Unit tests for ByokRag model."""
 
-from pathlib import Path
-
 import pytest
 from pydantic import ValidationError
 
@@ -55,6 +53,7 @@ def test_byok_rag_configuration_nondefault_values() -> None:
         embedding_dimension=1024,
         vector_db_id="vector_db_id",
         db_path="tests/configuration/rag.txt",
+        score_multiplier=1.0,
     )
     assert byok_rag is not None
     assert byok_rag.rag_id == "rag_id"
@@ -80,7 +79,8 @@ def test_byok_rag_configuration_wrong_dimension() -> None:
             embedding_model="embedding_model",
             embedding_dimension=-1024,
             vector_db_id="vector_db_id",
-            db_path=Path("tests/configuration/rag.txt"),
+            db_path="tests/configuration/rag.txt",
+            score_multiplier=1.0,
         )
 
 
@@ -101,7 +101,8 @@ def test_byok_rag_configuration_empty_rag_id() -> None:
             embedding_model="embedding_model",
             embedding_dimension=1024,
             vector_db_id="vector_db_id",
-            db_path=Path("tests/configuration/rag.txt"),
+            db_path="tests/configuration/rag.txt",
+            score_multiplier=1.0,
         )
 
 
@@ -123,7 +124,8 @@ def test_byok_rag_configuration_empty_rag_type() -> None:
             embedding_model="embedding_model",
             embedding_dimension=1024,
             vector_db_id="vector_db_id",
-            db_path=Path("tests/configuration/rag.txt"),
+            db_path="tests/configuration/rag.txt",
+            score_multiplier=1.0,
         )
 
 
@@ -144,7 +146,8 @@ def test_byok_rag_configuration_empty_embedding_model() -> None:
             embedding_model="",
             embedding_dimension=1024,
             vector_db_id="vector_db_id",
-            db_path=Path("tests/configuration/rag.txt"),
+            db_path="tests/configuration/rag.txt",
+            score_multiplier=1.0,
         )
 
 
@@ -165,7 +168,8 @@ def test_byok_rag_configuration_empty_vector_db_id() -> None:
             embedding_model="embedding_model",
             embedding_dimension=1024,
             vector_db_id="",
-            db_path=Path("tests/configuration/rag.txt"),
+            db_path="tests/configuration/rag.txt",
+            score_multiplier=1.0,
         )
 
 
@@ -173,7 +177,10 @@ def test_byok_rag_configuration_custom_score_multiplier() -> None:
     """Test ByokRag with custom score_multiplier."""
     byok_rag = ByokRag(
         rag_id="rag_id",
+        rag_type="rag_type",
         vector_db_id="vector_db_id",
+        embedding_model="embedding_model",
+        embedding_dimension=1024,
         db_path="tests/configuration/rag.txt",
         score_multiplier=2.5,
     )
@@ -185,7 +192,10 @@ def test_byok_rag_configuration_score_multiplier_must_be_positive() -> None:
     with pytest.raises(ValidationError, match="greater than 0"):
         _ = ByokRag(
             rag_id="rag_id",
+            rag_type="rag_type",
             vector_db_id="vector_db_id",
+            embedding_model="embedding_model",
+            embedding_dimension=1024,
             db_path="tests/configuration/rag.txt",
             score_multiplier=0.0,
         )

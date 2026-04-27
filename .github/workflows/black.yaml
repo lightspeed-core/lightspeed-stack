@@ -17,4 +17,4 @@ jobs:
         with:
           python-version: '3.12'
       - name: Black check
-        run: uv tool run black --check .
+        run: uv tool run black --check src tests

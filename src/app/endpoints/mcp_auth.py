@@ -12,10 +12,12 @@ from configuration import configuration
 from log import get_logger
 from models.config import Action
 from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
     ForbiddenResponse,
     InternalServerErrorResponse,
     MCPClientAuthOptionsResponse,
     MCPServerAuthInfo,
+    ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
@@ -26,11 +28,10 @@ router = APIRouter(prefix="/mcp-auth", tags=["mcp-auth"])
 
 mcp_auth_responses: dict[int | str, dict[str, Any]] = {
     200: MCPClientAuthOptionsResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
+    503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
 
@@ -55,7 +56,7 @@ async def get_mcp_client_auth_options(
     ### Parameters:
     - request: The incoming HTTP request (used by middleware).
     - auth: Authentication tuple from the auth dependency (used by middleware).
-    - mcp_headers: Headers that should be pass to MCP servers.
+    - mcp_headers: Headers that should be passed to MCP servers.
 
     ### Returns:
     - MCPClientAuthOptionsResponse: List of MCP servers and their

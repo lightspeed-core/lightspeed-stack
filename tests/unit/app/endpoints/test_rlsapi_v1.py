@@ -8,7 +8,7 @@
 
 import re
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, status
@@ -24,7 +24,6 @@ from app.endpoints.rlsapi_v1 import (
     _build_instructions,
     _compile_prompt_template,
     _get_default_model_id,
-    _get_rh_identity_context,
     _resolve_quota_subject,
     infer_endpoint,
     retrieve_simple_response,
@@ -42,6 +41,7 @@ from models.rlsapi.requests import (
 )
 from models.rlsapi.responses import RlsapiV1InferResponse
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
+from utils.rh_identity import get_rh_identity_context
 from utils.suid import check_suid
 from utils.types import ShieldModerationBlocked, ShieldModerationPassed
 
@@ -474,7 +474,7 @@ async def test_retrieve_simple_response_api_connection_error(
         await retrieve_simple_response("Test question", constants.DEFAULT_SYSTEM_PROMPT)
 
 
-# --- Test _get_rh_identity_context ---
+# --- Test get_rh_identity_context ---
 
 
 @pytest.mark.parametrize(
@@ -498,11 +498,11 @@ async def test_retrieve_simple_response_api_connection_error(
 def test_get_rh_identity_context(
     mocker: MockerFixture,
     mock_request_factory: Callable[..., Any],
-    rh_identity_setup: dict[str, str] | None,
+    rh_identity_setup: Optional[dict[str, str]],
     expected_org_id: str,
     expected_system_id: str,
 ) -> None:
-    """Test _get_rh_identity_context extracts or defaults org/system IDs."""
+    """Test get_rh_identity_context extracts or defaults org/system IDs."""
     if rh_identity_setup is not None:
         mock_rh_identity = mocker.Mock(spec=RHIdentityData)
         mock_rh_identity.get_org_id.return_value = rh_identity_setup["org_id"]
@@ -511,7 +511,7 @@ def test_get_rh_identity_context(
     else:
         mock_request = mock_request_factory()
 
-    org_id, system_id = _get_rh_identity_context(mock_request)
+    org_id, system_id = get_rh_identity_context(mock_request)
 
     assert org_id == expected_org_id
     assert system_id == expected_system_id
@@ -978,9 +978,9 @@ async def test_infer_queues_splunk_event_on_success(
 def test_resolve_quota_subject(
     mocker: MockerFixture,
     mock_request_factory: Callable[..., Any],
-    quota_subject: str | None,
-    rh_identity_setup: dict[str, str] | None,
-    expected: str | None,
+    quota_subject: Optional[str],
+    rh_identity_setup: Optional[dict[str, str]],
+    expected: Optional[str],
 ) -> None:
     """Test _resolve_quota_subject resolves correct ID based on config and identity."""
     rlsapi_v1_mock = mocker.Mock()

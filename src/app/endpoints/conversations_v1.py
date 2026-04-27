@@ -22,6 +22,7 @@ from models.database.conversations import (
 )
 from models.requests import ConversationUpdateRequest
 from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
     BadRequestResponse,
     ConversationDeleteResponse,
     ConversationDetails,
@@ -57,56 +58,57 @@ router = APIRouter(tags=["conversations_v1"])
 
 conversation_get_responses: dict[int | str, dict[str, Any]] = {
     200: ConversationResponse.openapi_response(),
-    400: BadRequestResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    400: BadRequestResponse.openapi_response(examples=["conversation_id"]),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["conversation read", "endpoint"]),
     404: NotFoundResponse.openapi_response(examples=["conversation"]),
     500: InternalServerErrorResponse.openapi_response(
         examples=["database", "configuration"]
     ),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 conversation_delete_responses: dict[int | str, dict[str, Any]] = {
     200: ConversationDeleteResponse.openapi_response(),
-    400: BadRequestResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    400: BadRequestResponse.openapi_response(examples=["conversation_id"]),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(
         examples=["conversation delete", "endpoint"]
     ),
     500: InternalServerErrorResponse.openapi_response(
         examples=["database", "configuration"]
     ),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 conversations_list_responses: dict[int | str, dict[str, Any]] = {
     200: ConversationsListResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(
         examples=["database", "configuration"]
+    ),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
     ),
 }
 
 conversation_update_responses: dict[int | str, dict[str, Any]] = {
     200: ConversationUpdateResponse.openapi_response(),
-    400: BadRequestResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    400: BadRequestResponse.openapi_response(examples=["conversation_id"]),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     404: NotFoundResponse.openapi_response(examples=["conversation"]),
     500: InternalServerErrorResponse.openapi_response(
         examples=["database", "configuration"]
     ),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 

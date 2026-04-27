@@ -72,8 +72,19 @@ def test_store_transcript(  # pylint: disable=too-many-locals
     query = "What is OpenStack?"
     model = "fake-model"
     provider = "fake-provider"
-    query_request = QueryRequest(  # type: ignore[call-arg]
-        query=query, model=model, provider=provider
+    query_request = QueryRequest(
+        query=query,
+        model=model,
+        provider=provider,
+        conversation_id=conversation_id,
+        system_prompt="System prompt",
+        attachments=[],
+        no_tools=True,
+        generate_topic_summary=False,
+        media_type="text/plain",
+        vector_store_ids=[],
+        shield_ids=[],
+        solr=None,
     )
     summary = TurnSummary(
         llm_response="LLM answer",

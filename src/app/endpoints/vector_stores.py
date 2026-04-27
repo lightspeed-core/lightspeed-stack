@@ -3,7 +3,7 @@
 import asyncio
 import os
 from io import BytesIO
-from typing import Annotated, Any
+from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from llama_stack_client import (
@@ -29,7 +29,7 @@ from models.requests import (
     VectorStoreUpdateRequest,
 )
 from models.responses import (
-    BadRequestResponse,
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
     FileResponse,
     FileTooLargeResponse,
     ForbiddenResponse,
@@ -52,57 +52,56 @@ router = APIRouter(tags=["vector-stores"])
 # Response schemas for OpenAPI documentation
 vector_stores_list_responses: dict[int | str, dict[str, Any]] = {
     200: VectorStoresListResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 vector_store_responses: dict[int | str, dict[str, Any]] = {
     200: VectorStoreResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     404: NotFoundResponse.openapi_response(examples=["vector store"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 file_responses: dict[int | str, dict[str, Any]] = {
     200: FileResponse.openapi_response(),
-    400: BadRequestResponse.openapi_response(examples=["file_upload"]),
     413: FileTooLargeResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 vector_store_file_responses: dict[int | str, dict[str, Any]] = {
     200: VectorStoreFileResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     404: NotFoundResponse.openapi_response(examples=["file"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 vector_store_files_list_responses: dict[int | str, dict[str, Any]] = {
     200: VectorStoreFilesListResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     404: NotFoundResponse.openapi_response(examples=["vector store"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 
@@ -361,7 +360,12 @@ async def update_vector_store(
 
 @router.delete(
     "/vector-stores/{vector_store_id}",
-    responses={"204": {"description": "Vector store deleted"}},
+    responses={
+        "204": {"description": "Vector store deleted"},
+        503: ServiceUnavailableResponse.openapi_response(
+            examples=["llama stack", "kubernetes api"]
+        ),
+    },
     status_code=status.HTTP_204_NO_CONTENT,
 )
 @authorize(Action.MANAGE_VECTOR_STORES)
@@ -444,7 +448,7 @@ async def create_file(  # pylint: disable=too-many-branches,too-many-statements
         try:
             size = int(content_length)
             if size > DEFAULT_MAX_FILE_UPLOAD_SIZE:
-                response = FileTooLargeResponse(
+                response = FileTooLargeResponse.exceeds_local_limit(
                     file_size=size,
                     max_size=DEFAULT_MAX_FILE_UPLOAD_SIZE,
                 )
@@ -456,7 +460,7 @@ async def create_file(  # pylint: disable=too-many-branches,too-many-statements
     # file.size attribute if available
     if hasattr(file, "size") and file.size is not None:
         if file.size > DEFAULT_MAX_FILE_UPLOAD_SIZE:
-            response = FileTooLargeResponse(
+            response = FileTooLargeResponse.exceeds_local_limit(
                 file_size=file.size,
                 max_size=DEFAULT_MAX_FILE_UPLOAD_SIZE,
             )
@@ -470,7 +474,7 @@ async def create_file(  # pylint: disable=too-many-branches,too-many-statements
 
         # Verify actual size after reading
         if len(content) > DEFAULT_MAX_FILE_UPLOAD_SIZE:
-            response = FileTooLargeResponse(
+            response = FileTooLargeResponse.exceeds_local_limit(
                 file_size=len(content),
                 max_size=DEFAULT_MAX_FILE_UPLOAD_SIZE,
             )
@@ -514,10 +518,7 @@ async def create_file(  # pylint: disable=too-many-branches,too-many-statements
         # Check if backend rejected due to file size
         error_msg = str(e).lower()
         if "too large" in error_msg or "size" in error_msg or "exceeds" in error_msg:
-            response = FileTooLargeResponse(
-                response="Invalid file upload",
-                cause=f"File upload rejected by Llama Stack: {str(e)}",
-            )
+            response = FileTooLargeResponse.from_backend_rejection(message=str(e))
         else:
             response = InternalServerErrorResponse.query_failed(
                 cause=f"File upload rejected by Llama Stack: {str(e)}"
@@ -573,7 +574,7 @@ async def add_file_to_vector_store(  # pylint: disable=too-many-locals,too-many-
         max_retries = 3
         retry_delay = 0.5  # seconds
         vs_file = None
-        last_lock_error: Exception | None = None
+        last_lock_error: Optional[Exception] = None
 
         for attempt in range(max_retries):
             try:
@@ -789,7 +790,12 @@ async def get_vector_store_file(
 
 @router.delete(
     "/vector-stores/{vector_store_id}/files/{file_id}",
-    responses={"204": {"description": "File deleted from vector store"}},
+    responses={
+        "204": {"description": "File deleted from vector store"},
+        503: ServiceUnavailableResponse.openapi_response(
+            examples=["llama stack", "kubernetes api"]
+        ),
+    },
     status_code=status.HTTP_204_NO_CONTENT,
 )
 @authorize(Action.MANAGE_VECTOR_STORES)

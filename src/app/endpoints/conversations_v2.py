@@ -12,6 +12,7 @@ from models.cache_entry import CacheEntry
 from models.config import Action
 from models.requests import ConversationUpdateRequest
 from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
     BadRequestResponse,
     ConversationDeleteResponse,
     ConversationResponse,
@@ -22,6 +23,7 @@ from models.responses import (
     InternalServerErrorResponse,
     Message,
     NotFoundResponse,
+    ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
@@ -33,51 +35,47 @@ router = APIRouter(tags=["conversations_v2"])
 
 conversation_get_responses: dict[int | str, dict[str, Any]] = {
     200: ConversationResponse.openapi_response(),
-    400: BadRequestResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    400: BadRequestResponse.openapi_response(examples=["conversation_id"]),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     404: NotFoundResponse.openapi_response(examples=["conversation"]),
     500: InternalServerErrorResponse.openapi_response(
         examples=["conversation cache", "configuration"]
     ),
+    503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
 conversation_delete_responses: dict[int | str, dict[str, Any]] = {
     200: ConversationDeleteResponse.openapi_response(),
-    400: BadRequestResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    400: BadRequestResponse.openapi_response(examples=["conversation_id"]),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(
         examples=["conversation cache", "configuration"]
     ),
+    503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
 conversations_list_responses: dict[int | str, dict[str, Any]] = {
     200: ConversationsListResponseV2.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(
         examples=["conversation cache", "configuration"]
     ),
+    503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
 conversation_update_responses: dict[int | str, dict[str, Any]] = {
     200: ConversationUpdateResponse.openapi_response(),
-    400: BadRequestResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    400: BadRequestResponse.openapi_response(examples=["conversation_id"]),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     404: NotFoundResponse.openapi_response(examples=["conversation"]),
     500: InternalServerErrorResponse.openapi_response(
         examples=["conversation cache", "configuration"]
     ),
+    503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
 

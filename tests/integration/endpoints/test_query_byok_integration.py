@@ -322,7 +322,20 @@ async def test_query_byok_inline_rag_injects_context(
     """
     _ = byok_config
 
-    query_request = QueryRequest(query="What is OpenShift?")
+    query_request = QueryRequest(
+        query="What is OpenShift?",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
+        vector_store_ids=None,
+        shield_ids=None,
+        solr=None,
+    )
 
     response = await query_endpoint_handler(
         request=test_request,
@@ -369,7 +382,20 @@ async def test_query_byok_inline_rag_returns_referenced_documents(
     _ = byok_config
     _ = mock_byok_client
 
-    query_request = QueryRequest(query="What is OpenShift?")
+    query_request = QueryRequest(
+        query="What is OpenShift?",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
+        vector_store_ids=None,
+        shield_ids=None,
+        solr=None,
+    )
 
     response = await query_endpoint_handler(
         request=test_request,
@@ -444,7 +470,17 @@ async def test_query_byok_inline_rag_with_request_vector_store_ids(
     # Request specifies source-b which is NOT in rag.inline config
     query_request = QueryRequest(
         query="What is OpenShift?",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
         vector_store_ids=["source-b"],
+        shield_ids=None,
+        solr=None,
     )
 
     await query_endpoint_handler(
@@ -505,7 +541,17 @@ async def test_query_byok_request_vector_store_ids_filters_configured_stores(
     # Request narrows down to only source-a (using rag_id, not vector_db_id)
     query_request = QueryRequest(
         query="What is OpenShift?",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
         vector_store_ids=["source-a"],
+        shield_ids=None,
+        solr=None,
     )
 
     response = await query_endpoint_handler(
@@ -544,7 +590,20 @@ async def test_query_byok_inline_rag_empty_vector_store_ids_returns_no_chunks(
     """
     _ = byok_config
 
-    query_request = QueryRequest(query="What is OpenShift?", vector_store_ids=[])
+    query_request = QueryRequest(
+        query="What is OpenShift?",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
+        vector_store_ids=[],
+        shield_ids=None,
+        solr=None,
+    )
 
     response = await query_endpoint_handler(
         request=test_request,
@@ -575,7 +634,20 @@ async def test_query_byok_inline_rag_error_is_handled_gracefully(
 
     mock_byok_client.vector_io.query.side_effect = Exception("Connection refused")
 
-    query_request = QueryRequest(query="What is OpenShift?")
+    query_request = QueryRequest(
+        query="What is OpenShift?",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
+        vector_store_ids=None,
+        shield_ids=None,
+        solr=None,
+    )
 
     response = await query_endpoint_handler(
         request=test_request,
@@ -610,7 +682,20 @@ async def test_query_byok_tool_rag_returns_tool_calls(
     _ = byok_tool_config
     _ = mock_byok_tool_rag_client
 
-    query_request = QueryRequest(query="What is OpenShift?")
+    query_request = QueryRequest(
+        query="What is OpenShift?",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
+        vector_store_ids=None,
+        shield_ids=None,
+        solr=None,
+    )
 
     response = await query_endpoint_handler(
         request=test_request,
@@ -640,7 +725,20 @@ async def test_query_byok_tool_rag_referenced_documents(
     _ = byok_tool_config
     _ = mock_byok_tool_rag_client
 
-    query_request = QueryRequest(query="What is OpenShift?")
+    query_request = QueryRequest(
+        query="What is OpenShift?",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
+        vector_store_ids=None,
+        shield_ids=None,
+        solr=None,
+    )
 
     response = await query_endpoint_handler(
         request=test_request,
@@ -748,7 +846,20 @@ async def test_query_byok_combined_inline_and_tool_rag(  # pylint: disable=too-m
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
-    query_request = QueryRequest(query="What is OpenShift?")
+    query_request = QueryRequest(
+        query="What is OpenShift?",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
+        vector_store_ids=None,
+        shield_ids=None,
+        solr=None,
+    )
 
     response = await query_endpoint_handler(
         request=test_request,
@@ -816,7 +927,20 @@ async def test_query_byok_inline_rag_only_configured_rag_id_is_queried(
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
-    query_request = QueryRequest(query="What is OpenShift?")
+    query_request = QueryRequest(
+        query="What is OpenShift?",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
+        vector_store_ids=None,
+        shield_ids=None,
+        solr=None,
+    )
 
     response = await query_endpoint_handler(
         request=test_request,
@@ -906,7 +1030,20 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
-    query_request = QueryRequest(query="test query")
+    query_request = QueryRequest(
+        query="test query",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
+        vector_store_ids=None,
+        shield_ids=None,
+        solr=None,
+    )
 
     response = await query_endpoint_handler(
         request=test_request,
@@ -923,6 +1060,8 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
     second_chunk = response.rag_chunks[1]
     assert first_chunk.source == "source-b"
     assert second_chunk.source == "source-a"
+    assert first_chunk.score is not None
+    assert second_chunk.score is not None
     assert first_chunk.score > second_chunk.score
 
 
@@ -976,7 +1115,20 @@ async def test_query_byok_max_chunks_caps_retrieved_results(  # pylint: disable=
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
-    query_request = QueryRequest(query="test query")
+    query_request = QueryRequest(
+        query="test query",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
+        vector_store_ids=None,
+        shield_ids=None,
+        solr=None,
+    )
 
     response = await query_endpoint_handler(
         request=test_request,
@@ -988,8 +1140,14 @@ async def test_query_byok_max_chunks_caps_retrieved_results(  # pylint: disable=
     assert response.rag_chunks is not None
     assert len(response.rag_chunks) == constants.BYOK_RAG_MAX_CHUNKS
 
+    # Check that the score is computed properly
+    for chunk in response.rag_chunks:
+        assert chunk.score is not None
+
     # Verify chunks are sorted by score descending (highest first)
-    scores = [chunk.score for chunk in response.rag_chunks]
+    scores: list[float] = [
+        chunk.score for chunk in response.rag_chunks if chunk.score is not None
+    ]
     assert scores == sorted(scores, reverse=True)
 
     # The lowest-scored chunks from the original set should be excluded
@@ -1061,7 +1219,20 @@ async def test_query_byok_max_chunks_caps_across_multiple_sources(  # pylint: di
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
-    query_request = QueryRequest(query="test query")
+    query_request = QueryRequest(
+        query="test query",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
+        vector_store_ids=None,
+        shield_ids=None,
+        solr=None,
+    )
 
     response = await query_endpoint_handler(
         request=test_request,
@@ -1073,7 +1244,13 @@ async def test_query_byok_max_chunks_caps_across_multiple_sources(  # pylint: di
     assert response.rag_chunks is not None
     assert len(response.rag_chunks) == constants.BYOK_RAG_MAX_CHUNKS
 
-    scores = [chunk.score for chunk in response.rag_chunks]
+    # Check that the score is computed properly
+    for chunk in response.rag_chunks:
+        assert chunk.score is not None
+
+    scores: list[float] = [
+        chunk.score for chunk in response.rag_chunks if chunk.score is not None
+    ]
     assert scores == sorted(scores, reverse=True)
 
     # Both sources must survive the cap

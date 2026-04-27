@@ -116,3 +116,25 @@ def is_moderation_id(suid: str) -> bool:
     Returns True if the string starts with 'modr'.
     """
     return suid.startswith("modr")
+
+
+def check_suid_prompt(suid: str) -> bool:
+    """Check if given string is a prompt ID.
+
+    Parameters:
+        suid: Candidate string to validate.
+
+    Returns:
+        True if the string matches the prompt ID format; otherwise False.
+    """
+    prefix = "pmpt_"
+    if not suid.startswith(prefix):
+        return False
+    hex_part = suid.removeprefix(prefix)
+    if len(hex_part) != 48:
+        return False
+    try:
+        int(hex_part, 16)
+    except ValueError:
+        return False
+    return True

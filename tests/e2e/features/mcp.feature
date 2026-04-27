@@ -68,12 +68,11 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
 
-  @skip #TODO: LCORE-1463
   @InvalidMCPFileAuthConfig
   Scenario: Check if query endpoint reports error when MCP file-based invalid auth token is passed
     Given MCP toolgroups are reset for a new MCP configuration
@@ -90,12 +89,11 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
 
-  @skip #TODO: LCORE-1463
   @InvalidMCPFileAuthConfig
   Scenario: Check if streaming_query endpoint reports error when MCP file-based invalid auth token is passed
     Given MCP toolgroups are reset for a new MCP configuration
@@ -112,7 +110,7 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
@@ -176,12 +174,11 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
 
-  @skip #TODO: LCORE-1463
   @MCPKubernetesAuthConfig
   Scenario: Check if query endpoint reports error when MCP kubernetes invalid auth token is passed
     Given MCP toolgroups are reset for a new MCP configuration
@@ -198,12 +195,11 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
 
-  @skip #TODO: LCORE-1463
   @MCPKubernetesAuthConfig
   Scenario: Check if streaming_query endpoint reports error when MCP kubernetes invalid auth token is passed
     Given MCP toolgroups are reset for a new MCP configuration
@@ -220,7 +216,7 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
@@ -340,7 +336,7 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
@@ -364,7 +360,7 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
@@ -388,7 +384,7 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
@@ -460,7 +456,7 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
@@ -481,7 +477,7 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
@@ -502,7 +498,7 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
@@ -524,7 +520,7 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
@@ -549,7 +545,7 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
@@ -574,8 +570,17 @@ Feature: MCP tests
         {
             "detail": {
                 "response": "Missing or invalid credentials provided by client",
-                "cause": "MCP server at http://mock-mcp:3001 requires OAuth"
+                "cause": "MCP server at http://mock-mcp:3000 requires OAuth"
             }
         }
     """
     And The headers of the response contains the following header "www-authenticate"
+
+  Scenario: Check if MCP client auth options endpoint is working
+    Given MCP toolgroups are reset for a new MCP configuration
+      And The service uses the lightspeed-stack-mcp.yaml configuration
+      And The service is restarted
+    When I access REST API endpoint "mcp-auth/client-options" using HTTP GET method
+    Then The status code of the response is 200
+      And The body of the response has proper client auth options structure
+      And The response contains server "mcp-client" with client auth header "Authorization"

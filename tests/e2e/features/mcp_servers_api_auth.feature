@@ -21,7 +21,7 @@ Feature: MCP Server Management API authentication tests
     And I remove the auth header
     When I access REST API endpoint "mcp-servers" using HTTP POST method
     """
-    {"name": "auth-test-server", "url": "http://mock-mcp:3001", "provider_id": "model-context-protocol"}
+    {"name": "auth-test-server", "url": "http://mock-mcp:3000", "provider_id": "model-context-protocol"}
     """
     Then The status code of the response is 401
 

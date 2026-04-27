@@ -90,14 +90,15 @@ def quota_scheduler(config: QuotaHandlersConfiguration) -> bool:
         period,
     )
 
-    while True:
+    while True:  # pylint: disable=too-many-nested-blocks
         logger.info("Quota scheduler sync started")
         for limiter in config.limiters:
             try:
                 if not connected(connection):
                     # the old connection might be closed to avoid resource leaks
                     try:
-                        connection.close()
+                        if connection is not None:
+                            connection.close()
                     except Exception:  # pylint: disable=broad-exception-caught
                         pass  # Connection already dead
                     connection = connect(config)

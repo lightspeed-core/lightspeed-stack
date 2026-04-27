@@ -18,7 +18,7 @@ INTERRUPTED_RESPONSE_MESSAGE: Final[str] = "You interrupted this request."
 TOPIC_SUMMARY_INTERRUPT_TIMEOUT_SECONDS: Final[float] = 30.0
 
 # Supported attachment types
-ATTACHMENT_TYPES = frozenset(
+ATTACHMENT_TYPES: Final[frozenset] = frozenset(
     {
         "alert",
         "api object",
@@ -31,7 +31,7 @@ ATTACHMENT_TYPES = frozenset(
 )
 
 # Supported attachment content types
-ATTACHMENT_CONTENT_TYPES = frozenset(
+ATTACHMENT_CONTENT_TYPES: Final[frozenset] = frozenset(
     {"text/plain", "application/json", "application/yaml", "application/xml"}
 )
 
@@ -120,7 +120,7 @@ AUTH_MOD_APIKEY_TOKEN: Final[str] = "api-key-token"
 AUTH_MOD_JWK_TOKEN: Final[str] = "jwk-token"
 AUTH_MOD_RH_IDENTITY: Final[str] = "rh-identity"
 # Supported authentication modules
-SUPPORTED_AUTHENTICATION_MODULES = frozenset(
+SUPPORTED_AUTHENTICATION_MODULES: Final[frozenset] = frozenset(
     {
         AUTH_MOD_K8S,
         AUTH_MOD_NOOP,
@@ -130,7 +130,7 @@ SUPPORTED_AUTHENTICATION_MODULES = frozenset(
         AUTH_MOD_RH_IDENTITY,
     }
 )
-DEFAULT_AUTHENTICATION_MODULE = AUTH_MOD_NOOP
+DEFAULT_AUTHENTICATION_MODULE: Final[str] = AUTH_MOD_NOOP
 # Maximum allowed size for base64-encoded x-rh-identity header (bytes)
 DEFAULT_RH_IDENTITY_MAX_HEADER_SIZE: Final[int] = 8192
 
@@ -216,7 +216,7 @@ SOLR_DEFAULT_EMBEDDING_MODEL: Final[str] = (
 SOLR_DEFAULT_EMBEDDING_DIMENSION: Final[int] = 384
 
 # Default score multiplier for BYOK RAG vector stores
-DEFAULT_SCORE_MULTIPLIER = 1.0
+DEFAULT_SCORE_MULTIPLIER: Final[float] = 1.0
 
 # Special RAG ID that activates the OKP provider when listed in rag.inline or rag.tool
 OKP_RAG_ID: Final[str] = "okp"
@@ -240,8 +240,36 @@ DEFAULT_VIOLATION_MESSAGE: Final[str] = (
     "I cannot process this request due to policy restrictions."
 )
 
+# Placeholder slug used in responses when the server substituted its own
+# system prompt for the client's instructions.  Avoids leaking the actual
+# server prompt back to the client.
+SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER: Final[str] = "<server prompt applied>"
 # Input size limits for API request validation
 # Maximum character length for the question field in /v1/infer requests (32 KiB)
 RLSAPI_V1_QUESTION_MAX_LENGTH: Final[int] = 32_768
 # Maximum character length for the serialized /v1/responses request body (64 KiB)
 RESPONSES_REQUEST_MAX_SIZE: Final[int] = 65_536
+
+# Sentry configuration constants
+# Environment variable name for the Sentry DSN (Data Source Name)
+SENTRY_DSN_ENV_VAR: Final[str] = "SENTRY_DSN"
+# Environment variable name for the Sentry environment tag
+SENTRY_ENVIRONMENT_ENV_VAR: Final[str] = "SENTRY_ENVIRONMENT"
+# Default Sentry environment when SENTRY_ENVIRONMENT is not set
+SENTRY_DEFAULT_ENVIRONMENT: Final[str] = "development"
+# Default trace sample rate (fraction of transactions to capture)
+SENTRY_DEFAULT_TRACES_SAMPLE_RATE: Final[float] = 0.25
+# Routes excluded from Sentry trace sampling (health checks, metrics, root).
+# Note: health and metrics routers are mounted WITHOUT a /v1 prefix
+# (see the setup_routers function in src/app/routers.py), so ASGI paths are
+# /readiness, /liveness, /metrics.
+SENTRY_EXCLUDED_ROUTES: Final[tuple[str, ...]] = (
+    "/readiness",
+    "/liveness",
+    "/metrics",
+    "/",
+)
+# Environment variable name for the Sentry CA certificate bundle path.
+# Set this to a file path (e.g. /etc/pki/tls/certs/ca-bundle.crt) when
+# connecting to a Sentry instance that uses a private or internal CA.
+SENTRY_CA_CERTS_ENV_VAR: Final[str] = "SENTRY_CA_CERTS"

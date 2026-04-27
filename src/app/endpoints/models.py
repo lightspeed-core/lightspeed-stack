@@ -15,6 +15,7 @@ from log import get_logger
 from models.config import Action
 from models.requests import ModelFilter
 from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
     ForbiddenResponse,
     InternalServerErrorResponse,
     ModelsResponse,
@@ -62,12 +63,12 @@ def parse_llama_stack_model(model: Any) -> dict[str, Any]:
 
 models_responses: dict[int | str, dict[str, Any]] = {
     200: ModelsResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 

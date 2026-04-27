@@ -237,7 +237,7 @@ Feature: Llama Stack connection disrupted
     And The llama-stack connection is disrupted
     When I access REST API endpoint "mcp-servers" using HTTP POST method
     """
-    {"name": "unreachable-server", "url": "http://mock-mcp:3001", "provider_id": "model-context-protocol"}
+    {"name": "unreachable-server", "url": "http://mock-mcp:3000", "provider_id": "model-context-protocol"}
     """
     Then The status code of the response is 503
     And The body of the response contains Llama Stack

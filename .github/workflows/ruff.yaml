@@ -17,4 +17,4 @@ jobs:
         with:
           python-version: '3.12'
       - name: Python linter
-        run: uv tool run ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
+        run: uv tool run ruff check src tests --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101

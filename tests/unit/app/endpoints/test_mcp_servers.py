@@ -116,6 +116,7 @@ async def test_register_mcp_server_success(
     body = MCPServerRegistrationRequest(
         name="new-mcp-server",
         url="http://localhost:8888/mcp",
+        provider_id="MCP provider ID",
     )
 
     result = await mcp_servers.register_mcp_server_handler(
@@ -125,12 +126,12 @@ async def test_register_mcp_server_success(
     assert isinstance(result, MCPServerRegistrationResponse)
     assert result.name == "new-mcp-server"
     assert result.url == "http://localhost:8888/mcp"
-    assert result.provider_id == "model-context-protocol"
+    assert result.provider_id == "MCP provider ID"
     assert "registered successfully" in result.message
 
     client.toolgroups.register.assert_called_once_with(
         toolgroup_id="new-mcp-server",
-        provider_id="model-context-protocol",
+        provider_id="MCP provider ID",
         mcp_endpoint={"uri": "http://localhost:8888/mcp"},
     )
 
@@ -150,6 +151,7 @@ async def test_register_mcp_server_duplicate_name(
     body = MCPServerRegistrationRequest(
         name="static-mcp",
         url="http://localhost:9999/mcp",
+        provider_id="MCP provider ID",
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -172,6 +174,7 @@ async def test_register_mcp_server_llama_stack_failure(
     body = MCPServerRegistrationRequest(
         name="failing-server",
         url="http://localhost:8888/mcp",
+        provider_id="MCP provider ID",
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -242,6 +245,7 @@ async def test_list_mcp_servers_with_dynamic(
     body = MCPServerRegistrationRequest(
         name="dynamic-server",
         url="http://localhost:9999/mcp",
+        provider_id="MCP provider ID",
     )
     await mcp_servers.register_mcp_server_handler(
         request=mocker.Mock(), body=body, auth=MOCK_AUTH
@@ -271,6 +275,7 @@ async def test_delete_dynamic_mcp_server_success(
     body = MCPServerRegistrationRequest(
         name="to-delete",
         url="http://localhost:7777/mcp",
+        provider_id="MCP provider ID",
     )
     await mcp_servers.register_mcp_server_handler(
         request=mocker.Mock(), body=body, auth=MOCK_AUTH
@@ -337,6 +342,7 @@ async def test_delete_mcp_server_llama_stack_failure(
     body = MCPServerRegistrationRequest(
         name="to-delete-fail",
         url="http://localhost:7777/mcp",
+        provider_id="MCP provider ID",
     )
     await mcp_servers.register_mcp_server_handler(
         request=mocker.Mock(), body=body, auth=MOCK_AUTH
@@ -355,18 +361,20 @@ def test_mcp_server_registration_request_validation() -> None:
         MCPServerRegistrationRequest(
             name="test",
             url="ftp://invalid-scheme",
+            provider_id="MCP provider ID",
         )
 
     with pytest.raises(Exception):
         MCPServerRegistrationRequest(
             name="",
             url="http://valid.url",
+            provider_id="MCP provider ID",
         )
 
     req = MCPServerRegistrationRequest(
         name="valid-server",
         url="http://localhost:8080/mcp",
-    )
+    )  # pyright: ignore[reportCallIssue]
     assert req.provider_id == "model-context-protocol"
 
 
@@ -377,6 +385,7 @@ def test_mcp_server_registration_auth_keywords() -> None:
             name=f"server-{keyword}",
             url="http://localhost:8080/mcp",
             authorization_headers={"Authorization": keyword},
+            provider_id="MCP provider ID",
         )
         assert req.authorization_headers is not None
         assert req.authorization_headers["Authorization"] == keyword
@@ -389,6 +398,7 @@ def test_mcp_server_registration_rejects_file_path() -> None:
             name="bad-server",
             url="http://localhost:8080/mcp",
             authorization_headers={"Authorization": "/var/secrets/token"},
+            provider_id="MCP provider ID",
         )
 
 
@@ -399,6 +409,7 @@ def test_mcp_server_registration_rejects_arbitrary_value() -> None:
             name="bad-server",
             url="http://localhost:8080/mcp",
             authorization_headers={"Authorization": "Bearer my-static-token"},
+            provider_id="MCP provider ID",
         )
 
 
@@ -416,6 +427,7 @@ async def test_register_and_delete_roundtrip(
     body = MCPServerRegistrationRequest(
         name="roundtrip-server",
         url="http://localhost:5555/mcp",
+        provider_id="MCP provider ID",
     )
     await mcp_servers.register_mcp_server_handler(
         request=mocker.Mock(), body=body, auth=MOCK_AUTH

@@ -9,6 +9,7 @@ import json
 import os
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Optional
 
 from fastapi import HTTPException
 
@@ -105,9 +106,9 @@ def create_transcript_metadata(  # pylint: disable=too-many-arguments,too-many-p
     user_id: str,
     conversation_id: str,
     model_id: str,
-    provider_id: str | None,
-    query_provider: str | None,
-    query_model: str | None,
+    provider_id: Optional[str],
+    query_provider: Optional[str],
+    query_model: Optional[str],
 ) -> TranscriptMetadata:
     """Create a TranscriptMetadata BaseModel instance.
 

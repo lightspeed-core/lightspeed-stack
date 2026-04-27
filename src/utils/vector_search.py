@@ -7,6 +7,7 @@ and processing RAG chunks that is shared between query_v2.py and streaming_query
 import asyncio
 import traceback
 from typing import Any, Optional, cast
+from urllib.parse import urljoin
 
 from llama_stack_api.openai_responses import (
     OpenAIResponseMessage as ResponseMessage,
@@ -17,6 +18,7 @@ from pydantic import AnyUrl
 import constants
 from configuration import configuration
 from log import get_logger
+from models.requests import SolrVectorSearchRequest
 from models.responses import ReferencedDocument
 from utils.responses import resolve_vector_store_ids
 from utils.types import RAGChunk, RAGContext, ResponseInput
@@ -52,18 +54,32 @@ def _get_solr_vector_store_ids() -> list[str]:
     return vector_store_ids
 
 
-def _build_query_params(solr: Optional[dict[str, Any]] = None) -> dict[str, Any]:
-    """Build query parameters for vector search."""
+def _build_query_params(
+    solr: Optional[SolrVectorSearchRequest] = None,
+) -> dict[str, Any]:
+    """Build query parameters for Solr vector_io search.
+
+    Args:
+        solr: Optional structured Solr request (mode and filters from the API).
+
+    Returns:
+        Parameter dictionary for ``vector_io.query``.
+    """
+    resolved_mode = (
+        solr.mode
+        if solr is not None and solr.mode is not None
+        else constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE
+    )
     params: dict[str, Any] = {
         "k": constants.SOLR_VECTOR_SEARCH_DEFAULT_K,
         "score_threshold": constants.SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD,
-        "mode": constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE,
+        "mode": resolved_mode,
     }
     logger.debug("Initial params: %s", params)
     logger.debug("query_request.solr: %s", solr)
 
-    if solr is not None:
-        params["solr"] = solr
+    if solr is not None and solr.filters is not None:
+        params["solr"] = solr.filters
         logger.debug("Final params with solr filters: %s", params)
     else:
         logger.debug("No solr filters provided")
@@ -438,14 +454,14 @@ async def _fetch_byok_rag(
 async def _fetch_solr_rag(
     client: AsyncLlamaStackClient,
     query: str,
-    solr: Optional[dict[str, Any]] = None,
+    solr: Optional[SolrVectorSearchRequest] = None,
 ) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
     """Fetch chunks and documents from Solr RAG source.
 
     Args:
         client: The AsyncLlamaStackClient to use for the request
         query: The user's query
-        solr: Solr query parameters
+        solr: Structured Solr inline RAG request from the API (optional).
 
     Returns:
         Tuple containing:
@@ -516,7 +532,7 @@ async def build_rag_context(
     moderation_decision: str,
     query: str,
     vector_store_ids: Optional[list[str]],
-    solr: Optional[dict[str, Any]] = None,
+    solr: Optional[SolrVectorSearchRequest] = None,
 ) -> RAGContext:
     """Build RAG context by fetching and merging chunks from all enabled sources.
 
@@ -527,7 +543,7 @@ async def build_rag_context(
         moderation_decision: The moderation decision
         query: The user's query
         vector_store_ids: The vector store IDs to query
-        solr: The Solr query parameters
+        solr: Structured Solr inline RAG request from the API (optional).
 
     Returns:
         RAGContext containing formatted context text and referenced documents
@@ -565,27 +581,18 @@ async def build_rag_context(
 
 
 def _join_okp_doc_url(base_url: AnyUrl, reference: Optional[str]) -> str:
-    """Build a well-formed document URL from base and reference.
-
-    If reference is None or empty, returns ''.
-    If reference already starts with 'http', returns reference unchanged.
-    Otherwise normalizes ``base_url`` to end with a single '/', strips any leading
-    '/' from reference, and concatenates.
+    """Build a well-formed document URL from base and reference path.
 
     Args:
         base_url: OKP base URL.
-        reference: Document path or full URL.
+        reference: Origin-relative document path (e.g. ``/docs/foo``).
 
     Returns:
-        Well-formed doc_url string.
+        Well-formed doc_url string, or empty string if reference is empty.
     """
     if not reference:
         return ""
-    if reference.startswith("http"):
-        return reference
-    base = str(base_url).rstrip("/") + "/"
-    ref = reference.lstrip("/")
-    return base + ref
+    return urljoin(str(base_url), reference)
 
 
 def _build_document_url(

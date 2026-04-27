@@ -6,6 +6,7 @@ from pytest_mock import MockerFixture
 
 import constants
 from configuration import AppConfig
+from models.requests import SolrVectorSearchRequest
 from utils.types import RAGChunk
 from utils.vector_search import (
     _build_document_url,
@@ -68,11 +69,37 @@ class TestBuildQueryParams:
 
     def test_with_solr_filters(self) -> None:
         """Test parameters when solr filters are provided."""
-        solr_filters = {"filter": "value"}
-        params = _build_query_params(solr=solr_filters)
+        solr = SolrVectorSearchRequest.model_validate({"filter": "value"})
+        params = _build_query_params(solr=solr)
 
-        assert params["solr"] == solr_filters
+        assert params["solr"] == {"filter": "value"}
         assert params["k"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_K
+
+    def test_custom_mode(self) -> None:
+        """Request mode overrides the default Solr vector_io mode."""
+        solr = SolrVectorSearchRequest(mode="lexical")
+        params = _build_query_params(solr=solr)
+
+        assert params["mode"] == "lexical"
+        assert "solr" not in params
+
+    def test_mode_with_solr_filters(self) -> None:
+        """Custom mode is combined with solr filter payload."""
+        solr = SolrVectorSearchRequest(
+            mode="semantic", filters={"fq": ["product:*openshift*"]}
+        )
+        params = _build_query_params(solr=solr)
+
+        assert params["mode"] == "semantic"
+        assert params["solr"] == {"fq": ["product:*openshift*"]}
+
+    def test_mode_with_only_filters(self) -> None:
+        """Mode is set to default value when only filters are provided."""
+        solr = SolrVectorSearchRequest(filters={"fq": ["product:*openshift*"]})
+        params = _build_query_params(solr=solr)
+
+        assert params["mode"] == constants.SOLR_VECTOR_SEARCH_DEFAULT_MODE
+        assert params["solr"] == {"fq": ["product:*openshift*"]}
 
 
 class TestExtractByokRagChunks:
@@ -603,6 +630,40 @@ class TestFetchSolrRag:
         assert len(rag_chunks) > 0
         assert rag_chunks[0].content == "Solr content"
         assert rag_chunks[0].source == constants.OKP_RAG_ID
+
+    @pytest.mark.asyncio
+    async def test_solr_enabled_passes_request_mode_to_vector_io(
+        self, mocker: MockerFixture
+    ) -> None:
+        """OKP vector_io.query receives the mode from the API request."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        config_mock.inline_solr_enabled = True
+        config_mock.okp.offline = True
+        config_mock.okp.rhokp_url = "https://okp.test"
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        chunk_mock = mocker.Mock()
+        chunk_mock.content = "Solr content"
+        chunk_mock.metadata = {"parent_id": "parent_1", "title": "Solr Doc"}
+        chunk_mock.chunk_metadata = None
+
+        query_response = mocker.Mock()
+        query_response.chunks = [chunk_mock]
+        query_response.scores = [0.85]
+
+        client_mock = mocker.AsyncMock()
+        client_mock.vector_io.query.return_value = query_response
+
+        await _fetch_solr_rag(
+            client_mock,
+            "test query",
+            SolrVectorSearchRequest(mode="semantic", filters={"fq": ["x:y"]}),
+        )
+
+        client_mock.vector_io.query.assert_called_once()
+        call_kwargs = client_mock.vector_io.query.call_args.kwargs
+        assert call_kwargs["params"]["mode"] == "semantic"
+        assert call_kwargs["params"]["solr"] == {"fq": ["x:y"]}
 
 
 class TestBuildRagContext:

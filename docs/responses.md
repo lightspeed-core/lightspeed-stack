@@ -108,7 +108,7 @@ The following fields are LCORE-specific request extensions and are not part of t
 |-------|------|-------------|----------|
 | `generate_topic_summary` | boolean | Generate topic summary for new conversations. Default: true | No |
 | `shield_ids` | array[string] | Shield IDs to apply. If omitted, all configured shields in LCORE are used | No |
-| `solr` | dictionary | Solr vector_io provider query parameters | No |
+| `solr` | object | Optional `mode` and `filters`. Legacy top-level filter-only objects are still accepted. | No |
 
 
 ### Field Mappings
@@ -399,7 +399,7 @@ The following response attributes are inherited directly from the LLS OpenAPI sp
 | `completed_at` | integer | Completion time (Unix), if set |
 | `error` | object | Error details if failed or incompleted |
 | `id` | string | Unique response ID or moderation ID |
-| `model` | string | Model ID (provider/model) used |
+| `model` | string | Model used for generation. If the client specified `model` in the request, it is echoed unchanged; if the server selected the model, the provider routing prefix is stripped (see [Model Selection](#model-selection)) |
 | `object` | string | Always `"response"` |
 | `output` | array[object] | Structured output (messages, tool calls, etc.) |
 | `parallel_tool_calls` | boolean | Parallel tool calls allowed |
@@ -515,6 +515,8 @@ In OpenResponses the `model` field is required; in LCORE it is optional. If you 
 3. **First available** — Otherwise, the first available LLM model is used.
 4. If no model can be selected (e.g. no default and no LLM models), the request fails with 404 (model not found).
 
+**Model in response:** If the client specified a `model` in the request, it is echoed back unchanged in the response. If the server selected the model (because `model` was omitted from the request), the provider routing prefix is stripped and only the base model name is returned (e.g. `google-vertex/publishers/google/models/gemini-2.5-flash` → `gemini-2.5-flash`). This prevents leaking server infrastructure details and follows the same pattern as [System Prompt Resolution](#system-prompt-resolution).
+
 ### Output Representation
 
 Responses expose both:
@@ -599,7 +601,7 @@ The API introduces extensions that are not part of the OpenResponses specificati
 
 - `generate_topic_summary` (request) — When set to `true` and a new conversation is created, a topic summary is automatically generated and stored in conversation metadata.
 - `shield_ids` (request) — Optional list of safety shield IDs to apply. If omitted, all configured shields are used.
-- `solr` (request) — Solr vector_io provider query parameters (e.g. filter queries).
+- `solr` (request) — Object with optional `mode` (`semantic`, `hybrid`, or `lexical`) and `filters` (Solr vector_io provider payload). Legacy filter-only objects (no `mode`/`filters` wrapper) still work.
 - `available_quotas` (response) — Provides real-time quota information from all configured quota limiters.
 
 ### System Prompt Resolution
@@ -613,7 +615,7 @@ The `instructions` field on the `/v1/responses` endpoint follows the same server
 
 If the server configuration sets `disable_query_system_prompt` to `true`, any request that includes a non-null `instructions` value is rejected with a `422 Unprocessable Entity` error. The error message references the `instructions` field specifically.
 
-This means that even when `instructions` is omitted from the request, the response will always contain a resolved `instructions` value reflecting the server-side default or configured system prompt.
+If the server substituted the system prompt, the response sets `instructions` to the placeholder `<server prompt applied>` instead of echoing the actual prompt. If the client provided their own `instructions`, they are echoed back unchanged. Server-deployed MCP tool definitions are also filtered from the response `tools` array; client-provided tools are preserved.
 
 ### Streaming Differences
 

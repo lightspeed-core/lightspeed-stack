@@ -10,7 +10,12 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from log import get_logger
 from models.config import Action
-from models.responses import ForbiddenResponse, UnauthorizedResponse
+from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
+    ForbiddenResponse,
+    ServiceUnavailableResponse,
+    UnauthorizedResponse,
+)
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["root"])
@@ -777,10 +782,9 @@ Rz1JGaaTn29/SlPX2oA//9k=">
 
 
 root_responses: dict[int | str, dict[str, Any]] = {
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
+    503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
 

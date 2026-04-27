@@ -16,11 +16,13 @@ from log import get_logger
 from models.config import Action
 from models.requests import FeedbackRequest, FeedbackStatusUpdateRequest
 from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
     FeedbackResponse,
     FeedbackStatusUpdateResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
+    ServiceUnavailableResponse,
     StatusResponse,
     UnauthorizedResponse,
 )
@@ -34,23 +36,21 @@ feedback_status_lock = threading.Lock()
 
 feedback_post_response: dict[int | str, dict[str, Any]] = {
     200: FeedbackResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint", "feedback"]),
     404: NotFoundResponse.openapi_response(examples=["conversation"]),
     500: InternalServerErrorResponse.openapi_response(
         examples=["feedback storage", "configuration"]
     ),
+    503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
 feedback_put_response: dict[int | str, dict[str, Any]] = {
     200: FeedbackStatusUpdateResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
+    503: ServiceUnavailableResponse.openapi_response(examples=["kubernetes api"]),
 }
 
 feedback_get_response: dict[int | str, dict[str, Any]] = {

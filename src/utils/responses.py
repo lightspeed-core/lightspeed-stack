@@ -524,7 +524,7 @@ def mcp_strip_name_from_allowlist_entries(
 
 def mcp_project_allowed_tools_to_names(
     tool: InputToolMCP, names: list[str]
-) -> list[str] | None:
+) -> Optional[list[str]]:
     """Intersect allowlist tool names with the MCP tool allowed_tools constraint.
 
     Parameters:

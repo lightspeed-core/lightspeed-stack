@@ -101,8 +101,6 @@ The service includes comprehensive user data collection capabilities for various
         * [Query endpoint REST API handler](#query-endpoint-rest-api-handler)
     * [Streaming query endpoint REST API handler](#streaming-query-endpoint-rest-api-handler)
     * [Versioning](#versioning)
-* [Development Tools](#development-tools)
-    * [MCP Mock Server](#mcp-mock-server)
 * [Konflux](#konflux)
     * [Updating Dependencies for Hermetic Builds](#updating-dependencies-for-hermetic-builds)
         * [When to Update Dependency Files](#when-to-update-dependency-files)
@@ -1314,36 +1312,6 @@ The version X.Y.Z indicates:
 * X is the major version (backward-incompatible),
 * Y is the minor version (backward-compatible), and
 * Z is the patch version (backward-compatible bug fix).
-
-# Development Tools
-
-Lightspeed Core Stack includes development utilities to help with local testing and debugging. These tools are located in the `dev-tools/` directory.
-
-## MCP Mock Server
-
-A lightweight mock MCP server for testing MCP integrations locally without requiring real MCP infrastructure.
-
-**Quick Start:**
-```bash
-# Start the mock server
-python dev-tools/mcp-mock-server/server.py
-
-# Configure Lightspeed Core Stack to use it
-# Add to lightspeed-stack.yaml:
-mcp_servers:
-  - name: "mock-test"
-    url: "http://localhost:9000"
-    authorization_headers:
-      Authorization: "/tmp/test-token"
-```
-
-**Features:**
-- Test authorization header configuration
-- Debug MCP connectivity issues
-- Inspect captured headers via debug endpoints
-- No external dependencies (pure Python stdlib)
-
-For detailed usage instructions, see [`dev-tools/mcp-mock-server/README.md`](dev-tools/mcp-mock-server/README.md).
 
 # Konflux
 

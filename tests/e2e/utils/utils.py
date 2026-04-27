@@ -5,7 +5,7 @@ import os
 import shutil
 import subprocess
 import time
-from typing import Any
+from typing import Any, Optional
 
 import jsonschema
 import requests
@@ -278,7 +278,7 @@ RESPONSES_SSE_TERMINAL_EVENT_TYPES = frozenset(
 
 def parse_responses_sse_final_response_object(text: str) -> dict[str, Any]:
     """Return the ``response`` object from the last terminal LCORE ``/responses`` SSE event."""
-    last: dict[str, Any] | None = None
+    last: Optional[dict[str, Any]] = None
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped.startswith("data:"):

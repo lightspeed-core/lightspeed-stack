@@ -5,6 +5,7 @@ Used by endpoints that call MCP-backed services so clients receive a proper
 """
 
 import asyncio
+from collections.abc import Mapping
 from typing import Optional
 
 import aiohttp
@@ -14,35 +15,47 @@ import constants
 from configuration import AppConfig
 from log import get_logger
 from models.responses import UnauthorizedResponse
-from utils.mcp_headers import McpHeaders
+from utils.mcp_headers import McpHeaders, build_mcp_headers
 
 logger = get_logger(__name__)
 
 
-async def check_mcp_auth(configuration: AppConfig, mcp_headers: McpHeaders) -> None:
-    """Probe each configured MCP server that expects OAuth or has auth headers.
+async def check_mcp_auth(
+    configuration: AppConfig,
+    mcp_headers: McpHeaders,
+    token: str,
+    request_headers: Optional[Mapping[str, str]] = None,
+) -> None:
+    """Probe each configured MCP server that expects authentication.
 
-    For every MCP server that has an Authorization header in mcp_headers or
-    has OAuth in its resolved_authorization_headers, performs a probe request.
-    If the server indicates OAuth is required, raises 401 with
-    WWW-Authenticate (or 401 without header on probe failure).
+    Builds complete MCP headers by merging client-provided headers with
+    resolved authorization headers (file-based, kubernetes, oauth, or client).
+    For every MCP server that has an Authorization header or has authentication
+    configured, performs a probe request. If the server indicates authentication
+    failure, raises 401 with WWW-Authenticate (or 401 without header on probe failure).
 
     Parameters:
     ----------
         configuration: Application config containing mcp_servers.
-        mcp_headers: Per-server headers; keys are MCP server names.
+        mcp_headers: Per-server headers from client; keys are MCP server names.
+        token: Authentication token from the request (used for kubernetes auth).
+        request_headers: Headers from the incoming HTTP request for propagation.
 
     Returns:
     -------
-        None when no server requires OAuth or probe does not trigger 401.
+        None when no server requires authentication or probe does not trigger 401.
 
     Raises:
     ------
-        HTTPException: 401 when an MCP server requires OAuth (from probe_mcp).
+        HTTPException: 401 when an MCP server requires authentication (from probe_mcp).
     """
+    complete_headers = build_mcp_headers(
+        configuration, mcp_headers or {}, request_headers, token
+    )
+
     probes = []
     for mcp_server in configuration.mcp_servers:
-        headers = mcp_headers.get(mcp_server.name, {})
+        headers = complete_headers.get(mcp_server.name, {})
         auth_header = headers.get("Authorization")
         if auth_header is not None:
             authorization = (

@@ -1,6 +1,7 @@
 """Implementation of common test steps."""
 
 import os
+from typing import Optional
 
 from behave import given  # pyright: ignore[reportAttributeAccessIssue]
 from behave.runner import Context
@@ -18,7 +19,7 @@ from tests.e2e.utils.utils import (
 # Behave may clear user attributes on ``context`` between scenarios; keep the
 # last applied config basename here so Background can skip re-applying the same
 # YAML across scenarios in one feature. Mutate the dict entry (no global).
-_active_lightspeed_stack_config_basename: dict[str, str | None] = {"basename": None}
+_active_lightspeed_stack_config_basename: dict[str, Optional[str]] = {"basename": None}
 
 
 def reset_active_lightspeed_stack_config_basename() -> None:

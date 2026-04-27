@@ -63,6 +63,7 @@ from models.config import Action
 from models.context import ResponseGeneratorContext
 from models.requests import QueryRequest
 from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH,
     AbstractErrorResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -126,7 +127,7 @@ _background_topic_summary_tasks: list[asyncio.Task[None]] = []
 streaming_query_responses: dict[int | str, dict[str, Any]] = {
     200: StreamingQueryResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
+        examples=UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
     ),
     403: ForbiddenResponse.openapi_response(
         examples=["conversation read", "endpoint", "model override"]
@@ -134,11 +135,13 @@ streaming_query_responses: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(
         examples=["conversation", "model", "provider"]
     ),
-    # 413: PromptTooLongResponse.openapi_response(),
+    413: PromptTooLongResponse.openapi_response(examples=["context window exceeded"]),
     422: UnprocessableEntityResponse.openapi_response(),
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 
@@ -183,10 +186,11 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     """
     check_configuration_loaded(configuration)
 
-    await check_mcp_auth(configuration, mcp_headers)
-
     user_id, _user_name, _skip_userid_check, token = auth
     started_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Check MCP Auth
+    await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
     # Check token availability
     check_tokens_available(configuration.quota_limiters, user_id)
@@ -879,7 +883,7 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
 
 
 def stream_http_error_event(
-    error: AbstractErrorResponse, media_type: str | None = MEDIA_TYPE_JSON
+    error: AbstractErrorResponse, media_type: Optional[str] = MEDIA_TYPE_JSON
 ) -> str:
     """
     Create an SSE-formatted error response for generic LLM or API errors.

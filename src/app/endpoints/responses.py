@@ -1,13 +1,14 @@
-# pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks, too-many-arguments,too-many-positional-arguments
+# pylint: disable=too-many-locals,too-many-branches,too-many-nested-blocks,too-many-arguments,too-many-positional-arguments,too-many-lines,too-many-statements
 
 """Handler for REST API call to provide answer using Responses API (LCORE specification)."""
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Annotated, Any, Optional, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from llama_stack_api import (
     OpenAIResponseObject,
@@ -36,10 +37,12 @@ from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from constants import SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
 from log import get_logger
 from models.config import Action
 from models.requests import ResponsesRequest
 from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH,
     ConflictResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -51,6 +54,7 @@ from models.responses import (
     UnauthorizedResponse,
     UnprocessableEntityResponse,
 )
+from observability import ResponsesEventData, build_responses_event, send_splunk_event
 from utils.conversations import append_turn_items_to_conversation
 from utils.endpoints import (
     check_configuration_loaded,
@@ -87,6 +91,7 @@ from utils.responses import (
     resolve_tool_choice,
     select_model_for_responses,
 )
+from utils.rh_identity import get_rh_identity_context
 from utils.shields import run_shield_moderation
 from utils.suid import (
     normalize_conversation_id,
@@ -111,7 +116,7 @@ router = APIRouter(tags=["responses"])
 responses_response: dict[int | str, dict[str, Any]] = {
     200: ResponsesResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
+        examples=UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
     ),
     403: ForbiddenResponse.openapi_response(
         examples=["endpoint", "conversation read", "model override"]
@@ -122,12 +127,75 @@ responses_response: dict[int | str, dict[str, Any]] = {
     409: ConflictResponse.openapi_response(
         examples=["mcp tool conflict", "file search conflict"]
     ),
-    413: PromptTooLongResponse.openapi_response(),
+    413: PromptTooLongResponse.openapi_response(examples=["context window exceeded"]),
     422: UnprocessableEntityResponse.openapi_response(),
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
+
+
+# Strong references for fire-and-forget telemetry tasks so they aren't
+# garbage-collected before completion (the event loop only holds weak refs).
+_background_splunk_tasks: set[asyncio.Task[None]] = set()
+
+
+def _queue_responses_splunk_event(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    background_tasks: Optional[BackgroundTasks],
+    input_text: str,
+    response_text: str,
+    conversation_id: str,
+    model: str,
+    rh_identity_context: tuple[str, str],
+    inference_time: float,
+    sourcetype: str,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+    fire_and_forget: bool = False,
+) -> None:
+    """Build and queue a Splunk telemetry event for the responses endpoint.
+
+    No-op when background_tasks is None and fire_and_forget is False
+    (Splunk telemetry disabled).
+
+    Args:
+        background_tasks: FastAPI background task manager, or None if disabled.
+        input_text: User input text.
+        response_text: Response text from LLM or shield.
+        conversation_id: Conversation identifier.
+        model: Model name used for inference.
+        rh_identity_context: Tuple of (org_id, system_id) from RH identity.
+        inference_time: Request processing duration in seconds.
+        sourcetype: Splunk sourcetype for the event.
+        input_tokens: Number of prompt tokens consumed.
+        output_tokens: Number of completion tokens produced.
+        fire_and_forget: When True, dispatch via asyncio.create_task() instead
+            of background_tasks.  Use for error paths where an HTTPException
+            follows, since FastAPI discards BackgroundTasks on non-2xx responses.
+    """
+    if not fire_and_forget and background_tasks is None:
+        return
+    org_id, system_id = rh_identity_context
+    event_data = ResponsesEventData(
+        input_text=input_text,
+        response_text=response_text,
+        conversation_id=conversation_id,
+        model=model,
+        org_id=org_id,
+        system_id=system_id,
+        inference_time=inference_time,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
+    event = build_responses_event(event_data)
+    if fire_and_forget:
+        task = asyncio.create_task(send_splunk_event(event, sourcetype))
+        _background_splunk_tasks.add(task)
+        task.add_done_callback(_background_splunk_tasks.discard)
+    elif background_tasks is not None:
+        background_tasks.add_task(send_splunk_event, event, sourcetype)
 
 
 @router.post(
@@ -142,6 +210,7 @@ async def responses_endpoint_handler(
     responses_request: ResponsesRequest,
     auth: Annotated[AuthTuple, Depends(get_auth_dependency())],
     mcp_headers: dict[str, dict[str, str]] = Depends(mcp_headers_dependency),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> ResponsesResponse | StreamingResponse:
     """
     Handle request to the /responses endpoint using Responses API (LCORE specification).
@@ -171,21 +240,20 @@ async def responses_endpoint_handler(
     if responses_request.reasoning is not None:
         logger.warning("reasoning is not yet supported in LCORE and will be ignored")
         responses_request.reasoning = None
-    if responses_request.max_output_tokens is not None:
-        logger.warning(
-            "max_output_tokens is not yet supported in LCORE and will be ignored"
-        )
-        responses_request.max_output_tokens = None
 
     responses_request = responses_request.model_copy(deep=True)
+
     check_configuration_loaded(configuration)
+    client_instructions = responses_request.instructions
     responses_request.instructions = get_system_prompt(
         responses_request.instructions, field_name="instructions"
     )
+    instructions_substituted = client_instructions is None
     started_at = datetime.now(UTC)
-    user_id = auth[0]
+    rh_identity_context = get_rh_identity_context(request)
+    user_id, _, _, token = auth
 
-    await check_mcp_auth(configuration, mcp_headers)
+    await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
     # Check token availability
     check_tokens_available(configuration.quota_limiters, user_id)
@@ -212,10 +280,12 @@ async def responses_endpoint_handler(
 
     # LCORE-specific: Automatically select model if not provided in request
     # This extends the base LLS API which requires model to be specified.
+    client_model = responses_request.model
     if not responses_request.model:
         responses_request.model = await select_model_for_responses(
             client, response_context.user_conversation
         )
+    model_substituted = not client_model
     if not await check_model_configured(client, responses_request.model):
         _, model_id = extract_provider_and_model_from_model_id(responses_request.model)
         error_response = NotFoundResponse(resource="model", resource_id=model_id)
@@ -302,6 +372,10 @@ async def responses_endpoint_handler(
         moderation_result=moderation_result,
         inline_rag_context=inline_rag_context,
         filter_server_tools=filter_server_tools,
+        instructions_substituted=instructions_substituted,
+        model_substituted=model_substituted,
+        background_tasks=background_tasks,
+        rh_identity_context=rh_identity_context,
     )
 
 
@@ -314,6 +388,10 @@ async def handle_streaming_response(
     moderation_result: ShieldModerationResult,
     inline_rag_context: RAGContext,
     filter_server_tools: bool = False,
+    instructions_substituted: bool = False,
+    model_substituted: bool = False,
+    background_tasks: Optional[BackgroundTasks] = None,
+    rh_identity_context: tuple[str, str] = ("", ""),
 ) -> StreamingResponse:
     """Handle streaming response from Responses API.
 
@@ -326,6 +404,10 @@ async def handle_streaming_response(
         moderation_result: Result of shield moderation check
         inline_rag_context: Inline RAG context to be used for the response
         filter_server_tools: Whether to filter server-deployed MCP tool events from the stream
+        instructions_substituted: Whether the server substituted the instructions
+        model_substituted: Whether the server substituted the model
+        background_tasks: FastAPI background task manager for telemetry events
+        rh_identity_context: Tuple of (org_id, system_id) from RH identity
     Returns:
         StreamingResponse with SSE-formatted events
     """
@@ -352,6 +434,16 @@ async def handle_streaming_response(
                 user_input=request.input,
                 llm_output=[moderation_result.refusal_response],
             )
+        _queue_responses_splunk_event(
+            background_tasks=background_tasks,
+            input_text=input_text,
+            response_text=moderation_result.message,
+            conversation_id=normalize_conversation_id(api_params.conversation),
+            model=api_params.model,
+            rh_identity_context=rh_identity_context,
+            inference_time=(datetime.now(UTC) - started_at).total_seconds(),
+            sourcetype="responses_shield_blocked",
+        )
     else:
         try:
             response = await client.responses.create(
@@ -365,19 +457,54 @@ async def handle_streaming_response(
                 turn_summary=turn_summary,
                 inline_rag_context=inline_rag_context,
                 filter_server_tools=filter_server_tools,
+                instructions_substituted=instructions_substituted,
+                model_substituted=model_substituted,
             )
         except RuntimeError as e:  # library mode wraps 413 into runtime error
             if is_context_length_error(str(e)):
+                _queue_responses_splunk_event(
+                    background_tasks=background_tasks,
+                    input_text=input_text,
+                    response_text=str(e),
+                    conversation_id=normalize_conversation_id(api_params.conversation),
+                    model=api_params.model,
+                    rh_identity_context=rh_identity_context,
+                    inference_time=(datetime.now(UTC) - started_at).total_seconds(),
+                    sourcetype="responses_error",
+                    fire_and_forget=True,
+                )
                 error_response = PromptTooLongResponse(model=api_params.model)
                 raise HTTPException(**error_response.model_dump()) from e
             raise e
         except APIConnectionError as e:
+            _queue_responses_splunk_event(
+                background_tasks=background_tasks,
+                input_text=input_text,
+                response_text=str(e),
+                conversation_id=normalize_conversation_id(api_params.conversation),
+                model=api_params.model,
+                rh_identity_context=rh_identity_context,
+                inference_time=(datetime.now(UTC) - started_at).total_seconds(),
+                sourcetype="responses_error",
+                fire_and_forget=True,
+            )
             error_response = ServiceUnavailableResponse(
                 backend_name="Llama Stack",
                 cause=str(e),
             )
             raise HTTPException(**error_response.model_dump()) from e
         except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+            _queue_responses_splunk_event(
+                background_tasks=background_tasks,
+                input_text=input_text,
+                response_text=str(e),
+                conversation_id=normalize_conversation_id(api_params.conversation),
+                model=api_params.model,
+                rh_identity_context=rh_identity_context,
+                inference_time=(datetime.now(UTC) - started_at).total_seconds(),
+                sourcetype="responses_error",
+                fire_and_forget=True,
+            )
             error_response = handle_known_apistatus_errors(e, api_params.model)
             raise HTTPException(**error_response.model_dump()) from e
 
@@ -391,6 +518,9 @@ async def handle_streaming_response(
             started_at=started_at,
             api_params=api_params,
             generate_topic_summary=request.generate_topic_summary or False,
+            background_tasks=background_tasks,
+            rh_identity_context=rh_identity_context,
+            shield_blocked=(moderation_result.decision == "blocked"),
         ),
         media_type="text/event-stream",
     )
@@ -494,6 +624,67 @@ async def shield_violation_generator(
     yield f"event: response.completed\ndata: {data_json}\n\n"
 
     yield "data: [DONE]\n\n"
+
+
+def _sanitize_response_dict(
+    response_dict: dict[str, Any],
+    configured_mcp_labels: set[str],
+    instructions_substituted: bool = False,
+    model_substituted: bool = False,
+) -> None:
+    """Sanitize a serialized response object in-place to remove internal details.
+
+    Strips fields that expose server-side implementation details from the
+    response object before it is forwarded to the client:
+
+    - ``instructions``: when the server substituted its own system prompt
+      (because the client sent ``None`` or a different value was resolved),
+      the value is replaced with a placeholder slug to avoid leaking the
+      actual prompt.  When the client provided their own instructions and
+      they were used as-is, the value is left unchanged.
+    - ``tools``: server-deployed MCP tool definitions are removed; client-
+      provided tools (those whose ``server_label`` is not in
+      ``configured_mcp_labels``) are preserved.
+    - ``output``: server-deployed MCP output items (``mcp_list_tools``,
+      ``mcp_call``, ``mcp_approval_request``) are stripped so clients only
+      see item types they understand (``message``, ``function_call``, etc.).
+    - ``model``: the provider routing prefix (everything before the last
+      ``/``) is stripped only when the server selected the model
+      (``model_substituted=True``).  When the client specified the model,
+      it is echoed back unchanged.
+
+    Args:
+        response_dict: Mutable dict produced by ``model_dump`` on a response
+            object.  Modified in-place.
+        configured_mcp_labels: Set of ``server_label`` values that identify
+            server-deployed MCP servers.
+        instructions_substituted: Whether the server substituted the
+            instructions (True) or the client provided them (False).
+        model_substituted: Whether the server substituted the model
+            (True) or the client provided it (False).
+    """
+    if instructions_substituted:
+        response_dict["instructions"] = SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+    # else: leave instructions as-is (echo back client's value)
+
+    if tools := response_dict.get("tools"):
+        response_dict["tools"] = [
+            tool
+            for tool in tools
+            if tool.get("server_label") not in configured_mcp_labels
+        ]
+
+    if output := response_dict.get("output"):
+        response_dict["output"] = [
+            item
+            for item in output
+            if not _is_server_mcp_output_item(item, configured_mcp_labels)
+        ]
+
+    if model_substituted:
+        model = response_dict.get("model")
+        if model and "/" in model:
+            response_dict["model"] = model.rsplit("/", 1)[-1]
 
 
 def _is_server_mcp_output_item(
@@ -611,6 +802,8 @@ async def response_generator(
     turn_summary: TurnSummary,
     inline_rag_context: RAGContext,
     filter_server_tools: bool = False,
+    instructions_substituted: bool = False,
+    model_substituted: bool = False,
 ) -> AsyncIterator[str]:
     """Generate SSE-formatted streaming response with LCORE-enriched events.
 
@@ -622,6 +815,8 @@ async def response_generator(
         turn_summary: TurnSummary to populate during streaming
         inline_rag_context: Inline RAG context to be used for the response
         filter_server_tools: Whether to filter server-deployed MCP tool events from the stream
+        instructions_substituted: Whether the server substituted the instructions
+        model_substituted: Whether the server substituted the model
     Yields:
         SSE-formatted strings for streaming events, ending with [DONE]
     """
@@ -631,9 +826,7 @@ async def response_generator(
 
     latest_response_object: Optional[OpenAIResponseObject] = None
     sequence_number = 0
-    configured_mcp_labels = (
-        {s.name for s in configuration.mcp_servers} if filter_server_tools else set()
-    )
+    configured_mcp_labels = {s.name for s in configuration.mcp_servers}
     # Track output indices of server-deployed MCP calls to filter their events
     server_mcp_output_indices: set[int] = set()
 
@@ -657,6 +850,12 @@ async def response_generator(
 
         if "response" in chunk_dict:
             chunk_dict["response"]["conversation"] = normalized_conv_id
+            _sanitize_response_dict(
+                chunk_dict["response"],
+                configured_mcp_labels,
+                instructions_substituted,
+                model_substituted,
+            )
             tools = chunk_dict["response"].get("tools")
             if tools is not None:
                 chunk_dict["response"]["tools"] = (
@@ -665,16 +864,6 @@ async def response_generator(
                         configuration.rag_id_mapping,
                     )
                 )
-            # Remove server-deployed MCP items from the output array so
-            # clients only see item types they understand (message, function_call, etc.)
-            output = chunk_dict["response"].get("output")
-            if output is not None:
-                chunk_dict["response"]["output"] = [
-                    item
-                    for item in output
-                    if not _is_server_mcp_output_item(item, configured_mcp_labels)
-                ]
-
         # Intermediate response - no quota consumption and text yet
         if event_type == "response.in_progress":
             chunk_dict["response"]["available_quotas"] = {}
@@ -742,6 +931,9 @@ async def generate_response(
     started_at: datetime,
     api_params: ResponsesApiParams,
     generate_topic_summary: bool,
+    background_tasks: Optional[BackgroundTasks] = None,
+    rh_identity_context: tuple[str, str] = ("", ""),
+    shield_blocked: bool = False,
 ) -> AsyncIterator[str]:
     """Stream the response from the generator and persist conversation details.
 
@@ -756,6 +948,9 @@ async def generate_response(
         started_at: Timestamp when the conversation started
         api_params: ResponsesApiParams
         generate_topic_summary: Whether to generate topic summary for new conversations
+        background_tasks: FastAPI background task manager for telemetry events
+        rh_identity_context: Tuple of (org_id, system_id) from RH identity
+        shield_blocked: Whether the request was blocked by a shield
     Yields:
         SSE-formatted strings from the generator
     """
@@ -783,6 +978,25 @@ async def generate_response(
             skip_userid_check=skip_userid_check,
             topic_summary=topic_summary,
         )
+    if not shield_blocked:
+        _queue_responses_splunk_event(
+            background_tasks=background_tasks,
+            input_text=input_text,
+            response_text=turn_summary.llm_response,
+            conversation_id=normalize_conversation_id(api_params.conversation),
+            model=api_params.model,
+            rh_identity_context=rh_identity_context,
+            inference_time=(completed_at - started_at).total_seconds(),
+            sourcetype="responses_completed",
+            input_tokens=(
+                turn_summary.token_usage.input_tokens if turn_summary.token_usage else 0
+            ),
+            output_tokens=(
+                turn_summary.token_usage.output_tokens
+                if turn_summary.token_usage
+                else 0
+            ),
+        )
 
 
 async def handle_non_streaming_response(
@@ -794,6 +1008,10 @@ async def handle_non_streaming_response(
     moderation_result: ShieldModerationResult,
     inline_rag_context: RAGContext,
     filter_server_tools: bool = False,
+    instructions_substituted: bool = False,
+    model_substituted: bool = False,
+    background_tasks: Optional[BackgroundTasks] = None,
+    rh_identity_context: tuple[str, str] = ("", ""),
 ) -> ResponsesResponse:
     """Handle non-streaming response from Responses API.
 
@@ -806,6 +1024,10 @@ async def handle_non_streaming_response(
         moderation_result: Result of shield moderation check
         inline_rag_context: Inline RAG context to be used for the response
         filter_server_tools: Whether to filter server-deployed MCP tool output
+        instructions_substituted: Whether the server substituted the instructions
+        model_substituted: Whether the server substituted the model
+        background_tasks: FastAPI background task manager for telemetry events
+        rh_identity_context: Tuple of (org_id, system_id) from RH identity
     Returns:
         ResponsesResponse with the completed response
     """
@@ -830,6 +1052,16 @@ async def handle_non_streaming_response(
                 user_input=request.input,
                 llm_output=[moderation_result.refusal_response],
             )
+        _queue_responses_splunk_event(
+            background_tasks=background_tasks,
+            input_text=input_text,
+            response_text=output_text,
+            conversation_id=normalize_conversation_id(api_params.conversation),
+            model=api_params.model,
+            rh_identity_context=rh_identity_context,
+            inference_time=(datetime.now(UTC) - started_at).total_seconds(),
+            sourcetype="responses_shield_blocked",
+        )
     else:
         try:
             api_response = cast(
@@ -854,16 +1086,49 @@ async def handle_non_streaming_response(
 
         except RuntimeError as e:
             if is_context_length_error(str(e)):
+                _queue_responses_splunk_event(
+                    background_tasks=background_tasks,
+                    input_text=input_text,
+                    response_text=str(e),
+                    conversation_id=normalize_conversation_id(api_params.conversation),
+                    model=api_params.model,
+                    rh_identity_context=rh_identity_context,
+                    inference_time=(datetime.now(UTC) - started_at).total_seconds(),
+                    sourcetype="responses_error",
+                    fire_and_forget=True,
+                )
                 error_response = PromptTooLongResponse(model=api_params.model)
                 raise HTTPException(**error_response.model_dump()) from e
             raise e
         except APIConnectionError as e:
+            _queue_responses_splunk_event(
+                background_tasks=background_tasks,
+                input_text=input_text,
+                response_text=str(e),
+                conversation_id=normalize_conversation_id(api_params.conversation),
+                model=api_params.model,
+                rh_identity_context=rh_identity_context,
+                inference_time=(datetime.now(UTC) - started_at).total_seconds(),
+                sourcetype="responses_error",
+                fire_and_forget=True,
+            )
             error_response = ServiceUnavailableResponse(
                 backend_name="Llama Stack",
                 cause=str(e),
             )
             raise HTTPException(**error_response.model_dump()) from e
         except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+            _queue_responses_splunk_event(
+                background_tasks=background_tasks,
+                input_text=input_text,
+                response_text=str(e),
+                conversation_id=normalize_conversation_id(api_params.conversation),
+                model=api_params.model,
+                rh_identity_context=rh_identity_context,
+                inference_time=(datetime.now(UTC) - started_at).total_seconds(),
+                sourcetype="responses_error",
+                fire_and_forget=True,
+            )
             error_response = handle_known_apistatus_errors(e, api_params.model)
             raise HTTPException(**error_response.model_dump()) from e
 
@@ -891,6 +1156,25 @@ async def handle_non_streaming_response(
     )
     turn_summary.rag_chunks.extend(inline_rag_context.rag_chunks)
     completed_at = datetime.now(UTC)
+    if moderation_result.decision != "blocked":
+        _queue_responses_splunk_event(
+            background_tasks=background_tasks,
+            input_text=input_text,
+            response_text=output_text,
+            conversation_id=normalize_conversation_id(api_params.conversation),
+            model=api_params.model,
+            rh_identity_context=rh_identity_context,
+            inference_time=(completed_at - started_at).total_seconds(),
+            sourcetype="responses_completed",
+            input_tokens=(
+                turn_summary.token_usage.input_tokens if turn_summary.token_usage else 0
+            ),
+            output_tokens=(
+                turn_summary.token_usage.output_tokens
+                if turn_summary.token_usage
+                else 0
+            ),
+        )
     if api_params.store:
         store_query_results(
             user_id=user_id,
@@ -904,7 +1188,14 @@ async def handle_non_streaming_response(
             skip_userid_check=skip_userid_check,
             topic_summary=topic_summary,
         )
+    configured_mcp_labels = {s.name for s in configuration.mcp_servers}
     response_dict = api_response.model_dump(exclude_none=True)
+    _sanitize_response_dict(
+        response_dict,
+        configured_mcp_labels,
+        instructions_substituted,
+        model_substituted,
+    )
     tools = response_dict.get("tools")
     if tools is not None:
         response_dict["tools"] = translate_vector_store_ids_to_user_facing(

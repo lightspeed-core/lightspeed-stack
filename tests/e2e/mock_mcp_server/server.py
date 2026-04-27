@@ -117,7 +117,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 3001
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 3000
     server = HTTPServer(("0.0.0.0", port), Handler)
     print(f"Mock MCP server on :{port}")
     server.serve_forever()

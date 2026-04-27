@@ -14,6 +14,7 @@ from configuration import configuration
 from log import get_logger
 from models.config import Action, ByokRag
 from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
@@ -30,23 +31,23 @@ router = APIRouter(tags=["rags"])
 
 rags_responses: dict[int | str, dict[str, Any]] = {
     200: RAGListResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 rag_responses: dict[int | str, dict[str, Any]] = {
     200: RAGInfoResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     404: NotFoundResponse.openapi_response(examples=["rag"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 

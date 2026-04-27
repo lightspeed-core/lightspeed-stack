@@ -1,5 +1,7 @@
 """Unit tests for MCP headers utility functions."""
 
+from typing import Optional
+
 import pytest
 from fastapi import Request
 from pytest_mock import MockerFixture
@@ -338,8 +340,8 @@ class TestBuildServerHeaders:
 
     def _make_server(
         self,
-        resolved_auth: dict[str, str] | None = None,
-        headers: list[str] | None = None,
+        resolved_auth: Optional[dict[str, str]] = None,
+        headers: Optional[list[str]] = None,
     ) -> ModelContextProtocolServer:
         """Create a ModelContextProtocolServer with given auth and allowlist headers."""
         server = ModelContextProtocolServer(

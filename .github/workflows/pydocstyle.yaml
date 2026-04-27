@@ -17,4 +17,4 @@ jobs:
         with:
           python-version: '3.12'
       - name: Python linter
-        run: uv tool run pydocstyle -v .
+        run: uv tool run pydocstyle -v src tests

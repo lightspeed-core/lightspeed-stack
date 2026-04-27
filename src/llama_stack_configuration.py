@@ -9,6 +9,7 @@ import os
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import urljoin
 
 import yaml
 from azure.core.exceptions import ClientAuthenticationError
@@ -468,9 +469,10 @@ def enrich_solr(  # pylint: disable=too-many-locals
     )
 
     rhokp_raw = okp_config.get("rhokp_url")
-    solr_url = (
+    base_url = (
         str(rhokp_raw) if rhokp_raw is not None else constants.RH_SERVER_OKP_DEFAULT_URL
     )
+    solr_url = urljoin(base_url, "/solr")
 
     logger.info("Enriching Llama Stack config with OKP")
 

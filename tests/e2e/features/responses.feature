@@ -20,8 +20,6 @@ Feature: Responses endpoint API tests
     Then The status code of the response is 200
       And The body of the response contains hello
 
-  # https://redhat.atlassian.net/browse/LCORE-1583
-  @skip
   Scenario: Responses accepts passthrough parameters with valid types
     Given The system is in default state
     When I use "responses" to ask question with authorization header
@@ -31,8 +29,6 @@ Feature: Responses endpoint API tests
       "model": "{PROVIDER}/{MODEL}",
       "stream": false,
       "instructions": "You are a helpful assistant.",
-      "prompt": {"id": "e2e_responses_passthrough_prompt"},
-      "reasoning": {"effort": "low"},
       "safety_identifier": "e2e-responses-passthrough",
       "text": {"format": {"type": "text"}},
       "tool_choice": "auto",
@@ -54,8 +50,6 @@ Feature: Responses endpoint API tests
           "status": "completed",
           "model": "{PROVIDER}/{MODEL}",
           "instructions": "You are a helpful assistant.",
-          "prompt": {"id": "e2e_responses_passthrough_prompt"},
-          "reasoning": {"effort": "low"},
           "safety_identifier": "e2e-responses-passthrough",
           "text": {"format": {"type": "text"}},
           "tool_choice": "auto",
@@ -156,6 +150,20 @@ Feature: Responses endpoint API tests
     """
     Then The status code of the response is 200
       And The body of the response contains hello
+      And the body of the response has the following structure
+        """
+        {
+          "object": "response",
+          "status": "completed",
+          "model": "{MODEL}",
+          "output": [
+            {
+              "type": "message",
+              "role": "assistant"
+            }
+          ]
+        }
+        """
 
   Scenario: Responses returns 404 for unknown model segment in provider slash model id
     Given The system is in default state

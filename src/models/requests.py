@@ -4,7 +4,7 @@
 
 import json
 from enum import Enum
-from typing import Any, Optional, Self
+from typing import Any, Literal, Optional, Self
 
 from llama_stack_api.openai_responses import (
     OpenAIResponseInputTool as InputTool,
@@ -24,7 +24,7 @@ from llama_stack_api.openai_responses import (
 from llama_stack_api.openai_responses import (
     OpenAIResponseToolMCP as OutputToolMCP,
 )
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from configuration import configuration
 from constants import (
@@ -34,6 +34,7 @@ from constants import (
     MEDIA_TYPE_JSON,
     MEDIA_TYPE_TEXT,
     RESPONSES_REQUEST_MAX_SIZE,
+    SOLR_VECTOR_SEARCH_DEFAULT_MODE,
 )
 from log import get_logger
 from utils import suid
@@ -122,6 +123,56 @@ class Attachment(BaseModel):
     }
 
 
+class SolrVectorSearchRequest(BaseModel):
+    """LCORE Solr inline RAG options for ``vector_io.query`` (mode and provider filters).
+
+    Attributes:
+        mode: Solr vector_io search mode. When omitted, the server default (hybrid) is used.
+        filters: Solr provider filter payload passed through as params['solr'].
+
+    Legacy clients may send a plain JSON object with filter keys only;
+    that object is accepted as filters with mode unset (server default applies).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Optional[Literal["semantic", "hybrid", "lexical"]] = Field(
+        None,
+        description=(
+            "Solr vector_io search mode. When omitted, the server default "
+            f"({SOLR_VECTOR_SEARCH_DEFAULT_MODE!r}) is used."
+        ),
+        examples=["hybrid", "semantic", "lexical"],
+    )
+    filters: Optional[dict[str, Any]] = Field(
+        None,
+        description="Solr provider filter payload passed through as params['solr'].",
+        examples=[{"fq": ["product:*openshift*", "product_version:*4.16*"]}],
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_legacy_plain_dict(cls, data: Any) -> Any:
+        """Treat a legacy top-level filter dict as filters (backward compatibility).
+
+        Args:
+            data: Raw JSON, typically a dict or None.
+
+        Returns:
+            Normalized dict for Pydantic model validation, or the original non-dict value.
+        """
+        if data is None or not isinstance(data, dict):
+            return data
+        if "filters" in data or "mode" in data:
+            return data
+        logger.warning(
+            "Solr inline RAG: sending filter fields at the top level of `solr` without "
+            "`mode` or `filters` is deprecated and will be removed; use "
+            '`{"mode": "<semantic|hybrid|lexical>", "filters": {...}}` instead.'
+        )
+        return {"mode": None, "filters": data}
+
+
 class QueryRequest(BaseModel):
     """Model representing a request for the LLM (Language Model).
 
@@ -137,6 +188,7 @@ class QueryRequest(BaseModel):
         media_type: The optional media type for response format (application/json or text/plain).
         vector_store_ids: The optional list of specific vector store IDs to query for RAG.
         shield_ids: The optional list of safety shield IDs to apply.
+        solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
 
     Example:
         ```python
@@ -227,13 +279,18 @@ class QueryRequest(BaseModel):
         examples=["llama-guard", "custom-shield"],
     )
 
-    solr: Optional[dict[str, Any]] = Field(
+    solr: Optional[SolrVectorSearchRequest] = Field(
         None,
-        description="Solr-specific query parameters including filter queries",
+        description=(
+            "Solr inline RAG config: mode (semantic, hybrid, lexical) and filters; "
+            "a legacy filter-only object (e.g. fq) is still accepted."
+        ),
         examples=[
-            {"fq": ["product:*openshift*", "product_version:*4.16*"]},
+            {"mode": "hybrid", "filters": {"fq": ["product:*openshift*"]}},
+            {"filters": {"fq": ["product:*openshift*", "product_version:*4.16*"]}},
         ],
     )
+
     # provides examples for /docs endpoint
     model_config = {
         "extra": "forbid",
@@ -695,8 +752,7 @@ class ResponsesRequest(BaseModel):
             topic summary for new conversations. Defaults to True.
         shield_ids: LCORE-specific list of safety shield IDs to apply. If None, all
             configured shields are used.
-        solr: LCORE-specific Solr vector_io provider query parameters (e.g. filter
-            queries). Optional.
+        solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
     """
 
     input: ResponseInput
@@ -722,7 +778,7 @@ class ResponsesRequest(BaseModel):
     # LCORE-specific attributes
     generate_topic_summary: Optional[bool] = True
     shield_ids: Optional[list[str]] = None
-    solr: Optional[dict[str, Any]] = None
+    solr: Optional[SolrVectorSearchRequest] = None
 
     model_config = {
         "extra": "forbid",
@@ -1203,3 +1259,72 @@ class VectorStoreFileCreateRequest(BaseModel):
                 raise ValueError(f"attribute value for '{key}' exceeds 512 characters")
 
         return value
+
+
+class PromptCreateRequest(BaseModel):
+    """Request body to create a stored prompt template in Llama Stack."""
+
+    prompt: str = Field(
+        ...,
+        description="Prompt text with variable placeholders",
+        examples=["Summarize: {{text}}"],
+        min_length=1,
+    )
+    variables: Optional[list[str]] = Field(
+        None,
+        description="Variable names allowed in the template",
+        examples=[["text"]],
+    )
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "prompt": "Summarize: {{text}}",
+                    "variables": ["text"],
+                }
+            ]
+        },
+    }
+
+
+class PromptUpdateRequest(BaseModel):
+    """Request body to update a stored prompt (creates a new version)."""
+
+    prompt: str = Field(
+        ...,
+        description="Updated prompt text",
+        examples=["Summarize in bullet points: {{text}}"],
+        min_length=1,
+    )
+    version: int = Field(
+        ...,
+        description="Current version being updated",
+        examples=[1],
+        gt=0,
+    )
+    set_as_default: Optional[bool] = Field(
+        None,
+        description="Whether the new version becomes the default",
+        examples=[True],
+    )
+    variables: Optional[list[str]] = Field(
+        None,
+        description="Updated allowed variable names",
+        examples=[["text"]],
+    )
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "prompt": "Summarize in bullet points: {{text}}",
+                    "version": 1,
+                    "set_as_default": True,
+                    "variables": ["text"],
+                }
+            ]
+        },
+    }

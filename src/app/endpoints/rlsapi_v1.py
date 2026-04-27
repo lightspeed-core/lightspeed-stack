@@ -20,13 +20,13 @@ import constants
 import metrics
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
-from authentication.rh_identity import RHIdentityData
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from log import get_logger
 from models.config import Action
 from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
@@ -54,6 +54,7 @@ from utils.responses import (
     extract_token_usage,
     get_mcp_tools,
 )
+from utils.rh_identity import AUTH_DISABLED, get_rh_identity_context
 from utils.shields import run_shield_moderation
 from utils.suid import get_suid
 
@@ -65,8 +66,6 @@ class TemplateRenderError(Exception):
     """Raised when the system prompt Jinja2 template cannot be compiled."""
 
 
-# Default values when RH Identity auth is not configured
-AUTH_DISABLED = "auth_disabled"
 # Keep this tuple centralized so infer_endpoint can catch all expected backend
 # failures in one place while preserving a single telemetry/error-mapping path.
 _INFER_HANDLED_EXCEPTIONS = (
@@ -79,43 +78,18 @@ _INFER_HANDLED_EXCEPTIONS = (
 )
 
 
-def _get_rh_identity_context(request: Request) -> tuple[str, str]:
-    """Extract org_id and system_id from RH Identity request state.
-
-    When RH Identity authentication is configured, the auth dependency stores
-    the RHIdentityData object in request.state.rh_identity_data. This function
-    extracts the org_id and system_id for telemetry purposes.
-
-    Args:
-        request: The FastAPI request object.
-
-    Returns:
-        Tuple of (org_id, system_id). Returns ("auth_disabled", "auth_disabled")
-        when RH Identity auth is not configured or data is unavailable.
-    """
-    rh_identity: Optional[RHIdentityData] = getattr(
-        request.state, "rh_identity_data", None
-    )
-    if rh_identity is None:
-        return AUTH_DISABLED, AUTH_DISABLED
-
-    org_id = rh_identity.get_org_id() or AUTH_DISABLED
-    system_id = rh_identity.get_user_id() or AUTH_DISABLED
-    return org_id, system_id
-
-
 infer_responses: dict[int | str, dict[str, Any]] = {
     200: RlsapiV1InferResponse.openapi_response(),
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     404: NotFoundResponse.openapi_response(examples=["model"]),
-    413: PromptTooLongResponse.openapi_response(),
+    413: PromptTooLongResponse.openapi_response(examples=["context window exceeded"]),
     422: UnprocessableEntityResponse.openapi_response(),
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["generic"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 
@@ -369,7 +343,7 @@ def _queue_splunk_event(  # pylint: disable=too-many-arguments,too-many-position
         input_tokens: Number of prompt tokens consumed by the LLM call.
         output_tokens: Number of completion tokens produced by the LLM call.
     """
-    org_id, system_id = _get_rh_identity_context(request)
+    org_id, system_id = get_rh_identity_context(request)
     systeminfo = infer_request.context.systeminfo
 
     event_data = InferenceEventData(
@@ -504,7 +478,7 @@ def _is_verbose_enabled(infer_request: RlsapiV1InferRequest) -> bool:
     )
 
 
-def _resolve_quota_subject(request: Request, auth: AuthTuple) -> str | None:
+def _resolve_quota_subject(request: Request, auth: AuthTuple) -> Optional[str]:
     """Resolve the quota subject identifier based on rlsapi_v1 configuration.
 
     Returns None when quota enforcement is disabled (quota_subject not set),
@@ -530,7 +504,7 @@ def _resolve_quota_subject(request: Request, auth: AuthTuple) -> str | None:
     if quota_subject == "user_id":
         return user_id
 
-    org_id, system_id = _get_rh_identity_context(request)
+    org_id, system_id = get_rh_identity_context(request)
 
     if quota_subject == "org_id":
         if org_id == AUTH_DISABLED:

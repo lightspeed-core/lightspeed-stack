@@ -15,6 +15,7 @@ from authorization.middleware import authorize
 from metrics.utils import setup_model_metrics
 from models.config import Action
 from models.responses import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
     ForbiddenResponse,
     InternalServerErrorResponse,
     ServiceUnavailableResponse,
@@ -25,12 +26,12 @@ router = APIRouter(tags=["metrics"])
 
 
 metrics_get_responses: dict[int | str, dict[str, Any]] = {
-    401: UnauthorizedResponse.openapi_response(
-        examples=["missing header", "missing token"]
-    ),
+    401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
-    503: ServiceUnavailableResponse.openapi_response(),
+    503: ServiceUnavailableResponse.openapi_response(
+        examples=["llama stack", "kubernetes api"]
+    ),
 }
 
 
