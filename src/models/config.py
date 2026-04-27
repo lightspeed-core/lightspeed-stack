@@ -1827,9 +1827,6 @@ class RerankerConfiguration(ConfigurationBase):
         description="Cross-encoder model name for reranking RAG chunks. "
         "Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers.",
     )
-    top_k_multiplier: float = 2.0  # fetch 2x, rerank, keep top_k
-    byok_boost: float = 1.2
-    okp_boost: float = 1.0
 
     # Private attribute to track if this was explicitly configured
     _explicitly_configured: bool = PrivateAttr(default=False)
@@ -1837,32 +1834,9 @@ class RerankerConfiguration(ConfigurationBase):
     @model_validator(mode="after")
     def mark_as_explicitly_configured(self) -> Self:
         """Mark this configuration as explicitly set when instantiated from user input."""
-        # Only mark as explicitly configured if we're not using all default values
-        # This allows auto-enabling when user hasn't touched reranker settings
-        # Check if any field differs from default values
-        default_model = "cross-encoder/ms-marco-MiniLM-L6-v2"
-        default_top_k_multiplier = 2.0
-        default_byok_boost = 1.2
-        default_okp_boost = 1.0
-
-        # Check if any setting differs from defaults (indicates explicit configuration)
-        current_values = [
-            self.enabled,
-            self.model,
-            self.top_k_multiplier,
-            self.byok_boost,
-            self.okp_boost,
-        ]
-        default_values = [
-            True,
-            default_model,
-            default_top_k_multiplier,
-            default_byok_boost,
-            default_okp_boost,
-        ]
-
-        if current_values != default_values:
+        if self.model_fields_set:
             self._explicitly_configured = True
+
         return self
 
 
@@ -2160,18 +2134,16 @@ class Configuration(ConfigurationBase):
         if (
             has_byok
             and has_okp
-            and not hasattr(self.reranker, "_explicitly_configured")
+            and not self.reranker.enabled
         ):
-            # pylint: disable=no-member
-            if not self.reranker.enabled:
-                logger.info(
-                    "Automatically enabling reranker: Both BYOK RAG (%d entries) and OKP "
-                    "are configured. Reranking improves result quality when multiple "
-                    "knowledge sources are available.",
-                    len(self.byok_rag),
-                )
-                # pylint: disable=no-member
-                self.reranker.enabled = True
+        
+            logger.info(
+                "Automatically enabling reranker: Both BYOK RAG (%d entries) and OKP "
+                "are configured. Reranking improves result quality when multiple "
+                "knowledge sources are available.",
+                len(self.byok_rag),
+            )
+            self.reranker.enabled = True
 
         return self
 

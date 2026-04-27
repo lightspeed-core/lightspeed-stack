@@ -75,8 +75,6 @@ dependencies = [
     # Used for RAG chunk reranking (cross-encoder)
     "sentence-transformers>=2.0.0",
     "datasets>=4.7.0",
-    # Used for RAG chunk reranking (cross-encoder)
-    "sentence-transformers>=2.0.0",
     # Used for error tracking and monitoring
     "sentry-sdk[fastapi]>=2.58.0",
 ]
