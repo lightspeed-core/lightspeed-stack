@@ -262,7 +262,15 @@ wait_for_llama_stack_http_health() {
 
 cmd_restart_lightspeed() {
     echo "Restarting lightspeed-stack service..."
-    
+
+    # LCS hangs at startup if Llama Stack is unreachable (blocks Llama handshake,
+    # never opens port 8080, readiness probe never passes).  Ensure Llama Stack
+    # is healthy before recreating the LCS pod.
+    if ! _llama_stack_http_health_once 2>/dev/null; then
+        echo "⚠️  Llama Stack not healthy — restoring before LCS restart..."
+        cmd_restart_llama_stack || echo "⚠️  Llama Stack restore failed; LCS may be slow to start"
+    fi
+
     # Delete existing pod (short wait so hook stays within timeout; force if needed)
     timeout 20 oc delete pod lightspeed-stack-service -n "$NAMESPACE" --ignore-not-found=true --wait=true 2>/dev/null || {
         oc delete pod lightspeed-stack-service -n "$NAMESPACE" --ignore-not-found=true --force --grace-period=0 2>/dev/null || true
@@ -276,16 +284,28 @@ cmd_restart_lightspeed() {
     sed "s|\${LIGHTSPEED_STACK_IMAGE}|${LIGHTSPEED_STACK_IMAGE}|g" "$_ls_manifest" |
         oc apply -n "$NAMESPACE" -f -
     
-    # Wait for pod to be ready (TCP probe passes when app listens on 8080)
-    wait_for_pod "lightspeed-stack-service" 40
-    
+    # Wait for pod to be ready (TCP probe passes when app listens on 8080).
+    # Don't let a timeout here abort the function — still attempt port-forward
+    # and diagnostics so later scenarios have a chance to recover.
+    local pod_ready=true
+    if ! wait_for_pod "lightspeed-stack-service" 40; then
+        pod_ready=false
+        echo "⚠️  Pod not ready within 120s — dumping diagnostics:"
+        oc describe pod lightspeed-stack-service -n "$NAMESPACE" 2>&1 | tail -30 || true
+        oc logs lightspeed-stack-service -n "$NAMESPACE" --tail=40 2>&1 || true
+    fi
+
     # Re-label pod for service discovery
     oc label pod lightspeed-stack-service pod=lightspeed-stack-service -n "$NAMESPACE" --overwrite
-    
-    # Re-establish port-forwards
+
+    # Re-establish port-forwards (may succeed even if readiness was slow)
     cmd_restart_port_forward
     cmd_restart_jwks_port_forward || echo "⚠️  Mock JWKS port-forward failed (RBAC tests may fail)"
 
+    if [[ "$pod_ready" == "false" ]]; then
+        echo "⚠️  Lightspeed restart completed but pod was slow to become ready"
+        return 1
+    fi
     echo "✓ Lightspeed restart complete"
 }
 

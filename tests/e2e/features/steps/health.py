@@ -13,10 +13,25 @@ from tests.e2e.utils.utils import is_prow_environment
 # Mutate one dict entry so we need not reassign a module-level bool (no global).
 _llama_stack_disrupt_once: dict[str, bool] = {"applied": False}
 
+# Behave clears user attributes on ``context`` between scenarios; store
+# ``was_running`` at module level so ``after_feature`` can still see it.
+_llama_stack_was_running: dict[str, bool] = {"value": False}
+
+
+def get_llama_stack_was_running() -> bool:
+    """Return whether Llama Stack was running before the disruption step."""
+    return _llama_stack_was_running["value"]
+
+
+def reset_llama_stack_was_running() -> None:
+    """Clear the module-level was_running flag after restoration."""
+    _llama_stack_was_running["value"] = False
+
 
 def reset_llama_stack_disrupt_once_tracking() -> None:
     """Reset before each feature; see ``environment.before_feature``."""
     _llama_stack_disrupt_once["applied"] = False
+    _llama_stack_was_running["value"] = False
 
 
 @given("The llama-stack connection is disrupted")
@@ -50,13 +65,18 @@ def llama_stack_connection_broken(context: Context) -> None:
         print("Llama Stack disruption skipped (already applied once this feature)")
         return
 
-    # Store original state for restoration (only on the real disruption path)
+    # Store original state for restoration (only on the real disruption path).
+    # Write to both context (backward compat) and module-level dict (survives
+    # Behave's per-scenario context clearing).
     context.llama_stack_was_running = False
+    _llama_stack_was_running["value"] = False
 
     if is_prow_environment():
         from tests.e2e.utils.prow_utils import disrupt_llama_stack_pod
 
-        context.llama_stack_was_running = disrupt_llama_stack_pod()
+        was_running = disrupt_llama_stack_pod()
+        context.llama_stack_was_running = was_running
+        _llama_stack_was_running["value"] = was_running
         _llama_stack_disrupt_once["applied"] = True
         return
 
@@ -71,6 +91,7 @@ def llama_stack_connection_broken(context: Context) -> None:
 
         if result.stdout.strip():
             context.llama_stack_was_running = True
+            _llama_stack_was_running["value"] = True
             subprocess.run(
                 ["docker", "stop", "llama-stack"], check=True, capture_output=True
             )

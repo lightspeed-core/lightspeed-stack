@@ -19,7 +19,11 @@ from behave.runner import Context
 from tests.e2e.features.steps.common import (
     reset_active_lightspeed_stack_config_basename,
 )
-from tests.e2e.features.steps.health import reset_llama_stack_disrupt_once_tracking
+from tests.e2e.features.steps.health import (
+    get_llama_stack_was_running,
+    reset_llama_stack_disrupt_once_tracking,
+    reset_llama_stack_was_running,
+)
 from tests.e2e.utils.llama_stack_utils import register_shield
 from tests.e2e.utils.prow_utils import (
     restart_pod,
@@ -154,13 +158,27 @@ def _ensure_prow_port_forward(context: Context) -> None:
     try:
         result = run_e2e_ops("restart-port-forward", timeout=60)
         print(result.stdout, end="")
+        if result.returncode == 0:
+            print("[before_scenario] Port-forward re-established")
+            return
+        print(result.stderr, end="")
+    except subprocess.TimeoutExpired:
+        pass
+
+    # Port-forward alone failed — the pod itself may be dead (e.g. Llama Stack
+    # was never restored after a disruption feature). Attempt a full restart,
+    # which also checks Llama health before recreating LCS.
+    print("[before_scenario] Port-forward failed; attempting full pod restart...")
+    try:
+        result = run_e2e_ops("restart-lightspeed", timeout=200)
+        print(result.stdout, end="")
         if result.returncode != 0:
             print(result.stderr, end="")
-            print("[before_scenario] Warning: port-forward restart failed")
+            print("[before_scenario] Warning: full pod restart failed")
         else:
-            print("[before_scenario] Port-forward re-established")
+            print("[before_scenario] Pod restart + port-forward re-established")
     except subprocess.TimeoutExpired:
-        print("[before_scenario] Warning: port-forward restart timed out")
+        print("[before_scenario] Warning: full pod restart timed out")
 
 
 def before_scenario(context: Context, scenario: Scenario) -> None:
@@ -417,11 +435,12 @@ def after_feature(context: Context, feature: Feature) -> None:
     when ``context.feedback_e2e_conversation_cleanup`` is set by feedback steps,
     delete tracked feedback test conversations.
     """
-    # Restore Llama Stack FIRST (before any lightspeed-stack restart)
-    llama_was_running = getattr(context, "llama_stack_was_running", False)
-    if llama_was_running:
+    # Restore Llama Stack FIRST (before any lightspeed-stack restart).
+    # Read from module-level state — Behave clears custom context attributes
+    # between scenarios, so context.llama_stack_was_running is unreliable here.
+    if get_llama_stack_was_running():
         _restore_llama_stack(context)
-        context.llama_stack_was_running = False
+        reset_llama_stack_was_running()
 
     if getattr(context, "feedback_e2e_conversation_cleanup", False):
         token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikpva"
