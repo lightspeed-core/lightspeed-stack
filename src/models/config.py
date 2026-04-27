@@ -1827,8 +1827,6 @@ class RerankerConfiguration(ConfigurationBase):
         description="Cross-encoder model name for reranking RAG chunks. "
         "Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers.",
     )
-    model_id: str = "meta-llama/llama-cross-encoder-base"
-    provider_id: str = "meta-reference"
     top_k_multiplier: float = 2.0  # fetch 2x, rerank, keep top_k
     byok_boost: float = 1.2
     okp_boost: float = 1.0
@@ -1843,8 +1841,6 @@ class RerankerConfiguration(ConfigurationBase):
         # This allows auto-enabling when user hasn't touched reranker settings
         # Check if any field differs from default values
         default_model = "cross-encoder/ms-marco-MiniLM-L6-v2"
-        default_model_id = "meta-llama/llama-cross-encoder-base"
-        default_provider_id = "meta-reference"
         default_top_k_multiplier = 2.0
         default_byok_boost = 1.2
         default_okp_boost = 1.0
@@ -1853,8 +1849,6 @@ class RerankerConfiguration(ConfigurationBase):
         current_values = [
             self.enabled,
             self.model,
-            self.model_id,
-            self.provider_id,
             self.top_k_multiplier,
             self.byok_boost,
             self.okp_boost,
@@ -1862,8 +1856,6 @@ class RerankerConfiguration(ConfigurationBase):
         default_values = [
             True,
             default_model,
-            default_model_id,
-            default_provider_id,
             default_top_k_multiplier,
             default_byok_boost,
             default_okp_boost,
