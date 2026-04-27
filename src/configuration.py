@@ -27,6 +27,7 @@ from models.config import (
     OkpConfiguration,
     QuotaHandlersConfiguration,
     RagConfiguration,
+    RerankerConfiguration,
     RlsapiV1Configuration,
     ServiceConfiguration,
     SplunkConfiguration,
@@ -464,6 +465,13 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         return self._configuration.okp
+
+    @property
+    def reranker(self) -> "RerankerConfiguration":
+        """Return reranker configuration."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.reranker
 
     @property
     def rag_id_mapping(self) -> dict[str, str]:

@@ -192,6 +192,8 @@ TOOL_RAG_MAX_CHUNKS: Final[int] = 10  # retrieved from RAG as a tool
 # Inline RAG constants
 BYOK_RAG_MAX_CHUNKS: Final[int] = 10  # retrieved from BYOK RAG
 OKP_RAG_MAX_CHUNKS: Final[int] = 5  # retrieved from OKP RAG
+# Score multiplier applied to BYOK chunks after cross-encoder reranking (Solr chunks unchanged)
+BYOK_RAG_RERANK_BOOST = 1.2
 
 # Solr OKP constants
 SOLR_VECTOR_SEARCH_DEFAULT_K: Final[int] = 5
