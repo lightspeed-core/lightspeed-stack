@@ -1,4 +1,4 @@
-@e2e_group_1 @skip-in-library-mode
+@e2e_group_1 @skip-in-library-mode @skip-in-prow
 Feature: TLS configuration for remote inference providers
   Validate that Llama Stack's NetworkConfig.tls settings are applied correctly
   when connecting to a remote inference provider over HTTPS.

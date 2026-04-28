@@ -205,6 +205,12 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
         scenario.skip("Skipped in library mode (no separate llama-stack container)")
         return
 
+    # Skip scenarios that depend on services not deployed in Prow/OpenShift
+    # (e.g. mock-tls-inference, proxy sidecars only available in Docker Compose)
+    if is_prow_environment() and "skip-in-prow" in scenario.effective_tags:
+        scenario.skip("Skipped in Prow (requires Docker Compose services)")
+        return
+
     # In Prow, verify the lightspeed port-forward is alive before each scenario.
     # Port-forwards can silently die between scenarios (e.g. pod restart, TCP reset).
     if is_prow_environment():
