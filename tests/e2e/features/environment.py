@@ -17,6 +17,8 @@ from behave.model import Feature, Scenario
 from behave.runner import Context
 
 from tests.e2e.features.steps.common import (
+    get_llama_stack_hostname,
+    get_llama_stack_port,
     reset_active_lightspeed_stack_config_basename,
 )
 from tests.e2e.features.steps.health import (
@@ -312,7 +314,7 @@ def _print_llama_stack_diagnostics() -> None:
     print("--- end diagnostics ---")
 
 
-def _restore_llama_stack(context: Context) -> None:
+def _restore_llama_stack() -> None:
     """Restore Llama Stack connection after disruption."""
     if is_prow_environment():
         # Recreate llama pod, then restart LCS so in-process clients reconnect (Llama IP/pod changed).
@@ -365,7 +367,7 @@ def _restore_llama_stack(context: Context) -> None:
                         "llama-stack",
                         "curl",
                         "-sf",
-                        f"http://{context.hostname_llama}:{context.port_llama}/v1/health",
+                        f"http://{get_llama_stack_hostname()}:{get_llama_stack_port()}/v1/health",
                     ],
                     capture_output=True,
                     timeout=5,
@@ -445,7 +447,7 @@ def after_feature(context: Context, feature: Feature) -> None:
     # Read from module-level state — Behave clears custom context attributes
     # between scenarios, so context.llama_stack_was_running is unreliable here.
     if get_llama_stack_was_running():
-        _restore_llama_stack(context)
+        _restore_llama_stack()
         reset_llama_stack_was_running()
 
     if getattr(context, "feedback_e2e_conversation_cleanup", False):

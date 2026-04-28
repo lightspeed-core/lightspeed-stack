@@ -21,10 +21,24 @@ from tests.e2e.utils.utils import (
 # YAML across scenarios in one feature. Mutate the dict entry (no global).
 _active_lightspeed_stack_config_basename: dict[str, Optional[str]] = {"basename": None}
 
+# Behave clears user attributes on ``context`` between scenarios; store
+# Llama Stack endpoint info at module level so ``after_feature`` can see it.
+_llama_stack_endpoint: dict[str, str] = {"hostname": "localhost", "port": "8321"}
+
 
 def reset_active_lightspeed_stack_config_basename() -> None:
     """Reset before each feature; see ``environment.before_feature``."""
     _active_lightspeed_stack_config_basename["basename"] = None
+
+
+def get_llama_stack_hostname() -> str:
+    """Return the Llama Stack hostname surviving per-scenario context clearing."""
+    return _llama_stack_endpoint["hostname"]
+
+
+def get_llama_stack_port() -> str:
+    """Return the Llama Stack port surviving per-scenario context clearing."""
+    return _llama_stack_endpoint["port"]
 
 
 @given("The service is started locally")
@@ -46,6 +60,8 @@ def service_is_started_locally(context: Context) -> None:
     else:
         context.hostname_llama = "localhost"
     context.port_llama = os.getenv("E2E_LLAMA_PORT", "8321")
+    _llama_stack_endpoint["hostname"] = context.hostname_llama
+    _llama_stack_endpoint["port"] = context.port_llama
 
 
 @given('the Lightspeed stack configuration directory is "{directory}"')
