@@ -26,6 +26,7 @@ from models.responses import InternalServerErrorResponse
 from sentry import initialize_sentry
 from utils.common import register_mcp_servers_async
 from utils.llama_stack_version import check_llama_stack_version
+from utils.model_availability import verify_models_available
 
 logger = get_logger(__name__)
 
@@ -74,6 +75,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
             e,
         )
         raise
+
+    logger.info("Verifying model availability")
+    await verify_models_available(client)
 
     logger.info("Registering MCP servers")
     await register_mcp_servers_async(logger, configuration.configuration)

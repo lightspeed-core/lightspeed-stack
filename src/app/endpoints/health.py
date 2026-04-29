@@ -95,6 +95,26 @@ async def get_providers_health_statuses() -> list[ProviderHealthStatus]:
         ]
 
 
+async def get_models_health_status() -> tuple[bool, str]:
+    """Check whether at least one model is registered with Llama Stack.
+
+    Returns:
+        tuple[bool, str]: (models_available, reason_message)
+    """
+    try:
+        client = AsyncLlamaStackClientHolder().get_client()
+        models = await client.models.list()
+        if models:
+            model_ids = [m.id for m in models]
+            logger.debug("Found %d model(s): %s", len(model_ids), model_ids)
+            return True, f"Models available: {', '.join(model_ids)}"
+        logger.warning("No models registered")
+        return False, "No models registered"
+    except APIConnectionError as e:
+        logger.error("Failed to check model availability: %s", e)
+        return False, f"Failed to check model availability: {e!s}"
+
+
 @router.get("/readiness", responses=get_readiness_responses)
 @authorize(Action.INFO)
 async def readiness_probe_get_method(
@@ -137,6 +157,16 @@ async def readiness_probe_get_method(
     else:
         ready = True
         reason = "All providers are healthy"
+
+    # Check model availability
+    models_available, models_reason = await get_models_health_status()
+    if not models_available:
+        ready = False
+        if reason == "All providers are healthy":
+            reason = models_reason
+        else:
+            reason = f"{reason}; {models_reason}"
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
     return ReadinessResponse(ready=ready, reason=reason, providers=unhealthy_providers)
 

@@ -6,6 +6,7 @@ from pytest_mock import MockerFixture
 
 from app.endpoints.health import (
     HealthStatus,
+    get_models_health_status,
     get_providers_health_statuses,
     liveness_probe_get_method,
     readiness_probe_get_method,
@@ -34,10 +35,10 @@ async def test_readiness_probe_fails_due_to_unhealthy_providers(
         )
     ]
 
-    # Mock the Response object and auth
-    mock_response = mocker.Mock()
+    mock_get_models = mocker.patch("app.endpoints.health.get_models_health_status")
+    mock_get_models.return_value = (True, "Models available: model-1")
 
-    # Authorization tuple required by URL endpoint handler
+    mock_response = mocker.Mock()
     auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
 
     response = await readiness_probe_get_method(auth=auth, response=mock_response)
@@ -72,10 +73,10 @@ async def test_readiness_probe_success_when_all_providers_healthy(
         ),
     ]
 
-    # Mock the Response object and auth
-    mock_response = mocker.Mock()
+    mock_get_models = mocker.patch("app.endpoints.health.get_models_health_status")
+    mock_get_models.return_value = (True, "Models available: model-1")
 
-    # Authorization tuple required by URL endpoint handler
+    mock_response = mocker.Mock()
     auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
 
     response = await readiness_probe_get_method(auth=auth, response=mock_response)
@@ -83,7 +84,6 @@ async def test_readiness_probe_success_when_all_providers_healthy(
     assert isinstance(response, ReadinessResponse)
     assert response.ready is True
     assert response.reason == "All providers are healthy"
-    # Should return empty list since no providers are unhealthy
     assert len(response.providers) == 0
 
 
@@ -207,3 +207,148 @@ class TestGetProvidersHealthStatuses:
         assert (
             result[0].message == "Failed to initialize health check: Connection error."
         )
+
+
+@pytest.mark.asyncio
+async def test_readiness_probe_fails_when_no_models_registered(
+    mocker: MockerFixture,
+) -> None:
+    """Test readiness fails when providers healthy but no models registered."""
+    mock_authorization_resolvers(mocker)
+
+    mock_get_providers = mocker.patch(
+        "app.endpoints.health.get_providers_health_statuses"
+    )
+    mock_get_providers.return_value = [
+        ProviderHealthStatus(
+            provider_id="provider1",
+            status=HealthStatus.OK.value,
+            message="All good",
+        )
+    ]
+
+    mock_get_models = mocker.patch("app.endpoints.health.get_models_health_status")
+    mock_get_models.return_value = (False, "No models registered")
+
+    mock_response = mocker.Mock()
+    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
+
+    response = await readiness_probe_get_method(auth=auth, response=mock_response)
+
+    assert response.ready is False
+    assert "No models registered" in response.reason
+    assert mock_response.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_readiness_probe_fails_when_model_check_connection_error(
+    mocker: MockerFixture,
+) -> None:
+    """Test readiness fails when model check raises connection error."""
+    mock_authorization_resolvers(mocker)
+
+    mock_get_providers = mocker.patch(
+        "app.endpoints.health.get_providers_health_statuses"
+    )
+    mock_get_providers.return_value = [
+        ProviderHealthStatus(
+            provider_id="provider1",
+            status=HealthStatus.OK.value,
+            message="All good",
+        )
+    ]
+
+    mock_get_models = mocker.patch("app.endpoints.health.get_models_health_status")
+    mock_get_models.return_value = (
+        False,
+        "Failed to check model availability: Connection error.",
+    )
+
+    mock_response = mocker.Mock()
+    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
+
+    response = await readiness_probe_get_method(auth=auth, response=mock_response)
+
+    assert response.ready is False
+    assert "Failed to check model availability" in response.reason
+    assert mock_response.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_readiness_probe_fails_when_both_providers_unhealthy_and_no_models(
+    mocker: MockerFixture,
+) -> None:
+    """Test readiness fails with combined reason when both providers and models fail."""
+    mock_authorization_resolvers(mocker)
+
+    mock_get_providers = mocker.patch(
+        "app.endpoints.health.get_providers_health_statuses"
+    )
+    mock_get_providers.return_value = [
+        ProviderHealthStatus(
+            provider_id="bad_provider",
+            status=HealthStatus.ERROR.value,
+            message="Provider is down",
+        )
+    ]
+
+    mock_get_models = mocker.patch("app.endpoints.health.get_models_health_status")
+    mock_get_models.return_value = (False, "No models registered")
+
+    mock_response = mocker.Mock()
+    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
+
+    response = await readiness_probe_get_method(auth=auth, response=mock_response)
+
+    assert response.ready is False
+    assert "Providers not healthy" in response.reason
+    assert "No models registered" in response.reason
+    assert mock_response.status_code == 503
+
+
+class TestGetModelsHealthStatus:
+    """Test cases for the get_models_health_status function."""
+
+    @pytest.mark.asyncio
+    async def test_returns_true_when_models_available(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test get_models_health_status returns True when models are registered."""
+        mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+        mock_client = mocker.AsyncMock()
+        mock_lsc.return_value = mock_client
+
+        mock_model = mocker.Mock()
+        mock_model.id = "model-1"
+        mock_client.models.list.return_value = [mock_model]
+
+        available, reason = await get_models_health_status()
+
+        assert available is True
+        assert "model-1" in reason
+
+    @pytest.mark.asyncio
+    async def test_returns_false_when_no_models(self, mocker: MockerFixture) -> None:
+        """Test get_models_health_status returns False when no models registered."""
+        mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+        mock_client = mocker.AsyncMock()
+        mock_lsc.return_value = mock_client
+        mock_client.models.list.return_value = []
+
+        available, reason = await get_models_health_status()
+
+        assert available is False
+        assert reason == "No models registered"
+
+    @pytest.mark.asyncio
+    async def test_returns_false_on_connection_error(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test get_models_health_status returns False on connection error."""
+        mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+        mock_lsc.side_effect = APIConnectionError(request=mocker.Mock())
+
+        available, reason = await get_models_health_status()
+
+        assert available is False
+        assert "Failed to check model availability" in reason
