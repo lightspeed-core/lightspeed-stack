@@ -509,9 +509,9 @@ class TestRHIdentityHealthProbeSkip:
         "path",
         [
             "/readiness",
+            "/readiness/",
             "/liveness",
-            "/api/lightspeed/readiness",
-            "/api/lightspeed/liveness",
+            "/liveness/",
         ],
     )
     async def test_probe_paths_skip_auth_when_enabled(
@@ -532,8 +532,6 @@ class TestRHIdentityHealthProbeSkip:
         [
             "/readiness",
             "/liveness",
-            "/api/lightspeed/readiness",
-            "/api/lightspeed/liveness",
         ],
     )
     async def test_probe_paths_require_auth_when_disabled(
@@ -550,11 +548,19 @@ class TestRHIdentityHealthProbeSkip:
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("path", ["/", "/v1/query"])
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/",
+            "/v1/query",
+            "/api/lightspeed/readiness",
+            "/api/lightspeed/liveness",
+        ],
+    )
     async def test_non_probe_paths_require_auth_when_skip_enabled(
         self, mocker: MockerFixture, path: str
     ) -> None:
-        """Test non-probe paths still require auth even when skip_for_health_probes is True."""
+        """Test non-probe paths still require auth even when probe skipping is enabled."""
         self._mock_configuration(mocker, skip_for_health_probes=True)
 
         auth_dep = RHIdentityAuthDependency()
@@ -587,7 +593,7 @@ class TestRHIdentityMetricsSkip:
         "path",
         [
             "/metrics",
-            "/api/lightspeed/metrics",
+            "/metrics/",
         ],
     )
     async def test_metrics_path_skips_auth_when_enabled(
@@ -607,7 +613,6 @@ class TestRHIdentityMetricsSkip:
         "path",
         [
             "/metrics",
-            "/api/lightspeed/metrics",
         ],
     )
     async def test_metrics_path_requires_auth_when_disabled(
@@ -624,11 +629,19 @@ class TestRHIdentityMetricsSkip:
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("path", ["/", "/v1/query"])
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/",
+            "/v1/query",
+            "/api/lightspeed/metrics",
+            "/v1/notmetrics",
+        ],
+    )
     async def test_non_metrics_paths_require_auth_when_skip_enabled(
         self, mocker: MockerFixture, path: str
     ) -> None:
-        """Test non-metrics paths still require auth even when skip_for_metrics is True."""
+        """Test non-metrics paths still require auth even when metrics skipping is enabled."""
         self._mock_configuration(mocker, skip_for_metrics=True)
 
         auth_dep = RHIdentityAuthDependency()

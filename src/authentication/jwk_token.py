@@ -1,6 +1,7 @@
 """Manage authentication flow for FastAPI endpoints with JWK based JWT auth."""
 
 import json
+import time
 from asyncio import Lock
 from collections.abc import Callable
 from typing import Any
@@ -17,12 +18,13 @@ from cachetools import TTLCache
 from fastapi import HTTPException, Request
 
 from authentication.interface import AuthInterface, AuthTuple
-from authentication.utils import extract_user_token
+from authentication.utils import extract_user_token, record_auth_metrics
 from constants import (
+    AUTH_MOD_JWK_TOKEN,
     DEFAULT_VIRTUAL_PATH,
 )
 from log import get_logger
-from models.api.responses import UnauthorizedResponse
+from models.api.responses import ServiceUnavailableResponse, UnauthorizedResponse
 from models.config import JwkConfiguration
 
 logger = get_logger(__name__)
@@ -139,6 +141,93 @@ def key_resolver_func(
     return _internal
 
 
+async def _get_jwk_set_for_auth(config: JwkConfiguration, start_time: float) -> KeySet:
+    """Load the configured JWK set and record bounded auth failures."""
+    try:
+        return await get_jwk_set(str(config.url))
+    except aiohttp.ClientError as exc:
+        logger.error("Failed to fetch JWK set: %s", exc)
+        record_auth_metrics(
+            AUTH_MOD_JWK_TOKEN, "failure", "jwk_fetch_error", start_time
+        )
+        response = ServiceUnavailableResponse(
+            backend_name="JWK key server",
+            cause="Unable to reach authentication key server",
+        )
+        raise HTTPException(**response.model_dump()) from exc
+    except json.JSONDecodeError as exc:
+        logger.error("Invalid JSON in JWK set response: %s", exc)
+        record_auth_metrics(AUTH_MOD_JWK_TOKEN, "failure", "invalid_json", start_time)
+        response = ServiceUnavailableResponse(
+            backend_name="JWK key server",
+            cause="Authentication key server returned invalid data",
+        )
+        raise HTTPException(**response.model_dump()) from exc
+    except JoseError as exc:
+        logger.error("Invalid JWK set format: %s", exc)
+        record_auth_metrics(AUTH_MOD_JWK_TOKEN, "failure", "invalid_jwk", start_time)
+        response = ServiceUnavailableResponse(
+            backend_name="JWK key server",
+            cause="Authentication keys are malformed",
+        )
+        raise HTTPException(**response.model_dump()) from exc
+
+
+def _decode_jwk_claims(user_token: str, jwk_set: KeySet, start_time: float) -> Any:
+    """Decode a JWT and record bounded auth failures."""
+    try:
+        return jwt.decode(user_token, key=key_resolver_func(jwk_set))
+    except (KeyNotFoundError, BadSignatureError, DecodeError, JoseError) as exc:
+        logger.warning("Token decode error: %s", exc)
+        record_auth_metrics(
+            AUTH_MOD_JWK_TOKEN, "failure", "token_decode_error", start_time
+        )
+        if isinstance(exc, KeyNotFoundError):
+            cause = "Token signed by unknown key"
+        elif isinstance(exc, BadSignatureError):
+            cause = "Invalid token signature"
+        elif isinstance(exc, DecodeError):
+            cause = "Token could not be decoded"
+        else:
+            cause = "Token format error"
+        response = UnauthorizedResponse(cause=cause)
+        raise HTTPException(**response.model_dump()) from exc
+
+
+def _validate_jwk_claims(claims: Any, start_time: float) -> None:
+    """Validate decoded JWT claims and record bounded auth failures."""
+    try:
+        claims.validate()
+    except ExpiredTokenError as exc:
+        record_auth_metrics(AUTH_MOD_JWK_TOKEN, "failure", "token_expired", start_time)
+        response = UnauthorizedResponse(cause="Token has expired")
+        raise HTTPException(**response.model_dump()) from exc
+    except JoseError as exc:
+        record_auth_metrics(
+            AUTH_MOD_JWK_TOKEN, "failure", "token_validation_error", start_time
+        )
+        response = UnauthorizedResponse(cause="Token validation failed")
+        raise HTTPException(**response.model_dump()) from exc
+
+
+def _get_required_claim(claims: Any, claim_name: str, start_time: float) -> str:
+    """Return a required JWT claim and record bounded auth failures when missing."""
+    try:
+        value = claims[claim_name]
+    except KeyError as exc:
+        record_auth_metrics(AUTH_MOD_JWK_TOKEN, "failure", "missing_claim", start_time)
+        response = UnauthorizedResponse(cause=f"Token missing claim: {claim_name}")
+        raise HTTPException(**response.model_dump()) from exc
+    if not isinstance(value, str) or not value.strip():
+        record_auth_metrics(AUTH_MOD_JWK_TOKEN, "failure", "invalid_claim", start_time)
+        response = UnauthorizedResponse(cause=f"Token has invalid claim: {claim_name}")
+        invalid_claim_error = ValueError(
+            f"Token claim {claim_name} must be a non-empty string"
+        )
+        raise HTTPException(**response.model_dump()) from invalid_claim_error
+    return value
+
+
 class JwkTokenAuthDependency(AuthInterface):  # pylint: disable=too-few-public-methods
     """JWK AuthDependency class for JWK-based JWT authentication."""
 
@@ -187,73 +276,40 @@ class JwkTokenAuthDependency(AuthInterface):  # pylint: disable=too-few-public-m
             extracted from the validated JWT. Only returned on successful
             authentication; all error paths raise HTTPException.
         """
+        start_time = time.monotonic()
+
         if not request.headers.get("Authorization"):
+            record_auth_metrics(
+                AUTH_MOD_JWK_TOKEN, "failure", "missing_header", start_time
+            )
             response = UnauthorizedResponse(cause="No Authorization header found")
             raise HTTPException(**response.model_dump())
 
-        user_token = extract_user_token(request.headers)
-
         try:
-            jwk_set = await get_jwk_set(str(self.config.url))
-        except aiohttp.ClientError as exc:
-            logger.error("Failed to fetch JWK set: %s", exc)
-            response = UnauthorizedResponse(
-                cause="Unable to reach authentication key server"
+            user_token = extract_user_token(request.headers)
+        except HTTPException:
+            record_auth_metrics(
+                AUTH_MOD_JWK_TOKEN, "failure", "missing_token", start_time
             )
-            raise HTTPException(**response.model_dump()) from exc
-        except json.JSONDecodeError as exc:
-            logger.error("Invalid JSON in JWK set response: %s", exc)
-            response = UnauthorizedResponse(
-                cause="Authentication key server returned invalid data"
+            raise
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Unexpected error while extracting JWK bearer token")
+            record_auth_metrics(
+                AUTH_MOD_JWK_TOKEN, "failure", "unexpected_error", start_time
             )
-            raise HTTPException(**response.model_dump()) from exc
-        except JoseError as exc:
-            logger.error("Invalid JWK set format: %s", exc)
-            response = UnauthorizedResponse(cause="Authentication keys are malformed")
-            raise HTTPException(**response.model_dump()) from exc
+            raise
 
-        try:
-            claims = jwt.decode(user_token, key=key_resolver_func(jwk_set))
-        except (KeyNotFoundError, BadSignatureError, DecodeError, JoseError) as exc:
-            logger.warning("Token decode error: %s", exc)
-            cause_map = {
-                KeyNotFoundError: "Token signed by unknown key",
-                BadSignatureError: "Invalid token signature",
-                DecodeError: "Token could not be decoded",
-                JoseError: "Token format error",
-            }
-            response = UnauthorizedResponse(
-                cause=cause_map.get(type(exc), "Unknown token error")
-            )
-            raise HTTPException(**response.model_dump()) from exc
-
-        try:
-            claims.validate()
-        except ExpiredTokenError as exc:
-            response = UnauthorizedResponse(cause="Token has expired")
-            raise HTTPException(**response.model_dump()) from exc
-        except JoseError as exc:
-            response = UnauthorizedResponse(cause="Token validation failed")
-            raise HTTPException(**response.model_dump()) from exc
-
-        try:
-            user_id: str = claims[self.config.jwt_configuration.user_id_claim]
-        except KeyError as exc:
-            missing_claim = self.config.jwt_configuration.user_id_claim
-            response = UnauthorizedResponse(
-                cause=f"Token missing claim: {missing_claim}"
-            )
-            raise HTTPException(**response.model_dump()) from exc
-
-        try:
-            username: str = claims[self.config.jwt_configuration.username_claim]
-        except KeyError as exc:
-            missing_claim = self.config.jwt_configuration.username_claim
-            response = UnauthorizedResponse(
-                cause=f"Token missing claim: {missing_claim}"
-            )
-            raise HTTPException(**response.model_dump()) from exc
+        jwk_set = await _get_jwk_set_for_auth(self.config, start_time)
+        claims = _decode_jwk_claims(user_token, jwk_set, start_time)
+        _validate_jwk_claims(claims, start_time)
+        user_id = _get_required_claim(
+            claims, self.config.jwt_configuration.user_id_claim, start_time
+        )
+        username = _get_required_claim(
+            claims, self.config.jwt_configuration.username_claim, start_time
+        )
 
         logger.info("Successfully authenticated user %s (ID: %s)", username, user_id)
 
+        record_auth_metrics(AUTH_MOD_JWK_TOKEN, "success", "authenticated", start_time)
         return user_id, username, self.skip_userid_check, user_token

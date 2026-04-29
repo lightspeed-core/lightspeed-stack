@@ -8,7 +8,7 @@ from typing import Optional, cast
 
 import pytest
 from fastapi import HTTPException, Request
-from kubernetes.client import AuthenticationV1Api, AuthorizationV1Api
+from kubernetes.client import AuthenticationV1Api, AuthorizationV1Api, V1UserInfo
 from kubernetes.client.rest import ApiException
 from pytest_mock import MockerFixture
 
@@ -21,6 +21,7 @@ from authentication.k8s import (
     K8SAuthDependency,
     K8sClientSingleton,
     K8sConfigurationError,
+    _create_subject_access_review,
     get_user_info,
 )
 from configuration import AppConfig
@@ -1135,3 +1136,88 @@ def test_get_user_info_api_error_handling(
     detail = cast(dict[str, str], exc_info.value.detail)
     assert detail["response"] == expected_response
     assert expected_cause_fragment in detail["cause"]
+
+
+@pytest.mark.parametrize(
+    "api_status,reason,expected_status,expected_response,expected_cause_fragment",
+    [
+        (
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "Service Unavailable",
+            503,
+            "Unable to connect to Kubernetes API",
+            "Service Unavailable",
+        ),
+        (
+            HTTPStatus.TOO_MANY_REQUESTS,
+            "Too Many Requests",
+            503,
+            "Unable to connect to Kubernetes API",
+            "Too Many Requests",
+        ),
+        (
+            None,
+            "Connection failed",
+            503,
+            "Unable to connect to Kubernetes API",
+            "Connection failed",
+        ),
+        (
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            500,
+            "Internal server error",
+            "Bad Request",
+        ),
+    ],
+)
+def test_create_subject_access_review_api_error_handling(
+    mocker: MockerFixture,
+    api_status: Optional[int],
+    reason: str,
+    expected_status: int,
+    expected_response: str,
+    expected_cause_fragment: str,
+) -> None:
+    """Test SubjectAccessReview maps Kubernetes API errors consistently."""
+    mock_authz_api = mocker.patch("authentication.k8s.K8sClientSingleton.get_authz_api")
+    mock_authz_api.return_value.create_subject_access_review.side_effect = ApiException(
+        status=api_status, reason=reason
+    )
+    mock_metrics = mocker.patch("authentication.k8s.record_auth_metrics")
+    user = cast(
+        V1UserInfo, MockK8sUser(username="user@example.com", groups=["lsc-group"])
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        _create_subject_access_review(user, "/api/lightspeed/v1/query", 10.0)
+
+    assert exc_info.value.status_code == expected_status
+    detail = cast(dict[str, str], exc_info.value.detail)
+    assert detail["response"] == expected_response
+    assert expected_cause_fragment in detail["cause"]
+    mock_metrics.assert_called_once_with(
+        "k8s", "failure", "authorization_check_error", 10.0
+    )
+
+
+def test_create_subject_access_review_authz_init_failure(
+    mocker: MockerFixture,
+) -> None:
+    """Test get_authz_api() init failure records k8s_api_unavailable, not unexpected_error."""
+    mocker.patch(
+        "authentication.k8s.K8sClientSingleton.get_authz_api",
+        side_effect=RuntimeError("failed to load kubeconfig"),
+    )
+    mock_metrics = mocker.patch("authentication.k8s.record_auth_metrics")
+    user = cast(
+        V1UserInfo, MockK8sUser(username="user@example.com", groups=["lsc-group"])
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        _create_subject_access_review(user, "/api/lightspeed/v1/query", 10.0)
+
+    assert exc_info.value.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+    detail = cast(dict[str, str], exc_info.value.detail)
+    assert "Unable to initialize Kubernetes client" in detail["cause"]
+    mock_metrics.assert_called_once_with("k8s", "failure", "k8s_api_unavailable", 10.0)

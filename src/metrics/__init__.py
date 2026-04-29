@@ -22,6 +22,20 @@ LLM_INFERENCE_DURATION_BUCKETS: Final[tuple[float, ...]] = (
     float("inf"),
 )
 
+AUTH_DURATION_BUCKETS: Final[tuple[float, ...]] = (
+    0.001,
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    float("inf"),
+)
 # Counter to track REST API calls
 # This will be used to count how many times each API endpoint is called
 # and the status code of the response
@@ -72,10 +86,26 @@ llm_token_received_total = Counter(
     ["provider", "model", "endpoint"],
 )
 
+
 # Histogram to measure the latency of direct LLM inference backend calls.
-llm_inference_duration_seconds = Histogram(
+llm_inference_duration_seconds: Final[Histogram] = Histogram(
     "ls_llm_inference_duration_seconds",
     "LLM inference call duration",
     ["provider", "model", "endpoint", "result"],
     buckets=LLM_INFERENCE_DURATION_BUCKETS,
+)
+
+# Counter to track authentication attempts with bounded auth_module, result, and reason labels.
+auth_attempts_total: Final[Counter] = Counter(
+    "ls_auth_attempts_total",
+    "Authentication attempts",
+    ["auth_module", "result", "reason"],
+)
+
+# Histogram to measure authentication dependency latency with bounded module and result labels.
+auth_duration_seconds: Final[Histogram] = Histogram(
+    "ls_auth_duration_seconds",
+    "Authentication duration",
+    ["auth_module", "result"],
+    buckets=AUTH_DURATION_BUCKETS,
 )
