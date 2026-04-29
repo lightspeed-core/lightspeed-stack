@@ -109,3 +109,98 @@ def record_llm_token_usage(
         )
     except (AttributeError, TypeError, ValueError):
         logger.warning("Failed to update token metrics", exc_info=True)
+
+
+def record_auth_attempt(auth_module: str, result: str, reason: str) -> None:
+    """Record one authentication attempt.
+
+    Args:
+        auth_module: Configured authentication module name.
+        result: Bounded result label, such as ``success`` or ``failure``.
+        reason: Bounded reason label for the result.
+    """
+    try:
+        metrics.auth_attempts_total.labels(auth_module, result, reason).inc()
+    except (AttributeError, TypeError, ValueError):
+        logger.warning("Failed to update authentication metric", exc_info=True)
+
+
+def record_auth_duration(auth_module: str, result: str, duration: float) -> None:
+    """Record authentication duration.
+
+    Args:
+        auth_module: Configured authentication module name.
+        result: Bounded result label, such as ``success`` or ``failure``.
+        duration: Authentication duration in seconds.
+    """
+    try:
+        metrics.auth_duration_seconds.labels(auth_module, result).observe(duration)
+    except (AttributeError, TypeError, ValueError):
+        logger.warning("Failed to update authentication duration metric", exc_info=True)
+
+
+def record_authorization_check(action: str, result: str) -> None:
+    """Record one authorization check.
+
+    Args:
+        action: Protected action name.
+        result: Bounded result label, such as ``success`` or ``denied``.
+    """
+    try:
+        metrics.authorization_checks_total.labels(action, result).inc()
+    except (AttributeError, TypeError, ValueError):
+        logger.warning("Failed to update authorization metric", exc_info=True)
+
+
+def record_authorization_duration(action: str, result: str, duration: float) -> None:
+    """Record authorization check duration.
+
+    Args:
+        action: Protected action name.
+        result: Bounded result label, such as ``success`` or ``denied``.
+        duration: Authorization check duration in seconds.
+    """
+    try:
+        metrics.authorization_duration_seconds.labels(action, result).observe(duration)
+    except (AttributeError, TypeError, ValueError):
+        logger.warning("Failed to update authorization duration metric", exc_info=True)
+
+
+def record_quota_check(
+    endpoint_path: str, quota_subject: str, result: str, duration: float
+) -> None:
+    """Record a quota availability check.
+
+    Args:
+        endpoint_path: API endpoint path for metric labeling.
+        quota_subject: Bounded quota subject source, not the subject identifier.
+        result: Bounded result label, such as ``success``, ``skipped``, or ``failure``.
+        duration: Quota check duration in seconds.
+    """
+    try:
+        metrics.quota_checks_total.labels(endpoint_path, quota_subject, result).inc()
+        metrics.quota_check_duration_seconds.labels(
+            endpoint_path, quota_subject, result
+        ).observe(duration)
+    except (AttributeError, TypeError, ValueError):
+        logger.warning("Failed to update quota check metrics", exc_info=True)
+
+
+def record_llm_inference_duration(
+    provider: str, model: str, endpoint_path: str, result: str, duration: float
+) -> None:
+    """Record the latency of a direct LLM inference backend call.
+
+    Args:
+        provider: LLM provider identifier.
+        model: LLM model identifier without the provider prefix.
+        endpoint_path: API endpoint path for metric labeling.
+        result: Bounded result label, such as ``success`` or ``failure``.
+        duration: Inference call duration in seconds.
+    """
+    try:
+        metrics.llm_inference_duration_seconds.labels(
+            provider, model, endpoint_path, result
+        ).observe(duration)
+    except (AttributeError, TypeError, ValueError):
+        logger.warning("Failed to update LLM inference duration metric", exc_info=True)

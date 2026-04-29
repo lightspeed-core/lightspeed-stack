@@ -6,6 +6,7 @@ User and System identity types with optional entitlement validation.
 
 import base64
 import json
+import time
 from typing import Any, Optional
 
 from fastapi import HTTPException, Request
@@ -13,11 +14,13 @@ from fastapi import HTTPException, Request
 from authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
 from configuration import configuration
 from constants import (
+    AUTH_MOD_RH_IDENTITY,
     DEFAULT_RH_IDENTITY_MAX_HEADER_SIZE,
     DEFAULT_VIRTUAL_PATH,
     NO_USER_TOKEN,
 )
 from log import get_logger
+from metrics import recording
 
 logger = get_logger(__name__)
 
@@ -300,18 +303,42 @@ class RHIdentityAuthDependency(AuthInterface):  # pylint: disable=too-few-public
                 - 400: Invalid base64, invalid JSON, or missing required fields
                 - 403: Missing required entitlements
         """
+        start_time = time.monotonic()
+
         # Extract header
         identity_header = request.headers.get("x-rh-identity")
         if not identity_header:
             # Skip auth for health probes when configured
             if request.url.path.endswith(("/readiness", "/liveness")):
                 if configuration.authentication_configuration.skip_for_health_probes:
+                    recording.record_auth_attempt(
+                        AUTH_MOD_RH_IDENTITY, "skipped", "health_probe"
+                    )
+                    recording.record_auth_duration(
+                        AUTH_MOD_RH_IDENTITY,
+                        "skipped",
+                        time.monotonic() - start_time,
+                    )
                     return NO_AUTH_TUPLE
             # Skip auth for metrics endpoint when configured
             if request.url.path.endswith("/metrics"):
                 if configuration.authentication_configuration.skip_for_metrics:
+                    recording.record_auth_attempt(
+                        AUTH_MOD_RH_IDENTITY, "skipped", "metrics"
+                    )
+                    recording.record_auth_duration(
+                        AUTH_MOD_RH_IDENTITY,
+                        "skipped",
+                        time.monotonic() - start_time,
+                    )
                     return NO_AUTH_TUPLE
             logger.warning("Missing x-rh-identity header")
+            recording.record_auth_attempt(
+                AUTH_MOD_RH_IDENTITY, "failure", "missing_header"
+            )
+            recording.record_auth_duration(
+                AUTH_MOD_RH_IDENTITY, "failure", time.monotonic() - start_time
+            )
             raise HTTPException(status_code=401, detail="Missing x-rh-identity header")
 
         # Enforce header size limit before decoding
@@ -320,6 +347,12 @@ class RHIdentityAuthDependency(AuthInterface):  # pylint: disable=too-few-public
                 "x-rh-identity header size %d exceeds maximum allowed size %d",
                 len(identity_header),
                 self.max_header_size,
+            )
+            recording.record_auth_attempt(
+                AUTH_MOD_RH_IDENTITY, "failure", "header_too_large"
+            )
+            recording.record_auth_duration(
+                AUTH_MOD_RH_IDENTITY, "failure", time.monotonic() - start_time
             )
             raise HTTPException(
                 status_code=400,
@@ -332,6 +365,12 @@ class RHIdentityAuthDependency(AuthInterface):  # pylint: disable=too-few-public
             decoded_str = decoded_bytes.decode("utf-8")
         except (ValueError, UnicodeDecodeError) as exc:
             logger.warning("Invalid base64 in x-rh-identity header: %s", exc)
+            recording.record_auth_attempt(
+                AUTH_MOD_RH_IDENTITY, "failure", "invalid_base64"
+            )
+            recording.record_auth_duration(
+                AUTH_MOD_RH_IDENTITY, "failure", time.monotonic() - start_time
+            )
             raise HTTPException(
                 status_code=400,
                 detail="Invalid base64 encoding in x-rh-identity header",
@@ -342,18 +381,34 @@ class RHIdentityAuthDependency(AuthInterface):  # pylint: disable=too-few-public
             identity_data = json.loads(decoded_str)
         except json.JSONDecodeError as exc:
             logger.warning("Invalid JSON in x-rh-identity header: %s", exc)
+            recording.record_auth_attempt(
+                AUTH_MOD_RH_IDENTITY, "failure", "invalid_json"
+            )
+            recording.record_auth_duration(
+                AUTH_MOD_RH_IDENTITY, "failure", time.monotonic() - start_time
+            )
             raise HTTPException(
                 status_code=400, detail="Invalid JSON in x-rh-identity header"
             ) from exc
 
         # Extract and validate identity
-        rh_identity = RHIdentityData(
-            identity_data,
-            required_entitlements=self.required_entitlements,
-        )
+        try:
+            rh_identity = RHIdentityData(
+                identity_data,
+                required_entitlements=self.required_entitlements,
+            )
 
-        # Validate entitlements if configured
-        rh_identity.validate_entitlements()
+            # Validate entitlements if configured
+            rh_identity.validate_entitlements()
+        except HTTPException as exc:
+            reason = (
+                "entitlement_missing" if exc.status_code == 403 else "invalid_identity"
+            )
+            recording.record_auth_attempt(AUTH_MOD_RH_IDENTITY, "failure", reason)
+            recording.record_auth_duration(
+                AUTH_MOD_RH_IDENTITY, "failure", time.monotonic() - start_time
+            )
+            raise
 
         # Store identity data in request.state for downstream access
         request.state.rh_identity_data = rh_identity
@@ -364,6 +419,10 @@ class RHIdentityAuthDependency(AuthInterface):  # pylint: disable=too-few-public
 
         logger.debug(
             "RH Identity authenticated: user_id=%s, username=%s", user_id, username
+        )
+        recording.record_auth_attempt(AUTH_MOD_RH_IDENTITY, "success", "authenticated")
+        recording.record_auth_duration(
+            AUTH_MOD_RH_IDENTITY, "success", time.monotonic() - start_time
         )
 
         return user_id, username, self.skip_userid_check, NO_USER_TOKEN

@@ -1,9 +1,13 @@
 """Manage authentication flow for FastAPI endpoints with no-op auth."""
 
+import time
+
 from fastapi import HTTPException, Request
 
 from authentication.interface import AuthInterface
+from authentication.utils import record_auth_metrics
 from constants import (
+    AUTH_MOD_NOOP,
     DEFAULT_USER_NAME,
     DEFAULT_USER_UID,
     DEFAULT_VIRTUAL_PATH,
@@ -47,6 +51,8 @@ class NoopAuthDependency(AuthInterface):  # pylint: disable=too-few-public-metho
                 - skip_userid_check: True to indicate the user ID check is skipped.
                 - token: NO_USER_TOKEN.
         """
+        start_time = time.monotonic()
+
         logger.warning(
             "No-op authentication dependency is being used. "
             "The service is running in insecure mode intended solely for development purposes"
@@ -54,6 +60,8 @@ class NoopAuthDependency(AuthInterface):  # pylint: disable=too-few-public-metho
         # try to extract user ID from request
         user_id = request.query_params.get("user_id", DEFAULT_USER_UID)
         if not user_id:
+            record_auth_metrics(AUTH_MOD_NOOP, "failure", "empty_user_id", start_time)
             raise HTTPException(status_code=400, detail="user_id cannot be empty")
         logger.debug("Retrieved user ID: %s", user_id)
+        record_auth_metrics(AUTH_MOD_NOOP, "skipped", "no_auth_required", start_time)
         return user_id, DEFAULT_USER_NAME, self.skip_userid_check, NO_USER_TOKEN

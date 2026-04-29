@@ -455,6 +455,9 @@ def _record_inference_failure(  # pylint: disable=too-many-arguments,too-many-po
     """
     inference_time = time.monotonic() - start_time
     recording.record_llm_failure(provider, model, endpoint_path)
+    recording.record_llm_inference_duration(
+        provider, model, endpoint_path, "failure", inference_time
+    )
     _queue_splunk_event(
         background_tasks,
         infer_request,
@@ -669,12 +672,37 @@ async def infer_endpoint(  # pylint: disable=R0914
     """
     # Authentication enforced by get_auth_dependency(), authorization by @authorize decorator.
     check_configuration_loaded(configuration)
+    endpoint_path = "/v1/infer"
 
     # Quota enforcement: resolve subject and check availability before any work.
     # No-op when quota_subject is not configured or no quota limiters exist.
     quota_id = _resolve_quota_subject(request, auth)
+    quota_subject = configuration.rlsapi_v1.quota_subject or "disabled"
+    quota_start_time = time.monotonic()
     if quota_id is not None:
-        check_tokens_available(configuration.quota_limiters, quota_id)
+        try:
+            check_tokens_available(configuration.quota_limiters, quota_id)
+        except HTTPException:
+            recording.record_quota_check(
+                endpoint_path,
+                quota_subject,
+                "failure",
+                time.monotonic() - quota_start_time,
+            )
+            raise
+        recording.record_quota_check(
+            endpoint_path,
+            quota_subject,
+            "success",
+            time.monotonic() - quota_start_time,
+        )
+    else:
+        recording.record_quota_check(
+            endpoint_path,
+            quota_subject,
+            "skipped",
+            time.monotonic() - quota_start_time,
+        )
 
     request_id = get_suid()
 
@@ -684,8 +712,6 @@ async def infer_endpoint(  # pylint: disable=R0914
     logger.debug(
         "Request %s: Combined input source length: %d", request_id, len(input_source)
     )
-
-    endpoint_path = "/v1/infer"
 
     # Run shield moderation on user input before inference.
     # Uses all configured shields; no-op when no shields are registered.
@@ -721,6 +747,9 @@ async def infer_endpoint(  # pylint: disable=R0914
         response_text = extract_text_from_response_items(response.output)
         token_usage = extract_token_usage(response.usage, model_id, endpoint_path)
         inference_time = time.monotonic() - start_time
+        recording.record_llm_inference_duration(
+            provider, model, endpoint_path, "success", inference_time
+        )
     except _INFER_HANDLED_EXCEPTIONS as error:
         if response is not None:
             extract_token_usage(response.usage, model_id, endpoint_path)  # type: ignore[arg-type]

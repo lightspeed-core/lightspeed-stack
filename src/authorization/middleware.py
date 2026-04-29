@@ -1,5 +1,6 @@
 """Authorization middleware and decorators."""
 
+import time
 from collections.abc import Callable
 from functools import lru_cache, wraps
 from typing import Any, Optional
@@ -18,6 +19,7 @@ from authorization.resolvers import (
 )
 from configuration import configuration
 from log import get_logger
+from metrics import recording
 from models.config import Action
 from models.responses import (
     ForbiddenResponse,
@@ -124,39 +126,50 @@ async def _perform_authorization_check(
         HTTPException: with 403 Forbidden if the resolved roles are not
                        permitted to perform `action`.
     """
-    role_resolver, access_resolver = get_authorization_resolvers()
+    start_time = time.monotonic()
+    result = "error"
 
     try:
-        auth = kwargs["auth"]
-    except KeyError as exc:
-        logger.error(
-            "Authorization only allowed on endpoints that accept "
-            "'auth: Any = Depends(get_auth_dependency())'"
+        role_resolver, access_resolver = get_authorization_resolvers()
+
+        try:
+            auth = kwargs["auth"]
+        except KeyError as exc:
+            logger.error(
+                "Authorization only allowed on endpoints that accept "
+                "'auth: Any = Depends(get_auth_dependency())'"
+            )
+            response = InternalServerErrorResponse.generic()
+            raise HTTPException(**response.model_dump()) from exc
+
+        # Everyone gets the everyone (aka *) role
+        everyone_roles = {"*"}
+
+        user_roles = await role_resolver.resolve_roles(auth) | everyone_roles
+
+        if not access_resolver.check_access(action, user_roles):
+            result = "denied"
+            response = ForbiddenResponse.endpoint(user_id=auth[0])
+            raise HTTPException(**response.model_dump())
+
+        authorized_actions = access_resolver.get_actions(user_roles)
+
+        req: Optional[Request] = None
+        if "request" in kwargs and isinstance(kwargs["request"], Request):
+            req = kwargs["request"]
+        else:
+            for arg in args:
+                if isinstance(arg, Request):
+                    req = arg
+                    break
+        if req is not None:
+            req.state.authorized_actions = authorized_actions
+        result = "success"
+    finally:
+        recording.record_authorization_check(action.value, result)
+        recording.record_authorization_duration(
+            action.value, result, time.monotonic() - start_time
         )
-        response = InternalServerErrorResponse.generic()
-        raise HTTPException(**response.model_dump()) from exc
-
-    # Everyone gets the everyone (aka *) role
-    everyone_roles = {"*"}
-
-    user_roles = await role_resolver.resolve_roles(auth) | everyone_roles
-
-    if not access_resolver.check_access(action, user_roles):
-        response = ForbiddenResponse.endpoint(user_id=auth[0])
-        raise HTTPException(**response.model_dump())
-
-    authorized_actions = access_resolver.get_actions(user_roles)
-
-    req: Optional[Request] = None
-    if "request" in kwargs and isinstance(kwargs["request"], Request):
-        req = kwargs["request"]
-    else:
-        for arg in args:
-            if isinstance(arg, Request):
-                req = arg
-                break
-    if req is not None:
-        req.state.authorized_actions = authorized_actions
 
 
 def authorize(action: Action) -> Callable:

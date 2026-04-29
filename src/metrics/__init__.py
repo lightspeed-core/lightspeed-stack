@@ -55,3 +55,52 @@ llm_token_received_total = Counter(
     "LLM tokens received",
     ["provider", "model", "endpoint"],
 )
+
+# Counter to track authentication attempts by configured authentication module.
+auth_attempts_total = Counter(
+    "ls_auth_attempts_total",
+    "Authentication attempts",
+    ["auth_module", "result", "reason"],
+)
+
+# Histogram to measure authentication dependency latency.
+auth_duration_seconds = Histogram(
+    "ls_auth_duration_seconds",
+    "Authentication duration",
+    ["auth_module", "result"],
+)
+
+# Counter to track authorization checks by protected action.
+authorization_checks_total = Counter(
+    "ls_authorization_checks_total",
+    "Authorization checks",
+    ["action", "result"],
+)
+
+# Histogram to measure authorization check latency by protected action.
+authorization_duration_seconds = Histogram(
+    "ls_authorization_duration_seconds",
+    "Authorization check duration",
+    ["action", "result"],
+)
+
+# Counter to track pre-request quota checks without exposing subject identifiers.
+quota_checks_total = Counter(
+    "ls_quota_checks_total",
+    "Quota availability checks",
+    ["endpoint", "quota_subject", "result"],
+)
+
+# Histogram to measure quota availability check latency.
+quota_check_duration_seconds = Histogram(
+    "ls_quota_check_duration_seconds",
+    "Quota availability check duration",
+    ["endpoint", "quota_subject", "result"],
+)
+
+# Histogram to measure the latency of direct LLM inference backend calls.
+llm_inference_duration_seconds = Histogram(
+    "ls_llm_inference_duration_seconds",
+    "LLM inference call duration",
+    ["provider", "model", "endpoint", "result"],
+)

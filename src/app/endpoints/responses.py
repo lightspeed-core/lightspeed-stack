@@ -4,6 +4,7 @@
 
 import asyncio
 import json
+import time
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Annotated, Any, Final, Optional, cast
@@ -39,6 +40,7 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
 from log import get_logger
+from metrics import recording
 from models.config import Action
 from models.requests import ResponsesRequest
 from models.responses import (
@@ -113,6 +115,30 @@ logger = get_logger(__name__)
 router = APIRouter(tags=["responses"])
 
 _USER_AGENT_MAX_LENGTH: Final[int] = 128
+
+
+def _record_response_inference_result(
+    model_id: str,
+    endpoint_path: str,
+    result: str,
+    duration: float,
+    record_failure: bool = False,
+) -> None:
+    """Record backend inference metrics for a Responses API call.
+
+    Args:
+        model_id: Model identifier in provider/model format.
+        endpoint_path: API endpoint path for metric labeling.
+        result: Bounded result label for the inference duration metric.
+        duration: Backend inference call duration in seconds.
+        record_failure: Whether to increment the LLM failure counter as well.
+    """
+    provider, model = extract_provider_and_model_from_model_id(model_id)
+    if record_failure:
+        recording.record_llm_failure(provider, model, endpoint_path)
+    recording.record_llm_inference_duration(
+        provider, model, endpoint_path, result, duration
+    )
 
 
 def _get_user_agent(request: Request) -> Optional[str]:
@@ -278,8 +304,26 @@ async def responses_endpoint_handler(
 
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
+    endpoint_path = "/v1/responses"
+
     # Check token availability
-    check_tokens_available(configuration.quota_limiters, user_id)
+    quota_start_time = time.monotonic()
+    try:
+        check_tokens_available(configuration.quota_limiters, user_id)
+    except HTTPException:
+        recording.record_quota_check(
+            endpoint_path,
+            "user_id",
+            "failure",
+            time.monotonic() - quota_start_time,
+        )
+        raise
+    recording.record_quota_check(
+        endpoint_path,
+        "user_id",
+        "success",
+        time.monotonic() - quota_start_time,
+    )
 
     # Enforce RBAC: optionally disallow overriding model in requests
     validate_model_provider_override(
@@ -331,7 +375,6 @@ async def responses_endpoint_handler(
     )
     attachments_text = extract_attachments_text(original_request.input)
 
-    endpoint_path = "/v1/responses"
     moderation_result = await run_shield_moderation(
         client,
         input_text + "\n\n" + attachments_text,
@@ -461,6 +504,7 @@ async def handle_streaming_response(
             user_agent=user_agent,
         )
     else:
+        inference_start_time = time.monotonic()
         try:
             response = await client.responses.create(
                 **api_params.model_dump(exclude_none=True)
@@ -475,8 +519,16 @@ async def handle_streaming_response(
                 inline_rag_context=inline_rag_context,
                 filter_server_tools=filter_server_tools,
                 endpoint_path=endpoint_path,
+                inference_start_time=inference_start_time,
             )
         except RuntimeError as e:  # library mode wraps 413 into runtime error
+            _record_response_inference_result(
+                api_params.model,
+                endpoint_path,
+                "failure",
+                time.monotonic() - inference_start_time,
+                record_failure=True,
+            )
             if is_context_length_error(str(e)):
                 _queue_responses_splunk_event(
                     background_tasks=background_tasks,
@@ -494,6 +546,13 @@ async def handle_streaming_response(
                 raise HTTPException(**error_response.model_dump()) from e
             raise e
         except APIConnectionError as e:
+            _record_response_inference_result(
+                api_params.model,
+                endpoint_path,
+                "failure",
+                time.monotonic() - inference_start_time,
+                record_failure=True,
+            )
             _queue_responses_splunk_event(
                 background_tasks=background_tasks,
                 input_text=input_text,
@@ -512,6 +571,13 @@ async def handle_streaming_response(
             )
             raise HTTPException(**error_response.model_dump()) from e
         except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+            _record_response_inference_result(
+                api_params.model,
+                endpoint_path,
+                "failure",
+                time.monotonic() - inference_start_time,
+                record_failure=True,
+            )
             _queue_responses_splunk_event(
                 background_tasks=background_tasks,
                 input_text=input_text,
@@ -804,6 +870,7 @@ async def response_generator(
     inline_rag_context: RAGContext,
     filter_server_tools: bool = False,
     endpoint_path: str = "",
+    inference_start_time: Optional[float] = None,
 ) -> AsyncIterator[str]:
     """Generate SSE-formatted streaming response with LCORE-enriched events.
 
@@ -817,6 +884,7 @@ async def response_generator(
         inline_rag_context: Inline RAG context to be used for the response
         filter_server_tools: Whether to filter server-deployed MCP tool events from the stream
         endpoint_path: API endpoint path used for metric labeling.
+        inference_start_time: Monotonic clock time when the backend stream was requested.
     Yields:
         SSE-formatted strings for streaming events, ending with [DONE]
     """
@@ -897,6 +965,17 @@ async def response_generator(
                 latest_response_object.output
             )
             chunk_dict["response"]["output_text"] = turn_summary.llm_response
+            if inference_start_time is not None:
+                inference_result = (
+                    "success" if event_type == "response.completed" else "failure"
+                )
+                _record_response_inference_result(
+                    api_params.model,
+                    endpoint_path,
+                    inference_result,
+                    time.monotonic() - inference_start_time,
+                    record_failure=(inference_result == "failure"),
+                )
 
         data_json = json.dumps(chunk_dict)
         yield f"event: {event_type or 'error'}\ndata: {data_json}\n\n"
@@ -1070,12 +1149,19 @@ async def handle_non_streaming_response(
             user_agent=user_agent,
         )
     else:
+        inference_start_time = time.monotonic()
         try:
             api_response = cast(
                 OpenAIResponseObject,
                 await client.responses.create(
                     **api_params.model_dump(exclude_none=True)
                 ),
+            )
+            _record_response_inference_result(
+                api_params.model,
+                endpoint_path,
+                "success",
+                time.monotonic() - inference_start_time,
             )
             token_usage = extract_token_usage(
                 api_response.usage, api_params.model, endpoint_path
@@ -1097,6 +1183,13 @@ async def handle_non_streaming_response(
                 )
 
         except RuntimeError as e:
+            _record_response_inference_result(
+                api_params.model,
+                endpoint_path,
+                "failure",
+                time.monotonic() - inference_start_time,
+                record_failure=True,
+            )
             if is_context_length_error(str(e)):
                 _queue_responses_splunk_event(
                     background_tasks=background_tasks,
@@ -1114,6 +1207,13 @@ async def handle_non_streaming_response(
                 raise HTTPException(**error_response.model_dump()) from e
             raise e
         except APIConnectionError as e:
+            _record_response_inference_result(
+                api_params.model,
+                endpoint_path,
+                "failure",
+                time.monotonic() - inference_start_time,
+                record_failure=True,
+            )
             _queue_responses_splunk_event(
                 background_tasks=background_tasks,
                 input_text=input_text,
@@ -1132,6 +1232,13 @@ async def handle_non_streaming_response(
             )
             raise HTTPException(**error_response.model_dump()) from e
         except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+            _record_response_inference_result(
+                api_params.model,
+                endpoint_path,
+                "failure",
+                time.monotonic() - inference_start_time,
+                record_failure=True,
+            )
             _queue_responses_splunk_event(
                 background_tasks=background_tasks,
                 input_text=input_text,

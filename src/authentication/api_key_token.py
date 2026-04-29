@@ -7,12 +7,14 @@ the value equals to the API Key, given from configuration parameter.
 """
 
 import secrets
+import time
 
 from fastapi import HTTPException, Request, status
 
 from authentication.interface import AuthInterface
-from authentication.utils import extract_user_token
+from authentication.utils import extract_user_token, record_auth_metrics
 from constants import (
+    AUTH_MOD_APIKEY_TOKEN,
     DEFAULT_USER_NAME,
     DEFAULT_USER_UID,
     DEFAULT_VIRTUAL_PATH,
@@ -59,16 +61,28 @@ class APIKeyTokenAuthDependency(
             HTTPException: If the bearer token is missing or
             doesn't match the configured API key (HTTP 401).
         """
+        start_time = time.monotonic()
+
         # try to extract user token from request
-        user_token = extract_user_token(request.headers)
+        try:
+            user_token = extract_user_token(request.headers)
+        except HTTPException:
+            record_auth_metrics(
+                AUTH_MOD_APIKEY_TOKEN, "failure", "missing_token", start_time
+            )
+            raise
 
         # API Key validation. Use secrets.compare_digest for constant-time comparison
         if not secrets.compare_digest(
             user_token, self.config.api_key.get_secret_value()
         ):
+            record_auth_metrics(
+                AUTH_MOD_APIKEY_TOKEN, "failure", "invalid_key", start_time
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid API Key",
             )
 
+        record_auth_metrics(AUTH_MOD_APIKEY_TOKEN, "success", "valid_key", start_time)
         return DEFAULT_USER_UID, DEFAULT_USER_NAME, self.skip_userid_check, user_token

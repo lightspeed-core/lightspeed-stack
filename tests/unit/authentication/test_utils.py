@@ -3,9 +3,10 @@
 from typing import cast
 
 from fastapi import HTTPException
+from pytest_mock import MockerFixture
 from starlette.datastructures import Headers
 
-from authentication.utils import extract_user_token
+from authentication.utils import extract_user_token, record_auth_metrics
 
 
 def test_extract_user_token() -> None:
@@ -41,3 +42,18 @@ def test_extract_user_token_invalid_format() -> None:
             "Missing or invalid credentials provided by client"
         )
         assert detail["cause"] == "No token found in Authorization header"
+
+
+def test_record_auth_metrics_records_attempt_and_duration(
+    mocker: MockerFixture,
+) -> None:
+    """Test recording auth attempt and duration through the shared helper."""
+    mock_attempt = mocker.patch("authentication.utils.recording.record_auth_attempt")
+    mock_duration = mocker.patch("authentication.utils.recording.record_auth_duration")
+    mock_monotonic = mocker.patch("authentication.utils.time.monotonic")
+    mock_monotonic.return_value = 12.5
+
+    record_auth_metrics("jwk-token", "success", "authenticated", 10.0)
+
+    mock_attempt.assert_called_once_with("jwk-token", "success", "authenticated")
+    mock_duration.assert_called_once_with("jwk-token", "success", 2.5)
