@@ -447,7 +447,7 @@ def restart_container(container_name: str) -> None:
     """
     if is_prow_environment():
         restart_pod(container_name)
-        if container_name == "llama-stack":
+        if container_name in ("llama-stack", "lightspeed-stack"):
             from tests.e2e.features.steps.health import (
                 reset_llama_stack_disrupt_once_tracking,
             )
