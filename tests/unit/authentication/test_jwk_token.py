@@ -13,6 +13,7 @@ from pydantic import AnyHttpUrl
 from pytest_mock import MockerFixture
 
 from authentication.jwk_token import JwkTokenAuthDependency, _jwk_cache
+from constants import AUTH_MOD_JWK_TOKEN
 from models.config import JwkConfiguration, JwtConfiguration
 
 TEST_USER_ID = "test-user-123"
@@ -503,6 +504,29 @@ async def test_no_bearer(
     assert detail["cause"] == "No token found in Authorization header"
 
 
+@pytest.mark.asyncio
+async def test_unexpected_token_extraction_error_records_metrics(
+    mocker: MockerFixture,
+    default_jwk_configuration: JwkConfiguration,
+    valid_token: str,
+) -> None:
+    """Test unexpected token extraction errors are recorded before re-raising."""
+    mocker.patch(
+        "authentication.jwk_token.extract_user_token",
+        side_effect=RuntimeError("header parser failed"),
+    )
+    mock_metrics = mocker.patch("authentication.jwk_token.record_auth_metrics")
+    mocker.patch("authentication.jwk_token.time.monotonic", return_value=7.0)
+    dependency = JwkTokenAuthDependency(default_jwk_configuration)
+
+    with pytest.raises(RuntimeError):
+        await dependency(dummy_request(valid_token))
+
+    mock_metrics.assert_called_once_with(
+        AUTH_MOD_JWK_TOKEN, "failure", "unexpected_error", 7.0
+    )
+
+
 @pytest.fixture
 def no_user_id_token(
     single_key_set: list[dict[str, Any]],
@@ -532,6 +556,21 @@ def no_user_id_token(
     ).decode()
 
 
+@pytest.fixture
+def invalid_user_id_token(
+    single_key_set: list[dict[str, Any]],
+    token_payload: dict[str, Any],
+    token_header: dict[str, Any],
+) -> str:
+    """Token with an invalid user_id claim value."""
+    jwt_instance = JsonWebToken(algorithms=["RS256"])
+    token_payload["user_id"] = ""
+
+    return jwt_instance.encode(
+        token_header, token_payload, single_key_set[0]["private_key"]
+    ).decode()
+
+
 @pytest.mark.asyncio
 async def test_no_user_id(
     default_jwk_configuration: JwkConfiguration,
@@ -550,6 +589,24 @@ async def test_no_user_id(
     assert "user_id" in str(exc_info.value.detail) and "missing" in str(
         exc_info.value.detail
     )
+
+
+@pytest.mark.asyncio
+async def test_invalid_user_id_claim_has_exception_chain(
+    default_jwk_configuration: JwkConfiguration,
+    mocked_signing_keys_server: Any,
+    invalid_user_id_token: str,
+) -> None:
+    """Test invalid required claims preserve root-cause exception context."""
+    _ = mocked_signing_keys_server
+
+    dependency = JwkTokenAuthDependency(default_jwk_configuration)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await dependency(dummy_request(invalid_user_id_token))
+
+    assert exc_info.value.status_code == 401
+    assert isinstance(exc_info.value.__cause__, ValueError)
 
 
 @pytest.fixture
