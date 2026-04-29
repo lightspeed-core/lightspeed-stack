@@ -51,6 +51,21 @@ AUTHORIZATION_DURATION_BUCKETS: Final[tuple[float, ...]] = (
     5.0,
     float("inf"),
 )
+
+QUOTA_CHECK_DURATION_BUCKETS: Final[tuple[float, ...]] = (
+    0.001,
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    float("inf"),
+)
 # Counter to track REST API calls
 # This will be used to count how many times each API endpoint is called
 # and the status code of the response
@@ -143,4 +158,22 @@ authorization_duration_seconds: Final[Histogram] = Histogram(
     "Authorization check duration",
     ["action", "result"],
     buckets=AUTHORIZATION_DURATION_BUCKETS,
+)
+
+# Counter to track pre-request quota checks. Labels must stay bounded:
+# endpoint uses static route patterns, quota_type is a configured quota subject,
+# and result is one terminal state from the recording helper.
+quota_checks_total: Final[Counter] = Counter(
+    "ls_quota_checks_total",
+    "Quota availability checks",
+    ["endpoint", "quota_type", "result"],
+)
+
+# Histogram to measure quota availability check latency with sub-second buckets.
+# It uses the same bounded endpoint/quota_type/result labels as the counter.
+quota_check_duration_seconds: Final[Histogram] = Histogram(
+    "ls_quota_check_duration_seconds",
+    "Quota availability check duration",
+    ["endpoint", "quota_type", "result"],
+    buckets=QUOTA_CHECK_DURATION_BUCKETS,
 )

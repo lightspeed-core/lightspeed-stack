@@ -275,7 +275,6 @@ def test_histogram_recorders_observe_metrics_and_log_errors(
     )
 
 
-
 def test_record_llm_inference_duration_bounds_result_label(
     mocker: MockerFixture,
 ) -> None:
@@ -392,3 +391,59 @@ def test_record_authorization_duration_bounds_labels(mocker: MockerFixture) -> N
 
     mock_metric.labels.assert_called_once_with("unknown", "error")
     mock_metric.labels.return_value.observe.assert_called_once_with(0.25)
+
+
+@pytest.mark.parametrize("failing_metric", ["counter", "histogram"])
+def test_record_quota_check_updates_metrics_and_logs_errors(
+    mocker: MockerFixture,
+    recording_logger: MockType,
+    failing_metric: str,
+) -> None:
+    """Test quota helper counter and histogram updates plus both failure points."""
+    mock_counter = mocker.patch("metrics.recording.metrics.quota_checks_total")
+    mock_histogram = mocker.patch(
+        "metrics.recording.metrics.quota_check_duration_seconds"
+    )
+
+    recording.record_quota_check("/v1/infer", "org_id", "success", 0.75)
+
+    mock_counter.labels.assert_called_once_with("/v1/infer", "org_id", "success")
+    mock_counter.labels.return_value.inc.assert_called_once()
+    mock_histogram.labels.assert_called_once_with("/v1/infer", "org_id", "success")
+    mock_histogram.labels.return_value.observe.assert_called_once_with(0.75)
+    recording_logger.warning.assert_not_called()
+
+    mock_counter.reset_mock()
+    mock_histogram.reset_mock()
+    recording_logger.reset_mock()
+    if failing_metric == "counter":
+        mock_counter.labels.return_value.inc.side_effect = TypeError("bad")
+        expected_warning = "Failed to update quota check counter"
+    else:
+        mock_histogram.labels.return_value.observe.side_effect = TypeError("bad")
+        expected_warning = "Failed to update quota check duration metric"
+
+    recording.record_quota_check("/v1/infer", "org_id", "failure", 0.75)
+
+    recording_logger.warning.assert_called_once_with(expected_warning, exc_info=True)
+
+    # With independent try/except blocks, the non-failing metric must still update.
+    if failing_metric == "counter":
+        mock_histogram.labels.return_value.observe.assert_called_once_with(0.75)
+    else:
+        mock_counter.labels.return_value.inc.assert_called_once()
+
+
+def test_record_quota_check_bounds_labels(mocker: MockerFixture) -> None:
+    """Test quota helper maps unexpected label values to bounded fallbacks."""
+    mock_counter = mocker.patch("metrics.recording.metrics.quota_checks_total")
+    mock_histogram = mocker.patch(
+        "metrics.recording.metrics.quota_check_duration_seconds"
+    )
+
+    recording.record_quota_check("/v1/responses", "customer-123", "timeout", 0.25)
+
+    mock_counter.labels.assert_called_once_with("/v1/responses", "unknown", "error")
+    mock_counter.labels.return_value.inc.assert_called_once()
+    mock_histogram.labels.assert_called_once_with("/v1/responses", "unknown", "error")
+    mock_histogram.labels.return_value.observe.assert_called_once_with(0.25)

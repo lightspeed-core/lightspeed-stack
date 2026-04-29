@@ -138,6 +138,37 @@ def _get_user_agent(request: Request) -> Optional[str]:
     return sanitized or None
 
 
+def _check_response_quota(user_id: str, endpoint_path: str) -> None:
+    """Check response quota availability and record bounded quota metrics."""
+    quota_start_time = time.monotonic()
+    try:
+        check_tokens_available(configuration.quota_limiters, user_id)
+    except HTTPException:
+        recording.record_quota_check(
+            endpoint_path,
+            recording.QUOTA_TYPE_USER_ID,
+            recording.QUOTA_RESULT_FAILURE,
+            time.monotonic() - quota_start_time,
+        )
+        raise
+    except Exception:  # pylint: disable=broad-exception-caught
+        # Unexpected quota backend failures still need bounded metrics before
+        # propagating to the endpoint error handling layer.
+        recording.record_quota_check(
+            endpoint_path,
+            recording.QUOTA_TYPE_USER_ID,
+            recording.QUOTA_RESULT_ERROR,
+            time.monotonic() - quota_start_time,
+        )
+        raise
+    recording.record_quota_check(
+        endpoint_path,
+        recording.QUOTA_TYPE_USER_ID,
+        recording.QUOTA_RESULT_SUCCESS,
+        time.monotonic() - quota_start_time,
+    )
+
+
 responses_response: dict[int | str, dict[str, Any]] = {
     200: ResponsesResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(
@@ -358,11 +389,12 @@ async def responses_endpoint_handler(
     started_at = datetime.now(UTC)
     rh_identity_context = get_rh_identity_context(request)
     user_id, _, _, token = auth
+    endpoint_path = ENDPOINT_PATH_RESPONSES
 
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
     # Check token availability
-    check_tokens_available(configuration.quota_limiters, user_id)
+    _check_response_quota(user_id, endpoint_path)
 
     # Enforce RBAC: optionally disallow overriding model in requests
     validate_model_provider_override(
