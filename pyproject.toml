@@ -136,7 +136,7 @@ dev = [
     "pytest-subtests>=0.14.2",
     "bandit>=1.8.6",
     "pybuild-deps>=0.5.0",
-    "pip==24.3.1",
+    "pip==25.3",
     "pytest-benchmark>=5.2.3",
 ]
 llslibdev = [
