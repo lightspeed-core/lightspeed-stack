@@ -48,10 +48,18 @@ Feature: MCP Server Management API tests
     Then The status code of the response is 403
     And The body of the response contains statically configured
 
-  Scenario: Delete non-existent MCP server returns 404
+  Scenario: Delete non-existent MCP server returns 200 with not-found outcome
     When I access REST API endpoint "mcp-servers/non-existent-server" using HTTP DELETE method
-    Then The status code of the response is 404
-    And The body of the response contains Mcp Server not found
+    Then The status code of the response is 200
+    And The body of the response is the following
+    """
+    {
+        "deleted": false,
+        "name": "non-existent-server",
+        "response": "MCP server not found",
+        "success": true
+    }
+    """
 
   Scenario: Register MCP server with missing required fields returns 422
     When I access REST API endpoint "mcp-servers" using HTTP POST method
@@ -100,9 +108,18 @@ Feature: MCP Server Management API tests
     When I access REST API endpoint "mcp-servers/e2e-lifecycle-server" using HTTP DELETE method
     Then The status code of the response is 200
     And The body of the response contains e2e-lifecycle-server
-    And The body of the response contains unregistered successfully
+    And The body of the response contains deleted successfully
     When I access REST API endpoint "mcp-servers/e2e-lifecycle-server" using HTTP DELETE method
-    Then The status code of the response is 404
+    Then The status code of the response is 200
+    And The body of the response is the following
+    """
+    {
+        "deleted": false,
+        "name": "e2e-lifecycle-server",
+        "response": "MCP server not found",
+        "success": true
+    }
+    """
     When I access REST API endpoint "mcp-servers" using HTTP GET method
     Then The status code of the response is 200
     And the body of the response has the following structure

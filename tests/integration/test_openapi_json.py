@@ -237,7 +237,7 @@ def test_servers_section_present_from_url(spec_from_url: dict[str, Any]) -> None
         (
             "/v1/mcp-servers/{name}",
             "delete",
-            {"200", "401", "403", "404", "500", "503"},
+            {"200", "401", "403", "500", "503"},
         ),
         ("/v1/query", "post", {"200", "401", "403", "404", "422", "429", "500", "503"}),
         (
@@ -341,7 +341,7 @@ def test_paths_and_responses_exist_from_file(
         (
             "/v1/mcp-servers/{name}",
             "delete",
-            {"200", "401", "403", "404", "500", "503"},
+            {"200", "401", "403", "500", "503"},
         ),
         ("/v1/query", "post", {"200", "401", "403", "404", "422", "429", "500", "503"}),
         (

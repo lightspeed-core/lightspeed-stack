@@ -326,19 +326,35 @@ class MCPServerListResponse(AbstractSuccessfulResponse):
     }
 
 
-class MCPServerDeleteResponse(AbstractSuccessfulResponse):
-    """Response for a successful MCP server deletion."""
+class MCPServerDeleteResponse(AbstractDeleteResponse):
+    """Result of unregistering an MCP server (HTTP 200 with delete outcome)."""
 
-    name: str = Field(..., description="Deleted MCP server name")
-    message: str = Field(..., description="Status message")
+    resource_name: ClassVar[str] = "MCP server"
+    name: str = Field(
+        ...,
+        description="MCP server name that was passed to delete.",
+        examples=["test-mcp-server"],
+    )
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "name": "test-mcp-server",
-                    "message": "MCP server 'test-mcp-server' unregistered successfully",
-                }
+                    "label": "deleted",
+                    "value": {
+                        "name": "mcp-server",
+                        "deleted": True,
+                        "response": "MCP server deleted successfully",
+                    },
+                },
+                {
+                    "label": "not found",
+                    "value": {
+                        "name": "mcp-server",
+                        "deleted": False,
+                        "response": "MCP server not found",
+                    },
+                },
             ]
         }
     }
@@ -2006,6 +2022,16 @@ class ForbiddenResponse(AbstractErrorResponse):
                         ),
                     },
                 },
+                {
+                    "label": "mcp server static",
+                    "detail": {
+                        "response": "Cannot delete statically configured MCP server",
+                        "cause": (
+                            "MCP server 'my-mcp' is defined in configuration "
+                            "and cannot be removed via the API."
+                        ),
+                    },
+                },
             ]
         }
     }
@@ -2035,6 +2061,27 @@ class ForbiddenResponse(AbstractErrorResponse):
             f"{action} conversation with ID {resource_id}"
         )
         return cls(response=response, cause=cause)
+
+    @classmethod
+    def mcp_server_static_config(cls, server_name: str) -> "ForbiddenResponse":
+        """
+        Return 403 when the client tries to delete an MCP server that exists only in static config.
+
+        Parameters:
+        ----------
+            server_name (str): MCP server name from the request path.
+
+        Returns:
+        -------
+            ForbiddenResponse: Standard 403 with a fixed summary and a cause naming the server.
+        """
+        return cls(
+            response="Cannot delete statically configured MCP server",
+            cause=(
+                f"MCP server '{server_name}' is defined in configuration "
+                "and cannot be removed via the API."
+            ),
+        )
 
     @classmethod
     def endpoint(cls, user_id: str) -> "ForbiddenResponse":
@@ -2154,13 +2201,6 @@ class NotFoundResponse(AbstractErrorResponse):
                             "Streaming Request with ID "
                             "123e4567-e89b-12d3-a456-426614174000 does not exist"
                         ),
-                    },
-                },
-                {
-                    "label": "mcp server",
-                    "detail": {
-                        "response": "Mcp Server not found",
-                        "cause": "Mcp Server with ID test-mcp-server does not exist",
                     },
                 },
                 {
@@ -2658,6 +2698,15 @@ class InternalServerErrorResponse(AbstractErrorResponse):
                     },
                 },
                 {
+                    "label": "mcp server registration",
+                    "detail": {
+                        "response": "Failed to register MCP server",
+                        "cause": (
+                            "Could not register the MCP server with the remote service."
+                        ),
+                    },
+                },
+                {
                     "label": "feedback storage",
                     "detail": {
                         "response": "Failed to store feedback",
@@ -2803,6 +2852,22 @@ class InternalServerErrorResponse(AbstractErrorResponse):
         return cls(
             response="Database query failed",
             cause="Failed to query the database",
+        )
+
+    @classmethod
+    def mcp_server_registration_failed(cls) -> "InternalServerErrorResponse":
+        """
+        Return a generic 500 when dynamic MCP registration fails after local persistence.
+
+        Omits backend exception text so clients do not receive internal error details.
+
+        Returns:
+        -------
+            InternalServerErrorResponse: Standard failed-registration payload.
+        """
+        return cls(
+            response="Failed to register MCP server",
+            cause=("Could not register the MCP server with the remote service."),
         )
 
     def __init__(self, *, response: str, cause: str) -> None:
