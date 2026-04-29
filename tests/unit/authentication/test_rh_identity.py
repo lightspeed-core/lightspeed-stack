@@ -255,6 +255,14 @@ class TestRHIdentityData:
                 "Invalid identity data",
             ),
             (
+                {"identity": {"type": "User", "org_id": "123", "user": 1}},
+                "Invalid identity data",
+            ),
+            (
+                {"identity": {"type": "User", "org_id": "123", "user": []}},
+                "Invalid identity data",
+            ),
+            (
                 {
                     "identity": {
                         "type": "User",
@@ -276,6 +284,10 @@ class TestRHIdentityData:
             ),
             (
                 {"identity": {"type": "System", "org_id": "123"}},
+                "Invalid identity data",
+            ),
+            (
+                {"identity": {"type": "System", "org_id": "123", "system": 1}},
                 "Invalid identity data",
             ),
             (
@@ -426,6 +438,49 @@ class TestRHIdentityAuthDependency:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
+        "identity_data",
+        [
+            pytest.param({"identity": 1}, id="identity-not-dict"),
+            pytest.param(
+                {"identity": {"type": "User", "user": 1}},
+                id="user-not-dict",
+            ),
+            pytest.param(
+                {"identity": {"type": "User", "user": []}},
+                id="user-list",
+            ),
+            pytest.param(
+                {"identity": {"type": "System", "system": 1}},
+                id="system-not-dict",
+            ),
+        ],
+    )
+    async def test_invalid_nested_identity_payloads_record_metrics(
+        self,
+        mocker: MockerFixture,
+        identity_data: dict,
+    ) -> None:
+        """Test malformed nested identity payloads record invalid identity metrics."""
+        auth_dep = RHIdentityAuthDependency()
+        header_value = create_auth_header(identity_data)
+        request = create_request_with_header(mocker, header_value)
+        mock_record = mocker.patch(
+            "authentication.rh_identity._record_rh_identity_auth"
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await auth_dep(request)
+
+        assert exc_info.value.status_code == 400
+        assert "Invalid identity data" in str(exc_info.value.detail)
+        mock_record.assert_called_once()
+        result, reason, duration = mock_record.call_args.args
+        assert result == "failure"
+        assert reason == "invalid_identity"
+        assert duration >= 0
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
         "required_entitlements,should_raise,expected_error",
         [
             (["rhel"], False, None),  # Single valid
@@ -509,9 +564,9 @@ class TestRHIdentityHealthProbeSkip:
         "path",
         [
             "/readiness",
+            "/readiness/",
             "/liveness",
-            "/api/lightspeed/readiness",
-            "/api/lightspeed/liveness",
+            "/liveness/",
         ],
     )
     async def test_probe_paths_skip_auth_when_enabled(
@@ -532,8 +587,6 @@ class TestRHIdentityHealthProbeSkip:
         [
             "/readiness",
             "/liveness",
-            "/api/lightspeed/readiness",
-            "/api/lightspeed/liveness",
         ],
     )
     async def test_probe_paths_require_auth_when_disabled(
@@ -550,11 +603,19 @@ class TestRHIdentityHealthProbeSkip:
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("path", ["/", "/v1/query"])
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/",
+            "/v1/query",
+            "/api/lightspeed/readiness",
+            "/api/lightspeed/liveness",
+        ],
+    )
     async def test_non_probe_paths_require_auth_when_skip_enabled(
         self, mocker: MockerFixture, path: str
     ) -> None:
-        """Test non-probe paths still require auth even when skip_for_health_probes is True."""
+        """Test non-probe paths still require auth even when probe skipping is enabled."""
         self._mock_configuration(mocker, skip_for_health_probes=True)
 
         auth_dep = RHIdentityAuthDependency()
@@ -587,7 +648,7 @@ class TestRHIdentityMetricsSkip:
         "path",
         [
             "/metrics",
-            "/api/lightspeed/metrics",
+            "/metrics/",
         ],
     )
     async def test_metrics_path_skips_auth_when_enabled(
@@ -607,7 +668,6 @@ class TestRHIdentityMetricsSkip:
         "path",
         [
             "/metrics",
-            "/api/lightspeed/metrics",
         ],
     )
     async def test_metrics_path_requires_auth_when_disabled(
@@ -624,11 +684,19 @@ class TestRHIdentityMetricsSkip:
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("path", ["/", "/v1/query"])
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/",
+            "/v1/query",
+            "/api/lightspeed/metrics",
+            "/v1/notmetrics",
+        ],
+    )
     async def test_non_metrics_paths_require_auth_when_skip_enabled(
         self, mocker: MockerFixture, path: str
     ) -> None:
-        """Test non-metrics paths still require auth even when skip_for_metrics is True."""
+        """Test non-metrics paths still require auth even when metrics skipping is enabled."""
         self._mock_configuration(mocker, skip_for_metrics=True)
 
         auth_dep = RHIdentityAuthDependency()
