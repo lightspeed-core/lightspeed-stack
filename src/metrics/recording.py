@@ -7,11 +7,57 @@ here so callers do not need to know Prometheus object details.
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Final
 
 import metrics
 from log import get_logger
+from models.config import Action
 
 logger = get_logger(__name__)
+
+AUTHORIZATION_ACTION_UNKNOWN: Final[str] = "unknown"
+AUTHORIZATION_RESULT_SUCCESS: Final[str] = "success"
+AUTHORIZATION_RESULT_DENIED: Final[str] = "denied"
+AUTHORIZATION_RESULT_ERROR: Final[str] = "error"
+
+ALLOWED_AUTHORIZATION_ACTIONS: Final[frozenset[str]] = frozenset(
+    action.value for action in Action
+)
+ALLOWED_AUTHORIZATION_RESULTS: Final[frozenset[str]] = frozenset(
+    {
+        AUTHORIZATION_RESULT_SUCCESS,
+        AUTHORIZATION_RESULT_DENIED,
+        AUTHORIZATION_RESULT_ERROR,
+    }
+)
+
+
+def normalize_authorization_action(action: str) -> str:
+    """Normalize authorization action labels to the bounded Action enum values.
+
+    Args:
+        action: Raw authorization action label.
+
+    Returns:
+        The action when it is a known protected action, otherwise ``unknown``.
+    """
+    if action in ALLOWED_AUTHORIZATION_ACTIONS:
+        return action
+    return AUTHORIZATION_ACTION_UNKNOWN
+
+
+def normalize_authorization_result(result: str) -> str:
+    """Normalize authorization result labels to the bounded result set.
+
+    Args:
+        result: Raw authorization result label.
+
+    Returns:
+        The result when it is allowed, otherwise ``error``.
+    """
+    if result in ALLOWED_AUTHORIZATION_RESULTS:
+        return result
+    return AUTHORIZATION_RESULT_ERROR
 
 
 @contextmanager
@@ -129,3 +175,40 @@ def record_llm_inference_duration(
         ).observe(duration)
     except (AttributeError, TypeError, ValueError):
         logger.warning("Failed to update LLM inference duration metric", exc_info=True)
+
+
+def record_authorization_check(action: str, result: str) -> None:
+    """Record one authorization check.
+
+    Args:
+        action: Protected action name. Unknown values are recorded as ``unknown``.
+        result: Bounded result label. Unknown values are recorded as ``error``.
+    """
+    normalized_action = normalize_authorization_action(action)
+    normalized_result = normalize_authorization_result(result)
+
+    try:
+        metrics.authorization_checks_total.labels(
+            normalized_action, normalized_result
+        ).inc()
+    except (AttributeError, TypeError, ValueError):
+        logger.warning("Failed to update authorization metric", exc_info=True)
+
+
+def record_authorization_duration(action: str, result: str, duration: float) -> None:
+    """Record authorization check duration.
+
+    Args:
+        action: Protected action name. Unknown values are recorded as ``unknown``.
+        result: Bounded result label. Unknown values are recorded as ``error``.
+        duration: Authorization check duration in seconds.
+    """
+    normalized_action = normalize_authorization_action(action)
+    normalized_result = normalize_authorization_result(result)
+
+    try:
+        metrics.authorization_duration_seconds.labels(
+            normalized_action, normalized_result
+        ).observe(duration)
+    except (AttributeError, TypeError, ValueError):
+        logger.warning("Failed to update authorization duration metric", exc_info=True)
