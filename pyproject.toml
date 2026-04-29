@@ -178,7 +178,7 @@ llslibdev = [
     # API tool_runtime: remote::model-context-protocol
     "mcp>=1.23.0",
     # API post_training: inline::huggingface
-    "torch==2.9.0",
+    "torch==2.9.1",
     "trl>=0.18.2",
     "peft>=0.15.2",
     # API inference: remote::vertexai
