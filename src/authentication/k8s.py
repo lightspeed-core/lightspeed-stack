@@ -410,6 +410,14 @@ def _populate_kube_admin_uid(
             cause=str(e),
         )
         raise HTTPException(**response.model_dump()) from e
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.exception("Unexpected error while resolving kube:admin cluster ID")
+        record_auth_metrics(AUTH_MOD_K8S, "failure", "unexpected_error", start_time)
+        response = InternalServerErrorResponse(
+            response="Internal server error",
+            cause=str(e),
+        )
+        raise HTTPException(**response.model_dump()) from e
 
 
 def _create_subject_access_review(
@@ -431,7 +439,7 @@ def _create_subject_access_review(
             kubernetes.client.V1SubjectAccessReview,
             authorization_api.create_subject_access_review(sar),
         )
-    except Exception as e:
+    except ApiException as e:
         logger.error("API exception during SubjectAccessReview: %s", e)
         record_auth_metrics(
             AUTH_MOD_K8S, "failure", "authorization_check_error", start_time
@@ -439,6 +447,14 @@ def _create_subject_access_review(
         response = ServiceUnavailableResponse(
             backend_name="Kubernetes API",
             cause="Unable to perform authorization check",
+        )
+        raise HTTPException(**response.model_dump()) from e
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.exception("Unexpected error during SubjectAccessReview")
+        record_auth_metrics(AUTH_MOD_K8S, "failure", "unexpected_error", start_time)
+        response = InternalServerErrorResponse(
+            response="Internal server error",
+            cause=str(e),
         )
         raise HTTPException(**response.model_dump()) from e
 
@@ -515,7 +531,13 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
         except HTTPException:
             record_auth_metrics(AUTH_MOD_K8S, "failure", "missing_token", start_time)
             raise
-        user_info = get_user_info(token)
+        try:
+            user_info = get_user_info(token)
+        except HTTPException:
+            record_auth_metrics(
+                AUTH_MOD_K8S, "failure", "token_review_error", start_time
+            )
+            raise
 
         if user_info is None:
             record_auth_metrics(AUTH_MOD_K8S, "failure", "invalid_token", start_time)

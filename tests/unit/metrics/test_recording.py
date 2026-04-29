@@ -294,6 +294,22 @@ def test_record_quota_check_logs_metric_errors(mocker: MockerFixture) -> None:
     )
 
 
+def test_record_quota_check_logs_histogram_errors(mocker: MockerFixture) -> None:
+    """Test that quota check duration metric failures are logged and swallowed."""
+    mocker.patch("metrics.recording.metrics.quota_checks_total")
+    mock_histogram = mocker.patch(
+        "metrics.recording.metrics.quota_check_duration_seconds"
+    )
+    mock_histogram.labels.return_value.observe.side_effect = TypeError("bad")
+    mock_logger = mocker.patch("metrics.recording.logger")
+
+    recording.record_quota_check("/v1/infer", "org_id", "failure", 0.75)
+
+    mock_logger.warning.assert_called_once_with(
+        "Failed to update quota check metrics", exc_info=True
+    )
+
+
 def test_record_llm_inference_duration_records_histogram(
     mocker: MockerFixture,
 ) -> None:

@@ -4,7 +4,7 @@ import json
 import time
 from asyncio import Lock
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any
 
 import aiohttp
 from authlib.jose import JsonWebKey, Key, KeySet, jwt
@@ -208,11 +208,16 @@ def _validate_jwk_claims(claims: Any, start_time: float) -> None:
 def _get_required_claim(claims: Any, claim_name: str, start_time: float) -> str:
     """Return a required JWT claim and record bounded auth failures when missing."""
     try:
-        return cast(str, claims[claim_name])
+        value = claims[claim_name]
     except KeyError as exc:
         record_auth_metrics(AUTH_MOD_JWK_TOKEN, "failure", "missing_claim", start_time)
         response = UnauthorizedResponse(cause=f"Token missing claim: {claim_name}")
         raise HTTPException(**response.model_dump()) from exc
+    if not isinstance(value, str) or not value:
+        record_auth_metrics(AUTH_MOD_JWK_TOKEN, "failure", "invalid_claim", start_time)
+        response = UnauthorizedResponse(cause=f"Token has invalid claim: {claim_name}")
+        raise HTTPException(**response.model_dump())
+    return value
 
 
 class JwkTokenAuthDependency(AuthInterface):  # pylint: disable=too-few-public-methods

@@ -84,18 +84,18 @@ authorization_duration_seconds = Histogram(
     ["action", "result"],
 )
 
-# Counter to track pre-request quota checks without exposing subject identifiers.
+# Counter to track pre-request quota checks by bounded quota category.
 quota_checks_total = Counter(
     "ls_quota_checks_total",
     "Quota availability checks",
-    ["endpoint", "quota_subject", "result"],
+    ["endpoint", "quota_type", "result"],
 )
 
-# Histogram to measure quota availability check latency.
+# Histogram to measure quota availability check latency by bounded quota category.
 quota_check_duration_seconds = Histogram(
     "ls_quota_check_duration_seconds",
     "Quota availability check duration",
-    ["endpoint", "quota_subject", "result"],
+    ["endpoint", "quota_type", "result"],
 )
 
 # Histogram to measure the latency of direct LLM inference backend calls.

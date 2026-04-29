@@ -701,7 +701,7 @@ async def infer_endpoint(  # pylint: disable=R0914
             endpoint_path,
             quota_subject,
             "skipped",
-            time.monotonic() - quota_start_time,
+            0.0,
         )
 
     request_id = get_suid()

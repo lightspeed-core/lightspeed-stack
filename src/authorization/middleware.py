@@ -148,8 +148,8 @@ async def _perform_authorization_check(
         user_roles = await role_resolver.resolve_roles(auth) | everyone_roles
 
         if not access_resolver.check_access(action, user_roles):
-            result = "denied"
             response = ForbiddenResponse.endpoint(user_id=auth[0])
+            result = "denied"
             raise HTTPException(**response.model_dump())
 
         authorized_actions = access_resolver.get_actions(user_roles)

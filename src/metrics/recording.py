@@ -167,20 +167,20 @@ def record_authorization_duration(action: str, result: str, duration: float) -> 
 
 
 def record_quota_check(
-    endpoint_path: str, quota_subject: str, result: str, duration: float
+    endpoint_path: str, quota_type: str, result: str, duration: float
 ) -> None:
     """Record a quota availability check.
 
     Args:
         endpoint_path: API endpoint path for metric labeling.
-        quota_subject: Bounded quota subject source, not the subject identifier.
+        quota_type: Bounded quota category, not the subject identifier.
         result: Bounded result label, such as ``success``, ``skipped``, or ``failure``.
         duration: Quota check duration in seconds.
     """
     try:
-        metrics.quota_checks_total.labels(endpoint_path, quota_subject, result).inc()
+        metrics.quota_checks_total.labels(endpoint_path, quota_type, result).inc()
         metrics.quota_check_duration_seconds.labels(
-            endpoint_path, quota_subject, result
+            endpoint_path, quota_type, result
         ).observe(duration)
     except (AttributeError, TypeError, ValueError):
         logger.warning("Failed to update quota check metrics", exc_info=True)

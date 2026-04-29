@@ -5,8 +5,11 @@ import time
 from fastapi import HTTPException
 from starlette.datastructures import Headers
 
+from log import get_logger
 from metrics import recording
 from models.responses import UnauthorizedResponse
+
+logger = get_logger(__name__)
 
 
 def extract_user_token(headers: Headers) -> str:
@@ -49,5 +52,15 @@ def record_auth_metrics(
         reason: Bounded reason label for the result.
         start_time: Monotonic clock time captured at the start of auth handling.
     """
-    recording.record_auth_attempt(auth_module, result, reason)
-    recording.record_auth_duration(auth_module, result, time.monotonic() - start_time)
+    try:
+        recording.record_auth_attempt(auth_module, result, reason)
+        recording.record_auth_duration(
+            auth_module, result, time.monotonic() - start_time
+        )
+    except Exception:  # pylint: disable=broad-exception-caught
+        logger.warning(
+            "Failed to record authentication metrics for module %s with result %s",
+            auth_module,
+            result,
+            exc_info=True,
+        )
