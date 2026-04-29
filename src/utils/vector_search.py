@@ -66,12 +66,12 @@ async def _rerank_chunks_with_cross_encoder(
 
     Args:
         query: The search query
-        chunks: RAG chunks to rerank
+        chunks: RAG chunks to rerank (should contain original weighted scores)
         top_k: Number of top chunks to return
         model_name: Cross-encoder model name to use
 
     Returns:
-        Top top_k chunks sorted by cross-encoder score (descending)
+        Top top_k chunks sorted by combined cross-encoder and weighted score (descending)
     """
     if not chunks:
         return []
@@ -91,26 +91,63 @@ async def _rerank_chunks_with_cross_encoder(
         if hasattr(scores, "tolist"):
             scores = scores.tolist()
 
-        # Normalize scores to [0,1] range using min-max normalization
+        # Normalize cross-encoder scores to [0,1] range using min-max normalization
         if len(scores) > 1:
             min_score = min(scores)
             max_score = max(scores)
             score_range = max_score - min_score
             if score_range > 0:
-                normalized_scores = [(score - min_score) / score_range for score in scores]
+                normalized_ce_scores = [(score - min_score) / score_range for score in scores]
             else:
                 # All scores are identical, assign 0.5 to all
-                normalized_scores = [0.5] * len(scores)
+                normalized_ce_scores = [0.5] * len(scores)
         else:
             # Single score, assign 1.0
-            normalized_scores = [1.0] * len(scores)
+            normalized_ce_scores = [1.0] * len(scores)
 
-        # Combine normalized scores with chunks and sort by score (descending)
-        indexed = list(zip(normalized_scores, chunks, strict=True))
+        # Extract original weighted scores and normalize them
+        original_scores = [chunk.score if chunk.score is not None else 0.0 for chunk in chunks]
+        
+        if len(original_scores) > 1:
+            min_orig = min(original_scores)
+            max_orig = max(original_scores)
+            orig_range = max_orig - min_orig
+            if orig_range > 0:
+                normalized_orig_scores = [(score - min_orig) / orig_range for score in original_scores]
+            else:
+                # All original scores identical, assign 0.5 to all
+                normalized_orig_scores = [0.5] * len(original_scores)
+        else:
+            # Single score, assign 1.0
+            normalized_orig_scores = [1.0] * len(original_scores)
+
+        # Combine cross-encoder scores with original weighted scores (favor original weighted scores)
+        # This ensures score multipliers are still influential in the final ranking
+        # Weight: 30% cross-encoder, 70% original weighted scores
+        combined_scores = [
+            (0.3 * ce_score + 0.7 * orig_score) 
+            for ce_score, orig_score in zip(normalized_ce_scores, normalized_orig_scores, strict=True)
+        ]
+
+        # Combine scores with chunks and sort by combined score (descending)
+        indexed = list(zip(combined_scores, chunks, strict=True))
         indexed.sort(key=lambda x: x[0], reverse=True)
         top_indexed = indexed[:top_k]
 
-        # Return RAGChunk list with normalized cross-encoder scores [0,1]
+        # Log the score combination results
+        logger.info(
+            "Cross-encoder scoring completed: combined %d cross-encoder + original scores (30%%/70%% mix), returning top %d chunks",
+            len(chunks), 
+            len(top_indexed)
+        )
+        if logger.isEnabledFor(10):  # DEBUG level
+            for i, (score, chunk) in enumerate(top_indexed[:3]):  # Show top 3
+                logger.debug(
+                    "Reranked chunk %d: source=%s, combined_score=%.3f, content_preview='%.50s...'",
+                    i + 1, chunk.source, score, chunk.content
+                )
+
+        # Return RAGChunk list with combined scores
         return [
             RAGChunk(
                 content=chunk.content,
@@ -765,11 +802,21 @@ async def build_rag_context(  # pylint: disable=too-many-locals
 
     # Rerank full pool with cross-encoder if enabled; boost BYOK then take top_k
     if configuration.reranker.enabled:
+        logger.info(
+            "Reranker enabled: processing %d chunks with model '%s'",
+            len(merged),
+            configuration.reranker.model
+        )
         reranked = await _rerank_chunks_with_cross_encoder(
             query, merged, pool_size, model_name=configuration.reranker.model
         )
         context_chunks = _apply_byok_rerank_boost(reranked)[:top_k]
+        logger.info(
+            "Reranker completed: returned %d top chunks after BYOK boost",
+            len(context_chunks)
+        )
     else:
+        logger.info("Reranker disabled: using original vector similarity scores")
         # Skip reranking, just apply boost and take top_k from original scores
         context_chunks = _apply_byok_rerank_boost(merged)[:top_k]
 

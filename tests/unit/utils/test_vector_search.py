@@ -912,7 +912,7 @@ class TestRerankChunksWithCrossEncoder:
 
     @pytest.mark.asyncio
     async def test_successful_reranking(self, mocker: MockerFixture) -> None:
-        """Test successful reranking with score normalization."""
+        """Test successful reranking with combined cross-encoder and original scores."""
         # Create test chunks
         chunks = [
             RAGChunk(content="Content 1", source="source_1", score=0.5),
@@ -937,15 +937,18 @@ class TestRerankChunksWithCrossEncoder:
         ]
         mock_model.predict.assert_called_once_with(expected_pairs)
 
-        # Verify results are sorted by normalized scores (highest first)
+        # Verify results are sorted by combined scores (highest first)
         assert len(result) == 3
-        assert result[0].content == "Content 3"  # Score 3.0 -> normalized to 1.0
-        assert result[1].content == "Content 1"  # Score 2.5 -> normalized to 0.75
-        assert result[2].content == "Content 2"  # Score 1.0 -> normalized to 0.0
+        assert result[0].content == "Content 3"  # Highest combined score
+        assert result[1].content == "Content 1"  # Middle combined score
+        assert result[2].content == "Content 2"  # Lowest combined score
 
-        # Verify scores are normalized to [0,1]
+        # Verify scores are combined (30% cross-encoder + 70% original weighted scores)
+        # Content 3: 0.3 * 1.0 + 0.7 * 1.0 = 1.0
+        # Content 1: 0.3 * 0.75 + 0.7 * 0.4 = 0.505 (approximately)
+        # Content 2: 0.3 * 0.0 + 0.7 * 0.0 = 0.0
         assert result[0].score == 1.0
-        assert result[1].score == 0.75
+        assert abs(result[1].score - 0.505) < 0.01  # Allow small floating point errors
         assert result[2].score == 0.0
 
     @pytest.mark.asyncio
@@ -969,22 +972,27 @@ class TestRerankChunksWithCrossEncoder:
 
     @pytest.mark.asyncio
     async def test_identical_scores_normalization(self, mocker: MockerFixture) -> None:
-        """Test normalization when all scores are identical."""
+        """Test normalization when all cross-encoder scores are identical."""
         chunks = [
             RAGChunk(content="Content 1", source="source_1", score=0.5),
             RAGChunk(content="Content 2", source="source_2", score=0.3),
         ]
 
         mock_model = mocker.Mock()
-        mock_model.predict.return_value = [1.5, 1.5]  # Identical scores
+        mock_model.predict.return_value = [1.5, 1.5]  # Identical cross-encoder scores
         mocker.patch("utils.vector_search._get_cross_encoder", return_value=mock_model)
 
         result = await _rerank_chunks_with_cross_encoder("test query", chunks, 2)
 
-        # All scores should be 0.5 when identical
+        # When cross-encoder scores are identical (both normalized to 0.5), 
+        # combined scores should favor original scores
+        # Content 1: 0.3 * 0.5 + 0.7 * 1.0 = 0.85 (orig score 0.5 normalized to 1.0)
+        # Content 2: 0.3 * 0.5 + 0.7 * 0.0 = 0.15 (orig score 0.3 normalized to 0.0)
         assert len(result) == 2
-        assert result[0].score == 0.5
-        assert result[1].score == 0.5
+        assert result[0].content == "Content 1"  # Higher original score
+        assert result[1].content == "Content 2"  # Lower original score
+        assert result[0].score == 0.85
+        assert result[1].score == 0.15
 
     @pytest.mark.asyncio
     async def test_single_chunk_normalization(self, mocker: MockerFixture) -> None:

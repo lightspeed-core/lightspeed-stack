@@ -102,6 +102,7 @@ def test_dump_configuration(tmp_path: Path) -> None:
         assert "byok_rag" in content
         assert "quota_handlers" in content
         assert "azure_entra_id" in content
+        assert "reranker" in content
 
         # check the whole deserialized JSON file content
         assert content == {
@@ -222,6 +223,10 @@ def test_dump_configuration(tmp_path: Path) -> None:
             },
             "splunk": None,
             "deployment_environment": "development",
+            "reranker": {
+                "enabled": True,
+                "model": "cross-encoder/ms-marco-MiniLM-L6-v2"
+            },
         }
 
 
@@ -445,6 +450,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
         assert "byok_rag" in content
         assert "quota_handlers" in content
         assert "azure_entra_id" in content
+        assert "reranker" in content
 
         # check the whole deserialized JSON file content
         assert content == {
@@ -580,6 +586,10 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
             },
             "splunk": None,
             "deployment_environment": "development",
+            "reranker": {
+                "enabled": True,
+                "model": "cross-encoder/ms-marco-MiniLM-L6-v2"
+            },
         }
 
 
@@ -815,6 +825,10 @@ def test_dump_configuration_with_quota_limiters_different_values(
             },
             "splunk": None,
             "deployment_environment": "development",
+            "reranker": {
+                "enabled": True,
+                "model": "cross-encoder/ms-marco-MiniLM-L6-v2"
+            },
         }
 
 
@@ -1025,6 +1039,10 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
             },
             "splunk": None,
             "deployment_environment": "development",
+            "reranker": {
+                "enabled": True,
+                "model": "cross-encoder/ms-marco-MiniLM-L6-v2"
+            },
         }
 
 
@@ -1220,4 +1238,8 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
             },
             "splunk": None,
             "deployment_environment": "development",
+            "reranker": {
+                "enabled": True,
+                "model": "cross-encoder/ms-marco-MiniLM-L6-v2"
+            },
         }

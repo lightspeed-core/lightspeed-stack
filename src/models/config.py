@@ -1820,7 +1820,11 @@ class OkpConfiguration(ConfigurationBase):
 class RerankerConfiguration(ConfigurationBase):
     """Reranker configuration for RAG chunk reranking."""
 
-    enabled: bool = True
+    enabled: bool = Field(
+        default = True,
+        title="Reranker enabled",
+        description= "When True, reranking applied to RAG chunks. "
+        "When False, reranking is disabled and origianl scoring used.",)
     model: str = Field(
         default="cross-encoder/ms-marco-MiniLM-L6-v2",
         title="Reranker model",
@@ -2122,23 +2126,26 @@ class Configuration(ConfigurationBase):
         # Check if BYOK RAG entries are configured
         has_byok = len(self.byok_rag) > 0
 
+
+        #Check if inline RAG
+        has_inline_rag = len(self.rag) > 0
+
         # Check if OKP is configured in either inline or tool RAG strategies
         # pylint: disable=no-member
         has_okp = (
             constants.OKP_RAG_ID in self.rag.inline
-            or constants.OKP_RAG_ID in self.rag.tool
         )
 
         # If both BYOK and OKP are present and reranker is using default settings,
         # ensure it's enabled for optimal results
         if (
-            has_byok
+            has_byok or has_inline_rag
             and has_okp
             and not self.reranker.enabled
         ):
         
             logger.info(
-                "Automatically enabling reranker: Both BYOK RAG (%d entries) and OKP "
+                "Automatically enabling reranker: Both BYOK RAG (%d entries) or other inline RAG and OKP "
                 "are configured. Reranking improves result quality when multiple "
                 "knowledge sources are available.",
                 len(self.byok_rag),
