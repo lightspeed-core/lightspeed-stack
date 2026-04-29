@@ -2,6 +2,7 @@
 """Unit tests for the /responses REST API endpoint (LCORE Responses API)."""
 
 import json
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Any, Optional, cast
 
@@ -22,6 +23,7 @@ from app.endpoints.responses import (
     _should_filter_mcp_chunk,
     handle_non_streaming_response,
     handle_streaming_response,
+    response_generator,
     responses_endpoint_handler,
 )
 from configuration import AppConfig
@@ -30,7 +32,12 @@ from models.config import Action, ModelContextProtocolServer
 from models.database.conversations import UserConversation
 from models.requests import ResponsesRequest
 from models.responses import ResponsesResponse
-from utils.types import RAGContext, ResponsesConversationContext, TurnSummary
+from utils.types import (
+    RAGContext,
+    ResponsesApiParams,
+    ResponsesConversationContext,
+    TurnSummary,
+)
 
 MOCK_AUTH = (
     "00000001-0001-0001-0001-000000000001",
@@ -1259,6 +1266,57 @@ class TestHandleStreamingResponse:
         assert "response.in_progress" in body
         assert '"available_quotas":{}' in body or '"available_quotas": {}' in body
         assert "[DONE]" in body
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("yield_chunk_before_error", [False, True])
+    async def test_response_generator_records_failure_when_stream_iteration_raises(
+        self,
+        minimal_config: AppConfig,
+        mocker: MockerFixture,
+        yield_chunk_before_error: bool,
+    ) -> None:
+        """Test stream iterator failures record inference failure metrics once."""
+        in_progress_chunk = mocker.Mock()
+        in_progress_chunk.type = "response.in_progress"
+        in_progress_chunk.model_dump.return_value = {
+            "type": "response.in_progress",
+            "response": {"id": "r0"},
+        }
+
+        async def failing_stream() -> AsyncIterator[Any]:
+            """Yield an optional chunk, then raise like a broken backend stream."""
+            if yield_chunk_before_error:
+                yield in_progress_chunk
+            raise RuntimeError("stream failed")
+
+        request = _request_with_model_and_conv("Hi", model="provider/model1")
+        mocker.patch(f"{MODULE}.configuration", minimal_config)
+        mocker.patch(f"{MODULE}.time.monotonic", return_value=13.0)
+        mock_record = mocker.patch(f"{MODULE}._record_response_inference_result")
+
+        generator = response_generator(
+            stream=failing_stream(),
+            original_request=request,
+            updated_request=request,
+            api_params=ResponsesApiParams.model_validate(request.model_dump()),
+            user_id=MOCK_AUTH[0],
+            turn_summary=TurnSummary(),
+            inline_rag_context=RAGContext(),
+            endpoint_path="/v1/responses",
+            inference_start_time=10.0,
+        )
+
+        with pytest.raises(RuntimeError, match="stream failed"):
+            async for _ in generator:
+                pass
+
+        mock_record.assert_called_once_with(
+            "provider/model1",
+            "/v1/responses",
+            "failure",
+            3.0,
+            record_failure=True,
+        )
 
     @pytest.mark.asyncio
     async def test_handle_streaming_builds_tool_call_summary_from_output(

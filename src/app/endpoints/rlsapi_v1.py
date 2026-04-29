@@ -535,6 +535,36 @@ def _resolve_quota_subject(request: Request, auth: AuthTuple) -> Optional[str]:
     return system_id
 
 
+def _check_infer_quota(
+    request: Request, auth: AuthTuple, endpoint_path: str
+) -> Optional[str]:
+    """Check infer quota availability and record bounded quota metrics."""
+    quota_id = _resolve_quota_subject(request, auth)
+    quota_type = configuration.rlsapi_v1.quota_subject or "disabled"
+    if quota_id is None:
+        recording.record_quota_check(endpoint_path, quota_type, "skipped", 0.0)
+        return None
+
+    quota_start_time = time.monotonic()
+    try:
+        check_tokens_available(configuration.quota_limiters, quota_id)
+    except HTTPException:
+        recording.record_quota_check(
+            endpoint_path,
+            quota_type,
+            "failure",
+            time.monotonic() - quota_start_time,
+        )
+        raise
+    recording.record_quota_check(
+        endpoint_path,
+        quota_type,
+        "success",
+        time.monotonic() - quota_start_time,
+    )
+    return quota_id
+
+
 def _build_infer_response(
     response_text: str,
     request_id: str,
@@ -676,33 +706,7 @@ async def infer_endpoint(  # pylint: disable=R0914
 
     # Quota enforcement: resolve subject and check availability before any work.
     # No-op when quota_subject is not configured or no quota limiters exist.
-    quota_id = _resolve_quota_subject(request, auth)
-    quota_subject = configuration.rlsapi_v1.quota_subject or "disabled"
-    quota_start_time = time.monotonic()
-    if quota_id is not None:
-        try:
-            check_tokens_available(configuration.quota_limiters, quota_id)
-        except HTTPException:
-            recording.record_quota_check(
-                endpoint_path,
-                quota_subject,
-                "failure",
-                time.monotonic() - quota_start_time,
-            )
-            raise
-        recording.record_quota_check(
-            endpoint_path,
-            quota_subject,
-            "success",
-            time.monotonic() - quota_start_time,
-        )
-    else:
-        recording.record_quota_check(
-            endpoint_path,
-            quota_subject,
-            "skipped",
-            0.0,
-        )
+    quota_id = _check_infer_quota(request, auth, endpoint_path)
 
     request_id = get_suid()
 

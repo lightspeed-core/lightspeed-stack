@@ -6,6 +6,7 @@ import asyncio
 import json
 import time
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Annotated, Any, Final, Optional, cast
 
@@ -117,6 +118,16 @@ router = APIRouter(tags=["responses"])
 _USER_AGENT_MAX_LENGTH: Final[int] = 128
 
 
+@dataclass
+class StreamChunkProcessingResult:
+    """Result of preparing one Responses API stream chunk for SSE output."""
+
+    event: Optional[str]
+    sequence_number: int
+    latest_response_object: Optional[OpenAIResponseObject] = None
+    inference_metric_recorded: bool = False
+
+
 def _record_response_inference_result(
     model_id: str,
     endpoint_path: str,
@@ -138,6 +149,46 @@ def _record_response_inference_result(
         recording.record_llm_failure(provider, model, endpoint_path)
     recording.record_llm_inference_duration(
         provider, model, endpoint_path, result, duration
+    )
+
+
+def _check_response_quota(user_id: str, endpoint_path: str) -> None:
+    """Check response quota availability and record bounded quota metrics."""
+    quota_start_time = time.monotonic()
+    try:
+        check_tokens_available(configuration.quota_limiters, user_id)
+    except HTTPException:
+        recording.record_quota_check(
+            endpoint_path,
+            "user_id",
+            "failure",
+            time.monotonic() - quota_start_time,
+        )
+        raise
+    recording.record_quota_check(
+        endpoint_path,
+        "user_id",
+        "success",
+        time.monotonic() - quota_start_time,
+    )
+
+
+def _record_stream_terminal_inference_result(
+    event_type: Optional[str],
+    api_params: ResponsesApiParams,
+    endpoint_path: str,
+    inference_start_time: Optional[float],
+) -> None:
+    """Record inference metrics after a terminal streaming response event."""
+    if inference_start_time is None:
+        return
+    inference_result = "success" if event_type == "response.completed" else "failure"
+    _record_response_inference_result(
+        api_params.model,
+        endpoint_path,
+        inference_result,
+        time.monotonic() - inference_start_time,
+        record_failure=(inference_result == "failure"),
     )
 
 
@@ -306,24 +357,7 @@ async def responses_endpoint_handler(
 
     endpoint_path = "/v1/responses"
 
-    # Check token availability
-    quota_start_time = time.monotonic()
-    try:
-        check_tokens_available(configuration.quota_limiters, user_id)
-    except HTTPException:
-        recording.record_quota_check(
-            endpoint_path,
-            "user_id",
-            "failure",
-            time.monotonic() - quota_start_time,
-        )
-        raise
-    recording.record_quota_check(
-        endpoint_path,
-        "user_id",
-        "success",
-        time.monotonic() - quota_start_time,
-    )
+    _check_response_quota(user_id, endpoint_path)
 
     # Enforce RBAC: optionally disallow overriding model in requests
     validate_model_provider_override(
@@ -860,6 +894,102 @@ def _populate_turn_summary(
     turn_summary.rag_chunks = inline_rag_context.rag_chunks + tool_rag_chunks
 
 
+def _process_stream_chunk(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    chunk: OpenAIResponseObjectStream,
+    original_request: ResponsesRequest,
+    api_params: ResponsesApiParams,
+    user_id: str,
+    turn_summary: TurnSummary,
+    configured_mcp_labels: set[str],
+    server_mcp_output_indices: set[int],
+    sequence_number: int,
+    endpoint_path: str,
+    inference_start_time: Optional[float],
+    normalized_conv_id: str,
+) -> StreamChunkProcessingResult:
+    """Prepare one streaming chunk for SSE output and terminal accounting."""
+    event_type = getattr(chunk, "type", None)
+    logger.debug("Processing streaming chunk, type: %s", event_type)
+
+    if _should_filter_mcp_chunk(
+        chunk, event_type, configured_mcp_labels, server_mcp_output_indices
+    ):
+        return StreamChunkProcessingResult(event=None, sequence_number=sequence_number)
+
+    chunk_dict = chunk.model_dump(exclude_none=True, by_alias=True)
+    chunk_dict["sequence_number"] = sequence_number
+    sequence_number += 1
+
+    if "response" in chunk_dict:
+        chunk_dict["response"]["conversation"] = normalized_conv_id
+        _sanitize_response_dict(
+            chunk_dict["response"], configured_mcp_labels, original_request
+        )
+        tools = chunk_dict["response"].get("tools")
+        if tools is not None:
+            chunk_dict["response"]["tools"] = translate_vector_store_ids_to_user_facing(
+                tools,
+                configuration.rag_id_mapping,
+            )
+
+    if event_type == "response.in_progress":
+        chunk_dict["response"]["available_quotas"] = {}
+        chunk_dict["response"]["output_text"] = ""
+
+    latest_response_object = None
+    inference_metric_recorded = False
+    if event_type in ("response.completed", "response.incomplete", "response.failed"):
+        latest_response_object = _process_terminal_stream_chunk(
+            chunk,
+            chunk_dict,
+            api_params,
+            user_id,
+            turn_summary,
+            endpoint_path,
+            inference_start_time,
+        )
+        inference_metric_recorded = True
+
+    return StreamChunkProcessingResult(
+        event=f"event: {event_type or 'error'}\ndata: {json.dumps(chunk_dict)}\n\n",
+        sequence_number=sequence_number,
+        latest_response_object=latest_response_object,
+        inference_metric_recorded=inference_metric_recorded,
+    )
+
+
+def _process_terminal_stream_chunk(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    chunk: OpenAIResponseObjectStream,
+    chunk_dict: dict[str, Any],
+    api_params: ResponsesApiParams,
+    user_id: str,
+    turn_summary: TurnSummary,
+    endpoint_path: str,
+    inference_start_time: Optional[float],
+) -> OpenAIResponseObject:
+    """Handle token, quota, output, and inference metrics for terminal chunks."""
+    latest_response_object = cast(OpenAIResponseObject, cast(Any, chunk).response)
+    turn_summary.token_usage = extract_token_usage(
+        latest_response_object.usage, api_params.model, endpoint_path
+    )
+    consume_query_tokens(
+        user_id=user_id,
+        model_id=api_params.model,
+        token_usage=turn_summary.token_usage,
+    )
+    chunk_dict["response"]["available_quotas"] = get_available_quotas(
+        quota_limiters=configuration.quota_limiters, user_id=user_id
+    )
+    turn_summary.llm_response = extract_text_from_response_items(
+        latest_response_object.output
+    )
+    chunk_dict["response"]["output_text"] = turn_summary.llm_response
+    _record_stream_terminal_inference_result(
+        getattr(chunk, "type", None), api_params, endpoint_path, inference_start_time
+    )
+    return latest_response_object
+
+
 async def response_generator(
     stream: AsyncIterator[OpenAIResponseObjectStream],
     original_request: ResponsesRequest,
@@ -897,88 +1027,42 @@ async def response_generator(
     configured_mcp_labels = {s.name for s in configuration.mcp_servers}
     # Track output indices of server-deployed MCP calls to filter their events
     server_mcp_output_indices: set[int] = set()
+    inference_metric_recorded = False
 
-    async for chunk in stream:
-        event_type = getattr(chunk, "type", None)
-        logger.debug("Processing streaming chunk, type: %s", event_type)
-
-        # Filter out streaming events for server-deployed MCP tools.
-        # These are handled internally by LCS and should not be forwarded
-        # to clients that don't understand the mcp_call item type.
-        if _should_filter_mcp_chunk(
-            chunk, event_type, configured_mcp_labels, server_mcp_output_indices
-        ):
-            continue
-
-        chunk_dict = chunk.model_dump(exclude_none=True, by_alias=True)
-
-        # Create own sequence number for chunks to maintain order
-        chunk_dict["sequence_number"] = sequence_number
-        sequence_number += 1
-
-        if "response" in chunk_dict:
-            chunk_dict["response"]["conversation"] = normalized_conv_id
-            _sanitize_response_dict(
-                chunk_dict["response"],
-                configured_mcp_labels,
+    try:
+        async for chunk in stream:
+            result = _process_stream_chunk(
+                chunk,
                 original_request,
+                api_params,
+                user_id,
+                turn_summary,
+                configured_mcp_labels,
+                server_mcp_output_indices,
+                sequence_number,
+                endpoint_path,
+                inference_start_time,
+                normalized_conv_id,
             )
-            tools = chunk_dict["response"].get("tools")
-            if tools is not None:
-                chunk_dict["response"]["tools"] = (
-                    translate_vector_store_ids_to_user_facing(
-                        tools,
-                        configuration.rag_id_mapping,
-                    )
-                )
-        # Intermediate response - no quota consumption and text yet
-        if event_type == "response.in_progress":
-            chunk_dict["response"]["available_quotas"] = {}
-            chunk_dict["response"]["output_text"] = ""
-
-        # Handle completion, incomplete, and failed events - only quota handling here
-        if event_type in (
-            "response.completed",
-            "response.incomplete",
-            "response.failed",
-        ):
-            latest_response_object = cast(
-                OpenAIResponseObject, cast(Any, chunk).response
+            sequence_number = result.sequence_number
+            if result.event is None:
+                continue
+            if result.latest_response_object is not None:
+                latest_response_object = result.latest_response_object
+            inference_metric_recorded = (
+                inference_metric_recorded or result.inference_metric_recorded
             )
-
-            # Extract and consume tokens if any were used
-            turn_summary.token_usage = extract_token_usage(
-                latest_response_object.usage, api_params.model, endpoint_path
+            yield result.event
+    except (RuntimeError, APIConnectionError, LLSApiStatusError, OpenAIAPIStatusError):
+        if not inference_metric_recorded and inference_start_time is not None:
+            _record_response_inference_result(
+                api_params.model,
+                endpoint_path,
+                "failure",
+                time.monotonic() - inference_start_time,
+                record_failure=True,
             )
-            consume_query_tokens(
-                user_id=user_id,
-                model_id=api_params.model,
-                token_usage=turn_summary.token_usage,
-            )
-
-            # Get available quotas after token consumption
-            available_quotas = get_available_quotas(
-                quota_limiters=configuration.quota_limiters, user_id=user_id
-            )
-            chunk_dict["response"]["available_quotas"] = available_quotas
-            turn_summary.llm_response = extract_text_from_response_items(
-                latest_response_object.output
-            )
-            chunk_dict["response"]["output_text"] = turn_summary.llm_response
-            if inference_start_time is not None:
-                inference_result = (
-                    "success" if event_type == "response.completed" else "failure"
-                )
-                _record_response_inference_result(
-                    api_params.model,
-                    endpoint_path,
-                    inference_result,
-                    time.monotonic() - inference_start_time,
-                    record_failure=(inference_result == "failure"),
-                )
-
-        data_json = json.dumps(chunk_dict)
-        yield f"event: {event_type or 'error'}\ndata: {data_json}\n\n"
+        raise
 
     # Extract response metadata from final response object
     if latest_response_object:
