@@ -216,3 +216,53 @@ def test_histogram_recorders_observe_metrics_and_log_errors(
     recording_logger.warning.assert_called_once_with(
         case.warning_message, exc_info=True
     )
+
+
+@pytest.mark.parametrize("failing_metric", ["counter", "histogram"])
+def test_record_quota_check_updates_metrics_and_logs_errors(
+    mocker: MockerFixture,
+    recording_logger: MockType,
+    failing_metric: str,
+) -> None:
+    """Test quota helper counter and histogram updates plus both failure points."""
+    mock_counter = mocker.patch("metrics.recording.metrics.quota_checks_total")
+    mock_histogram = mocker.patch(
+        "metrics.recording.metrics.quota_check_duration_seconds"
+    )
+
+    recording.record_quota_check("/v1/infer", "org_id", "success", 0.75)
+
+    mock_counter.labels.assert_called_once_with("/v1/infer", "org_id", "success")
+    mock_counter.labels.return_value.inc.assert_called_once()
+    mock_histogram.labels.assert_called_once_with("/v1/infer", "org_id", "success")
+    mock_histogram.labels.return_value.observe.assert_called_once_with(0.75)
+    recording_logger.warning.assert_not_called()
+
+    mock_counter.reset_mock()
+    mock_histogram.reset_mock()
+    recording_logger.reset_mock()
+    if failing_metric == "counter":
+        mock_counter.labels.return_value.inc.side_effect = TypeError("bad")
+    else:
+        mock_histogram.labels.return_value.observe.side_effect = TypeError("bad")
+
+    recording.record_quota_check("/v1/infer", "org_id", "failure", 0.75)
+
+    recording_logger.warning.assert_called_once_with(
+        "Failed to update quota check metrics", exc_info=True
+    )
+
+
+def test_record_quota_check_bounds_labels(mocker: MockerFixture) -> None:
+    """Test quota helper maps unexpected label values to bounded fallbacks."""
+    mock_counter = mocker.patch("metrics.recording.metrics.quota_checks_total")
+    mock_histogram = mocker.patch(
+        "metrics.recording.metrics.quota_check_duration_seconds"
+    )
+
+    recording.record_quota_check("/v1/responses", "customer-123", "timeout", 0.25)
+
+    mock_counter.labels.assert_called_once_with("/v1/responses", "user_id", "error")
+    mock_counter.labels.return_value.inc.assert_called_once()
+    mock_histogram.labels.assert_called_once_with("/v1/responses", "user_id", "error")
+    mock_histogram.labels.return_value.observe.assert_called_once_with(0.25)

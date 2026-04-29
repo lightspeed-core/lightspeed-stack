@@ -4,6 +4,7 @@
 
 import asyncio
 import json
+import time
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Annotated, Any, Final, Optional, cast
@@ -38,6 +39,7 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import ENDPOINT_PATH_RESPONSES, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
 from log import get_logger
+from metrics import recording
 from models.api.responses import (
     UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH,
     ConflictResponse,
@@ -134,6 +136,37 @@ def _get_user_agent(request: Request) -> Optional[str]:
     sanitized = "".join(c for c in raw if ord(c) >= 32 and c not in ("\r", "\n"))
     sanitized = sanitized[:_USER_AGENT_MAX_LENGTH]
     return sanitized or None
+
+
+def _check_response_quota(user_id: str, endpoint_path: str) -> None:
+    """Check response quota availability and record bounded quota metrics."""
+    quota_start_time = time.monotonic()
+    try:
+        check_tokens_available(configuration.quota_limiters, user_id)
+    except HTTPException:
+        recording.record_quota_check(
+            endpoint_path,
+            recording.QUOTA_TYPE_USER_ID,
+            recording.QUOTA_RESULT_FAILURE,
+            time.monotonic() - quota_start_time,
+        )
+        raise
+    except Exception:  # pylint: disable=broad-exception-caught
+        # Unexpected quota backend failures still need bounded metrics before
+        # propagating to the endpoint error handling layer.
+        recording.record_quota_check(
+            endpoint_path,
+            recording.QUOTA_TYPE_USER_ID,
+            recording.QUOTA_RESULT_ERROR,
+            time.monotonic() - quota_start_time,
+        )
+        raise
+    recording.record_quota_check(
+        endpoint_path,
+        recording.QUOTA_TYPE_USER_ID,
+        recording.QUOTA_RESULT_SUCCESS,
+        time.monotonic() - quota_start_time,
+    )
 
 
 responses_response: dict[int | str, dict[str, Any]] = {
@@ -275,11 +308,12 @@ async def responses_endpoint_handler(
     started_at = datetime.now(UTC)
     rh_identity_context = get_rh_identity_context(request)
     user_id, _, _, token = auth
+    endpoint_path = "/v1/responses"
 
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
     # Check token availability
-    check_tokens_available(configuration.quota_limiters, user_id)
+    _check_response_quota(user_id, endpoint_path)
 
     # Enforce RBAC: optionally disallow overriding model in requests
     validate_model_provider_override(
