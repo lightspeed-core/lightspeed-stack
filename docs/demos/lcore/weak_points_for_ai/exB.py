@@ -1,6 +1,5 @@
 # Pydantic model utilization
 
-
 class TranscriptMetadata(BaseModel):
     """Metadata for a transcript entry."""
 
@@ -32,3 +31,4 @@ def create_transcript_metadata(
         conversation_id=conversation_id,
         timestamp=datetime.now(UTC).isoformat(),
     )
+

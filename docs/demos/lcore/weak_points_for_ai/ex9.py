@@ -1,6 +1,5 @@
 # Pydantic model utilization
 
-
 class ShieldModerationBlocked(BaseModel):
     """Shield moderation blocked the content; refusal details are present."""
 
