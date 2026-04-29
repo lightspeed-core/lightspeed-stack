@@ -1,7 +1,8 @@
 """Unit tests for model availability verification at startup."""
 
+import httpx
 import pytest
-from llama_stack_client import APIConnectionError
+from llama_stack_client import APIConnectionError, APIStatusError
 from pytest_mock import MockerFixture
 
 from utils.model_availability import verify_models_available
@@ -120,3 +121,44 @@ async def test_exponential_backoff_on_connection_error(
     expected_delays = [2, 4]
     actual_delays = [call.args[0] for call in mock_sleep.await_args_list]
     assert actual_delays == expected_delays
+
+
+def _make_api_status_error() -> APIStatusError:
+    """Create an APIStatusError with a mocked httpx response."""
+    mock_request = httpx.Request("GET", "http://localhost/models")
+    mock_response = httpx.Response(
+        status_code=503, text="Service Unavailable", request=mock_request
+    )
+    return APIStatusError("Internal Server Error", response=mock_response, body=None)
+
+
+@pytest.mark.asyncio
+async def test_api_status_error_then_recovery(mocker: MockerFixture) -> None:
+    """APIStatusError on first attempt, success on the second."""
+    mocker.patch("utils.model_availability.asyncio.sleep")
+
+    mock_model = mocker.Mock()
+    mock_model.id = "model-a"
+    mock_client = mocker.AsyncMock()
+    mock_client.models.list.side_effect = [
+        _make_api_status_error(),
+        [mock_model],
+    ]
+
+    await verify_models_available(mock_client, max_retries=3, base_delay=2)
+
+    assert mock_client.models.list.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_api_status_error_exhaustion(mocker: MockerFixture) -> None:
+    """APIStatusError raised when all retries fail with status errors."""
+    mocker.patch("utils.model_availability.asyncio.sleep")
+
+    mock_client = mocker.AsyncMock()
+    mock_client.models.list.side_effect = _make_api_status_error()
+
+    with pytest.raises(APIStatusError):
+        await verify_models_available(mock_client, max_retries=3, base_delay=1)
+
+    assert mock_client.models.list.await_count == 3

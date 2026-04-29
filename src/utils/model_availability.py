@@ -1,15 +1,20 @@
 """Verify that at least one model is registered with Llama Stack at startup."""
 
 import asyncio
+from typing import Final
 
-from llama_stack_client import APIConnectionError, AsyncLlamaStackClient
+from llama_stack_client import (
+    APIConnectionError,
+    APIStatusError,
+    AsyncLlamaStackClient,
+)
 
 from log import get_logger
 
 logger = get_logger(__name__)
 
-_DEFAULT_MAX_RETRIES = 5
-_DEFAULT_BASE_DELAY = 2
+_DEFAULT_MAX_RETRIES: Final[int] = 5
+_DEFAULT_BASE_DELAY: Final[int] = 2
 
 
 async def verify_models_available(
@@ -61,7 +66,7 @@ async def verify_models_available(
                 delay,
             )
             await asyncio.sleep(delay)
-        except APIConnectionError:
+        except (APIConnectionError, APIStatusError):
             if attempt == max_retries - 1:
                 logger.error(
                     "Failed to connect to Llama Stack after %d attempts",

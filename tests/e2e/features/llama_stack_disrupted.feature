@@ -35,7 +35,7 @@ Feature: Llama Stack connection disrupted
     Then The status code of the response is 503
     And The body of the response, ignoring the "providers" field, is the following
     """
-    {"ready": false, "reason": "Providers not healthy: unknown"}
+    {"ready": false, "reason": "Providers not healthy: unknown; Failed to check model availability: Connection error."}
     """
 
   Scenario: Check if service report proper liveness state even when llama stack is not available

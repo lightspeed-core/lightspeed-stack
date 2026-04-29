@@ -158,11 +158,14 @@ async def readiness_probe_get_method(
         ready = True
         reason = "All providers are healthy"
 
+    # Capture provider health state before model check may modify `ready`
+    providers_healthy = ready
+
     # Check model availability
     models_available, models_reason = await get_models_health_status()
     if not models_available:
         ready = False
-        if reason == "All providers are healthy":
+        if providers_healthy:
             reason = models_reason
         else:
             reason = f"{reason}; {models_reason}"
