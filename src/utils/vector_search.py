@@ -247,11 +247,11 @@ def _filter_documents_for_chunks(
         # Build same dedup key for document
         doc_url_str = str(doc.doc_url) if doc.doc_url else None
         dedup_key = doc_url_str or doc.source or ""
-        
+
         if dedup_key in final_chunk_identifiers and dedup_key not in seen:
             seen.add(dedup_key)
             filtered_documents.append(doc)
-    
+
     return filtered_documents
 
 
