@@ -21,6 +21,17 @@ from log import get_logger
 
 logger = get_logger(__name__)
 
+RH_INSIGHTS_REQUEST_ID_HEADER = "x-rh-insights-request-id"
+REQUEST_ID_HEADER = "x-request-id"
+
+
+def _get_request_id(request: Request) -> str:
+    """Return the inbound request identifier available during authentication."""
+    return request.headers.get(RH_INSIGHTS_REQUEST_ID_HEADER) or request.headers.get(
+        REQUEST_ID_HEADER,
+        "",
+    )
+
 
 class RHIdentityData:
     """Extracts and validates Red Hat Identity header data.
@@ -213,6 +224,16 @@ class RHIdentityData:
         """
         return self.identity_data["identity"].get("org_id", "")
 
+    def get_system_id(self) -> str:
+        """Extract system ID from identity data.
+
+        Returns:
+            System ID string for System identities, or empty string for User identities
+        """
+        if self._get_identity_type() == "System":
+            return self.identity_data["identity"]["system"]["cn"]
+        return ""
+
     def has_entitlement(self, service: str) -> bool:
         """Check if user has a specific service entitlement.
 
@@ -362,8 +383,12 @@ class RHIdentityAuthDependency(AuthInterface):  # pylint: disable=too-few-public
         user_id = rh_identity.get_user_id()
         username = rh_identity.get_username()
 
-        logger.debug(
-            "RH Identity authenticated: user_id=%s, username=%s", user_id, username
+        logger.info(
+            "RH Identity authenticated: request_id=%s, path=%s, org_id=%s, system_id=%s",
+            _get_request_id(request),
+            request.url.path,
+            rh_identity.get_org_id(),
+            rh_identity.get_system_id(),
         )
 
         return user_id, username, self.skip_userid_check, NO_USER_TOKEN
