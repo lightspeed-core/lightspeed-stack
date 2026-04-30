@@ -24,7 +24,7 @@ spec:
         - --port
         - "8080"
         - --max-model-len
-        - "32768"
+        - "35936"
         - --gpu-memory-utilization
         - "0.9"
       image: ${VLLM_IMAGE}
