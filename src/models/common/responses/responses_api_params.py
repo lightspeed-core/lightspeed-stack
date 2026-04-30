@@ -23,6 +23,7 @@ from llama_stack_api.openai_responses import (
 )
 from pydantic import BaseModel, Field
 
+from models.utils import add_mcp_authorizations
 from utils.tool_formatter import translate_vector_store_ids_to_user_facing
 from utils.types import IncludeParameter, ResponseInput
 
@@ -126,28 +127,19 @@ class ResponsesApiParams(BaseModel):
     )
 
     def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
-        """Serialize params, re-injecting MCP authorization stripped by exclude=True.
+        """Serialize to a request body dict.
 
-        llama-stack-api marks ``InputToolMCP.authorization`` with
-        ``Field(exclude=True)`` to prevent token leakage in API responses.
-        The base ``model_dump()`` therefore strips the field, but we need it
-        in the request payload so llama-stack server can authenticate with
-        MCP servers.  See LCORE-1414 / GitHub issue #1269.
+        Omits conversation when previous_response_id is set; restores MCP
+        authorization on dumped tool rows.
+
+        Returns:
+            Serializable dict for the Responses API request body.
         """
         result = super().model_dump(*args, **kwargs)
-        # Only one context option is allowed, previous_response_id has priority
-        # Turn is added to conversation manually if previous_response_id is used
         if self.previous_response_id:
             result.pop("conversation", None)
-        dumped_tools = result.get("tools")
-        if not self.tools or not isinstance(dumped_tools, list):
-            return result
-        if len(dumped_tools) != len(self.tools):
-            return result
-        for tool, dumped_tool in zip(self.tools, dumped_tools):
-            authorization = getattr(tool, "authorization", None)
-            if authorization is not None and isinstance(dumped_tool, dict):
-                dumped_tool["authorization"] = authorization
+        if self.tools is not None and result.get("tools") is not None:
+            result["tools"] = add_mcp_authorizations(result["tools"], self.tools)
         return result
 
     def echoed_params(self, rag_id_mapping: Mapping[str, str]) -> dict[str, Any]:

@@ -12,7 +12,12 @@ from llama_stack_api import OpenAIResponseObject
 from llama_stack_api.openai_responses import (
     OpenAIResponseInputToolChoiceMode as ToolChoiceMode,
 )
-from llama_stack_api.openai_responses import OpenAIResponseMessage
+from llama_stack_api.openai_responses import (
+    OpenAIResponseInputToolMCP as InputToolMCP,
+)
+from llama_stack_api.openai_responses import (
+    OpenAIResponseMessage,
+)
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 from pytest_mock import MockerFixture
 
@@ -72,12 +77,7 @@ def build_api_params_and_context(  # pylint: disable=too-many-arguments
     user_agent: Optional[str] = None,
 ) -> tuple[ResponsesApiParams, ResponsesContext]:
     """Build api_params/context for direct helper invocation tests."""
-    api_params = ResponsesApiParams.model_validate(
-        {
-            **updated_request.model_dump(exclude={"tools"}),
-            "tools": updated_request.tools,
-        }
-    )
+    api_params = ResponsesApiParams.model_validate(updated_request.model_dump())
     context = ResponsesContext.model_construct(
         client=client,
         auth=auth,
@@ -93,6 +93,26 @@ def build_api_params_and_context(  # pylint: disable=too-many-arguments
         user_agent=user_agent,
     )
     return api_params, context
+
+
+def test_responses_api_params_preserves_mcp_authorization() -> None:
+    """After model_validate, MCP tool authorization from model_dump is kept on api_params.tools."""
+    token = "secret-token"
+    req = ResponsesRequest(
+        input="x",
+        model=MODEL,
+        conversation=VALID_CONV_ID,
+        tools=[
+            InputToolMCP(
+                server_label="alpha",
+                server_url="http://alpha",
+                require_approval="never",
+                authorization=token,
+            )
+        ],
+    )
+    api = ResponsesApiParams.model_validate(req.model_dump())
+    assert api.tools is not None and api.tools[0].authorization == token
 
 
 def _patch_base(mocker: MockerFixture, config: AppConfig) -> None:
