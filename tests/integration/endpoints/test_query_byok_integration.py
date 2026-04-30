@@ -1094,7 +1094,7 @@ async def test_query_byok_max_chunks_caps_retrieved_results(  # pylint: disable=
 
     test_config.configuration.byok_rag = [entry]
     test_config.configuration.rag.inline = ["big-source"]
-    
+
     # Disable reranker for this test since it's testing chunk capping, not reranking
     test_config.configuration.reranker.enabled = False
 
@@ -1156,9 +1156,8 @@ async def test_query_byok_max_chunks_caps_retrieved_results(  # pylint: disable=
     # The lowest-scored chunks from the original set should be excluded
     # The highest score in the original set is at the last index
     highest_original_score = chunks_data[-1][2]  # score of the last chunk
-    # Account for BYOK rerank boost that is always applied (1.2x)
-    expected_boosted_score = highest_original_score * constants.BYOK_RAG_RERANK_BOOST
-    assert response.rag_chunks[0].score == expected_boosted_score
+    # When reranker is disabled, BYOK boost is NOT applied, so we expect original score
+    assert response.rag_chunks[0].score == highest_original_score
 
 
 @pytest.mark.asyncio

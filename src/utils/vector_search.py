@@ -14,6 +14,7 @@ from llama_stack_api.openai_responses import (
 )
 from llama_stack_client import AsyncLlamaStackClient
 from pydantic import AnyUrl
+from sentence_transformers import CrossEncoder
 
 import constants
 from configuration import configuration
@@ -42,10 +43,6 @@ def _get_cross_encoder(model_name: str) -> Any:
     """
     if model_name not in _cross_encoder_models:
         try:
-            from sentence_transformers import (  # pylint: disable=import-outside-toplevel
-                CrossEncoder,
-            )
-
             _cross_encoder_models[model_name] = CrossEncoder(model_name)
             logger.info("Loaded cross-encoder for RAG reranking: %s", model_name)
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -56,6 +53,7 @@ def _get_cross_encoder(model_name: str) -> Any:
     return _cross_encoder_models[model_name]
 
 
+# pylint: disable=too-many-locals,too-many-branches
 async def _rerank_chunks_with_cross_encoder(
     query: str,
     chunks: list[RAGChunk],
@@ -86,7 +84,7 @@ async def _rerank_chunks_with_cross_encoder(
 
         # Create query-chunk pairs for scoring
         pairs = [(query, chunk.content) for chunk in chunks]
-        scores = model.predict(pairs)
+        scores = await asyncio.to_thread(model.predict, pairs)
 
         if hasattr(scores, "tolist"):
             scores = scores.tolist()
@@ -97,7 +95,9 @@ async def _rerank_chunks_with_cross_encoder(
             max_score = max(scores)
             score_range = max_score - min_score
             if score_range > 0:
-                normalized_ce_scores = [(score - min_score) / score_range for score in scores]
+                normalized_ce_scores = [
+                    (score - min_score) / score_range for score in scores
+                ]
             else:
                 # All scores are identical, assign 0.5 to all
                 normalized_ce_scores = [0.5] * len(scores)
@@ -106,14 +106,18 @@ async def _rerank_chunks_with_cross_encoder(
             normalized_ce_scores = [1.0] * len(scores)
 
         # Extract original weighted scores and normalize them
-        original_scores = [chunk.score if chunk.score is not None else 0.0 for chunk in chunks]
-        
+        original_scores = [
+            chunk.score if chunk.score is not None else 0.0 for chunk in chunks
+        ]
+
         if len(original_scores) > 1:
             min_orig = min(original_scores)
             max_orig = max(original_scores)
             orig_range = max_orig - min_orig
             if orig_range > 0:
-                normalized_orig_scores = [(score - min_orig) / orig_range for score in original_scores]
+                normalized_orig_scores = [
+                    (score - min_orig) / orig_range for score in original_scores
+                ]
             else:
                 # All original scores identical, assign 0.5 to all
                 normalized_orig_scores = [0.5] * len(original_scores)
@@ -121,12 +125,15 @@ async def _rerank_chunks_with_cross_encoder(
             # Single score, assign 1.0
             normalized_orig_scores = [1.0] * len(original_scores)
 
-        # Combine cross-encoder scores with original weighted scores (favor original weighted scores)
+        # Combine cross-encoder scores with original weighted scores
+        # (favor original weighted scores)
         # This ensures score multipliers are still influential in the final ranking
         # Weight: 30% cross-encoder, 70% original weighted scores
         combined_scores = [
-            (0.3 * ce_score + 0.7 * orig_score) 
-            for ce_score, orig_score in zip(normalized_ce_scores, normalized_orig_scores, strict=True)
+            (0.3 * ce_score + 0.7 * orig_score)
+            for ce_score, orig_score in zip(
+                normalized_ce_scores, normalized_orig_scores, strict=True
+            )
         ]
 
         # Combine scores with chunks and sort by combined score (descending)
@@ -136,15 +143,19 @@ async def _rerank_chunks_with_cross_encoder(
 
         # Log the score combination results
         logger.info(
-            "Cross-encoder scoring completed: combined %d cross-encoder + original scores (30%%/70%% mix), returning top %d chunks",
-            len(chunks), 
-            len(top_indexed)
+            "Cross-encoder scoring completed: combined %d cross-encoder + "
+            "original scores (30%%/70%% mix), returning top %d chunks",
+            len(chunks),
+            len(top_indexed),
         )
         if logger.isEnabledFor(10):  # DEBUG level
             for i, (score, chunk) in enumerate(top_indexed[:3]):  # Show top 3
                 logger.debug(
                     "Reranked chunk %d: source=%s, combined_score=%.3f, content_preview='%.50s...'",
-                    i + 1, chunk.source, score, chunk.content
+                    i + 1,
+                    chunk.source,
+                    score,
+                    chunk.content,
                 )
 
         # Return RAGChunk list with combined scores
@@ -271,7 +282,6 @@ def _get_solr_vector_store_ids() -> list[str]:
 
 
 def _build_query_params(
-    
     solr: Optional[SolrVectorSearchRequest] = None,
     k: Optional[int] = None,
 ) -> dict[str, Any]:
@@ -680,7 +690,6 @@ async def _fetch_solr_rag(  # pylint: disable=too-many-locals
     client: AsyncLlamaStackClient,
     query: str,
     solr: Optional[SolrVectorSearchRequest] = None,
-    max_chunks: Optional[int] = None,
 ) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
     """Fetch chunks and documents from Solr RAG source.
 
@@ -698,7 +707,7 @@ async def _fetch_solr_rag(  # pylint: disable=too-many-locals
     """
     rag_chunks: list[RAGChunk] = []
     referenced_documents: list[ReferencedDocument] = []
-    limit = max_chunks if max_chunks is not None else constants.OKP_RAG_MAX_CHUNKS
+    limit = constants.OKP_RAG_MAX_CHUNKS
 
     if not _is_solr_enabled():
         logger.info("OKP vector IO is disabled, skipping OKP search")
@@ -756,7 +765,7 @@ async def _fetch_solr_rag(  # pylint: disable=too-many-locals
     return rag_chunks, referenced_documents
 
 
-async def build_rag_context(  # pylint: disable=too-many-locals
+async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branches
     client: AsyncLlamaStackClient,
     moderation_decision: str,  # pylint: disable=unused-argument
     query: str,
@@ -779,6 +788,9 @@ async def build_rag_context(  # pylint: disable=too-many-locals
     Returns:
         RAGContext containing formatted context text and referenced documents
     """
+    if moderation_decision == "blocked":
+        return RAGContext()
+
     pool_size = 2 * constants.BYOK_RAG_MAX_CHUNKS
     top_k = constants.BYOK_RAG_MAX_CHUNKS
 
@@ -805,7 +817,7 @@ async def build_rag_context(  # pylint: disable=too-many-locals
         logger.info(
             "Reranker enabled: processing %d chunks with model '%s'",
             len(merged),
-            configuration.reranker.model
+            configuration.reranker.model,
         )
         reranked = await _rerank_chunks_with_cross_encoder(
             query, merged, pool_size, model_name=configuration.reranker.model
@@ -813,12 +825,11 @@ async def build_rag_context(  # pylint: disable=too-many-locals
         context_chunks = _apply_byok_rerank_boost(reranked)[:top_k]
         logger.info(
             "Reranker completed: returned %d top chunks after BYOK boost",
-            len(context_chunks)
+            len(context_chunks),
         )
     else:
         logger.info("Reranker disabled: using original vector similarity scores")
-        # Skip reranking, just apply boost and take top_k from original scores
-        context_chunks = _apply_byok_rerank_boost(merged)[:top_k]
+        context_chunks = merged[:top_k]
 
     context_text = _format_rag_context(context_chunks, query)
 

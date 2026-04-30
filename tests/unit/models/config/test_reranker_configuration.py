@@ -17,9 +17,7 @@ class TestRerankerConfiguration:
 
     def test_custom_model(self) -> None:
         """Test configuration with custom cross-encoder model."""
-        config = RerankerConfiguration(
-            model="cross-encoder/ms-marco-TinyBERT-L2-v2"
-        )
+        config = RerankerConfiguration(model="cross-encoder/ms-marco-TinyBERT-L2-v2")
         assert config.model == "cross-encoder/ms-marco-TinyBERT-L2-v2"
         assert config.enabled is True
 
@@ -36,10 +34,7 @@ class TestRerankerConfiguration:
 
     def test_all_custom_values(self) -> None:
         """Test configuration with all custom values."""
-        config = RerankerConfiguration(
-            enabled=False,
-            model="custom-cross-encoder"
-        )
+        config = RerankerConfiguration(enabled=False, model="custom-cross-encoder")
         assert config.enabled is False
         assert config.model == "custom-cross-encoder"
 
