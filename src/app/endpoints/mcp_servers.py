@@ -3,7 +3,8 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from llama_stack_client import APIConnectionError
+from llama_stack_api.common.errors import ToolGroupNotFoundError
+from llama_stack_client import APIConnectionError, APIStatusError
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -22,7 +23,6 @@ from models.responses import (
     MCPServerInfo,
     MCPServerListResponse,
     MCPServerRegistrationResponse,
-    NotFoundResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
@@ -37,7 +37,9 @@ register_responses: dict[int | str, dict[str, Any]] = {
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     409: ConflictResponse.openapi_response(examples=["mcp server"]),
-    500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
+    500: InternalServerErrorResponse.openapi_response(
+        examples=["configuration", "mcp server registration"]
+    ),
     503: ServiceUnavailableResponse.openapi_response(
         examples=["llama stack", "kubernetes api"]
     ),
@@ -107,10 +109,7 @@ async def register_mcp_server_handler(
     except Exception as e:  # pylint: disable=broad-exception-caught
         configuration.remove_mcp_server(body.name)
         logger.error("Failed to register MCP toolgroup: %s", e)
-        error_response = InternalServerErrorResponse(
-            response="Failed to register MCP server",
-            cause=str(e),
-        )
+        error_response = InternalServerErrorResponse.mcp_server_registration_failed()
         raise HTTPException(**error_response.model_dump()) from e
 
     logger.info("Dynamically registered MCP server: %s at %s", body.name, body.url)
@@ -176,8 +175,7 @@ async def list_mcp_servers_handler(
 delete_responses: dict[int | str, dict[str, Any]] = {
     200: MCPServerDeleteResponse.openapi_response(),
     401: UnauthorizedResponse.openapi_response(examples=UNAUTHORIZED_OPENAPI_EXAMPLES),
-    403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
-    404: NotFoundResponse.openapi_response(examples=["mcp server"]),
+    403: ForbiddenResponse.openapi_response(examples=["endpoint", "mcp server static"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
         examples=["llama stack", "kubernetes api"]
@@ -216,16 +214,17 @@ async def delete_mcp_server_handler(
     check_configuration_loaded(configuration)
 
     if not configuration.is_dynamic_mcp_server(name):
-        found = any(s.name == name for s in configuration.mcp_servers)
-        if found:
-            response = ForbiddenResponse(
-                response="Cannot delete statically configured MCP server",
-                cause=f"MCP server '{name}' was configured in lightspeed-stack.yaml "
-                "and cannot be removed via the API.",
-            )
-        else:
-            response = NotFoundResponse(resource="MCP server", resource_id=name)
-        raise HTTPException(**response.model_dump())
+        static_mcp_names = {s.name for s in configuration.mcp_servers}
+        if name in static_mcp_names:
+            response = ForbiddenResponse.mcp_server_static_config(name)
+            raise HTTPException(**response.model_dump())
+
+    try:
+        configuration.remove_mcp_server(name)
+        local_deleted = True
+    except ValueError as e:
+        logger.error("Failed to remove MCP server from configuration: %s", e)
+        local_deleted = False
 
     try:
         client = AsyncLlamaStackClientHolder().get_client()
@@ -233,29 +232,12 @@ async def delete_mcp_server_handler(
             toolgroup_id=name
         )
     except APIConnectionError as e:
-        logger.error("Failed to unregister MCP toolgroup from Llama Stack: %s", e)
+        logger.error("Failed to connect to Llama Stack: %s", e)
         svc_response = ServiceUnavailableResponse(
             backend_name="Llama Stack", cause=str(e)
         )
         raise HTTPException(**svc_response.model_dump()) from e
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.warning(
-            "Llama Stack toolgroup unregister failed for '%s', "
-            "proceeding with local removal: %s",
-            name,
-            e,
-        )
+    except (APIStatusError, ToolGroupNotFoundError):
+        logger.warning("MCP server not found, treating as already deleted.")
 
-    try:
-        configuration.remove_mcp_server(name)
-    except ValueError as e:
-        logger.error("Failed to remove MCP server from configuration: %s", e)
-        response = NotFoundResponse(resource="MCP server", resource_id=name)
-        raise HTTPException(**response.model_dump()) from e
-
-    logger.info("Dynamically unregistered MCP server: %s", name)
-
-    return MCPServerDeleteResponse(
-        name=name,
-        message=f"MCP server '{name}' unregistered successfully",
-    )
+    return MCPServerDeleteResponse(deleted=local_deleted, name=name)

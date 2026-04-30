@@ -1229,6 +1229,14 @@
                                                 "response": "Configuration is not loaded"
                                             }
                                         }
+                                    },
+                                    "mcp server registration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Could not register the MCP server with the remote service.",
+                                                "response": "Failed to register MCP server"
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -1302,9 +1310,21 @@
                                 "schema": {
                                     "$ref": "#/components/schemas/MCPServerDeleteResponse"
                                 },
-                                "example": {
-                                    "message": "MCP server 'test-mcp-server' unregistered successfully",
-                                    "name": "test-mcp-server"
+                                "examples": {
+                                    "deleted": {
+                                        "value": {
+                                            "deleted": true,
+                                            "name": "mcp-server",
+                                            "response": "MCP server deleted successfully"
+                                        }
+                                    },
+                                    "not found": {
+                                        "value": {
+                                            "deleted": false,
+                                            "name": "mcp-server",
+                                            "response": "MCP server not found"
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1397,30 +1417,18 @@
                                                 "response": "User does not have permission to access this endpoint"
                                             }
                                         }
-                                    }
-                                },
-                                "schema": {
-                                    "$ref": "#/components/schemas/ForbiddenResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Resource not found",
-                        "content": {
-                            "application/json": {
-                                "examples": {
-                                    "mcp server": {
+                                    },
+                                    "mcp server static": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Mcp Server with ID test-mcp-server does not exist",
-                                                "response": "Mcp Server not found"
+                                                "cause": "MCP server 'my-mcp' is defined in configuration and cannot be removed via the API.",
+                                                "response": "Cannot delete statically configured MCP server"
                                             }
                                         }
                                     }
                                 },
                                 "schema": {
-                                    "$ref": "#/components/schemas/NotFoundResponse"
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
                                 }
                             }
                         }
@@ -10602,7 +10610,7 @@
                 ],
                 "summary": "Handle A2A Jsonrpc",
                 "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
-                "operationId": "handle_a2a_jsonrpc_a2a_get",
+                "operationId": "handle_a2a_jsonrpc_a2a_post",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -10620,7 +10628,7 @@
                 ],
                 "summary": "Handle A2A Jsonrpc",
                 "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
-                "operationId": "handle_a2a_jsonrpc_a2a_get",
+                "operationId": "handle_a2a_jsonrpc_a2a_post",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -13181,6 +13189,13 @@
                             "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
                         },
                         "label": "model override"
+                    },
+                    {
+                        "detail": {
+                            "cause": "MCP server 'my-mcp' is defined in configuration and cannot be removed via the API.",
+                            "response": "Cannot delete statically configured MCP server"
+                        },
+                        "label": "mcp server static"
                     }
                 ]
             },
@@ -13425,6 +13440,13 @@
                             "response": "Configuration is not loaded"
                         },
                         "label": "configuration"
+                    },
+                    {
+                        "detail": {
+                            "cause": "Could not register the MCP server with the remote service.",
+                            "response": "Failed to register MCP server"
+                        },
+                        "label": "mcp server registration"
                     },
                     {
                         "detail": {
@@ -13763,28 +13785,62 @@
             },
             "MCPServerDeleteResponse": {
                 "properties": {
+                    "deleted": {
+                        "type": "boolean",
+                        "title": "Deleted",
+                        "description": "Whether the deletion was successful.",
+                        "examples": [
+                            true,
+                            false
+                        ]
+                    },
                     "name": {
                         "type": "string",
                         "title": "Name",
-                        "description": "Deleted MCP server name"
+                        "description": "MCP server name that was passed to delete.",
+                        "examples": [
+                            "test-mcp-server"
+                        ]
                     },
-                    "message": {
+                    "response": {
                         "type": "string",
-                        "title": "Message",
-                        "description": "Status message"
+                        "title": "Response",
+                        "description": "Human-readable outcome of the delete operation.",
+                        "readOnly": true
+                    },
+                    "success": {
+                        "type": "boolean",
+                        "title": "Success",
+                        "description": "Successful response flag.",
+                        "deprecated": true,
+                        "readOnly": true
                     }
                 },
                 "type": "object",
                 "required": [
+                    "deleted",
                     "name",
-                    "message"
+                    "response",
+                    "success"
                 ],
                 "title": "MCPServerDeleteResponse",
-                "description": "Response for a successful MCP server deletion.",
+                "description": "Result of unregistering an MCP server (HTTP 200 with delete outcome).",
                 "examples": [
                     {
-                        "message": "MCP server 'test-mcp-server' unregistered successfully",
-                        "name": "test-mcp-server"
+                        "label": "deleted",
+                        "value": {
+                            "deleted": true,
+                            "name": "mcp-server",
+                            "response": "MCP server deleted successfully"
+                        }
+                    },
+                    {
+                        "label": "not found",
+                        "value": {
+                            "deleted": false,
+                            "name": "mcp-server",
+                            "response": "MCP server not found"
+                        }
                     }
                 ]
             },
@@ -14252,13 +14308,6 @@
                             "response": "Streaming Request not found"
                         },
                         "label": "streaming request"
-                    },
-                    {
-                        "detail": {
-                            "cause": "Mcp Server with ID test-mcp-server does not exist",
-                            "response": "Mcp Server not found"
-                        },
-                        "label": "mcp server"
                     },
                     {
                         "detail": {
