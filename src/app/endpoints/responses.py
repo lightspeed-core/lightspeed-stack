@@ -381,7 +381,10 @@ async def _maybe_get_topic_summary(
     Returns:
         Generated topic summary, or None when topic summaries are disabled.
     """
-    if not context.generate_topic_summary:
+    if (
+        not context.generate_topic_summary
+        or context.moderation_result.decision != "passed"
+    ):
         return None
     logger.debug("Generating topic summary for new conversation")
     return await get_topic_summary(context.input_text, context.client, api_params.model)
@@ -654,23 +657,11 @@ async def handle_streaming_response(
         turn_summary.id = context.moderation_result.moderation_id
         turn_summary.llm_response = context.moderation_result.message
         generator = shield_violation_generator(api_params, context)
-        if api_params.store:
-            await append_turn_items_to_conversation(
-                client=context.client,
-                conversation_id=api_params.conversation,
-                user_input=api_params.input,
-                llm_output=[context.moderation_result.refusal_response],
-            )
-        _queue_responses_splunk_event(
-            background_tasks=context.background_tasks,
-            input_text=context.input_text,
-            response_text=context.moderation_result.message,
-            conversation_id=normalize_conversation_id(api_params.conversation),
-            model=api_params.model,
-            rh_identity_context=context.rh_identity_context,
-            inference_time=(datetime.now(UTC) - context.started_at).total_seconds(),
-            sourcetype="responses_shield_blocked",
-            user_agent=context.user_agent,
+        await _persist_blocked_response_turn(api_params, context)
+        _queue_blocked_response_event(
+            api_params,
+            context,
+            context.moderation_result.message,
         )
     else:
         try:
@@ -684,58 +675,13 @@ async def handle_streaming_response(
                 context=context,
                 turn_summary=turn_summary,
             )
-        except RuntimeError as e:  # library mode wraps 413 into runtime error
-            if is_context_length_error(str(e)):
-                _queue_responses_splunk_event(
-                    background_tasks=context.background_tasks,
-                    input_text=context.input_text,
-                    response_text=str(e),
-                    conversation_id=normalize_conversation_id(api_params.conversation),
-                    model=api_params.model,
-                    rh_identity_context=context.rh_identity_context,
-                    inference_time=(
-                        datetime.now(UTC) - context.started_at
-                    ).total_seconds(),
-                    sourcetype="responses_error",
-                    fire_and_forget=True,
-                    user_agent=context.user_agent,
-                )
-                error_response = PromptTooLongResponse(model=api_params.model)
-                raise HTTPException(**error_response.model_dump()) from e
-            raise e
-        except APIConnectionError as e:
-            _queue_responses_splunk_event(
-                background_tasks=context.background_tasks,
-                input_text=context.input_text,
-                response_text=str(e),
-                conversation_id=normalize_conversation_id(api_params.conversation),
-                model=api_params.model,
-                rh_identity_context=context.rh_identity_context,
-                inference_time=(datetime.now(UTC) - context.started_at).total_seconds(),
-                sourcetype="responses_error",
-                fire_and_forget=True,
-                user_agent=context.user_agent,
-            )
-            error_response = ServiceUnavailableResponse(
-                backend_name="Llama Stack",
-                cause=str(e),
-            )
-            raise HTTPException(**error_response.model_dump()) from e
-        except (LLSApiStatusError, OpenAIAPIStatusError) as e:
-            _queue_responses_splunk_event(
-                background_tasks=context.background_tasks,
-                input_text=context.input_text,
-                response_text=str(e),
-                conversation_id=normalize_conversation_id(api_params.conversation),
-                model=api_params.model,
-                rh_identity_context=context.rh_identity_context,
-                inference_time=(datetime.now(UTC) - context.started_at).total_seconds(),
-                sourcetype="responses_error",
-                fire_and_forget=True,
-                user_agent=context.user_agent,
-            )
-            error_response = handle_known_apistatus_errors(e, api_params.model)
-            raise HTTPException(**error_response.model_dump()) from e
+        except (
+            RuntimeError,
+            APIConnectionError,
+            LLSApiStatusError,
+            OpenAIAPIStatusError,
+        ) as e:
+            _raise_response_api_http_exception(e, api_params, context)
 
     return StreamingResponse(
         generate_response(
@@ -1088,11 +1034,10 @@ async def response_generator(
         )
 
     # Explicitly append the turn to conversation if context passed by previous response
-    if api_params.store and api_params.previous_response_id and latest_response_object:
-        await append_turn_items_to_conversation(
-            context.client,
-            api_params.conversation,
-            api_params.input,
+    if latest_response_object:
+        await _append_previous_response_turn(
+            api_params,
+            context,
             latest_response_object.output,
         )
 
@@ -1118,45 +1063,25 @@ async def generate_response(
     Yields:
         SSE-formatted strings from the generator
     """
-    user_id, _, skip_userid_check, _ = context.auth
     async for event in generator:
         yield event
 
-    # Get topic summary for new conversation
-    topic_summary = None
-    if context.generate_topic_summary:
-        logger.debug("Generating topic summary for new conversation")
-        topic_summary = await get_topic_summary(
-            context.input_text, context.client, api_params.model
-        )
-
+    topic_summary = await _maybe_get_topic_summary(api_params, context)
     completed_at = datetime.now(UTC)
-    if api_params.store:
-        store_query_results(
-            user_id=user_id,
-            conversation_id=normalize_conversation_id(api_params.conversation),
-            model=api_params.model,
-            started_at=context.started_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            completed_at=completed_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            summary=turn_summary,
-            query=context.input_text,
-            attachments=[],
-            skip_userid_check=skip_userid_check,
-            topic_summary=topic_summary,
-        )
-    if context.moderation_result.decision == "passed":
-        _queue_responses_splunk_event(
-            background_tasks=context.background_tasks,
-            input_text=context.input_text,
-            response_text=turn_summary.llm_response,
-            conversation_id=normalize_conversation_id(api_params.conversation),
-            model=api_params.model,
-            rh_identity_context=context.rh_identity_context,
-            inference_time=(completed_at - context.started_at).total_seconds(),
-            sourcetype="responses_completed",
-            input_tokens=turn_summary.token_usage.input_tokens,
-            output_tokens=turn_summary.token_usage.output_tokens,
-        )
+    _store_response_query_results(
+        api_params,
+        context,
+        turn_summary,
+        completed_at,
+        topic_summary,
+    )
+    _queue_completed_response_event(
+        api_params,
+        context,
+        turn_summary,
+        completed_at,
+        turn_summary.llm_response,
+    )
 
 
 async def handle_non_streaming_response(
@@ -1173,7 +1098,7 @@ async def handle_non_streaming_response(
     Returns:
         ResponsesResponse with the completed response
     """
-    user_id, _, skip_userid_check, _ = context.auth
+    user_id = context.auth[0]
 
     # Fork: Get response object (blocked vs normal)
     if context.moderation_result.decision == "blocked":
@@ -1186,24 +1111,8 @@ async def handle_non_streaming_response(
             usage=get_zero_usage(),
             **api_params.echoed_params(configuration.rag_id_mapping),
         )
-        if api_params.store:
-            await append_turn_items_to_conversation(
-                client=context.client,
-                conversation_id=api_params.conversation,
-                user_input=api_params.input,
-                llm_output=[context.moderation_result.refusal_response],
-            )
-        _queue_responses_splunk_event(
-            background_tasks=context.background_tasks,
-            input_text=context.input_text,
-            response_text=output_text,
-            conversation_id=normalize_conversation_id(api_params.conversation),
-            model=api_params.model,
-            rh_identity_context=context.rh_identity_context,
-            inference_time=(datetime.now(UTC) - context.started_at).total_seconds(),
-            sourcetype="responses_shield_blocked",
-            user_agent=context.user_agent,
-        )
+        await _persist_blocked_response_turn(api_params, context)
+        _queue_blocked_response_event(api_params, context, output_text)
     else:
         try:
             api_response = cast(
@@ -1223,79 +1132,26 @@ async def handle_non_streaming_response(
             )
             output_text = extract_text_from_response_items(api_response.output)
             # Explicitly append the turn to conversation if context passed by previous response
-            if api_params.store and api_params.previous_response_id:
-                await append_turn_items_to_conversation(
-                    context.client,
-                    api_params.conversation,
-                    api_params.input,
-                    api_response.output,
-                )
+            await _append_previous_response_turn(
+                api_params,
+                context,
+                api_response.output,
+            )
 
-        except RuntimeError as e:
-            if is_context_length_error(str(e)):
-                _queue_responses_splunk_event(
-                    background_tasks=context.background_tasks,
-                    input_text=context.input_text,
-                    response_text=str(e),
-                    conversation_id=normalize_conversation_id(api_params.conversation),
-                    model=api_params.model,
-                    rh_identity_context=context.rh_identity_context,
-                    inference_time=(
-                        datetime.now(UTC) - context.started_at
-                    ).total_seconds(),
-                    sourcetype="responses_error",
-                    fire_and_forget=True,
-                    user_agent=context.user_agent,
-                )
-                error_response = PromptTooLongResponse(model=api_params.model)
-                raise HTTPException(**error_response.model_dump()) from e
-            raise e
-        except APIConnectionError as e:
-            _queue_responses_splunk_event(
-                background_tasks=context.background_tasks,
-                input_text=context.input_text,
-                response_text=str(e),
-                conversation_id=normalize_conversation_id(api_params.conversation),
-                model=api_params.model,
-                rh_identity_context=context.rh_identity_context,
-                inference_time=(datetime.now(UTC) - context.started_at).total_seconds(),
-                sourcetype="responses_error",
-                fire_and_forget=True,
-                user_agent=context.user_agent,
-            )
-            error_response = ServiceUnavailableResponse(
-                backend_name="Llama Stack",
-                cause=str(e),
-            )
-            raise HTTPException(**error_response.model_dump()) from e
-        except (LLSApiStatusError, OpenAIAPIStatusError) as e:
-            _queue_responses_splunk_event(
-                background_tasks=context.background_tasks,
-                input_text=context.input_text,
-                response_text=str(e),
-                conversation_id=normalize_conversation_id(api_params.conversation),
-                model=api_params.model,
-                rh_identity_context=context.rh_identity_context,
-                inference_time=(datetime.now(UTC) - context.started_at).total_seconds(),
-                sourcetype="responses_error",
-                fire_and_forget=True,
-                user_agent=context.user_agent,
-            )
-            error_response = handle_known_apistatus_errors(e, api_params.model)
-            raise HTTPException(**error_response.model_dump()) from e
+        except (
+            RuntimeError,
+            APIConnectionError,
+            LLSApiStatusError,
+            OpenAIAPIStatusError,
+        ) as e:
+            _raise_response_api_http_exception(e, api_params, context)
 
     # Get available quotas
     logger.info("Getting available quotas")
     available_quotas = get_available_quotas(
         quota_limiters=configuration.quota_limiters, user_id=user_id
     )
-    # Get topic summary for new conversation
-    topic_summary = None
-    if context.generate_topic_summary:
-        logger.debug("Generating topic summary for new conversation")
-        topic_summary = await get_topic_summary(
-            context.input_text, context.client, api_params.model
-        )
+    topic_summary = await _maybe_get_topic_summary(api_params, context)
 
     vector_store_ids = extract_vector_store_ids_from_tools(api_params.tools)
     turn_summary = build_turn_summary(
@@ -1312,32 +1168,20 @@ async def handle_non_streaming_response(
     )
     turn_summary.rag_chunks.extend(context.inline_rag_context.rag_chunks)
     completed_at = datetime.now(UTC)
-    if context.moderation_result.decision == "passed":
-        _queue_responses_splunk_event(
-            background_tasks=context.background_tasks,
-            input_text=context.input_text,
-            response_text=output_text,
-            conversation_id=normalize_conversation_id(api_params.conversation),
-            model=api_params.model,
-            rh_identity_context=context.rh_identity_context,
-            inference_time=(completed_at - context.started_at).total_seconds(),
-            sourcetype="responses_completed",
-            input_tokens=turn_summary.token_usage.input_tokens,
-            output_tokens=turn_summary.token_usage.output_tokens,
-        )
-    if api_params.store:
-        store_query_results(
-            user_id=user_id,
-            conversation_id=normalize_conversation_id(api_params.conversation),
-            model=api_params.model,
-            started_at=context.started_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            completed_at=completed_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            summary=turn_summary,
-            query=context.input_text,
-            attachments=[],
-            skip_userid_check=skip_userid_check,
-            topic_summary=topic_summary,
-        )
+    _store_response_query_results(
+        api_params,
+        context,
+        turn_summary,
+        completed_at,
+        topic_summary,
+    )
+    _queue_completed_response_event(
+        api_params,
+        context,
+        turn_summary,
+        completed_at,
+        output_text,
+    )
     configured_mcp_labels = {s.name for s in configuration.mcp_servers}
     response_dict = api_response.model_dump(exclude_none=True)
     _sanitize_response_dict(
