@@ -214,43 +214,45 @@ def _apply_byok_rerank_boost(
     return boosted
 
 
-def _referenced_documents_from_rag_chunks(
-    rag_chunks: list[RAGChunk],
+def _filter_documents_for_chunks(
+    all_documents: list[ReferencedDocument],
+    final_chunks: list[RAGChunk],
 ) -> list[ReferencedDocument]:
-    """Build referenced documents list from RAG chunks (e.g. after reranking).
+    """Filter documents to match the final set of chunks after reranking.
 
     Args:
-        rag_chunks: RAG chunks with source and attributes (doc_url, title, etc.).
+        all_documents: All documents extracted from both BYOK and Solr sources.
+        final_chunks: Final chunks after merging and reranking.
 
     Returns:
-        Deduplicated list of ReferencedDocument from chunk attributes.
+        Filtered list of documents that correspond to the final chunks.
     """
-    seen: set[str] = set()
-    result: list[ReferencedDocument] = []
-    for chunk in rag_chunks:
+    # Create a set of unique identifiers from final chunks
+    final_chunk_identifiers = set()
+    for chunk in final_chunks:
         attrs = chunk.attributes or {}
+        # Use same logic as original extraction to identify documents
         doc_url = (
             attrs.get("reference_url") or attrs.get("doc_url") or attrs.get("docs_url")
         )
         doc_id = attrs.get("document_id") or attrs.get("doc_id")
         dedup_key = doc_url or doc_id or chunk.source or ""
-        if not dedup_key or dedup_key in seen:
-            continue
-        seen.add(dedup_key)
-        parsed_url: Optional[AnyUrl] = None
-        if doc_url:
-            try:
-                parsed_url = AnyUrl(doc_url)
-            except Exception:  # pylint: disable=broad-exception-caught
-                parsed_url = None
-        result.append(
-            ReferencedDocument(
-                doc_title=attrs.get("title"),
-                doc_url=parsed_url,
-                source=chunk.source,
-            )
-        )
-    return result
+        if dedup_key:
+            final_chunk_identifiers.add(dedup_key)
+
+    # Filter documents that match final chunk identifiers
+    filtered_documents = []
+    seen = set()
+    for doc in all_documents:
+        # Build same dedup key for document
+        doc_url_str = str(doc.doc_url) if doc.doc_url else None
+        dedup_key = doc_url_str or doc.source or ""
+        
+        if dedup_key in final_chunk_identifiers and dedup_key not in seen:
+            seen.add(dedup_key)
+            filtered_documents.append(doc)
+    
+    return filtered_documents
 
 
 def _get_okp_base_url() -> AnyUrl:
@@ -800,7 +802,7 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
     )
     solr_chunks_task = _fetch_solr_rag(client, query, solr)
 
-    (byok_chunks, _), (solr_chunks, _) = await asyncio.gather(
+    (byok_chunks, byok_documents), (solr_chunks, solr_documents) = await asyncio.gather(
         byok_chunks_task, solr_chunks_task
     )
 
@@ -839,8 +841,9 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
         len(context_text),
     )
 
-    # Referenced documents from final chunks only (after reranking)
-    top_documents = _referenced_documents_from_rag_chunks(context_chunks)
+    # Filter documents to match final chunks (after reranking)
+    all_documents = byok_documents + solr_documents
+    top_documents = _filter_documents_for_chunks(all_documents, context_chunks)
 
     return RAGContext(
         context_text=context_text,
