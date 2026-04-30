@@ -4,9 +4,9 @@
 
 import asyncio
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime
-from typing import Annotated, Any, Final, Optional, cast
+from typing import Annotated, Any, Final, NoReturn, Optional, cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -222,6 +222,235 @@ def _queue_responses_splunk_event(  # pylint: disable=too-many-arguments,too-man
         task.add_done_callback(_background_splunk_tasks.discard)
     elif background_tasks is not None:
         background_tasks.add_task(send_splunk_event, event, sourcetype)
+
+
+def _queue_responses_error_event(
+    error: Exception,
+    api_params: ResponsesApiParams,
+    context: ResponsesContext,
+) -> None:
+    """Queue fire-and-forget Splunk telemetry for a Responses API error.
+
+    Args:
+        error: The backend exception being converted into an HTTP error.
+        api_params: Responses API parameters for the failed request.
+        context: Request-scoped Responses API context.
+    """
+    _queue_responses_splunk_event(
+        background_tasks=context.background_tasks,
+        input_text=context.input_text,
+        response_text=str(error),
+        conversation_id=normalize_conversation_id(api_params.conversation),
+        model=api_params.model,
+        rh_identity_context=context.rh_identity_context,
+        inference_time=(datetime.now(UTC) - context.started_at).total_seconds(),
+        sourcetype="responses_error",
+        fire_and_forget=True,
+        user_agent=context.user_agent,
+    )
+
+
+def _http_exception_for_response_api_error(
+    error: Exception,
+    api_params: ResponsesApiParams,
+) -> Optional[HTTPException]:
+    """Map known Responses API backend errors to HTTP exceptions.
+
+    Args:
+        error: The backend exception raised while creating a response.
+        api_params: Responses API parameters for the request.
+
+    Returns:
+        HTTPException for known API failures, or None for unknown RuntimeError.
+    """
+    if isinstance(error, RuntimeError):
+        if not is_context_length_error(str(error)):
+            return None
+        error_response = PromptTooLongResponse(model=api_params.model)
+    elif isinstance(error, APIConnectionError):
+        error_response = ServiceUnavailableResponse(
+            backend_name="Llama Stack",
+            cause=str(error),
+        )
+    elif isinstance(error, (LLSApiStatusError, OpenAIAPIStatusError)):
+        error_response = handle_known_apistatus_errors(error, api_params.model)
+    else:
+        return None
+    return HTTPException(**error_response.model_dump())
+
+
+def _raise_response_api_http_exception(
+    error: Exception,
+    api_params: ResponsesApiParams,
+    context: ResponsesContext,
+) -> NoReturn:
+    """Queue error telemetry and raise the mapped Responses API HTTP error.
+
+    Args:
+        error: The backend exception raised while creating a response.
+        api_params: Responses API parameters for the request.
+        context: Request-scoped Responses API context.
+
+    Raises:
+        Exception: Re-raises unknown RuntimeError instances unchanged.
+        HTTPException: Raised for known Responses API failures.
+    """
+    http_exception = _http_exception_for_response_api_error(error, api_params)
+    if http_exception is None:
+        raise error
+    _queue_responses_error_event(error, api_params, context)
+    raise http_exception from error
+
+
+async def _persist_blocked_response_turn(
+    api_params: ResponsesApiParams,
+    context: ResponsesContext,
+) -> None:
+    """Persist a shield-blocked refusal turn when response storage is enabled.
+
+    Args:
+        api_params: Responses API parameters for the blocked request.
+        context: Request-scoped Responses API context with moderation details.
+    """
+    if api_params.store:
+        moderation_result = cast(ShieldModerationBlocked, context.moderation_result)
+        await append_turn_items_to_conversation(
+            client=context.client,
+            conversation_id=api_params.conversation,
+            user_input=api_params.input,
+            llm_output=[moderation_result.refusal_response],
+        )
+
+
+def _queue_blocked_response_event(
+    api_params: ResponsesApiParams,
+    context: ResponsesContext,
+    response_text: str,
+) -> None:
+    """Queue Splunk telemetry for a shield-blocked Responses API request.
+
+    Args:
+        api_params: Responses API parameters for the blocked request.
+        context: Request-scoped Responses API context.
+        response_text: Refusal text sent to the client.
+    """
+    _queue_responses_splunk_event(
+        background_tasks=context.background_tasks,
+        input_text=context.input_text,
+        response_text=response_text,
+        conversation_id=normalize_conversation_id(api_params.conversation),
+        model=api_params.model,
+        rh_identity_context=context.rh_identity_context,
+        inference_time=(datetime.now(UTC) - context.started_at).total_seconds(),
+        sourcetype="responses_shield_blocked",
+        user_agent=context.user_agent,
+    )
+
+
+async def _append_previous_response_turn(
+    api_params: ResponsesApiParams,
+    context: ResponsesContext,
+    output: Sequence[Any],
+) -> None:
+    """Append response output when continuing from a previous response id.
+
+    Args:
+        api_params: Responses API parameters containing conversation details.
+        context: Request-scoped Responses API context.
+        output: Final output items from the Responses API object.
+    """
+    if api_params.store and api_params.previous_response_id:
+        await append_turn_items_to_conversation(
+            context.client,
+            api_params.conversation,
+            api_params.input,
+            output,
+        )
+
+
+async def _maybe_get_topic_summary(
+    api_params: ResponsesApiParams,
+    context: ResponsesContext,
+) -> Optional[str]:
+    """Generate a topic summary when requested for the current response.
+
+    Args:
+        api_params: Responses API parameters containing the selected model.
+        context: Request-scoped Responses API context.
+
+    Returns:
+        Generated topic summary, or None when topic summaries are disabled.
+    """
+    if not context.generate_topic_summary:
+        return None
+    logger.debug("Generating topic summary for new conversation")
+    return await get_topic_summary(context.input_text, context.client, api_params.model)
+
+
+def _store_response_query_results(
+    api_params: ResponsesApiParams,
+    context: ResponsesContext,
+    turn_summary: TurnSummary,
+    completed_at: datetime,
+    topic_summary: Optional[str],
+) -> None:
+    """Persist Responses API query results when request storage is enabled.
+
+    Args:
+        api_params: Responses API parameters containing conversation details.
+        context: Request-scoped Responses API context.
+        turn_summary: Summary of the completed model turn.
+        completed_at: Time when response handling completed.
+        topic_summary: Optional generated topic summary for the conversation.
+    """
+    if not api_params.store:
+        return
+    user_id, _, skip_userid_check, _ = context.auth
+    store_query_results(
+        user_id=user_id,
+        conversation_id=normalize_conversation_id(api_params.conversation),
+        model=api_params.model,
+        started_at=context.started_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        completed_at=completed_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        summary=turn_summary,
+        query=context.input_text,
+        attachments=[],
+        skip_userid_check=skip_userid_check,
+        topic_summary=topic_summary,
+    )
+
+
+def _queue_completed_response_event(
+    api_params: ResponsesApiParams,
+    context: ResponsesContext,
+    turn_summary: TurnSummary,
+    completed_at: datetime,
+    response_text: str,
+) -> None:
+    """Queue Splunk telemetry for a completed Responses API request.
+
+    Args:
+        api_params: Responses API parameters for the completed request.
+        context: Request-scoped Responses API context.
+        turn_summary: Summary containing token usage for telemetry.
+        completed_at: Time when response handling completed.
+        response_text: Final text sent to the client.
+    """
+    if context.moderation_result.decision != "passed":
+        return
+    _queue_responses_splunk_event(
+        background_tasks=context.background_tasks,
+        input_text=context.input_text,
+        response_text=response_text,
+        conversation_id=normalize_conversation_id(api_params.conversation),
+        model=api_params.model,
+        rh_identity_context=context.rh_identity_context,
+        inference_time=(completed_at - context.started_at).total_seconds(),
+        sourcetype="responses_completed",
+        input_tokens=turn_summary.token_usage.input_tokens,
+        output_tokens=turn_summary.token_usage.output_tokens,
+        user_agent=context.user_agent,
+    )
 
 
 @router.post(
