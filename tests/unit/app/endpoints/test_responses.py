@@ -22,6 +22,7 @@ from app.endpoints.responses import (
     _should_filter_mcp_chunk,
     handle_non_streaming_response,
     handle_streaming_response,
+    response_generator,
     responses_endpoint_handler,
 )
 from configuration import AppConfig
@@ -2697,3 +2698,65 @@ class TestMcpEventsFilteredUnconditionally:
         body = "".join(collected)
         assert "response.output_item.added" in body
         assert "response.completed" in body
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("yield_chunk_before_error", [True, False])
+async def test_response_generator_records_failure_when_stream_iteration_raises(
+    minimal_config: AppConfig,
+    mocker: MockerFixture,
+    yield_chunk_before_error: bool,
+) -> None:
+    """Test that response_generator records a failure metric when the stream raises."""
+    request = _request_with_model_and_conv("Hi", model="provider/model1")
+    mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+    mock_moderation = mocker.Mock()
+    mock_moderation.decision = "passed"
+
+    ok_chunk = mocker.Mock()
+    ok_chunk.type = "response.output_item.added"
+    ok_chunk.model_dump.return_value = {"type": "response.output_item.added"}
+
+    async def failing_stream() -> Any:
+        """Async generator that optionally yields a chunk then raises."""
+        if yield_chunk_before_error:
+            yield ok_chunk
+        raise RuntimeError("stream broken")
+
+    mocker.patch(f"{MODULE}.configuration", minimal_config)
+    mocker.patch(f"{MODULE}.get_available_quotas", return_value={})
+    mocker.patch(f"{MODULE}.extract_token_usage", return_value=mocker.Mock())
+    mocker.patch(f"{MODULE}.consume_query_tokens")
+    mocker.patch(
+        f"{MODULE}.normalize_conversation_id",
+        return_value=VALID_CONV_ID_NORMALIZED,
+    )
+    mock_record = mocker.patch(f"{MODULE}._record_response_inference_result")
+
+    api_params, context = build_api_params_and_context(
+        updated_request=request,
+        client=mock_client,
+        auth=MOCK_AUTH,
+        input_text="Hi",
+        started_at=datetime.now(UTC),
+        moderation_result=mock_moderation,
+        inline_rag_context=RAGContext(),
+    )
+
+    gen = response_generator(
+        stream=failing_stream(),
+        original_request=request,
+        api_params=api_params,
+        context=context,
+        turn_summary=TurnSummary(),
+        inference_start_time=0.0,
+    )
+
+    with pytest.raises(RuntimeError, match="stream broken"):
+        async for _ in gen:
+            pass
+
+    mock_record.assert_called_once()
+    call_args = mock_record.call_args
+    assert call_args.args[2] == "failure"
+    assert call_args.kwargs.get("record_failure") is True

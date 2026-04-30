@@ -216,3 +216,21 @@ def test_histogram_recorders_observe_metrics_and_log_errors(
     recording_logger.warning.assert_called_once_with(
         case.warning_message, exc_info=True
     )
+
+
+def test_record_llm_inference_duration_bounds_result_label(
+    mocker: MockerFixture,
+) -> None:
+    """Test that unexpected result values are normalized to 'failure'."""
+    mock_metric = mocker.patch(
+        "metrics.recording.metrics.llm_inference_duration_seconds"
+    )
+
+    recording.record_llm_inference_duration(
+        "vertexai", "gemini", "/v1/responses", "timeout", 2.0
+    )
+
+    mock_metric.labels.assert_called_once_with(
+        "vertexai", "gemini", "/v1/responses", "failure"
+    )
+    mock_metric.labels.return_value.observe.assert_called_once_with(2.0)

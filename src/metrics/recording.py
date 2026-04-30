@@ -7,6 +7,7 @@ here so callers do not need to know Prometheus object details.
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Final
 
 import metrics
 from log import get_logger
@@ -111,6 +112,32 @@ def record_llm_token_usage(
         logger.warning("Failed to update token metrics", exc_info=True)
 
 
+LLM_INFERENCE_RESULT_SUCCESS: Final[str] = "success"
+LLM_INFERENCE_RESULT_FAILURE: Final[str] = "failure"
+ALLOWED_LLM_INFERENCE_RESULTS: Final[frozenset[str]] = frozenset(
+    {LLM_INFERENCE_RESULT_SUCCESS, LLM_INFERENCE_RESULT_FAILURE}
+)
+
+
+def normalize_llm_inference_result(result: str) -> str:
+    """Clamp an inference result string to the bounded label set.
+
+    Unknown or unexpected values are mapped to ``failure`` so that the
+    Prometheus label cardinality stays bounded.
+
+    Args:
+        result: Raw result label from the caller.
+
+    Returns:
+        A value guaranteed to be in ``ALLOWED_LLM_INFERENCE_RESULTS``.
+    """
+    return (
+        result
+        if result in ALLOWED_LLM_INFERENCE_RESULTS
+        else LLM_INFERENCE_RESULT_FAILURE
+    )
+
+
 def record_llm_inference_duration(
     provider: str, model: str, endpoint_path: str, result: str, duration: float
 ) -> None:
@@ -123,9 +150,10 @@ def record_llm_inference_duration(
         result: Bounded result label, such as ``success`` or ``failure``.
         duration: Inference call duration in seconds.
     """
+    bounded_result = normalize_llm_inference_result(result)
     try:
         metrics.llm_inference_duration_seconds.labels(
-            provider, model, endpoint_path, result
+            provider, model, endpoint_path, bounded_result
         ).observe(duration)
     except (AttributeError, TypeError, ValueError):
         logger.warning("Failed to update LLM inference duration metric", exc_info=True)
