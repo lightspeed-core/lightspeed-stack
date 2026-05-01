@@ -1,6 +1,12 @@
 #!/bin/bash
 # Entrypoint for llama-stack container.
-# Enriches config with lightspeed dynamic values, then starts llama-stack.
+# Produces the run.yaml from lightspeed-stack.yaml then starts llama-stack.
+#
+# Two modes, auto-detected by the Python CLI (llama_stack_configuration.py):
+# - Unified (LCORE-836): `llama_stack.config` present in lightspeed-stack.yaml.
+#   The full run.yaml is SYNTHESIZED from the unified block; -i is ignored.
+# - Legacy: `run.yaml` is mounted separately and ENRICHED with BYOK RAG / Solr /
+#   Azure Entra ID values from lightspeed-stack.yaml.
 
 set -e
 
@@ -9,9 +15,9 @@ ENRICHED_CONFIG="/opt/app-root/run.yaml"
 LIGHTSPEED_CONFIG="${LIGHTSPEED_CONFIG:-/opt/app-root/lightspeed-stack.yaml}"
 ENV_FILE="/opt/app-root/.env"
 
-# Enrich config if lightspeed config exists
+# Run the config producer if lightspeed config exists
 if [ -f "$LIGHTSPEED_CONFIG" ]; then
-    echo "Enriching llama-stack config..."
+    echo "Preparing llama-stack config from $LIGHTSPEED_CONFIG ..."
     ENRICHMENT_FAILED=0
     python3 /opt/app-root/llama_stack_configuration.py \
         -c "$LIGHTSPEED_CONFIG" \

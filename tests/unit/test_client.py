@@ -89,7 +89,7 @@ async def test_get_async_llama_stack_wrong_configuration() -> None:
     cfg.library_client_config_path = None
     with pytest.raises(
         ValueError,
-        match="Configuration problem: library_client_config_path is not set",
+        match="neither .*unified.* nor .*legacy.* is set",
     ):
         client = AsyncLlamaStackClientHolder()
         await client.load(cfg)

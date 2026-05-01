@@ -144,6 +144,7 @@ def test_dump_configuration(tmp_path: Path) -> None:
                 "use_as_library_client": True,
                 "api_key": "**********",
                 "library_client_config_path": "tests/configuration/run.yaml",
+                "config": None,
                 "timeout": 180,
             },
             "user_data_collection": {
@@ -487,6 +488,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "use_as_library_client": True,
                 "api_key": "**********",
                 "library_client_config_path": "tests/configuration/run.yaml",
+                "config": None,
                 "timeout": 180,
             },
             "user_data_collection": {
@@ -722,6 +724,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 "use_as_library_client": True,
                 "api_key": "**********",
                 "library_client_config_path": "tests/configuration/run.yaml",
+                "config": None,
                 "timeout": 180,
             },
             "user_data_collection": {
@@ -937,6 +940,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 "use_as_library_client": True,
                 "api_key": "**********",
                 "library_client_config_path": "tests/configuration/run.yaml",
+                "config": None,
                 "timeout": 180,
             },
             "user_data_collection": {
@@ -1142,6 +1146,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 "use_as_library_client": True,
                 "api_key": "**********",
                 "library_client_config_path": "tests/configuration/run.yaml",
+                "config": None,
                 "timeout": 180,
             },
             "user_data_collection": {

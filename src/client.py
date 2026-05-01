@@ -3,6 +3,7 @@
 import json
 import os
 import tempfile
+from pathlib import Path
 from typing import Optional
 
 import yaml
@@ -11,7 +12,12 @@ from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
 from configuration import configuration
-from llama_stack_configuration import YamlDumper, enrich_byok_rag, enrich_solr
+from llama_stack_configuration import (
+    YamlDumper,
+    enrich_byok_rag,
+    enrich_solr,
+    synthesize_configuration,
+)
 from log import get_logger
 from models.api.responses import ServiceUnavailableResponse
 from models.config import LlamaStackConfiguration
@@ -44,21 +50,64 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
     async def _load_library_client(self, config: LlamaStackConfiguration) -> None:
         """Initialize client in library mode.
 
+        Two paths:
+        - Unified mode (`config.config` set): synthesize full run.yaml from the
+          lightspeed-stack config and write to a deterministic path.
+        - Legacy mode (`config.library_client_config_path` set): read the
+          external run.yaml and apply in-place enrichment.
+
         Stores the final config path for use in reload.
         """
-        if config.library_client_config_path is None:
-            raise ValueError(
-                "Configuration problem: library_client_config_path is not set"
+        if config.config is not None:
+            logger.info("Using Llama stack as library client (unified mode)")
+            self._config_path = self._synthesize_library_config()
+        elif config.library_client_config_path is not None:
+            logger.info("Using Llama stack as library client (legacy mode)")
+            self._config_path = self._enrich_library_config(
+                config.library_client_config_path
             )
-        logger.info("Using Llama stack as library client")
-
-        self._config_path = self._enrich_library_config(
-            config.library_client_config_path
-        )
+        else:
+            raise ValueError(
+                "Configuration problem: neither `llama_stack.config` (unified) "
+                "nor `llama_stack.library_client_config_path` (legacy) is set"
+            )
 
         client = AsyncLlamaStackAsLibraryClient(self._config_path)
         await client.initialize()
         self._lsc = client
+
+    def _synthesize_library_config(self) -> str:
+        """Synthesize the full Llama Stack run.yaml from unified-mode config.
+
+        Library-client-friendly: writes to a file since the Llama Stack library
+        client only accepts a file path (not a dict). Returns the path to the
+        synthesized file.
+
+        The synthesizer preserves env-var references (`${env.FOO}`) verbatim;
+        secrets are not resolved into the file on disk.
+
+        Returns:
+            str: Path to the synthesized run.yaml.
+        """
+        lcs_config_dict = configuration.configuration.model_dump(
+            exclude_none=True, mode="python"
+        )
+        config_file_dir: Optional[Path] = None
+        env_path = os.environ.get("LIGHTSPEED_STACK_CONFIG_PATH")
+        if env_path:
+            config_file_dir = Path(env_path).resolve().parent
+
+        ls_config = synthesize_configuration(
+            lcs_config_dict, config_file_dir=config_file_dir
+        )
+
+        synthesized_path = os.path.join(
+            tempfile.gettempdir(), "llama_stack_synthesized_config.yaml"
+        )
+        with open(synthesized_path, "w", encoding="utf-8") as f:
+            yaml.dump(ls_config, f, Dumper=YamlDumper, default_flow_style=False)
+        logger.info("Wrote synthesized Llama Stack config to %s", synthesized_path)
+        return synthesized_path
 
     def _load_service_client(self, config: LlamaStackConfiguration) -> None:
         """Initialize client in service mode (remote HTTP)."""
