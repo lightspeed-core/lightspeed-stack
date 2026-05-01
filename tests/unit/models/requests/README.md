@@ -15,3 +15,9 @@ Unit tests for FeedbackStatusUpdateRequest model.
 ## [test_query_request.py](test_query_request.py)
 Unit tests for QueryRequest model.
 
+## [test_responses_request.py](test_responses_request.py)
+Unit tests for ResponsesRequest body-size validation.
+
+## [test_vector_store_requests.py](test_vector_store_requests.py)
+Unit tests for Vector Store request models.
+
