@@ -11463,7 +11463,7 @@
                     "content"
                 ],
                 "title": "Attachment",
-                "description": "Model representing an attachment that can be send from the UI as part of query.\n\nA list of attachments can be an optional part of 'query' request.\n\nAttributes:\n    attachment_type: The attachment type, like \"log\", \"configuration\" etc.\n    content_type: The content type as defined in MIME standard\n    content: The actual attachment content\n\nYAML attachments with **kind** and **metadata/name** attributes will\nbe handled as resources with the specified name:\n```\nkind: Pod\nmetadata:\n    name: private-reg\n```",
+                "description": "Model representing an attachment that can be sent from the UI as part of query.\n\nA list of attachments can be an optional part of 'query' request.\n\nAttributes:\n    attachment_type: The attachment type, like \"log\", \"configuration\" etc.\n    content_type: The content type as defined in MIME standard\n    content: The actual attachment content\n\nYAML attachments with **kind** and **metadata/name** attributes will\nbe handled as resources with the specified name:\n```\nkind: Pod\nmetadata:\n    name: private-reg\n```",
                 "examples": [
                     {
                         "attachment_type": "log",
