@@ -43,7 +43,7 @@ def _get_llama_stack_client() -> AsyncLlamaStackClient:
 
 
 async def _unregister_toolgroup_async(identifier: str) -> None:
-    """Unregister a toolgroup by identifier; return (provider_id, provider_shield_id) for restore."""
+    """Unregister a toolgroup by identifier."""
     client = _get_llama_stack_client()
     try:
         await client.toolgroups.unregister(identifier)
