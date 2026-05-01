@@ -24,6 +24,7 @@ from app.endpoints.rlsapi_v1 import (
     _build_instructions,
     _compile_prompt_template,
     _get_default_model_id,
+    _redact_sensitive_error_text,
     _resolve_quota_subject,
     infer_endpoint,
     retrieve_simple_response,
@@ -223,6 +224,25 @@ def test_build_instructions_no_customization(mocker: MockerFixture) -> None:
     result = _build_instructions(systeminfo)
 
     assert result == constants.DEFAULT_SYSTEM_PROMPT
+
+
+@pytest.mark.parametrize(
+    ("error_text", "expected"),
+    [
+        (
+            "APIStatusError: PRIVATE prompt sk-backend-secret failed",
+            "APIStatusError: PRIVATE [REDACTED]",
+        ),
+        (
+            "provider rejected token sk-proj-secret_key with status 401",
+            "provider rejected token sk-[REDACTED] with status 401",
+        ),
+    ],
+    ids=["private_block", "secret_key"],
+)
+def test_redact_sensitive_error_text(error_text: str, expected: str) -> None:
+    """Test backend error text redaction removes prompt and key secrets."""
+    assert _redact_sensitive_error_text(error_text) == expected
 
 
 # --- Test Jinja2 template rendering ---
