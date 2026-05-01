@@ -4,6 +4,7 @@
 
 import asyncio
 import json
+import time
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Annotated, Any, Final, Optional, cast
@@ -38,6 +39,7 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import ENDPOINT_PATH_RESPONSES, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
 from log import get_logger
+from metrics import recording
 from models.api.responses import (
     UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH,
     ConflictResponse,
@@ -404,6 +406,34 @@ async def responses_endpoint_handler(
     )
 
 
+def _record_response_inference_result(
+    model_id: str,
+    endpoint_path: str,
+    result: str,
+    duration: float,
+    record_failure: bool = False,
+) -> None:
+    """Record inference result metrics for a Responses API call.
+
+    Extracts the provider and model from the composite model identifier and
+    records the inference duration histogram. Optionally records a failure
+    counter increment.
+
+    Args:
+        model_id: Composite model identifier in ``provider/model`` format.
+        endpoint_path: API endpoint path for metric labeling.
+        result: Result label such as ``success`` or ``failure``.
+        duration: Inference call duration in seconds.
+        record_failure: When True, also increment the LLM failure counter.
+    """
+    provider, model = extract_provider_and_model_from_model_id(model_id)
+    if record_failure:
+        recording.record_llm_failure(provider, model, endpoint_path)
+    recording.record_llm_inference_duration(
+        provider, model, endpoint_path, result, duration
+    )
+
+
 async def handle_streaming_response(
     original_request: ResponsesRequest,
     api_params: ResponsesApiParams,
@@ -444,6 +474,7 @@ async def handle_streaming_response(
             user_agent=context.user_agent,
         )
     else:
+        inference_start_time = time.monotonic()
         try:
             response = await context.client.responses.create(
                 **api_params.model_dump(exclude_none=True)
@@ -454,9 +485,17 @@ async def handle_streaming_response(
                 api_params=api_params,
                 context=context,
                 turn_summary=turn_summary,
+                inference_start_time=inference_start_time,
             )
         except RuntimeError as e:  # library mode wraps 413 into runtime error
             if is_context_length_error(str(e)):
+                _record_response_inference_result(
+                    api_params.model,
+                    context.endpoint_path,
+                    "failure",
+                    time.monotonic() - inference_start_time,
+                    record_failure=True,
+                )
                 _queue_responses_splunk_event(
                     background_tasks=context.background_tasks,
                     input_text=context.input_text,
@@ -475,6 +514,13 @@ async def handle_streaming_response(
                 raise HTTPException(**error_response.model_dump()) from e
             raise e
         except APIConnectionError as e:
+            _record_response_inference_result(
+                api_params.model,
+                context.endpoint_path,
+                "failure",
+                time.monotonic() - inference_start_time,
+                record_failure=True,
+            )
             _queue_responses_splunk_event(
                 background_tasks=context.background_tasks,
                 input_text=context.input_text,
@@ -493,6 +539,13 @@ async def handle_streaming_response(
             )
             raise HTTPException(**error_response.model_dump()) from e
         except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+            _record_response_inference_result(
+                api_params.model,
+                context.endpoint_path,
+                "failure",
+                time.monotonic() - inference_start_time,
+                record_failure=True,
+            )
             _queue_responses_splunk_event(
                 background_tasks=context.background_tasks,
                 input_text=context.input_text,
@@ -759,6 +812,7 @@ async def response_generator(
     api_params: ResponsesApiParams,
     context: ResponsesContext,
     turn_summary: TurnSummary,
+    inference_start_time: float,
 ) -> AsyncIterator[str]:
     """Generate SSE-formatted streaming response with LCORE-enriched events.
 
@@ -768,6 +822,7 @@ async def response_generator(
         api_params: ResponsesApiParams
         context: Responses context
         turn_summary: TurnSummary to populate during streaming
+        inference_start_time: Monotonic timestamp taken before the inference call.
     Yields:
         SSE-formatted strings for streaming events, ending with [DONE]
     """
@@ -778,76 +833,102 @@ async def response_generator(
     configured_mcp_labels = {s.name for s in configuration.mcp_servers}
     # Track output indices of server-deployed MCP calls to filter their events
     server_mcp_output_indices: set[int] = set()
+    inference_metric_recorded = False
 
-    async for chunk in stream:
-        logger.debug("Processing streaming chunk, type: %s", chunk.type)
+    try:
+        async for chunk in stream:
+            logger.debug("Processing streaming chunk, type: %s", chunk.type)
 
-        # Filter out streaming events for server-deployed MCP tools.
-        # These are handled internally by LCS and should not be forwarded
-        # to clients that don't understand the mcp_call item type.
-        if _should_filter_mcp_chunk(
-            chunk, configured_mcp_labels, server_mcp_output_indices
-        ):
-            continue
+            # Filter out streaming events for server-deployed MCP tools.
+            # These are handled internally by LCS and should not be forwarded
+            # to clients that don't understand the mcp_call item type.
+            if _should_filter_mcp_chunk(
+                chunk, configured_mcp_labels, server_mcp_output_indices
+            ):
+                continue
 
-        chunk_dict = chunk.model_dump(exclude_none=True, by_alias=True)
+            chunk_dict = chunk.model_dump(exclude_none=True, by_alias=True)
 
-        # Create own sequence number for chunks to maintain order
-        chunk_dict["sequence_number"] = sequence_number
-        sequence_number += 1
+            # Create own sequence number for chunks to maintain order
+            chunk_dict["sequence_number"] = sequence_number
+            sequence_number += 1
 
-        if "response" in chunk_dict:
-            chunk_dict["response"]["conversation"] = normalize_conversation_id(
-                api_params.conversation
-            )
-            _sanitize_response_dict(
-                chunk_dict["response"],
-                configured_mcp_labels,
-                original_request,
-            )
-            tools = chunk_dict["response"].get("tools")
-            if tools is not None:
-                chunk_dict["response"]["tools"] = (
-                    translate_vector_store_ids_to_user_facing(
-                        tools,
-                        configuration.rag_id_mapping,
-                    )
+            if "response" in chunk_dict:
+                chunk_dict["response"]["conversation"] = normalize_conversation_id(
+                    api_params.conversation
                 )
-        # Intermediate response - no quota consumption and text yet
-        if chunk.type == "response.in_progress":
-            chunk_dict["response"]["available_quotas"] = {}
-            chunk_dict["response"]["output_text"] = ""
+                _sanitize_response_dict(
+                    chunk_dict["response"],
+                    configured_mcp_labels,
+                    original_request,
+                )
+                tools = chunk_dict["response"].get("tools")
+                if tools is not None:
+                    chunk_dict["response"]["tools"] = (
+                        translate_vector_store_ids_to_user_facing(
+                            tools,
+                            configuration.rag_id_mapping,
+                        )
+                    )
+            # Intermediate response - no quota consumption and text yet
+            if chunk.type == "response.in_progress":
+                chunk_dict["response"]["available_quotas"] = {}
+                chunk_dict["response"]["output_text"] = ""
 
-        # Handle completion, incomplete, and failed events - only quota handling here
-        if chunk.type in (
-            "response.completed",
-            "response.incomplete",
-            "response.failed",
-        ):
-            latest_response_object = cast(
-                OpenAIResponseObject, cast(Any, chunk).response
-            )
+            # Handle completion, incomplete, and failed events
+            if chunk.type in (
+                "response.completed",
+                "response.incomplete",
+                "response.failed",
+            ):
+                latest_response_object = cast(
+                    OpenAIResponseObject, cast(Any, chunk).response
+                )
 
-            # Extract and consume tokens if any were used
-            turn_summary.token_usage = extract_token_usage(
-                latest_response_object.usage, api_params.model, context.endpoint_path
-            )
-            consume_query_tokens(
-                user_id=context.auth[0],
-                model_id=api_params.model,
-                token_usage=turn_summary.token_usage,
-            )
+                # Extract and consume tokens if any were used
+                turn_summary.token_usage = extract_token_usage(
+                    latest_response_object.usage,
+                    api_params.model,
+                    context.endpoint_path,
+                )
+                consume_query_tokens(
+                    user_id=context.auth[0],
+                    model_id=api_params.model,
+                    token_usage=turn_summary.token_usage,
+                )
 
-            # Get available quotas after token consumption
-            chunk_dict["response"]["available_quotas"] = get_available_quotas(
-                quota_limiters=configuration.quota_limiters, user_id=context.auth[0]
-            )
-            turn_summary.llm_response = extract_text_from_response_items(
-                latest_response_object.output
-            )
-            chunk_dict["response"]["output_text"] = turn_summary.llm_response
+                # Get available quotas after token consumption
+                chunk_dict["response"]["available_quotas"] = get_available_quotas(
+                    quota_limiters=configuration.quota_limiters,
+                    user_id=context.auth[0],
+                )
+                turn_summary.llm_response = extract_text_from_response_items(
+                    latest_response_object.output
+                )
+                chunk_dict["response"]["output_text"] = turn_summary.llm_response
 
-        yield f"event: {chunk.type or 'error'}\ndata: {json.dumps(chunk_dict)}\n\n"
+                # Record inference duration metric for terminal events
+                result = "failure" if chunk.type == "response.failed" else "success"
+                _record_response_inference_result(
+                    api_params.model,
+                    context.endpoint_path,
+                    result,
+                    time.monotonic() - inference_start_time,
+                    record_failure=(result == "failure"),
+                )
+                inference_metric_recorded = True
+
+            yield f"event: {chunk.type or 'error'}\ndata: {json.dumps(chunk_dict)}\n\n"
+    except Exception:
+        if not inference_metric_recorded:
+            _record_response_inference_result(
+                api_params.model,
+                context.endpoint_path,
+                "failure",
+                time.monotonic() - inference_start_time,
+                record_failure=True,
+            )
+        raise
 
     # Extract response metadata from final response object
     if latest_response_object:
@@ -976,6 +1057,8 @@ async def handle_non_streaming_response(
             user_agent=context.user_agent,
         )
     else:
+        inference_start_time = time.monotonic()
+        inference_metric_recorded = False
         try:
             api_response = cast(
                 OpenAIResponseObject,
@@ -983,6 +1066,13 @@ async def handle_non_streaming_response(
                     **api_params.model_dump(exclude_none=True)
                 ),
             )
+            _record_response_inference_result(
+                api_params.model,
+                context.endpoint_path,
+                "success",
+                time.monotonic() - inference_start_time,
+            )
+            inference_metric_recorded = True
             token_usage = extract_token_usage(
                 api_response.usage, api_params.model, context.endpoint_path
             )
@@ -1004,6 +1094,14 @@ async def handle_non_streaming_response(
 
         except RuntimeError as e:
             if is_context_length_error(str(e)):
+                if not inference_metric_recorded:
+                    _record_response_inference_result(
+                        api_params.model,
+                        context.endpoint_path,
+                        "failure",
+                        time.monotonic() - inference_start_time,
+                        record_failure=True,
+                    )
                 _queue_responses_splunk_event(
                     background_tasks=context.background_tasks,
                     input_text=context.input_text,
@@ -1022,6 +1120,14 @@ async def handle_non_streaming_response(
                 raise HTTPException(**error_response.model_dump()) from e
             raise e
         except APIConnectionError as e:
+            if not inference_metric_recorded:
+                _record_response_inference_result(
+                    api_params.model,
+                    context.endpoint_path,
+                    "failure",
+                    time.monotonic() - inference_start_time,
+                    record_failure=True,
+                )
             _queue_responses_splunk_event(
                 background_tasks=context.background_tasks,
                 input_text=context.input_text,
@@ -1040,6 +1146,14 @@ async def handle_non_streaming_response(
             )
             raise HTTPException(**error_response.model_dump()) from e
         except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+            if not inference_metric_recorded:
+                _record_response_inference_result(
+                    api_params.model,
+                    context.endpoint_path,
+                    "failure",
+                    time.monotonic() - inference_start_time,
+                    record_failure=True,
+                )
             _queue_responses_splunk_event(
                 background_tasks=context.background_tasks,
                 input_text=context.input_text,

@@ -1,5 +1,6 @@
 # Dynamic dispatch: functional style
 
+
 @singledispatch
 def function(arg: Any) -> None:
     print("Original function with argument", arg, "that has type", type(arg))
@@ -26,4 +27,3 @@ function(["foo", "bar", "baz"])
 function(("foo", "bar", "baz"))
 function(1.4142)
 function(None)
-

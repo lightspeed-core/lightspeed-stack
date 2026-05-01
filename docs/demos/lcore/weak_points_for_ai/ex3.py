@@ -9,9 +9,9 @@ if isinstance(event, TaskStatusUpdateEvent):
     ):
         self._task_state = TaskState.auth_required
         self._task_status_message = event.status.message
-    elif (
-        event.status.state == TaskState.input_required
-        and self._task_state not in (TaskState.failed, TaskState.auth_required)
+    elif event.status.state == TaskState.input_required and self._task_state not in (
+        TaskState.failed,
+        TaskState.auth_required,
     ):
         self._task_state = TaskState.input_required
         self._task_status_message = event.status.message
