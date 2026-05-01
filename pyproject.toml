@@ -227,6 +227,7 @@ build-backend = "pdm.backend"
 disable = ["R0801"]
 
 [tool.ruff]
+line-length = 88
 extend-exclude = ["tests/profiles/syntax_error.py"]
 
 [tool.ruff.lint]
