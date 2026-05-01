@@ -1817,6 +1817,34 @@ class OkpConfiguration(ConfigurationBase):
     )
 
 
+class RerankerConfiguration(ConfigurationBase):
+    """Reranker configuration for RAG chunk reranking."""
+
+    enabled: bool = Field(
+        default=True,
+        title="Reranker enabled",
+        description="When True, reranking applied to RAG chunks. "
+        "When False, reranking is disabled and original scoring used.",
+    )
+    model: str = Field(
+        default="cross-encoder/ms-marco-MiniLM-L6-v2",
+        title="Reranker model",
+        description="Cross-encoder model name for reranking RAG chunks. "
+        "Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers.",
+    )
+
+    # Private attribute to track if this was explicitly configured
+    _explicitly_configured: bool = PrivateAttr(default=False)
+
+    @model_validator(mode="after")
+    def mark_as_explicitly_configured(self) -> Self:
+        """Mark this configuration as explicitly set when instantiated from user input."""
+        if self.model_fields_set:
+            self._explicitly_configured = True
+
+        return self
+
+
 class AzureEntraIdConfiguration(ConfigurationBase):
     """Microsoft Entra ID authentication attributes for Azure."""
 
@@ -1976,6 +2004,12 @@ class Configuration(ConfigurationBase):
         "in rag.inline or rag.tool.",
     )
 
+    reranker: RerankerConfiguration = Field(
+        default_factory=RerankerConfiguration,
+        title="Reranker configuration",
+        description="Configuration for neural reranking of RAG chunks using cross-encoder.",
+    )
+
     @model_validator(mode="after")
     def validate_mcp_auth_headers(self) -> Self:
         """
@@ -2075,6 +2109,43 @@ class Configuration(ConfigurationBase):
                 "are configured.",
                 quota_subject,
             )
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_reranker_auto_enable(self) -> Self:
+        """Automatically enable reranker when both BYOK and OKP RAG are configured.
+
+        When users have both BYOK entries in byok_rag and OKP
+        configured in the RAG strategies, automatically
+        enable the reranker if it's not explicitly disabled. This improves result
+        quality when multiple knowledge sources are available.
+
+        Returns:
+            Self: The validated configuration instance with reranker potentially enabled.
+        """
+        # Check if BYOK RAG entries are configured
+        has_byok = len(self.byok_rag) > 0
+
+        # Check if any inline RAG entries are configured
+        # pylint: disable=no-member
+        has_inline_rag = bool(self.rag.inline)
+
+        # Check if OKP is configured in either inline or tool RAG strategies
+        # pylint: disable=no-member
+        has_okp = constants.OKP_RAG_ID in self.rag.inline
+
+        # If both BYOK and OKP are present and reranker is using default settings,
+        # ensure it's enabled for optimal results
+        if has_byok or has_inline_rag and has_okp and not self.reranker.enabled:
+
+            logger.info(
+                "Automatically enabling reranker: Both BYOK RAG (%d entries) or "
+                "other inline RAG and OKP are configured. Reranking improves result "
+                "quality when multiple knowledge sources are available.",
+                len(self.byok_rag),
+            )
+            self.reranker.enabled = True
 
         return self
 
