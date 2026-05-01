@@ -10,6 +10,17 @@ from metrics import recording
 
 
 @dataclass(frozen=True)
+class CounterRecorderCase:
+    """Expected behavior for a counter-style metric recorder."""
+
+    metric_path: str
+    recorder: Callable[..., None]
+    args: tuple[object, ...]
+    labels: tuple[object, ...]
+    warning_message: str
+
+
+@dataclass(frozen=True)
 class HistogramRecorderCase:
     """Expected behavior for a histogram-style metric recorder."""
 
@@ -186,6 +197,42 @@ def recording_logger_fixture(mocker: MockerFixture) -> MockType:
 @pytest.mark.parametrize(
     "case",
     [
+        CounterRecorderCase(
+            metric_path="metrics.recording.metrics.authorization_checks_total",
+            recorder=recording.record_authorization_check,
+            args=("responses", "success"),
+            labels=("responses", "success"),
+            warning_message="Failed to update authorization metric",
+        ),
+    ],
+)
+def test_counter_recorders_update_metrics_and_log_errors(
+    mocker: MockerFixture,
+    recording_logger: MockType,
+    case: CounterRecorderCase,
+) -> None:
+    """Test new single-counter helpers with shared success and failure coverage."""
+    mock_metric = mocker.patch(case.metric_path)
+
+    case.recorder(*case.args)
+
+    mock_metric.labels.assert_called_once_with(*case.labels)
+    mock_metric.labels.return_value.inc.assert_called_once()
+    recording_logger.warning.assert_not_called()
+
+    mock_metric.reset_mock()
+    recording_logger.reset_mock()
+    mock_metric.labels.return_value.inc.side_effect = AttributeError("missing")
+    case.recorder(*case.args)
+
+    recording_logger.warning.assert_called_once_with(
+        case.warning_message, exc_info=True
+    )
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
         HistogramRecorderCase(
             metric_path="metrics.recording.metrics.llm_inference_duration_seconds",
             recorder=recording.record_llm_inference_duration,
@@ -193,6 +240,14 @@ def recording_logger_fixture(mocker: MockerFixture) -> MockType:
             labels=("vertexai", "gemini", "/v1/responses", "success"),
             duration=1.5,
             warning_message="Failed to update LLM inference duration metric",
+        ),
+        HistogramRecorderCase(
+            metric_path="metrics.recording.metrics.authorization_duration_seconds",
+            recorder=recording.record_authorization_duration,
+            args=("responses", "success", 0.25),
+            labels=("responses", "success"),
+            duration=0.25,
+            warning_message="Failed to update authorization duration metric",
         ),
     ],
 )
@@ -208,11 +263,35 @@ def test_histogram_recorders_observe_metrics_and_log_errors(
 
     mock_metric.labels.assert_called_once_with(*case.labels)
     mock_metric.labels.return_value.observe.assert_called_once_with(case.duration)
+    recording_logger.warning.assert_not_called()
 
     mock_metric.reset_mock()
+    recording_logger.reset_mock()
     mock_metric.labels.return_value.observe.side_effect = TypeError("bad")
     case.recorder(*case.args)
 
     recording_logger.warning.assert_called_once_with(
         case.warning_message, exc_info=True
     )
+
+
+def test_record_authorization_check_bounds_labels(mocker: MockerFixture) -> None:
+    """Test authorization check labels are normalized before recording."""
+    mock_metric = mocker.patch("metrics.recording.metrics.authorization_checks_total")
+
+    recording.record_authorization_check("customer-123", "unexpected")
+
+    mock_metric.labels.assert_called_once_with("unknown", "error")
+    mock_metric.labels.return_value.inc.assert_called_once()
+
+
+def test_record_authorization_duration_bounds_labels(mocker: MockerFixture) -> None:
+    """Test authorization duration labels are normalized before recording."""
+    mock_metric = mocker.patch(
+        "metrics.recording.metrics.authorization_duration_seconds"
+    )
+
+    recording.record_authorization_duration("customer-123", "unexpected", 0.25)
+
+    mock_metric.labels.assert_called_once_with("unknown", "error")
+    mock_metric.labels.return_value.observe.assert_called_once_with(0.25)

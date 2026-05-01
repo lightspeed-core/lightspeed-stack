@@ -322,6 +322,37 @@ class TestPerformAuthorizationCheck:
             Action.QUERY, {"employee", "*"}
         )
 
+    @pytest.mark.asyncio
+    async def test_authorization_metric_errors_do_not_mask_success(
+        self,
+        mocker: MockerFixture,
+        dummy_auth_tuple: AuthTuple,
+        mock_resolvers: tuple[MockType, MockType],
+    ) -> None:
+        """Test metric recorder failures do not fail successful authorization."""
+        mocker.patch(
+            "authorization.middleware.get_authorization_resolvers",
+            return_value=mock_resolvers,
+        )
+        mock_check = mocker.patch(
+            "authorization.middleware.recording.record_authorization_check",
+            side_effect=RuntimeError("metric backend unavailable"),
+        )
+        mock_duration = mocker.patch(
+            "authorization.middleware.recording.record_authorization_duration"
+        )
+        mock_logger = mocker.patch("authorization.middleware.logger")
+
+        await _perform_authorization_check(Action.QUERY, (), {"auth": dummy_auth_tuple})
+
+        mock_check.assert_called_once_with(Action.QUERY.value, "success")
+        mock_duration.assert_called_once()
+        assert mock_duration.call_args.args[:2] == (Action.QUERY.value, "success")
+        assert mock_duration.call_args.args[2] >= 0
+        mock_logger.warning.assert_called_once_with(
+            "Failed to record authorization check metric", exc_info=True
+        )
+
 
 class TestAuthorizeDecorator:
     """Test cases for authorize decorator."""
