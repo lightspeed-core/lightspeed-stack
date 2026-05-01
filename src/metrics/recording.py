@@ -7,11 +7,52 @@ here so callers do not need to know Prometheus object details.
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Final
 
 import metrics
 from log import get_logger
 
 logger = get_logger(__name__)
+
+QUOTA_TYPE_USER_ID: Final[str] = "user_id"
+QUOTA_TYPE_ORG_ID: Final[str] = "org_id"
+QUOTA_TYPE_SYSTEM_ID: Final[str] = "system_id"
+QUOTA_TYPE_DISABLED: Final[str] = "disabled"
+QUOTA_RESULT_SUCCESS: Final[str] = "success"
+QUOTA_RESULT_FAILURE: Final[str] = "failure"
+QUOTA_RESULT_SKIPPED: Final[str] = "skipped"
+QUOTA_RESULT_ERROR: Final[str] = "error"
+
+ALLOWED_QUOTA_TYPES: Final[frozenset[str]] = frozenset(
+    {
+        QUOTA_TYPE_USER_ID,
+        QUOTA_TYPE_ORG_ID,
+        QUOTA_TYPE_SYSTEM_ID,
+        QUOTA_TYPE_DISABLED,
+    }
+)
+ALLOWED_QUOTA_RESULTS: Final[frozenset[str]] = frozenset(
+    {
+        QUOTA_RESULT_SUCCESS,
+        QUOTA_RESULT_FAILURE,
+        QUOTA_RESULT_SKIPPED,
+        QUOTA_RESULT_ERROR,
+    }
+)
+
+
+def normalize_quota_type(quota_type: str) -> str:
+    """Return a bounded quota type label for Prometheus cardinality safety."""
+    if quota_type in ALLOWED_QUOTA_TYPES:
+        return quota_type
+    return QUOTA_TYPE_USER_ID
+
+
+def normalize_quota_result(result: str) -> str:
+    """Return a bounded quota result label for Prometheus cardinality safety."""
+    if result in ALLOWED_QUOTA_RESULTS:
+        return result
+    return QUOTA_RESULT_ERROR
 
 
 @contextmanager
@@ -129,3 +170,28 @@ def record_llm_inference_duration(
         ).observe(duration)
     except (AttributeError, TypeError, ValueError):
         logger.warning("Failed to update LLM inference duration metric", exc_info=True)
+
+
+def record_quota_check(
+    endpoint_path: str, quota_type: str, result: str, duration: float
+) -> None:
+    """Record a quota availability check.
+
+    Args:
+        endpoint_path: API endpoint path for metric labeling.
+        quota_type: Bounded quota subject type, not the subject identifier. Out-of-set
+            values are recorded as ``user_id``.
+        result: Bounded result label. Out-of-set values are recorded as ``error``.
+        duration: Quota check duration in seconds.
+    """
+    normalized_quota_type = normalize_quota_type(quota_type)
+    normalized_result = normalize_quota_result(result)
+    try:
+        metrics.quota_checks_total.labels(
+            endpoint_path, normalized_quota_type, normalized_result
+        ).inc()
+        metrics.quota_check_duration_seconds.labels(
+            endpoint_path, normalized_quota_type, normalized_result
+        ).observe(duration)
+    except (AttributeError, TypeError, ValueError):
+        logger.warning("Failed to update quota check metrics", exc_info=True)

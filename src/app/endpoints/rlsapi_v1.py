@@ -558,6 +558,46 @@ def _resolve_quota_subject(request: Request, auth: AuthTuple) -> Optional[str]:
     return system_id
 
 
+def _check_infer_quota(
+    request: Request, auth: AuthTuple, endpoint_path: str
+) -> Optional[str]:
+    """Check infer quota availability and record bounded quota metrics."""
+    quota_id = _resolve_quota_subject(request, auth)
+    quota_type = configuration.rlsapi_v1.quota_subject or "disabled"
+    if quota_id is None:
+        recording.record_quota_check(
+            endpoint_path, quota_type, recording.QUOTA_RESULT_SKIPPED, 0.0
+        )
+        return None
+
+    quota_start_time = time.monotonic()
+    try:
+        check_tokens_available(configuration.quota_limiters, quota_id)
+    except HTTPException:
+        recording.record_quota_check(
+            endpoint_path,
+            quota_type,
+            recording.QUOTA_RESULT_FAILURE,
+            time.monotonic() - quota_start_time,
+        )
+        raise
+    except Exception:  # pylint: disable=broad-exception-caught
+        recording.record_quota_check(
+            endpoint_path,
+            quota_type,
+            recording.QUOTA_RESULT_ERROR,
+            time.monotonic() - quota_start_time,
+        )
+        raise
+    recording.record_quota_check(
+        endpoint_path,
+        quota_type,
+        recording.QUOTA_RESULT_SUCCESS,
+        time.monotonic() - quota_start_time,
+    )
+    return quota_id
+
+
 def _build_infer_response(
     response_text: str,
     request_id: str,
@@ -695,13 +735,11 @@ async def infer_endpoint(  # pylint: disable=R0914
     """
     # Authentication enforced by get_auth_dependency(), authorization by @authorize decorator.
     check_configuration_loaded(configuration)
+    endpoint_path = ENDPOINT_PATH_INFER
+
     # Quota enforcement: resolve subject and check availability before any work.
     # No-op when quota_subject is not configured or no quota limiters exist.
-    quota_id = _resolve_quota_subject(request, auth)
-    if quota_id is not None:
-        check_tokens_available(configuration.quota_limiters, quota_id)
-
-    endpoint_path = ENDPOINT_PATH_INFER
+    quota_id = _check_infer_quota(request, auth, endpoint_path)
 
     request_id = get_suid()
 

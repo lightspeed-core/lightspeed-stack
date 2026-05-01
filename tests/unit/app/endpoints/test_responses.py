@@ -17,6 +17,7 @@ from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaSta
 from pytest_mock import MockerFixture
 
 from app.endpoints.responses import (
+    _check_response_quota,
     _is_server_mcp_output_item,
     _sanitize_response_dict,
     _should_filter_mcp_chunk,
@@ -275,6 +276,29 @@ def _request_with_previous_response_id(
     )
     request.conversation = VALID_CONV_ID
     return request
+
+
+def test_check_response_quota_records_unexpected_errors(
+    minimal_config: AppConfig,
+    mocker: MockerFixture,
+) -> None:
+    """Test unexpected quota failures are recorded before being re-raised."""
+    mocker.patch(f"{MODULE}.configuration", minimal_config)
+    mocker.patch(
+        f"{MODULE}.check_tokens_available",
+        side_effect=RuntimeError("quota backend unavailable"),
+    )
+    mock_record = mocker.patch(f"{MODULE}.recording.record_quota_check")
+
+    with pytest.raises(RuntimeError, match="quota backend unavailable"):
+        _check_response_quota("user-123", "/v1/responses")
+
+    mock_record.assert_called_once()
+    endpoint_path, quota_type, result, duration = mock_record.call_args.args
+    assert endpoint_path == "/v1/responses"
+    assert quota_type == "user_id"
+    assert result == "error"
+    assert duration >= 0
 
 
 class TestResponsesEndpointHandler:
