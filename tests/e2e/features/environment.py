@@ -145,13 +145,19 @@ def _ensure_prow_port_forward(context: Context) -> None:
 
     Probes localhost:{E2E_LSC_PORT}/readiness — if it fails, calls e2e-ops
     restart-port-forward to re-establish the tunnel before the scenario runs.
+
+    Treat HTTP 503 like 200/401 here: it means the tunnel reached Lightspeed and the
+    app responded. ``llama_stack_disrupted`` leaves Llama stopped on purpose; readiness
+    then returns 503. Previously we treated 503 as a dead tunnel and ran
+    ``restart-lightspeed``, which restores Llama via e2e-ops and breaks later scenarios
+    that skip disruption (once-per-feature) while expecting Llama to stay down.
     """
     host = os.getenv("E2E_LSC_HOSTNAME", "localhost")
     port = os.getenv("E2E_LSC_PORT", "8080")
     url = f"http://{host}:{port}/readiness"
     try:
         resp = requests.get(url, timeout=5)
-        if resp.status_code in (200, 401):
+        if resp.status_code in (200, 401, 503):
             return
     except requests.RequestException:
         pass

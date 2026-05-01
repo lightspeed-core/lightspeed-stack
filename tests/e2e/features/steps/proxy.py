@@ -2,7 +2,7 @@
 
 These tests configure Llama Stack's run.yaml with NetworkConfig settings
 (proxy, TLS) and verify the full pipeline works through the Lightspeed Stack.
-The proxy sits between Llama Stack and the LLM provider (e.g., OpenAI).
+The proxy sits between Llama Stack and whichever remote LLM provider is active.
 
 Config switching uses the same pattern as other e2e tests: overwrite the
 host-mounted run.yaml and restart Docker containers. Restarts are not
@@ -138,17 +138,41 @@ def _write_config(config: dict[str, Any], path: str) -> None:
         yaml.dump(config, f, default_flow_style=False)
 
 
-def _find_openai_provider(config: dict[str, Any]) -> dict[str, Any]:
-    """Find the OpenAI inference provider in the config.
+def _find_inference_provider(
+    context: Context, config: dict[str, Any]
+) -> dict[str, Any]:
+    """Find the target remote inference provider in the config.
+
+    Priority:
+    1. ``context.default_provider`` (detected in ``before_all``), if present.
+    2. First remote inference provider in ``run.yaml``.
 
     Raises:
-        AssertionError: If no remote::openai provider is found.
+        AssertionError: If no suitable remote inference provider is found.
     """
     providers = config.get("providers", {})
-    for provider in providers.get("inference", []):
-        if provider.get("provider_type") == "remote::openai":
+    inference_providers = providers.get("inference", [])
+    target_provider_id = getattr(context, "default_provider", None)
+
+    if target_provider_id:
+        for provider in inference_providers:
+            if provider.get("provider_id") == target_provider_id:
+                provider_type = str(provider.get("provider_type", ""))
+                assert provider_type.startswith("remote::"), (
+                    "Configured default provider "
+                    f"'{target_provider_id}' is not a remote provider in run.yaml"
+                )
+                return provider
+
+    for provider in inference_providers:
+        provider_type = str(provider.get("provider_type", ""))
+        if provider_type.startswith("remote::"):
             return provider
-    raise AssertionError("No remote::openai provider found in run.yaml")
+
+    raise AssertionError(
+        "No remote inference provider found in run.yaml "
+        "(expected provider_type starting with 'remote::')"
+    )
 
 
 def _backup_llama_config() -> None:
@@ -244,7 +268,7 @@ def configure_llama_tunnel_proxy(context: Context) -> None:
     proxy = context.tunnel_proxy
     proxy_host = _get_proxy_host(context.is_docker_mode)
     config = _load_llama_config()
-    provider = _find_openai_provider(config)
+    provider = _find_inference_provider(context, config)
 
     if "config" not in provider:
         provider["config"] = {}
@@ -262,7 +286,7 @@ def configure_llama_unreachable_proxy(context: Context, proxy_url: str) -> None:
     """Modify run.yaml with a proxy URL (may be unreachable)."""
     _backup_llama_config()
     config = _load_llama_config()
-    provider = _find_openai_provider(config)
+    provider = _find_inference_provider(context, config)
 
     if "config" not in provider:
         provider["config"] = {}
@@ -326,7 +350,7 @@ def configure_llama_interception_with_ca(context: Context) -> None:
     proxy = context.interception_proxy
     proxy_host = _get_proxy_host(context.is_docker_mode)
     config = _load_llama_config()
-    provider = _find_openai_provider(config)
+    provider = _find_inference_provider(context, config)
 
     if "config" not in provider:
         provider["config"] = {}
@@ -353,7 +377,7 @@ def configure_llama_interception_no_ca(context: Context) -> None:
     proxy = context.interception_proxy
     proxy_host = _get_proxy_host(context.is_docker_mode)
     config = _load_llama_config()
-    provider = _find_openai_provider(config)
+    provider = _find_inference_provider(context, config)
 
     if "config" not in provider:
         provider["config"] = {}
@@ -374,7 +398,7 @@ def configure_llama_tls_version(context: Context, version: str) -> None:
     """Modify run.yaml with TLS version config."""
     _backup_llama_config()
     config = _load_llama_config()
-    provider = _find_openai_provider(config)
+    provider = _find_inference_provider(context, config)
 
     if "config" not in provider:
         provider["config"] = {}
@@ -392,7 +416,7 @@ def configure_llama_ciphers(context: Context, ciphers: str) -> None:
     """Modify run.yaml with cipher suite config."""
     _backup_llama_config()
     config = _load_llama_config()
-    provider = _find_openai_provider(config)
+    provider = _find_inference_provider(context, config)
 
     if "config" not in provider:
         provider["config"] = {}

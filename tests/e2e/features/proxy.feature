@@ -5,9 +5,9 @@ Feature: Proxy and TLS networking tests for Llama Stack providers
   remote inference providers are configured with proxy and TLS settings
   via the run.yaml NetworkConfig.
 
-  Query bodies use shield_ids: [] because Llama Guard moderation issues a separate
-  OpenAI request inside Llama Stack that does not inherit the same proxy/TLS CA
-  trust as remote::openai inference, which breaks MITM interception tests.
+  Query bodies use shield_ids: [] because Llama Guard moderation can issue
+  separate provider calls inside Llama Stack that may not inherit the same
+  proxy/TLS CA trust as the scenario's remote inference provider.
 
   Background:
     Given The service is started locally

@@ -69,7 +69,7 @@ create_secret() {
 
 create_secret openai-api-key-secret --from-literal=key="$OPENAI_API_KEY"
 
-# MCPFileAuth E2E: file at /tmp/mcp-secret-token in LCS pod (docker-compose mounts tests/e2e/secrets/mcp-token)
+# MCPFileAuth E2E: secret mounted at /tmp/mcp-token in LCS pod (same as docker-compose)
 if [ -f "$REPO_ROOT/tests/e2e/secrets/mcp-token" ]; then
   oc create secret generic mcp-file-auth-token -n "$NAMESPACE" \
     --from-file=token="$REPO_ROOT/tests/e2e/secrets/mcp-token" \
@@ -187,6 +187,7 @@ else
     log "⚠️  No kv_store.db found at $RAG_DB_PATH"
 fi
 
+
 # ConfigMap for Llama Stack run-from-source (init container clones this repo @ this revision)
 REPO_URL="${REPO_URL:-$(cd "$REPO_ROOT" && git config --get remote.origin.url 2>/dev/null)}"
 REPO_REVISION="${REPO_REVISION:-$(cd "$REPO_ROOT" && git rev-parse HEAD 2>/dev/null)}"
@@ -200,14 +201,6 @@ log "llama-stack-source ConfigMap: repo @ ${REPO_REVISION}"
 
 "$PIPELINE_DIR/pipeline-services-konflux.sh"
 
-progress "Waiting for lightspeed-stack and llama-stack pods"
-if ! oc wait pod/lightspeed-stack-service pod/llama-stack-service \
-    -n "$NAMESPACE" --for=condition=Ready --timeout=600s; then
-  progress "❌ One or both service pods failed to become ready within timeout"
-  exit 1
-fi
-log "✅ Both service pods are ready"
-
 # Print pod logs with echo so CI/Konflux log capture shows each line (especially when QUIET=1)
 e2e_echo_pod_logs() {
   local n="${1:-120}"
@@ -220,6 +213,15 @@ e2e_echo_pod_logs() {
     echo "[e2e] $line"
   done < <(oc logs llama-stack-service -n "$NAMESPACE" --tail="$n" 2>&1) || true
 }
+
+progress "Waiting for lightspeed-stack and llama-stack pods"
+if ! oc wait pod/lightspeed-stack-service pod/llama-stack-service \
+    -n "$NAMESPACE" --for=condition=Ready --timeout=600s; then
+  progress "❌ One or both service pods failed to become ready within timeout"
+  e2e_echo_pod_logs 200
+  exit 1
+fi
+log "✅ Both service pods are ready"
 
 if [ "$QUIET" = "1" ]; then
   e2e_echo_pod_logs 80
@@ -290,8 +292,10 @@ for i in $(seq 1 36); do
     break
   fi
   if [ $i -eq 36 ]; then
-    echo "❌ Port-forward to lightspeed-stack never became ready (3 min)"
-    echo "[e2e] ========== diagnostics: pod logs after port-forward timeout =========="
+    echo "❌ Port-forward to lightspeed-stack never became ready (3 min)" | tee /dev/stderr
+    echo "[e2e] ========== diagnostics: pod logs after port-forward timeout ==========" | tee /dev/stderr
+    trap - ERR
+    set +e
     e2e_echo_pod_logs 250
     echo "[e2e] ========== diagnostics: recent events =========="
     while IFS= read -r line || [[ -n "$line" ]]; do
@@ -319,8 +323,10 @@ for i in $(seq 1 36); do
     break
   fi
   if [ $i -eq 36 ]; then
-    echo "❌ Port-forward to llama-stack never became healthy (3 min)"
-    e2e_echo_pod_logs 200
+    echo "❌ Port-forward to llama-stack never became healthy (3 min)" | tee /dev/stderr
+    trap - ERR
+    set +e
+    e2e_echo_pod_logs 250
     kill $PF_LCS_PID 2>/dev/null || true
     kill $PF_JWKS_PID 2>/dev/null || true
     kill $PF_LLAMA_PID 2>/dev/null || true

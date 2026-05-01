@@ -51,9 +51,9 @@ spec:
         - name: config
           mountPath: /app-root/lightspeed-stack.yaml
           subPath: lightspeed-stack.yaml
-        # MCPFileAuth E2E: same path as docker-compose (tests/e2e/secrets/mcp-token → secret mcp-file-auth-token)
+        # MCPFileAuth E2E: must match authorization_headers paths in lightspeed-stack-mcp-file-auth.yaml (/tmp/mcp-token)
         - name: mcp-file-auth-token
-          mountPath: /tmp/mcp-secret-token
+          mountPath: /tmp/mcp-token
           subPath: token
           readOnly: true
         # InvalidMCPFileAuthConfig E2E: docker-compose mounts tests/e2e/secrets/invalid-mcp-token here
