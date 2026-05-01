@@ -6,6 +6,8 @@
 # pylint: disable=too-many-arguments
 # pylint: disable=too-many-positional-arguments
 
+import io
+import logging
 import re
 from collections.abc import Callable
 from typing import Any, Optional
@@ -13,11 +15,12 @@ from typing import Any, Optional
 import pytest
 from fastapi import HTTPException, status
 from llama_stack_api import OpenAIResponseMessage
-from llama_stack_client import APIConnectionError
+from llama_stack_client import APIConnectionError, APIStatusError
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
 import constants
+from app.endpoints import rlsapi_v1
 from app.endpoints.rlsapi_v1 import (
     AUTH_DISABLED,
     TemplateRenderError,
@@ -183,6 +186,23 @@ def mock_generic_runtime_error_fixture(mocker: MockerFixture) -> None:
     _setup_responses_mock(
         mocker,
         mocker.AsyncMock(side_effect=RuntimeError("something went wrong")),
+    )
+
+
+@pytest.fixture(name="mock_api_status_error_with_private_text")
+def mock_api_status_error_with_private_text_fixture(mocker: MockerFixture) -> None:
+    """Mock responses.create() to raise APIStatusError with private text."""
+    mock_response = mocker.Mock(request=None)
+    mock_response.status_code = 500
+    _setup_responses_mock(
+        mocker,
+        mocker.AsyncMock(
+            side_effect=APIStatusError(
+                message="Backend echoed PRIVATE prompt sk-backend-secret",
+                response=mock_response,
+                body=None,
+            )
+        ),
     )
 
 
@@ -666,6 +686,50 @@ async def test_infer_full_context_request(
 
 
 @pytest.mark.asyncio
+async def test_infer_info_logs_omit_user_supplied_content(
+    mocker: MockerFixture,
+    mock_configuration: AppConfig,
+    mock_llm_response: None,
+    mock_auth_resolvers: None,
+    mock_request_factory: Callable[..., Any],
+    mock_background_tasks: Any,
+) -> None:
+    """Test info logs include operational metadata without user content."""
+    infer_request = RlsapiV1InferRequest(
+        question="PRIVATE question with token sk-user-secret",
+        context=RlsapiV1Context(
+            stdin="PRIVATE stdin password=super-secret",
+            attachments=RlsapiV1Attachment(
+                contents="PRIVATE attachment api_key=attachment-secret",
+                mimetype="text/plain",
+            ),
+            terminal=RlsapiV1Terminal(output="PRIVATE terminal output"),
+            systeminfo=RlsapiV1SystemInfo(os="RHEL", version="9.3", arch="x86_64"),
+        ),
+    )
+    log_stream = io.StringIO()
+    log_handler = logging.StreamHandler(log_stream)
+    mocker.patch.object(rlsapi_v1.logger, "handlers", [log_handler])
+
+    await infer_endpoint(
+        infer_request=infer_request,
+        request=mock_request_factory(),
+        background_tasks=mock_background_tasks,
+        auth=MOCK_AUTH,
+    )
+
+    log_handler.flush()
+    logs = log_stream.getvalue()
+    assert "Processing rlsapi v1 /infer request" in logs
+    assert "LLM call completed for rlsapi v1 request" in logs
+    assert "Completed rlsapi v1 /infer request" in logs
+    assert "sk-user-secret" not in logs
+    assert "super-secret" not in logs
+    assert "attachment-secret" not in logs
+    assert "PRIVATE terminal output" not in logs
+
+
+@pytest.mark.asyncio
 async def test_infer_generates_unique_request_ids(
     mocker: MockerFixture,
     mock_configuration: AppConfig,
@@ -716,6 +780,36 @@ async def test_infer_api_connection_error_returns_503(
         )
 
     assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+
+
+@pytest.mark.asyncio
+async def test_infer_api_status_error_logs_class_without_private_text(
+    mocker: MockerFixture,
+    mock_configuration: AppConfig,
+    mock_api_status_error_with_private_text: None,
+    mock_auth_resolvers: None,
+    mock_request_factory: Callable[..., Any],
+    mock_background_tasks: Any,
+) -> None:
+    """Test API status error logs omit raw exception text."""
+    log_stream = io.StringIO()
+    log_handler = logging.StreamHandler(log_stream)
+    mocker.patch.object(rlsapi_v1.logger, "handlers", [log_handler])
+
+    with pytest.raises(HTTPException) as exc_info:
+        await infer_endpoint(
+            infer_request=RlsapiV1InferRequest(question="Test question"),
+            request=mock_request_factory(),
+            background_tasks=mock_background_tasks,
+            auth=MOCK_AUTH,
+        )
+
+    log_handler.flush()
+    logs = log_stream.getvalue()
+    assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert "APIStatusError" in logs
+    assert "sk-backend-secret" not in logs
+    assert "PRIVATE prompt" not in logs
 
 
 @pytest.mark.asyncio
