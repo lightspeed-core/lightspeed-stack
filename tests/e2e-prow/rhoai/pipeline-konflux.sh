@@ -187,6 +187,7 @@ else
     log "⚠️  No kv_store.db found at $RAG_DB_PATH"
 fi
 
+
 # ConfigMap for Llama Stack run-from-source (init container clones this repo @ this revision)
 REPO_URL="${REPO_URL:-$(cd "$REPO_ROOT" && git config --get remote.origin.url 2>/dev/null)}"
 REPO_REVISION="${REPO_REVISION:-$(cd "$REPO_ROOT" && git rev-parse HEAD 2>/dev/null)}"
@@ -200,15 +201,6 @@ log "llama-stack-source ConfigMap: repo @ ${REPO_REVISION}"
 
 "$PIPELINE_DIR/pipeline-services-konflux.sh"
 
-progress "Waiting for lightspeed-stack and llama-stack pods"
-if ! oc wait pod/lightspeed-stack-service pod/llama-stack-service \
-    -n "$NAMESPACE" --for=condition=Ready --timeout=600s; then
-  progress "❌ One or both service pods failed to become ready within timeout"
-  e2e_echo_pod_logs 200
-  exit 1
-fi
-log "✅ Both service pods are ready"
-
 # Print pod logs with echo so CI/Konflux log capture shows each line (especially when QUIET=1)
 e2e_echo_pod_logs() {
   local n="${1:-120}"
@@ -221,6 +213,15 @@ e2e_echo_pod_logs() {
     echo "[e2e] $line"
   done < <(oc logs llama-stack-service -n "$NAMESPACE" --tail="$n" 2>&1) || true
 }
+
+progress "Waiting for lightspeed-stack and llama-stack pods"
+if ! oc wait pod/lightspeed-stack-service pod/llama-stack-service \
+    -n "$NAMESPACE" --for=condition=Ready --timeout=600s; then
+  progress "❌ One or both service pods failed to become ready within timeout"
+  e2e_echo_pod_logs 200
+  exit 1
+fi
+log "✅ Both service pods are ready"
 
 if [ "$QUIET" = "1" ]; then
   e2e_echo_pod_logs 80
