@@ -8,13 +8,13 @@ from typing import Optional
 import yaml
 from fastapi import HTTPException
 from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
-from llama_stack_client import APIConnectionError, AsyncLlamaStackClient
+from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
 from configuration import configuration
 from llama_stack_configuration import YamlDumper, enrich_byok_rag, enrich_solr
 from log import get_logger
+from models.api.responses import ServiceUnavailableResponse
 from models.config import LlamaStackConfiguration
-from models.responses import ServiceUnavailableResponse
 from utils.types import Singleton
 
 logger = get_logger(__name__)
@@ -140,6 +140,76 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
             raise HTTPException(**error_response.model_dump()) from e
         self._lsc = client
         return client
+
+    async def check_model_available(self, model_id: str) -> tuple[bool, str]:
+        """Check if a model is available in the registry, attempting reload if needed.
+
+        Verifies the model can be found in the Llama Stack client's model
+        list. If the model is missing and the client is running in library
+        mode, attempts a client reload to re-register models before
+        reporting failure.
+
+        The reload re-runs the full Stack initialization pipeline, which
+        re-attempts model registration with providers. This handles the
+        case where a transient provider failure (e.g. Vertex AI network
+        blip) caused model registration to fail on startup. Since
+        Kubernetes readiness probe failures only remove the pod from
+        service endpoints without restarting it, the reload provides a
+        self-healing path.
+
+        Args:
+            model_id: The expected model identifier to look up.
+
+        Returns:
+            A tuple of (available, reason) where available is True if the
+            model was found, and reason describes the outcome.
+        """
+        try:
+            client = self.get_client()
+            models = await client.models.list()
+        except RuntimeError as e:
+            logger.warning("Client not initialized, skipping model check: %s", e)
+            return False, f"Client not initialized: {e!s}"
+        except (APIConnectionError, APIStatusError) as e:
+            logger.error("Error checking model availability: %s", e)
+            return False, f"Error checking model availability: {e!s}"
+
+        if any(m.id == model_id for m in models):
+            return True, f"Model {model_id} is available"
+
+        # Model not found - attempt self-healing reload for library clients.
+        # In server mode there is no library client to reload, so we can
+        # only detect the missing model and report failure.
+        if self.is_library_client:
+            logger.warning(
+                "Model %s not found, attempting client reload",
+                model_id,
+            )
+            try:
+                await self.reload_library_client()
+                client = self.get_client()
+                reloaded_models = await client.models.list()
+                if any(m.id == model_id for m in reloaded_models):
+                    logger.info(
+                        "Model %s found after client reload",
+                        model_id,
+                    )
+                    return True, f"Model {model_id} is available after reload"
+            except (
+                RuntimeError,
+                HTTPException,
+                APIConnectionError,
+                APIStatusError,
+            ) as err:
+                logger.error("Client reload failed: %s", err)
+
+        registered_ids = [m.id for m in models]
+        logger.error(
+            "Model %s not found in registry. Registered models: %s",
+            model_id,
+            registered_ids,
+        )
+        return False, f"Model {model_id} not found in model registry"
 
     def update_provider_data(self, updates: dict[str, str]) -> AsyncLlamaStackClient:
         """Update provider data headers for service client.

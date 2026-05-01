@@ -15,15 +15,15 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from cache.cache_error import CacheError
 from configuration import AppConfig
-from models.cache_entry import CacheEntry
-from models.config import Action
-from models.database.conversations import UserConversation, UserTurn
-from models.requests import Attachment, QueryRequest
-from models.responses import (
+from models.api.responses import (
     InternalServerErrorResponse,
     PromptTooLongResponse,
     QuotaExceededResponse,
 )
+from models.cache_entry import CacheEntry
+from models.config import Action
+from models.database.conversations import UserConversation, UserTurn
+from models.requests import Attachment, QueryRequest
 from tests.unit import config_dict
 from utils.query import (
     consume_query_tokens,

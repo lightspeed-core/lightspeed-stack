@@ -7,7 +7,7 @@ import psycopg2
 from fastapi import HTTPException
 
 from log import get_logger
-from models.responses import InternalServerErrorResponse, QuotaExceededResponse
+from models.api.responses import InternalServerErrorResponse, QuotaExceededResponse
 from quota.quota_exceed_error import QuotaExceedError
 from quota.quota_limiter import QuotaLimiter
 from quota.token_usage_history import TokenUsageHistory

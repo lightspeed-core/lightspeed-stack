@@ -3,6 +3,7 @@
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Final
 
 import sentry_sdk  # pyright: ignore[reportMissingImports]
 from fastapi import FastAPI, HTTPException
@@ -22,7 +23,7 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from log import get_logger
 from metrics import recording
-from models.responses import InternalServerErrorResponse
+from models.api.responses import InternalServerErrorResponse
 from sentry import initialize_sentry
 from utils.common import register_mcp_servers_async
 from utils.llama_stack_version import check_llama_stack_version
@@ -33,6 +34,34 @@ logger.info("Initializing app")
 
 
 service_name = configuration.configuration.name
+
+# Global OpenAPI tags so every operation tag is declared (Spectral: operation-tag-defined).
+_OPENAPI_TAGS: Final[list[dict[str, str]]] = [
+    {"name": "a2a", "description": "Agent-to-Agent (A2A) protocol."},
+    {"name": "authorized", "description": "Authorization probe."},
+    {"name": "config", "description": "Service configuration."},
+    {"name": "conversations_v1", "description": "Conversations API v1."},
+    {"name": "conversations_v2", "description": "Conversations API v2."},
+    {"name": "feedback", "description": "User feedback."},
+    {"name": "health", "description": "Health and readiness probes."},
+    {"name": "info", "description": "Service information."},
+    {"name": "mcp-auth", "description": "MCP client authentication options."},
+    {"name": "mcp-servers", "description": "MCP server registration."},
+    {"name": "metrics", "description": "Prometheus metrics."},
+    {"name": "models", "description": "LLM models."},
+    {"name": "prompts", "description": "Prompt management."},
+    {"name": "providers", "description": "Inference providers."},
+    {"name": "query", "description": "Non-streaming query."},
+    {"name": "rags", "description": "RAG configuration."},
+    {"name": "responses", "description": "OpenAI-compatible Responses API."},
+    {"name": "rlsapi-v1", "description": "RLS API v1 (inference)."},
+    {"name": "root", "description": "Service root."},
+    {"name": "shields", "description": "Safety shields."},
+    {"name": "streaming_query", "description": "Streaming query (SSE)."},
+    {"name": "streaming_query_interrupt", "description": "Streaming interrupt."},
+    {"name": "tools", "description": "Tools."},
+    {"name": "vector-stores", "description": "Vector stores and files."},
+]
 
 
 # running on FastAPI startup
@@ -111,8 +140,9 @@ app = FastAPI(
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },
     servers=[
-        {"url": "http://localhost:8080/", "description": "Locally running service"}
+        {"url": "http://localhost:8080", "description": "Locally running service"}
     ],
+    openapi_tags=_OPENAPI_TAGS,
     lifespan=lifespan,
 )
 

@@ -13,14 +13,14 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from metrics.utils import setup_model_metrics
-from models.config import Action
-from models.responses import (
+from models.api.responses import (
     UNAUTHORIZED_OPENAPI_EXAMPLES,
     ForbiddenResponse,
     InternalServerErrorResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
+from models.config import Action
 
 router = APIRouter(tags=["metrics"])
 

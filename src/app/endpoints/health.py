@@ -15,16 +15,19 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
+from configuration import configuration
 from log import get_logger
-from models.config import Action
-from models.responses import (
+from models.api.responses import (
     UNAUTHORIZED_OPENAPI_EXAMPLES,
     ForbiddenResponse,
+    ServiceUnavailableResponse,
+    UnauthorizedResponse,
+)
+from models.config import Action
+from models.responses import (
     LivenessResponse,
     ProviderHealthStatus,
     ReadinessResponse,
-    ServiceUnavailableResponse,
-    UnauthorizedResponse,
 )
 
 logger = get_logger(__name__)
@@ -95,6 +98,31 @@ async def get_providers_health_statuses() -> list[ProviderHealthStatus]:
         ]
 
 
+async def check_default_model_available() -> tuple[bool, str]:
+    """Check that the configured default model is registered in the model registry.
+
+    Retrieves the default model and provider from configuration and delegates
+    the availability check to the client holder.
+
+    Returns:
+        A tuple of (available, reason) where available is True if the default
+        model was found or no default model is configured, and reason describes
+        the outcome.
+    """
+    inference = configuration.inference
+    if (
+        inference is None
+        or not inference.default_model
+        or not inference.default_provider
+    ):
+        return True, "No default model configured"
+
+    expected_model_id = f"{inference.default_provider}/{inference.default_model}"
+
+    client_holder = AsyncLlamaStackClientHolder()
+    return await client_holder.check_model_available(expected_model_id)
+
+
 @router.get("/readiness", responses=get_readiness_responses)
 @authorize(Action.INFO)
 async def readiness_probe_get_method(
@@ -134,11 +162,21 @@ async def readiness_probe_get_method(
         unhealthy_provider_names = [p.provider_id for p in unhealthy_providers]
         reason = f"Providers not healthy: {', '.join(unhealthy_provider_names)}"
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    else:
-        ready = True
-        reason = "All providers are healthy"
+        return ReadinessResponse(
+            ready=ready, reason=reason, providers=unhealthy_providers
+        )
 
-    return ReadinessResponse(ready=ready, reason=reason, providers=unhealthy_providers)
+    # Check that the default model is registered in the model registry
+    model_available, model_reason = await check_default_model_available()
+    if not model_available:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return ReadinessResponse(
+            ready=False, reason=model_reason, providers=unhealthy_providers
+        )
+
+    return ReadinessResponse(
+        ready=True, reason="All providers are healthy", providers=unhealthy_providers
+    )
 
 
 @router.get("/liveness", responses=get_liveness_responses)

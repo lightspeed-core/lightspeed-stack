@@ -17,7 +17,7 @@
     },
     "servers": [
         {
-            "url": "http://localhost:8080/",
+            "url": "http://localhost:8080",
             "description": "Locally running service"
         }
     ],
@@ -5933,7 +5933,7 @@
                                         "value": {
                                             "detail": {
                                                 "cause": "User lacks model_override permission required to override model/provider.",
-                                                "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
+                                                "response": "This instance does not permit overriding model/provider in the query request (missing permission: model_override). Please remove the model and provider fields from your request."
                                             }
                                         }
                                     }
@@ -5968,7 +5968,7 @@
                                     "model": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Model with ID gpt-4-turbo is not configured",
+                                                "cause": "Model with ID gpt-4o-mini does not exist",
                                                 "response": "Model not found"
                                             }
                                         }
@@ -6052,7 +6052,7 @@
                                     "user none": {
                                         "value": {
                                             "detail": {
-                                                "cause": "User 123 has no available tokens.",
+                                                "cause": "User 123 has no available tokens",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -6060,7 +6060,7 @@
                                     "cluster none": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Cluster has no available tokens.",
+                                                "cause": "Cluster has no available tokens",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -6068,7 +6068,7 @@
                                     "subject none": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Unknown subject 999 has no available tokens.",
+                                                "cause": "Unknown subject 999 has no available tokens",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -6076,7 +6076,7 @@
                                     "user insufficient": {
                                         "value": {
                                             "detail": {
-                                                "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
+                                                "cause": "User 123 has 5 tokens, but 10 tokens are needed",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -6084,7 +6084,7 @@
                                     "cluster insufficient": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
+                                                "cause": "Cluster has 500 tokens, but 900 tokens are needed",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -6092,7 +6092,7 @@
                                     "subject insufficient": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
+                                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -6295,7 +6295,7 @@
                                         "value": {
                                             "detail": {
                                                 "cause": "User lacks model_override permission required to override model/provider.",
-                                                "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
+                                                "response": "This instance does not permit overriding model/provider in the query request (missing permission: model_override). Please remove the model and provider fields from your request."
                                             }
                                         }
                                     }
@@ -6330,7 +6330,7 @@
                                     "model": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Model with ID gpt-4-turbo is not configured",
+                                                "cause": "Model with ID gpt-4o-mini does not exist",
                                                 "response": "Model not found"
                                             }
                                         }
@@ -6414,7 +6414,7 @@
                                     "user none": {
                                         "value": {
                                             "detail": {
-                                                "cause": "User 123 has no available tokens.",
+                                                "cause": "User 123 has no available tokens",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -6422,7 +6422,7 @@
                                     "cluster none": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Cluster has no available tokens.",
+                                                "cause": "Cluster has no available tokens",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -6430,7 +6430,7 @@
                                     "subject none": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Unknown subject 999 has no available tokens.",
+                                                "cause": "Unknown subject 999 has no available tokens",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -6438,7 +6438,7 @@
                                     "user insufficient": {
                                         "value": {
                                             "detail": {
-                                                "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
+                                                "cause": "User 123 has 5 tokens, but 10 tokens are needed",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -6446,7 +6446,7 @@
                                     "cluster insufficient": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
+                                                "cause": "Cluster has 500 tokens, but 900 tokens are needed",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -6454,7 +6454,7 @@
                                     "subject insufficient": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
+                                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -9262,8 +9262,7 @@
                                 "schema": {
                                     "type": "string"
                                 },
-                                "example": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"in_progress\",\"model\":\"openai/gpt-4o-mini\",\"output\":[],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{},\"output_text\":\"\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"sequence_number\":1,\"response_id\":\"resp_abc\",\"output_index\":0,\"item\":{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"in_progress\",\"role\":\"assistant\",\"content\":[]}}\n\n...\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":30,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"completed\",\"model\":\"openai/gpt-4o-mini\",\"output\":[{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\",\"annotations\":[]}]}],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"usage\":{\"input_tokens\":10,\"output_tokens\":6,\"total_tokens\":16,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{\"daily\":1000,\"monthly\":50000},\"output_text\":\"Hello! How can I help?\"}}\n\ndata: [DONE]\n\n",
-                                "description": "SSE stream of events"
+                                "example": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"in_progress\",\"model\":\"openai/gpt-4o-mini\",\"output\":[],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{},\"output_text\":\"\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"sequence_number\":1,\"response_id\":\"resp_abc\",\"output_index\":0,\"item\":{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"in_progress\",\"role\":\"assistant\",\"content\":[]}}\n\n...\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":30,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"completed\",\"model\":\"openai/gpt-4o-mini\",\"output\":[{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\",\"annotations\":[]}]}],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"usage\":{\"input_tokens\":10,\"output_tokens\":6,\"total_tokens\":16,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{\"daily\":1000,\"monthly\":50000},\"output_text\":\"Hello! How can I help?\"}}\n\ndata: [DONE]\n\n"
                             }
                         }
                     },
@@ -9379,7 +9378,7 @@
                                         "value": {
                                             "detail": {
                                                 "cause": "User lacks model_override permission required to override model/provider.",
-                                                "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
+                                                "response": "This instance does not permit overriding model/provider in the query request (missing permission: model_override). Please remove the model and provider fields from your request."
                                             }
                                         }
                                     }
@@ -9414,7 +9413,7 @@
                                     "model": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Model with ID gpt-4-turbo is not configured",
+                                                "cause": "Model with ID gpt-4o-mini does not exist",
                                                 "response": "Model not found"
                                             }
                                         }
@@ -9526,7 +9525,7 @@
                                     "user none": {
                                         "value": {
                                             "detail": {
-                                                "cause": "User 123 has no available tokens.",
+                                                "cause": "User 123 has no available tokens",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -9534,7 +9533,7 @@
                                     "cluster none": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Cluster has no available tokens.",
+                                                "cause": "Cluster has no available tokens",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -9542,7 +9541,7 @@
                                     "subject none": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Unknown subject 999 has no available tokens.",
+                                                "cause": "Unknown subject 999 has no available tokens",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -9550,7 +9549,7 @@
                                     "user insufficient": {
                                         "value": {
                                             "detail": {
-                                                "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
+                                                "cause": "User 123 has 5 tokens, but 10 tokens are needed",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -9558,7 +9557,7 @@
                                     "cluster insufficient": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
+                                                "cause": "Cluster has 500 tokens, but 900 tokens are needed",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -9566,7 +9565,7 @@
                                     "subject insufficient": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
+                                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -9768,7 +9767,7 @@
                                     "model": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Model with ID gpt-4-turbo is not configured",
+                                                "cause": "Model with ID gpt-4o-mini does not exist",
                                                 "response": "Model not found"
                                             }
                                         }
@@ -9852,7 +9851,7 @@
                                     "user none": {
                                         "value": {
                                             "detail": {
-                                                "cause": "User 123 has no available tokens.",
+                                                "cause": "User 123 has no available tokens",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -9860,7 +9859,7 @@
                                     "cluster none": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Cluster has no available tokens.",
+                                                "cause": "Cluster has no available tokens",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -9868,7 +9867,7 @@
                                     "subject none": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Unknown subject 999 has no available tokens.",
+                                                "cause": "Unknown subject 999 has no available tokens",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -9876,7 +9875,7 @@
                                     "user insufficient": {
                                         "value": {
                                             "detail": {
-                                                "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
+                                                "cause": "User 123 has 5 tokens, but 10 tokens are needed",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -9884,7 +9883,7 @@
                                     "cluster insufficient": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
+                                                "cause": "Cluster has 500 tokens, but 900 tokens are needed",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -9892,7 +9891,7 @@
                                     "subject insufficient": {
                                         "value": {
                                             "detail": {
-                                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
+                                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed",
                                                 "response": "The quota has been exceeded"
                                             }
                                         }
@@ -9907,6 +9906,16 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                },
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -10600,15 +10609,31 @@
                 "tags": [
                     "a2a"
                 ],
-                "summary": "Handle A2A Jsonrpc",
-                "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
+                "summary": "Handle A2A JSON-RPC GET",
+                "description": "Handle GET on /a2a for A2A JSON-RPC requests following the A2A protocol specification.",
                 "operationId": "handle_a2a_jsonrpc_a2a_get",
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "Successful response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "type": "object",
+                                    "description": "JSON-RPC 2.0 response or A2A-over-HTTP payload"
+                                },
+                                "example": {
+                                    "jsonrpc": "2.0",
+                                    "id": "1",
+                                    "result": {}
+                                }
+                            },
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "text/event-stream",
+                                    "description": "Server-Sent Events stream when the JSON-RPC method is message/stream"
+                                },
+                                "example": "data: {\"jsonrpc\":\"2.0\",\"id\":\"1\",\"result\":{}}\n\n"
                             }
                         }
                     }
@@ -10618,15 +10643,31 @@
                 "tags": [
                     "a2a"
                 ],
-                "summary": "Handle A2A Jsonrpc",
-                "description": "Handle A2A JSON-RPC requests following the A2A protocol specification.\n\nThis endpoint uses the DefaultRequestHandler from the A2A SDK to handle\nall JSON-RPC requests including message/send, message/stream, etc.\n\nThe A2A SDK application is created per-request to include authentication\ncontext while still leveraging FastAPI's authorization middleware.\n\nAutomatically detects streaming requests (message/stream JSON-RPC method)\nand returns a StreamingResponse to enable real-time chunk delivery.\n\nArgs:\n    request: FastAPI request object\n    auth: Authentication tuple\n    mcp_headers: MCP headers for context propagation\n\nReturns:\n    JSON-RPC response or streaming response",
-                "operationId": "handle_a2a_jsonrpc_a2a_get",
+                "summary": "Handle A2A JSON-RPC POST",
+                "description": "Handle POST on /a2a for A2A JSON-RPC requests following the A2A protocol specification.",
+                "operationId": "handle_a2a_jsonrpc_a2a_post",
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "Successful response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "type": "object",
+                                    "description": "JSON-RPC 2.0 response or A2A-over-HTTP payload"
+                                },
+                                "example": {
+                                    "jsonrpc": "2.0",
+                                    "id": "1",
+                                    "result": {}
+                                }
+                            },
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "text/event-stream",
+                                    "description": "Server-Sent Events stream when the JSON-RPC method is message/stream"
+                                },
+                                "example": "data: {\"jsonrpc\":\"2.0\",\"id\":\"1\",\"result\":{}}\n\n"
                             }
                         }
                     }
@@ -11422,7 +11463,7 @@
                     "content"
                 ],
                 "title": "Attachment",
-                "description": "Model representing an attachment that can be send from the UI as part of query.\n\nA list of attachments can be an optional part of 'query' request.\n\nAttributes:\n    attachment_type: The attachment type, like \"log\", \"configuration\" etc.\n    content_type: The content type as defined in MIME standard\n    content: The actual attachment content\n\nYAML attachments with **kind** and **metadata/name** attributes will\nbe handled as resources with the specified name:\n```\nkind: Pod\nmetadata:\n    name: private-reg\n```",
+                "description": "Model representing an attachment that can be sent from the UI as part of query.\n\nA list of attachments can be an optional part of 'query' request.\n\nAttributes:\n    attachment_type: The attachment type, like \"log\", \"configuration\" etc.\n    content_type: The content type as defined in MIME standard\n    content: The actual attachment content\n\nYAML attachments with **kind** and **metadata/name** attributes will\nbe handled as resources with the specified name:\n```\nkind: Pod\nmetadata:\n    name: private-reg\n```",
                 "examples": [
                     {
                         "attachment_type": "log",
@@ -13178,7 +13219,7 @@
                     {
                         "detail": {
                             "cause": "User lacks model_override permission required to override model/provider.",
-                            "response": "This instance does not permit overriding model/provider in the query request (missing permission: MODEL_OVERRIDE). Please remove the model and provider fields from your request."
+                            "response": "This instance does not permit overriding model/provider in the query request (missing permission: model_override). Please remove the model and provider fields from your request."
                         },
                         "label": "model override"
                     }
@@ -14234,7 +14275,7 @@
                     },
                     {
                         "detail": {
-                            "cause": "Model with ID gpt-4-turbo is not configured",
+                            "cause": "Model with ID gpt-4o-mini does not exist",
                             "response": "Model not found"
                         },
                         "label": "model"
@@ -17283,42 +17324,42 @@
                     },
                     {
                         "detail": {
-                            "cause": "User 123 has no available tokens.",
+                            "cause": "User 123 has no available tokens",
                             "response": "The quota has been exceeded"
                         },
                         "label": "user none"
                     },
                     {
                         "detail": {
-                            "cause": "Cluster has no available tokens.",
+                            "cause": "Cluster has no available tokens",
                             "response": "The quota has been exceeded"
                         },
                         "label": "cluster none"
                     },
                     {
                         "detail": {
-                            "cause": "Unknown subject 999 has no available tokens.",
+                            "cause": "Unknown subject 999 has no available tokens",
                             "response": "The quota has been exceeded"
                         },
                         "label": "subject none"
                     },
                     {
                         "detail": {
-                            "cause": "User 123 has 5 tokens, but 10 tokens are needed.",
+                            "cause": "User 123 has 5 tokens, but 10 tokens are needed",
                             "response": "The quota has been exceeded"
                         },
                         "label": "user insufficient"
                     },
                     {
                         "detail": {
-                            "cause": "Cluster has 500 tokens, but 900 tokens are needed.",
+                            "cause": "Cluster has 500 tokens, but 900 tokens are needed",
                             "response": "The quota has been exceeded"
                         },
                         "label": "cluster insufficient"
                     },
                     {
                         "detail": {
-                            "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed.",
+                            "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed",
                             "response": "The quota has been exceeded"
                         },
                         "label": "subject insufficient"
@@ -20478,5 +20519,103 @@
                 ]
             }
         }
-    }
+    },
+    "tags": [
+        {
+            "name": "a2a",
+            "description": "Agent-to-Agent (A2A) protocol."
+        },
+        {
+            "name": "authorized",
+            "description": "Authorization probe."
+        },
+        {
+            "name": "config",
+            "description": "Service configuration."
+        },
+        {
+            "name": "conversations_v1",
+            "description": "Conversations API v1."
+        },
+        {
+            "name": "conversations_v2",
+            "description": "Conversations API v2."
+        },
+        {
+            "name": "feedback",
+            "description": "User feedback."
+        },
+        {
+            "name": "health",
+            "description": "Health and readiness probes."
+        },
+        {
+            "name": "info",
+            "description": "Service information."
+        },
+        {
+            "name": "mcp-auth",
+            "description": "MCP client authentication options."
+        },
+        {
+            "name": "mcp-servers",
+            "description": "MCP server registration."
+        },
+        {
+            "name": "metrics",
+            "description": "Prometheus metrics."
+        },
+        {
+            "name": "models",
+            "description": "LLM models."
+        },
+        {
+            "name": "prompts",
+            "description": "Prompt management."
+        },
+        {
+            "name": "providers",
+            "description": "Inference providers."
+        },
+        {
+            "name": "query",
+            "description": "Non-streaming query."
+        },
+        {
+            "name": "rags",
+            "description": "RAG configuration."
+        },
+        {
+            "name": "responses",
+            "description": "OpenAI-compatible Responses API."
+        },
+        {
+            "name": "rlsapi-v1",
+            "description": "RLS API v1 (inference)."
+        },
+        {
+            "name": "root",
+            "description": "Service root."
+        },
+        {
+            "name": "shields",
+            "description": "Safety shields."
+        },
+        {
+            "name": "streaming_query",
+            "description": "Streaming query (SSE)."
+        },
+        {
+            "name": "streaming_query_interrupt",
+            "description": "Streaming interrupt."
+        },
+        {
+            "name": "tools",
+            "description": "Tools."
+        },
+        {
+            "name": "vector-stores",
+            "description": "Vector stores and files."
+        }
+    ]
 }

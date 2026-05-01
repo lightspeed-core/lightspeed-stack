@@ -9,13 +9,13 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from log import get_logger
-from models.config import Action
-from models.responses import (
+from models.api.responses import (
     UNAUTHORIZED_OPENAPI_EXAMPLES,
     ForbiddenResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
+from models.config import Action
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["root"])

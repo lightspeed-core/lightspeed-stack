@@ -6,7 +6,7 @@ from fastapi import HTTPException
 
 import constants
 from configuration import configuration
-from models.responses import UnprocessableEntityResponse
+from models.api.responses import UnprocessableEntityResponse
 
 
 def get_system_prompt(

@@ -41,12 +41,14 @@ from llama_stack_client.types.conversations.item_list_response import (
 )
 
 from constants import DEFAULT_RAG_TOOL
+from models.api.responses import (
+    InternalServerErrorResponse,
+    ServiceUnavailableResponse,
+)
 from models.database.conversations import UserTurn
 from models.responses import (
     ConversationTurn,
-    InternalServerErrorResponse,
     Message,
-    ServiceUnavailableResponse,
 )
 from utils.responses import parse_arguments_string
 from utils.types import ResponseInput, ToolCallSummary, ToolResultSummary

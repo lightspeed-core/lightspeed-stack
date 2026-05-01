@@ -159,6 +159,7 @@ async def test_health_readiness(
     mock_llama_stack_client_health: AsyncMockType,
     test_response: Response,
     test_auth: AuthTuple,
+    mocker: MockerFixture,
 ) -> None:
     """Test that readiness probe endpoint returns readiness status.
 
@@ -179,6 +180,12 @@ async def test_health_readiness(
         None
     """
     _ = mock_llama_stack_client_health
+
+    # Mock check_default_model_available since configuration is not loaded
+    mock_check_model = mocker.patch(
+        "app.endpoints.health.check_default_model_available"
+    )
+    mock_check_model.return_value = (True, "Default model is available")
 
     result = await readiness_probe_get_method(auth=test_auth, response=test_response)
 

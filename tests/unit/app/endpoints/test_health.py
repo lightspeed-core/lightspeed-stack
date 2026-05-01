@@ -1,11 +1,14 @@
 """Unit tests for the /health REST API endpoint."""
 
+from typing import Any
+
 import pytest
 from llama_stack_client import APIConnectionError
 from pytest_mock import MockerFixture
 
 from app.endpoints.health import (
     HealthStatus,
+    check_default_model_available,
     get_providers_health_statuses,
     liveness_probe_get_method,
     readiness_probe_get_method,
@@ -72,6 +75,12 @@ async def test_readiness_probe_success_when_all_providers_healthy(
         ),
     ]
 
+    # Mock check_default_model_available so it doesn't hit uninitialized client
+    mock_check_model = mocker.patch(
+        "app.endpoints.health.check_default_model_available"
+    )
+    mock_check_model.return_value = (True, "Default model is available")
+
     # Mock the Response object and auth
     mock_response = mocker.Mock()
 
@@ -85,6 +94,43 @@ async def test_readiness_probe_success_when_all_providers_healthy(
     assert response.reason == "All providers are healthy"
     # Should return empty list since no providers are unhealthy
     assert len(response.providers) == 0
+
+
+@pytest.mark.asyncio
+async def test_readiness_probe_fails_when_model_not_available(
+    mocker: MockerFixture,
+) -> None:
+    """Test readiness returns 503 when providers are healthy but default model is missing."""
+    mock_authorization_resolvers(mocker)
+
+    mock_get_providers = mocker.patch(
+        "app.endpoints.health.get_providers_health_statuses"
+    )
+    mock_get_providers.return_value = [
+        ProviderHealthStatus(
+            provider_id="provider1",
+            status=HealthStatus.OK.value,
+            message="Provider is healthy",
+        )
+    ]
+
+    mock_check_model = mocker.patch(
+        "app.endpoints.health.check_default_model_available"
+    )
+    mock_check_model.return_value = (
+        False,
+        "Default model google-vertex/publishers/google/models/gemini-2.5-flash "
+        "not found in model registry",
+    )
+
+    mock_response = mocker.Mock()
+    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
+
+    response = await readiness_probe_get_method(auth=auth, response=mock_response)
+
+    assert response.ready is False
+    assert "not found in model registry" in response.reason
+    assert mock_response.status_code == 503
 
 
 @pytest.mark.asyncio
@@ -207,3 +253,87 @@ class TestGetProvidersHealthStatuses:
         assert (
             result[0].message == "Failed to initialize health check: Connection error."
         )
+
+
+class TestCheckDefaultModelAvailable:
+    """Test cases for the check_default_model_available function.
+
+    The model availability logic (registry lookup, reload, error handling)
+    is tested in tests/unit/test_client.py (TestCheckModelAvailable). These
+    tests verify only the config lookup and delegation in health.py.
+    """
+
+    EXPECTED_MODEL_ID = "google-vertex/publishers/google/models/gemini-2.5-flash"
+
+    @pytest.fixture
+    def inference_config(self, mocker: MockerFixture) -> Any:
+        """Patch configuration with default model and provider."""
+        mock_config = mocker.patch("app.endpoints.health.configuration")
+        mock_config.inference.default_model = (
+            "publishers/google/models/gemini-2.5-flash"
+        )
+        mock_config.inference.default_provider = "google-vertex"
+        return mock_config
+
+    @pytest.mark.asyncio
+    async def test_no_inference_config(self, mocker: MockerFixture) -> None:
+        """Test returns True when no inference configuration exists."""
+        mock_config = mocker.patch("app.endpoints.health.configuration")
+        mock_config.inference = None
+
+        available, reason = await check_default_model_available()
+
+        assert available is True
+        assert reason == "No default model configured"
+
+    @pytest.mark.asyncio
+    async def test_no_default_model_configured(self, mocker: MockerFixture) -> None:
+        """Test returns True when no default model is configured."""
+        mock_config = mocker.patch("app.endpoints.health.configuration")
+        mock_config.inference.default_model = None
+        mock_config.inference.default_provider = None
+
+        available, reason = await check_default_model_available()
+
+        assert available is True
+        assert reason == "No default model configured"
+
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("inference_config")
+    async def test_delegates_to_client_holder(
+        self,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test delegates to client holder with correct model ID."""
+        mock_holder = mocker.patch("app.endpoints.health.AsyncLlamaStackClientHolder")
+        mock_holder.return_value.check_model_available = mocker.AsyncMock(
+            return_value=(True, f"Model {self.EXPECTED_MODEL_ID} is available")
+        )
+
+        available, reason = await check_default_model_available()
+
+        assert available is True
+        assert "is available" in reason
+        mock_holder.return_value.check_model_available.assert_awaited_once_with(
+            self.EXPECTED_MODEL_ID
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("inference_config")
+    async def test_returns_holder_failure(
+        self,
+        mocker: MockerFixture,
+    ) -> None:
+        """Test passes through failure result from client holder."""
+        mock_holder = mocker.patch("app.endpoints.health.AsyncLlamaStackClientHolder")
+        mock_holder.return_value.check_model_available = mocker.AsyncMock(
+            return_value=(
+                False,
+                f"Model {self.EXPECTED_MODEL_ID} not found in model registry",
+            )
+        )
+
+        available, reason = await check_default_model_available()
+
+        assert available is False
+        assert "not found in model registry" in reason

@@ -1,0 +1,9 @@
+# Spectral (OpenAPI) — https://meta.stoplight.io/docs/spectral/
+#
+# Full Stoplight OAS ruleset. `oas3-valid-media-example` is off: examples in
+# docs/openapi.json are often partial and produced ~600 warnings with little
+# signal until examples are aligned with schemas. Re-enable when tightening
+# examples (set to "warn" or "error").
+extends: spectral:oas
+rules:
+  oas3-valid-media-example: off

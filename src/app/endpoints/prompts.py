@@ -13,19 +13,21 @@ from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from log import get_logger
-from models.config import Action
-from models.requests import PromptCreateRequest, PromptUpdateRequest
-from models.responses import (
+from models.api.responses import (
     UNAUTHORIZED_OPENAPI_EXAMPLES,
     BadRequestResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
+    ServiceUnavailableResponse,
+    UnauthorizedResponse,
+)
+from models.config import Action
+from models.requests import PromptCreateRequest, PromptUpdateRequest
+from models.responses import (
     PromptDeleteResponse,
     PromptResourceResponse,
     PromptsListResponse,
-    ServiceUnavailableResponse,
-    UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
 from utils.query import handle_known_apistatus_errors

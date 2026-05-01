@@ -4,7 +4,7 @@ from fastapi import Request, status
 from fastapi.testclient import TestClient
 
 from configuration import configuration
-from models.responses import InternalServerErrorResponse
+from models.api.responses import InternalServerErrorResponse
 
 
 class TestGlobalExceptionMiddlewareIntegration:  # pylint: disable=too-few-public-methods

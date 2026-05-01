@@ -47,6 +47,7 @@ from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import (
+    ENDPOINT_PATH_STREAMING_QUERY,
     INTERRUPTED_RESPONSE_MESSAGE,
     LLM_TOKEN_EVENT,
     LLM_TOOL_CALL_EVENT,
@@ -59,11 +60,7 @@ from constants import (
 )
 from log import get_logger
 from metrics import recording
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.config import Action
-from models.context import ResponseGeneratorContext
-from models.requests import QueryRequest
-from models.responses import (
+from models.api.responses import (
     UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH,
     AbstractErrorResponse,
     ForbiddenResponse,
@@ -72,9 +69,15 @@ from models.responses import (
     PromptTooLongResponse,
     QuotaExceededResponse,
     ServiceUnavailableResponse,
-    StreamingQueryResponse,
     UnauthorizedResponse,
     UnprocessableEntityResponse,
+)
+from models.common.responses.responses_api_params import ResponsesApiParams
+from models.config import Action
+from models.context import ResponseGeneratorContext
+from models.requests import QueryRequest
+from models.responses import (
+    StreamingQueryResponse,
 )
 from utils.conversations import append_turn_items_to_conversation
 from utils.endpoints import (
@@ -227,7 +230,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     # Moderation input is the raw user content (query + attachments) without injected RAG
     # context, to avoid false positives from retrieved document content.
     moderation_input = prepare_input(query_request)
-    endpoint_path = "/v1/streaming_query"
+    endpoint_path = ENDPOINT_PATH_STREAMING_QUERY
     moderation_result = await run_shield_moderation(
         client, moderation_input, endpoint_path, query_request.shield_ids
     )

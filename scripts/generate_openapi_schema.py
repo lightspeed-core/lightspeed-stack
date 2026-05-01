@@ -85,6 +85,7 @@ if __name__ == "__main__":
         license_info=app.license_info,
         servers=app.servers,
         contact=app.contact,
+        tags=app.openapi_tags,
     )
 
     # dump the schema into file

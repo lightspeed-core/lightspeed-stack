@@ -45,6 +45,12 @@ Behave steps for POST /v1/responses (LCORE Responses API) multi-turn tests.
 ## [rlsapi_v1.py](rlsapi_v1.py)
 rlsapi v1 endpoint test steps.
 
+## [shields.py](shields.py)
+Behave steps for temporarily disabling Llama Stack shields in e2e (server mode).
+
+## [tls.py](tls.py)
+Step definitions for TLS configuration e2e tests.
+
 ## [token_counters.py](token_counters.py)
 Step definitions for token counter validation.
 

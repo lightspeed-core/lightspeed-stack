@@ -11,13 +11,15 @@ from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from log import get_logger
-from models.config import Action
-from models.responses import (
+from models.api.responses import (
     UNAUTHORIZED_OPENAPI_EXAMPLES,
     ForbiddenResponse,
-    InfoResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
+)
+from models.config import Action
+from models.responses import (
+    InfoResponse,
 )
 from version import __version__
 

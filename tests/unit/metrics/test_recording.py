@@ -1,8 +1,24 @@
 """Unit tests for Prometheus metric recording helpers."""
 
-from pytest_mock import MockerFixture
+from collections.abc import Callable
+from dataclasses import dataclass
+
+import pytest
+from pytest_mock import MockerFixture, MockType
 
 from metrics import recording
+
+
+@dataclass(frozen=True)
+class HistogramRecorderCase:
+    """Expected behavior for a histogram-style metric recorder."""
+
+    metric_path: str
+    recorder: Callable[..., None]
+    args: tuple[object, ...]
+    labels: tuple[object, ...]
+    duration: float
+    warning_message: str
 
 
 def test_measure_response_duration_records_timer(mocker: MockerFixture) -> None:
@@ -158,4 +174,45 @@ def test_record_llm_token_usage_logs_metric_errors(mocker: MockerFixture) -> Non
 
     mock_logger.warning.assert_called_once_with(
         "Failed to update token metrics", exc_info=True
+    )
+
+
+@pytest.fixture(name="recording_logger")
+def recording_logger_fixture(mocker: MockerFixture) -> MockType:
+    """Patch the metric recording logger for failure assertions."""
+    return mocker.patch("metrics.recording.logger")
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        HistogramRecorderCase(
+            metric_path="metrics.recording.metrics.llm_inference_duration_seconds",
+            recorder=recording.record_llm_inference_duration,
+            args=("vertexai", "gemini", "/v1/responses", "success", 1.5),
+            labels=("vertexai", "gemini", "/v1/responses", "success"),
+            duration=1.5,
+            warning_message="Failed to update LLM inference duration metric",
+        ),
+    ],
+)
+def test_histogram_recorders_observe_metrics_and_log_errors(
+    mocker: MockerFixture,
+    recording_logger: MockType,
+    case: HistogramRecorderCase,
+) -> None:
+    """Test new histogram helpers with shared success and failure coverage."""
+    mock_metric = mocker.patch(case.metric_path)
+
+    case.recorder(*case.args)
+
+    mock_metric.labels.assert_called_once_with(*case.labels)
+    mock_metric.labels.return_value.observe.assert_called_once_with(case.duration)
+
+    mock_metric.reset_mock()
+    mock_metric.labels.return_value.observe.side_effect = TypeError("bad")
+    case.recorder(*case.args)
+
+    recording_logger.warning.assert_called_once_with(
+        case.warning_message, exc_info=True
     )

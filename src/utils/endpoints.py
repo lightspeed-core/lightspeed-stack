@@ -11,12 +11,12 @@ from app.database import get_session
 from client import AsyncLlamaStackClientHolder
 from configuration import AppConfig, LogicError
 from log import get_logger
-from models.database.conversations import UserConversation, UserTurn
-from models.responses import (
+from models.api.responses import (
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
 )
+from models.database.conversations import UserConversation, UserTurn
 from utils.responses import create_new_conversation
 from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
 from utils.types import ReferencedDocument, ResponsesConversationContext, TurnSummary

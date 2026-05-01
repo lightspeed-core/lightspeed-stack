@@ -42,6 +42,9 @@ Quota handling helper functions.
 ## [responses.py](responses.py)
 Utility functions for processing Responses API output.
 
+## [rh_identity.py](rh_identity.py)
+Utility functions for extracting RH Identity context for telemetry.
+
 ## [schema_dumper.py](schema_dumper.py)
 Function to dump the configuration schema into OpenAPI-compatible format.
 

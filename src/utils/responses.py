@@ -91,16 +91,16 @@ from configuration import configuration
 from constants import DEFAULT_RAG_TOOL
 from log import get_logger
 from metrics import recording
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.config import ByokRag
-from models.database.conversations import UserConversation
-from models.requests import QueryRequest
-from models.responses import (
+from models.api.responses import (
     ConflictResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
     ServiceUnavailableResponse,
 )
+from models.common.responses.responses_api_params import ResponsesApiParams
+from models.config import ByokRag
+from models.database.conversations import UserConversation
+from models.requests import QueryRequest
 from utils.mcp_headers import (
     McpHeaders,
     build_mcp_headers,

@@ -62,7 +62,7 @@ _ECHOED_FIELDS = set(
 
 
 class Attachment(BaseModel):
-    """Model representing an attachment that can be send from the UI as part of query.
+    """Model representing an attachment that can be sent from the UI as part of query.
 
     A list of attachments can be an optional part of 'query' request.
 

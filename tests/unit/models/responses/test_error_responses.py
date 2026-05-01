@@ -6,7 +6,7 @@ import pytest
 from fastapi import status
 from pydantic_core import SchemaError
 
-from models.responses import (
+from models.api.responses import (
     BAD_REQUEST_DESCRIPTION,
     FORBIDDEN_DESCRIPTION,
     INTERNAL_SERVER_ERROR_DESCRIPTION,

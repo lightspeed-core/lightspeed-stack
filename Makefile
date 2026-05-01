@@ -55,7 +55,7 @@ security-check: ## Check the project for security issues
 	uv run bandit -c pyproject.toml -r src tests
 
 format: ## Format the code into unified format
-	uv run black .
+	uv run black  --line-length 88 .
 	uv run ruff check src tests --fix
 
 schema:	## Generate OpenAPI schema file
@@ -99,7 +99,7 @@ shellcheck: ## Run shellcheck
 	shellcheck -- */*.sh
 
 black:	## Check source code using Black code formatter
-	uv run black --check src tests
+	uv run black --check --line-length 88 src tests
 
 pylint:	## Check source code using Pylint static code analyser
 	uv run pylint src tests
@@ -113,6 +113,13 @@ docstyle:	## Check the docstring style using Docstyle checker
 ruff:	## Check source code using Ruff linter
 	uv run ruff check src tests --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
 
+lint-openapi: ## Lint docs/openapi.json (Spectral OAS ruleset; fail on error)
+	@if command -v npx >/dev/null 2>&1; then \
+		npx --yes @stoplight/spectral-cli@6 lint docs/openapi.json --fail-severity error --display-only-failures; \
+	else \
+		echo "lint-openapi: skipping Spectral (npx not found). Install Node.js for OpenAPI lint locally; CI still runs it."; \
+	fi
+
 verify:	## Run all linters
 	$(MAKE) black
 	$(MAKE) pylint
@@ -120,6 +127,7 @@ verify:	## Run all linters
 	$(MAKE) ruff
 	$(MAKE) docstyle
 	$(MAKE) check-types
+	$(MAKE) lint-openapi
 
 distribution-archives:	## Generate distribution archives to be uploaded into Python registry
 	rm -rf dist

@@ -109,3 +109,23 @@ def record_llm_token_usage(
         )
     except (AttributeError, TypeError, ValueError):
         logger.warning("Failed to update token metrics", exc_info=True)
+
+
+def record_llm_inference_duration(
+    provider: str, model: str, endpoint_path: str, result: str, duration: float
+) -> None:
+    """Record the latency of a direct LLM inference backend call.
+
+    Args:
+        provider: LLM provider identifier.
+        model: LLM model identifier without the provider prefix.
+        endpoint_path: API endpoint path for metric labeling.
+        result: Bounded result label, such as ``success`` or ``failure``.
+        duration: Inference call duration in seconds.
+    """
+    try:
+        metrics.llm_inference_duration_seconds.labels(
+            provider, model, endpoint_path, result
+        ).observe(duration)
+    except (AttributeError, TypeError, ValueError):
+        logger.warning("Failed to update LLM inference duration metric", exc_info=True)

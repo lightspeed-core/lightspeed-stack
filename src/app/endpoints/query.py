@@ -22,21 +22,24 @@ from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from constants import ENDPOINT_PATH_QUERY
 from log import get_logger
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.config import Action
-from models.requests import QueryRequest
-from models.responses import (
+from models.api.responses import (
     UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH,
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
     PromptTooLongResponse,
-    QueryResponse,
     QuotaExceededResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
     UnprocessableEntityResponse,
+)
+from models.common.responses.responses_api_params import ResponsesApiParams
+from models.config import Action
+from models.requests import QueryRequest
+from models.responses import (
+    QueryResponse,
 )
 from utils.conversations import append_turn_items_to_conversation
 from utils.endpoints import (
@@ -170,7 +173,7 @@ async def query_endpoint_handler(
 
     # Moderation input is the raw user content (query + attachments) without injected RAG
     # context, to avoid false positives from retrieved document content.
-    endpoint_path = "/v1/query"
+    endpoint_path = ENDPOINT_PATH_QUERY
     moderation_input = prepare_input(query_request)
     moderation_result = await run_shield_moderation(
         client, moderation_input, endpoint_path, query_request.shield_ids

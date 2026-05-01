@@ -11,20 +11,22 @@ from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from log import get_logger
-from models.config import Action, ModelContextProtocolServer
-from models.requests import MCPServerRegistrationRequest
-from models.responses import (
+from models.api.responses import (
     UNAUTHORIZED_OPENAPI_EXAMPLES,
     ConflictResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
+    NotFoundResponse,
+    ServiceUnavailableResponse,
+    UnauthorizedResponse,
+)
+from models.config import Action, ModelContextProtocolServer
+from models.requests import MCPServerRegistrationRequest
+from models.responses import (
     MCPServerDeleteResponse,
     MCPServerInfo,
     MCPServerListResponse,
     MCPServerRegistrationResponse,
-    NotFoundResponse,
-    ServiceUnavailableResponse,
-    UnauthorizedResponse,
 )
 from utils.endpoints import check_configuration_loaded
 

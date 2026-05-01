@@ -10,7 +10,7 @@ from pytest_mock import MockerFixture
 from starlette.types import Message, Receive, Scope, Send
 
 from app.main import GlobalExceptionMiddleware, RestApiMetricsMiddleware
-from models.responses import InternalServerErrorResponse
+from models.api.responses import InternalServerErrorResponse
 
 
 def _make_scope(path: str = "/test", root_path: str = "") -> Scope:

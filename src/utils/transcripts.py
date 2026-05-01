@@ -15,8 +15,8 @@ from fastapi import HTTPException
 
 from configuration import configuration
 from log import get_logger
+from models.api.responses import InternalServerErrorResponse
 from models.requests import Attachment
-from models.responses import InternalServerErrorResponse
 from utils.suid import get_suid
 from utils.types import (
     Transcript,

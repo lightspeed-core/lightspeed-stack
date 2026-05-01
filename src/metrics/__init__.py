@@ -1,9 +1,25 @@
 """Metrics module for Lightspeed Core Stack."""
 
+from typing import Final
+
 from prometheus_client import (
     Counter,
     Gauge,
     Histogram,
+)
+
+LLM_INFERENCE_DURATION_BUCKETS: Final[tuple[float, ...]] = (
+    0.1,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    10.0,
+    20.0,
+    30.0,
+    60.0,
+    120.0,
+    float("inf"),
 )
 
 # Counter to track REST API calls
@@ -54,4 +70,12 @@ llm_token_received_total = Counter(
     "ls_llm_token_received_total",
     "LLM tokens received",
     ["provider", "model", "endpoint"],
+)
+
+# Histogram to measure the latency of direct LLM inference backend calls.
+llm_inference_duration_seconds = Histogram(
+    "ls_llm_inference_duration_seconds",
+    "LLM inference call duration",
+    ["provider", "model", "endpoint", "result"],
+    buckets=LLM_INFERENCE_DURATION_BUCKETS,
 )

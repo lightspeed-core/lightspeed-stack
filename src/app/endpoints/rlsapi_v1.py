@@ -5,6 +5,7 @@ from the RHEL Lightspeed Command Line Assistant (CLA).
 """
 
 import functools
+import re
 import time
 from datetime import UTC, datetime
 from typing import Annotated, Any, Optional, cast
@@ -22,10 +23,10 @@ from authentication.interface import AuthTuple
 from authorization.middleware import authorize
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
+from constants import ENDPOINT_PATH_INFER
 from log import get_logger
 from metrics import recording
-from models.config import Action
-from models.responses import (
+from models.api.responses import (
     UNAUTHORIZED_OPENAPI_EXAMPLES,
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -36,6 +37,7 @@ from models.responses import (
     UnauthorizedResponse,
     UnprocessableEntityResponse,
 )
+from models.config import Action
 from models.rlsapi.requests import RlsapiV1InferRequest, RlsapiV1SystemInfo
 from models.rlsapi.responses import RlsapiV1InferData, RlsapiV1InferResponse
 from observability import InferenceEventData, build_inference_event, send_splunk_event
@@ -77,6 +79,9 @@ _INFER_HANDLED_EXCEPTIONS = (
     OpenAIAPIStatusError,
 )
 
+_PRIVATE_ERROR_BLOCK_PATTERN = re.compile(r"\bPRIVATE\b[^\r\n,;)]*", re.IGNORECASE)
+_SECRET_KEY_PATTERN = re.compile(r"\bsk-[A-Za-z0-9][A-Za-z0-9_-]*")
+
 
 infer_responses: dict[int | str, dict[str, Any]] = {
     200: RlsapiV1InferResponse.openapi_response(),
@@ -86,11 +91,28 @@ infer_responses: dict[int | str, dict[str, Any]] = {
     413: PromptTooLongResponse.openapi_response(examples=["context window exceeded"]),
     422: UnprocessableEntityResponse.openapi_response(),
     429: QuotaExceededResponse.openapi_response(),
-    500: InternalServerErrorResponse.openapi_response(examples=["generic"]),
+    500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
         examples=["llama stack", "kubernetes api"]
     ),
 }
+
+
+def _redact_sensitive_error_text(error_text: str) -> str:
+    """Redact sensitive substrings from backend error text before telemetry.
+
+    Backend exceptions can include provider request snippets or credentials in
+    their string representation.  Splunk events need enough context to explain
+    the failure, but they must not contain private prompt blocks or API keys.
+
+    Args:
+        error_text: Raw exception string returned by ``str(error)``.
+
+    Returns:
+        Error text with known sensitive substrings replaced by placeholders.
+    """
+    redacted_text = _PRIVATE_ERROR_BLOCK_PATTERN.sub("PRIVATE [REDACTED]", error_text)
+    return _SECRET_KEY_PATTERN.sub("sk-[REDACTED]", redacted_text)
 
 
 def _build_instructions(systeminfo: RlsapiV1SystemInfo) -> str:
@@ -241,7 +263,7 @@ async def retrieve_simple_response(
     instructions: str,
     tools: Optional[list[Any]] = None,
     model_id: Optional[str] = None,
-    endpoint_path: str = "/v1/infer",
+    endpoint_path: str = ENDPOINT_PATH_INFER,
 ) -> str:
     """Retrieve a simple response from the LLM for a stateless query.
 
@@ -455,12 +477,16 @@ def _record_inference_failure(  # pylint: disable=too-many-arguments,too-many-po
     """
     inference_time = time.monotonic() - start_time
     recording.record_llm_failure(provider, model, endpoint_path)
+    recording.record_llm_inference_duration(
+        provider, model, endpoint_path, "failure", inference_time
+    )
+    redacted_error = _redact_sensitive_error_text(str(error))
     _queue_splunk_event(
         background_tasks,
         infer_request,
         request,
         request_id,
-        str(error),
+        redacted_error,
         inference_time,
         "infer_error",
     )
@@ -669,12 +695,13 @@ async def infer_endpoint(  # pylint: disable=R0914
     """
     # Authentication enforced by get_auth_dependency(), authorization by @authorize decorator.
     check_configuration_loaded(configuration)
-
     # Quota enforcement: resolve subject and check availability before any work.
     # No-op when quota_subject is not configured or no quota limiters exist.
     quota_id = _resolve_quota_subject(request, auth)
     if quota_id is not None:
         check_tokens_available(configuration.quota_limiters, quota_id)
+
+    endpoint_path = ENDPOINT_PATH_INFER
 
     request_id = get_suid()
 
@@ -684,8 +711,6 @@ async def infer_endpoint(  # pylint: disable=R0914
     logger.debug(
         "Request %s: Combined input source length: %d", request_id, len(input_source)
     )
-
-    endpoint_path = "/v1/infer"
 
     # Run shield moderation on user input before inference.
     # Uses all configured shields; no-op when no shields are registered.
@@ -721,6 +746,9 @@ async def infer_endpoint(  # pylint: disable=R0914
         response_text = extract_text_from_response_items(response.output)
         token_usage = extract_token_usage(response.usage, model_id, endpoint_path)
         inference_time = time.monotonic() - start_time
+        recording.record_llm_inference_duration(
+            provider, model, endpoint_path, "success", inference_time
+        )
     except _INFER_HANDLED_EXCEPTIONS as error:
         if response is not None:
             extract_token_usage(response.usage, model_id, endpoint_path)  # type: ignore[arg-type]
