@@ -138,7 +138,9 @@ def _write_config(config: dict[str, Any], path: str) -> None:
         yaml.dump(config, f, default_flow_style=False)
 
 
-def _find_inference_provider(context: Context, config: dict[str, Any]) -> dict[str, Any]:
+def _find_inference_provider(
+    context: Context, config: dict[str, Any]
+) -> dict[str, Any]:
     """Find the target remote inference provider in the config.
 
     Priority:
