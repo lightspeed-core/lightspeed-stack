@@ -55,7 +55,7 @@ security-check: ## Check the project for security issues
 	uv run bandit -c pyproject.toml -r src tests
 
 format: ## Format the code into unified format
-	uv run black .
+	uv run black  --line-length 88 .
 	uv run ruff check src tests --fix
 
 schema:	## Generate OpenAPI schema file
@@ -99,7 +99,7 @@ shellcheck: ## Run shellcheck
 	shellcheck -- */*.sh
 
 black:	## Check source code using Black code formatter
-	uv run black --check src tests
+	uv run black --check --line-length 88 src tests
 
 pylint:	## Check source code using Pylint static code analyser
 	uv run pylint src tests
