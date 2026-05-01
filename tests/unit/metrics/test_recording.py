@@ -216,3 +216,81 @@ def test_histogram_recorders_observe_metrics_and_log_errors(
     recording_logger.warning.assert_called_once_with(
         case.warning_message, exc_info=True
     )
+
+
+def test_record_auth_attempt_updates_metric(
+    mocker: MockerFixture,
+) -> None:
+    """Test auth attempt helper success behavior."""
+    mock_metric = mocker.patch("metrics.recording.metrics.auth_attempts_total")
+
+    recording.record_auth_attempt("rh-identity", "success", "authenticated")
+
+    mock_metric.labels.assert_called_once_with(
+        "rh-identity", "success", "authenticated"
+    )
+    mock_metric.labels.return_value.inc.assert_called_once()
+
+
+def test_record_auth_attempt_bounds_labels(mocker: MockerFixture) -> None:
+    """Test auth attempt helper normalizes unbounded label values."""
+    mock_metric = mocker.patch("metrics.recording.metrics.auth_attempts_total")
+
+    recording.record_auth_attempt("customer-123", "timeout", "database-down")
+
+    mock_metric.labels.assert_called_once_with("unknown", "failure", "unknown")
+    mock_metric.labels.return_value.inc.assert_called_once()
+
+
+def test_record_auth_attempt_logs_metric_errors(
+    mocker: MockerFixture,
+    recording_logger: MockType,
+) -> None:
+    """Test auth attempt helper logs and swallows metric failures."""
+    mock_metric = mocker.patch("metrics.recording.metrics.auth_attempts_total")
+
+    mock_metric.labels.return_value.inc.side_effect = AttributeError("missing")
+
+    recording.record_auth_attempt("rh-identity", "success", "authenticated")
+
+    recording_logger.warning.assert_called_once_with(
+        "Failed to update authentication metric", exc_info=True
+    )
+
+
+def test_record_auth_duration_updates_metric(
+    mocker: MockerFixture,
+) -> None:
+    """Test auth duration helper success behavior."""
+    mock_metric = mocker.patch("metrics.recording.metrics.auth_duration_seconds")
+
+    recording.record_auth_duration("rh-identity", "success", 0.5)
+
+    mock_metric.labels.assert_called_once_with("rh-identity", "success")
+    mock_metric.labels.return_value.observe.assert_called_once_with(0.5)
+
+
+def test_record_auth_duration_bounds_labels(mocker: MockerFixture) -> None:
+    """Test auth duration helper normalizes unbounded label values."""
+    mock_metric = mocker.patch("metrics.recording.metrics.auth_duration_seconds")
+
+    recording.record_auth_duration("customer-123", "timeout", 0.5)
+
+    mock_metric.labels.assert_called_once_with("unknown", "failure")
+    mock_metric.labels.return_value.observe.assert_called_once_with(0.5)
+
+
+def test_record_auth_duration_logs_metric_errors(
+    mocker: MockerFixture,
+    recording_logger: MockType,
+) -> None:
+    """Test auth duration helper logs and swallows metric failures."""
+    mock_metric = mocker.patch("metrics.recording.metrics.auth_duration_seconds")
+
+    mock_metric.labels.return_value.observe.side_effect = TypeError("bad")
+
+    recording.record_auth_duration("rh-identity", "success", 0.5)
+
+    recording_logger.warning.assert_called_once_with(
+        "Failed to update authentication duration metric", exc_info=True
+    )

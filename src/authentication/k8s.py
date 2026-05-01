@@ -1,6 +1,7 @@
 """Manage authentication flow for FastAPI endpoints with K8S/OCP."""
 
 import os
+import time
 from http import HTTPStatus
 from typing import Optional, Self, cast
 
@@ -10,9 +11,9 @@ from kubernetes.client.rest import ApiException
 from kubernetes.config import ConfigException
 
 from authentication.interface import NO_AUTH_TUPLE, AuthInterface
-from authentication.utils import extract_user_token
+from authentication.utils import extract_user_token, record_auth_metrics
 from configuration import configuration
-from constants import DEFAULT_VIRTUAL_PATH
+from constants import AUTH_MOD_K8S, DEFAULT_VIRTUAL_PATH
 from log import get_logger
 from models.api.responses import (
     ForbiddenResponse,
@@ -382,7 +383,124 @@ def get_user_info(token: str) -> Optional[kubernetes.client.V1TokenReviewStatus]
         raise HTTPException(**response_obj.model_dump()) from e
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Unexpected error during TokenReview: %s", e)
-        return None
+        response_obj = InternalServerErrorResponse(
+            response="Internal server error",
+            cause=f"Unexpected error during TokenReview: {e}",
+        )
+        raise HTTPException(**response_obj.model_dump()) from e
+
+
+def _populate_kube_admin_uid(
+    user: kubernetes.client.V1UserInfo, start_time: float
+) -> None:
+    """Populate kube:admin UID from the cluster ID and record bounded failures."""
+    if user.username != "kube:admin":
+        return
+    try:
+        user.uid = K8sClientSingleton.get_cluster_id()
+    except K8sAPIConnectionError as e:
+        logger.error("Cannot connect to Kubernetes API: %s", e)
+        record_auth_metrics(AUTH_MOD_K8S, "failure", "k8s_api_unavailable", start_time)
+        response = ServiceUnavailableResponse(
+            backend_name="Kubernetes API",
+            cause=str(e),
+        )
+        raise HTTPException(**response.model_dump()) from e
+    except K8sConfigurationError as e:
+        logger.error("Cluster configuration error: %s", e)
+        record_auth_metrics(AUTH_MOD_K8S, "failure", "k8s_config_error", start_time)
+        response = InternalServerErrorResponse(
+            response="Internal server error",
+            cause=str(e),
+        )
+        raise HTTPException(**response.model_dump()) from e
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.exception("Unexpected error while resolving kube:admin cluster ID")
+        record_auth_metrics(AUTH_MOD_K8S, "failure", "unexpected_error", start_time)
+        response = InternalServerErrorResponse(
+            response="Internal server error",
+            cause=str(e),
+        )
+        raise HTTPException(**response.model_dump()) from e
+
+
+def _create_subject_access_review(
+    user: kubernetes.client.V1UserInfo, virtual_path: str, start_time: float
+) -> kubernetes.client.V1SubjectAccessReview:
+    """Create a Kubernetes SubjectAccessReview and record bounded failures."""
+    try:
+        authorization_api = K8sClientSingleton.get_authz_api()
+    except Exception as e:
+        logger.error("Failed to initialize Kubernetes authorization API: %s", e)
+        record_auth_metrics(AUTH_MOD_K8S, "failure", "k8s_api_unavailable", start_time)
+        response = ServiceUnavailableResponse(
+            backend_name="Kubernetes API",
+            cause=f"Unable to initialize Kubernetes client: {e}",
+        )
+        raise HTTPException(**response.model_dump()) from e
+
+    try:
+        sar = kubernetes.client.V1SubjectAccessReview(
+            spec=kubernetes.client.V1SubjectAccessReviewSpec(
+                user=user.username,
+                groups=user.groups,
+                non_resource_attributes=kubernetes.client.V1NonResourceAttributes(
+                    path=virtual_path, verb="get"
+                ),
+            )
+        )
+        return cast(
+            kubernetes.client.V1SubjectAccessReview,
+            authorization_api.create_subject_access_review(sar),
+        )
+    except ApiException as e:
+        record_auth_metrics(
+            AUTH_MOD_K8S, "failure", "authorization_check_error", start_time
+        )
+        if e.status is None:
+            logger.error(
+                "Kubernetes API error during SubjectAccessReview with no status code: %s",
+                e.reason,
+            )
+            response = ServiceUnavailableResponse(
+                backend_name="Kubernetes API",
+                cause=f"Failed to connect to Kubernetes API: {e.reason}",
+            )
+            raise HTTPException(**response.model_dump()) from e
+
+        if (
+            e.status >= HTTPStatus.INTERNAL_SERVER_ERROR
+            or e.status == HTTPStatus.TOO_MANY_REQUESTS
+        ):
+            logger.error(
+                "Kubernetes API unavailable during SubjectAccessReview (status %s): %s",
+                e.status,
+                e.reason,
+            )
+            response = ServiceUnavailableResponse(
+                backend_name="Kubernetes API",
+                cause=f"Kubernetes API unavailable: {e.reason} (status {e.status})",
+            )
+            raise HTTPException(**response.model_dump()) from e
+
+        logger.error(
+            "Kubernetes API returned client error during SubjectAccessReview (status %s): %s",
+            e.status,
+            e.reason,
+        )
+        response_obj = InternalServerErrorResponse(
+            response="Internal server error",
+            cause=f"Kubernetes API request failed: {e.reason} (status {e.status})",
+        )
+        raise HTTPException(**response_obj.model_dump()) from e
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.exception("Unexpected error during SubjectAccessReview")
+        record_auth_metrics(AUTH_MOD_K8S, "failure", "unexpected_error", start_time)
+        response = InternalServerErrorResponse(
+            response="Internal server error",
+            cause=str(e),
+        )
+        raise HTTPException(**response.model_dump()) from e
 
 
 class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-methods
@@ -436,69 +554,47 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
         ------
             HTTPException: If authentication or authorization fails.
         """
+        start_time = time.monotonic()
+
         # LCORE-694: Config option to skip authorization for readiness and liveness probe
         if not request.headers.get("Authorization"):
             if configuration.authentication_configuration.skip_for_health_probes:
                 if request.url.path in ("/readiness", "/liveness"):
+                    record_auth_metrics(
+                        AUTH_MOD_K8S, "skipped", "health_probe", start_time
+                    )
                     return NO_AUTH_TUPLE
             # Skip auth for metrics endpoint when configured
             if configuration.authentication_configuration.skip_for_metrics:
                 if request.url.path in ("/metrics",):
+                    record_auth_metrics(AUTH_MOD_K8S, "skipped", "metrics", start_time)
                     return NO_AUTH_TUPLE
 
-        token = extract_user_token(request.headers)
-        user_info = get_user_info(token)
+        try:
+            token = extract_user_token(request.headers)
+        except HTTPException:
+            record_auth_metrics(AUTH_MOD_K8S, "failure", "missing_token", start_time)
+            raise
+        try:
+            user_info = get_user_info(token)
+        except HTTPException:
+            record_auth_metrics(
+                AUTH_MOD_K8S, "failure", "token_review_error", start_time
+            )
+            raise
 
         if user_info is None:
+            record_auth_metrics(AUTH_MOD_K8S, "failure", "invalid_token", start_time)
             response = UnauthorizedResponse(cause="Invalid or expired Kubernetes token")
             raise HTTPException(**response.model_dump())
 
         # Cast user to proper type for type checking
         user = cast(kubernetes.client.V1UserInfo, user_info.user)
 
-        if user.username == "kube:admin":
-            try:
-                user.uid = K8sClientSingleton.get_cluster_id()
-            except K8sAPIConnectionError as e:
-                # Kubernetes API is unreachable - return 503
-                logger.error("Cannot connect to Kubernetes API: %s", e)
-                response = ServiceUnavailableResponse(
-                    backend_name="Kubernetes API",
-                    cause=str(e),
-                )
-                raise HTTPException(**response.model_dump()) from e
-            except K8sConfigurationError as e:
-                # Cluster misconfiguration or client error - return 500
-                logger.error("Cluster configuration error: %s", e)
-                response = InternalServerErrorResponse(
-                    response="Internal server error",
-                    cause=str(e),
-                )
-                raise HTTPException(**response.model_dump()) from e
-
-        try:
-            authorization_api = K8sClientSingleton.get_authz_api()
-            sar = kubernetes.client.V1SubjectAccessReview(
-                spec=kubernetes.client.V1SubjectAccessReviewSpec(
-                    user=user.username,
-                    groups=user.groups,
-                    non_resource_attributes=kubernetes.client.V1NonResourceAttributes(
-                        path=self.virtual_path, verb="get"
-                    ),
-                )
-            )
-            sar_response = cast(
-                kubernetes.client.V1SubjectAccessReview,
-                authorization_api.create_subject_access_review(sar),
-            )
-
-        except Exception as e:
-            logger.error("API exception during SubjectAccessReview: %s", e)
-            response = ServiceUnavailableResponse(
-                backend_name="Kubernetes API",
-                cause="Unable to perform authorization check",
-            )
-            raise HTTPException(**response.model_dump()) from e
+        _populate_kube_admin_uid(user, start_time)
+        sar_response = _create_subject_access_review(
+            user, self.virtual_path, start_time
+        )
 
         sar_status = cast(
             kubernetes.client.V1SubjectAccessReviewStatus, sar_response.status
@@ -507,9 +603,11 @@ class K8SAuthDependency(AuthInterface):  # pylint: disable=too-few-public-method
         username = cast(str, user.username)
 
         if not sar_status.allowed:
+            record_auth_metrics(AUTH_MOD_K8S, "failure", "not_authorized", start_time)
             response = ForbiddenResponse.endpoint(user_id=user_uid)
             raise HTTPException(**response.model_dump())
 
+        record_auth_metrics(AUTH_MOD_K8S, "success", "authenticated", start_time)
         return (
             user_uid,
             username,

@@ -6,13 +6,16 @@ User and System identity types with optional entitlement validation.
 
 import base64
 import json
-from typing import Any, Optional
+import time
+from typing import Any, Final, Optional
 
 from fastapi import HTTPException, Request
 
 from authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
+from authentication.utils import record_auth_metrics
 from configuration import configuration
 from constants import (
+    AUTH_MOD_RH_IDENTITY,
     DEFAULT_RH_IDENTITY_MAX_HEADER_SIZE,
     DEFAULT_VIRTUAL_PATH,
     NO_USER_TOKEN,
@@ -24,6 +27,9 @@ logger = get_logger(__name__)
 RH_INSIGHTS_REQUEST_ID_HEADER = "x-rh-insights-request-id"
 REQUEST_ID_HEADER = "x-request-id"
 
+HEALTH_PROBE_SKIP_PATHS: Final[frozenset[str]] = frozenset({"/readiness", "/liveness"})
+METRICS_SKIP_PATH: Final[str] = "/metrics"
+
 
 def _get_request_id(request: Request) -> str:
     """Return the inbound request identifier available during authentication."""
@@ -31,6 +37,30 @@ def _get_request_id(request: Request) -> str:
         REQUEST_ID_HEADER,
         "",
     )
+
+
+def _record_rh_identity_auth(result: str, reason: str, start_time: float) -> None:
+    """Record RH Identity authentication metrics with bounded labels."""
+    record_auth_metrics(AUTH_MOD_RH_IDENTITY, result, reason, start_time)
+
+
+def _normalized_request_path(request: Request) -> str:
+    """Return a canonical request path for exact skip-path comparisons."""
+    return request.url.path.rstrip("/") or "/"
+
+
+def _get_auth_skip_tuple(request: Request, start_time: float) -> Optional[AuthTuple]:
+    """Return an auth tuple for configured RH Identity skip paths."""
+    request_path = _normalized_request_path(request)
+    if request_path in HEALTH_PROBE_SKIP_PATHS:
+        if configuration.authentication_configuration.skip_for_health_probes:
+            _record_rh_identity_auth("skipped", "health_probe", start_time)
+            return NO_AUTH_TUPLE
+    if request_path == METRICS_SKIP_PATH:
+        if configuration.authentication_configuration.skip_for_metrics:
+            _record_rh_identity_auth("skipped", "metrics", start_time)
+            return NO_AUTH_TUPLE
+    return None
 
 
 class RHIdentityData:
@@ -73,6 +103,12 @@ class RHIdentityData:
             raise HTTPException(status_code=400, detail="Invalid identity data")
 
         identity = self.identity_data["identity"]
+        if not isinstance(identity, dict):
+            logger.warning(
+                "Identity validation failed: 'identity' is %s, expected dict",
+                type(identity).__name__,
+            )
+            raise HTTPException(status_code=400, detail="Invalid identity data")
         if "type" not in identity:
             logger.warning("Identity validation failed: missing 'type' field")
             raise HTTPException(status_code=400, detail="Invalid identity data")
@@ -321,18 +357,16 @@ class RHIdentityAuthDependency(AuthInterface):  # pylint: disable=too-few-public
                 - 400: Invalid base64, invalid JSON, or missing required fields
                 - 403: Missing required entitlements
         """
+        start_time = time.monotonic()
+
         # Extract header
         identity_header = request.headers.get("x-rh-identity")
         if not identity_header:
-            # Skip auth for health probes when configured
-            if request.url.path.endswith(("/readiness", "/liveness")):
-                if configuration.authentication_configuration.skip_for_health_probes:
-                    return NO_AUTH_TUPLE
-            # Skip auth for metrics endpoint when configured
-            if request.url.path.endswith("/metrics"):
-                if configuration.authentication_configuration.skip_for_metrics:
-                    return NO_AUTH_TUPLE
+            auth_skip = _get_auth_skip_tuple(request, start_time)
+            if auth_skip is not None:
+                return auth_skip
             logger.warning("Missing x-rh-identity header")
+            _record_rh_identity_auth("failure", "missing_header", start_time)
             raise HTTPException(status_code=401, detail="Missing x-rh-identity header")
 
         # Enforce header size limit before decoding
@@ -342,6 +376,7 @@ class RHIdentityAuthDependency(AuthInterface):  # pylint: disable=too-few-public
                 len(identity_header),
                 self.max_header_size,
             )
+            _record_rh_identity_auth("failure", "header_too_large", start_time)
             raise HTTPException(
                 status_code=400,
                 detail="x-rh-identity header exceeds maximum allowed size",
@@ -353,6 +388,7 @@ class RHIdentityAuthDependency(AuthInterface):  # pylint: disable=too-few-public
             decoded_str = decoded_bytes.decode("utf-8")
         except (ValueError, UnicodeDecodeError) as exc:
             logger.warning("Invalid base64 in x-rh-identity header: %s", exc)
+            _record_rh_identity_auth("failure", "invalid_base64", start_time)
             raise HTTPException(
                 status_code=400,
                 detail="Invalid base64 encoding in x-rh-identity header",
@@ -363,18 +399,38 @@ class RHIdentityAuthDependency(AuthInterface):  # pylint: disable=too-few-public
             identity_data = json.loads(decoded_str)
         except json.JSONDecodeError as exc:
             logger.warning("Invalid JSON in x-rh-identity header: %s", exc)
+            _record_rh_identity_auth("failure", "invalid_json", start_time)
             raise HTTPException(
                 status_code=400, detail="Invalid JSON in x-rh-identity header"
             ) from exc
 
-        # Extract and validate identity
-        rh_identity = RHIdentityData(
-            identity_data,
-            required_entitlements=self.required_entitlements,
-        )
+        # Guard against non-dict JSON payloads (null, list, number, etc.)
+        if not isinstance(identity_data, dict):
+            logger.warning(
+                "x-rh-identity decoded to non-dict type: %s",
+                type(identity_data).__name__,
+            )
+            _record_rh_identity_auth("failure", "invalid_identity", start_time)
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid identity data in x-rh-identity header",
+            )
 
-        # Validate entitlements if configured
-        rh_identity.validate_entitlements()
+        # Extract and validate identity
+        try:
+            rh_identity = RHIdentityData(
+                identity_data,
+                required_entitlements=self.required_entitlements,
+            )
+
+            # Validate entitlements if configured
+            rh_identity.validate_entitlements()
+        except HTTPException as exc:
+            reason = (
+                "entitlement_missing" if exc.status_code == 403 else "invalid_identity"
+            )
+            _record_rh_identity_auth("failure", reason, start_time)
+            raise
 
         # Store identity data in request.state for downstream access
         request.state.rh_identity_data = rh_identity
@@ -390,5 +446,6 @@ class RHIdentityAuthDependency(AuthInterface):  # pylint: disable=too-few-public
             rh_identity.get_org_id(),
             rh_identity.get_system_id(),
         )
+        _record_rh_identity_auth("success", "authenticated", start_time)
 
         return user_id, username, self.skip_userid_check, NO_USER_TOKEN
