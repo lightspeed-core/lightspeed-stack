@@ -42,6 +42,9 @@ Unit tests for the /metrics REST API endpoint.
 ## [test_models.py](test_models.py)
 Unit tests for the /models REST API endpoint.
 
+## [test_prompts.py](test_prompts.py)
+Unit tests for the /prompts REST API endpoints.
+
 ## [test_providers.py](test_providers.py)
 Unit tests for the /providers REST API endpoints.
 
@@ -53,6 +56,9 @@ Unit tests for the /rags REST API endpoints.
 
 ## [test_responses.py](test_responses.py)
 Unit tests for the /responses REST API endpoint (LCORE Responses API).
+
+## [test_responses_splunk.py](test_responses_splunk.py)
+Unit tests for Splunk telemetry in the /responses endpoint.
 
 ## [test_rlsapi_v1.py](test_rlsapi_v1.py)
 Unit tests for the rlsapi v1 /infer REST API endpoint.
@@ -71,4 +77,7 @@ Unit tests for the /streaming_query (v2) endpoint using Responses API.
 
 ## [test_tools.py](test_tools.py)
 Unit tests for tools endpoint.
+
+## [test_vector_stores.py](test_vector_stores.py)
+Unit tests for the /vector-stores REST API endpoints.
 

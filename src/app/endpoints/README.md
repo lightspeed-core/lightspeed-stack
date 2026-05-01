@@ -39,6 +39,9 @@ Handler for REST API call to provide metrics.
 ## [models.py](models.py)
 Handler for REST API call to list available models.
 
+## [prompts.py](prompts.py)
+Handler for REST API calls to manage Llama Stack stored prompt templates.
+
 ## [providers.py](providers.py)
 Handler for REST API calls to list and retrieve available providers.
 
@@ -68,4 +71,7 @@ Streaming query handler using Responses API.
 
 ## [tools.py](tools.py)
 Handler for REST API call to list available tools from MCP servers.
+
+## [vector_stores.py](vector_stores.py)
+Handler for REST API calls to manage vector stores and files.
 

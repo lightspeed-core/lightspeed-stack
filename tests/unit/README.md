@@ -24,3 +24,6 @@ Unit tests for src/llama_stack_configuration.py.
 ## [test_log.py](test_log.py)
 Unit tests for functions defined in src/log.py.
 
+## [test_sentry.py](test_sentry.py)
+Unit tests for functions defined in src/sentry.py.
+
