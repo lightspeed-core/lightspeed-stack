@@ -740,7 +740,7 @@ async def get_mcp_tools(
                 server_label=mcp_server.name,
                 server_url=mcp_server.url,
                 require_approval="never",
-                headers=headers if headers else None,
+                headers=headers or None,
                 authorization=authorization,
             )
         )
@@ -801,7 +801,7 @@ def apply_mcp_headers_to_explicit_tools(
         out.append(
             mcp_tool.model_copy(
                 update={
-                    "headers": headers if headers else None,
+                    "headers": headers or None,
                     "authorization": authorization,
                 }
             )
@@ -861,7 +861,7 @@ def parse_referenced_documents(  # pylint: disable=too-many-locals
 
                 if doc_title or doc_url:
                     # Treat empty string as None for URL to satisfy Optional[AnyUrl]
-                    final_url = doc_url if doc_url else None
+                    final_url = doc_url or None
                     if (final_url, doc_title) not in seen_docs:
                         documents.append(
                             ReferencedDocument(
@@ -1018,11 +1018,7 @@ def build_tool_call_summary(  # pylint: disable=too-many-return-statements,too-m
         args = parse_arguments_string(mcp_call_item.arguments)
         if mcp_call_item.server_label:
             args["server_label"] = mcp_call_item.server_label
-        content = (
-            mcp_call_item.error
-            if mcp_call_item.error
-            else (mcp_call_item.output if mcp_call_item.output else "")
-        )
+        content = mcp_call_item.error or (mcp_call_item.output or "")
 
         return ToolCallSummary(
             id=mcp_call_item.id,
@@ -1141,11 +1137,7 @@ def build_tool_result_from_mcp_output_item_done(
     Returns:
         ToolResultSummary for the MCP call
     """
-    content = (
-        output_item.error
-        if output_item.error
-        else (output_item.output if output_item.output else "")
-    )
+    content = output_item.error or (output_item.output or "")
     return ToolResultSummary(
         id=output_item.id,
         status="success" if output_item.error is None else "failure",
@@ -1213,7 +1205,7 @@ def _build_chunk_attributes(result: Any) -> Optional[dict[str, Any]]:
     if not attributes:
         return None
     if isinstance(attributes, dict):
-        return attributes if attributes else None
+        return attributes or None
     return None
 
 
