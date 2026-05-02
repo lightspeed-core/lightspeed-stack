@@ -73,6 +73,7 @@ Authentication configuration.
 | module | string |  |
 | skip_tls_verification | boolean |  |
 | skip_for_health_probes | boolean | Skip authorization for readiness and liveness probes |
+| skip_for_metrics | boolean | Skip authorization for the /metrics endpoint |
 | k8s_cluster_api | string |  |
 | k8s_ca_cert_path | string |  |
 | jwk_config |  |  |
