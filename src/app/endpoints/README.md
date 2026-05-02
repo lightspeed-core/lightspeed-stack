@@ -6,6 +6,9 @@ Implementation of all endpoints.
 ## [a2a.py](a2a.py)
 Handler for A2A (Agent-to-Agent) protocol endpoints using Responses API.
 
+## [a2a_openapi.py](a2a_openapi.py)
+OpenAPI-only metadata for A2A JSON-RPC routes.
+
 ## [authorized.py](authorized.py)
 Handler for REST API call to authorized endpoint.
 
