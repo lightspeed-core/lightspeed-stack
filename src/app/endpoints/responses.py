@@ -372,12 +372,7 @@ async def responses_endpoint_handler(
             original_request.input, inline_rag_context.context_text
         )
 
-    api_params = ResponsesApiParams.model_validate(
-        {
-            **updated_request.model_dump(exclude={"tools"}),
-            "tools": updated_request.tools,
-        }
-    )
+    api_params = ResponsesApiParams.model_validate(updated_request.model_dump())
     context = ResponsesContext(
         client=client,
         auth=auth,
