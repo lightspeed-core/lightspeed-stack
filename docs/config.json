@@ -95,6 +95,7 @@
           "query_other_conversations",
           "delete_other_conversations",
           "query",
+          "responses",
           "streaming_query",
           "get_conversation",
           "list_conversations",
@@ -119,7 +120,12 @@
           "a2a_agent_card",
           "a2a_task_execution",
           "a2a_message",
-          "a2a_jsonrpc"
+          "a2a_jsonrpc",
+          "manage_vector_stores",
+          "read_vector_stores",
+          "manage_files",
+          "manage_prompts",
+          "read_prompts"
         ],
         "title": "Action",
         "type": "string"
@@ -142,6 +148,12 @@
             "default": false,
             "description": "Skip authorization for readiness and liveness probes",
             "title": "Skip authorization for probes",
+            "type": "boolean"
+          },
+          "skip_for_metrics": {
+            "default": false,
+            "description": "Skip authorization for the /metrics endpoint",
+            "title": "Skip authorization for metrics",
             "type": "boolean"
           },
           "k8s_cluster_api": {
