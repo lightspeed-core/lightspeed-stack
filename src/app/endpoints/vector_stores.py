@@ -636,7 +636,7 @@ async def add_file_to_vector_store(  # pylint: disable=too-many-locals,too-many-
             "Vector store file created - ID: %s, status: %s, last_error: %s",
             vs_file.id,
             vs_file.status,
-            vs_file.last_error if vs_file.last_error else "None",
+            vs_file.last_error or "None",
         )
 
         return VectorStoreFileResponse(

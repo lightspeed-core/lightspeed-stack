@@ -671,7 +671,7 @@ def _convert_solr_chunks_to_rag_format(
                 content=chunk.content,
                 source=constants.OKP_RAG_ID,
                 score=score,
-                attributes=attributes if attributes else None,
+                attributes=attributes or None,
             )
         )
 

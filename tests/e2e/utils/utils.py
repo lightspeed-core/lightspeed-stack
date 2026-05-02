@@ -104,7 +104,7 @@ def cluster_lightspeed_config_dir() -> str:
     """
     raw = os.getenv("E2E_LIGHTSPEED_CONFIG_DIR", _DEFAULT_CLUSTER_LIGHTSPEED_CONFIG_DIR)
     stripped = raw.strip()
-    return stripped if stripped else _DEFAULT_CLUSTER_LIGHTSPEED_CONFIG_DIR
+    return stripped or _DEFAULT_CLUSTER_LIGHTSPEED_CONFIG_DIR
 
 
 def cluster_lightspeed_config_path(filename: str) -> str:

@@ -174,11 +174,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
         args = parse_arguments_string(mcp_call_item.arguments)
         if mcp_call_item.server_label:
             args["server_label"] = mcp_call_item.server_label
-        content = (
-            mcp_call_item.error
-            if mcp_call_item.error
-            else (mcp_call_item.output if mcp_call_item.output else "")
-        )
+        content = mcp_call_item.error or (mcp_call_item.output or "")
 
         return (
             ToolCallSummary(

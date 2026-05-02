@@ -269,8 +269,8 @@ def build_conversation_turn_from_cache_entry(entry: CacheEntry) -> ConversationT
     ]
 
     # Extract tool calls and results (default to empty lists if None)
-    tool_calls = entry.tool_calls if entry.tool_calls else []
-    tool_results = entry.tool_results if entry.tool_results else []
+    tool_calls = entry.tool_calls or []
+    tool_results = entry.tool_results or []
 
     return ConversationTurn(
         messages=messages,
