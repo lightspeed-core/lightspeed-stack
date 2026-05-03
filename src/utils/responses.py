@@ -547,11 +547,10 @@ def mcp_project_allowed_tools_to_names(
         permitted = name_set
     elif isinstance(allowed, list):
         permitted = name_set & set(allowed)
+    elif allowed.tool_names is None:
+        permitted = name_set
     else:
-        if allowed.tool_names is None:
-            permitted = name_set
-        else:
-            permitted = name_set & set(allowed.tool_names)
+        permitted = name_set & set(allowed.tool_names)
 
     if not permitted:
         return None
