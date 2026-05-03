@@ -1,13 +1,15 @@
 # OKP Deployment and Configuration Guide
 
-This document explains how to deploy the Offline Knowledge Portal (OKP) as a RAG source and configure Lightspeed Stack and Llama Stack to use it. You will:
+This document explains how to deploy the Offline Knowledge Portal (OKP) as a
+RAG source and configure Lightspeed Stack and Llama Stack to use it. You will:
 
 * Deploy and verify the OKP Solr service
 * Configure Lightspeed Stack for OKP (inline or tool RAG)
 * Install dependencies and launch Lightspeed Stack
 * Confirm the end-to-end stack with a sample query
 
-For general RAG concepts, BYOK vector stores, and manual Llama Stack configuration, see the [RAG Configuration Guide](rag_guide.md).
+For general RAG concepts, BYOK vector stores, and manual Llama Stack
+configuration, see the [RAG Configuration Guide](rag_guide.md).
 
 ---
 
@@ -16,17 +18,22 @@ For general RAG concepts, BYOK vector stores, and manual Llama Stack configurati
 * [Introduction](#introduction)
 * [Prerequisites](#prerequisites)
 * [Step 1: Launch OKP](#step-1-launch-okp)
-* [Step 2: Setup llamamstack config environment variables](#step-2-setup-llamamstack-config-environment-variables)
+* [Step 2: Setup llamastack config environment variables](#step-2-setup-llamamstack-config-environment-variables)
 * [Step 3: Install Lightspeed Stack Dependencies](#step-3-install-lightspeed-stack-dependencies)
 * [Step 4: Configure Lightspeed Stack](#step-4-configure-lightspeed-stack)
-* [Step 5: Launch Lightspeed Stack](#step-6-launch-lightspeed-stack)
-* [Step 6: Verify the Stack](#step-7-verify-the-stack)
+* [Step 5: Launch Lightspeed Stack](#step-5-launch-lightspeed-stack)
+* [Step 6: Verify the Stack](#step-6-verify-the-stack)
 
 ---
 
 ## Introduction
 
-OKP (Offline Knowledge Portal) provides a Solr-backed RAG source that Lightspeed Stack can use for both **Inline RAG** (context injected before the LLM request) and **Tool RAG** (context retrieved on demand via the `file_search` tool). This guide walks through deploying the OKP container, enriching your Llama Stack config from Lightspeed Stack settings, and validating that queries return referenced chunks.
+OKP (Offline Knowledge Portal) provides a Solr-backed RAG source that
+Lightspeed Stack can use for both **Inline RAG** (context injected before the
+LLM request) and **Tool RAG** (context retrieved on demand via the
+`file_search` tool). This guide walks through deploying the OKP container,
+enriching your Llama Stack config from Lightspeed Stack settings, and
+validating that queries return referenced chunks.
 
 ---
 
@@ -42,7 +49,8 @@ OKP (Offline Knowledge Portal) provides a Solr-backed RAG source that Lightspeed
 
 ## Step 1: Launch OKP
 
-> **Warning:** The image referenced below is a **prototype**. The official OKP RAG image is expected in **late March / early April** of 2026.
+> **Warning:** The image referenced below is a **prototype**. The official OKP
+> RAG image is expected in **late March / early April** of 2026.
 
 Start the OKP RAG service with Podman:
 
@@ -61,12 +69,20 @@ podman run --rm -d -p 8081:8080 registry.redhat.io/offline-knowledge-portal/rhok
 
   Or visit: **http://localhost:8081**
 
-> **Note:** Lightspeed stack will automatically enrich the llamastack configuration to add the necessary providers/resources for referencing OKP.  This assumes your OKP instance is running on localhost:8081.  If you need a different OKP url, you can set the SOLR_URL environment variable with the correct url prior to launching Lightspeed stack and that value will be used instead.
+> **Note:** Lightspeed stack will automatically enrich the llamastack
+> configuration to add the necessary providers/resources for referencing OKP.
+> This assumes your OKP instance is running on localhost:8081.  If you need a
+> different OKP url, you can set the SOLR_URL environment variable with the
+> correct url prior to launching Lightspeed stack and that value will be used
+> instead.
 ---
 
 ## Step 2: Setup llamastack config environment variables
 
-Set the required environment variables. The external providers path must point to the `external_providers` content inside the [lightspeed-providers](https://github.com/lightspeed-core/lightspeed-providers/tree/main/lightspeed_stack_providers/) repository:
+Set the required environment variables. The external providers path must point
+to the `external_providers` content inside the
+[lightspeed-providers](https://github.com/lightspeed-core/lightspeed-providers/tree/main/lightspeed_stack_providers/)
+repository:
 
 ```bash
 export EXTERNAL_PROVIDERS_DIR=../lightspeed-providers/resources/external_providers
@@ -74,7 +90,8 @@ export OPENAI_API_KEY=<your-openai-api-key>
 export RH_SERVER_OKP=http://localhost:8081
 ```
 
-Adjust `EXTERNAL_PROVIDERS_DIR` if your lightspeed-providers repo is in a different location relative to your lightspeed-stack directory.
+Adjust `EXTERNAL_PROVIDERS_DIR` if your lightspeed-providers repo is in a
+different location relative to your lightspeed-stack directory.
 
 ---
 
@@ -90,16 +107,22 @@ uv pip install -e ../lightspeed-providers # Path to lightspeed-providers repo
 * **`uv sync`**: Installs project and dev/llslibdev groups so that the app and tooling run correctly.
 * **`uv pip install -e ../lightspeed-providers`**: Installs the lightspeed stack providers from the local clone of the repository.  Adjust the directory path as needed.
 
-> **Note:** Running `uv sync` will remove the lightspeed-providers dependency installed by the `uv pip install` command, so you will need to rerun the `uv pip install` command if you rerun `uv sync`.
+> **Note:** Running `uv sync` will remove the lightspeed-providers dependency
+> installed by the `uv pip install` command, so you will need to rerun the `uv
+> pip install` command if you rerun `uv sync`.
 
 ---
 
 ## Step 4: Configure Lightspeed Stack
 
 ### Enable OKP in Lightspeed Stack
-Edit your Lightspeed Stack config file (e.g. `lightspeed-stack.yaml`) and add the following top-level sections so that OKP is used for either inline or tool RAG:
+
+Edit your Lightspeed Stack config file (e.g. `lightspeed-stack.yaml`) and add
+the following top-level sections so that OKP is used for either inline or tool
+RAG:
 
 Inline RAG:
+
 ```yaml
 # RAG configuration
 rag:
@@ -111,6 +134,7 @@ okp:
 ```
 
 Tool RAG:
+
 ```yaml
 # RAG configuration
 rag:
@@ -124,7 +148,8 @@ okp:
 * **`rag.inline`** and **`rag.tool`**: Enable OKP as the RAG source for inline context injection and for the RAG tool.  Tool rag means the LLM will be provided a search tool it can choose to invoke to find relevant content and augment the user prompt.  The tool may or may not be invoked.  Inline means a rag search and prompt augmentation will always occur.
 * **`okp.offline`**: When `true`, source URLs use `parent_id` (offline/Mimir-style). When `false`, use `reference_url` (online).
 
-If you want to filter the docs to a specific product, you can include a query filter such as:
+If you want to filter the docs to a specific product, you can include a query
+filter such as:
 
 ```yaml
 okp:
@@ -132,11 +157,13 @@ okp:
   chunk_filter_query: "product:*openshift*"
 ```
 
-When you launch Lightspeed stack it will augment the Llamastack run.yaml with configuration for OKP.
+When you launch Lightspeed stack it will augment the Llamastack run.yaml with
+configuration for OKP.
 
 ### Configure Lightspeed Stack for library mode
 
-For the simplest local development, configure `lightspeed-stack.yaml` to consume Llama Stack in library mode:
+For the simplest local development, configure `lightspeed-stack.yaml` to
+consume Llama Stack in library mode:
 
 ```yaml
 llama_stack:
@@ -153,13 +180,16 @@ llama_stack:
 
 ## Step 5: Launch Lightspeed Stack
 
-Then launch Lightspeed Stack using your Lightspeed Stack config(`lightspeed-stack.yaml`) which references the provided default Llamastack config file (`run.yaml`):
+Then launch Lightspeed Stack using your Lightspeed Stack
+config(`lightspeed-stack.yaml`) which references the provided default
+Llamastack config file (`run.yaml`):
 
 ```bash
 make run
 ```
 
-Lightspeed Stack has launched successfully and is available when you see this log output:
+Lightspeed Stack has launched successfully and is available when you see this
+log output:
 
 ```log
 INFO     2026-03-17 11:20:31,347 uvicorn.error:62 uncategorized: Application startup complete.
@@ -170,7 +200,9 @@ INFO     2026-03-17 11:20:31,349 uvicorn.error:224 uncategorized: Uvicorn runnin
 
 ## Step 6: Verify the Stack
 
-Confirm that the full stack (Lightspeed Stack + Llama Stack + OKP) is working by sending a query and checking that the response includes referenced chunks from OKP:
+Confirm that the full stack (Lightspeed Stack + Llama Stack + OKP) is working
+by sending a query and checking that the response includes referenced chunks
+from OKP:
 
 ```bash
 curl -sX POST http://localhost:8080/v1/query \
@@ -196,7 +228,9 @@ Example response excerpt:
 ],
 ```
 
-> **Note:** The first time you query the system the response may take additional time because it must first download the necessary embedding model to perform the vector search.
+> **Note:** The first time you query the system the response may take
+> additional time because it must first download the necessary embedding model
+> to perform the vector search.
 
 If you see no RAG context, verify:
 
