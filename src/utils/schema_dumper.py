@@ -25,7 +25,7 @@ def recursive_update(
     for key, value in original.items():
         # recurse into sub-dictionaries
         if isinstance(value, dict):
-            new[key] = recursive_update(original[key])
+            new[key] = recursive_update(value)
         # optional types fixes
         elif (
             key == "anyOf"
