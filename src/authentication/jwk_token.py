@@ -29,7 +29,9 @@ logger = get_logger(__name__)
 
 # Global JWK registry to avoid re-fetching JWKs for each request. Cached for 1
 # hour, keys are unlikely to change frequently.
-_jwk_cache: TTLCache[str, KeySet] = TTLCache(maxsize=3, ttl=3600)
+_jwk_cache: TTLCache[str, KeySet] = TTLCache(
+    maxsize=3, ttl=3600
+)  # pyright: ignore[reportAssignmentType]
 # Ideally this would be an RWLock, but it would require adding a dependency on
 # aiorwlock
 _jwk_cache_lock = Lock()
