@@ -18,6 +18,7 @@ from pytest_mock import MockerFixture
 
 from app.endpoints.responses import (
     _is_server_mcp_output_item,
+    _maybe_get_topic_summary,
     _sanitize_response_dict,
     _should_filter_mcp_chunk,
     handle_non_streaming_response,
@@ -218,6 +219,37 @@ def _patch_handle_non_streaming_common(
         new=mocker.AsyncMock(return_value=None),
     )
     mocker.patch(f"{MODULE}.store_query_results")
+
+
+@pytest.mark.asyncio
+async def test_maybe_get_topic_summary_skips_blocked_moderation(
+    mocker: MockerFixture,
+) -> None:
+    """Test blocked moderation avoids another model call for topic summaries."""
+    request = _request_with_model_and_conv("Blocked", model="provider/model1")
+    mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+    refusal = OpenAIResponseMessage(role="assistant", content="Blocked", type="message")
+    api_params, context = build_api_params_and_context(
+        updated_request=request,
+        client=mock_client,
+        auth=MOCK_AUTH,
+        input_text="Blocked",
+        started_at=datetime.now(UTC),
+        moderation_result=ShieldModerationBlocked(
+            message="Blocked",
+            moderation_id="mod_123",
+            refusal_response=refusal,
+        ),
+        inline_rag_context=RAGContext(),
+        generate_topic_summary=True,
+    )
+    get_topic_summary = mocker.patch(
+        f"{MODULE}.get_topic_summary",
+        new=mocker.AsyncMock(return_value="summary"),
+    )
+
+    assert await _maybe_get_topic_summary(api_params, context) is None
+    get_topic_summary.assert_not_awaited()
 
 
 @pytest.fixture(name="dummy_request")

@@ -432,6 +432,7 @@ class TestSplunkTelemetryHooks:
             inline_rag_context=RAGContext(),
             background_tasks=mock_background_tasks,
             rh_identity_context=("org1", "sys1"),
+            user_agent="test-agent/1.0",
         )
         await handle_non_streaming_response(
             original_request=request,
@@ -445,6 +446,7 @@ class TestSplunkTelemetryHooks:
         assert call_kwargs["sourcetype"] == "responses_completed"
         assert call_kwargs["input_tokens"] == 100
         assert call_kwargs["output_tokens"] == 50
+        assert call_kwargs["user_agent"] == "test-agent/1.0"
 
     # -- Streaming paths ----------------------------------------------------
 
@@ -660,6 +662,7 @@ class TestSplunkTelemetryHooks:
             inline_rag_context=RAGContext(),
             background_tasks=mock_background_tasks,
             rh_identity_context=("org1", "sys1"),
+            user_agent="test-agent/1.0",
         )
         response = await handle_streaming_response(
             original_request=request,
@@ -678,6 +681,7 @@ class TestSplunkTelemetryHooks:
         assert call_kwargs["sourcetype"] == "responses_completed"
         assert call_kwargs["input_tokens"] == 100
         assert call_kwargs["output_tokens"] == 50
+        assert call_kwargs["user_agent"] == "test-agent/1.0"
 
     # -- Splunk disabled (no BackgroundTasks) --------------------------------
 
