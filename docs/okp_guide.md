@@ -18,7 +18,7 @@ configuration, see the [RAG Configuration Guide](rag_guide.md).
 * [Introduction](#introduction)
 * [Prerequisites](#prerequisites)
 * [Step 1: Launch OKP](#step-1-launch-okp)
-* [Step 2: Setup llamastack config environment variables](#step-2-setup-llamamstack-config-environment-variables)
+* [Step 2: Setup llamastack config environment variables](`#step-2-setup-llamastack-config-environment-variables`)
 * [Step 3: Install Lightspeed Stack Dependencies](#step-3-install-lightspeed-stack-dependencies)
 * [Step 4: Configure Lightspeed Stack](#step-4-configure-lightspeed-stack)
 * [Step 5: Launch Lightspeed Stack](#step-5-launch-lightspeed-stack)
