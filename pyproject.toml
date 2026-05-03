@@ -231,7 +231,7 @@ line-length = 88
 extend-exclude = ["tests/profiles/syntax_error.py"]
 
 [tool.ruff.lint]
-extend-select = ["TID251", "UP006", "UP007", "UP010", "UP017", "UP035", "RUF100", "B009", "B010", "DTZ005", "D202", "I001"]
+extend-select = ["TID251", "UP006", "UP007", "UP010", "UP017", "UP035", "RUF100", "B009", "B010", "DTZ005", "D202", "I001", "PLR1733"]
 
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
