@@ -4,13 +4,16 @@ import logging
 
 import uvicorn
 
-from log import get_logger, resolve_log_level
+from log import get_logger, resolve_log_level, setup_logging
 from models.config import ServiceConfiguration
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
-def start_uvicorn(configuration: ServiceConfiguration) -> None:
+def start_uvicorn(
+    configuration: ServiceConfiguration,
+    log_config: dict | None = None,
+) -> None:
     """Start the Uvicorn server using the provided service configuration.
 
     Parameters:
@@ -22,6 +25,8 @@ def start_uvicorn(configuration: ServiceConfiguration) -> None:
     """
     log_level = resolve_log_level()
     logger.info("Starting Uvicorn with log level %s", logging.getLevelName(log_level))
+    if log_config is None:
+        log_config = setup_logging()
 
     # please note:
     # TLS fields can be None, which means we will pass those values as None to uvicorn.run
@@ -30,6 +35,7 @@ def start_uvicorn(configuration: ServiceConfiguration) -> None:
         host=configuration.host,
         port=configuration.port,
         workers=configuration.workers,
+        log_config=log_config,
         log_level=log_level,
         ssl_keyfile=configuration.tls_config.tls_key_path,
         ssl_certfile=configuration.tls_config.tls_certificate_path,
