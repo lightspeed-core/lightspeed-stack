@@ -19,7 +19,7 @@ from constants import (
 )
 from log import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 RH_INSIGHTS_REQUEST_ID_HEADER = "x-rh-insights-request-id"
 REQUEST_ID_HEADER = "x-request-id"

@@ -33,7 +33,7 @@ from utils.endpoints import check_configuration_loaded
 from utils.query import handle_known_apistatus_errors
 from utils.suid import check_suid_prompt
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 router = APIRouter(tags=["prompts"])
 
 

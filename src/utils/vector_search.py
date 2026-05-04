@@ -23,7 +23,7 @@ from models.common.responses.types import ResponseInput
 from models.common.turn_summary import RAGChunk, RAGContext, ReferencedDocument
 from utils.responses import resolve_vector_store_ids
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 def _get_okp_base_url() -> AnyUrl:

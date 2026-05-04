@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 from a2a_storage.context_store import A2AContextStore
 from log import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 # Define the table metadata
 metadata = MetaData()

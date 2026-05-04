@@ -24,7 +24,7 @@ from models.api.responses.error import (
 )
 from models.config import Action
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 @lru_cache(maxsize=1)

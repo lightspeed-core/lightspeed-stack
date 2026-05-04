@@ -7,7 +7,7 @@ from quota.cluster_quota_limiter import ClusterQuotaLimiter
 from quota.quota_limiter import QuotaLimiter
 from quota.user_quota_limiter import UserQuotaLimiter
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 # pylint: disable=too-few-public-methods

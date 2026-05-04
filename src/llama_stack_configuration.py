@@ -19,7 +19,7 @@ from llama_stack.core.stack import replace_env_vars
 import constants
 from log import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 class YamlDumper(yaml.Dumper):  # pylint: disable=too-many-ancestors

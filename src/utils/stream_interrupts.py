@@ -10,7 +10,7 @@ from typing import Any, Optional
 from log import get_logger
 from utils.types import Singleton
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 @dataclass

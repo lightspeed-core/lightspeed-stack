@@ -21,7 +21,7 @@ from pydantic import SecretStr
 from log import get_logger
 from models.config import Configuration
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 # Masking output constants
 CONFIGURED: Literal["configured"] = "configured"

@@ -18,7 +18,7 @@ from constants import (
 )
 from log import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 def sentry_traces_sampler(tracing_context: dict) -> float:
