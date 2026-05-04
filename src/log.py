@@ -56,6 +56,9 @@ def resolve_log_level() -> int:
     return validated_level
 
 
+def get_logger(file: str) -> logging.Logger:
+    return logging.getLogger(f"{DEFAULT_LOGGER_NAME}.{Path(file).stem}")
+
 
 @lru_cache
 def setup_logging() -> dict[t.Any, t.Any]:
