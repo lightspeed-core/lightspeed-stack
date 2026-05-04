@@ -20,7 +20,7 @@ from models.compaction import ConversationSummary
 from models.config import PostgreSQLDatabaseConfiguration
 from utils.connection_decorator import connection
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 class PostgresCache(Cache):

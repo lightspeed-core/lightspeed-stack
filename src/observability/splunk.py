@@ -12,7 +12,7 @@ from configuration import configuration
 from log import get_logger
 from version import __version__
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 def _get_hostname() -> str:

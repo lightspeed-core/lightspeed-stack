@@ -25,7 +25,7 @@ from models.api.responses.error import ServiceUnavailableResponse
 from models.config import LlamaStackConfiguration
 from utils.types import Singleton
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 class AsyncLlamaStackClientHolder(metaclass=Singleton):

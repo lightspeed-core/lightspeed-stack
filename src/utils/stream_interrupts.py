@@ -26,7 +26,7 @@ from utils.responses import get_topic_summary
 from utils.shields import append_turn_to_conversation
 from utils.types import Singleton
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 @dataclass

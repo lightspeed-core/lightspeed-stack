@@ -21,7 +21,7 @@ from models.api.responses.error import (
     UnauthorizedResponse,
 )
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 CLUSTER_ID_LOCAL = "local"

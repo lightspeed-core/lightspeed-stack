@@ -6,7 +6,7 @@ from configuration import configuration
 from log import get_logger
 from utils.endpoints import check_configuration_loaded
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 async def setup_model_metrics() -> None:

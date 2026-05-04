@@ -16,7 +16,7 @@ from authentication.interface import AuthInterface
 from configuration import LogicError, configuration
 from log import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 def get_auth_dependency(  # pylint: disable=too-many-return-statements

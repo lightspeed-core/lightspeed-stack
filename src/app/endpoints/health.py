@@ -33,7 +33,7 @@ from models.common import (
 from models.config import Action
 from utils.degraded_mode import DegradedModeTracker
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 router = APIRouter(tags=["health"])
 
 
