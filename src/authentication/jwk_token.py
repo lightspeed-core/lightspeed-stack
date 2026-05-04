@@ -26,7 +26,7 @@ from log import get_logger
 from models.api.responses.error import UnauthorizedResponse
 from models.config import JwkConfiguration
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 # Global JWK registry to avoid re-fetching JWKs for each request. Cached for 1
 # hour, keys are unlikely to change frequently.

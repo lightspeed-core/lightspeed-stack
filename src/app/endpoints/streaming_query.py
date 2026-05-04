@@ -134,7 +134,7 @@ from utils.streaming_sse import (
 from utils.suid import get_suid, normalize_conversation_id
 from utils.vector_search import build_rag_context
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 router = APIRouter(tags=["streaming_query"])
 
 # Tracks background topic summary tasks for graceful shutdown.

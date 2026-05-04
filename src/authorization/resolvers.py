@@ -12,7 +12,7 @@ from authentication.interface import AuthTuple
 from log import get_logger
 from models.config import AccessRule, Action, JsonPathOperator, JwtRoleRule
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 UserRoles = set[str]

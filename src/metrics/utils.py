@@ -11,7 +11,7 @@ from models.api.responses.error import ServiceUnavailableResponse
 from utils.common import run_once_async
 from utils.endpoints import check_configuration_loaded
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 
 @run_once_async

@@ -16,7 +16,7 @@ from pydantic import SecretStr
 import constants
 from log import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 VECTOR_IO_TEMPLATES: dict[str, dict[str, Any]] = {
     "inline::faiss": {

@@ -65,7 +65,7 @@ from utils.rh_identity import AUTH_DISABLED, get_rh_identity_context
 from utils.shields import run_shield_moderation
 from utils.suid import get_suid
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 router = APIRouter(tags=["rlsapi-v1"])
 
 

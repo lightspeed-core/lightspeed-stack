@@ -12,7 +12,7 @@ from configuration import AppConfig
 from log import get_logger
 from models.config import ModelContextProtocolServer
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 
 type McpHeaders = dict[str, dict[str, str]]
 

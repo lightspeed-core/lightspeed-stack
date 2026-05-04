@@ -49,7 +49,7 @@ from models.config import Action
 from utils.endpoints import check_configuration_loaded
 from utils.query import handle_known_apistatus_errors
 
-logger = get_logger(__name__)
+logger = get_logger(__file__)
 router = APIRouter(tags=["vector-stores"])
 
 
