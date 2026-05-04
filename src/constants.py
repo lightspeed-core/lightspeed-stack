@@ -239,7 +239,7 @@ DEFAULT_LOGGER_NAME = "lcs"
 DEFAULT_LOG_LEVEL: Final[str] = "INFO"
 # Default log format for plain-text logging in non-TTY environments
 DEFAULT_LOG_FORMAT: Final[str] = (
-    "%(asctime)s %(levelname)-8s %(name)s:%(lineno)d %(message)s"
+    "%(asctime)s.%(msecs)03d %(levelprefix)s %(message)s  [%(name)s:%(lineno)d]"
 )
 # Environment variable to force StreamHandler instead of RichHandler
 # Set to any non-empty value to disable RichHandler
