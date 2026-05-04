@@ -1,14 +1,20 @@
 """Log utilities."""
 
 import logging
+import logging.config
 import os
 import sys
+import typing as t
+from functools import lru_cache
+from pathlib import Path
 
-from rich.logging import RichHandler
+import uvicorn.config
+from pydantic.v1.utils import deep_update
 
 from constants import (
     DEFAULT_LOG_FORMAT,
     DEFAULT_LOG_LEVEL,
+    DEFAULT_LOGGER_NAME,
     LIGHTSPEED_STACK_DISABLE_RICH_HANDLER_ENV_VAR,
     LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR,
 )
@@ -50,62 +56,57 @@ def resolve_log_level() -> int:
     return validated_level
 
 
-def create_log_handler() -> logging.Handler:
-    """
-    Create and return a configured log handler based on TTY availability and environment settings.
 
-    If LIGHTSPEED_STACK_DISABLE_RICH_HANDLER is set to any non-empty value,
-    returns a StreamHandler with plain-text formatting. Otherwise, if stderr
-    is connected to a terminal (TTY), returns a RichHandler for rich-formatted
-    console output. If neither condition is met, returns a StreamHandler with
-    plain-text formatting suitable for non-TTY environments (e.g., containers).
+@lru_cache
+def setup_logging() -> dict[t.Any, t.Any]:
+    handler = "console"
+    log_level = resolve_log_level()
+    if sys.stderr.isatty() and not os.environ.get(
+        LIGHTSPEED_STACK_DISABLE_RICH_HANDLER_ENV_VAR
+    ):
+        handler = "rich"
 
-    Returns:
-        logging.Handler: A configured handler instance (RichHandler or StreamHandler).
-    """
-    # Check if RichHandler is explicitly disabled via environment variable
-    if os.environ.get(LIGHTSPEED_STACK_DISABLE_RICH_HANDLER_ENV_VAR):
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter(DEFAULT_LOG_FORMAT))
-        return handler
+    logging_conf = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            # RichHandler needs format="%(message)s" to prevent double-formatting by the root Formatter.
+            "rich": {
+                "format": "RICH %(message)s",
+                "datefmt": "[%X]",
+            },
+            "console": {
+                "format": DEFAULT_LOG_FORMAT,
+                "datefmt": "%Y-%m-%d %H:%M:%S",
+            },
+        },
+        "handlers": {
+            "console": {
+                "formatter": "console",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stderr",
+            },
+            "rich": {
+                "formatter": "rich",
+                "class": "rich.logging.RichHandler",
+            },
+        },
+        "loggers": {
+            DEFAULT_LOGGER_NAME: {
+                "handlers": [handler],
+                "level": log_level,
+                "propagate": False,
+            },
+        },
+    }
 
-    if sys.stderr.isatty():
-        # RichHandler's columnar layout assumes a real terminal.
-        # RichHandler handles its own formatting, so no formatter is set.
-        return RichHandler()
+    merged_config = deep_update(uvicorn.config.LOGGING_CONFIG, logging_conf)
+    merged_config["formatters"]["access"]["fmt"] = (
+        '%(asctime)s.%(msecs)03d %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'
+    )
+    merged_config["formatters"]["default"]["fmt"] = (
+        "%(asctime)s.%(msecs)03d %(levelprefix)s%(message)s"
+    )
+    logging.config.dictConfig(merged_config)
 
-    # In containers without a TTY, Rich falls back to 80 columns and
-    # the columns consume most of that width, leaving ~40 chars for the actual message.
-    # Tracebacks become nearly unreadable. Use a plain StreamHandler instead.
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter(DEFAULT_LOG_FORMAT))
-    return handler
-
-
-def get_logger(name: str) -> logging.Logger:
-    """
-    Get a logger configured for Rich console output.
-
-    The returned logger has its level set based on the LIGHTSPEED_STACK_LOG_LEVEL
-    environment variable (defaults to INFO), its handlers replaced with a single
-    handler (RichHandler for TTY or StreamHandler for non-TTY), and propagation
-    to ancestor loggers disabled.
-
-    Parameters:
-    ----------
-        name (str): Name of the logger to retrieve or create.
-
-    Returns:
-    -------
-        logging.Logger: The configured logger instance.
-    """
-    logger = logging.getLogger(name)
-
-    # Skip reconfiguration if logger already has handlers from a prior call
-    if logger.handlers:
-        return logger
-
-    logger.handlers = [create_log_handler()]
-    logger.propagate = False
-    logger.setLevel(resolve_log_level())
-    return logger
+    return merged_config
