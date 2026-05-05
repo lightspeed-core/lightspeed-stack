@@ -15,19 +15,20 @@ from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 from pytest_mock import MockerFixture
 
 from app.endpoints.responses import (
-    _background_splunk_tasks,
     _get_user_agent,
-    _queue_responses_splunk_event,
     handle_non_streaming_response,
     handle_streaming_response,
 )
+from app.endpoints.responses_telemetry import queue_responses_splunk_event
 from configuration import AppConfig
 from models.api.requests import ResponsesRequest
 from models.common.turn_summary import RAGContext, TurnSummary
 from observability.formats.responses import ResponsesEventData
+from observability.splunk import _fire_and_forget_tasks
 from tests.unit.app.endpoints.test_responses import build_api_params_and_context
 
 MODULE = "app.endpoints.responses"
+TELEMETRY_MODULE = "app.endpoints.responses_telemetry"
 MOCK_AUTH = (
     "00000001-0001-0001-0001-000000000001",
     "mock_username",
@@ -99,16 +100,16 @@ def minimal_config_fixture() -> AppConfig:
 
 
 class TestQueueResponsesSplunkEvent:
-    """Unit tests for the _queue_responses_splunk_event helper."""
+    """Unit tests for the queue_responses_splunk_event helper."""
 
     def test_noop_when_background_tasks_is_none(
         self,
         mocker: MockerFixture,
     ) -> None:
         """Verify no-op when background_tasks is None (Splunk disabled)."""
-        mock_build = mocker.patch(f"{MODULE}.build_responses_event")
+        mock_build = mocker.patch(f"{TELEMETRY_MODULE}.build_responses_event")
 
-        _queue_responses_splunk_event(
+        queue_responses_splunk_event(
             background_tasks=None,
             input_text="user question",
             response_text="llm answer",
@@ -128,11 +129,11 @@ class TestQueueResponsesSplunkEvent:
     ) -> None:
         """Verify event is built from ResponsesEventData and queued via add_task."""
         mock_build = mocker.patch(
-            f"{MODULE}.build_responses_event", return_value={"built": True}
+            f"{TELEMETRY_MODULE}.build_responses_event", return_value={"built": True}
         )
-        mock_send = mocker.patch(f"{MODULE}.send_splunk_event")
+        mock_dispatch = mocker.patch(f"{TELEMETRY_MODULE}.dispatch_splunk_event")
 
-        _queue_responses_splunk_event(
+        queue_responses_splunk_event(
             background_tasks=mock_background_tasks,
             input_text="user question",
             response_text="llm answer",
@@ -158,8 +159,11 @@ class TestQueueResponsesSplunkEvent:
         assert event_data.input_tokens == 100
         assert event_data.output_tokens == 50
 
-        mock_background_tasks.add_task.assert_called_once_with(
-            mock_send, {"built": True}, "responses_completed"
+        mock_dispatch.assert_called_once_with(
+            {"built": True},
+            "responses_completed",
+            background_tasks=mock_background_tasks,
+            fire_and_forget=False,
         )
 
     def test_fire_and_forget_dispatches_via_create_task(
@@ -167,17 +171,21 @@ class TestQueueResponsesSplunkEvent:
         mocker: MockerFixture,
     ) -> None:
         """fire_and_forget=True dispatches via asyncio.create_task with GC protection."""
-        mocker.patch(f"{MODULE}.build_responses_event", return_value={"built": True})
+        mocker.patch(
+            f"{TELEMETRY_MODULE}.build_responses_event", return_value={"built": True}
+        )
         # Use MagicMock (not AsyncMock) so send_splunk_event() returns a
         # comparable return_value instead of a coroutine object.
-        mock_send = mocker.patch(f"{MODULE}.send_splunk_event", new=mocker.MagicMock())
+        mock_send = mocker.patch(
+            "observability.splunk.send_splunk_event", new=mocker.MagicMock()
+        )
         mock_task = mocker.MagicMock()
         mock_create_task = mocker.patch("asyncio.create_task", return_value=mock_task)
 
         # Clear any leftover tasks from other tests
-        _background_splunk_tasks.clear()
+        _fire_and_forget_tasks.clear()
 
-        _queue_responses_splunk_event(
+        queue_responses_splunk_event(
             background_tasks=None,
             input_text="user question",
             response_text="error message",
@@ -193,14 +201,14 @@ class TestQueueResponsesSplunkEvent:
         mock_create_task.assert_called_once_with(mock_send.return_value)
 
         # Task is held in the module-level set to prevent GC
-        assert mock_task in _background_splunk_tasks
+        assert mock_task in _fire_and_forget_tasks
         # done_callback registered to clean up after completion
         mock_task.add_done_callback.assert_called_once()
 
         # Simulate task completion: callback removes from set
         done_callback = mock_task.add_done_callback.call_args[0][0]
         done_callback(mock_task)
-        assert mock_task not in _background_splunk_tasks
+        assert mock_task not in _fire_and_forget_tasks
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +217,7 @@ class TestQueueResponsesSplunkEvent:
 
 
 class TestSplunkTelemetryHooks:
-    """Integration tests verifying _queue_responses_splunk_event is called at each hook."""
+    """Integration tests verifying queue_responses_splunk_event is called at each hook."""
 
     # -- Non-streaming paths ------------------------------------------------
 
@@ -256,7 +264,7 @@ class TestSplunkTelemetryHooks:
             f"{MODULE}.OpenAIResponseObject.model_construct",
             return_value=mock_api_response,
         )
-        mock_queue = mocker.patch(f"{MODULE}._queue_responses_splunk_event")
+        mock_queue = mocker.patch(f"{TELEMETRY_MODULE}.queue_responses_splunk_event")
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -336,7 +344,7 @@ class TestSplunkTelemetryHooks:
                 }
             ),
         )
-        mock_queue = mocker.patch(f"{MODULE}._queue_responses_splunk_event")
+        mock_queue = mocker.patch(f"{TELEMETRY_MODULE}.queue_responses_splunk_event")
 
         with pytest.raises(HTTPException):
             api_params, context = build_api_params_and_context(
@@ -420,7 +428,7 @@ class TestSplunkTelemetryHooks:
         mocker.patch(f"{MODULE}.build_turn_summary", return_value=mock_turn_summary)
         mocker.patch(f"{MODULE}.deduplicate_referenced_documents", return_value=[])
 
-        mock_queue = mocker.patch(f"{MODULE}._queue_responses_splunk_event")
+        mock_queue = mocker.patch(f"{TELEMETRY_MODULE}.queue_responses_splunk_event")
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -483,7 +491,7 @@ class TestSplunkTelemetryHooks:
         mocker.patch(f"{MODULE}.store_query_results")
         mock_client.conversations.items.create = mocker.AsyncMock()
 
-        mock_queue = mocker.patch(f"{MODULE}._queue_responses_splunk_event")
+        mock_queue = mocker.patch(f"{TELEMETRY_MODULE}.queue_responses_splunk_event")
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -564,7 +572,7 @@ class TestSplunkTelemetryHooks:
                 }
             ),
         )
-        mock_queue = mocker.patch(f"{MODULE}._queue_responses_splunk_event")
+        mock_queue = mocker.patch(f"{TELEMETRY_MODULE}.queue_responses_splunk_event")
 
         with pytest.raises(HTTPException):
             api_params, context = build_api_params_and_context(
@@ -650,7 +658,7 @@ class TestSplunkTelemetryHooks:
         mock_holder.get_client.return_value = mock_client
         mocker.patch(f"{MODULE}.AsyncLlamaStackClientHolder", return_value=mock_holder)
 
-        mock_queue = mocker.patch(f"{MODULE}._queue_responses_splunk_event")
+        mock_queue = mocker.patch(f"{TELEMETRY_MODULE}.queue_responses_splunk_event")
 
         api_params, context = build_api_params_and_context(
             updated_request=request,
@@ -691,7 +699,7 @@ class TestSplunkTelemetryHooks:
         minimal_config: AppConfig,
         mocker: MockerFixture,
     ) -> None:
-        """When background_tasks is None, _queue_responses_splunk_event is never called."""
+        """When background_tasks is None, queue_responses_splunk_event is called but is a no-op."""
         request = _request_with_model_and_conv("Bad input")
         mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
 
@@ -727,7 +735,7 @@ class TestSplunkTelemetryHooks:
             f"{MODULE}.OpenAIResponseObject.model_construct",
             return_value=mock_api_response,
         )
-        mock_queue = mocker.patch(f"{MODULE}._queue_responses_splunk_event")
+        mock_queue = mocker.patch(f"{TELEMETRY_MODULE}.queue_responses_splunk_event")
 
         # background_tasks=None (the default) means Splunk is disabled
         api_params, context = build_api_params_and_context(

@@ -1,5 +1,7 @@
 """Unit tests for Splunk HEC client."""
 
+import asyncio
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any, Optional
 
@@ -7,7 +9,13 @@ import aiohttp
 import pytest
 from pytest_mock import MockerFixture
 
-from observability.splunk import _read_token_from_file, send_splunk_event
+from observability.splunk import (
+    _cleanup_fire_and_forget_task,
+    _fire_and_forget_tasks,
+    _read_token_from_file,
+    dispatch_splunk_event,
+    send_splunk_event,
+)
 
 
 @pytest.fixture(name="mock_splunk_config")
@@ -185,3 +193,126 @@ async def test_logs_warning_on_error(
     await send_splunk_event({"test": "event"}, "test_sourcetype")
 
     mock_logger.warning.assert_called()
+
+
+# ---------------------------------------------------------------------------
+# dispatch_splunk_event tests
+# ---------------------------------------------------------------------------
+
+
+class TestDispatchSplunkEvent:
+    """Tests for the dispatch_splunk_event dispatcher function."""
+
+    @pytest.fixture(autouse=True)
+    def _cleanup_fire_and_forget(self) -> Generator[None, None, None]:
+        """Ensure _fire_and_forget_tasks is cleaned after each test."""
+        yield
+        _fire_and_forget_tasks.clear()
+
+    def test_noop_when_no_dispatch_method(self, mocker: MockerFixture) -> None:
+        """No-op when background_tasks is None and fire_and_forget is False."""
+        mock_send = mocker.patch("observability.splunk.send_splunk_event")
+        mock_create_task = mocker.patch("observability.splunk.asyncio.create_task")
+
+        dispatch_splunk_event({"k": "v"}, "test_sourcetype")
+
+        mock_send.assert_not_called()
+        mock_create_task.assert_not_called()
+
+    def test_dispatches_via_background_tasks(self, mocker: MockerFixture) -> None:
+        """Queues send_splunk_event via BackgroundTasks when provided."""
+        mock_bg = mocker.MagicMock()
+
+        dispatch_splunk_event({"k": "v"}, "test_sourcetype", background_tasks=mock_bg)
+
+        mock_bg.add_task.assert_called_once_with(
+            send_splunk_event, {"k": "v"}, "test_sourcetype"
+        )
+
+    def test_dispatches_fire_and_forget(self, mocker: MockerFixture) -> None:
+        """Creates asyncio task and registers it for GC protection."""
+        sentinel_task = mocker.MagicMock()
+        mock_create_task = mocker.patch(
+            "observability.splunk.asyncio.create_task", return_value=sentinel_task
+        )
+        # Prevent real coroutine creation; the mock returns a coroutine-like
+        # object that create_task can accept.
+        mocker.patch("observability.splunk.send_splunk_event")
+
+        dispatch_splunk_event({"k": "v"}, "test_sourcetype", fire_and_forget=True)
+
+        mock_create_task.assert_called_once()
+        assert sentinel_task in _fire_and_forget_tasks
+        sentinel_task.add_done_callback.assert_called_once_with(
+            _cleanup_fire_and_forget_task
+        )
+
+    def test_fire_and_forget_takes_priority(self, mocker: MockerFixture) -> None:
+        """When both background_tasks and fire_and_forget are set, fire-and-forget wins."""
+        mock_bg = mocker.MagicMock()
+        sentinel_task = mocker.MagicMock()
+        mocker.patch(
+            "observability.splunk.asyncio.create_task", return_value=sentinel_task
+        )
+        mocker.patch("observability.splunk.send_splunk_event")
+
+        dispatch_splunk_event(
+            {"k": "v"},
+            "test_sourcetype",
+            background_tasks=mock_bg,
+            fire_and_forget=True,
+        )
+
+        mock_bg.add_task.assert_not_called()
+        assert sentinel_task in _fire_and_forget_tasks
+
+
+# ---------------------------------------------------------------------------
+# _cleanup_fire_and_forget_task tests
+# ---------------------------------------------------------------------------
+
+
+class TestCleanupFireAndForgetTask:
+    """Tests for the fire-and-forget done-callback."""
+
+    @pytest.fixture(autouse=True)
+    def _cleanup_fire_and_forget(self) -> Generator[None, None, None]:
+        """Ensure _fire_and_forget_tasks is cleaned after each test."""
+        yield
+        _fire_and_forget_tasks.clear()
+
+    def test_discards_task_on_success(self, mocker: MockerFixture) -> None:
+        """Successful task is removed from tracking set."""
+        task = mocker.MagicMock()
+        task.result.return_value = None
+        _fire_and_forget_tasks.add(task)
+
+        _cleanup_fire_and_forget_task(task)
+
+        assert task not in _fire_and_forget_tasks
+
+    def test_logs_debug_on_cancellation(self, mocker: MockerFixture) -> None:
+        """Cancelled task logs at debug level and is removed."""
+        task = mocker.MagicMock()
+        task.result.side_effect = asyncio.CancelledError()
+        _fire_and_forget_tasks.add(task)
+        mock_logger = mocker.patch("observability.splunk.logger")
+
+        _cleanup_fire_and_forget_task(task)
+
+        assert task not in _fire_and_forget_tasks
+        mock_logger.debug.assert_called_once()
+
+    def test_logs_warning_on_exception(self, mocker: MockerFixture) -> None:
+        """Failed task logs warning with exc_info and is removed."""
+        task = mocker.MagicMock()
+        task.result.side_effect = RuntimeError("connection refused")
+        _fire_and_forget_tasks.add(task)
+        mock_logger = mocker.patch("observability.splunk.logger")
+
+        _cleanup_fire_and_forget_task(task)
+
+        assert task not in _fire_and_forget_tasks
+        mock_logger.warning.assert_called_once_with(
+            "Splunk fire-and-forget task failed", exc_info=True
+        )
