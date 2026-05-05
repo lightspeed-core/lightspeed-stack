@@ -62,7 +62,8 @@ def get_logger(file: str) -> logging.Logger:
 
 @lru_cache
 def setup_logging() -> dict[t.Any, t.Any]:
-    handler = "console"
+    """Create logging configuration."""
+    handler = "default"
     log_level = resolve_log_level()
     if sys.stderr.isatty() and not os.environ.get(
         LIGHTSPEED_STACK_DISABLE_RICH_HANDLER_ENV_VAR
@@ -72,26 +73,12 @@ def setup_logging() -> dict[t.Any, t.Any]:
     logging_conf = {
         "version": 1,
         "disable_existing_loggers": False,
-        "formatters": {
-            # RichHandler needs format="%(message)s" to prevent double-formatting by the root Formatter.
-            "rich": {
-                "format": "RICH %(message)s",
-                "datefmt": "[%X]",
-            },
-            "console": {
-                "format": DEFAULT_LOG_FORMAT,
-                "datefmt": "%Y-%m-%d %H:%M:%S",
-            },
-        },
         "handlers": {
-            "console": {
-                "formatter": "console",
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stderr",
-            },
             "rich": {
-                "formatter": "rich",
-                "class": "rich.logging.RichHandler",
+                "()": "rich.logging.RichHandler",
+                "show_time": True,
+                "log_time_format": "%Y-%m-%d %H:%M:%S.%f",
+                "level": log_level,
             },
         },
         "loggers": {
@@ -100,16 +87,27 @@ def setup_logging() -> dict[t.Any, t.Any]:
                 "level": log_level,
                 "propagate": False,
             },
+            "llama_stack_client": {
+                "handlers": [handler],
+                "level": log_level,
+                "propagate": False,
+            },
         },
     }
 
     merged_config = deep_update(uvicorn.config.LOGGING_CONFIG, logging_conf)
-    merged_config["formatters"]["access"]["fmt"] = (
-        '%(asctime)s.%(msecs)03d %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'
-    )
-    merged_config["formatters"]["default"]["fmt"] = (
-        "%(asctime)s.%(msecs)03d %(levelprefix)s%(message)s"
-    )
+
+    if handler == "rich":
+        merged_config["loggers"]["uvicorn"]["handlers"] = [handler]
+        merged_config["loggers"]["uvicorn.access"]["handlers"] = [handler]
+    else:
+        merged_config["formatters"]["access"]["fmt"] = (
+            "%(asctime)s.%(msecs)03d %(levelprefix)s "
+            '%(client_addr)s - "%(request_line)s" %(status_code)s'
+        )
+        merged_config["formatters"]["default"]["fmt"] = DEFAULT_LOG_FORMAT
+        merged_config["formatters"]["default"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
+
     logging.config.dictConfig(merged_config)
 
     return merged_config
