@@ -14,12 +14,13 @@ from observability.formats import (
     build_inference_event,
     build_responses_event,
 )
-from observability.splunk import send_splunk_event
+from observability.splunk import dispatch_splunk_event, send_splunk_event
 
 __all__ = [
     "InferenceEventData",
     "build_inference_event",
     "ResponsesEventData",
     "build_responses_event",
+    "dispatch_splunk_event",
     "send_splunk_event",
 ]
