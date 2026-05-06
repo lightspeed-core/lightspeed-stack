@@ -518,6 +518,8 @@ def enrich_solr(  # pylint: disable=too-many-locals
                         "chunk_content_field": "chunk_field",
                         "chunk_index_field": "chunk_index",
                         "chunk_token_count_field": "num_tokens",
+                        "chunk_online_source_url_field": "online_source_url",
+                        "chunk_source_path_field": "source_path",
                         "parent_total_chunks_field": "total_chunks",
                         "parent_total_tokens_field": "total_tokens",
                         "chunk_filter_query": chunk_filter_query,

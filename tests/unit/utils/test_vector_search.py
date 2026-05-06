@@ -309,13 +309,17 @@ class TestExtractSolrDocumentMetadata:
             "doc_id": "doc_123",
             "title": "Test Document",
             "reference_url": "https://example.com/doc",
+            "source_path": "/docs/page.html#section",
         }
 
-        doc_id, title, reference_url = _extract_solr_document_metadata(chunk)
+        doc_id, title, reference_url, source_path = _extract_solr_document_metadata(
+            chunk
+        )
 
         assert doc_id == "doc_123"
         assert title == "Test Document"
         assert reference_url == "https://example.com/doc"
+        assert source_path == "/docs/page.html#section"
 
     def test_extract_from_chunk_metadata_object(self, mocker: MockerFixture) -> None:
         """Test extraction from typed chunk_metadata object."""
@@ -323,27 +327,34 @@ class TestExtractSolrDocumentMetadata:
         chunk_meta.doc_id = "doc_456"
         chunk_meta.title = "Another Document"
         chunk_meta.reference_url = "https://example.com/another"
+        chunk_meta.source_path = "/docs/another.html"
 
         chunk = mocker.Mock()
         chunk.metadata = {}
         chunk.chunk_metadata = chunk_meta
 
-        doc_id, title, reference_url = _extract_solr_document_metadata(chunk)
+        doc_id, title, reference_url, source_path = _extract_solr_document_metadata(
+            chunk
+        )
 
         assert doc_id == "doc_456"
         assert title == "Another Document"
         assert reference_url == "https://example.com/another"
+        assert source_path == "/docs/another.html"
 
     def test_extract_with_missing_fields(self, mocker: MockerFixture) -> None:
         """Test extraction when some fields are missing."""
         chunk = mocker.Mock()
         chunk.metadata = {"doc_id": "doc_789"}
 
-        doc_id, title, reference_url = _extract_solr_document_metadata(chunk)
+        doc_id, title, reference_url, source_path = _extract_solr_document_metadata(
+            chunk
+        )
 
         assert doc_id == "doc_789"
         assert title is None
         assert reference_url is None
+        assert source_path is None
 
 
 class TestGetOkpBaseUrl:
@@ -371,8 +382,22 @@ class TestGetOkpBaseUrl:
 class TestBuildDocumentUrl:
     """Tests for _build_document_url function."""
 
-    def test_offline_mode_with_doc_id(self, mocker: MockerFixture) -> None:
-        """Test URL building in offline mode with doc_id."""
+    def test_offline_mode_with_source_path(self, mocker: MockerFixture) -> None:
+        """Test URL building in offline mode with source_path."""
+        config_mock = mocker.Mock()
+        config_mock.okp.rhokp_url = "https://mimir.test"
+        mocker.patch("utils.vector_search.configuration", config_mock)
+        doc_url, reference_doc = _build_document_url(
+            offline=True,
+            doc_id="doc_123",
+            reference_url=None,
+            source_path="/docs/install.html#step-3",
+        )
+        assert doc_url == "https://mimir.test/docs/install.html#step-3"
+        assert reference_doc == "/docs/install.html#step-3"
+
+    def test_offline_mode_falls_back_to_doc_id(self, mocker: MockerFixture) -> None:
+        """Test offline mode falls back to doc_id when source_path is None."""
         config_mock = mocker.Mock()
         config_mock.okp.rhokp_url = "https://mimir.test"
         mocker.patch("utils.vector_search.configuration", config_mock)
@@ -387,11 +412,11 @@ class TestBuildDocumentUrl:
         doc_url, reference_doc = _build_document_url(
             offline=False,
             doc_id="doc_123",
-            reference_url="https://docs.example.com/page",
+            reference_url="https://docs.example.com/page#chunk1",
         )
 
-        assert doc_url == "https://docs.example.com/page"
-        assert reference_doc == "https://docs.example.com/page"
+        assert doc_url == "https://docs.example.com/page#chunk1"
+        assert reference_doc == "https://docs.example.com/page#chunk1"
 
     def test_online_mode_without_http(self, mocker: MockerFixture) -> None:
         """Test online mode when reference_url doesn't start with http."""
@@ -404,8 +429,8 @@ class TestBuildDocumentUrl:
         assert doc_url == "https://mimir.test/relative/path"
         assert reference_doc == "relative/path"
 
-    def test_offline_mode_without_doc_id(self) -> None:
-        """Test offline mode when doc_id is None."""
+    def test_offline_mode_without_doc_id_or_source_path(self) -> None:
+        """Test offline mode when both doc_id and source_path are None."""
         doc_url, reference_doc = _build_document_url(
             offline=True, doc_id=None, reference_url="https://example.com"
         )
@@ -418,10 +443,10 @@ class TestConvertSolrChunksToRagFormat:
     """Tests for _convert_solr_chunks_to_rag_format function."""
 
     def test_convert_with_metadata_offline(self, mocker: MockerFixture) -> None:
-        """Test conversion with metadata in offline mode."""
+        """Test conversion with metadata in offline mode uses source_path."""
         chunk = mocker.Mock()
         chunk.content = "Test content"
-        chunk.metadata = {"parent_id": "parent_123"}
+        chunk.metadata = {"source_path": "/docs/install.html#step-3"}
         chunk.chunk_metadata = None
 
         result = _convert_solr_chunks_to_rag_format([chunk], [0.85], offline=True)
@@ -432,7 +457,7 @@ class TestConvertSolrChunksToRagFormat:
         assert result[0].score == 0.85
         assert result[0].attributes is not None
         assert "doc_url" in result[0].attributes
-        assert "parent_123" in result[0].attributes["doc_url"]
+        assert "/docs/install.html#step-3" in result[0].attributes["doc_url"]
 
     def test_convert_with_metadata_online(self, mocker: MockerFixture) -> None:
         """Test conversion with metadata in online mode."""
@@ -467,12 +492,12 @@ class TestConvertSolrChunksToRagFormat:
         """Test conversion of multiple chunks."""
         chunk1 = mocker.Mock()
         chunk1.content = "Content 1"
-        chunk1.metadata = {"parent_id": "parent_1"}
+        chunk1.metadata = {"source_path": "/docs/page1.html"}
         chunk1.chunk_metadata = None
 
         chunk2 = mocker.Mock()
         chunk2.content = "Content 2"
-        chunk2.metadata = {"parent_id": "parent_2"}
+        chunk2.metadata = {"source_path": "/docs/page2.html"}
         chunk2.chunk_metadata = None
 
         result = _convert_solr_chunks_to_rag_format(
