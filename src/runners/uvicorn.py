@@ -7,7 +7,7 @@ import uvicorn
 from log import get_logger, resolve_log_level, setup_logging
 from models.config import ServiceConfiguration
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 def start_uvicorn(

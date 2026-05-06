@@ -6,7 +6,6 @@ import os
 import sys
 import typing as t
 from functools import lru_cache
-from pathlib import Path
 
 import uvicorn.config
 from pydantic.v1.utils import deep_update
@@ -56,8 +55,11 @@ def resolve_log_level() -> int:
     return validated_level
 
 
-def get_logger(file: str) -> logging.Logger:
-    return logging.getLogger(f"{DEFAULT_LOGGER_NAME}.{Path(file).stem}")
+def get_logger(name: str) -> logging.Logger:
+    """Create a common logger for all modules in this package."""
+    # Normally this is derived from the package name
+    return logging.getLogger(name)
+    # return logging.getLogger(f"{DEFAULT_LOGGER_NAME}.{name}")
 
 
 @lru_cache

@@ -6,7 +6,7 @@ from typing import Any
 from log import get_logger
 from models.config import SQLiteDatabaseConfiguration
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 def connect_sqlite(config: SQLiteDatabaseConfiguration) -> Any:

@@ -4,7 +4,7 @@ from log import get_logger
 from models.config import QuotaHandlersConfiguration
 from quota.revokable_quota_limiter import RevokableQuotaLimiter
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 class UserQuotaLimiter(RevokableQuotaLimiter):

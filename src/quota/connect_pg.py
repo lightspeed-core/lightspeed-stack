@@ -7,7 +7,7 @@ import psycopg2
 from log import get_logger
 from models.config import PostgreSQLDatabaseConfiguration
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 def connect_pg(config: PostgreSQLDatabaseConfiguration) -> Any:

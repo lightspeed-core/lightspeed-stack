@@ -32,7 +32,7 @@ from models.common.moderation import (
 )
 from utils.query import handle_known_apistatus_errors
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 async def get_available_shields(client: AsyncLlamaStackClient) -> list[str]:

@@ -12,7 +12,7 @@ from constants import (
 )
 from log import get_logger
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 # Retry settings for waiting on Llama Stack readiness during startup.
 # When LCS runs as a sidecar alongside Llama Stack, both containers start

@@ -20,7 +20,7 @@ from constants import (
 from log import get_logger
 from models.config import APIKeyTokenConfiguration
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 class APIKeyTokenAuthDependency(

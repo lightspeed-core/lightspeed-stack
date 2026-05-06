@@ -42,7 +42,7 @@ from models.config import PostgreSQLDatabaseConfiguration, SQLiteDatabaseConfigu
 from quota.connect_pg import connect_pg
 from quota.connect_sqlite import connect_sqlite
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 class QuotaLimiter(ABC):

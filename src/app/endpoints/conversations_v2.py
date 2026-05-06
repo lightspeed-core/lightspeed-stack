@@ -33,7 +33,7 @@ from models.config import Action
 from utils.endpoints import check_configuration_loaded
 from utils.suid import check_suid
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["conversations_v2"])
 
 

@@ -17,7 +17,7 @@ from models.api.responses.error import (
 )
 from models.config import Action
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["root"])
 
 

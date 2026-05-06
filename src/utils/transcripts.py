@@ -21,7 +21,7 @@ from models.common.transcripts import Transcript, TranscriptMetadata
 from models.common.turn_summary import TurnSummary
 from utils.suid import get_suid
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 def _hash_user_id(user_id: str) -> str:

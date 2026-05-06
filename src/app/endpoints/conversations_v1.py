@@ -55,7 +55,7 @@ from utils.suid import (
     to_llama_stack_conversation_id,
 )
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["conversations_v1"])
 
 conversation_get_responses: dict[int | str, dict[str, Any]] = {

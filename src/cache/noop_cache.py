@@ -6,7 +6,7 @@ from models.cache_entry import CacheEntry
 from models.common import ConversationData
 from utils.connection_decorator import connection
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 class NoopCache(Cache):

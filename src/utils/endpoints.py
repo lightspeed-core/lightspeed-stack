@@ -24,7 +24,7 @@ from models.database.conversations import UserConversation, UserTurn
 from utils.responses import create_new_conversation
 from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 def delete_conversation(conversation_id: str) -> bool:

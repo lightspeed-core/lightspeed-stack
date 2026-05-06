@@ -15,7 +15,7 @@ from authentication.interface import AuthInterface
 from configuration import LogicError, configuration
 from log import get_logger
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 def get_auth_dependency(

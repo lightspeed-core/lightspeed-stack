@@ -29,7 +29,7 @@ from models.api.responses.successful import (
 from models.common import HealthStatus, ProviderHealthStatus
 from models.config import Action
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["health"])
 
 

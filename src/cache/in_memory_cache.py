@@ -7,7 +7,7 @@ from models.common import ConversationData
 from models.config import InMemoryCacheConfig
 from utils.connection_decorator import connection
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 class InMemoryCache(Cache):

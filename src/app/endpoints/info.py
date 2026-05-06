@@ -21,7 +21,7 @@ from models.api.responses.successful import InfoResponse
 from models.config import Action
 from version import __version__
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["info"])
 
 

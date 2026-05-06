@@ -13,7 +13,7 @@ from log import get_logger
 from models.config import PostgreSQLDatabaseConfiguration, SQLiteDatabaseConfiguration
 from models.database.base import Base
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 # pylint: disable=invalid-name
 engine: Optional[Engine] = None
