@@ -10,38 +10,40 @@ from typing import Any
 import pytest
 from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
-from llama_stack_api.openai_responses import (
-    OpenAIResponseObject,
-    OpenAIResponseObjectStream,
+from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
+from llama_stack_client.types.response_object import (
+    ResponseObject as OpenAIResponseObject,
 )
-from llama_stack_api.openai_responses import (
+from llama_stack_client.types.response_object_stream import (
     OpenAIResponseObjectStreamResponseCompleted as CompletedChunk,
 )
-from llama_stack_api.openai_responses import (
+from llama_stack_client.types.response_object_stream import (
+    OpenAIResponseObjectStreamResponseContentPartAdded as ContentPartAddedChunk,
+)
+from llama_stack_client.types.response_object_stream import (
     OpenAIResponseObjectStreamResponseFailed as FailedChunk,
 )
-from llama_stack_api.openai_responses import (
+from llama_stack_client.types.response_object_stream import (
     OpenAIResponseObjectStreamResponseIncomplete as IncompleteChunk,
 )
-from llama_stack_api.openai_responses import (
+from llama_stack_client.types.response_object_stream import (
     OpenAIResponseObjectStreamResponseMcpCallArgumentsDone as MCPArgsDoneChunk,
 )
-from llama_stack_api.openai_responses import (
+from llama_stack_client.types.response_object_stream import (
     OpenAIResponseObjectStreamResponseOutputItemAdded as OutputItemAddedChunk,
 )
-from llama_stack_api.openai_responses import (
+from llama_stack_client.types.response_object_stream import (
     OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
 )
-from llama_stack_api.openai_responses import (
+from llama_stack_client.types.response_object_stream import (
     OpenAIResponseObjectStreamResponseOutputTextDelta as TextDeltaChunk,
 )
-from llama_stack_api.openai_responses import (
+from llama_stack_client.types.response_object_stream import (
     OpenAIResponseObjectStreamResponseOutputTextDone as TextDoneChunk,
 )
-from llama_stack_api.openai_responses import (
-    OpenAIResponseOutputMessageMCPCall as MCPCall,
+from llama_stack_client.types.response_object_stream import (
+    ResponseObjectStream as OpenAIResponseObjectStream,
 )
-from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 
@@ -49,31 +51,43 @@ from app.endpoints.streaming_query import (
     generate_response,
     response_generator,
     retrieve_response_generator,
+    serialize_end_event,
+    serialize_event,
+    serialize_http_error_event,
+    serialize_start_event,
     shield_violation_generator,
-    stream_end_event,
-    stream_event,
-    stream_http_error_event,
-    stream_start_event,
     streaming_query_endpoint_handler,
 )
 from configuration import AppConfig
-from constants import (
-    LLM_TOKEN_EVENT,
-    LLM_TOOL_CALL_EVENT,
-    LLM_TOOL_RESULT_EVENT,
-    MEDIA_TYPE_JSON,
-    MEDIA_TYPE_TEXT,
-)
+from constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
 from models.api.requests import QueryRequest
 from models.api.responses.error import InternalServerErrorResponse
 from models.common.moderation import ShieldModerationPassed
 from models.common.query import Attachment
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
+from models.common.streaming import (
+    LlmTokenChunkData,
+    LlmTokenStreamPayload,
+    LlmToolCallStreamPayload,
+    LlmToolResultStreamPayload,
+    LlmTurnCompleteStreamPayload,
+)
+from models.common.streaming.llama_stack_stream_types import (
+    StreamOutputItemDoneFileSearchCall as FileSearchCall,
+)
+from models.common.streaming.llama_stack_stream_types import (
+    StreamOutputItemDoneFunctionCall as FunctionCall,
+)
+from models.common.streaming.llama_stack_stream_types import (
+    StreamOutputItemDoneMcpCall as MCPCall,
+)
 from models.common.turn_summary import (
     RAGChunk,
     RAGContext,
     ReferencedDocument,
+    ToolCallSummary,
+    ToolResultSummary,
     TurnSummary,
 )
 from models.config import Action
@@ -129,75 +143,87 @@ class TestOLSStreamEventFormatting:
 
     def test_stream_event_json_token(self) -> None:
         """Test token event formatting for JSON media type."""
-        data = {"id": 0, "token": "Hello"}
-        result = stream_event(data, LLM_TOKEN_EVENT, MEDIA_TYPE_JSON)
+        payload = LlmTokenStreamPayload(data=LlmTokenChunkData(id=0, token="Hello"))
+        result = serialize_event(payload, MEDIA_TYPE_JSON)
 
         expected = 'data: {"event": "token", "data": {"id": 0, "token": "Hello"}}\n\n'
         assert result == expected
 
     def test_stream_event_text_token(self) -> None:
         """Test token event formatting for text media type."""
-        data = {"id": 0, "token": "Hello"}
-        result = stream_event(data, LLM_TOKEN_EVENT, MEDIA_TYPE_TEXT)
+        payload = LlmTokenStreamPayload(data=LlmTokenChunkData(id=0, token="Hello"))
+        result = serialize_event(payload, MEDIA_TYPE_TEXT)
 
         assert result == "Hello"
 
     def test_stream_event_json_tool_call(self) -> None:
         """Test tool call event formatting for JSON media type."""
-        data = {
-            "id": 0,
-            "token": {"tool_name": "search", "arguments": {"query": "test"}},
-        }
-        result = stream_event(data, LLM_TOOL_CALL_EVENT, MEDIA_TYPE_JSON)
+        payload = LlmToolCallStreamPayload(
+            data=ToolCallSummary(
+                id="0",
+                name="search",
+                args={"query": "test"},
+            ),
+        )
+        result = serialize_event(payload, MEDIA_TYPE_JSON)
 
         expected = (
-            'data: {"event": "tool_call", "data": {"id": 0, "token": '
-            '{"tool_name": "search", "arguments": {"query": "test"}}}}\n\n'
+            'data: {"event": "tool_call", "data": {"id": "0", "name": "search", '
+            '"args": {"query": "test"}, "type": "tool_call"}}\n\n'
         )
         assert result == expected
 
     def test_stream_event_text_tool_call(self) -> None:
         """Test tool call event formatting for text media type."""
-        data = {
-            "id": 0,
-            "function_name": "search",
-            "arguments": {"query": "test"},
-        }
-        result = stream_event(data, LLM_TOOL_CALL_EVENT, MEDIA_TYPE_TEXT)
+        payload = LlmToolCallStreamPayload(
+            data=ToolCallSummary(
+                id="0",
+                name="search",
+                args={"query": "test"},
+            ),
+        )
+        result = serialize_event(payload, MEDIA_TYPE_TEXT)
 
         expected = "[Tool Call: search]\n"
         assert result == expected
 
     def test_stream_event_json_tool_result(self) -> None:
         """Test tool result event formatting for JSON media type."""
-        data = {
-            "id": 0,
-            "token": {"tool_name": "search", "response": "Found results"},
-        }
-        result = stream_event(data, LLM_TOOL_RESULT_EVENT, MEDIA_TYPE_JSON)
+        payload = LlmToolResultStreamPayload(
+            data=ToolResultSummary(
+                id="0", status="success", content="Found results", type="tool_result"
+            ),
+        )
+        result = serialize_event(payload, MEDIA_TYPE_JSON)
 
         expected = (
-            'data: {"event": "tool_result", "data": {"id": 0, "token": '
-            '{"tool_name": "search", "response": "Found results"}}}\n\n'
+            'data: {"event": "tool_result", "data": {"id": "0", "status": "success", '
+            '"content": "Found results", "type": "tool_result", "round": 1}}\n\n'
         )
         assert result == expected
 
     def test_stream_event_text_tool_result(self) -> None:
         """Test tool result event formatting for text media type."""
-        data = {
-            "id": 0,
-            "tool_name": "search",
-            "response": "Found results",
-        }
-        result = stream_event(data, LLM_TOOL_RESULT_EVENT, MEDIA_TYPE_TEXT)
+        payload = LlmToolResultStreamPayload(
+            data=ToolResultSummary(
+                id="0",
+                status="success",
+                content="Found results",
+                type="tool_result",
+                round=1,
+            ),
+        )
+        result = serialize_event(payload, MEDIA_TYPE_TEXT)
 
         expected = "[Tool Result]\n"
         assert result == expected
 
-    def test_stream_event_unknown_type(self) -> None:
-        """Test handling of unknown event types."""
-        data = {"id": 0, "token": "test"}
-        result = stream_event(data, "unknown_event", MEDIA_TYPE_TEXT)
+    def test_stream_event_text_turn_complete(self) -> None:
+        """Test turn_complete yields no text in plain-text media mode."""
+        payload = LlmTurnCompleteStreamPayload(
+            data=LlmTokenChunkData(id=0, token="final"),
+        )
+        result = serialize_event(payload, MEDIA_TYPE_TEXT)
 
         assert result == ""
 
@@ -217,7 +243,7 @@ class TestOLSStreamEndEvent:
                 doc_url=AnyUrl("https://example.com/doc2"), doc_title="Test Doc 2"
             ),
         ]
-        result = stream_end_event(
+        result = serialize_end_event(
             token_usage,
             available_quotas,
             referenced_documents,
@@ -249,7 +275,7 @@ class TestOLSStreamEndEvent:
                 doc_url=AnyUrl("https://example.com/doc2"), doc_title="Test Doc 2"
             ),
         ]
-        result = stream_end_event(
+        result = serialize_end_event(
             token_usage,
             available_quotas,
             referenced_documents,
@@ -267,7 +293,7 @@ class TestOLSStreamEndEvent:
         token_usage = TokenCounter(input_tokens=100, output_tokens=50)
         available_quotas: dict[str, int] = {}
         referenced_documents: list[ReferencedDocument] = []
-        result = stream_end_event(
+        result = serialize_end_event(
             token_usage,
             available_quotas,
             referenced_documents,
@@ -306,7 +332,7 @@ class TestOLSCompatibilityIntegration:
                 doc_url=AnyUrl("https://example.com/doc"), doc_title="Test Doc"
             ),
         ]
-        end_event = stream_end_event(
+        end_event = serialize_end_event(
             token_usage,
             available_quotas,
             referenced_documents,
@@ -1337,7 +1363,7 @@ class TestGenerateResponse:
         mock_error_response.status_code = 413
         mock_error_response.detail = mocker.Mock()
         mock_error_response.detail.response = "Prompt too long"
-        mock_error_response.detail.cause = None
+        mock_error_response.detail.cause = "Prompt exceeded model context window"
         mocker.patch(
             "app.endpoints.streaming_query.PromptTooLongResponse",
             return_value=mock_error_response,
@@ -1385,7 +1411,7 @@ class TestGenerateResponse:
         mock_error_response.status_code = 500
         mock_error_response.detail = mocker.Mock()
         mock_error_response.detail.response = "Internal server error"
-        mock_error_response.detail.cause = None
+        mock_error_response.detail.cause = "Some other error"
         mocker.patch(
             "app.endpoints.streaming_query.InternalServerErrorResponse.generic",
             return_value=mock_error_response,
@@ -1892,7 +1918,7 @@ class TestResponseGenerator:
         """Test response generator processes content part added events."""
 
         async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-            chunk = mocker.Mock()
+            chunk = mocker.Mock(spec=ContentPartAddedChunk)
             chunk.type = "response.content_part.added"
             yield chunk
 
@@ -2000,8 +2026,11 @@ class TestResponseGenerator:
         self, mocker: MockerFixture
     ) -> None:
         """Test response generator processes output item done events."""
-        mock_output_item = mocker.Mock()
-        mock_output_item.type = "tool_call"
+        mock_output_item = mocker.Mock(spec=FunctionCall)
+        mock_output_item.type = "function_call"
+        mock_output_item.call_id = "func_call_123"
+        mock_output_item.name = "test_function"
+        mock_output_item.arguments = '{"param":"value"}'
 
         async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
             chunk = mocker.Mock(spec=OutputItemDoneChunk)
@@ -2020,13 +2049,6 @@ class TestResponseGenerator:
         mock_context.inline_rag_context = RAGContext()
 
         mock_turn_summary = TurnSummary()
-
-        mock_tool_call = mocker.Mock()
-        mock_tool_call.model_dump.return_value = {"tool": "test"}
-        mocker.patch(
-            "app.endpoints.streaming_query.build_tool_call_summary",
-            return_value=(mock_tool_call, None),
-        )
 
         mocker.patch(
             "app.endpoints.streaming_query.extract_token_usage",
@@ -2049,8 +2071,12 @@ class TestResponseGenerator:
         self, mocker: MockerFixture
     ) -> None:
         """Test response generator processes output item done events with tool result."""
-        mock_output_item = mocker.Mock()
-        mock_output_item.type = "tool_call"
+        mock_output_item = mocker.Mock(spec=FileSearchCall)
+        mock_output_item.type = "file_search_call"
+        mock_output_item.id = "file_search_123"
+        mock_output_item.queries = ["test query"]
+        mock_output_item.results = None
+        mock_output_item.status = "completed"
 
         async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
             chunk = mocker.Mock(spec=OutputItemDoneChunk)
@@ -2070,15 +2096,6 @@ class TestResponseGenerator:
 
         mock_turn_summary = TurnSummary()
 
-        mock_tool_call = mocker.Mock()
-        mock_tool_call.model_dump.return_value = {"tool": "test"}
-        mock_tool_result = mocker.Mock()
-        mock_tool_result.model_dump.return_value = {"result": "test_result"}
-        mocker.patch(
-            "app.endpoints.streaming_query.build_tool_call_summary",
-            return_value=(mock_tool_call, mock_tool_result),
-        )
-
         mocker.patch(
             "app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
@@ -2095,6 +2112,8 @@ class TestResponseGenerator:
 
         assert len(result) > 0
         assert len(mock_turn_summary.tool_results) == 1
+        assert mock_turn_summary.tool_results[0].type == "file_search_call"
+        assert mock_turn_summary.tool_results[0].id == "file_search_123"
 
     @pytest.mark.asyncio
     async def test_response_generator_response_completed(
@@ -2474,7 +2493,7 @@ class TestStreamHttpErrorEvent:
         error = InternalServerErrorResponse.query_failed("Test error")
         mocker.patch("app.endpoints.streaming_query.logger")
 
-        result = stream_http_error_event(error, MEDIA_TYPE_JSON)
+        result = serialize_http_error_event(error, MEDIA_TYPE_JSON)
 
         assert "error" in result
         assert "Test error" in result
@@ -2484,7 +2503,7 @@ class TestStreamHttpErrorEvent:
         error = InternalServerErrorResponse.query_failed("Test error")
         mocker.patch("app.endpoints.streaming_query.logger")
 
-        result = stream_http_error_event(error, MEDIA_TYPE_TEXT)
+        result = serialize_http_error_event(error, MEDIA_TYPE_TEXT)
 
         assert "Status:" in result
         assert "500" in result
@@ -2495,7 +2514,7 @@ class TestStreamHttpErrorEvent:
         error = InternalServerErrorResponse.query_failed("Test error")
         mocker.patch("app.endpoints.streaming_query.logger")
 
-        result = stream_http_error_event(error)
+        result = serialize_http_error_event(error)
 
         assert "error" in result
         assert "500" in result or "status_code" in result
@@ -2504,9 +2523,11 @@ class TestStreamHttpErrorEvent:
 class TestStreamStartEvent:  # pylint: disable=too-few-public-methods
     """Tests for stream_start_event function."""
 
-    def test_stream_start_event(self) -> None:
+    def test_serialize_start_event(self) -> None:
         """Test start event formatting."""
-        result = stream_start_event("conv_123", "123e4567-e89b-12d3-a456-426614174000")
+        result = serialize_start_event(
+            "conv_123", "123e4567-e89b-12d3-a456-426614174000"
+        )
 
         assert "start" in result
         assert "conv_123" in result
@@ -2624,16 +2645,6 @@ class TestResponseGeneratorMCPCalls:
 
         mock_turn_summary = TurnSummary()
 
-        mock_tool_call = mocker.Mock()
-        mock_tool_call.model_dump.return_value = {
-            "id": "mcp_call_123",
-            "name": "test_mcp_tool",
-        }
-        mocker.patch(
-            "app.endpoints.streaming_query.build_mcp_tool_call_from_arguments_done",
-            return_value=mock_tool_call,
-        )
-
         mocker.patch(
             "app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
@@ -2697,36 +2708,6 @@ class TestResponseGeneratorMCPCalls:
 
         mock_turn_summary = TurnSummary()
 
-        mock_tool_call = mocker.Mock()
-        mock_tool_call.model_dump.return_value = {"id": "mcp_call_123"}
-
-        # Use side_effect to actually remove item from mcp_calls dict
-        def build_mcp_tool_call_side_effect(
-            output_index: int,
-            arguments: str,
-            mcp_call_items: dict[int, tuple[str, str]],
-        ) -> Any:
-            # Remove item from dict to simulate real behavior
-            # arguments parameter is required by function signature but unused here
-            _ = arguments
-            mcp_call_items.pop(output_index, None)
-            return mock_tool_call
-
-        mocker.patch(
-            "app.endpoints.streaming_query.build_mcp_tool_call_from_arguments_done",
-            side_effect=build_mcp_tool_call_side_effect,
-        )
-
-        mock_tool_result = mocker.Mock()
-        mock_tool_result.model_dump.return_value = {
-            "id": "mcp_call_123",
-            "status": "success",
-        }
-        mocker.patch(
-            "app.endpoints.streaming_query.build_tool_result_from_mcp_output_item_done",
-            return_value=mock_tool_result,
-        )
-
         mocker.patch(
             "app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
@@ -2749,7 +2730,7 @@ class TestResponseGeneratorMCPCalls:
     async def test_response_generator_mcp_call_output_item_done_without_arguments_done(
         self, mocker: MockerFixture
     ) -> None:
-        """Test response generator emits both call and result when MCP output_item.done."""
+        """Test response generator emits only result on MCP output_item.done."""
         mock_mcp_item = mocker.Mock(spec=MCPCall)
         mock_mcp_item.type = "mcp_call"
         mock_mcp_item.id = "mcp_call_123"
@@ -2767,7 +2748,7 @@ class TestResponseGeneratorMCPCalls:
             added_chunk.output_index = 0
             yield added_chunk
 
-            # output_item.done (should emit both call and result since arguments.done didn't happen)
+            # output_item.done (always emits MCP result only)
             done_chunk = mocker.Mock(spec=OutputItemDoneChunk)
             done_chunk.type = "response.output_item.done"
             done_chunk.item = mock_mcp_item
@@ -2785,18 +2766,6 @@ class TestResponseGeneratorMCPCalls:
 
         mock_turn_summary = TurnSummary()
 
-        mock_tool_call = mocker.Mock()
-        mock_tool_call.model_dump.return_value = {"id": "mcp_call_123"}
-        mock_tool_result = mocker.Mock()
-        mock_tool_result.model_dump.return_value = {
-            "id": "mcp_call_123",
-            "status": "success",
-        }
-        mocker.patch(
-            "app.endpoints.streaming_query.build_tool_call_summary",
-            return_value=(mock_tool_call, mock_tool_result),
-        )
-
         mocker.patch(
             "app.endpoints.streaming_query.extract_token_usage",
             return_value=TokenCounter(input_tokens=0, output_tokens=0),
@@ -2811,6 +2780,7 @@ class TestResponseGeneratorMCPCalls:
         ):
             result.append(item)
 
-        # Should have both tool call and result (fallback behavior)
-        assert len(mock_turn_summary.tool_calls) == 1
+        # Should have result only for MCP output item done chunk
+        # MCP call was already emitted on argument.done chunk
+        assert len(mock_turn_summary.tool_calls) == 0
         assert len(mock_turn_summary.tool_results) == 1
