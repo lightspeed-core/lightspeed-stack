@@ -235,7 +235,7 @@ OKP_RAG_ID: Final[str] = "okp"
 # Environment variable name for configurable log level
 LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR: Final[str] = "LIGHTSPEED_STACK_LOG_LEVEL"
 # Default log level when environment variable is not set
-DEFAULT_LOGGER_NAME = "lcs"
+DEFAULT_LOGGER_NAME = "lightspeed_stack"
 DEFAULT_LOG_LEVEL: Final[str] = "INFO"
 # Default log format for plain-text logging in non-TTY environments
 DEFAULT_LOG_FORMAT: Final[str] = (
