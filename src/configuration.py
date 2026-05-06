@@ -40,7 +40,7 @@ from quota.quota_limiter import QuotaLimiter
 from quota.quota_limiter_factory import QuotaLimiterFactory
 from quota.token_usage_history import TokenUsageHistory
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 def replace_env_vars_preserving_native_override(

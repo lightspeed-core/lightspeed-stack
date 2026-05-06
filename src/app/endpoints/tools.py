@@ -30,7 +30,7 @@ from utils.mcp_headers import (
 from utils.mcp_oauth_probe import check_mcp_auth
 from utils.tool_formatter import format_tools_list
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["tools"])
 
 

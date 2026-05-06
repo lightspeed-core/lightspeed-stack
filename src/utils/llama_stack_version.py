@@ -15,7 +15,7 @@ from constants import (
 )
 from log import get_logger
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 class InvalidLlamaStackVersionException(Exception):

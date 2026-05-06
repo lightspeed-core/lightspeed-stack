@@ -15,7 +15,7 @@ from quota.quota_exceed_error import QuotaExceedError
 from quota.quota_limiter import QuotaLimiter
 from quota.token_usage_history import TokenUsageHistory
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 # pylint: disable=R0913,R0917

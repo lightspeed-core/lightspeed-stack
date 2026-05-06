@@ -12,7 +12,7 @@ from configuration import AzureEntraIdConfiguration
 from log import get_logger
 from utils.types import Singleton
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 # Refresh token before actual expiration to avoid edge cases
 TOKEN_EXPIRATION_LEEWAY = 30  # seconds

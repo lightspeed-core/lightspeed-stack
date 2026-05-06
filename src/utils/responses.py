@@ -124,7 +124,7 @@ from utils.query import (
 from utils.suid import to_llama_stack_conversation_id
 from utils.token_counter import TokenCounter
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 async def get_vector_store_ids(

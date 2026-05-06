@@ -5,7 +5,7 @@ from typing import Any
 
 from log import get_logger
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 def format_tool_response(tool_dict: dict[str, Any]) -> dict[str, Any]:

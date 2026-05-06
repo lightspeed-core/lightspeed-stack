@@ -30,7 +30,7 @@ from pydantic import SecretStr
 import constants
 from log import get_logger
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 # Maps a UnifiedInferenceProvider.type (canonical, backend-agnostic vocabulary)
 # to the Llama Stack provider_type emitted by apply_high_level_inference. The

@@ -15,7 +15,7 @@ from models.api.responses.error import (
 )
 from models.api.responses.successful import AuthorizedResponse
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["authorized"])
 
 authorized_responses: dict[int | str, dict[str, Any]] = {

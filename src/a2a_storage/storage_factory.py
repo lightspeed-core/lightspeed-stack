@@ -13,7 +13,7 @@ from a2a_storage.sqlite_context_store import SQLiteA2AContextStore
 from log import get_logger
 from models.config import A2AStateConfiguration
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 class A2AStorageFactory:

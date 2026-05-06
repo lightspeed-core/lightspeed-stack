@@ -19,7 +19,7 @@ from models.compaction import ConversationSummary
 from models.config import SQLiteDatabaseConfiguration
 from utils.connection_decorator import connection
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 class SQLiteCache(Cache):

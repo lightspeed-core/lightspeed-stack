@@ -30,7 +30,7 @@ from utils.common import register_mcp_servers_async
 from utils.degraded_mode import DegradedModeTracker
 from utils.llama_stack_version import check_llama_stack_version
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 logger.info("Initializing app")
 

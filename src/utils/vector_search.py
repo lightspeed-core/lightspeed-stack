@@ -24,7 +24,7 @@ from models.common.turn_summary import RAGChunk, RAGContext, ReferencedDocument
 from utils.reranker import apply_byok_rerank_boost, rerank_chunks_with_cross_encoder
 from utils.responses import resolve_vector_store_ids
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 def _filter_documents_for_chunks(

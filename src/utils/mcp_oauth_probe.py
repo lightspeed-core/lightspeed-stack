@@ -17,7 +17,7 @@ from log import get_logger
 from models.api.responses.error import UnauthorizedResponse
 from utils.mcp_headers import McpHeaders, build_mcp_headers
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 async def check_mcp_auth(

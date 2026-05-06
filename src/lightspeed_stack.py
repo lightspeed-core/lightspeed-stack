@@ -17,7 +17,7 @@ from runners.uvicorn import start_uvicorn
 from utils import schema_dumper
 
 setup_logging()
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 def create_argument_parser() -> ArgumentParser:
