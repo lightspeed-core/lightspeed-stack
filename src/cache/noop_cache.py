@@ -9,7 +9,7 @@ from models.common import ConversationData
 from models.compaction import ConversationSummary
 from utils.connection_decorator import connection
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 class NoopCache(Cache):

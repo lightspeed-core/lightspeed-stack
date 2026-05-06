@@ -42,7 +42,7 @@ from utils.transcripts import (
     store_transcript,
 )
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 def is_context_length_error(error_message: str) -> bool:

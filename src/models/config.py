@@ -32,7 +32,7 @@ from log import get_logger
 from utils import checks
 from utils.mcp_auth_headers import resolve_authorization_headers
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 class ConfigurationBase(BaseModel):

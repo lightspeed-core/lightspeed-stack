@@ -20,7 +20,7 @@ from models.api.responses.successful import ConfigurationResponse
 from models.config import Action
 from utils.endpoints import check_configuration_loaded
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["config"])
 
 

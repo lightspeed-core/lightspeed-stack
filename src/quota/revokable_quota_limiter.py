@@ -20,7 +20,7 @@ from quota.sql import (
 )
 from utils.connection_decorator import connection
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 class RevokableQuotaLimiter(QuotaLimiter):

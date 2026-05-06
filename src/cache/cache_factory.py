@@ -9,7 +9,7 @@ from cache.sqlite_cache import SQLiteCache
 from log import get_logger
 from models.config import ConversationHistoryConfiguration
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 # pylint: disable=R0903

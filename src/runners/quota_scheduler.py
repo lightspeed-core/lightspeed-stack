@@ -22,7 +22,7 @@ from quota.sql import (
     RESET_QUOTA_STATEMENT_SQLITE,
 )
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 # pylint: disable=R0912

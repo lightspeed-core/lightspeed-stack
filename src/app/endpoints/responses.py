@@ -115,7 +115,7 @@ from utils.vector_search import (
     build_rag_context,
 )
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["responses"])
 
 _USER_AGENT_MAX_LENGTH: Final[int] = 128

@@ -31,7 +31,7 @@ from models.config import Action
 from utils.endpoints import check_configuration_loaded, retrieve_conversation
 from utils.suid import get_suid
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 feedback_status_lock = threading.Lock()
 

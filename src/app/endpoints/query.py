@@ -75,7 +75,7 @@ from utils.shields import run_shield_moderation, validate_shield_ids_override
 from utils.suid import normalize_conversation_id
 from utils.vector_search import build_rag_context
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["query"])
 
 query_response: dict[int | str, dict[str, Any]] = {

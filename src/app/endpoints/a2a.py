@@ -61,7 +61,7 @@ from utils.responses import (
 from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
 from version import __version__
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["a2a"])
 
 auth_dependency = get_auth_dependency()

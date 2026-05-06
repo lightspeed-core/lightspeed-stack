@@ -28,7 +28,7 @@ from sentry import initialize_sentry
 from utils.common import register_mcp_servers_async
 from utils.llama_stack_version import check_llama_stack_version
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 logger.info("Initializing app")
 
