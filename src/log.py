@@ -57,9 +57,17 @@ def resolve_log_level() -> int:
 
 def get_logger(name: str) -> logging.Logger:
     """Create a common logger for all modules in this package."""
-    # Normally this is derived from the package name
-    return logging.getLogger(name)
-    # return logging.getLogger(f"{DEFAULT_LOGGER_NAME}.{name}")
+    # FIXME: Remove the need for this function.
+    #
+    # Normally this is derived from the package name (__name__).
+    #
+    # Since this program is sometimes called from from the entrypoint and
+    # sometimes called from src/lightspeed_stack.py, the value for __name__
+    # does not contain a consistent root value.
+    #
+    # How the application is installed and run needs to be streamlined so that
+    # __name__ provides the expected value in all cases.
+    return logging.getLogger(f"{DEFAULT_LOGGER_NAME}.{name}")
 
 
 @lru_cache
