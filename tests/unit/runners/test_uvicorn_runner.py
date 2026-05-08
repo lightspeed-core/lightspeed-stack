@@ -20,7 +20,7 @@ def test_start_uvicorn(mocker: MockerFixture) -> None:
 
     # don't start real Uvicorn server
     mocked_run = mocker.patch("uvicorn.run")
-    start_uvicorn(configuration)
+    start_uvicorn(configuration, log_config={})
     mocked_run.assert_called_once_with(
         "app.main:app",
         host="localhost",
@@ -32,6 +32,7 @@ def test_start_uvicorn(mocker: MockerFixture) -> None:
         ssl_keyfile_password="",
         use_colors=True,
         access_log=True,
+        log_config={},
     )
 
 
@@ -43,7 +44,7 @@ def test_start_uvicorn_different_host_port(mocker: MockerFixture) -> None:
 
     # don't start real Uvicorn server
     mocked_run = mocker.patch("uvicorn.run")
-    start_uvicorn(configuration)
+    start_uvicorn(configuration, log_config={})
     mocked_run.assert_called_once_with(
         "app.main:app",
         host="x.y.com",
@@ -55,6 +56,7 @@ def test_start_uvicorn_different_host_port(mocker: MockerFixture) -> None:
         ssl_keyfile_password="",
         use_colors=True,
         access_log=True,
+        log_config={},
     )
 
 
@@ -67,7 +69,7 @@ def test_start_uvicorn_empty_tls_configuration(mocker: MockerFixture) -> None:
 
     # don't start real Uvicorn server
     mocked_run = mocker.patch("uvicorn.run")
-    start_uvicorn(configuration)
+    start_uvicorn(configuration, log_config={})
     mocked_run.assert_called_once_with(
         "app.main:app",
         host="x.y.com",
@@ -79,6 +81,7 @@ def test_start_uvicorn_empty_tls_configuration(mocker: MockerFixture) -> None:
         ssl_keyfile_password="",
         use_colors=True,
         access_log=True,
+        log_config={},
     )
 
 
@@ -95,7 +98,7 @@ def test_start_uvicorn_tls_configuration(mocker: MockerFixture) -> None:
 
     # don't start real Uvicorn server
     mocked_run = mocker.patch("uvicorn.run")
-    start_uvicorn(configuration)
+    start_uvicorn(configuration, log_config={})
     mocked_run.assert_called_once_with(
         "app.main:app",
         host="x.y.com",
@@ -107,6 +110,7 @@ def test_start_uvicorn_tls_configuration(mocker: MockerFixture) -> None:
         ssl_keyfile_password="tests/configuration/password",
         use_colors=True,
         access_log=True,
+        log_config={},
     )
 
 
@@ -118,7 +122,7 @@ def test_start_uvicorn_with_root_path(mocker: MockerFixture) -> None:
 
     # don't start real Uvicorn server
     mocked_run = mocker.patch("uvicorn.run")
-    start_uvicorn(configuration)
+    start_uvicorn(configuration, log_config={})
     mocked_run.assert_called_once_with(
         "app.main:app",
         host="localhost",
@@ -130,6 +134,7 @@ def test_start_uvicorn_with_root_path(mocker: MockerFixture) -> None:
         ssl_keyfile_password="",
         use_colors=True,
         access_log=True,
+        log_config={},
     )
 
 
@@ -170,7 +175,7 @@ def test_start_uvicorn_respects_debug_log_level(
     )  # pyright: ignore[reportCallIssue]
 
     mocked_run = mocker.patch("uvicorn.run")
-    start_uvicorn(configuration)
+    start_uvicorn(configuration, log_config={})
     mocked_run.assert_called_once_with(
         "app.main:app",
         host="localhost",
@@ -182,4 +187,5 @@ def test_start_uvicorn_respects_debug_log_level(
         ssl_keyfile_password="",
         use_colors=True,
         access_log=True,
+        log_config={},
     )
