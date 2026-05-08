@@ -237,6 +237,26 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
             delattr(context, _attr)
 
 
+def _dump_pod_logs_on_failure(scenario: Scenario, namespace: str) -> None:
+    """Dump llama-stack and lightspeed-stack pod logs when a scenario fails in Prow."""
+    if scenario.status != "failed":
+        return
+    for pod in ("llama-stack-service", "lightspeed-stack-service"):
+        print(f"--- {pod} logs (scenario failed: {scenario.name}) ---")
+        try:
+            r = subprocess.run(
+                ["oc", "logs", pod, "-n", namespace, "--tail=100"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
+            print(r.stdout or r.stderr or "(no output)")
+        except subprocess.TimeoutExpired:
+            print("(timed out fetching logs)")
+        print(f"--- end {pod} logs ---")
+
+
 def after_scenario(context: Context, scenario: Scenario) -> None:
     """Run after each scenario is run.
 
@@ -266,6 +286,11 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
               used for the llama-stack health check.
         scenario (Scenario): Behave scenario (unused; shield restore uses context flags).
     """
+    if is_prow_environment():
+        _dump_pod_logs_on_failure(
+            scenario, os.environ.get("NAMESPACE", "e2e-rhoai-dsc")
+        )
+
     if getattr(context, "scenario_lightspeed_override_active", False):
         context.scenario_lightspeed_override_active = False
         feature_cfg = getattr(context, "feature_config", None)
