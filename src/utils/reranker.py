@@ -31,7 +31,7 @@ async def _get_cross_encoder(model_name: str) -> Any:
         Loaded CrossEncoder model instance, or None if loading fails.
     """
     # Check if reranking is enabled before attempting to load the model
-    if not configuration.reranker.enabled:
+    if not configuration.reranker.enabled:  # pylint: disable=no-member
         logger.debug("Reranker is disabled, not loading cross-encoder model")
         return None
 
@@ -41,9 +41,9 @@ async def _get_cross_encoder(model_name: str) -> Any:
         if model_name in _cross_encoder_models:
             return _cross_encoder_models[model_name]
         try:
-            from sentence_transformers import (
+            from sentence_transformers import (  # pylint: disable=import-outside-toplevel
                 CrossEncoder,
-            )  # pylint: disable=import-outside-toplevel
+            )
 
             model = await asyncio.to_thread(CrossEncoder, model_name)
             _cross_encoder_models[model_name] = model
@@ -162,12 +162,7 @@ async def rerank_chunks_with_cross_encoder(
 
         # Return RAGChunk list with combined scores
         return [
-            RAGChunk(
-                content=chunk.content,
-                source=chunk.source,
-                score=float(score),
-                attributes=chunk.attributes,
-            )
+            chunk.model_copy(update={"score": float(score)})
             for score, chunk in top_indexed
         ]
 
@@ -201,16 +196,10 @@ def apply_byok_rerank_boost(
         score = chunk.score if chunk.score is not None else float("-inf")
         if chunk.source != constants.OKP_RAG_ID:
             score = score * boost
-        boosted.append(
-            RAGChunk(
-                content=chunk.content,
-                source=chunk.source,
-                score=score,
-                attributes=chunk.attributes,
-            )
-        )
+        boosted.append(chunk.model_copy(update={"score": score}))
     boosted.sort(
         key=lambda c: c.score if c.score is not None else float("-inf"),
         reverse=True,
     )
+
     return boosted

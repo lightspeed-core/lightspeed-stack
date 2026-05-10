@@ -856,6 +856,7 @@ def parse_referenced_documents(  # pylint: disable=too-many-locals
                     or attributes.get("link")
                 )
                 doc_title = attributes.get("title")
+                doc_id = attributes.get("document_id") or attributes.get("doc_id")
 
                 if doc_title or doc_url:
                     # Treat empty string as None for URL to satisfy Optional[AnyUrl]
@@ -866,6 +867,7 @@ def parse_referenced_documents(  # pylint: disable=too-many-locals
                                 doc_url=final_url,
                                 doc_title=doc_title,
                                 source=resolved_source,
+                                document_id=doc_id,
                             )
                         )
                         seen_docs.add((final_url, doc_title))

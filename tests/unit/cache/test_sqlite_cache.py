@@ -467,7 +467,7 @@ def test_insert_and_get_with_referenced_documents(tmpdir: Path) -> None:
 
     # Create a CacheEntry with referenced documents
     docs = [
-        ReferencedDocument(doc_title="Test Doc", doc_url=AnyUrl("http://example.com"))
+        ReferencedDocument(doc_title="Test Doc", doc_url=AnyUrl("http://example.com"), document_id="test_doc_cache_1")
     ]
     entry_with_docs = CacheEntry(
         query="user message",
@@ -571,7 +571,7 @@ def test_insert_and_get_with_all_fields(tmpdir: Path) -> None:
 
     # Create all fields
     docs = [
-        ReferencedDocument(doc_title="Test Doc", doc_url=AnyUrl("http://example.com"))
+        ReferencedDocument(doc_title="Test Doc", doc_url=AnyUrl("http://example.com"), document_id="test_doc_cache_1")
     ]
     tool_calls = [
         ToolCallSummary(

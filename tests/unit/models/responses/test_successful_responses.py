@@ -321,7 +321,7 @@ class TestQueryResponse:
             )
         ]
         referenced_docs = [
-            ReferencedDocument(doc_url=AnyUrl("https://example.com"), doc_title="Doc")
+            ReferencedDocument(doc_url=AnyUrl("https://example.com"), doc_title="Doc", document_id="test_doc_1")
         ]
 
         response = QueryResponse(  # type: ignore[call-arg]

@@ -31,6 +31,7 @@ class ReferencedDocument(BaseModel):
     Attributes:
         doc_url: Url to the referenced doc.
         doc_title: Title of the referenced doc.
+        document_id: Document ID for preserving identity during deduplication.
     """
 
     doc_url: Optional[AnyUrl] = Field(
@@ -44,6 +45,11 @@ class ReferencedDocument(BaseModel):
     source: Optional[str] = Field(
         default=None,
         description="Index name identifying the knowledge source from configuration",
+    )
+
+    document_id: Optional[str] = Field(
+        default=None,
+        description="Document ID for preserving identity during deduplication",
     )
 
 

@@ -745,6 +745,7 @@ class TestBuildRagContext:
         config_mock.reranker.enabled = True
         config_mock.reranker.model = "test-model"
         mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("utils.reranker.configuration", config_mock)
 
         # Mock BYOK search response
         chunk_mock = mocker.Mock()
@@ -761,7 +762,7 @@ class TestBuildRagContext:
 
         # Mock cross-encoder reranking function
         mock_rerank = mocker.patch(
-            "utils.reranker.rerank_chunks_with_cross_encoder"
+            "utils.vector_search.rerank_chunks_with_cross_encoder"
         )
         mock_rerank.return_value = [
             RAGChunk(content="BYOK content", source="rag_1", score=0.95)
@@ -809,9 +810,7 @@ class TestBuildRagContext:
         client_mock.vector_io.query.return_value = search_response
 
         # Mock cross-encoder reranking function
-        mock_rerank = mocker.patch(
-            "utils.reranker.rerank_chunks_with_cross_encoder"
-        )
+        mock_rerank = mocker.patch("utils.reranker.rerank_chunks_with_cross_encoder")
 
         context = await build_rag_context(client_mock, "passed", "test query", None)
 
@@ -837,6 +836,7 @@ class TestGetCrossEncoder:
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = True
         mocker.patch("utils.vector_search.configuration", mock_config)
+        mocker.patch("utils.reranker.configuration", mock_config)
 
         # Mock the CrossEncoder class by patching the import
         mock_model_instance = mocker.Mock()
@@ -868,6 +868,7 @@ class TestGetCrossEncoder:
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = True
         mocker.patch("utils.vector_search.configuration", mock_config)
+        mocker.patch("utils.reranker.configuration", mock_config)
 
         mock_model_instance = mocker.Mock()
         mock_cross_encoder = mocker.Mock(return_value=mock_model_instance)
@@ -901,6 +902,7 @@ class TestGetCrossEncoder:
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = True
         mocker.patch("utils.vector_search.configuration", mock_config)
+        mocker.patch("utils.reranker.configuration", mock_config)
 
         # Mock asyncio.to_thread to raise an exception
         mocker.patch("asyncio.to_thread", side_effect=Exception("Model loading failed"))
@@ -922,6 +924,7 @@ class TestGetCrossEncoder:
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = True
         mocker.patch("utils.vector_search.configuration", mock_config)
+        mocker.patch("utils.reranker.configuration", mock_config)
 
         # Mock asyncio.to_thread to raise an exception
         mocker.patch("asyncio.to_thread", side_effect=Exception("Model loading failed"))

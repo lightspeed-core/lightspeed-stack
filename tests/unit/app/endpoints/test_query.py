@@ -212,7 +212,7 @@ class TestQueryEndpointHandler:
         )
 
         inline_chunk = RAGChunk(content="inline chunk content", source="byok")
-        inline_doc = ReferencedDocument(doc_title="Inline Doc")
+        inline_doc = ReferencedDocument(doc_title="Inline Doc", document_id="inline_doc_1")
         inline_rag = RAGContext(
             context_text="",
             rag_chunks=[inline_chunk],
@@ -237,7 +237,7 @@ class TestQueryEndpointHandler:
         )
 
         tool_chunk = RAGChunk(content="tool chunk content", source="vs-1")
-        tool_doc = ReferencedDocument(doc_title="Tool Doc")
+        tool_doc = ReferencedDocument(doc_title="Tool Doc", document_id="tool_doc_1")
         mock_turn_summary = TurnSummary()
         mock_turn_summary.rag_chunks = [tool_chunk]
         mock_turn_summary.referenced_documents = [tool_doc]

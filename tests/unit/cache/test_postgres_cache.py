@@ -637,7 +637,7 @@ def test_insert_and_get_with_referenced_documents(
 
     # Create a CacheEntry with referenced documents
     docs = [
-        ReferencedDocument(doc_title="Test Doc", doc_url=AnyUrl("http://example.com/"))
+        ReferencedDocument(doc_title="Test Doc", doc_url=AnyUrl("http://example.com/"), document_id="test_doc_postgres_1")
     ]
     entry_with_docs = CacheEntry(
         query="user message",
@@ -664,7 +664,7 @@ def test_insert_and_get_with_referenced_documents(
     inserted_json_str = sql_params[-3]
 
     assert json.loads(inserted_json_str) == [
-        {"doc_url": "http://example.com/", "doc_title": "Test Doc", "source": None}
+        {"doc_url": "http://example.com/", "doc_title": "Test Doc", "source": None, "document_id": "test_doc_postgres_1"}
     ]
 
     # Simulate the database returning that data
@@ -675,7 +675,7 @@ def test_insert_and_get_with_referenced_documents(
         "bar",
         "start_time",
         "end_time",
-        [{"doc_url": "http://example.com/", "doc_title": "Test Doc"}],
+        [{"doc_url": "http://example.com/", "doc_title": "Test Doc", "document_id": "test_doc_postgres_1"}],
         None,  # tool_calls
         None,  # tool_results
     )

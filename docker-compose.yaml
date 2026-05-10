@@ -24,6 +24,7 @@ services:
     environment:
       - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
       - TAVILY_SEARCH_API_KEY=${TAVILY_SEARCH_API_KEY:-}
+      - EXTERNAL_PROVIDERS_DIR=${EXTERNAL_PROVIDERS_DIR:-/opt/app-root/external_providers}
       # OpenAI
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - E2E_OPENAI_MODEL=${E2E_OPENAI_MODEL:-gpt-4o-mini}

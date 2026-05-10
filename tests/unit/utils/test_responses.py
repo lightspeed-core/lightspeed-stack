@@ -2126,10 +2126,11 @@ class TestParseReferencedDocuments:
         mock_result1.attributes = {
             "link": "https://example.com/doc1",
             "title": "Document 1",
+            "document_id": "doc_1",
         }
 
         mock_result2 = {
-            "attributes": {"url": "https://example.com/doc2", "title": "Document 2"},
+            "attributes": {"url": "https://example.com/doc2", "title": "Document 2", "doc_id": "doc_2"},
         }
 
         mock_output_item = mocker.Mock()
@@ -2143,8 +2144,10 @@ class TestParseReferencedDocuments:
         assert len(result) == 2
         assert result[0].doc_title == "Document 1"
         assert result[0].doc_url == AnyUrl("https://example.com/doc1")
+        assert result[0].document_id == "doc_1"
         assert result[1].doc_title == "Document 2"
         assert result[1].doc_url == AnyUrl("https://example.com/doc2")
+        assert result[1].document_id == "doc_2"
 
     def test_parse_referenced_documents_message_annotations(
         self, mocker: MockerFixture
@@ -2206,6 +2209,7 @@ class TestParseReferencedDocuments:
         mock_result.attributes = {
             "link": "https://example.com/doc1",
             "title": "Document 1",
+            "document_id": "doc_1",
         }
 
         mock_output_item = mocker.Mock()
@@ -2992,6 +2996,7 @@ class TestParseReferencedDocumentsWithSource:
         mock_result.attributes = {
             "url": "https://docs.example.com/page",
             "title": "Example Page",
+            "document_id": "doc_page_1",
         }
 
         mock_output = mocker.Mock()
@@ -3014,7 +3019,7 @@ class TestParseReferencedDocumentsWithSource:
     def test_no_mapping_source_is_none(self, mocker: MockerFixture) -> None:
         """Test that source is None when no mapping provided."""
         mock_result = mocker.Mock()
-        mock_result.attributes = {"title": "Doc"}
+        mock_result.attributes = {"title": "Doc", "document_id": "doc_no_mapping"}
 
         mock_output = mocker.Mock()
         mock_output.type = "file_search_call"
@@ -3031,7 +3036,7 @@ class TestParseReferencedDocumentsWithSource:
     def test_multiple_stores_source_is_none(self, mocker: MockerFixture) -> None:
         """Test that source is None with multiple stores (ambiguous)."""
         mock_result = mocker.Mock()
-        mock_result.attributes = {"title": "Doc"}
+        mock_result.attributes = {"title": "Doc", "document_id": "doc_multi_stores"}
 
         mock_output = mocker.Mock()
         mock_output.type = "file_search_call"
