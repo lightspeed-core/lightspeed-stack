@@ -26,6 +26,24 @@ from utils.responses import resolve_vector_store_ids
 logger = get_logger(__name__)
 
 
+def _relevance_cutoff_for_vector_store(vector_store_id: str) -> float:
+    """Return configured relevance cutoff for a Llama Stack vector store ID.
+
+    Args:
+        vector_store_id: Llama Stack vector store identifier (``vector_db_id``)
+            used to find a matching BYOK RAG entry in configuration.
+
+    Returns:
+        ``brag.relevance_cutoff_score`` from the ``ByokRag`` whose ``vector_db_id``
+        matches ``vector_store_id``, or ``constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE``
+        when no BYOK entry matches.
+    """
+    for brag in configuration.configuration.byok_rag:
+        if brag.vector_db_id == vector_store_id:
+            return brag.relevance_cutoff_score
+    return constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
+
+
 def _get_okp_base_url() -> AnyUrl:
     """Return OKP document base URL from configuration (rhokp_url), or default if unset.
 
@@ -180,6 +198,7 @@ async def _query_store_for_byok_rag(
     vector_store_id: str,
     query: str,
     weight: float,
+    score_threshold: float,
 ) -> list[dict[str, Any]]:
     """Query a single vector store for BYOK RAG.
 
@@ -188,6 +207,7 @@ async def _query_store_for_byok_rag(
         vector_store_id: ID of the vector store to query
         query: Search query string
         weight: Score multiplier to apply
+        score_threshold: Minimum raw similarity score (``relevance_cutoff_score``)
 
     Returns:
         List of weighted result dictionaries, or empty list on error
@@ -199,6 +219,7 @@ async def _query_store_for_byok_rag(
             params={
                 "max_chunks": constants.BYOK_RAG_MAX_CHUNKS,
                 "mode": "vector",
+                "score_threshold": score_threshold,
             },
         )
         return _extract_byok_rag_chunks(search_response, vector_store_id, weight)
@@ -410,6 +431,7 @@ async def _fetch_byok_rag(
                     vector_store_id,
                     query,
                     score_multiplier_mapping.get(vector_store_id, 1.0),
+                    _relevance_cutoff_for_vector_store(vector_store_id),
                 )
                 for vector_store_id in vector_store_ids_to_query
             ]

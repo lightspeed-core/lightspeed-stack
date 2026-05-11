@@ -1,5 +1,8 @@
 """Unit tests for vector search utilities."""
 
+from collections.abc import Awaitable, Callable
+from typing import Any
+
 import pytest
 from pydantic import AnyUrl
 from pytest_mock import MockerFixture
@@ -20,8 +23,35 @@ from utils.vector_search import (
     _get_okp_base_url,
     _get_solr_vector_store_ids,
     _is_solr_enabled,
+    _query_store_for_byok_rag,
     build_rag_context,
 )
+
+
+def _vector_io_query_stub_like_backend(
+    chunk_score_pairs: list[tuple[Any, float]], mocker: MockerFixture
+) -> Callable[..., Awaitable[Any]]:
+    """Build an async ``vector_io.query`` stand-in that honors ``score_threshold``.
+
+    Production code forwards ``relevance_cutoff_score`` as ``params['score_threshold']``;
+    Llama Stack filters hits server-side. The stub keeps pairs whose raw score is at or
+    above that minimum (``>=``), matching the docstring on ``_query_store_for_byok_rag``.
+    """
+
+    async def _query(**kwargs: Any) -> Any:
+        threshold = float(kwargs["params"]["score_threshold"])
+        chunks_out: list[Any] = []
+        scores_out: list[float] = []
+        for chunk, raw_score in chunk_score_pairs:
+            if raw_score >= threshold:
+                chunks_out.append(chunk)
+                scores_out.append(raw_score)
+        out = mocker.Mock()
+        out.chunks = chunks_out
+        out.scores = scores_out
+        return out
+
+    return _query
 
 
 class TestIsSolrEnabled:
@@ -427,6 +457,9 @@ class TestFetchByokRag:
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "rag_1"
         byok_rag_mock.vector_db_id = "vs_1"
+        byok_rag_mock.relevance_cutoff_score = (
+            constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
+        )
         config_mock.configuration.rag.inline = ["rag_1"]
         config_mock.configuration.byok_rag = [byok_rag_mock]
         config_mock.score_multiplier_mapping = {"vs_1": 1.5}
@@ -466,6 +499,9 @@ class TestFetchByokRag:
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "my-kb"
         byok_rag_mock.vector_db_id = "vs-internal-001"
+        byok_rag_mock.relevance_cutoff_score = (
+            constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
+        )
         config_mock.configuration.byok_rag = [byok_rag_mock]
         config_mock.configuration.rag.inline = ["my-kb"]
         config_mock.score_multiplier_mapping = {"vs-internal-001": 1.0}
@@ -491,7 +527,11 @@ class TestFetchByokRag:
         client_mock.vector_io.query.assert_called_once_with(
             vector_store_id="vs-internal-001",
             query="test query",
-            params={"max_chunks": constants.BYOK_RAG_MAX_CHUNKS, "mode": "vector"},
+            params={
+                "max_chunks": constants.BYOK_RAG_MAX_CHUNKS,
+                "mode": "vector",
+                "score_threshold": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+            },
         )
 
     @pytest.mark.asyncio
@@ -503,9 +543,15 @@ class TestFetchByokRag:
         byok_rag_1 = mocker.Mock()
         byok_rag_1.rag_id = "kb-part1"
         byok_rag_1.vector_db_id = "vs-aaa-111"
+        byok_rag_1.relevance_cutoff_score = (
+            constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
+        )
         byok_rag_2 = mocker.Mock()
         byok_rag_2.rag_id = "kb-part2"
         byok_rag_2.vector_db_id = "vs-bbb-222"
+        byok_rag_2.relevance_cutoff_score = (
+            constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
+        )
         config_mock.configuration.byok_rag = [byok_rag_1, byok_rag_2]
         config_mock.configuration.rag.inline = ["kb-part1", "kb-part2"]
         config_mock.score_multiplier_mapping = {"vs-aaa-111": 1.0, "vs-bbb-222": 1.0}
@@ -541,6 +587,146 @@ class TestFetchByokRag:
         assert "vs-bbb-222" in call_args
         assert "kb-part1" not in call_args
         assert "kb-part2" not in call_args
+
+    @pytest.mark.asyncio
+    async def test_byok_passes_configured_relevance_cutoff_to_vector_io(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Configured ``relevance_cutoff_score`` is sent as ``score_threshold``."""
+        config_mock = mocker.Mock(spec=AppConfig)
+        byok_rag_mock = mocker.Mock()
+        byok_rag_mock.rag_id = "my-kb"
+        byok_rag_mock.vector_db_id = "vs-internal-001"
+        byok_rag_mock.relevance_cutoff_score = 0.55
+        config_mock.configuration.byok_rag = [byok_rag_mock]
+        config_mock.configuration.rag.inline = ["my-kb"]
+        config_mock.score_multiplier_mapping = {"vs-internal-001": 1.0}
+        config_mock.rag_id_mapping = {"vs-internal-001": "my-kb"}
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        chunk_mock = mocker.Mock()
+        chunk_mock.content = "Test content"
+        chunk_mock.chunk_id = "chunk_1"
+        chunk_mock.metadata = {"document_id": "doc_1"}
+
+        search_response = mocker.Mock()
+        search_response.chunks = [chunk_mock]
+        search_response.scores = [0.9]
+
+        client_mock = mocker.AsyncMock()
+        client_mock.vector_io.query.return_value = search_response
+
+        await _fetch_byok_rag(client_mock, "test query", vector_store_ids=["my-kb"])
+
+        client_mock.vector_io.query.assert_called_once_with(
+            vector_store_id="vs-internal-001",
+            query="test query",
+            params={
+                "max_chunks": constants.BYOK_RAG_MAX_CHUNKS,
+                "mode": "vector",
+                "score_threshold": 0.55,
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_query_store_for_byok_rag_forwards_score_threshold(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Cutoff is applied by vector backends; this layer forwards it on ``vector_io.query``.
+
+        ``_query_store_for_byok_rag`` is the code that maps ``relevance_cutoff_score`` (via
+        callers) into ``params["score_threshold"]``. It does not re-rank or drop hits by
+        score—whatever ``vector_io.query`` returns is passed to ``_extract_byok_rag_chunks``.
+        """
+        score_threshold = 0.37
+        chunk = mocker.Mock()
+        chunk.content = "chunk text"
+        chunk.chunk_id = "chunk-1"
+        chunk.metadata = {"document_id": "doc-1"}
+
+        search_response = mocker.Mock()
+        search_response.chunks = [chunk]
+        search_response.scores = [0.91]
+
+        client = mocker.AsyncMock()
+        client.vector_io.query.return_value = search_response
+
+        result = await _query_store_for_byok_rag(
+            client,
+            vector_store_id="vs-test",
+            query="q",
+            weight=2.0,
+            score_threshold=score_threshold,
+        )
+
+        client.vector_io.query.assert_awaited_once_with(
+            vector_store_id="vs-test",
+            query="q",
+            params={
+                "max_chunks": constants.BYOK_RAG_MAX_CHUNKS,
+                "mode": "vector",
+                "score_threshold": score_threshold,
+            },
+        )
+        assert len(result) == 1
+        assert result[0]["content"] == "chunk text"
+        assert result[0]["score"] == 0.91
+        assert result[0]["weighted_score"] == pytest.approx(1.82)
+
+    @pytest.mark.asyncio
+    async def test_fetch_byok_rag_omits_chunks_below_vector_io_score_threshold(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Sub-threshold hits never become ``RAGChunk`` rows when vector_io enforces the cutoff.
+
+        The full path resolves ``relevance_cutoff_score``, calls ``vector_io.query`` with
+        ``score_threshold``, then maps the response. The stub models backend filtering so
+        scores strictly below the cutoff are absent from the mocked response.
+        """
+        cutoff = 0.5
+        config_mock = mocker.Mock(spec=AppConfig)
+        byok_rag_mock = mocker.Mock()
+        byok_rag_mock.rag_id = "kb"
+        byok_rag_mock.vector_db_id = "vs-cutoff"
+        byok_rag_mock.relevance_cutoff_score = cutoff
+        config_mock.configuration.byok_rag = [byok_rag_mock]
+        config_mock.configuration.rag.inline = ["kb"]
+        config_mock.score_multiplier_mapping = {"vs-cutoff": 1.0}
+        config_mock.rag_id_mapping = {"vs-cutoff": "kb"}
+        mocker.patch("utils.vector_search.configuration", config_mock)
+
+        def chunk(content: str, cid: str) -> Any:
+            ch = mocker.Mock()
+            ch.content = content
+            ch.chunk_id = cid
+            ch.metadata = {"document_id": cid}
+            return ch
+
+        chunk_score_pairs: list[tuple[Any, float]] = [
+            (chunk("below_cutoff", "c_low"), 0.3),
+            (chunk("at_cutoff", "c_edge"), cutoff),
+            (chunk("above_cutoff", "c_high"), 0.85),
+        ]
+
+        client = mocker.AsyncMock()
+        client.vector_io.query.side_effect = _vector_io_query_stub_like_backend(
+            chunk_score_pairs, mocker
+        )
+
+        rag_chunks, _referenced = await _fetch_byok_rag(
+            client, "test query", vector_store_ids=["kb"]
+        )
+
+        assert (
+            client.vector_io.query.await_args.kwargs["params"]["score_threshold"]
+            == cutoff
+        )
+        contents = {c.content for c in rag_chunks}
+        assert "below_cutoff" not in contents
+        assert contents == {"at_cutoff", "above_cutoff"}
+        for ch in rag_chunks:
+            assert ch.score is not None
+            assert ch.score >= cutoff
 
     @pytest.mark.asyncio
     async def test_no_inline_rag_configured_skips_byok(
@@ -693,6 +879,9 @@ class TestBuildRagContext:
         byok_rag_mock = mocker.Mock()
         byok_rag_mock.rag_id = "rag_1"
         byok_rag_mock.vector_db_id = "vs_1"
+        byok_rag_mock.relevance_cutoff_score = (
+            constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
+        )
         config_mock.configuration.rag.inline = ["rag_1"]
         config_mock.configuration.byok_rag = [byok_rag_mock]
         config_mock.inline_solr_enabled = False
