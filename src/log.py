@@ -5,10 +5,12 @@ import logging.config
 import os
 import sys
 import typing as t
+from datetime import datetime
 from functools import lru_cache
 
 import uvicorn.config
 from pydantic.v1.utils import deep_update
+from rich.text import Text
 
 from constants import (
     DEFAULT_LOG_FORMAT,
@@ -17,6 +19,11 @@ from constants import (
     LIGHTSPEED_STACK_DISABLE_RICH_HANDLER_ENV_VAR,
     LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR,
 )
+
+
+def _ms_time_format(dt: datetime) -> Text:
+    """Format datetime object with zero padded milliseconds."""
+    return Text(dt.strftime("%Y-%m-%d %H:%M:%S.") + f"{dt.microsecond // 1000:03d}")
 
 
 def resolve_log_level() -> int:
@@ -87,7 +94,7 @@ def setup_logging() -> dict[t.Any, t.Any]:
             "rich": {
                 "()": "rich.logging.RichHandler",
                 "show_time": True,
-                "log_time_format": "%Y-%m-%d %H:%M:%S.%f",
+                "log_time_format": _ms_time_format,
                 "level": log_level,
             },
         },
