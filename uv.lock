@@ -1584,6 +1584,7 @@ dependencies = [
     { name = "sentry-sdk", extra = ["fastapi"] },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "starlette" },
+    { name = "tiktoken" },
     { name = "urllib3" },
     { name = "uvicorn" },
 ]
@@ -1688,6 +1689,7 @@ requires-dist = [
     { name = "sentry-sdk", extras = ["fastapi"], specifier = ">=2.58.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.42" },
     { name = "starlette", specifier = ">=0.47.1" },
+    { name = "tiktoken", specifier = ">=0.8.0" },
     { name = "urllib3", specifier = ">=2.6.3" },
     { name = "uvicorn", specifier = ">=0.34.3" },
 ]

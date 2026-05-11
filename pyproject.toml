@@ -76,6 +76,8 @@ dependencies = [
     # Used for error tracking and monitoring
     "sentry-sdk[fastapi]>=2.58.0",
     "python-dotenv>=1.2.2",
+    # Used for token estimation before LLM calls (LCORE-1569 / conversation compaction)
+    "tiktoken>=0.8.0",
 ]
 
 
