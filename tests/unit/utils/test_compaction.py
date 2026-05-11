@@ -23,7 +23,6 @@ from utils.token_estimator import (
     estimate_conversation_tokens,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -62,9 +61,7 @@ def _make_history(num_pairs: int, words_per_message: int = 1) -> list[Any]:
     snippet = "alpha "
     for i in range(num_pairs):
         items.append(_MessageItem("user", (snippet * words_per_message) + str(i)))
-        items.append(
-            _MessageItem("assistant", (snippet * words_per_message) + f"A{i}")
-        )
+        items.append(_MessageItem("assistant", (snippet * words_per_message) + f"A{i}"))
     return items
 
 
@@ -442,9 +439,7 @@ class TestSummarizeChunk:
         assert "user: hi" in kwargs["input"]
 
     @pytest.mark.asyncio
-    async def test_raises_when_llm_returns_empty(
-        self, mocker: MockerFixture
-    ) -> None:
+    async def test_raises_when_llm_returns_empty(self, mocker: MockerFixture) -> None:
         """An empty LLM response surfaces ValueError, not a silent empty summary."""
         client = mocker.AsyncMock()
         client.responses.create.return_value = _make_summary_response(mocker, "")
@@ -524,9 +519,7 @@ class TestRecursivelyResummarize:
     """Tests for the recursive-fold fallback."""
 
     @pytest.mark.asyncio
-    async def test_collapses_n_summaries_into_one(
-        self, mocker: MockerFixture
-    ) -> None:
+    async def test_collapses_n_summaries_into_one(self, mocker: MockerFixture) -> None:
         """Multiple summaries fold into one ConversationSummary."""
         client = mocker.AsyncMock()
         client.responses.create.return_value = _make_summary_response(
@@ -543,10 +536,7 @@ class TestRecursivelyResummarize:
             summaries=summaries,
             encoding_name=DEFAULT_ENCODING_NAME,
         )
-        assert (
-            folded.summary_text
-            == "Combined summary covering all prior chunks."
-        )
+        assert folded.summary_text == "Combined summary covering all prior chunks."
         # The fold inherits the most recent input's running total — no
         # new turns were summarized by this call.
         assert folded.summarized_through_turn == 15
@@ -554,9 +544,7 @@ class TestRecursivelyResummarize:
         assert folded.model_used == "openai/gpt-4o-mini"
 
     @pytest.mark.asyncio
-    async def test_prompt_lists_each_summary(
-        self, mocker: MockerFixture
-    ) -> None:
+    async def test_prompt_lists_each_summary(self, mocker: MockerFixture) -> None:
         """All input summary texts and the fallback prompt appear in the call."""
         client = mocker.AsyncMock()
         client.responses.create.return_value = _make_summary_response(
@@ -583,9 +571,7 @@ class TestRecursivelyResummarize:
     async def test_uses_store_false(self, mocker: MockerFixture) -> None:
         """The recursive call also uses store=False — like the additive one."""
         client = mocker.AsyncMock()
-        client.responses.create.return_value = _make_summary_response(
-            mocker, "Folded."
-        )
+        client.responses.create.return_value = _make_summary_response(mocker, "Folded.")
         summaries = [
             _make_summary("a", through=1),
             _make_summary("b", through=2),
@@ -601,9 +587,7 @@ class TestRecursivelyResummarize:
         assert kwargs["stream"] is False
 
     @pytest.mark.asyncio
-    async def test_raises_for_single_summary(
-        self, mocker: MockerFixture
-    ) -> None:
+    async def test_raises_for_single_summary(self, mocker: MockerFixture) -> None:
         """Folding a single summary is a no-op the caller must avoid."""
         client = mocker.AsyncMock()
         with pytest.raises(ValueError, match="at least 2 summary chunks"):
@@ -627,9 +611,7 @@ class TestRecursivelyResummarize:
             )
 
     @pytest.mark.asyncio
-    async def test_raises_when_llm_returns_empty(
-        self, mocker: MockerFixture
-    ) -> None:
+    async def test_raises_when_llm_returns_empty(self, mocker: MockerFixture) -> None:
         """Empty LLM response surfaces ValueError, not an empty fold."""
         client = mocker.AsyncMock()
         client.responses.create.return_value = _make_summary_response(mocker, "")

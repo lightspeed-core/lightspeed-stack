@@ -14,7 +14,6 @@ from utils.token_estimator import (
     get_context_window,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
@@ -65,9 +64,7 @@ class TestEstimateTokens:
 
     def test_pangram(self) -> None:
         """The pangram tokenizes to the known cl100k_base count."""
-        assert (
-            estimate_tokens("The quick brown fox jumps over the lazy dog.") == 10
-        )
+        assert estimate_tokens("The quick brown fox jumps over the lazy dog.") == 10
 
     def test_known_phrase(self) -> None:
         """A second reference phrase agrees with the published count."""
@@ -214,9 +211,9 @@ class TestEstimateConversationTokens:
             _MessageItem("user", "hello world"),
             _MessageItem("assistant", "hi"),
         ]
-        assert estimate_conversation_tokens(
-            dicts
-        ) == estimate_conversation_tokens(items)
+        assert estimate_conversation_tokens(dicts) == estimate_conversation_tokens(
+            items
+        )
 
     def test_accepts_mixed_shapes(self) -> None:
         """A mixed list of dicts and Llama Stack items is supported."""

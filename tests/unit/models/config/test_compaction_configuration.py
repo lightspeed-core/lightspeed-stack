@@ -33,17 +33,13 @@ def test_threshold_ratio_accepts_boundary_values() -> None:
 
 def test_threshold_ratio_rejects_negative() -> None:
     """threshold_ratio below 0 is rejected."""
-    with pytest.raises(
-        ValueError, match="threshold_ratio must be between 0.0 and 1.0"
-    ):
+    with pytest.raises(ValueError, match="threshold_ratio must be between 0.0 and 1.0"):
         CompactionConfiguration(threshold_ratio=-0.1)
 
 
 def test_threshold_ratio_rejects_above_one() -> None:
     """threshold_ratio above 1 is rejected."""
-    with pytest.raises(
-        ValueError, match="threshold_ratio must be between 0.0 and 1.0"
-    ):
+    with pytest.raises(ValueError, match="threshold_ratio must be between 0.0 and 1.0"):
         CompactionConfiguration(threshold_ratio=1.1)
 
 

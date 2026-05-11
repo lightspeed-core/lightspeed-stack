@@ -1522,9 +1522,7 @@ class CompactionConfiguration(ConfigurationBase):
     def _validate_threshold_ratio(cls, value: float) -> float:
         """Reject threshold ratios outside the inclusive 0..1 range."""
         if not 0.0 <= value <= 1.0:
-            raise ValueError(
-                "threshold_ratio must be between 0.0 and 1.0 (inclusive)"
-            )
+            raise ValueError("threshold_ratio must be between 0.0 and 1.0 (inclusive)")
         return value
 
     @field_validator("buffer_max_ratio")
@@ -1532,9 +1530,7 @@ class CompactionConfiguration(ConfigurationBase):
     def _validate_buffer_max_ratio(cls, value: float) -> float:
         """Reject buffer-max ratios outside the inclusive 0..1 range."""
         if not 0.0 <= value <= 1.0:
-            raise ValueError(
-                "buffer_max_ratio must be between 0.0 and 1.0 (inclusive)"
-            )
+            raise ValueError("buffer_max_ratio must be between 0.0 and 1.0 (inclusive)")
         return value
 
 
