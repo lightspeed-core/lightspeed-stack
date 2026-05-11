@@ -1,12 +1,19 @@
-"""Unit tests for utils/compaction — partitioning + duck-type helpers."""
+"""Unit tests for utils/compaction — partitioning, prompt, summarization."""
 
 from typing import Any
 
+import pytest
+from pytest_mock import MockerFixture
+
 from utils.compaction import (
+    SUMMARIZATION_PROMPT,
+    _build_summarization_prompt_body,
+    _extract_response_text,
     extract_message_text,
     format_conversation_for_summary,
     is_message_item,
     partition_conversation,
+    summarize_chunk,
 )
 from utils.token_estimator import (
     DEFAULT_ENCODING_NAME,
@@ -272,3 +279,223 @@ class TestPartitionConversation:
             encoding_name=DEFAULT_ENCODING_NAME,
         )
         assert old + recent == items
+
+
+# ---------------------------------------------------------------------------
+# SUMMARIZATION_PROMPT
+# ---------------------------------------------------------------------------
+
+
+class TestSummarizationPrompt:
+    """Tests for the SUMMARIZATION_PROMPT constant.
+
+    JIRA AC: "Summarization prompt includes all 5 preservation directives".
+    """
+
+    def test_includes_red_hat_domain(self) -> None:
+        """Prompt is domain-scoped to Red Hat product support."""
+        assert "Red Hat product support" in SUMMARIZATION_PROMPT
+
+    def test_includes_user_question_and_environment_directive(self) -> None:
+        """Directive 1: user's original question and environment details."""
+        assert "original question" in SUMMARIZATION_PROMPT
+        assert "environment" in SUMMARIZATION_PROMPT
+
+    def test_includes_error_messages_and_commands_directive(self) -> None:
+        """Directive 2: error messages, commands run, and their outcomes."""
+        assert "error messages" in SUMMARIZATION_PROMPT
+        assert "commands" in SUMMARIZATION_PROMPT
+        assert "outcomes" in SUMMARIZATION_PROMPT
+
+    def test_includes_decisions_and_rationale_directive(self) -> None:
+        """Directive 3: key decisions and their rationale."""
+        assert "decisions" in SUMMARIZATION_PROMPT
+        assert "rationale" in SUMMARIZATION_PROMPT
+
+    def test_includes_resolved_versus_open_directive(self) -> None:
+        """Directive 4: what was resolved and what remains open."""
+        assert "resolved" in SUMMARIZATION_PROMPT
+        assert "open" in SUMMARIZATION_PROMPT
+
+    def test_includes_attribution_directive(self) -> None:
+        """Directive 5: attribution (user vs assistant)."""
+        assert "attribution" in SUMMARIZATION_PROMPT
+        assert "user reported" in SUMMARIZATION_PROMPT
+        assert "assistant suggested" in SUMMARIZATION_PROMPT
+
+
+# ---------------------------------------------------------------------------
+# _build_summarization_prompt_body
+# ---------------------------------------------------------------------------
+
+
+class TestBuildSummarizationPromptBody:
+    """Tests for _build_summarization_prompt_body."""
+
+    def test_includes_prompt_and_transcript(self) -> None:
+        """The body begins with the prompt and embeds the transcript."""
+        items: list[Any] = [
+            _MessageItem("user", "What is Kubernetes?"),
+            _MessageItem("assistant", "An orchestrator."),
+        ]
+        body = _build_summarization_prompt_body(items)
+        assert body.startswith(SUMMARIZATION_PROMPT)
+        assert "user: What is Kubernetes?" in body
+        assert "assistant: An orchestrator." in body
+
+    def test_empty_items_still_yields_prompt(self) -> None:
+        """An empty chunk yields the prompt followed by an empty transcript."""
+        body = _build_summarization_prompt_body([])
+        assert body.startswith(SUMMARIZATION_PROMPT)
+
+
+# ---------------------------------------------------------------------------
+# _extract_response_text
+# ---------------------------------------------------------------------------
+
+
+class TestExtractResponseText:
+    """Tests for the private response-text extractor."""
+
+    def test_concatenates_text_parts(self, mocker: MockerFixture) -> None:
+        """Text fragments across output items are concatenated."""
+        part1 = mocker.Mock(text="Hello, ")
+        part2 = mocker.Mock(text="world.")
+        item = mocker.Mock(content=[part1, part2])
+        response = mocker.Mock(output=[item])
+        assert _extract_response_text(response) == "Hello, world."
+
+    def test_no_output_yields_empty(self, mocker: MockerFixture) -> None:
+        """An empty .output attribute yields the empty string."""
+        response = mocker.Mock(output=[])
+        assert _extract_response_text(response) == ""
+
+
+# ---------------------------------------------------------------------------
+# summarize_chunk
+# ---------------------------------------------------------------------------
+
+
+def _make_summary_response(mocker: MockerFixture, text: str) -> Any:
+    """Build a Responses-API-shaped mock that yields *text*."""
+    part = mocker.Mock(text=text)
+    item = mocker.Mock(content=[part])
+    return mocker.Mock(output=[item])
+
+
+class TestSummarizeChunk:
+    """Tests for summarize_chunk (the additive primitive)."""
+
+    @pytest.mark.asyncio
+    async def test_returns_conversation_summary_with_populated_fields(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Happy path: LLM returns text; we get a populated ConversationSummary."""
+        client = mocker.AsyncMock()
+        client.responses.create.return_value = _make_summary_response(
+            mocker, "User asked about Kubernetes. Assistant gave overview."
+        )
+        items: list[Any] = [
+            _MessageItem("user", "What is Kubernetes?"),
+            _MessageItem("assistant", "An orchestrator."),
+        ]
+        summary = await summarize_chunk(
+            client=client,
+            model="openai/gpt-4o-mini",
+            old_items=items,
+            summarized_through_turn=2,
+            encoding_name=DEFAULT_ENCODING_NAME,
+        )
+        assert (
+            summary.summary_text
+            == "User asked about Kubernetes. Assistant gave overview."
+        )
+        assert summary.summarized_through_turn == 2
+        assert summary.token_count > 0
+        assert summary.model_used == "openai/gpt-4o-mini"
+        assert summary.created_at  # non-empty ISO 8601
+
+    @pytest.mark.asyncio
+    async def test_invokes_responses_create_with_store_false(
+        self, mocker: MockerFixture
+    ) -> None:
+        """The summarization call uses store=False and stream=False."""
+        client = mocker.AsyncMock()
+        client.responses.create.return_value = _make_summary_response(
+            mocker, "Summary."
+        )
+        await summarize_chunk(
+            client=client,
+            model="openai/gpt-4o-mini",
+            old_items=[_MessageItem("user", "hi")],
+            summarized_through_turn=1,
+            encoding_name=DEFAULT_ENCODING_NAME,
+        )
+        kwargs = client.responses.create.call_args.kwargs
+        assert kwargs["store"] is False
+        assert kwargs["stream"] is False
+        assert kwargs["model"] == "openai/gpt-4o-mini"
+        assert SUMMARIZATION_PROMPT in kwargs["input"]
+        assert "user: hi" in kwargs["input"]
+
+    @pytest.mark.asyncio
+    async def test_raises_when_llm_returns_empty(
+        self, mocker: MockerFixture
+    ) -> None:
+        """An empty LLM response surfaces ValueError, not a silent empty summary."""
+        client = mocker.AsyncMock()
+        client.responses.create.return_value = _make_summary_response(mocker, "")
+        with pytest.raises(ValueError, match="no extractable text"):
+            await summarize_chunk(
+                client=client,
+                model="openai/gpt-4o-mini",
+                old_items=[_MessageItem("user", "hi")],
+                summarized_through_turn=1,
+                encoding_name=DEFAULT_ENCODING_NAME,
+            )
+
+    @pytest.mark.asyncio
+    async def test_additive_second_call_does_not_resummarize_first(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Two sequential calls produce two independent summaries (additive).
+
+        JIRA AC: "Additive mode: second compaction appends a new summary
+        chunk, does not re-summarize the first."
+        """
+        client = mocker.AsyncMock()
+        client.responses.create.side_effect = [
+            _make_summary_response(mocker, "First summary."),
+            _make_summary_response(mocker, "Second summary."),
+        ]
+
+        first_chunk: list[Any] = [_MessageItem("user", "First topic.")]
+        second_chunk: list[Any] = [_MessageItem("user", "Second topic.")]
+
+        first = await summarize_chunk(
+            client=client,
+            model="openai/gpt-4o-mini",
+            old_items=first_chunk,
+            summarized_through_turn=1,
+            encoding_name=DEFAULT_ENCODING_NAME,
+        )
+        second = await summarize_chunk(
+            client=client,
+            model="openai/gpt-4o-mini",
+            old_items=second_chunk,
+            summarized_through_turn=2,
+            encoding_name=DEFAULT_ENCODING_NAME,
+        )
+
+        # Each call summarized exactly its own chunk — the second call's
+        # prompt body does not include first_chunk's content.
+        first_input = client.responses.create.call_args_list[0].kwargs["input"]
+        second_input = client.responses.create.call_args_list[1].kwargs["input"]
+        assert "First topic." in first_input
+        assert "First topic." not in second_input
+        assert "Second topic." in second_input
+
+        # The two summaries are distinct records — additive, not rolled up.
+        assert first.summary_text == "First summary."
+        assert second.summary_text == "Second summary."
+        assert second.summarized_through_turn > first.summarized_through_turn
