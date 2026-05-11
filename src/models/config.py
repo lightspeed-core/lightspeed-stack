@@ -1876,6 +1876,14 @@ class ByokRag(ConfigurationBase):
         "Values > 1 boost this store's results; values < 1 reduce them.",
     )
 
+    relevance_cutoff_score: float = Field(
+        constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+        gt=0,
+        title="Relevance cutoff score",
+        description="Minimum raw similarity score to consider a result relevant. "
+        "Results with a similarity score below this threshold are not returned.",
+    )
+
     host: Optional[str] = Field(
         default=None,
         title="PostgreSQL host",
@@ -1929,7 +1937,6 @@ class ByokRag(ConfigurationBase):
                 if getattr(self, field_name) is None:
                     object.__setattr__(self, field_name, default_value)
         return self
-
 
 class QuotaLimiterConfiguration(ConfigurationBase):
     """Configuration for one quota limiter.
