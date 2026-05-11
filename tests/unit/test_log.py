@@ -13,6 +13,7 @@ from log import get_logger, resolve_log_level, setup_logging
 
 @pytest.fixture(autouse=True)
 def clear_logging_cache():
+    """Clear logging cache"""
     setup_logging.cache_clear()
 
 
