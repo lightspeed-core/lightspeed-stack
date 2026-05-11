@@ -2007,7 +2007,13 @@ class Configuration(ConfigurationBase):
     )
 
     compaction: CompactionConfiguration = Field(
-        default_factory=CompactionConfiguration,
+        default_factory=lambda: CompactionConfiguration(
+            enabled=False,
+            threshold_ratio=0.7,
+            token_floor=4096,
+            buffer_turns=4,
+            buffer_max_ratio=0.3,
+        ),
         title="Conversation compaction configuration",
         description="Controls when conversation history is summarized "
         "to keep the model's input below the context window limit. "

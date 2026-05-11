@@ -97,9 +97,8 @@ def test_root_configuration_has_compaction_field() -> None:
     """The root Configuration declares a `compaction` field typed as
     CompactionConfiguration with a default-factory that produces a
     fresh CompactionConfiguration with the spec defaults."""
-    fields = Configuration.model_fields
-    assert "compaction" in fields, "Configuration must declare a compaction field"
-    field_info = fields["compaction"]
+    field_info = Configuration.model_fields.get("compaction")
+    assert field_info is not None, "Configuration must declare a compaction field"
     assert field_info.annotation is CompactionConfiguration
 
     # default_factory must produce a CompactionConfiguration with disabled

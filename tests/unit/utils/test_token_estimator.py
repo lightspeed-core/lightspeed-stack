@@ -1,8 +1,11 @@
 """Unit tests for utils/token_estimator."""
 
+# pylint: disable=too-few-public-methods
+
 from typing import Any
 
 import pytest
+import tiktoken
 
 from models.config import InferenceConfiguration
 from utils.token_estimator import (
@@ -93,8 +96,6 @@ class TestEstimateTokens:
         is at most 5% — establishing that the estimator does not
         introduce its own off-by-some error.
         """
-        import tiktoken
-
         encoding = tiktoken.get_encoding(DEFAULT_ENCODING_NAME)
         text = (
             "The quick brown fox jumps over the lazy dog. "

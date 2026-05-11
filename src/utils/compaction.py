@@ -27,13 +27,14 @@ mocking the whole stack and lets LCORE-1572 wire it in without having
 to disentangle a tangle of side effects.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from llama_stack_client import AsyncLlamaStackClient
 
 from log import get_logger
 from models.compaction import ConversationSummary
+from utils.token_estimator import estimate_conversation_tokens, estimate_tokens
 
 logger = get_logger(__name__)
 
@@ -190,10 +191,6 @@ def partition_conversation(
         compaction needed); ``recent_items`` may be empty (everything
         had to be summarized).
     """
-    # Import locally to avoid a top-level circular import once the
-    # request-flow integration in LCORE-1572 imports both modules.
-    from utils.token_estimator import estimate_conversation_tokens
-
     msg_indices = _message_indices(items)
     if not msg_indices:
         return [], items
@@ -325,8 +322,6 @@ async def summarize_chunk(
             cannot be persisted (PositiveInt) and is also useless as
             context, so propagating an error is the honest behavior.
     """
-    from utils.token_estimator import estimate_tokens
-
     prompt = _build_summarization_prompt_body(old_items)
     logger.info(
         "Summarizing %d conversation items (%d messages) for model %s.",
@@ -351,7 +346,7 @@ async def summarize_chunk(
         summary_text=summary_text,
         summarized_through_turn=summarized_through_turn,
         token_count=token_count,
-        created_at=datetime.now(timezone.utc).isoformat(),
+        created_at=datetime.now(UTC).isoformat(),
         model_used=model,
     )
 
@@ -423,8 +418,6 @@ async def recursively_resummarize(
             fold is needed) or when the LLM call yields no
             extractable text.
     """
-    from utils.token_estimator import estimate_tokens
-
     if len(summaries) < 2:
         raise ValueError(
             "recursively_resummarize requires at least 2 summary chunks "
@@ -459,6 +452,6 @@ async def recursively_resummarize(
         summary_text=folded_text,
         summarized_through_turn=summaries[-1].summarized_through_turn,
         token_count=estimate_tokens(folded_text, encoding_name=encoding_name),
-        created_at=datetime.now(timezone.utc).isoformat(),
+        created_at=datetime.now(UTC).isoformat(),
         model_used=model,
     )

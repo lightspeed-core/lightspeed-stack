@@ -1,5 +1,7 @@
 """Unit tests for utils/compaction — partitioning, prompt, summarization."""
 
+# pylint: disable=too-few-public-methods
+
 from typing import Any
 
 import pytest
