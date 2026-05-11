@@ -48,10 +48,11 @@ def create_argument_parser() -> ArgumentParser:
     - -d / --dump-configuration: dump the loaded configuration to JSON and exit
     - -s / --dump-schema: dump the configuration schema to OpenAPI JSON and exit
     - -c / --config: path to the configuration file (default "lightspeed-stack.yaml")
-    - -g / --generate-llama-stack-configuration: generate a Llama Stack
-                                                 configuration from the service configuration
-    - -i / --input-config-file: Llama Stack input configuration filename (default "run.yaml")
-    - -o / --output-config-file: Llama Stack output configuration filename (default "run_.yaml")
+    - --migrate-config: migrate a legacy (run.yaml + lightspeed-stack.yaml)
+                        setup into a unified single-file config and exit
+    - --run-yaml: input run.yaml for --migrate-config (default "run.yaml")
+    - --migrate-output: output path for --migrate-config
+                        (default "lightspeed-stack-unified.yaml")
 
     Returns:
         Configured ArgumentParser for parsing the service CLI options.
@@ -87,6 +88,27 @@ def create_argument_parser() -> ArgumentParser:
         dest="config_file",
         help="path to configuration file (default: lightspeed-stack.yaml)",
         default="lightspeed-stack.yaml",
+    )
+    parser.add_argument(
+        "--migrate-config",
+        dest="migrate_config",
+        help="migrate legacy (run.yaml + lightspeed-stack.yaml) into a unified "
+        "single-file configuration and exit",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--run-yaml",
+        dest="run_yaml",
+        help="path to legacy run.yaml for --migrate-config (default: run.yaml)",
+        default="run.yaml",
+    )
+    parser.add_argument(
+        "--migrate-output",
+        dest="migrate_output",
+        help="output path for --migrate-config "
+        "(default: lightspeed-stack-unified.yaml)",
+        default="lightspeed-stack-unified.yaml",
     )
 
     return parser
@@ -124,6 +146,23 @@ def main() -> None:
             existing_logger = logging.getLogger(logger_name)
             if isinstance(existing_logger, logging.Logger):
                 existing_logger.setLevel(logging.DEBUG)
+
+    # --migrate-config runs standalone; does not load config into the singleton,
+    # since the input may be in legacy form and we are producing its successor.
+    if args.migrate_config:
+        # pylint: disable=import-outside-toplevel
+        from llama_stack_configuration import migrate_config_dumb
+
+        try:
+            migrate_config_dumb(args.run_yaml, args.config_file, args.migrate_output)
+            logger.info(
+                "Migration complete. Wrote unified config to %s",
+                args.migrate_output,
+            )
+        except Exception as e:
+            logger.error("Migration failed: %s", e)
+            raise SystemExit(1) from e
+        return
 
     configuration.load_configuration(args.config_file)
     logger.info("Configuration: %s", configuration.configuration)

@@ -582,6 +582,97 @@ class ModelContextProtocolServer(ConfigurationBase):
         return self
 
 
+class UnifiedInferenceProvider(ConfigurationBase):
+    """High-level inference provider entry (unified-mode schema).
+
+    Expanded by the synthesizer into a Llama Stack `providers.inference` entry.
+    Unknown provider types must be expressed via `native_override` instead.
+    """
+
+    type: Literal[
+        "openai",
+        "sentence_transformers",
+        "azure",
+        "vertexai",
+        "watsonx",
+        "vllm_rhaiis",
+        "vllm_rhel_ai",
+    ] = Field(
+        ...,
+        description="High-level provider type. Mapped to Llama Stack provider_type.",
+    )
+
+    api_key_env: Optional[str] = Field(
+        None,
+        description="Environment variable name from which the api_key will be read "
+        "at Llama Stack start time (as `${env.<api_key_env>}`). Kept as a reference; "
+        "secrets are never resolved into the synthesized file on disk.",
+    )
+
+    allowed_models: Optional[list[str]] = Field(
+        None,
+        description="Optional list of model ids allowed for this provider.",
+    )
+
+    extra: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Extra per-provider-type config fields merged into the emitted "
+        "`config` map (escape hatch for per-type oddities).",
+    )
+
+
+class UnifiedInferenceSection(ConfigurationBase):
+    """High-level inference section (unified-mode schema)."""
+
+    providers: list[UnifiedInferenceProvider] = Field(
+        default_factory=list,
+        description="High-level list of inference providers; replaces "
+        "`providers.inference` in the synthesized run.yaml.",
+    )
+
+
+class UnifiedLlamaStackConfig(ConfigurationBase):
+    """Operational Llama Stack config synthesized by LCORE at runtime.
+
+    When present (unified mode), LCORE produces a full Llama Stack run.yaml
+    from this block. Precedence (lowest to highest):
+
+        baseline (default / empty / profile)  <  high-level sections  <  native_override
+
+    This section is mutually exclusive with
+    `llama_stack.library_client_config_path` (legacy mode).
+    """
+
+    baseline: Literal["default", "empty"] = Field(
+        "default",
+        description="Starting point before profile / high-level / native_override "
+        "are applied. 'default' uses LCORE's built-in baseline run.yaml; 'empty' "
+        "starts from an empty dict (useful when `native_override` specifies the "
+        "entire Llama Stack schema, as produced by dumb-mode migration). Ignored "
+        "when `profile` is set.",
+    )
+
+    profile: Optional[str] = Field(
+        None,
+        description="Path to a profile YAML file (absolute or relative to the "
+        "lightspeed-stack.yaml location). Loaded as the baseline if set; "
+        "overrides the `baseline` field.",
+    )
+
+    inference: Optional[UnifiedInferenceSection] = Field(
+        None,
+        description="High-level inference section. Additional high-level sections "
+        "(storage, safety, tools, ...) may be added in future versions.",
+    )
+
+    native_override: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Raw Llama Stack schema fragment, deep-merged onto the result "
+        "of profile + high-level expansion. Lists are replaced (not appended). "
+        "Escape hatch for anything not expressible via high-level keys.",
+    )
+
+
 class LlamaStackConfiguration(ConfigurationBase):
     """Llama stack configuration.
 
@@ -620,7 +711,16 @@ class LlamaStackConfiguration(ConfigurationBase):
     library_client_config_path: Optional[str] = Field(
         None,
         title="Llama Stack configuration path",
-        description="Path to configuration file used when Llama Stack is run in library mode",
+        description="Path to configuration file used when Llama Stack is run in library "
+        "mode (legacy mode). Mutually exclusive with `config`.",
+    )
+
+    config: Optional[UnifiedLlamaStackConfig] = Field(
+        None,
+        title="Unified Llama Stack configuration",
+        description="Operational Llama Stack config synthesized by LCORE at runtime "
+        "(unified mode). When present, LCORE produces run.yaml from this block. "
+        "Mutually exclusive with `library_client_config_path`.",
     )
 
     timeout: PositiveInt = Field(
@@ -635,21 +735,26 @@ class LlamaStackConfiguration(ConfigurationBase):
         """
         Validate the Llama Stack configuration and enforce mode-specific requirements.
 
-        If no URL is provided, requires explicit library-client mode selection.
-        When library-client mode is enabled, requires a non-empty
-        `library_client_config_path` that points to a regular, readable YAML
-        file (checked via checks.file_check). Also normalizes a None
-        `use_as_library_client` to False.
+        Unified mode (`config` set) and legacy mode (`library_client_config_path`
+        set) are mutually exclusive. If no URL is provided, requires explicit
+        library-client mode selection. When library-client mode is enabled,
+        requires either `config` (unified) or `library_client_config_path`
+        (legacy) to be set. Legacy paths are validated via checks.file_check.
 
         Returns:
             Self: The validated LlamaStackConfiguration instance.
 
         Raises:
-            ValueError: If the configuration is invalid, e.g. no
-            URL and library-client mode is unspecified or
-            disabled, or library-client mode is enabled but
-            `library_client_config_path` is not provided.
+            ValueError: If the configuration is invalid.
         """
+        if self.config is not None and self.library_client_config_path is not None:
+            raise ValueError(
+                "llama_stack.config (unified mode) and "
+                "llama_stack.library_client_config_path (legacy mode) are mutually "
+                "exclusive. Migrate legacy configurations with: "
+                "lightspeed-stack --migrate-config"
+            )
+
         if self.url is None:
             # when URL is not set, it is supposed that Llama Stack should be run in library mode
             # it means that use_as_library_client attribute must be set to True
@@ -667,20 +772,19 @@ class LlamaStackConfiguration(ConfigurationBase):
             self.use_as_library_client = False
 
         if self.use_as_library_client:
-            # when use_as_library_client is set to true, Llama Stack will be run in library mode
-            # it means that:
-            # - Llama Stack URL should not be set, and
-            # - library_client_config_path attribute must be set and must point to
-            #   a regular readable YAML file
-            if self.library_client_config_path is None:
-                # pylint: disable=line-too-long
+            # library mode requires either unified config or legacy config path
+            if self.library_client_config_path is None and self.config is None:
                 raise ValueError(
-                    "Llama stack library client mode is enabled but a configuration file path is not specified"
+                    "Llama stack library client mode is enabled but neither "
+                    "`config` (unified) nor `library_client_config_path` (legacy) "
+                    "is specified"
                 )
-            # the configuration file must exists and be regular readable file
-            checks.file_check(
-                Path(self.library_client_config_path), "Llama Stack configuration file"
-            )
+            if self.library_client_config_path is not None:
+                # legacy: the configuration file must exist and be a regular readable file
+                checks.file_check(
+                    Path(self.library_client_config_path),
+                    "Llama Stack configuration file",
+                )
         return self
 
 

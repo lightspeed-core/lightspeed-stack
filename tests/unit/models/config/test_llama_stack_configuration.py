@@ -86,18 +86,63 @@ def test_llama_stack_wrong_configuration_no_config_file() -> None:
     """Test the LlamaStackConfiguration constructor.
 
     Verify that enabling library-client mode without providing a configuration
-    file path raises a ValueError.
-
-    Asserts that constructing LlamaStackConfiguration with
-    use_as_library_client=True and no library_client_config_path raises a
-    ValueError whose message is "Llama stack library client mode is enabled but
-    a configuration file path is not specified".
+    file path or unified config raises a ValueError.
     """
-    m = "Llama stack library client mode is enabled but a configuration file path is not specified"
+    m = (
+        "Llama stack library client mode is enabled but neither `config` "
+        "\\(unified\\) nor `library_client_config_path` \\(legacy\\) is specified"
+    )
     with pytest.raises(ValueError, match=m):
         LlamaStackConfiguration(
             use_as_library_client=True
         )  # pyright: ignore[reportCallIssue]
+
+
+# =============================================================================
+# Unified mode (LCORE-836)
+# =============================================================================
+
+
+def test_llama_stack_unified_mode_library_client() -> None:
+    """Unified mode in library mode: `config` set, no library_client_config_path."""
+    # pylint: disable=import-outside-toplevel
+    from models.config import UnifiedLlamaStackConfig
+
+    cfg = LlamaStackConfiguration(
+        use_as_library_client=True,
+        config=UnifiedLlamaStackConfig(),
+    )  # pyright: ignore[reportCallIssue]
+    assert cfg.config is not None
+    assert cfg.library_client_config_path is None
+
+
+def test_llama_stack_unified_and_legacy_are_mutually_exclusive() -> None:
+    """Setting both `config` and `library_client_config_path` is rejected."""
+    # pylint: disable=import-outside-toplevel
+    from models.config import UnifiedLlamaStackConfig
+
+    with pytest.raises(
+        ValueError,
+        match="mutually exclusive",
+    ):
+        LlamaStackConfiguration(
+            use_as_library_client=True,
+            library_client_config_path="tests/configuration/run.yaml",
+            config=UnifiedLlamaStackConfig(),
+        )  # pyright: ignore[reportCallIssue]
+
+
+def test_llama_stack_unified_mode_with_remote_url() -> None:
+    """Unified config is also allowed when connecting to a remote Llama Stack."""
+    # pylint: disable=import-outside-toplevel
+    from models.config import UnifiedLlamaStackConfig
+
+    cfg = LlamaStackConfiguration(
+        url="http://remote-ls:8321",
+        config=UnifiedLlamaStackConfig(),
+    )  # pyright: ignore[reportCallIssue]
+    assert cfg.config is not None
+    assert str(cfg.url) == "http://remote-ls:8321/"
 
 
 def test_llama_stack_configuration_valid_http_url() -> None:

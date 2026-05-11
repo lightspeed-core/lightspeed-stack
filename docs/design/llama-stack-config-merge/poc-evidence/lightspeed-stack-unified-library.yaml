@@ -1,0 +1,33 @@
+name: Lightspeed Core Service (LCS) - Unified PoC
+service:
+  host: 0.0.0.0
+  port: 8080
+  base_url: http://localhost:8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+# Unified mode: no `library_client_config_path`. Operational LS config is
+# synthesized by LCORE from `llama_stack.config` below.
+llama_stack:
+  use_as_library_client: true
+  config:
+    # Use the CI-friendly baseline via `profile` (no EXTERNAL_PROVIDERS_DIR
+    # env var required). Equivalent to what tests/e2e/configs/run-ci.yaml
+    # provides; this exercises the `profile:` path of the synthesizer.
+    profile: /home/msvistun/repos/lightspeed/stack/tests/e2e/configs/run-ci.yaml
+    # Small native_override: prove overrides take effect end-to-end.
+    native_override:
+      safety:
+        default_shield_id: llama-guard
+user_data_collection:
+  feedback_enabled: false
+  feedback_storage: "/tmp/lcore-836-poc/feedback"
+  transcripts_enabled: false
+  transcripts_storage: "/tmp/lcore-836-poc/transcripts"
+conversation_cache:
+  type: "sqlite"
+  sqlite:
+    db_path: "/tmp/lcore-836-poc/conversation-cache.db"
+authentication:
+  module: "noop"

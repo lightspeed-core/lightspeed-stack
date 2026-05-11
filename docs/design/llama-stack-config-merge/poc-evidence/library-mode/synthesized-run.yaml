@@ -1,0 +1,148 @@
+apis:
+  - agents
+  - batches
+  - datasetio
+  - eval
+  - files
+  - inference
+  - safety
+  - scoring
+  - tool_runtime
+  - vector_io
+benchmarks: []
+datasets: []
+image_name: starter
+providers:
+  agents:
+    - config:
+        persistence:
+          agent_state:
+            backend: kv_default
+            namespace: agents_state
+          responses:
+            backend: sql_default
+            table_name: agents_responses
+      provider_id: meta-reference
+      provider_type: inline::meta-reference
+  batches:
+    - config:
+        kvstore:
+          backend: kv_default
+          namespace: batches_store
+      provider_id: reference
+      provider_type: inline::reference
+  datasetio:
+    - config:
+        kvstore:
+          backend: kv_default
+          namespace: huggingface_datasetio
+      provider_id: huggingface
+      provider_type: remote::huggingface
+    - config:
+        kvstore:
+          backend: kv_default
+          namespace: localfs_datasetio
+      provider_id: localfs
+      provider_type: inline::localfs
+  eval:
+    - config:
+        kvstore:
+          backend: kv_default
+          namespace: eval_store
+      provider_id: meta-reference
+      provider_type: inline::meta-reference
+  files:
+    - config:
+        metadata_store:
+          backend: sql_default
+          table_name: files_metadata
+        storage_dir: ~/.llama/storage/files
+      provider_id: meta-reference-files
+      provider_type: inline::localfs
+  inference:
+    - config:
+        allowed_models:
+          - ${env.E2E_OPENAI_MODEL:=gpt-4o-mini}
+        api_key: ${env.OPENAI_API_KEY}
+      provider_id: openai
+      provider_type: remote::openai
+    - config: {}
+      provider_id: sentence-transformers
+      provider_type: inline::sentence-transformers
+  safety:
+    - config:
+        excluded_categories: []
+      provider_id: llama-guard
+      provider_type: inline::llama-guard
+  scoring:
+    - config: {}
+      provider_id: basic
+      provider_type: inline::basic
+    - config: {}
+      provider_id: llm-as-judge
+      provider_type: inline::llm-as-judge
+    - config:
+        openai_api_key: '********'
+      provider_id: braintrust
+      provider_type: inline::braintrust
+  tool_runtime:
+    - config: {}
+      provider_id: rag-runtime
+      provider_type: inline::rag-runtime
+    - config: {}
+      provider_id: model-context-protocol
+      provider_type: remote::model-context-protocol
+  vector_io: []
+registered_resources:
+  benchmarks: []
+  datasets: []
+  models:
+    - metadata:
+        embedding_dimension: 768
+      model_id: all-mpnet-base-v2
+      model_type: embedding
+      provider_id: sentence-transformers
+      provider_model_id: all-mpnet-base-v2
+  scoring_fns: []
+  shields:
+    - provider_id: llama-guard
+      provider_shield_id: openai/gpt-4o-mini
+      shield_id: llama-guard
+  tool_groups:
+    - provider_id: rag-runtime
+      toolgroup_id: builtin::rag
+  vector_stores: []
+safety:
+  default_shield_id: llama-guard
+scoring_fns: []
+server:
+  port: 8321
+storage:
+  backends:
+    kv_default:
+      db_path: ${env.KV_STORE_PATH:=~/.llama/storage/kv_store.db}
+      type: kv_sqlite
+    sql_default:
+      db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
+      type: sql_sqlite
+  stores:
+    conversations:
+      backend: sql_default
+      table_name: openai_conversations
+    inference:
+      backend: sql_default
+      max_write_queue_size: 10000
+      num_writers: 4
+      table_name: inference_store
+    metadata:
+      backend: kv_default
+      namespace: registry
+    prompts:
+      backend: kv_default
+      namespace: prompts
+vector_stores:
+  default_embedding_model:
+    model_id: all-mpnet-base-v2
+    provider_id: sentence-transformers
+  default_provider_id: faiss
+version: 2
