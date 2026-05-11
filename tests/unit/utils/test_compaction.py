@@ -5,7 +5,9 @@ from typing import Any
 import pytest
 from pytest_mock import MockerFixture
 
+from models.compaction import ConversationSummary
 from utils.compaction import (
+    RECURSIVE_RESUMMARIZATION_PROMPT,
     SUMMARIZATION_PROMPT,
     _build_summarization_prompt_body,
     _extract_response_text,
@@ -13,6 +15,7 @@ from utils.compaction import (
     format_conversation_for_summary,
     is_message_item,
     partition_conversation,
+    recursively_resummarize,
     summarize_chunk,
 )
 from utils.token_estimator import (
@@ -499,3 +502,145 @@ class TestSummarizeChunk:
         assert first.summary_text == "First summary."
         assert second.summary_text == "Second summary."
         assert second.summarized_through_turn > first.summarized_through_turn
+
+
+# ---------------------------------------------------------------------------
+# recursively_resummarize
+# ---------------------------------------------------------------------------
+
+
+def _make_summary(text: str, through: int, tokens: int = 5) -> ConversationSummary:
+    """Build a ConversationSummary value for tests."""
+    return ConversationSummary(
+        summary_text=text,
+        summarized_through_turn=through,
+        token_count=tokens,
+        created_at="2026-05-11T00:00:00Z",
+        model_used="openai/gpt-4o-mini",
+    )
+
+
+class TestRecursivelyResummarize:
+    """Tests for the recursive-fold fallback."""
+
+    @pytest.mark.asyncio
+    async def test_collapses_n_summaries_into_one(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Multiple summaries fold into one ConversationSummary."""
+        client = mocker.AsyncMock()
+        client.responses.create.return_value = _make_summary_response(
+            mocker, "Combined summary covering all prior chunks."
+        )
+        summaries = [
+            _make_summary("First chunk summary.", through=5),
+            _make_summary("Second chunk summary.", through=10),
+            _make_summary("Third chunk summary.", through=15),
+        ]
+        folded = await recursively_resummarize(
+            client=client,
+            model="openai/gpt-4o-mini",
+            summaries=summaries,
+            encoding_name=DEFAULT_ENCODING_NAME,
+        )
+        assert (
+            folded.summary_text
+            == "Combined summary covering all prior chunks."
+        )
+        # The fold inherits the most recent input's running total — no
+        # new turns were summarized by this call.
+        assert folded.summarized_through_turn == 15
+        assert folded.token_count > 0
+        assert folded.model_used == "openai/gpt-4o-mini"
+
+    @pytest.mark.asyncio
+    async def test_prompt_lists_each_summary(
+        self, mocker: MockerFixture
+    ) -> None:
+        """All input summary texts and the fallback prompt appear in the call."""
+        client = mocker.AsyncMock()
+        client.responses.create.return_value = _make_summary_response(
+            mocker, "Folded summary."
+        )
+        summaries = [
+            _make_summary("Alpha facts.", through=5),
+            _make_summary("Beta facts.", through=10),
+        ]
+        await recursively_resummarize(
+            client=client,
+            model="openai/gpt-4o-mini",
+            summaries=summaries,
+            encoding_name=DEFAULT_ENCODING_NAME,
+        )
+        prompt_input = client.responses.create.call_args.kwargs["input"]
+        assert RECURSIVE_RESUMMARIZATION_PROMPT in prompt_input
+        assert "Alpha facts." in prompt_input
+        assert "Beta facts." in prompt_input
+        assert "Summary 1" in prompt_input
+        assert "Summary 2" in prompt_input
+
+    @pytest.mark.asyncio
+    async def test_uses_store_false(self, mocker: MockerFixture) -> None:
+        """The recursive call also uses store=False — like the additive one."""
+        client = mocker.AsyncMock()
+        client.responses.create.return_value = _make_summary_response(
+            mocker, "Folded."
+        )
+        summaries = [
+            _make_summary("a", through=1),
+            _make_summary("b", through=2),
+        ]
+        await recursively_resummarize(
+            client=client,
+            model="openai/gpt-4o-mini",
+            summaries=summaries,
+            encoding_name=DEFAULT_ENCODING_NAME,
+        )
+        kwargs = client.responses.create.call_args.kwargs
+        assert kwargs["store"] is False
+        assert kwargs["stream"] is False
+
+    @pytest.mark.asyncio
+    async def test_raises_for_single_summary(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Folding a single summary is a no-op the caller must avoid."""
+        client = mocker.AsyncMock()
+        with pytest.raises(ValueError, match="at least 2 summary chunks"):
+            await recursively_resummarize(
+                client=client,
+                model="openai/gpt-4o-mini",
+                summaries=[_make_summary("only one", through=5)],
+                encoding_name=DEFAULT_ENCODING_NAME,
+            )
+
+    @pytest.mark.asyncio
+    async def test_raises_for_empty_list(self, mocker: MockerFixture) -> None:
+        """Folding an empty list is a no-op the caller must avoid."""
+        client = mocker.AsyncMock()
+        with pytest.raises(ValueError, match="at least 2 summary chunks"):
+            await recursively_resummarize(
+                client=client,
+                model="openai/gpt-4o-mini",
+                summaries=[],
+                encoding_name=DEFAULT_ENCODING_NAME,
+            )
+
+    @pytest.mark.asyncio
+    async def test_raises_when_llm_returns_empty(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Empty LLM response surfaces ValueError, not an empty fold."""
+        client = mocker.AsyncMock()
+        client.responses.create.return_value = _make_summary_response(mocker, "")
+        summaries = [
+            _make_summary("a", through=1),
+            _make_summary("b", through=2),
+        ]
+        with pytest.raises(ValueError, match="no extractable text"):
+            await recursively_resummarize(
+                client=client,
+                model="openai/gpt-4o-mini",
+                summaries=summaries,
+                encoding_name=DEFAULT_ENCODING_NAME,
+            )

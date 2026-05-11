@@ -354,3 +354,111 @@ async def summarize_chunk(
         created_at=datetime.now(timezone.utc).isoformat(),
         model_used=model,
     )
+
+
+RECURSIVE_RESUMMARIZATION_PROMPT = (
+    "The following are summaries of older portions of a conversation"
+    " between a user and an AI assistant helping with Red Hat product"
+    " support. Combine them into a single summary that preserves the"
+    " same five categories of detail (original question and"
+    " environment, error messages and outcomes, decisions and"
+    " rationale, what was resolved versus what is open, and clear"
+    " attribution between user and assistant). Resolve repetition;"
+    " keep all distinct facts.\n"
+)
+"""Prompt used when collapsing multiple summaries into one.
+
+Separate from SUMMARIZATION_PROMPT because the input is qualitatively
+different (already-summarized text, not raw conversation), but the
+preservation directives are the same.
+"""
+
+
+async def recursively_resummarize(
+    client: AsyncLlamaStackClient,
+    model: str,
+    summaries: list[ConversationSummary],
+    encoding_name: str,
+) -> ConversationSummary:
+    """Collapse multiple ``ConversationSummary`` records into one.
+
+    This is the fallback for the additive design (spike decision 2).
+    Each compaction normally produces a new summary chunk that is kept
+    alongside the previous ones, but the spec mandates a recursive
+    fold-up when the cumulative size of the summaries themselves
+    approaches the context limit:
+
+        When total summary token count itself approaches the context
+        limit, fall back to recursive re-summarization of the oldest
+        summary chunks.
+        — docs/design/conversation-compaction/conversation-compaction.md
+
+    The caller decides *when* to invoke this (typically after measuring
+    that the total summary tokens cross some configured fraction of
+    the model's context window). This function carries out the fold:
+    it builds a prompt that lists each existing summary in order, asks
+    the LLM to produce a single combined summary preserving the same
+    five directives, and returns a fresh ``ConversationSummary``.
+
+    The returned summary inherits ``summarized_through_turn`` from the
+    most recent input summary (the running total has not advanced —
+    we have re-folded, not summarized anything new).
+
+    Parameters:
+        client: Llama Stack client to call.
+        model: Fully-qualified model identifier used for the LLM call.
+        summaries: Existing summary chunks to fold, in chronological
+            order (oldest first). Must contain at least two entries —
+            folding a single summary is a no-op the caller should
+            short-circuit before invoking this function.
+        encoding_name: Tiktoken encoding name used to count tokens in
+            the produced fold.
+
+    Returns:
+        A single ConversationSummary representing the union of
+        ``summaries``.
+
+    Raises:
+        ValueError: When *summaries* has fewer than two entries (no
+            fold is needed) or when the LLM call yields no
+            extractable text.
+    """
+    from utils.token_estimator import estimate_tokens
+
+    if len(summaries) < 2:
+        raise ValueError(
+            "recursively_resummarize requires at least 2 summary chunks "
+            "to fold; caller must short-circuit when fewer are present."
+        )
+
+    transcript = "\n\n".join(
+        f"Summary {i + 1} (through turn {s.summarized_through_turn}):\n"
+        f"{s.summary_text}"
+        for i, s in enumerate(summaries)
+    )
+    prompt = f"{RECURSIVE_RESUMMARIZATION_PROMPT}\n{transcript}"
+
+    logger.info(
+        "Recursively re-summarizing %d existing summary chunks for model %s.",
+        len(summaries),
+        model,
+    )
+    response = await client.responses.create(
+        input=prompt,
+        model=model,
+        stream=False,
+        store=False,
+    )
+    folded_text = _extract_response_text(response).strip()
+    if not folded_text:
+        raise ValueError(
+            "Recursive re-summarization LLM call returned no extractable "
+            "text; cannot fold the existing ConversationSummary records."
+        )
+    return ConversationSummary(
+        summary_text=folded_text,
+        summarized_through_turn=summaries[-1].summarized_through_turn,
+        token_count=estimate_tokens(folded_text, encoding_name=encoding_name),
+        created_at=datetime.now(timezone.utc).isoformat(),
+        model_used=model,
+    )
