@@ -34,7 +34,12 @@ from llama_stack_client import AsyncLlamaStackClient
 
 from log import get_logger
 from models.compaction import ConversationSummary
-from utils.token_estimator import estimate_conversation_tokens, estimate_tokens
+from utils.token_estimator import (
+    estimate_conversation_tokens,
+    estimate_tokens,
+    extract_message_text,
+    is_message_item,
+)
 
 logger = get_logger(__name__)
 
@@ -58,63 +63,6 @@ Includes the five preservation directives required by the spec doc and
 the JIRA acceptance criteria. Exposed as a module constant so tests can
 assert directive presence and so future tuning is visible in one place.
 """
-
-
-def is_message_item(item: Any) -> bool:
-    """Return True when *item* is a chat-message-shaped conversation item.
-
-    Accepts the Llama Stack duck-typed shape (``.type == "message"``)
-    and the OpenAI-style ``{"role", "content"}`` dict.
-
-    Parameters:
-        item: Conversation item to classify.
-
-    Returns:
-        True when the item is a message; False otherwise (function
-        calls, tool results, structured outputs, etc.).
-    """
-    if isinstance(item, dict):
-        return "role" in item
-    return getattr(item, "type", None) == "message"
-
-
-def extract_message_text(item: Any) -> str:
-    """Return the plain text of a chat-message item.
-
-    Accepts both the Llama Stack object shape (``.content`` may be a
-    string, a list of content-part objects with ``.text``, or a list
-    of dicts with ``"text"`` keys) and the OpenAI-style dict shape
-    (``content`` is a string or list of dicts).
-
-    Parameters:
-        item: A chat-message item.
-
-    Returns:
-        The textual content joined by spaces, or the empty string when
-        no text can be extracted.
-    """
-    content: Any
-    if isinstance(item, dict):
-        content = item.get("content")
-    else:
-        content = getattr(item, "content", None)
-
-    if content is None:
-        return ""
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts: list[str] = []
-        for part in content:
-            text = None
-            if hasattr(part, "text"):
-                text = getattr(part, "text", None)
-            elif isinstance(part, dict) and "text" in part:
-                text = part["text"]
-            if text:
-                parts.append(text)
-        return " ".join(parts)
-    return str(content)
 
 
 def format_conversation_for_summary(items: list[Any]) -> str:
@@ -221,22 +169,6 @@ def partition_conversation(
     return items, []
 
 
-def _build_summarization_prompt_body(items: list[Any]) -> str:
-    """Render the full prompt body sent to the summarization LLM call.
-
-    Concatenates the system-style summarization prompt with a
-    ``role: text``-formatted transcript of the items being summarized.
-
-    Parameters:
-        items: The chunk to summarize.
-
-    Returns:
-        Full prompt body string.
-    """
-    transcript = format_conversation_for_summary(items)
-    return f"{SUMMARIZATION_PROMPT}\nConversation:\n{transcript}"
-
-
 def _extract_response_text(response: Any) -> str:
     """Pull the human-readable text out of a Responses-API result.
 
@@ -322,15 +254,21 @@ async def summarize_chunk(
             cannot be persisted (PositiveInt) and is also useless as
             context, so propagating an error is the honest behavior.
     """
-    prompt = _build_summarization_prompt_body(old_items)
+    transcript = format_conversation_for_summary(old_items)
     logger.info(
         "Summarizing %d conversation items (%d messages) for model %s.",
         len(old_items),
         sum(1 for item in old_items if is_message_item(item)),
         model,
     )
+    # Pass directives via `instructions` (system channel) and the transcript
+    # via `input` (user channel). This matches the codebase convention used
+    # by utils.responses.get_topic_summary and protects the directives from
+    # prompt-injection via user message content that ends up in the
+    # transcript.
     response = await client.responses.create(
-        input=prompt,
+        input=f"Conversation:\n{transcript}",
+        instructions=SUMMARIZATION_PROMPT,
         model=model,
         stream=False,
         store=False,
@@ -429,15 +367,16 @@ async def recursively_resummarize(
         f"{s.summary_text}"
         for i, s in enumerate(summaries)
     )
-    prompt = f"{RECURSIVE_RESUMMARIZATION_PROMPT}\n{transcript}"
 
     logger.info(
         "Recursively re-summarizing %d existing summary chunks for model %s.",
         len(summaries),
         model,
     )
+    # Same instructions/input split as summarize_chunk — see comment there.
     response = await client.responses.create(
-        input=prompt,
+        input=transcript,
+        instructions=RECURSIVE_RESUMMARIZATION_PROMPT,
         model=model,
         stream=False,
         store=False,

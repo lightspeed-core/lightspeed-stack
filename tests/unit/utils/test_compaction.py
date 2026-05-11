@@ -11,7 +11,6 @@ from models.compaction import ConversationSummary
 from utils.compaction import (
     RECURSIVE_RESUMMARIZATION_PROMPT,
     SUMMARIZATION_PROMPT,
-    _build_summarization_prompt_body,
     _extract_response_text,
     extract_message_text,
     format_conversation_for_summary,
@@ -327,31 +326,6 @@ class TestSummarizationPrompt:
 
 
 # ---------------------------------------------------------------------------
-# _build_summarization_prompt_body
-# ---------------------------------------------------------------------------
-
-
-class TestBuildSummarizationPromptBody:
-    """Tests for _build_summarization_prompt_body."""
-
-    def test_includes_prompt_and_transcript(self) -> None:
-        """The body begins with the prompt and embeds the transcript."""
-        items: list[Any] = [
-            _MessageItem("user", "What is Kubernetes?"),
-            _MessageItem("assistant", "An orchestrator."),
-        ]
-        body = _build_summarization_prompt_body(items)
-        assert body.startswith(SUMMARIZATION_PROMPT)
-        assert "user: What is Kubernetes?" in body
-        assert "assistant: An orchestrator." in body
-
-    def test_empty_items_still_yields_prompt(self) -> None:
-        """An empty chunk yields the prompt followed by an empty transcript."""
-        body = _build_summarization_prompt_body([])
-        assert body.startswith(SUMMARIZATION_PROMPT)
-
-
-# ---------------------------------------------------------------------------
 # _extract_response_text
 # ---------------------------------------------------------------------------
 
@@ -421,7 +395,8 @@ class TestSummarizeChunk:
     async def test_invokes_responses_create_with_store_false(
         self, mocker: MockerFixture
     ) -> None:
-        """The summarization call uses store=False and stream=False."""
+        """The summarization call uses store=False and stream=False, and
+        passes the system prompt via `instructions` (not bundled into `input`)."""
         client = mocker.AsyncMock()
         client.responses.create.return_value = _make_summary_response(
             mocker, "Summary."
@@ -437,7 +412,12 @@ class TestSummarizeChunk:
         assert kwargs["store"] is False
         assert kwargs["stream"] is False
         assert kwargs["model"] == "openai/gpt-4o-mini"
-        assert SUMMARIZATION_PROMPT in kwargs["input"]
+        # System directives travel as `instructions`, transcript as `input`.
+        # This keeps the directives in their own channel (resilient to
+        # prompt-injection from user content) and matches the convention used
+        # by utils.responses.get_topic_summary.
+        assert kwargs["instructions"] == SUMMARIZATION_PROMPT
+        assert SUMMARIZATION_PROMPT not in kwargs["input"]
         assert "user: hi" in kwargs["input"]
 
     @pytest.mark.asyncio
@@ -547,7 +527,8 @@ class TestRecursivelyResummarize:
 
     @pytest.mark.asyncio
     async def test_prompt_lists_each_summary(self, mocker: MockerFixture) -> None:
-        """All input summary texts and the fallback prompt appear in the call."""
+        """All input summary texts appear in `input`; the fallback prompt
+        is passed via `instructions`."""
         client = mocker.AsyncMock()
         client.responses.create.return_value = _make_summary_response(
             mocker, "Folded summary."
@@ -562,12 +543,13 @@ class TestRecursivelyResummarize:
             summaries=summaries,
             encoding_name=DEFAULT_ENCODING_NAME,
         )
-        prompt_input = client.responses.create.call_args.kwargs["input"]
-        assert RECURSIVE_RESUMMARIZATION_PROMPT in prompt_input
-        assert "Alpha facts." in prompt_input
-        assert "Beta facts." in prompt_input
-        assert "Summary 1" in prompt_input
-        assert "Summary 2" in prompt_input
+        kwargs = client.responses.create.call_args.kwargs
+        assert kwargs["instructions"] == RECURSIVE_RESUMMARIZATION_PROMPT
+        assert RECURSIVE_RESUMMARIZATION_PROMPT not in kwargs["input"]
+        assert "Alpha facts." in kwargs["input"]
+        assert "Beta facts." in kwargs["input"]
+        assert "Summary 1" in kwargs["input"]
+        assert "Summary 2" in kwargs["input"]
 
     @pytest.mark.asyncio
     async def test_uses_store_false(self, mocker: MockerFixture) -> None:
