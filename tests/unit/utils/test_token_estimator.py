@@ -10,11 +10,11 @@ import tiktoken
 from models.config import InferenceConfiguration
 from utils.token_estimator import (
     DEFAULT_ENCODING_NAME,
-    _extract_message_text,
-    _is_message,
     estimate_conversation_tokens,
     estimate_tokens,
+    extract_message_text,
     get_context_window,
+    is_message_item,
 )
 
 # ---------------------------------------------------------------------------
@@ -108,62 +108,62 @@ class TestEstimateTokens:
 
 
 # ---------------------------------------------------------------------------
-# _is_message
+# is_message_item
 # ---------------------------------------------------------------------------
 
 
 class TestIsMessage:
-    """Tests for the private _is_message duck-type check."""
+    """Tests for the is_message_item duck-type check."""
 
     def test_llama_stack_message_item(self) -> None:
         """A Llama-Stack-shaped object with type == 'message' is a message."""
-        assert _is_message(_MessageItem("user", "hi")) is True
+        assert is_message_item(_MessageItem("user", "hi")) is True
 
     def test_llama_stack_tool_call_item(self) -> None:
         """A tool-call-shaped object is not a message."""
-        assert _is_message(_ToolCallItem()) is False
+        assert is_message_item(_ToolCallItem()) is False
 
     def test_openai_dict_with_role(self) -> None:
         """An OpenAI-style dict with a 'role' key is a message."""
-        assert _is_message({"role": "user", "content": "hi"}) is True
+        assert is_message_item({"role": "user", "content": "hi"}) is True
 
     def test_dict_without_role(self) -> None:
         """A dict without a 'role' key is not a message."""
-        assert _is_message({"content": "hi"}) is False
+        assert is_message_item({"content": "hi"}) is False
 
 
 # ---------------------------------------------------------------------------
-# _extract_message_text
+# extract_message_text
 # ---------------------------------------------------------------------------
 
 
 class TestExtractMessageText:
-    """Tests for the private _extract_message_text duck-type extractor."""
+    """Tests for the extract_message_text duck-type extractor."""
 
     def test_llama_stack_string_content(self) -> None:
         """Plain string content is returned as-is."""
-        assert _extract_message_text(_MessageItem("user", "hello")) == "hello"
+        assert extract_message_text(_MessageItem("user", "hello")) == "hello"
 
     def test_openai_dict_string_content(self) -> None:
         """OpenAI-style dict with string content is supported."""
-        assert _extract_message_text({"role": "user", "content": "hi"}) == "hi"
+        assert extract_message_text({"role": "user", "content": "hi"}) == "hi"
 
     def test_list_content_with_text_attr(self) -> None:
         """A list of content parts with .text attribute is joined."""
         item: Any = _MessageItem("user", "placeholder")
         item.content = [_TextPart("first"), _TextPart("second")]
-        assert _extract_message_text(item) == "first second"
+        assert extract_message_text(item) == "first second"
 
     def test_list_content_with_text_dict(self) -> None:
         """A list of content dicts each with a 'text' key is joined."""
         item = {"role": "user", "content": [{"text": "alpha"}, {"text": "beta"}]}
-        assert _extract_message_text(item) == "alpha beta"
+        assert extract_message_text(item) == "alpha beta"
 
     def test_none_content(self) -> None:
         """None content yields an empty string."""
         item: Any = _MessageItem("user", "placeholder")
         item.content = None
-        assert _extract_message_text(item) == ""
+        assert extract_message_text(item) == ""
 
     def test_missing_content_on_object(self) -> None:
         """Object without content attribute yields empty string."""
@@ -172,7 +172,7 @@ class TestExtractMessageText:
             type = "message"
             role = "user"
 
-        assert _extract_message_text(_Empty()) == ""
+        assert extract_message_text(_Empty()) == ""
 
 
 # ---------------------------------------------------------------------------

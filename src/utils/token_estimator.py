@@ -76,7 +76,7 @@ def estimate_tokens(text: str, encoding_name: str = DEFAULT_ENCODING_NAME) -> in
     return len(_get_encoding(encoding_name).encode(text))
 
 
-def _extract_message_text(message: Any) -> str:
+def extract_message_text(message: Any) -> str:
     """Pull the textual content out of a chat-message-shaped value.
 
     Accepts the duck-typed Llama Stack conversation-item shape
@@ -119,7 +119,7 @@ def _extract_message_text(message: Any) -> str:
     return str(content)
 
 
-def _is_message(value: Any) -> bool:
+def is_message_item(value: Any) -> bool:
     """Return True when *value* looks like a chat message.
 
     Either an OpenAI-style dict with a ``"role"`` key, or a Llama Stack
@@ -140,7 +140,7 @@ def estimate_conversation_tokens(
     Sums tokens across the optional system prompt and every message in
     *messages*. Non-message items in the list (tool calls, function
     results, etc.) are ignored — only items recognized by
-    ``_is_message`` contribute. Both Llama Stack conversation-item
+    ``is_message_item`` contribute. Both Llama Stack conversation-item
     objects and plain ``{"role", "content"}`` dicts are accepted in the
     same list.
 
@@ -159,9 +159,9 @@ def estimate_conversation_tokens(
     if system_prompt:
         total += len(encoding.encode(system_prompt))
     for message in messages:
-        if not _is_message(message):
+        if not is_message_item(message):
             continue
-        text = _extract_message_text(message)
+        text = extract_message_text(message)
         if text:
             total += len(encoding.encode(text))
     return total
