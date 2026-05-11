@@ -5,6 +5,7 @@ import logging.config
 import os
 import sys
 import typing as t
+from copy import deepcopy
 from datetime import datetime
 from functools import lru_cache
 
@@ -112,7 +113,8 @@ def setup_logging() -> dict[t.Any, t.Any]:
         },
     }
 
-    merged_config = deep_update(uvicorn.config.LOGGING_CONFIG, logging_conf)
+    # Create a deep copy of uvicorn's logging config to avoid mutating global state.
+    merged_config = deep_update(deepcopy(uvicorn.config.LOGGING_CONFIG), logging_conf)
 
     if handler == "rich":
         merged_config["loggers"]["uvicorn"]["handlers"] = [handler]
