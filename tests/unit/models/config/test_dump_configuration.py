@@ -168,6 +168,7 @@ def test_dump_configuration(tmp_path: Path) -> None:
             "inference": {
                 "default_provider": "default_provider",
                 "default_model": "default_model",
+                "context_windows": {},
             },
             "database": {
                 "sqlite": None,
@@ -189,6 +190,13 @@ def test_dump_configuration(tmp_path: Path) -> None:
                 "postgres": None,
                 "sqlite": None,
                 "type": None,
+            },
+            "compaction": {
+                "enabled": False,
+                "threshold_ratio": 0.7,
+                "token_floor": 4096,
+                "buffer_turns": 4,
+                "buffer_max_ratio": 0.3,
             },
             "byok_rag": [],
             "quota_handlers": {
@@ -511,6 +519,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
             "inference": {
                 "default_provider": "default_provider",
                 "default_model": "default_model",
+                "context_windows": {},
             },
             "database": {
                 "sqlite": None,
@@ -532,6 +541,13 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "postgres": None,
                 "sqlite": None,
                 "type": None,
+            },
+            "compaction": {
+                "enabled": False,
+                "threshold_ratio": 0.7,
+                "token_floor": 4096,
+                "buffer_turns": 4,
+                "buffer_max_ratio": 0.3,
             },
             "byok_rag": [],
             "quota_handlers": {
@@ -746,6 +762,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
             "inference": {
                 "default_provider": "default_provider",
                 "default_model": "default_model",
+                "context_windows": {},
             },
             "database": {
                 "sqlite": None,
@@ -767,6 +784,13 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 "postgres": None,
                 "sqlite": None,
                 "type": None,
+            },
+            "compaction": {
+                "enabled": False,
+                "threshold_ratio": 0.7,
+                "token_floor": 4096,
+                "buffer_turns": 4,
+                "buffer_max_ratio": 0.3,
             },
             "byok_rag": [],
             "quota_handlers": {
@@ -961,6 +985,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
             "inference": {
                 "default_provider": "default_provider",
                 "default_model": "default_model",
+                "context_windows": {},
             },
             "database": {
                 "sqlite": None,
@@ -982,6 +1007,13 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 "postgres": None,
                 "sqlite": None,
                 "type": None,
+            },
+            "compaction": {
+                "enabled": False,
+                "threshold_ratio": 0.7,
+                "token_floor": 4096,
+                "buffer_turns": 4,
+                "buffer_max_ratio": 0.3,
             },
             "byok_rag": [
                 {
@@ -1166,6 +1198,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
             "inference": {
                 "default_provider": "default_provider",
                 "default_model": "default_model",
+                "context_windows": {},
             },
             "database": {
                 "sqlite": None,
@@ -1187,6 +1220,13 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 "postgres": None,
                 "sqlite": None,
                 "type": None,
+            },
+            "compaction": {
+                "enabled": False,
+                "threshold_ratio": 0.7,
+                "token_floor": 4096,
+                "buffer_turns": 4,
+                "buffer_max_ratio": 0.3,
             },
             "byok_rag": [],
             "quota_handlers": {
