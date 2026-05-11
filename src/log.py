@@ -65,7 +65,7 @@ def resolve_log_level() -> int:
 
 def get_logger(name: str) -> logging.Logger:
     """Create a common logger for all modules in this package."""
-    # FIXME: Remove the need for this function.
+    # The need for this function should be removed in the future.
     #
     # Normally this is derived from the package name (__name__).
     #
