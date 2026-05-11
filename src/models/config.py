@@ -1427,6 +1427,17 @@ class InferenceConfiguration(ConfigurationBase):
         description="Identification of default provider used when no other model is specified.",
     )
 
+    context_windows: dict[str, PositiveInt] = Field(
+        default_factory=dict,
+        title="Per-model context window sizes (tokens)",
+        description="Map of fully-qualified model identifier (e.g., "
+        '"openai/gpt-4o-mini") to context window size in tokens. Used by '
+        "the conversation compaction trigger to decide when older turns "
+        "must be summarized before the input exceeds the window. Models "
+        "absent from this map have no registered window — callers fall "
+        "back to their own default or skip the token-based trigger.",
+    )
+
     @model_validator(mode="after")
     def check_default_model_and_provider(self) -> Self:
         """
