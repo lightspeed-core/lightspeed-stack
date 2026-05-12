@@ -652,7 +652,9 @@ async def test_infer_info_logs_omit_user_supplied_content(
         ),
     )
 
-    with caplog.at_level(logging.INFO, logger="lightspeed_stack.app.endpoints.rlsapi_v1"):
+    with caplog.at_level(
+        logging.INFO, logger=f"{constants.DEFAULT_LOGGER_NAME}..app.endpoints.rlsapi_v1"
+    ):
         await infer_endpoint(
             infer_request=infer_request,
             request=mock_request_factory(),
@@ -732,7 +734,10 @@ async def test_infer_api_status_error_logs_class_without_private_text(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test API status error logs omit raw exception text."""
-    with caplog.at_level(logging.ERROR, logger="lightspeed_stack.app.endpoints.rlsapi_v1"):
+    with caplog.at_level(
+        logging.ERROR,
+        logger=f"{constants.DEFAULT_LOGGER_NAME}..app.endpoints.rlsapi_v1",
+    ):
         with pytest.raises(HTTPException) as exc_info:
             await infer_endpoint(
                 infer_request=RlsapiV1InferRequest(question="Test question"),

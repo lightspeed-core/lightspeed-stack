@@ -17,6 +17,7 @@ from authorization.azure_token_manager import (
     AzureEntraIDManager,
 )
 from configuration import AzureEntraIdConfiguration
+from constants import DEFAULT_LOGGER_NAME
 
 
 @pytest.fixture(name="dummy_config")
@@ -149,7 +150,8 @@ class TestAzureEntraIDTokenManager:
         )
 
         with caplog.at_level(
-            "WARNING", logger="lightspeed_stack.authorization.azure_token_manager"
+            "WARNING",
+            logger=f"{DEFAULT_LOGGER_NAME}.authorization.azure_token_manager",
         ):
             result = token_manager.refresh_token()
 
