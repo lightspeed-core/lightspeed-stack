@@ -6,7 +6,6 @@
 # pylint: disable=too-many-arguments
 # pylint: disable=too-many-positional-arguments
 
-import io
 import logging
 import re
 from collections.abc import Callable
@@ -20,7 +19,6 @@ from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
 import constants
-from app.endpoints import rlsapi_v1
 from app.endpoints.rlsapi_v1 import (
     AUTH_DISABLED,
     TemplateRenderError,
@@ -687,12 +685,12 @@ async def test_infer_full_context_request(
 
 @pytest.mark.asyncio
 async def test_infer_info_logs_omit_user_supplied_content(
-    mocker: MockerFixture,
     mock_configuration: AppConfig,
     mock_llm_response: None,
     mock_auth_resolvers: None,
     mock_request_factory: Callable[..., Any],
     mock_background_tasks: Any,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test info logs include operational metadata without user content."""
     infer_request = RlsapiV1InferRequest(
@@ -707,26 +705,22 @@ async def test_infer_info_logs_omit_user_supplied_content(
             systeminfo=RlsapiV1SystemInfo(os="RHEL", version="9.3", arch="x86_64"),
         ),
     )
-    log_stream = io.StringIO()
-    log_handler = logging.StreamHandler(log_stream)
-    mocker.patch.object(rlsapi_v1.logger, "handlers", [log_handler])
 
-    await infer_endpoint(
-        infer_request=infer_request,
-        request=mock_request_factory(),
-        background_tasks=mock_background_tasks,
-        auth=MOCK_AUTH,
-    )
+    with caplog.at_level(logging.INFO, logger="lightspeed_stack.app.endpoints.rlsapi_v1"):
+        await infer_endpoint(
+            infer_request=infer_request,
+            request=mock_request_factory(),
+            background_tasks=mock_background_tasks,
+            auth=MOCK_AUTH,
+        )
 
-    log_handler.flush()
-    logs = log_stream.getvalue()
-    assert "Processing rlsapi v1 /infer request" in logs
-    assert "LLM call completed for rlsapi v1 request" in logs
-    assert "Completed rlsapi v1 /infer request" in logs
-    assert "sk-user-secret" not in logs
-    assert "super-secret" not in logs
-    assert "attachment-secret" not in logs
-    assert "PRIVATE terminal output" not in logs
+    assert "Processing rlsapi v1 /infer request" in caplog.text
+    assert "LLM call completed for rlsapi v1 request" in caplog.text
+    assert "Completed rlsapi v1 /infer request" in caplog.text
+    assert "sk-user-secret" not in caplog.text
+    assert "super-secret" not in caplog.text
+    assert "attachment-secret" not in caplog.text
+    assert "PRIVATE terminal output" not in caplog.text
 
 
 @pytest.mark.asyncio
@@ -784,32 +778,27 @@ async def test_infer_api_connection_error_returns_503(
 
 @pytest.mark.asyncio
 async def test_infer_api_status_error_logs_class_without_private_text(
-    mocker: MockerFixture,
     mock_configuration: AppConfig,
     mock_api_status_error_with_private_text: None,
     mock_auth_resolvers: None,
     mock_request_factory: Callable[..., Any],
     mock_background_tasks: Any,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test API status error logs omit raw exception text."""
-    log_stream = io.StringIO()
-    log_handler = logging.StreamHandler(log_stream)
-    mocker.patch.object(rlsapi_v1.logger, "handlers", [log_handler])
+    with caplog.at_level(logging.ERROR, logger="lightspeed_stack.app.endpoints.rlsapi_v1"):
+        with pytest.raises(HTTPException) as exc_info:
+            await infer_endpoint(
+                infer_request=RlsapiV1InferRequest(question="Test question"),
+                request=mock_request_factory(),
+                background_tasks=mock_background_tasks,
+                auth=MOCK_AUTH,
+            )
 
-    with pytest.raises(HTTPException) as exc_info:
-        await infer_endpoint(
-            infer_request=RlsapiV1InferRequest(question="Test question"),
-            request=mock_request_factory(),
-            background_tasks=mock_background_tasks,
-            auth=MOCK_AUTH,
-        )
-
-    log_handler.flush()
-    logs = log_stream.getvalue()
     assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-    assert "APIStatusError" in logs
-    assert "sk-backend-secret" not in logs
-    assert "PRIVATE prompt" not in logs
+    assert "APIStatusError" in caplog.text
+    assert "sk-backend-secret" not in caplog.text
+    assert "PRIVATE prompt" not in caplog.text
 
 
 @pytest.mark.asyncio
