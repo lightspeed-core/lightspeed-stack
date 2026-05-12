@@ -2,7 +2,6 @@
 
 # pylint: disable=protected-access
 
-import logging
 import time
 from collections.abc import Generator
 from typing import Any
@@ -13,7 +12,6 @@ from azure.core.exceptions import ClientAuthenticationError
 from pydantic import SecretStr
 from pytest_mock import MockerFixture
 
-from authorization import azure_token_manager
 from authorization.azure_token_manager import (
     TOKEN_EXPIRATION_LEEWAY,
     AzureEntraIDManager,
@@ -150,15 +148,13 @@ class TestAzureEntraIDTokenManager:
             return_value=mock_credential_instance,
         )
 
-        azure_logger = logging.getLogger(azure_token_manager.__name__)
-        azure_logger.propagate = True
-        try:
-            with caplog.at_level("WARNING"):
-                result = token_manager.refresh_token()
-                assert result is False
-                assert "Failed to retrieve Azure access token" in caplog.text
-        finally:
-            azure_logger.propagate = False
+        with caplog.at_level(
+            "WARNING", logger="lightspeed_stack.authorization.azure_token_manager"
+        ):
+            result = token_manager.refresh_token()
+
+        assert result is False
+        assert "Failed to retrieve Azure access token" in caplog.text
 
     def test_token_expired_property_dynamic(
         self, token_manager: AzureEntraIDManager, mocker: MockerFixture
