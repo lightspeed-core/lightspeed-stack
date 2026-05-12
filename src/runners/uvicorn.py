@@ -19,10 +19,10 @@ def start_uvicorn(
     Parameters:
     ----------
         configuration (ServiceConfiguration): Configuration providing host,
-        log_config (dict): Logging configuration,
-        port, workers, and `tls_config` (including `tls_key_path`,
-        `tls_certificate_path`, and `tls_key_password`). TLS fields may be None
-        and will be forwarded to uvicorn.run as provided.
+            port, workers, and `tls_config` (including `tls_key_path`,
+            `tls_certificate_path`, and `tls_key_password`). TLS fields may be None
+            and will be forwarded to uvicorn.run as provided.
+        log_config (dict): Logging configuration.
     """
     log_level = resolve_log_level()
     logger.info("Starting Uvicorn with log level %s", logging.getLevelName(log_level))
