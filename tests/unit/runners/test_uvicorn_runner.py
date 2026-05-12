@@ -189,3 +189,16 @@ def test_start_uvicorn_respects_debug_log_level(
         access_log=True,
         log_config={},
     )
+
+
+def test_start_uvicorn_no_log_config(mocker: MockerFixture) -> None:
+    """Test that the default logging config is used when none is provided."""
+    configuration = ServiceConfiguration(
+        host="localhost", port=8080, workers=1
+    )  # pyright: ignore[reportCallIssue]
+
+    mock_setup_logging = mocker.patch("runners.uvicorn.setup_logging")
+    mock_setup_logging.side_effect = ValueError("Raised intentionally")
+
+    with pytest.raises(ValueError, match="Raised intentionally"):
+        start_uvicorn(configuration)
