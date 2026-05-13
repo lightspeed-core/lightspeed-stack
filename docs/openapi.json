@@ -17819,11 +17819,23 @@
                         ],
                         "title": "Source",
                         "description": "Index name identifying the knowledge source from configuration"
+                    },
+                    "document_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Document Id",
+                        "description": "Document ID for preserving identity during deduplication"
                     }
                 },
                 "type": "object",
                 "title": "ReferencedDocument",
-                "description": "Model representing a document referenced in generating a response.\n\nAttributes:\n    doc_url: Url to the referenced doc.\n    doc_title: Title of the referenced doc."
+                "description": "Model representing a document referenced in generating a response.\n\nAttributes:\n    doc_url: Url to the referenced doc.\n    doc_title: Title of the referenced doc.\n    document_id: Document ID for preserving identity during deduplication."
             },
             "RerankerConfiguration": {
                 "properties": {
