@@ -193,6 +193,9 @@ TOOL_RAG_MAX_CHUNKS: Final[int] = 10  # retrieved from RAG as a tool
 BYOK_RAG_MAX_CHUNKS: Final[int] = 10  # retrieved from BYOK RAG
 OKP_RAG_MAX_CHUNKS: Final[int] = 5  # retrieved from OKP RAG
 
+# Default minimum raw similarity per BYOK store
+DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE: Final[float] = 0.3
+
 # Solr OKP constants
 SOLR_VECTOR_SEARCH_DEFAULT_K: Final[int] = 5
 SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD: Final[float] = 0.3

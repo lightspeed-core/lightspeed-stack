@@ -8,6 +8,7 @@ from pathlib import Path
 
 from pydantic import SecretStr
 
+from constants import DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE
 from models.config import (
     ByokRag,
     Configuration,
@@ -1024,6 +1025,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                     "rag_type": "inline::faiss",
                     "vector_db_id": "vector_db_id",
                     "score_multiplier": 1.0,
+                    "relevance_cutoff_score": DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
                 },
             ],
             "quota_handlers": {
