@@ -212,7 +212,9 @@ class TestQueryEndpointHandler:
         )
 
         inline_chunk = RAGChunk(content="inline chunk content", source="byok")
-        inline_doc = ReferencedDocument(doc_title="Inline Doc", document_id="inline_doc_1")
+        inline_doc = ReferencedDocument(
+            doc_title="Inline Doc", document_id="inline_doc_1"
+        )
         inline_rag = RAGContext(
             context_text="",
             rag_chunks=[inline_chunk],

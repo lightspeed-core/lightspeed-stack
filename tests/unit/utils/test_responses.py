@@ -2130,7 +2130,11 @@ class TestParseReferencedDocuments:
         }
 
         mock_result2 = {
-            "attributes": {"url": "https://example.com/doc2", "title": "Document 2", "doc_id": "doc_2"},
+            "attributes": {
+                "url": "https://example.com/doc2",
+                "title": "Document 2",
+                "doc_id": "doc_2",
+            },
         }
 
         mock_output_item = mocker.Mock()
