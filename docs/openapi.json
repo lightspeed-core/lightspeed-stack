@@ -12081,6 +12081,18 @@
                         "$ref": "#/components/schemas/RerankerConfiguration",
                         "title": "Reranker configuration",
                         "description": "Configuration for neural reranking of RAG chunks using cross-encoder."
+                    },
+                    "skills": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/SkillsConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Agent skills",
+                        "description": "Agent skills configuration. Specifies paths to skill directories."
                     }
                 },
                 "additionalProperties": false,
@@ -19380,6 +19392,22 @@
                         ]
                     }
                 ]
+            },
+            "SkillsConfiguration": {
+                "properties": {
+                    "paths": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Skill paths",
+                        "description": "Paths to skill directories or directories containing skill subdirectories."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "SkillsConfiguration",
+                "description": "Agent skills configuration.\n\nSpecifies paths to skill directories. Skill metadata (name, description)\nis read from SKILL.md frontmatter at startup.\n\nEach path can point to either:\n- A directory containing a SKILL.md file (single skill)\n- A directory containing subdirectories with SKILL.md files (multiple skills)\n\nPaths are validated at startup to ensure they exist and contain valid SKILL.md files."
             },
             "SolrVectorSearchRequest": {
                 "properties": {
