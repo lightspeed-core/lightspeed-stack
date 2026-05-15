@@ -1,9 +1,21 @@
 """Authentication utility functions."""
 
+import time
+from typing import Final
+
 from fastapi import HTTPException
 from starlette.datastructures import Headers
 
+from log import get_logger
+from metrics import recording
 from models.api.responses.error import UnauthorizedResponse
+
+logger = get_logger(__name__)
+
+# Cause strings used in UnauthorizedResponse for token extraction failures.
+# Auth modules compare against these constants to classify failure reasons.
+AUTH_CAUSE_NO_HEADER: Final[str] = "No Authorization header found"
+AUTH_CAUSE_NO_TOKEN: Final[str] = "No token found in Authorization header"
 
 
 def extract_user_token(headers: Headers) -> str:
@@ -24,12 +36,42 @@ def extract_user_token(headers: Headers) -> str:
     """
     authorization_header = headers.get("Authorization")
     if not authorization_header:
-        response = UnauthorizedResponse(cause="No Authorization header found")
+        response = UnauthorizedResponse(cause=AUTH_CAUSE_NO_HEADER)
         raise HTTPException(**response.model_dump())
 
     scheme_and_token = authorization_header.strip().split()
     if len(scheme_and_token) != 2 or scheme_and_token[0].lower() != "bearer":
-        response = UnauthorizedResponse(cause="No token found in Authorization header")
+        response = UnauthorizedResponse(cause=AUTH_CAUSE_NO_TOKEN)
         raise HTTPException(**response.model_dump())
 
     return scheme_and_token[1]
+
+
+def record_auth_metrics(
+    auth_module: str, result: str, reason: str, start_time: float
+) -> None:
+    """Record authentication attempt and duration metrics together.
+
+    Parameters:
+    ----------
+        auth_module: Configured authentication module name.
+        result: Bounded result label, such as ``success`` or ``failure``.
+        reason: Bounded reason label for the result.
+        start_time: Monotonic clock time captured at the start of auth handling.
+
+    Returns:
+    -------
+        None: Metrics are recorded as a side effect.
+    """
+    try:
+        recording.record_auth_attempt(auth_module, result, reason)
+        recording.record_auth_duration(
+            auth_module, result, time.monotonic() - start_time
+        )
+    except Exception:  # pylint: disable=broad-exception-caught
+        logger.warning(
+            "Failed to record authentication metrics for module %s with result %s",
+            auth_module,
+            result,
+            exc_info=True,
+        )

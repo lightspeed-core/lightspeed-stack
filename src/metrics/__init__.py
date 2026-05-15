@@ -22,6 +22,50 @@ LLM_INFERENCE_DURATION_BUCKETS: Final[tuple[float, ...]] = (
     float("inf"),
 )
 
+AUTH_DURATION_BUCKETS: Final[tuple[float, ...]] = (
+    0.001,
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    float("inf"),
+)
+
+AUTHORIZATION_DURATION_BUCKETS: Final[tuple[float, ...]] = (
+    0.001,
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    float("inf"),
+)
+
+QUOTA_CHECK_DURATION_BUCKETS: Final[tuple[float, ...]] = (
+    0.001,
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    float("inf"),
+)
 # Counter to track REST API calls
 # This will be used to count how many times each API endpoint is called
 # and the status code of the response
@@ -75,10 +119,61 @@ llm_token_received_total = Counter(
     ["provider", "model", "endpoint"],
 )
 
+
 # Histogram to measure the latency of direct LLM inference backend calls.
-llm_inference_duration_seconds = Histogram(
+llm_inference_duration_seconds: Final[Histogram] = Histogram(
     "ls_llm_inference_duration_seconds",
     "LLM inference call duration",
     ["provider", "model", "endpoint", "result"],
     buckets=LLM_INFERENCE_DURATION_BUCKETS,
+)
+
+
+# Counter to track authentication attempts with bounded auth_module, result, and reason labels.
+auth_attempts_total: Final[Counter] = Counter(
+    "ls_auth_attempts_total",
+    "Authentication attempts",
+    ["auth_module", "result", "reason"],
+)
+
+# Histogram to measure authentication dependency latency with bounded module and result labels.
+auth_duration_seconds: Final[Histogram] = Histogram(
+    "ls_auth_duration_seconds",
+    "Authentication duration",
+    ["auth_module", "result"],
+    buckets=AUTH_DURATION_BUCKETS,
+)
+
+# Counter to track authorization checks by bounded protected action and result.
+# Actions are normalized against the Action enum; results are success, denied, or error.
+authorization_checks_total: Final[Counter] = Counter(
+    "ls_authorization_checks_total",
+    "Authorization checks",
+    ["action", "result"],
+)
+
+# Histogram to measure authorization check latency by bounded action and result.
+authorization_duration_seconds: Final[Histogram] = Histogram(
+    "ls_authorization_duration_seconds",
+    "Authorization check duration",
+    ["action", "result"],
+    buckets=AUTHORIZATION_DURATION_BUCKETS,
+)
+
+# Counter to track pre-request quota checks. Labels must stay bounded:
+# endpoint uses static route patterns, quota_type is a configured quota subject,
+# and result is one terminal state from the recording helper.
+quota_checks_total: Final[Counter] = Counter(
+    "ls_quota_checks_total",
+    "Quota availability checks",
+    ["endpoint", "quota_type", "result"],
+)
+
+# Histogram to measure quota availability check latency with sub-second buckets.
+# It uses the same bounded endpoint/quota_type/result labels as the counter.
+quota_check_duration_seconds: Final[Histogram] = Histogram(
+    "ls_quota_check_duration_seconds",
+    "Quota availability check duration",
+    ["endpoint", "quota_type", "result"],
+    buckets=QUOTA_CHECK_DURATION_BUCKETS,
 )
