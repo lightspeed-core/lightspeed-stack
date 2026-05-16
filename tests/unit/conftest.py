@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Generator
 
 import pytest
 from pytest_mock import AsyncMockType, MockerFixture
 
 from configuration import AppConfig
+from constants import DEFAULT_LOGGER_NAME
+from log import setup_logging
 
 type AgentFixtures = Generator[
     tuple[
@@ -17,6 +20,33 @@ type AgentFixtures = Generator[
     None,
     None,
 ]
+
+
+@pytest.fixture(autouse=True)
+def reset_logging_state():
+    """Reset logging state before and after each test.
+
+    Module-level calls to setup_logging() (such as from importing lightspeed_stack)
+    set propagate=False on the application logger, which prevents caplog from
+    capturing log records.
+
+    This fixture ensures propagation is enabled during tests and restores the
+    original logger state afterward. It also clears the setup_logging lru_cache
+    so tests that call setup_logging() get a fresh configuration.
+    """
+    setup_logging.cache_clear()
+    logger = logging.getLogger(DEFAULT_LOGGER_NAME)
+    original_propagate = logger.propagate
+    original_handlers = logger.handlers[:]
+    original_level = logger.level
+    logger.propagate = True
+
+    yield
+
+    setup_logging.cache_clear()
+    logger.propagate = original_propagate
+    logger.handlers = original_handlers
+    logger.level = original_level
 
 
 @pytest.fixture(name="prepare_agent_mocks", scope="function")
