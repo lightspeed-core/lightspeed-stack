@@ -148,8 +148,7 @@ okp:
 * **`rag.inline`** and **`rag.tool`**: Enable OKP as the RAG source for inline context injection and for the RAG tool.  Tool rag means the LLM will be provided a search tool it can choose to invoke to find relevant content and augment the user prompt.  The tool may or may not be invoked.  Inline means a rag search and prompt augmentation will always occur.
 * **`okp.offline`**: When `true`, source URLs use `parent_id` (offline/Mimir-style). When `false`, use `reference_url` (online).
 
-If you want to filter the docs to a specific product, you can include a query
-filter such as:
+If you want to filter the docs to a specific product, you can include a static query filter such as:
 
 ```yaml
 okp:
@@ -159,6 +158,123 @@ okp:
 
 When you launch Lightspeed stack it will augment the Llamastack run.yaml with
 configuration for OKP.
+
+### Dynamic Metadata Filtering
+
+In addition to static filters configured in `lightspeed-stack.yaml`, you can apply **dynamic filters** per query using structured filter objects in the request. Dynamic filters are combined with static filters using AND logic.
+
+#### Supported Filter Operations
+
+**Comparison Filters:**
+- `eq` - Equal to (exact match)
+- `ne` - Not equal to
+- `in` - Value in list
+- `nin` - Value not in list
+
+**Compound Filters:**
+- `and` - All filters must match
+- `or` - Any filter must match
+
+> **Note:** Range operators (`gt`, `gte`, `lt`, `lte`) are not supported because they use lexicographic comparison on string fields, which can produce unexpected results.
+
+#### Dynamic Filter Examples
+
+**Simple equality filter:**
+
+```bash
+curl -sX POST http://localhost:8080/v1/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "How to install ansible?",
+    "solr": {
+      "mode": "hybrid",
+      "filters": {
+        "filters": {
+          "type": "eq",
+          "key": "product",
+          "value": "ansible_automation_platform"
+        }
+      }
+    }
+  }'
+```
+
+**Multiple values with 'in' filter:**
+
+```bash
+curl -sX POST http://localhost:8080/v1/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Security best practices",
+    "solr": {
+      "mode": "semantic",
+      "filters": {
+        "filters": {
+          "type": "in",
+          "key": "product",
+          "value": ["openshift_container_platform", "ansible_automation_platform", "rhel"]
+        }
+      }
+    }
+  }'
+```
+
+**Compound filters (AND/OR):**
+
+```bash
+curl -sX POST http://localhost:8080/v1/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Advanced configuration",
+    "solr": {
+      "mode": "hybrid",
+      "filters": {
+        "filters": {
+          "type": "and",
+          "filters": [
+            {"type": "eq", "key": "product", "value": "openshift_container_platform"},
+            {"type": "eq", "key": "version", "value": "4.21"}
+          ]
+        }
+      }
+    }
+  }'
+```
+
+**Nested compound filters:**
+
+```bash
+curl -sX POST http://localhost:8080/v1/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Troubleshooting guide",
+    "solr": {
+      "mode": "hybrid",
+      "filters": {
+        "filters": {
+          "type": "and",
+          "filters": [
+            {"type": "eq", "key": "doc_type", "value": "guide"},
+            {
+              "type": "or",
+              "filters": [
+                {"type": "eq", "key": "product", "value": "openshift_container_platform"},
+                {"type": "eq", "key": "product", "value": "ansible_automation_platform"}
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }'
+```
+
+#### Filter Behavior
+
+- **Static filters preserved:** The configured `chunk_filter_query` (e.g., `"product:*openshift*"`) is always applied
+- **Dynamic filters added:** Request filters are combined with static filters using AND logic
+- **String escaping:** Special Solr characters in filter values are automatically escaped
+- **Works with all search modes:** Filters apply to `semantic`, `hybrid`, and `lexical` search modes
 
 ### Configure Lightspeed Stack for library mode
 
