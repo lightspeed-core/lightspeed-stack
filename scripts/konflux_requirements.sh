@@ -31,7 +31,7 @@ uv pip compile pyproject.toml -o "$RAW_REQ_FILE" \
 		--index-strategy unsafe-best-match \
 		--emit-index-annotation \
 		--no-sources \
-		--override requirements.overrides.txt
+		--override "${KONFLUX_DIR}/requirements.overrides.txt"
 
 # Initialize output files
 echo "# Packages from pypi.org" > "$SOURCE_FILE"
@@ -74,7 +74,6 @@ sed -i 's/"packages": "[^"]*"/"packages": "'"$wheel_packages"'"/' .tekton/lights
 
 echo "Packages from pypi.org written to: $SOURCE_FILE ($(wc -l < "$SOURCE_FILE") packages)"
 echo "Packages from console.redhat.com written to: $WHEEL_FILE ($(wc -l < "$WHEEL_FILE") packages)"
-
 
 uv pip compile "$WHEEL_FILE" --refresh --generate-hashes --index-url "${RHOAI_INDEX_URL}" --python-version 3.12 --emit-index-url --no-deps --no-annotate --universal  > "$WHEEL_HASH_FILE"
 uv pip compile "$SOURCE_FILE" --refresh --generate-hashes --python-version 3.12 --emit-index-url --no-deps --no-annotate > "$SOURCE_HASH_FILE"
