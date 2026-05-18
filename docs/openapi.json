@@ -19539,15 +19539,15 @@
                     "round": {
                         "type": "integer",
                         "title": "Round",
-                        "description": "Round number or step of tool execution"
+                        "description": "Round number or step of tool execution",
+                        "default": 1
                     }
                 },
                 "type": "object",
                 "required": [
                     "id",
                     "status",
-                    "content",
-                    "round"
+                    "content"
                 ],
                 "title": "ToolResultSummary",
                 "description": "Model representing a result from a tool call (for tool_results list)."

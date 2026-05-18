@@ -9,7 +9,24 @@ from typing import Any
 import pytest
 from fastapi import Request, status
 from fastapi.responses import StreamingResponse
-from llama_stack_api.openai_responses import OpenAIResponseObject
+from llama_stack_client.types.response_object import (
+    ResponseObject as OpenAIResponseObject,
+)
+from llama_stack_client.types.response_object_stream import (
+    OpenAIResponseObjectStreamResponseCompleted as CompletedChunk,
+)
+from llama_stack_client.types.response_object_stream import (
+    OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
+)
+from llama_stack_client.types.response_object_stream import (
+    OpenAIResponseObjectStreamResponseOutputItemDoneItemOpenAIResponseOutputMessageFileSearchToolCall as FileSearchCall,
+)
+from llama_stack_client.types.response_object_stream import (
+    OpenAIResponseObjectStreamResponseOutputItemDoneItemOpenAIResponseOutputMessageFileSearchToolCallResult as FileSearchCallResult,
+)
+from llama_stack_client.types.response_object_stream import (
+    OpenAIResponseObjectStreamResponseOutputTextDone as TextDoneChunk,
+)
 from pytest_mock import AsyncMockType, MockerFixture
 
 import constants
@@ -155,65 +172,67 @@ def mock_streaming_byok_tool_client_fixture(  # pylint: disable=too-many-stateme
     # Build a streaming response with file_search and completion events
     async def _mock_tool_stream() -> AsyncIterator[Any]:
         # file_search output item done
-        item_done_chunk = mocker.MagicMock()
-        item_done_chunk.type = "response.output_item.done"
-        item_done_chunk.output_index = 0
-
-        mock_item = mocker.MagicMock()
-        mock_item.type = "file_search_call"
-        mock_item.id = "call-fs-stream-1"
-        mock_item.queries = ["What is OpenShift?"]
-        mock_item.status = "completed"
-
-        mock_result = mocker.MagicMock()
+        mock_result = mocker.Mock(spec=FileSearchCallResult)
         mock_result.file_id = "doc-ocp-1"
         mock_result.filename = "openshift-docs.txt"
         mock_result.score = 0.92
         mock_result.text = "OpenShift is a Kubernetes distribution by Red Hat."
         mock_result.attributes = {
             "doc_url": "https://docs.redhat.com/ocp/overview",
+            "doc_title": "OpenShift Overview",
         }
         mock_result.model_dump = mocker.Mock(
             return_value={
                 "file_id": "doc-ocp-1",
                 "filename": "openshift-docs.txt",
                 "score": 0.92,
-                "text": "OpenShift is a Kubernetes distribution.",
-                "attributes": {"doc_url": "https://docs.redhat.com/ocp/overview"},
+                "text": "OpenShift is a Kubernetes distribution by Red Hat.",
+                "attributes": {
+                    "doc_url": "https://docs.redhat.com/ocp/overview",
+                    "doc_title": "OpenShift Overview",
+                },
             }
         )
+        mock_item = mocker.Mock(spec=FileSearchCall)
+        mock_item.type = "file_search_call"
+        mock_item.id = "call-fs-stream-1"
+        mock_item.queries = ["What is OpenShift?"]
+        mock_item.status = "completed"
         mock_item.results = [mock_result]
+        item_done_chunk = mocker.Mock(spec=OutputItemDoneChunk)
+        item_done_chunk.type = "response.output_item.done"
+        item_done_chunk.response_id = "response-tool-stream"
         item_done_chunk.item = mock_item
+        item_done_chunk.output_index = 0
+        item_done_chunk.sequence_number = 1
         yield item_done_chunk
 
         # Text done
-        text_done_chunk = mocker.MagicMock()
+        text_done_chunk = mocker.Mock(spec=TextDoneChunk)
         text_done_chunk.type = "response.output_text.done"
+        text_done_chunk.content_index = 0
         text_done_chunk.text = (
             "Based on the documentation, OpenShift is a Kubernetes distribution."
         )
+        text_done_chunk.item_id = "msg-tool-stream"
+        text_done_chunk.output_index = 1
+        text_done_chunk.sequence_number = 2
         yield text_done_chunk
 
         # Response completed
-        completed_chunk = mocker.MagicMock()
-        completed_chunk.type = "response.completed"
-        mock_final_response = mocker.MagicMock(spec=OpenAIResponseObject)
+        mock_final_response = mocker.Mock(spec=OpenAIResponseObject)
         mock_final_response.id = "response-tool-stream"
         mock_final_response.error = None
-
-        mock_usage = mocker.MagicMock()
+        mock_usage = mocker.Mock()
         mock_usage.input_tokens = 60
         mock_usage.output_tokens = 25
         mock_final_response.usage = mock_usage
+        mock_final_response.output = [mock_item]
 
-        # file_search results in the final response output
-        mock_fs_output = mocker.MagicMock()
-        mock_fs_output.type = "file_search_call"
-        mock_fs_output.id = "call-fs-stream-1"
-        mock_fs_output.results = [mock_result]
-        mock_final_response.output = [mock_fs_output]
-
+        completed_chunk = mocker.Mock(spec=CompletedChunk)
+        completed_chunk.type = "response.completed"
         completed_chunk.response = mock_final_response
+        completed_chunk.sequence_number = 3
         yield completed_chunk
 
     async def _responses_create(**kwargs: Any) -> Any:

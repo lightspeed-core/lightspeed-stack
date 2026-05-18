@@ -84,6 +84,33 @@ class ToolCallSummary(BaseModel):
     type: str = Field("tool_call", description="Type indicator for tool call")
 
 
+class ToolInfoSummary(BaseModel):
+    """Model representing metadata for a single tool exposed by MCP list tools."""
+
+    name: str = Field(description="Tool name")
+    description: Optional[str] = Field(
+        default=None,
+        description="Human-readable tool description",
+    )
+    input_schema: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="JSON schema for the tool input",
+    )
+
+
+class MCPListToolsSummary(BaseModel):
+    """Model representing MCP list tools payload serialized into tool results."""
+
+    server_label: Optional[str] = Field(
+        default=None,
+        description="MCP server label associated with the tool list",
+    )
+    tools: list[ToolInfoSummary] = Field(
+        default_factory=list,
+        description="Tools exposed by the MCP server",
+    )
+
+
 class ToolResultSummary(BaseModel):
     """Model representing a result from a tool call (for tool_results list)."""
 
@@ -95,7 +122,7 @@ class ToolResultSummary(BaseModel):
     )
     content: str = Field(..., description="Content/result returned from the tool")
     type: str = Field("tool_result", description="Type indicator for tool result")
-    round: int = Field(..., description="Round number or step of tool execution")
+    round: int = Field(default=1, description="Round number or step of tool execution")
 
 
 class TurnSummary(BaseModel):
