@@ -17,8 +17,12 @@ def test_postgresql_database_configuration() -> None:
     """Test the PostgreSQLDatabaseConfiguration model."""
     # pylint: disable=no-member
     c = PostgreSQLDatabaseConfiguration(
-        db="db", user="user", password="password"
+        db="db",
+        user="user",
+        password="password",
     )  # pyright: ignore[reportCallIssue]
+
+    # most attributes are set to default values
     assert c is not None
     assert c.host == "localhost"
     assert c.port == 5432
@@ -29,6 +33,52 @@ def test_postgresql_database_configuration() -> None:
     assert c.gss_encmode == POSTGRES_DEFAULT_GSS_ENCMODE
     assert c.namespace == "public"
     assert c.ca_cert_path is None
+
+
+def test_postgresql_database_configuration_missing_values(subtests: SubTests) -> None:
+    """Test the PostgreSQLDatabaseConfiguration model."""
+    with subtests.test(msg="Missing 'db' attribute"):
+        with pytest.raises(ValueError, match="Field required"):
+            PostgreSQLDatabaseConfiguration(
+                user="user",
+                password="password",
+            )  # pyright: ignore[reportCallIssue]
+
+    with subtests.test(msg="Missing 'user' attribute"):
+        with pytest.raises(ValueError, match="Field required"):
+            PostgreSQLDatabaseConfiguration(
+                db="db",
+                password="password",
+            )  # pyright: ignore[reportCallIssue]
+
+    with subtests.test(msg="Missing 'password' attribute"):
+        with pytest.raises(ValueError, match="Field required"):
+            PostgreSQLDatabaseConfiguration(
+                db="db",
+                user="user",
+            )  # pyright: ignore[reportCallIssue]
+
+    with subtests.test(msg="Missing 'db' and 'user' attributes"):
+        with pytest.raises(ValueError, match="Field required"):
+            PostgreSQLDatabaseConfiguration(
+                password="password",
+            )  # pyright: ignore[reportCallIssue]
+
+    with subtests.test(msg="Missing 'id' and 'user' attributes"):
+        with pytest.raises(ValueError, match="Field required"):
+            PostgreSQLDatabaseConfiguration(
+                password="password",
+            )  # pyright: ignore[reportCallIssue]
+
+    with subtests.test(msg="Missing 'user' and 'password' attributes"):
+        with pytest.raises(ValueError, match="Field required"):
+            PostgreSQLDatabaseConfiguration(
+                db="db",
+            )  # pyright: ignore[reportCallIssue]
+
+    with subtests.test(msg="Missing all required attributes"):
+        with pytest.raises(ValueError, match="Field required"):
+            PostgreSQLDatabaseConfiguration()  # pyright: ignore[reportCallIssue]
 
 
 def test_postgresql_database_configuration_namespace_specification() -> None:
@@ -46,6 +96,8 @@ def test_postgresql_database_configuration_namespace_specification() -> None:
     c = PostgreSQLDatabaseConfiguration(
         db="db", user="user", password="password", namespace="foo"
     )  # pyright: ignore[reportCallIssue]
+
+    # most attributes are set to default values
     assert c is not None
     assert c.host == "localhost"
     assert c.port == 5432
@@ -70,7 +122,10 @@ def test_postgresql_database_configuration_port_setting(subtests: SubTests) -> N
     """
     with subtests.test(msg="Correct port value"):
         c = PostgreSQLDatabaseConfiguration(
-            db="db", user="user", password="password", port=1234
+            db="db",
+            user="user",
+            password="password",
+            port=1234,
         )  # pyright: ignore[reportCallIssue]
         assert c is not None
         assert c.port == 1234
@@ -78,13 +133,46 @@ def test_postgresql_database_configuration_port_setting(subtests: SubTests) -> N
     with subtests.test(msg="Negative port value"):
         with pytest.raises(ValidationError, match="Input should be greater than 0"):
             PostgreSQLDatabaseConfiguration(
-                db="db", user="user", password="password", port=-1
+                db="db",
+                user="user",
+                password="password",
+                port=-1,
+            )  # pyright: ignore[reportCallIssue]
+
+    with subtests.test(msg="Zero port value"):
+        with pytest.raises(ValidationError, match="Input should be greater than 0"):
+            PostgreSQLDatabaseConfiguration(
+                db="db",
+                user="user",
+                password="password",
+                port=0,
             )  # pyright: ignore[reportCallIssue]
 
     with subtests.test(msg="Too big port value"):
         with pytest.raises(ValueError, match="Port value should be less than 65536"):
             PostgreSQLDatabaseConfiguration(
-                db="db", user="user", password="password", port=100000
+                db="db",
+                user="user",
+                password="password",
+                port=100000,
+            )  # pyright: ignore[reportCallIssue]
+
+    with subtests.test(msg="Non integer port value"):
+        with pytest.raises(ValueError, match="Input should be a valid integer"):
+            PostgreSQLDatabaseConfiguration(
+                db="db",
+                user="user",
+                password="password",
+                port="xyzzy",
+            )  # pyright: ignore[reportCallIssue]
+
+    with subtests.test(msg="Null port value"):
+        with pytest.raises(ValueError, match="Input should be a valid integer"):
+            PostgreSQLDatabaseConfiguration(
+                db="db",
+                user="user",
+                password="password",
+                port=None,
             )  # pyright: ignore[reportCallIssue]
 
 
@@ -120,4 +208,14 @@ def test_postgresql_database_configuration_ca_cert_path(subtests: SubTests) -> N
                 password="password",
                 port=1234,
                 ca_cert_path=Path("not a file"),
+            )  # pyright: ignore[reportCallIssue]
+
+    with subtests.test(msg="Path is empty"):
+        with pytest.raises(ValidationError, match="Path does not point to a file"):
+            PostgreSQLDatabaseConfiguration(
+                db="db",
+                user="user",
+                password="password",
+                port=1234,
+                ca_cert_path=Path(""),
             )  # pyright: ignore[reportCallIssue]
