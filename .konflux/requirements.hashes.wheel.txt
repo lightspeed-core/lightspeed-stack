@@ -233,8 +233,6 @@ typing-extensions==4.15.0 \
     --hash=sha256:00877ead43795d4b767026270fa129816363c9a95b6febe68f5ac41d5096114b
 typing-inspection==0.4.2 \
     --hash=sha256:4baec0c9a4ad5cc8a85c71c387e98ff9ecc7b85b6e538e204343940090be3b63
-urllib3==2.6.3 \
-    --hash=sha256:a5bd1dd5b4c7b1da77f93abcd09f8619209b2f11fe699382f6cb79b34dc89437
 websocket-client==1.9.0 \
     --hash=sha256:0cb04d0516ad9d4a5941144e68344813f1da89a2270b0634b4b71f1e892f4caf
 websockets==15.0.1 \
