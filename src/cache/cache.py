@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from models.cache_entry import CacheEntry
+from cache.cache_entry import CacheEntry
 from models.common import ConversationData
 from utils.suid import check_suid
 

@@ -21,8 +21,7 @@ import constants
 from app.endpoints.rlsapi_v1 import infer_endpoint
 from authentication.interface import AuthTuple
 from configuration import AppConfig
-from models.common.moderation import ShieldModerationPassed
-from models.rlsapi.requests import (
+from models.api.requests.rlsapi import (
     RlsapiV1Attachment,
     RlsapiV1CLA,
     RlsapiV1Context,
@@ -30,7 +29,8 @@ from models.rlsapi.requests import (
     RlsapiV1SystemInfo,
     RlsapiV1Terminal,
 )
-from models.rlsapi.responses import RlsapiV1InferResponse
+from models.api.responses.successful.rlsapi import RlsapiV1InferResponse
+from models.common.moderation import ShieldModerationPassed
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 from utils.suid import check_suid
 from version import __version__

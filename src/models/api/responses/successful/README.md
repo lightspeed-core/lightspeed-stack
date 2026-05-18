@@ -33,5 +33,8 @@ Successful response models for synchronous query and streaming query documentati
 ## [responses_openai.py](responses_openai.py)
 Successful response model for the OpenAI-compatible Responses API.
 
+## [rlsapi.py](rlsapi.py)
+Successful response payloads for the rlsapi v1 `/infer` endpoint.
+
 ## [vector_stores.py](vector_stores.py)
 Successful responses for vector stores and vector store files.

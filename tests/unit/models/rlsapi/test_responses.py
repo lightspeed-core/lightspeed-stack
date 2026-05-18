@@ -7,7 +7,7 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from models.api.responses.successful.bases import AbstractSuccessfulResponse
-from models.rlsapi.responses import (
+from models.api.responses.successful.rlsapi import (
     RlsapiV1InferData,
     RlsapiV1InferResponse,
 )

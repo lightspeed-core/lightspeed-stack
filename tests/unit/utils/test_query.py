@@ -13,6 +13,7 @@ from llama_stack_client.types import ModelListResponse
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import SQLAlchemyError
 
+from cache.cache_entry import CacheEntry
 from cache.cache_error import CacheError
 from configuration import AppConfig
 from models.api.requests import QueryRequest
@@ -21,7 +22,6 @@ from models.api.responses.error import (
     PromptTooLongResponse,
     QuotaExceededResponse,
 )
-from models.cache_entry import CacheEntry
 from models.common.query import Attachment
 from models.common.turn_summary import TurnSummary
 from models.config import Action

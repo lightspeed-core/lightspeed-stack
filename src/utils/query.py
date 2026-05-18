@@ -21,6 +21,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import constants
 from app.database import get_session
 from authorization.azure_token_manager import AzureEntraIDManager
+from cache.cache_entry import CacheEntry
 from cache.cache_error import CacheError
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
@@ -35,7 +36,6 @@ from models.api.responses.error import (
     ServiceUnavailableResponse,
     UnprocessableEntityResponse,
 )
-from models.cache_entry import CacheEntry
 from models.common.query import Attachment
 from models.common.turn_summary import TurnSummary
 from models.config import Action

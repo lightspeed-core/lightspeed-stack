@@ -7,6 +7,14 @@ from models.api.requests.mcp_servers import MCPServerRegistrationRequest
 from models.api.requests.prompts import PromptCreateRequest, PromptUpdateRequest
 from models.api.requests.query import QueryRequest, StreamingInterruptRequest
 from models.api.requests.responses_openai import ResponsesRequest
+from models.api.requests.rlsapi import (
+    RlsapiV1Attachment,
+    RlsapiV1CLA,
+    RlsapiV1Context,
+    RlsapiV1InferRequest,
+    RlsapiV1SystemInfo,
+    RlsapiV1Terminal,
+)
 from models.api.requests.vector_stores import (
     VectorStoreCreateRequest,
     VectorStoreFileCreateRequest,
@@ -23,6 +31,12 @@ __all__ = [
     "PromptUpdateRequest",
     "QueryRequest",
     "ResponsesRequest",
+    "RlsapiV1Attachment",
+    "RlsapiV1CLA",
+    "RlsapiV1Context",
+    "RlsapiV1InferRequest",
+    "RlsapiV1SystemInfo",
+    "RlsapiV1Terminal",
     "StreamingInterruptRequest",
     "VectorStoreCreateRequest",
     "VectorStoreFileCreateRequest",

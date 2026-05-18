@@ -6,6 +6,9 @@ Various cache implementations.
 ## [cache.py](cache.py)
 Abstract class that is parent for all cache implementations.
 
+## [cache_entry.py](cache_entry.py)
+Pydantic model for a conversation history cache entry.
+
 ## [cache_error.py](cache_error.py)
 Any exception that can occur during cache operations.
 

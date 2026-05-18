@@ -19,10 +19,10 @@ from app.endpoints.conversations_v2 import (
     get_conversations_list_endpoint_handler,
     update_conversation_endpoint_handler,
 )
+from cache.cache_entry import CacheEntry
 from configuration import AppConfig
 from models.api.requests import ConversationUpdateRequest
 from models.api.responses.successful import ConversationUpdateResponse
-from models.cache_entry import CacheEntry
 from models.common import ConversationData
 from models.common.turn_summary import (
     ReferencedDocument,

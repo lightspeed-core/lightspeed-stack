@@ -1,8 +1,8 @@
 """In-memory cache implementation."""
 
 from cache.cache import Cache
+from cache.cache_entry import CacheEntry
 from log import get_logger
-from models.cache_entry import CacheEntry
 from models.common import ConversationData
 from models.config import InMemoryCacheConfig
 from utils.connection_decorator import connection

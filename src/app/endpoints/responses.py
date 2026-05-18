@@ -60,8 +60,8 @@ from models.api.responses.error import (
 )
 from models.api.responses.successful import ResponsesResponse
 from models.common.moderation import ShieldModerationBlocked
+from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.responses_context import ResponsesContext
 from models.common.turn_summary import TurnSummary
 from models.config import Action
 from utils.conversations import append_turn_items_to_conversation

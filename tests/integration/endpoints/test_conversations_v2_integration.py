@@ -17,10 +17,10 @@ from app.endpoints.conversations_v2 import (
     update_conversation_endpoint_handler,
 )
 from authentication.interface import AuthTuple
+from cache.cache_entry import CacheEntry
 from cache.sqlite_cache import SQLiteCache
 from configuration import AppConfig
 from models.api.requests import ConversationUpdateRequest
-from models.cache_entry import CacheEntry
 from models.config import SQLiteDatabaseConfiguration
 from tests.integration.conftest import (
     TEST_CONVERSATION_ID,

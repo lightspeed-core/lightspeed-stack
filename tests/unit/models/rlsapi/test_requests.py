@@ -8,7 +8,7 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from constants import RLSAPI_V1_QUESTION_MAX_LENGTH
-from models.rlsapi.requests import (
+from models.api.requests.rlsapi import (
     RlsapiV1Attachment,
     RlsapiV1CLA,
     RlsapiV1Context,

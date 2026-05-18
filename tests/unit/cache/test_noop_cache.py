@@ -4,8 +4,8 @@ from typing import Optional
 
 import pytest
 
+from cache.cache_entry import CacheEntry
 from cache.noop_cache import NoopCache
-from models.cache_entry import CacheEntry
 from utils import suid
 
 USER_ID = suid.get_suid()

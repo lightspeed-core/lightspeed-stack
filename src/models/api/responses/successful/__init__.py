@@ -45,6 +45,10 @@ from models.api.responses.successful.query import (
     StreamingQueryResponse,
 )
 from models.api.responses.successful.responses_openai import ResponsesResponse
+from models.api.responses.successful.rlsapi import (
+    RlsapiV1InferData,
+    RlsapiV1InferResponse,
+)
 from models.api.responses.successful.vector_stores import (
     FileResponse,
     VectorStoreDeleteResponse,
@@ -83,6 +87,8 @@ __all__ = [
     "RAGListResponse",
     "ReadinessResponse",
     "ResponsesResponse",
+    "RlsapiV1InferData",
+    "RlsapiV1InferResponse",
     "ShieldsResponse",
     "StatusResponse",
     "StreamingInterruptResponse",

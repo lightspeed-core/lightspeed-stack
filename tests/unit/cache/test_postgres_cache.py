@@ -8,9 +8,9 @@ import pytest
 from pydantic import AnyUrl, SecretStr
 from pytest_mock import MockerFixture
 
+from cache.cache_entry import CacheEntry
 from cache.cache_error import CacheError
 from cache.postgres_cache import PostgresCache
-from models.cache_entry import CacheEntry
 from models.common import ConversationData
 from models.common.turn_summary import (
     ReferencedDocument,

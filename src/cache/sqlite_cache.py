@@ -5,9 +5,9 @@ import sqlite3
 from time import time
 
 from cache.cache import Cache
+from cache.cache_entry import CacheEntry
 from cache.cache_error import CacheError
 from log import get_logger
-from models.cache_entry import CacheEntry
 from models.common import ConversationData
 from models.common.turn_summary import (
     ReferencedDocument,

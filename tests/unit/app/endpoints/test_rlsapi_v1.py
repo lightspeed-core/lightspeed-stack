@@ -35,16 +35,16 @@ from app.endpoints.rlsapi_v1 import (
 from authentication.interface import AuthTuple
 from authentication.rh_identity import RHIdentityData
 from configuration import AppConfig
-from models.api.responses.error import ServiceUnavailableResponse
-from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
-from models.rlsapi.requests import (
+from models.api.requests.rlsapi import (
     RlsapiV1Attachment,
     RlsapiV1Context,
     RlsapiV1InferRequest,
     RlsapiV1SystemInfo,
     RlsapiV1Terminal,
 )
-from models.rlsapi.responses import RlsapiV1InferResponse
+from models.api.responses.error import ServiceUnavailableResponse
+from models.api.responses.successful.rlsapi import RlsapiV1InferResponse
+from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 from utils.rh_identity import get_rh_identity_context
 from utils.suid import check_suid

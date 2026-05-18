@@ -7,9 +7,9 @@ from typing import Any
 import pytest
 from pydantic import AnyUrl
 
+from cache.cache_entry import CacheEntry
 from cache.cache_error import CacheError
 from cache.sqlite_cache import SQLiteCache
-from models.cache_entry import CacheEntry
 from models.common import ConversationData
 from models.common.turn_summary import (
     ReferencedDocument,

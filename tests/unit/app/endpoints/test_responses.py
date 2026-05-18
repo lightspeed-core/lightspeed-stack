@@ -32,8 +32,8 @@ from constants import DEFAULT_SYSTEM_PROMPT, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDE
 from models.api.requests import ResponsesRequest
 from models.api.responses.successful import ResponsesResponse
 from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
+from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.responses_context import ResponsesContext
 from models.common.responses.responses_conversation_context import (
     ResponsesConversationContext,
 )
