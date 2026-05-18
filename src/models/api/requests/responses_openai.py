@@ -23,6 +23,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from constants import RESPONSES_REQUEST_MAX_SIZE
 from models.common.query import SolrVectorSearchRequest
 from models.common.responses.types import IncludeParameter, ResponseInput
+from models.utils import add_mcp_authorizations
 from utils import suid
 
 
@@ -176,3 +177,14 @@ class ResponsesRequest(BaseModel):
         if value is not None and value.startswith("modr"):
             raise ValueError("You cannot provide context by moderation response.")
         return value
+
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        """Serialize to a request body dict.
+
+        Returns:
+            Serializable dict with MCP authorizations preserved.
+        """
+        result = super().model_dump(*args, **kwargs)
+        if result.get("tools") is not None and self.tools is not None:
+            result["tools"] = add_mcp_authorizations(result["tools"], self.tools)
+        return result

@@ -240,8 +240,8 @@ class TestResponsesApiParamsModelDump:
         assert dumped["tools"][0]["authorization"] == "token-a"
         assert dumped["tools"][1]["authorization"] == "token-b"
 
-    def test_exclude_changing_tool_list_shape_skips_reinjection(self) -> None:
-        """Test that exclude removing tool indices does not mis-assign authorization."""
+    def test_partial_tool_dump_reinjects_auth_by_server_label(self) -> None:
+        """When exclude drops some tools, remaining MCP rows still get auth by label."""
         tool_a = InputToolMCP(
             server_label="server-a",
             server_url="http://a:3000",
@@ -258,7 +258,7 @@ class TestResponsesApiParamsModelDump:
         dumped = params.model_dump(exclude={"tools": {0}})
         assert len(dumped["tools"]) == 1
         assert dumped["tools"][0]["server_label"] == "server-b"
-        assert "authorization" not in dumped["tools"][0]
+        assert dumped["tools"][0]["authorization"] == "token-b"
 
     def test_no_tools_does_not_error(self) -> None:
         """Test that model_dump() works when tools is None."""
