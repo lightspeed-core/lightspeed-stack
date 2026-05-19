@@ -1066,25 +1066,25 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
 
 
 # ==============================================================================
-# BYOK_RAG_MAX_CHUNKS Capping Tests
+# RAG_CONTENT_LIMIT Capping Tests
 # ==============================================================================
 
 
 @pytest.mark.asyncio
-async def test_query_byok_max_chunks_caps_retrieved_results(  # pylint: disable=too-many-locals
+async def test_query_rag_content_limit_caps_retrieved_results(  # pylint: disable=too-many-locals
     test_config: AppConfig,
     mocker: MockerFixture,
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
-    """Test that BYOK_RAG_MAX_CHUNKS caps the number of returned chunks.
+    """Test that RAG_CONTENT_LIMIT caps the number of returned chunks.
 
-    A single source returns more chunks than BYOK_RAG_MAX_CHUNKS allows.
-    The response should contain at most BYOK_RAG_MAX_CHUNKS chunks and
+    A single source returns more chunks than RAG_CONTENT_LIMIT allows.
+    The response should contain at most RAG_CONTENT_LIMIT chunks and
     they should be the highest-scored ones.
 
     Verifies:
-    - Number of RAG chunks does not exceed BYOK_RAG_MAX_CHUNKS
+    - Number of RAG chunks does not exceed RAG_CONTENT_LIMIT
     - Returned chunks are the top-scoring ones
     """
     entry = mocker.MagicMock()
@@ -1101,8 +1101,8 @@ async def test_query_byok_max_chunks_caps_retrieved_results(  # pylint: disable=
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
     mock_client = _build_base_mock_client(mocker)
 
-    # Generate more chunks than BYOK_RAG_MAX_CHUNKS
-    num_chunks = constants.BYOK_RAG_MAX_CHUNKS + 1
+    # Generate more chunks than RAG_CONTENT_LIMIT
+    num_chunks = constants.RAG_CONTENT_LIMIT + 1
     chunks_data = [
         (f"Chunk content {i}", f"chunk-{i}", round(0.50 + i * 0.03, 2))
         for i in range(num_chunks)
@@ -1141,7 +1141,7 @@ async def test_query_byok_max_chunks_caps_retrieved_results(  # pylint: disable=
     )
 
     assert response.rag_chunks is not None
-    assert len(response.rag_chunks) == constants.BYOK_RAG_MAX_CHUNKS
+    assert len(response.rag_chunks) == constants.RAG_CONTENT_LIMIT
 
     # Check that the score is computed properly
     for chunk in response.rag_chunks:
@@ -1161,20 +1161,20 @@ async def test_query_byok_max_chunks_caps_retrieved_results(  # pylint: disable=
 
 
 @pytest.mark.asyncio
-async def test_query_byok_max_chunks_caps_across_multiple_sources(  # pylint: disable=too-many-locals
+async def test_query_rag_content_limit_caps_across_multiple_sources(  # pylint: disable=too-many-locals
     test_config: AppConfig,
     mocker: MockerFixture,
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
-    """Test that BYOK_RAG_MAX_CHUNKS caps chunks across multiple sources.
+    """Test that RAG_CONTENT_LIMIT caps chunks across multiple sources.
 
-    Two sources each return several chunks.  The combined result should
-    not exceed BYOK_RAG_MAX_CHUNKS and should contain the globally
-    highest-scored chunks regardless of source.
+    Two sources each return several chunks. The combined result should not
+    exceed RAG_CONTENT_LIMIT and should contain the globally highest-scored
+    chunks regardless of source.
 
     Verifies:
-    - Total chunks across sources are capped at BYOK_RAG_MAX_CHUNKS
+    - Total chunks across sources are capped at RAG_CONTENT_LIMIT
     - Top-scoring chunks from both sources are included
     """
     entry_a = mocker.MagicMock()
@@ -1194,7 +1194,7 @@ async def test_query_byok_max_chunks_caps_across_multiple_sources(  # pylint: di
     mock_client = _build_base_mock_client(mocker)
 
     # Overlapping score bands so top-k must pick from both sources
-    n = constants.BYOK_RAG_MAX_CHUNKS
+    n = constants.RAG_CONTENT_LIMIT
     resp_a = _make_vector_io_response(
         mocker,
         [
@@ -1246,7 +1246,7 @@ async def test_query_byok_max_chunks_caps_across_multiple_sources(  # pylint: di
     )
 
     assert response.rag_chunks is not None
-    assert len(response.rag_chunks) == constants.BYOK_RAG_MAX_CHUNKS
+    assert len(response.rag_chunks) == constants.RAG_CONTENT_LIMIT
 
     # Check that the score is computed properly
     for chunk in response.rag_chunks:
@@ -1266,3 +1266,79 @@ async def test_query_byok_max_chunks_caps_across_multiple_sources(  # pylint: di
     chunk_contents = {chunk.content for chunk in response.rag_chunks}
     assert "Source A chunk 0" not in chunk_contents
     assert "Source B chunk 0" not in chunk_contents
+
+
+@pytest.mark.asyncio
+async def test_query_rag_content_limit_caps_inline_rag(  # pylint: disable=too-many-locals
+    test_config: AppConfig,
+    mocker: MockerFixture,
+    test_request: Request,
+    test_auth: AuthTuple,
+) -> None:
+    """Test that RAG_CONTENT_LIMIT caps inline RAG below BYOK_RAG_MAX_CHUNKS.
+
+    Sets RAG_CONTENT_LIMIT to 3 (below BYOK_RAG_MAX_CHUNKS=10) and feeds
+    10 chunks. The result should be capped at 3.
+
+    Verifies:
+    - Number of inline RAG chunks equals the lowered RAG_CONTENT_LIMIT
+    - Returned chunks are the top-scoring ones
+    """
+    mocker.patch("utils.vector_search.constants.RAG_CONTENT_LIMIT", 3)
+
+    entry = mocker.MagicMock()
+    entry.rag_id = "big-source"
+    entry.vector_db_id = "vs-big-source"
+    entry.score_multiplier = 1.0
+
+    test_config.configuration.byok_rag = [entry]
+    test_config.configuration.rag.inline = ["big-source"]
+    test_config.configuration.reranker.enabled = False
+
+    mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
+    mock_client = _build_base_mock_client(mocker)
+
+    num_chunks = constants.BYOK_RAG_MAX_CHUNKS
+    chunks_data = [
+        (f"Chunk content {i}", f"chunk-{i}", round(0.50 + i * 0.03, 2))
+        for i in range(num_chunks)
+    ]
+    mock_client.vector_io.query = mocker.AsyncMock(
+        return_value=_make_vector_io_response(mocker, chunks_data)
+    )
+
+    mock_vs_resp = mocker.MagicMock()
+    mock_vs_resp.data = []
+    mock_client.vector_stores.list.return_value = mock_vs_resp
+
+    mock_holder_class.return_value.get_client.return_value = mock_client
+
+    query_request = QueryRequest(
+        query="test query",
+        conversation_id=None,
+        provider=None,
+        model=None,
+        system_prompt=None,
+        attachments=None,
+        no_tools=False,
+        generate_topic_summary=None,
+        media_type=None,
+        vector_store_ids=None,
+        shield_ids=None,
+        solr=None,
+    )
+
+    response = await query_endpoint_handler(
+        request=test_request,
+        query_request=query_request,
+        auth=test_auth,
+        mcp_headers={},
+    )
+
+    assert response.rag_chunks is not None
+    assert len(response.rag_chunks) == 3
+
+    scores: list[float] = [
+        chunk.score for chunk in response.rag_chunks if chunk.score is not None
+    ]
+    assert scores == sorted(scores, reverse=True)

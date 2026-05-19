@@ -638,9 +638,9 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
 ) -> RAGContext:
     """Build RAG context by fetching and merging chunks from all enabled sources.
 
-    Fetches 2 * BYOK_RAG_MAX_CHUNKS from each of BYOK and Solr, merges and keeps
-    top 2 * BYOK_RAG_MAX_CHUNKS by score, reranks with a cross-encoder, then
-    keeps the top BYOK_RAG_MAX_CHUNKS for context. Enabled sources can be BYOK
+    Each source fetches using its per-source limit to build the reranking pool.
+    Results are merged, sorted by score, reranked with a cross-encoder if
+    enabled, then capped at RAG_CONTENT_LIMIT. Enabled sources can be BYOK
     and/or Solr OKP.
 
     Args:
@@ -655,12 +655,11 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
     if moderation_decision == "blocked":
         return RAGContext()
 
-    pool_size = 2 * constants.BYOK_RAG_MAX_CHUNKS
-    top_k = constants.BYOK_RAG_MAX_CHUNKS
+    top_k = constants.RAG_CONTENT_LIMIT
 
-    # Fetch 2*BYOK_RAG_MAX_CHUNKS from each source in parallel
+    # Fetch from each source using per-source limits for the reranking pool
     byok_chunks_task = _fetch_byok_rag(
-        client, query, vector_store_ids, max_chunks=pool_size
+        client, query, vector_store_ids, max_chunks=constants.BYOK_RAG_MAX_CHUNKS
     )
     solr_chunks_task = _fetch_solr_rag(client, query, solr)
 
@@ -668,21 +667,20 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
         byok_chunks_task, solr_chunks_task
     )
 
-    # Merge: combine and sort by score, keep top 2*BYOK_RAG_MAX_CHUNKS
+    # Merge: combine and sort by score
     merged = byok_chunks + solr_chunks
     merged.sort(
         key=lambda c: c.score if c.score is not None else float("-inf"), reverse=True
     )
-    merged = merged[:pool_size]
 
-    # Rerank full pool with cross-encoder if enabled; boost BYOK then take top_k
+    # Rerank full pool with cross-encoder if enabled; then take top_k
     if configuration.reranker.enabled:
         logger.info(
             "Reranker enabled: processing %d chunks with model '%s'",
             len(merged),
             configuration.reranker.model,
         )
-        reranked = await rerank_chunks_with_cross_encoder(query, merged, pool_size)
+        reranked = await rerank_chunks_with_cross_encoder(query, merged, len(merged))
         context_chunks = apply_byok_rerank_boost(reranked)[:top_k]
         logger.info(
             "Reranker completed: returned %d top chunks after BYOK boost",

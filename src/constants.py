@@ -188,6 +188,9 @@ DEFAULT_CROSS_ENCODER_MODEL: Final[str] = "cross-encoder/ms-marco-MiniLM-L6-v2"
 USER_QUOTA_LIMITER: Final[str] = "user_limiter"
 CLUSTER_QUOTA_LIMITER: Final[str] = "cluster_limiter"
 
+# Hard cap on total RAG chunks delivered to the LLM across all sources
+RAG_CONTENT_LIMIT: Final[int] = 10
+
 # RAG as a tool constants
 DEFAULT_RAG_TOOL: Final[str] = "file_search"
 TOOL_RAG_MAX_CHUNKS: Final[int] = 10  # retrieved from RAG as a tool

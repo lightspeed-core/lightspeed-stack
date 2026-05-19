@@ -908,24 +908,24 @@ async def test_streaming_query_byok_score_multiplier_shifts_priority(  # pylint:
 
 
 # ==============================================================================
-# BYOK_RAG_MAX_CHUNKS Capping Streaming Tests
+# RAG_CONTENT_LIMIT Capping Streaming Tests
 # ==============================================================================
 
 
 @pytest.mark.asyncio
-async def test_streaming_query_byok_max_chunks_caps_context(  # pylint: disable=too-many-locals
+async def test_streaming_query_rag_content_limit_caps_context(  # pylint: disable=too-many-locals
     test_config: AppConfig,
     mocker: MockerFixture,
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
-    """Test that BYOK_RAG_MAX_CHUNKS caps chunks in streaming query context.
+    """Test that RAG_CONTENT_LIMIT caps chunks in streaming query context.
 
-    A source returns more chunks than BYOK_RAG_MAX_CHUNKS.  The injected
-    context should contain at most BYOK_RAG_MAX_CHUNKS chunk entries.
+    A source returns more chunks than RAG_CONTENT_LIMIT. The injected context
+    should contain at most RAG_CONTENT_LIMIT chunk entries.
 
     Verifies:
-    - Context chunk count does not exceed BYOK_RAG_MAX_CHUNKS
+    - Context chunk count does not exceed RAG_CONTENT_LIMIT
     - Only the highest-scored chunks appear in the context
     """
     entry = mocker.MagicMock()
@@ -941,8 +941,8 @@ async def test_streaming_query_byok_max_chunks_caps_context(  # pylint: disable=
     )
     mock_client = _build_base_streaming_mock_client(mocker)
 
-    # Generate more chunks than BYOK_RAG_MAX_CHUNKS
-    num_chunks = constants.BYOK_RAG_MAX_CHUNKS + 5
+    # Generate more chunks than RAG_CONTENT_LIMIT
+    num_chunks = constants.RAG_CONTENT_LIMIT + 5
     chunks_data = [
         (f"Chunk content {i}", f"chunk-{i}", round(0.50 + i * 0.03, 2))
         for i in range(num_chunks)
@@ -973,7 +973,7 @@ async def test_streaming_query_byok_max_chunks_caps_context(  # pylint: disable=
     # .kwargs holds its keyword arguments, e.g. "input" is the full prompt text sent to the model.
     create_call = mock_client.responses.create.call_args_list[0]
     input_text = create_call.kwargs["input"]
-    expected_header = f"file_search found {constants.BYOK_RAG_MAX_CHUNKS} chunks:"
+    expected_header = f"file_search found {constants.RAG_CONTENT_LIMIT} chunks:"
     assert expected_header in input_text
 
     # The lowest-scoring chunk should NOT be in the context
@@ -983,20 +983,20 @@ async def test_streaming_query_byok_max_chunks_caps_context(  # pylint: disable=
 
 
 @pytest.mark.asyncio
-async def test_streaming_query_byok_max_chunks_caps_across_multiple_sources(  # pylint: disable=too-many-locals
+async def test_streaming_query_rag_content_limit_caps_across_multiple_sources(  # pylint: disable=too-many-locals
     test_config: AppConfig,
     mocker: MockerFixture,
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
-    """Test that BYOK_RAG_MAX_CHUNKS caps chunks across multiple sources in streaming.
+    """Test that RAG_CONTENT_LIMIT caps chunks across multiple sources in streaming.
 
-    Two sources each return several chunks.  The combined context should
-    not exceed BYOK_RAG_MAX_CHUNKS and should contain the globally
-    highest-scored chunks regardless of source.
+    Two sources each return several chunks. The combined context should not
+    exceed RAG_CONTENT_LIMIT and should contain the globally highest-scored
+    chunks regardless of source.
 
     Verifies:
-    - Total chunks across sources are capped at BYOK_RAG_MAX_CHUNKS
+    - Total chunks across sources are capped at RAG_CONTENT_LIMIT
     - Only the highest-scored chunks appear in the context
     """
     entry_a = mocker.MagicMock()
@@ -1018,7 +1018,7 @@ async def test_streaming_query_byok_max_chunks_caps_across_multiple_sources(  # 
     mock_client = _build_base_streaming_mock_client(mocker)
 
     # Overlapping score bands so top-k must pick from both sources
-    n = constants.BYOK_RAG_MAX_CHUNKS
+    n = constants.RAG_CONTENT_LIMIT
     resp_a = _make_vector_io_response(
         mocker,
         [
@@ -1062,7 +1062,7 @@ async def test_streaming_query_byok_max_chunks_caps_across_multiple_sources(  # 
     # .kwargs holds its keyword arguments, e.g. "input" is the full prompt text sent to the model.
     create_call = mock_client.responses.create.call_args_list[0]
     input_text = create_call.kwargs["input"]
-    expected_header = f"file_search found {constants.BYOK_RAG_MAX_CHUNKS} chunks:"
+    expected_header = f"file_search found {constants.RAG_CONTENT_LIMIT} chunks:"
     assert expected_header in input_text
 
     # Both sources must appear in the context (overlapping scores guarantee this)
@@ -1072,3 +1072,72 @@ async def test_streaming_query_byok_max_chunks_caps_across_multiple_sources(  # 
     # Lowest-scoring chunks from each source must be dropped
     assert "Source A chunk 0" not in input_text
     assert "Source B chunk 0" not in input_text
+
+
+@pytest.mark.asyncio
+async def test_streaming_query_rag_content_limit_caps_inline_rag(  # pylint: disable=too-many-locals
+    test_config: AppConfig,
+    mocker: MockerFixture,
+    test_request: Request,
+    test_auth: AuthTuple,
+) -> None:
+    """Test that RAG_CONTENT_LIMIT caps inline RAG below BYOK_RAG_MAX_CHUNKS in streaming.
+
+    Sets RAG_CONTENT_LIMIT to 3 (below BYOK_RAG_MAX_CHUNKS=10) and feeds
+    10 chunks. The context should contain at most 3 chunk entries.
+
+    Verifies:
+    - Context chunk count equals the lowered RAG_CONTENT_LIMIT
+    - Only the highest-scored chunks appear in the context
+    """
+    mocker.patch("utils.vector_search.constants.RAG_CONTENT_LIMIT", 3)
+
+    entry = mocker.MagicMock()
+    entry.rag_id = "big-source"
+    entry.vector_db_id = "vs-big-source"
+    entry.score_multiplier = 1.0
+
+    test_config.configuration.byok_rag = [entry]
+    test_config.configuration.rag.inline = ["big-source"]
+    test_config.configuration.reranker.enabled = False
+
+    mock_holder_class = mocker.patch(
+        "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
+    )
+    mock_client = _build_base_streaming_mock_client(mocker)
+
+    num_chunks = constants.BYOK_RAG_MAX_CHUNKS
+    chunks_data = [
+        (f"Chunk content {i}", f"chunk-{i}", round(0.50 + i * 0.03, 2))
+        for i in range(num_chunks)
+    ]
+    mock_client.vector_io.query = mocker.AsyncMock(
+        return_value=_make_vector_io_response(mocker, chunks_data)
+    )
+
+    mock_vs_resp = mocker.MagicMock()
+    mock_vs_resp.data = []
+    mock_client.vector_stores.list.return_value = mock_vs_resp
+
+    mock_holder_class.return_value.get_client.return_value = mock_client
+
+    query_request = QueryRequest(query="test query")
+
+    response = await streaming_query_endpoint_handler(
+        request=test_request,
+        query_request=query_request,
+        auth=test_auth,
+        mcp_headers={},
+    )
+
+    assert isinstance(response, StreamingResponse)
+
+    create_call = mock_client.responses.create.call_args_list[0]
+    input_text = create_call.kwargs["input"]
+    expected_header = "file_search found 3 chunks:"
+    assert expected_header in input_text
+
+    # The highest-scoring chunk should be in the context
+    assert f"Chunk content {num_chunks - 1}" in input_text
+    # Low-scoring chunks should be excluded
+    assert "Chunk content 0" not in input_text
