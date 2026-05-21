@@ -4,7 +4,6 @@ This source file contains entry point to the service. It is implemented in the
 main() function.
 """
 
-import logging
 import os
 from argparse import ArgumentParser
 
@@ -107,11 +106,8 @@ def main() -> None:
 
     if args.verbose:
         os.environ[LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR] = "DEBUG"
-        logging.getLogger().setLevel(logging.DEBUG)
-        for logger_name in logging.Logger.manager.loggerDict:
-            existing_logger = logging.getLogger(logger_name)
-            if isinstance(existing_logger, logging.Logger):
-                existing_logger.setLevel(logging.DEBUG)
+        setup_logging.cache_clear()
+        setup_logging()
 
     configuration.load_configuration(args.config_file)
     logger.info("Configuration: %s", configuration.configuration)
