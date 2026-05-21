@@ -10,7 +10,6 @@ from datetime import datetime
 from functools import lru_cache
 
 import uvicorn.config
-from pydantic.v1.utils import deep_update
 from rich.text import Text
 
 from constants import (
@@ -25,6 +24,20 @@ from constants import (
 def _ms_time_format(dt: datetime) -> Text:
     """Format datetime object with zero padded milliseconds."""
     return Text(dt.strftime("%Y-%m-%d %H:%M:%S.") + f"{dt.microsecond // 1000:03d}")
+
+
+def _deep_merge(
+    mapping: dict[t.Any, t.Any], updates: dict[t.Any, t.Any]
+) -> dict[t.Any, t.Any]:
+    """Recursively merge updates into mapping."""
+    merged = mapping.copy()
+    for k, v in updates.items():
+        if k in merged and isinstance(merged[k], dict) and isinstance(v, dict):
+            merged[k] = _deep_merge(merged[k], v)
+        else:
+            merged[k] = v
+
+    return merged
 
 
 def resolve_log_level() -> int:
@@ -114,7 +127,7 @@ def setup_logging() -> dict[t.Any, t.Any]:
     }
 
     # Create a deep copy of uvicorn's logging config to avoid mutating global state.
-    merged_config = deep_update(deepcopy(uvicorn.config.LOGGING_CONFIG), logging_conf)
+    merged_config = _deep_merge(deepcopy(uvicorn.config.LOGGING_CONFIG), logging_conf)
 
     if handler == "rich":
         merged_config["loggers"]["uvicorn"]["handlers"] = [handler]
