@@ -395,7 +395,7 @@ async def needs_compaction_path(
     compaction_config: CompactionConfiguration,
     encoding_name: str = DEFAULT_ENCODING_NAME,
 ) -> bool:
-    """Cheap pre-stream check: does this request need the compaction-aware path?
+    """Return whether this request needs the compaction-aware path (cheap check).
 
     Returns True when the conversation already has a summary marker (so it must
     be served in compacted mode with explicit input) or when the estimated
