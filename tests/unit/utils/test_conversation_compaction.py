@@ -136,7 +136,9 @@ async def test_disabled_passes_through() -> None:
 
 
 @pytest.mark.asyncio
-async def test_no_context_window_no_marker_passes_through(mocker: MockerFixture) -> None:
+async def test_no_context_window_no_marker_passes_through(
+    mocker: MockerFixture,
+) -> None:
     """No registered context window and no prior summary => normal flow."""
     mocker.patch.object(
         cc, "get_all_conversation_items", mocker.AsyncMock(return_value=[])
@@ -264,3 +266,79 @@ async def test_store_compacted_turn_appends(mocker: MockerFixture) -> None:
     client = mocker.AsyncMock()
     await cc.store_compacted_turn(client, CONV, "the query", ["out"])
     append.assert_awaited_once_with(client, CONV, "the query", ["out"])
+
+
+# --- needs_compaction_path (the tight gate protecting non-compacting requests) ---
+
+
+@pytest.mark.asyncio
+async def test_needs_compaction_path_disabled(mocker: MockerFixture) -> None:
+    """The gate is False (unchanged path) whenever compaction is disabled."""
+    assert (
+        await cc.needs_compaction_path(
+            mocker.AsyncMock(),
+            _params(),
+            _inference(1000),
+            _compaction(enabled=False),
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_needs_compaction_path_existing_marker(mocker: MockerFixture) -> None:
+    """A conversation with a prior summary marker always needs the compaction path."""
+    mocker.patch.object(
+        cc,
+        "get_all_conversation_items",
+        mocker.AsyncMock(return_value=[_marker("earlier"), _msg("user", "recent")]),
+    )
+    assert (
+        await cc.needs_compaction_path(
+            mocker.AsyncMock(),
+            _params(),
+            _inference(1_000_000),  # huge window: no new trigger, but marker exists
+            _compaction(),
+        )
+        is True
+    )
+
+
+@pytest.mark.asyncio
+async def test_needs_compaction_path_over_threshold(mocker: MockerFixture) -> None:
+    """A conversation over the token threshold needs the compaction path."""
+    mocker.patch.object(
+        cc,
+        "get_all_conversation_items",
+        mocker.AsyncMock(
+            return_value=[_msg("user", "q " * 50), _msg("assistant", "a " * 50)]
+        ),
+    )
+    assert (
+        await cc.needs_compaction_path(
+            mocker.AsyncMock(),
+            _params(),
+            _inference(50),  # small window: over threshold
+            _compaction(threshold_ratio=0.1),
+        )
+        is True
+    )
+
+
+@pytest.mark.asyncio
+async def test_needs_compaction_path_under_threshold(mocker: MockerFixture) -> None:
+    """A short conversation with no marker stays on the unchanged path."""
+    mocker.patch.object(
+        cc,
+        "get_all_conversation_items",
+        mocker.AsyncMock(return_value=[_msg("user", "hi"), _msg("assistant", "hello")]),
+    )
+    assert (
+        await cc.needs_compaction_path(
+            mocker.AsyncMock(),
+            _params(),
+            _inference(1_000_000),  # huge window: nowhere near the threshold
+            _compaction(),
+        )
+        is False
+    )
