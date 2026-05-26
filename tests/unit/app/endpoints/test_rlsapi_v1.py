@@ -1185,6 +1185,7 @@ async def test_infer_quota_skipped_when_not_configured(
     """Test /infer skips quota calls when quota_subject is None (default)."""
     mock_check = mocker.patch("app.endpoints.rlsapi_v1.check_tokens_available")
     mock_consume = mocker.patch("app.endpoints.rlsapi_v1.consume_query_tokens")
+    mock_record = mocker.patch("app.endpoints.rlsapi_v1.recording.record_quota_check")
 
     await infer_endpoint(
         infer_request=RlsapiV1InferRequest(question="How do I list files?"),
@@ -1195,6 +1196,12 @@ async def test_infer_quota_skipped_when_not_configured(
 
     mock_check.assert_not_called()
     mock_consume.assert_not_called()
+    mock_record.assert_called_once_with(
+        rlsapi_v1.ENDPOINT_PATH_INFER,
+        rlsapi_v1.recording.QUOTA_TYPE_DISABLED,
+        rlsapi_v1.recording.QUOTA_RESULT_SKIPPED,
+        0.0,
+    )
 
 
 @pytest.mark.asyncio
@@ -1222,6 +1229,39 @@ async def test_infer_quota_exceeded_returns_429(
         )
 
     assert exc_info.value.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+
+
+@pytest.mark.asyncio
+async def test_infer_quota_records_unexpected_errors(
+    mocker: MockerFixture,
+    mock_quota_config: Callable[[str], None],
+    mock_llm_response: None,
+    mock_auth_resolvers: None,
+    mock_request_factory: Callable[..., Any],
+    mock_background_tasks: Any,
+) -> None:
+    """Test unexpected quota failures are recorded before being re-raised."""
+    mock_quota_config("user_id")
+    mocker.patch(
+        "app.endpoints.rlsapi_v1.check_tokens_available",
+        side_effect=RuntimeError("quota backend unavailable"),
+    )
+    mock_record = mocker.patch("app.endpoints.rlsapi_v1.recording.record_quota_check")
+
+    with pytest.raises(RuntimeError, match="quota backend unavailable"):
+        await infer_endpoint(
+            infer_request=RlsapiV1InferRequest(question="How do I list files?"),
+            request=mock_request_factory(),
+            background_tasks=mock_background_tasks,
+            auth=MOCK_AUTH,
+        )
+
+    mock_record.assert_called_once()
+    endpoint_path, quota_type, result, duration = mock_record.call_args.args
+    assert endpoint_path == rlsapi_v1.ENDPOINT_PATH_INFER
+    assert quota_type == "user_id"
+    assert result == rlsapi_v1.recording.QUOTA_RESULT_ERROR
+    assert duration >= 0
 
 
 @pytest.mark.parametrize(
