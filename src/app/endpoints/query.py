@@ -44,6 +44,7 @@ from models.common.turn_summary import TurnSummary
 from models.config import Action
 from utils.conversation_compaction import (
     apply_compaction_blocking,
+    configured_conversation_cache,
     store_compacted_turn,
 )
 from utils.conversations import append_turn_items_to_conversation
@@ -209,6 +210,9 @@ async def query_endpoint_handler(
         responses_params,
         configuration.inference,
         configuration.compaction,
+        cache=configured_conversation_cache(),
+        user_id=user_id,
+        skip_user_id_check=_skip_userid_check,
     )
     responses_params = compaction.params
 

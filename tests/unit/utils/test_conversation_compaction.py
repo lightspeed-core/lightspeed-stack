@@ -342,3 +342,176 @@ async def test_needs_compaction_path_under_threshold(mocker: MockerFixture) -> N
         )
         is False
     )
+
+
+# --- cache as source of truth + recursive fold (R3) ---
+
+
+def _summary(text: str, *, turn: int, tokens: int, at: str) -> ConversationSummary:
+    """Build a ConversationSummary for cache tests."""
+    return ConversationSummary(
+        summary_text=text,
+        summarized_through_turn=turn,
+        token_count=tokens,
+        created_at=at,
+        model_used=MODEL,
+    )
+
+
+@pytest.mark.asyncio
+async def test_cache_summaries_preferred_over_markers(mocker: MockerFixture) -> None:
+    """When the cache returns summaries, they are used instead of marker texts."""
+    items = [_marker("STALE marker text"), _msg("user", "recent q")]
+    mocker.patch.object(
+        cc, "get_all_conversation_items", mocker.AsyncMock(return_value=items)
+    )
+    summarize = mocker.patch.object(cc, "summarize_chunk", mocker.AsyncMock())
+    cached = _summary(
+        "FRESH cached summary", turn=2, tokens=5, at="2026-05-26T00:00:00Z"
+    )
+    cache = mocker.Mock()
+    cache.get_summaries.return_value = [cached]
+
+    result = await cc.apply_compaction_blocking(
+        client=mocker.AsyncMock(),
+        params=_params("brand new"),
+        inference_config=_inference(1_000_000),  # huge: no new trigger
+        compaction_config=_compaction(),
+        cache=cache,
+        user_id="u1",
+        skip_user_id_check=False,
+    )
+
+    summarize.assert_not_called()
+    cache.get_summaries.assert_called_once_with("u1", CONV, False)
+    texts = [m.content for m in result.params.input]
+    assert "FRESH cached summary" in texts[0]
+    assert "STALE marker text" not in texts[0]
+
+
+@pytest.mark.asyncio
+async def test_store_summary_called_on_compaction(mocker: MockerFixture) -> None:
+    """A new summary chunk is persisted to the cache when compaction triggers."""
+    items = [_msg("user", "q1 " * 50), _msg("assistant", "a1 " * 50)]
+    mocker.patch.object(
+        cc, "get_all_conversation_items", mocker.AsyncMock(return_value=items)
+    )
+    summary = _summary("condensed", turn=2, tokens=4, at="2026-05-26T00:00:00Z")
+    mocker.patch.object(cc, "summarize_chunk", mocker.AsyncMock(return_value=summary))
+    mocker.patch.object(cc, "_write_summary_marker", mocker.AsyncMock())
+    cache = mocker.Mock()
+    cache.get_summaries.return_value = []
+
+    await cc.apply_compaction_blocking(
+        client=mocker.AsyncMock(),
+        params=_params("follow-up"),
+        inference_config=_inference(50),  # small window forces the trigger
+        compaction_config=_compaction(threshold_ratio=0.1, buffer_turns=0),
+        cache=cache,
+        user_id="u1",
+        skip_user_id_check=False,
+    )
+
+    cache.store_summary.assert_called_once()
+    assert cache.store_summary.call_args[0] == ("u1", CONV, summary, False)
+
+
+@pytest.mark.asyncio
+async def test_fold_when_cached_summaries_exceed_threshold(
+    mocker: MockerFixture,
+) -> None:
+    """Cached summaries above the threshold are folded and the fold persisted."""
+    items = [_marker("m1"), _marker("m2"), _msg("user", "recent")]
+    mocker.patch.object(
+        cc, "get_all_conversation_items", mocker.AsyncMock(return_value=items)
+    )
+    summarize = mocker.patch.object(cc, "summarize_chunk", mocker.AsyncMock())
+    s1 = _summary("sum one", turn=4, tokens=20, at="2026-05-26T00:00:00Z")
+    s2 = _summary("sum two", turn=8, tokens=20, at="2026-05-26T00:10:00Z")
+    folded = _summary("FOLDED one+two", turn=8, tokens=10, at="2026-05-26T00:20:00Z")
+    cache = mocker.Mock()
+    cache.get_summaries.return_value = [s1, s2]
+    resum = mocker.patch.object(
+        cc, "recursively_resummarize", mocker.AsyncMock(return_value=folded)
+    )
+
+    result = await cc.apply_compaction_blocking(
+        client=mocker.AsyncMock(),
+        params=_params("next"),
+        inference_config=_inference(50),  # threshold 25 < 40 summary tokens
+        compaction_config=_compaction(threshold_ratio=0.5, buffer_turns=5),
+        cache=cache,
+        user_id="u1",
+        skip_user_id_check=False,
+    )
+
+    summarize.assert_not_called()  # estimate stays small; only the fold fires
+    resum.assert_awaited_once()
+    cache.replace_summaries.assert_called_once()
+    assert cache.replace_summaries.call_args[0][2] is folded
+    texts = [m.content for m in result.params.input]
+    assert "FOLDED one+two" in texts[0]
+    assert not any("sum one" in t for t in texts)
+
+
+@pytest.mark.asyncio
+async def test_no_fold_without_cache(mocker: MockerFixture) -> None:
+    """With no cache, additive marker summaries are never folded (marker mode)."""
+    items = [_marker("m1 " * 30), _marker("m2 " * 30), _msg("user", "recent")]
+    mocker.patch.object(
+        cc, "get_all_conversation_items", mocker.AsyncMock(return_value=items)
+    )
+    mocker.patch.object(cc, "summarize_chunk", mocker.AsyncMock())
+    resum = mocker.patch.object(cc, "recursively_resummarize", mocker.AsyncMock())
+
+    result = await cc.apply_compaction_blocking(
+        client=mocker.AsyncMock(),
+        params=_params("next"),
+        inference_config=_inference(1_000_000),
+        compaction_config=_compaction(),
+        cache=None,
+    )
+
+    resum.assert_not_awaited()
+    assert result.summarized is True  # still compacted via markers
+
+
+@pytest.mark.asyncio
+async def test_marker_fallback_when_cache_empty(mocker: MockerFixture) -> None:
+    """An empty cache falls back to the authoritative marker texts."""
+    items = [_marker("marker summary text"), _msg("user", "recent")]
+    mocker.patch.object(
+        cc, "get_all_conversation_items", mocker.AsyncMock(return_value=items)
+    )
+    mocker.patch.object(cc, "summarize_chunk", mocker.AsyncMock())
+    cache = mocker.Mock()
+    cache.get_summaries.return_value = []
+
+    result = await cc.apply_compaction_blocking(
+        client=mocker.AsyncMock(),
+        params=_params("next"),
+        inference_config=_inference(1_000_000),
+        compaction_config=_compaction(),
+        cache=cache,
+        user_id="u1",
+        skip_user_id_check=False,
+    )
+
+    texts = [m.content for m in result.params.input]
+    assert "marker summary text" in texts[0]
+
+
+def test_configured_conversation_cache_none(mocker: MockerFixture) -> None:
+    """configured_conversation_cache returns None when no cache is configured."""
+    mock_config = mocker.patch.object(cc, "configuration")
+    mock_config.conversation_cache_configuration.type = None
+    assert cc.configured_conversation_cache() is None
+
+
+def test_configured_conversation_cache_returns_cache(mocker: MockerFixture) -> None:
+    """configured_conversation_cache returns the configured cache instance."""
+    mock_config = mocker.patch.object(cc, "configuration")
+    mock_config.conversation_cache_configuration.type = "sqlite"
+    sentinel = object()
+    mock_config.conversation_cache = sentinel
+    assert cc.configured_conversation_cache() is sentinel

@@ -5,8 +5,8 @@ LCORE-1570) and the token estimator (``utils.token_estimator``, LCORE-1569)
 into the actual request path (LCORE-1572). Unlike ``utils.compaction`` — which
 is deliberately side-effect free — this module *does* touch conversation state:
 it fetches conversation items from Llama Stack, calls the summarization LLM,
-writes summary marker items, persists summaries to the cache (best-effort), and
-holds a per-conversation lock.
+writes summary marker items, reads and writes summaries in the cache, and holds
+a per-conversation lock.
 
 Design (see ``docs/design/conversation-compaction/conversation-compaction.md``):
 
@@ -30,10 +30,15 @@ Design (see ``docs/design/conversation-compaction/conversation-compaction.md``):
   LLM call so the client can show a progress indicator (R12). The non-streaming
   wrapper :func:`apply_compaction_blocking` simply ignores those events.
 
-The cache (LCORE-1571) is a *best-effort* secondary store here: summaries are
-written to it for fast/queryable persistence, but the runtime boundary and
-summary text are read back from the Llama Stack marker items, so this module
-does not depend on the cache being functional.
+The cache (LCORE-1571) is the preferred source of truth for summaries and the
+home of the persisted recursive fold (R3): each summary chunk is written to it,
+the active summary set is read back from it, and when the summaries themselves
+grow past the threshold they are folded into one and persisted via
+``replace_summaries`` so the fold is reused rather than recomputed. When no
+persisting cache is configured (or a cache read fails) the module falls back to
+the Llama Stack marker texts, which remain authoritative — marker-only mode
+keeps additive summaries with no fold. The marker items always carry the
+boundary between summarized history and the recent verbatim turns.
 """
 
 import asyncio
@@ -45,11 +50,19 @@ from llama_stack_api.openai_responses import OpenAIResponseMessage
 from llama_stack_client import AsyncLlamaStackClient
 from llama_stack_client.types.conversations.item_create_params import Item
 
+from cache.cache import Cache
+from cache.cache_error import CacheError
+from configuration import configuration
 from log import get_logger
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
+from models.compaction import ConversationSummary
 from models.config import CompactionConfiguration, InferenceConfiguration
-from utils.compaction import partition_conversation, summarize_chunk
+from utils.compaction import (
+    partition_conversation,
+    recursively_resummarize,
+    summarize_chunk,
+)
 from utils.conversations import (
     append_turn_items_to_conversation,
     get_all_conversation_items,
@@ -238,6 +251,62 @@ async def _write_summary_marker(
     )
 
 
+def _read_cached_summaries(
+    cache: Optional[Cache],
+    user_id: str,
+    conversation_id: str,
+    skip_user_id_check: bool,
+) -> list[ConversationSummary]:
+    """Return persisted summary chunks for a conversation (best-effort).
+
+    The cache is the preferred source of truth for summaries (and the only home
+    for a persisted recursive fold). Returns an empty list when no cache is
+    configured, the backend does not persist (in-memory/no-op), or a cache error
+    occurs — callers then fall back to the Llama Stack marker texts, which remain
+    authoritative.
+    """
+    if cache is None:
+        return []
+    try:
+        return cache.get_summaries(user_id, conversation_id, skip_user_id_check)
+    except CacheError as exc:  # markers remain a valid fallback
+        logger.warning("compaction: cache get_summaries failed: %s", exc)
+        return []
+
+
+def _store_cached_summary(
+    cache: Optional[Cache],
+    user_id: str,
+    conversation_id: str,
+    summary: ConversationSummary,
+    skip_user_id_check: bool,
+) -> None:
+    """Persist a new summary chunk to the cache (best-effort).
+
+    The summary is also written as a Llama Stack marker by the caller, so a
+    failed cache write does not lose it — it only forgoes cache-backed reads and
+    folding for this conversation.
+    """
+    if cache is None:
+        return
+    try:
+        cache.store_summary(user_id, conversation_id, summary, skip_user_id_check)
+    except CacheError as exc:  # the marker write already preserved the summary
+        logger.warning("compaction: cache store_summary failed: %s", exc)
+
+
+def configured_conversation_cache() -> Optional[Cache]:
+    """Return the configured conversation cache, or None when none is configured.
+
+    Endpoints pass this to :func:`apply_compaction` / :func:`apply_compaction_blocking`.
+    Compaction uses the cache as its preferred summary store and the home of the
+    persisted recursive fold; with no cache configured it runs in marker-only mode.
+    """
+    if configuration.conversation_cache_configuration.type is None:
+        return None
+    return configuration.conversation_cache
+
+
 def _should_compact(
     estimated_tokens: int,
     context_window: int,
@@ -260,6 +329,9 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
     compaction_config: CompactionConfiguration,
     emit_events: bool = False,
     encoding_name: str = DEFAULT_ENCODING_NAME,
+    cache: Optional[Cache] = None,
+    user_id: str = "",
+    skip_user_id_check: bool = False,
 ) -> AsyncIterator[Any]:
     """Apply conversation compaction to a prepared request, yielding the result.
 
@@ -281,6 +353,11 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
         compaction_config: Compaction tuning (enabled, threshold, buffer, ...).
         emit_events: Whether to yield CompactionStartedEvent before summarizing.
         encoding_name: tiktoken encoding name for estimation/summarization.
+        cache: Conversation cache, the preferred summary store and the home of
+            the persisted recursive fold. ``None`` (or a non-persisting backend)
+            falls back to marker-only summaries with no folding.
+        user_id: User identifier for cache reads/writes.
+        skip_user_id_check: Whether to bypass the cache's user_id validation.
 
     Yields:
         Zero or more CompactionStartedEvent, then exactly one CompactionResult.
@@ -296,8 +373,19 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
 
     async with _get_lock(conversation_id):
         items = await get_all_conversation_items(client, conversation_id)
-        summaries = _marker_summaries(items)
         recent_items = _items_after_last_marker(items)
+
+        # Summaries: the cache is the preferred source of truth (and the home of
+        # any persisted recursive fold); the Llama Stack marker texts remain an
+        # authoritative fallback when no persisting cache is available.
+        cached_summaries = _read_cached_summaries(
+            cache, user_id, conversation_id, skip_user_id_check
+        )
+        summaries = (
+            [s.summary_text for s in cached_summaries]
+            if cached_summaries
+            else _marker_summaries(items)
+        )
 
         context_window = get_context_window(model, inference_config)
         if context_window is not None:
@@ -332,8 +420,42 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
                     await _write_summary_marker(
                         client, conversation_id, summary.summary_text
                     )
+                    _store_cached_summary(
+                        cache, user_id, conversation_id, summary, skip_user_id_check
+                    )
                     summaries.append(summary.summary_text)
+                    cached_summaries = [*cached_summaries, summary]
                     recent_items = keep_items
+
+            # Recursive fold (R3): when the persisted summaries themselves grow
+            # past the threshold, collapse them into a single fold and persist it
+            # so it is reused rather than recomputed each request. Requires a
+            # persisting cache; marker-only conversations keep additive summaries.
+            if cache is not None and len(cached_summaries) >= 2:
+                summaries_tokens = sum(s.token_count for s in cached_summaries)
+                if (
+                    summaries_tokens
+                    > context_window * compaction_config.threshold_ratio
+                ):
+                    logger.info(
+                        "Folding %d summaries (%d tokens) for conversation %s",
+                        len(cached_summaries),
+                        summaries_tokens,
+                        conversation_id,
+                    )
+                    folded = await recursively_resummarize(
+                        client, model, cached_summaries, encoding_name
+                    )
+                    try:
+                        cache.replace_summaries(
+                            user_id, conversation_id, folded, skip_user_id_check
+                        )
+                        cached_summaries = [folded]
+                        summaries = [folded.summary_text]
+                    except CacheError as exc:  # keep the unfolded summaries
+                        logger.warning(
+                            "compaction: cache replace_summaries failed: %s", exc
+                        )
 
         if not summaries:
             # No compaction has ever happened for this conversation: leave the
@@ -352,17 +474,21 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
         )
 
 
-async def apply_compaction_blocking(
+async def apply_compaction_blocking(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     client: AsyncLlamaStackClient,
     params: ResponsesApiParams,
     inference_config: InferenceConfiguration,
     compaction_config: CompactionConfiguration,
     encoding_name: str = DEFAULT_ENCODING_NAME,
+    cache: Optional[Cache] = None,
+    user_id: str = "",
+    skip_user_id_check: bool = False,
 ) -> CompactionResult:
     """Non-streaming wrapper around :func:`apply_compaction`.
 
     Drains the generator with event emission disabled and returns the final
-    :class:`CompactionResult`.
+    :class:`CompactionResult`. See :func:`apply_compaction` for the ``cache`` /
+    ``user_id`` / ``skip_user_id_check`` parameters.
     """
     result: Optional[CompactionResult] = None
     async for item in apply_compaction(
@@ -372,6 +498,9 @@ async def apply_compaction_blocking(
         compaction_config,
         emit_events=False,
         encoding_name=encoding_name,
+        cache=cache,
+        user_id=user_id,
+        skip_user_id_check=skip_user_id_check,
     ):
         if isinstance(item, CompactionResult):
             result = item

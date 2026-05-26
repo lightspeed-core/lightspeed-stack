@@ -346,6 +346,9 @@ class A2AAgentExecutor(AgentExecutor):
             # Compact the conversation if it is approaching the context window
             # limit. A2A is not a browser SSE stream, so no progress event is
             # emitted; the blocking variant summarizes inline before the call.
+            # No conversation cache is passed: the A2A executor has no resolved
+            # user_id for the (user_id, conversation_id) cache key, so A2A runs
+            # in marker-only mode (additive summaries, no persisted fold).
             compaction = await apply_compaction_blocking(
                 client,
                 responses_params,

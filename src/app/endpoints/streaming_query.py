@@ -82,6 +82,7 @@ from utils.conversation_compaction import (
     CompactionResult,
     CompactionStartedEvent,
     apply_compaction,
+    configured_conversation_cache,
     needs_compaction_path,
 )
 from utils.conversations import append_turn_items_to_conversation
@@ -641,6 +642,9 @@ async def generate_response_with_compaction(
             configuration.inference,
             configuration.compaction,
             emit_events=True,
+            cache=configured_conversation_cache(),
+            user_id=context.user_id,
+            skip_user_id_check=context.skip_userid_check,
         ):
             if isinstance(item, CompactionStartedEvent):
                 yield stream_compaction_event(context.conversation_id)

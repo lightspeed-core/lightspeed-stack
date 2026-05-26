@@ -65,7 +65,10 @@ from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
 from models.config import Action
-from utils.conversation_compaction import apply_compaction_blocking
+from utils.conversation_compaction import (
+    apply_compaction_blocking,
+    configured_conversation_cache,
+)
 from utils.conversations import append_turn_items_to_conversation
 from utils.endpoints import (
     check_configuration_loaded,
@@ -355,7 +358,7 @@ async def responses_endpoint_handler(
     check_configuration_loaded(configuration)
     started_at = datetime.now(UTC)
     rh_identity_context = get_rh_identity_context(request)
-    user_id, _, _, token = auth
+    user_id, _, skip_userid_check, token = auth
 
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
@@ -472,6 +475,9 @@ async def responses_endpoint_handler(
             api_params,
             configuration.inference,
             configuration.compaction,
+            cache=configured_conversation_cache(),
+            user_id=user_id,
+            skip_user_id_check=skip_userid_check,
         )
         api_params = compaction.params
         if compaction.summarized:
