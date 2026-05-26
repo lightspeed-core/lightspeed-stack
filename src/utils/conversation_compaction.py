@@ -299,12 +299,17 @@ def _store_cached_summary(
 
 
 def configured_conversation_cache() -> Optional[Cache]:
-    """Return the configured conversation cache, or None when none is configured.
+    """Return the conversation cache for compaction, or None when not applicable.
 
     Endpoints pass this to :func:`apply_compaction` / :func:`apply_compaction_blocking`.
-    Compaction uses the cache as its preferred summary store and the home of the
-    persisted recursive fold; with no cache configured it runs in marker-only mode.
+    Returns None — without touching the cache — when compaction is disabled, since
+    the cache is only used by compaction on this path and accessing it would
+    needlessly initialize it (and could fail) on every request. Also returns None
+    when no conversation cache is configured; compaction then runs in marker-only
+    mode.
     """
+    if not configuration.compaction.enabled:
+        return None
     if configuration.conversation_cache_configuration.type is None:
         return None
     return configuration.conversation_cache

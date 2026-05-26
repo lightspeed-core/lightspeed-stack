@@ -504,6 +504,7 @@ async def test_marker_fallback_when_cache_empty(mocker: MockerFixture) -> None:
 def test_configured_conversation_cache_none(mocker: MockerFixture) -> None:
     """configured_conversation_cache returns None when no cache is configured."""
     mock_config = mocker.patch.object(cc, "configuration")
+    mock_config.compaction.enabled = True
     mock_config.conversation_cache_configuration.type = None
     assert cc.configured_conversation_cache() is None
 
@@ -511,10 +512,27 @@ def test_configured_conversation_cache_none(mocker: MockerFixture) -> None:
 def test_configured_conversation_cache_returns_cache(mocker: MockerFixture) -> None:
     """configured_conversation_cache returns the configured cache instance."""
     mock_config = mocker.patch.object(cc, "configuration")
+    mock_config.compaction.enabled = True
     mock_config.conversation_cache_configuration.type = "sqlite"
     sentinel = object()
     mock_config.conversation_cache = sentinel
     assert cc.configured_conversation_cache() is sentinel
+
+
+def test_configured_conversation_cache_none_when_compaction_disabled(
+    mocker: MockerFixture,
+) -> None:
+    """Returns None when compaction is disabled, even if a cache is configured.
+
+    Regression guard (LCORE-1572): the cache must not be initialized on every
+    request when compaction is off — doing so 500'd e2e requests on configs whose
+    SQLite cache could not be opened.
+    """
+    mock_config = mocker.patch.object(cc, "configuration")
+    mock_config.compaction.enabled = False
+    mock_config.conversation_cache_configuration.type = "sqlite"
+    mock_config.conversation_cache = object()
+    assert cc.configured_conversation_cache() is None
 
 
 def test_estimate_response_input_tokens_counts_list_form() -> None:
