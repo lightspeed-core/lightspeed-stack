@@ -388,6 +388,49 @@ async def apply_compaction_blocking(
     return result
 
 
+async def needs_compaction_path(
+    client: AsyncLlamaStackClient,
+    params: ResponsesApiParams,
+    inference_config: InferenceConfiguration,
+    compaction_config: CompactionConfiguration,
+    encoding_name: str = DEFAULT_ENCODING_NAME,
+) -> bool:
+    """Cheap pre-stream check: does this request need the compaction-aware path?
+
+    Returns True when the conversation already has a summary marker (so it must
+    be served in compacted mode with explicit input) or when the estimated
+    tokens would trigger a new compaction. Performs no LLM call and takes no
+    lock — the authoritative evaluate-and-summarize work happens later under
+    the lock in :func:`apply_compaction`. Streaming endpoints use this to keep
+    non-compacting requests on their unchanged code path, so the in-stream
+    flow (and its SSE-error semantics) only ever applies to conversations that
+    are actually being compacted.
+
+    Parameters:
+        client: Llama Stack client.
+        params: The base Responses API params.
+        inference_config: Inference config (for the per-model context window).
+        compaction_config: Compaction tuning.
+        encoding_name: tiktoken encoding name for estimation.
+
+    Returns:
+        True if the compaction-aware streaming path should be used.
+    """
+    if not compaction_config.enabled:
+        return False
+    items = await get_all_conversation_items(client, params.conversation)
+    if any(is_marker_item(item) for item in items):
+        return True
+    context_window = get_context_window(params.model, inference_config)
+    if context_window is None:
+        return False
+    estimated = estimate_tokens(params.instructions or "", encoding_name)
+    estimated += estimate_conversation_tokens(items, encoding_name=encoding_name)
+    if isinstance(params.input, str):
+        estimated += estimate_tokens(params.input, encoding_name)
+    return _should_compact(estimated, context_window, compaction_config)
+
+
 async def store_compacted_turn(
     client: AsyncLlamaStackClient,
     conversation_id: str,

@@ -78,6 +78,12 @@ from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import ReferencedDocument, TurnSummary
 from models.config import Action
+from utils.conversation_compaction import (
+    CompactionResult,
+    CompactionStartedEvent,
+    apply_compaction,
+    needs_compaction_path,
+)
 from utils.conversations import append_turn_items_to_conversation
 from utils.endpoints import (
     check_configuration_loaded,
@@ -287,6 +293,33 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     )
     recording.record_llm_call(provider_id, model_id, endpoint_path)
 
+    response_media_type = (
+        MEDIA_TYPE_TEXT
+        if query_request.media_type == MEDIA_TYPE_TEXT
+        else MEDIA_TYPE_EVENT_STREAM
+    )
+
+    # Only conversations that actually compact (already have a summary marker,
+    # or would trigger one now) take the compaction-aware path, where the
+    # response is created inside the SSE stream so the progress event can be
+    # flushed before the summarization LLM call. Every other request keeps the
+    # unchanged path: the response stream is created here, so create-time errors
+    # surface as HTTP responses exactly as before.
+    if await needs_compaction_path(
+        context.client,
+        responses_params,
+        configuration.inference,
+        configuration.compaction,
+    ):
+        return StreamingResponse(
+            generate_response_with_compaction(
+                context=context,
+                responses_params=responses_params,
+                endpoint_path=endpoint_path,
+            ),
+            media_type=response_media_type,
+        )
+
     generator, turn_summary = await retrieve_response_generator(
         responses_params=responses_params,
         context=context,
@@ -298,12 +331,6 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         turn_summary.referenced_documents = deduplicate_referenced_documents(
             inline_rag_context.referenced_documents + turn_summary.referenced_documents
         )
-
-    response_media_type = (
-        MEDIA_TYPE_TEXT
-        if query_request.media_type == MEDIA_TYPE_TEXT
-        else MEDIA_TYPE_EVENT_STREAM
-    )
 
     return StreamingResponse(
         generate_response(
@@ -563,11 +590,119 @@ def _register_interrupt_callback(
     return guard
 
 
-async def generate_response(
+def _http_exception_stream_event(exc: HTTPException) -> str:
+    """Render a FastAPI HTTPException as an SSE error event.
+
+    Used by the compaction-aware streaming path, where the response is created
+    inside the stream and so create-time errors must be surfaced as SSE events
+    rather than as an HTTP status response.
+    """
+    detail = (
+        exc.detail if isinstance(exc.detail, dict) else {"response": str(exc.detail)}
+    )
+    return format_stream_data(
+        {"event": "error", "data": {"status_code": exc.status_code, **detail}}
+    )
+
+
+async def generate_response_with_compaction(
+    context: ResponseGeneratorContext,
+    responses_params: ResponsesApiParams,
+    endpoint_path: str,
+) -> AsyncIterator[str]:
+    """Stream a response for a conversation that requires compaction.
+
+    Used only when :func:`needs_compaction_path` is true. Compaction and the
+    response creation happen inside the SSE stream so the ``compaction`` event
+    is flushed to the client *before* the summarization LLM call (R12). Errors
+    raised while compacting or creating the response are surfaced as SSE error
+    events (the stream has already started, so an HTTP status is no longer
+    possible).
+
+    Args:
+        context: The response generator context.
+        responses_params: The base Responses API parameters.
+        endpoint_path: API endpoint path used for metric labeling.
+
+    Yields:
+        SSE-formatted strings.
+    """
+    media_type = context.query_request.media_type or MEDIA_TYPE_JSON
+    yield stream_start_event(
+        conversation_id=context.conversation_id,
+        request_id=context.request_id,
+    )
+
+    compacted = False
+    try:
+        async for item in apply_compaction(
+            context.client,
+            responses_params,
+            configuration.inference,
+            configuration.compaction,
+            emit_events=True,
+        ):
+            if isinstance(item, CompactionStartedEvent):
+                yield stream_compaction_event(context.conversation_id)
+            elif isinstance(item, CompactionResult):
+                responses_params = item.params
+                compacted = item.summarized
+
+        generator, turn_summary = await retrieve_response_generator(
+            responses_params=responses_params,
+            context=context,
+            endpoint_path=endpoint_path,
+        )
+    except HTTPException as e:
+        yield _http_exception_stream_event(e)
+        return
+    except RuntimeError as e:  # library mode wraps 413 into runtime error
+        error_response = (
+            PromptTooLongResponse(model=responses_params.model)
+            if is_context_length_error(str(e))
+            else InternalServerErrorResponse.generic()
+        )
+        yield stream_http_error_event(error_response, media_type)
+        return
+    except APIConnectionError as e:
+        yield stream_http_error_event(
+            ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e)),
+            media_type,
+        )
+        return
+    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+        yield stream_http_error_event(
+            handle_known_apistatus_errors(e, responses_params.model), media_type
+        )
+        return
+
+    # Combine inline RAG results (BYOK + Solr) with tool-based results
+    if context.moderation_result.decision == "passed":
+        turn_summary.referenced_documents = deduplicate_referenced_documents(
+            context.inline_rag_context.referenced_documents
+            + turn_summary.referenced_documents
+        )
+
+    # The start event was already emitted above; delegate the rest (re-yield,
+    # finalization, compacted-turn storage) to the shared generator.
+    async for event in generate_response(
+        generator,
+        context,
+        responses_params,
+        turn_summary,
+        emit_start=False,
+        compacted=compacted,
+    ):
+        yield event
+
+
+async def generate_response(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
     generator: AsyncIterator[str],
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
     turn_summary: TurnSummary,
+    emit_start: bool = True,
+    compacted: bool = False,
 ) -> AsyncIterator[str]:
     """Wrap a generator with cleanup logic.
 
@@ -582,6 +717,12 @@ async def generate_response(
         context: The response generator context
         responses_params: The Responses API parameters
         turn_summary: TurnSummary populated during streaming
+        emit_start: Whether to emit the SSE start event. False when the caller
+            (the compaction-aware wrapper) has already emitted it.
+        compacted: Whether the conversation is in compacted mode. When True the
+            conversation parameter was not sent to Llama Stack, so the completed
+            turn is appended to the conversation here rather than being stored
+            automatically.
 
     Yields:
         SSE-formatted strings from the wrapped generator
@@ -592,10 +733,11 @@ async def generate_response(
 
     stream_completed = False
     try:
-        yield stream_start_event(
-            conversation_id=context.conversation_id,
-            request_id=context.request_id,
-        )
+        if emit_start:
+            yield stream_start_event(
+                conversation_id=context.conversation_id,
+                request_id=context.request_id,
+            )
 
         # Re-yield all events from the generator
         async for event in generator:
@@ -670,6 +812,23 @@ async def generate_response(
         context.query_request.media_type or MEDIA_TYPE_JSON,
     )
     completed_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # In compacted mode the conversation parameter was not sent, so Llama Stack
+    # did not persist this turn. Append it ourselves to keep the recent-turn
+    # buffer and audit history intact for the next request.
+    if compacted:
+        try:
+            await append_turn_to_conversation(
+                context.client,
+                responses_params.conversation,
+                context.query_request.query,
+                turn_summary.llm_response,
+            )
+        except Exception:  # pylint: disable=broad-except
+            logger.exception(
+                "Failed to append compacted turn to conversation for request %s",
+                context.request_id,
+            )
 
     # Store query results (transcript, conversation details, cache)
     logger.info("Storing query results")
@@ -962,6 +1121,31 @@ def stream_start_event(conversation_id: str, request_id: str) -> str:
             "data": {
                 "conversation_id": conversation_id,
                 "request_id": request_id,
+            },
+        }
+    )
+
+
+def stream_compaction_event(conversation_id: str) -> str:
+    """Format an SSE event signalling that conversation compaction has started.
+
+    Emitted before the summarization LLM call (R12) so the client can show a
+    progress indicator while older turns are being summarized.
+
+    Parameters:
+    ----------
+        conversation_id: The conversation being compacted.
+
+    Returns:
+    -------
+        str: SSE-formatted string representing the compaction event.
+    """
+    return format_stream_data(
+        {
+            "event": "compaction",
+            "data": {
+                "status": "started",
+                "conversation_id": conversation_id,
             },
         }
     )

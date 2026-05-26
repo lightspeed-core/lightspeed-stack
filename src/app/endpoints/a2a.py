@@ -1,5 +1,7 @@
 """Handler for A2A (Agent-to-Agent) protocol endpoints using Responses API."""
 
+# pylint: disable=too-many-lines
+
 import asyncio
 import json
 import uuid
