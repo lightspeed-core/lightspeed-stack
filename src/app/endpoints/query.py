@@ -231,7 +231,7 @@ async def query_endpoint_handler(
         responses_params,
         moderation_result,
         endpoint_path,
-        original_input=compaction.original_input if compaction.summarized else None,
+        original_input=compaction.original_input if compaction.compacted else None,
     )
 
     if moderation_result.decision == "passed":

@@ -650,7 +650,7 @@ async def generate_response_with_compaction(
                 yield stream_compaction_event(context.conversation_id)
             elif isinstance(item, CompactionResult):
                 responses_params = item.params
-                compacted = item.summarized
+                compacted = item.compacted
 
         generator, turn_summary = await retrieve_response_generator(
             responses_params=responses_params,

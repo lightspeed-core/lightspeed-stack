@@ -3,7 +3,7 @@
 # Tests exercise internal helpers directly.
 # pylint: disable=protected-access
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from pytest_mock import MockerFixture
@@ -130,7 +130,7 @@ async def test_disabled_passes_through() -> None:
         inference_config=_inference(1000),
         compaction_config=_compaction(enabled=False),
     )
-    assert result.summarized is False
+    assert result.compacted is False
     assert result.params.omit_conversation is False
     assert result.params.input == "new question"
 
@@ -149,7 +149,7 @@ async def test_no_context_window_no_marker_passes_through(
         inference_config=_inference(None),
         compaction_config=_compaction(),
     )
-    assert result.summarized is False
+    assert result.compacted is False
     assert result.params.omit_conversation is False
 
 
@@ -180,7 +180,7 @@ async def test_existing_marker_builds_explicit_input(mocker: MockerFixture) -> N
     )
 
     summarize.assert_not_called()  # below threshold, no new summary
-    assert result.summarized is True
+    assert result.compacted is True
     assert result.params.omit_conversation is True
     assert isinstance(result.params.input, list)
     texts = [m.content for m in result.params.input]
@@ -217,7 +217,7 @@ async def test_triggers_summarization_and_writes_marker(mocker: MockerFixture) -
 
     summarize.assert_awaited_once()
     write_marker.assert_awaited_once()
-    assert result.summarized is True
+    assert result.compacted is True
     assert result.params.omit_conversation is True
     texts = [m.content for m in result.params.input]
     assert "condensed earlier turns" in texts[0]
@@ -254,7 +254,7 @@ async def test_streaming_emits_event_before_summarizing(mocker: MockerFixture) -
     assert isinstance(yielded[0], cc.CompactionStartedEvent)
     assert yielded[0].conversation_id == CONV
     assert isinstance(yielded[-1], cc.CompactionResult)
-    assert yielded[-1].summarized is True
+    assert yielded[-1].compacted is True
 
 
 @pytest.mark.asyncio
@@ -473,7 +473,7 @@ async def test_no_fold_without_cache(mocker: MockerFixture) -> None:
     )
 
     resum.assert_not_awaited()
-    assert result.summarized is True  # still compacted via markers
+    assert result.compacted is True  # still compacted via markers
 
 
 @pytest.mark.asyncio
@@ -515,3 +515,18 @@ def test_configured_conversation_cache_returns_cache(mocker: MockerFixture) -> N
     sentinel = object()
     mock_config.conversation_cache = sentinel
     assert cc.configured_conversation_cache() is sentinel
+
+
+def test_estimate_response_input_tokens_counts_list_form() -> None:
+    """List-form ResponseInput is counted toward the estimate, not treated as zero.
+
+    Regression guard: counting only string input would undercount list-form
+    input (e.g. /v1/responses) and let a request skip compaction (LCORE-1572).
+    """
+    big = "incident detail " * 50
+    string_tokens = cc._estimate_response_input_tokens(big, cc.DEFAULT_ENCODING_NAME)
+    list_tokens = cc._estimate_response_input_tokens(
+        cast(Any, [_msg("user", big)]), cc.DEFAULT_ENCODING_NAME
+    )
+    assert string_tokens > 10
+    assert list_tokens > 10

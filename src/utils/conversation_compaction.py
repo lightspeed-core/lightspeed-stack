@@ -126,21 +126,24 @@ class CompactionResult:
 
     Attributes:
         params: The (possibly rewritten) Responses API params to send. When
-            ``summarized`` is True, ``params.input`` is an explicit item list
+            ``compacted`` is True, ``params.input`` is an explicit item list
             (summaries + recent turns + new query) and the ``conversation``
             parameter is omitted from the request body.
-        summarized: Whether the conversation is in compacted mode (it has at
-            least one summary marker). Drives ``context_status``.
+        compacted: Whether the request is served in compacted (explicit-input)
+            mode — i.e. the conversation has at least one summary (from a marker
+            or the cache), so the ``conversation`` parameter is omitted. This is
+            True whether the summary was created this request or reused from a
+            prior one. Drives ``context_status``.
         original_input: The new user query exactly as it arrived (before the
             explicit-input rewrite). Populated only in compacted mode (where
-            ``summarized`` is True); ``None`` otherwise. In compacted mode the
+            ``compacted`` is True); ``None`` otherwise. In compacted mode the
             caller must append this plus the LLM output to the conversation
             items itself, since the ``conversation`` parameter is no longer
             passed to Llama Stack.
     """
 
     params: ResponsesApiParams
-    summarized: bool
+    compacted: bool
     original_input: Optional[ResponseInput] = None
 
 
@@ -307,6 +310,18 @@ def configured_conversation_cache() -> Optional[Cache]:
     return configuration.conversation_cache
 
 
+def _estimate_response_input_tokens(value: ResponseInput, encoding_name: str) -> int:
+    """Estimate the token count of a request input (string or item list).
+
+    The new query may arrive as a plain string or, on ``/v1/responses``, as a
+    list of input items. Counting only the string form would undercount list
+    inputs, which could let a request skip compaction and still hit HTTP 413.
+    """
+    if isinstance(value, str):
+        return estimate_tokens(value, encoding_name)
+    return estimate_conversation_tokens(list(value), encoding_name=encoding_name)
+
+
 def _should_compact(
     estimated_tokens: int,
     context_window: int,
@@ -343,7 +358,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
     The whole evaluate-and-summarize section runs under the conversation's lock
     (R11). When compaction is disabled, the model has no registered context
     window, or the conversation is not yet near the limit, the result simply
-    carries the unchanged params with ``summarized`` reflecting whether any
+    carries the unchanged params with ``compacted`` reflecting whether any
     prior summary marker already exists.
 
     Parameters:
@@ -363,7 +378,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
         Zero or more CompactionStartedEvent, then exactly one CompactionResult.
     """
     if not compaction_config.enabled:
-        yield CompactionResult(params, summarized=False)
+        yield CompactionResult(params, compacted=False)
         return
 
     conversation_id = params.conversation
@@ -394,8 +409,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
             estimated += estimate_conversation_tokens(
                 recent_items, encoding_name=encoding_name
             )
-            if isinstance(original_input, str):
-                estimated += estimate_tokens(original_input, encoding_name)
+            estimated += _estimate_response_input_tokens(original_input, encoding_name)
 
             if _should_compact(estimated, context_window, compaction_config):
                 if emit_events:
@@ -460,7 +474,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
         if not summaries:
             # No compaction has ever happened for this conversation: leave the
             # normal conversation-parameter flow untouched.
-            yield CompactionResult(params, summarized=False)
+            yield CompactionResult(params, compacted=False)
             return
 
         # Compacted mode: lightspeed owns the context. Build explicit input and
@@ -470,7 +484,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
             update={"input": explicit_input, "omit_conversation": True}
         )
         yield CompactionResult(
-            compacted_params, summarized=True, original_input=original_input
+            compacted_params, compacted=True, original_input=original_input
         )
 
 
@@ -547,8 +561,7 @@ async def needs_compaction_path(
         return False
     estimated = estimate_tokens(params.instructions or "", encoding_name)
     estimated += estimate_conversation_tokens(items, encoding_name=encoding_name)
-    if isinstance(params.input, str):
-        estimated += estimate_tokens(params.input, encoding_name)
+    estimated += _estimate_response_input_tokens(params.input, encoding_name)
     return _should_compact(estimated, context_window, compaction_config)
 
 

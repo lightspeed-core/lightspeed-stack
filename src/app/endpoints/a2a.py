@@ -421,7 +421,7 @@ class A2AAgentExecutor(AgentExecutor):
             context_id,
             conversation_id,
             client,
-            compaction.original_input if compaction.summarized else None,
+            compaction.original_input if compaction.compacted else None,
         ):
             aggregator.process_event(a2a_event)
             await event_queue.enqueue_event(a2a_event)

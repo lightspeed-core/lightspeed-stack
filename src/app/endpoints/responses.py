@@ -480,7 +480,7 @@ async def responses_endpoint_handler(
             skip_user_id_check=skip_userid_check,
         )
         api_params = compaction.params
-        if compaction.summarized:
+        if compaction.compacted:
             compacted_original_input = compaction.original_input
 
     context = ResponsesContext(
