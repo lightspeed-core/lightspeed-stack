@@ -32,7 +32,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from llama_stack_api.openai_responses import (
     OpenAIResponseObjectStream,
 )
-from llama_stack_client import APIConnectionError
+from llama_stack_client import APIConnectionError, AsyncLlamaStackClient
 from starlette.responses import Response, StreamingResponse
 
 from a2a_storage import A2AContextStore, A2AStorageFactory
@@ -45,13 +45,18 @@ from configuration import configuration
 from constants import MEDIA_TYPE_EVENT_STREAM
 from log import get_logger
 from models.api.requests import QueryRequest
+from models.common.responses.types import ResponseInput
 from models.config import Action
+from utils.conversation_compaction import (
+    apply_compaction_blocking,
+    store_compacted_turn,
+)
 from utils.mcp_headers import McpHeaders, mcp_headers_dependency
 from utils.responses import (
     extract_text_from_response_item,
     prepare_responses_params,
 )
-from utils.suid import normalize_conversation_id
+from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
 from version import __version__
 
 logger = get_logger(__name__)
@@ -336,6 +341,16 @@ class A2AAgentExecutor(AgentExecutor):
                 store=True,
                 request_headers=self.request_headers,
             )
+            # Compact the conversation if it is approaching the context window
+            # limit. A2A is not a browser SSE stream, so no progress event is
+            # emitted; the blocking variant summarizes inline before the call.
+            compaction = await apply_compaction_blocking(
+                client,
+                responses_params,
+                configuration.inference,
+                configuration.compaction,
+            )
+            responses_params = compaction.params
             # Stream response from LLM using the Responses API
             stream = await client.responses.create(**responses_params.model_dump())
         except APIConnectionError as e:
@@ -392,9 +407,16 @@ class A2AAgentExecutor(AgentExecutor):
             )
         )
 
-        # Process stream using generator and aggregator pattern
+        # Process stream using generator and aggregator pattern. In compacted
+        # mode the conversation parameter is not sent, so the turn is stored
+        # explicitly once the response completes (see _convert_stream_to_events).
         async for a2a_event in self._convert_stream_to_events(
-            stream, task_id, context_id, conversation_id
+            stream,
+            task_id,
+            context_id,
+            conversation_id,
+            client,
+            compaction.original_input if compaction.summarized else None,
         ):
             aggregator.process_event(a2a_event)
             await event_queue.enqueue_event(a2a_event)
@@ -414,12 +436,14 @@ class A2AAgentExecutor(AgentExecutor):
                 final=True,
             )
 
-    async def _convert_stream_to_events(  # pylint: disable=too-many-branches,too-many-locals
+    async def _convert_stream_to_events(  # pylint: disable=too-many-branches,too-many-locals,too-many-arguments,too-many-positional-arguments
         self,
         stream: AsyncIterator[OpenAIResponseObjectStream],
         task_id: str,
         context_id: str,
         conversation_id: Optional[str],
+        client: Optional[AsyncLlamaStackClient] = None,
+        compacted_original_input: Optional[ResponseInput] = None,
     ) -> AsyncIterator[Any]:
         """Convert Responses API stream chunks to A2A events.
 
@@ -508,6 +532,20 @@ class A2AAgentExecutor(AgentExecutor):
 
                 if response_obj:
                     output = getattr(response_obj, "output", [])
+                    # In compacted mode the conversation parameter was not sent,
+                    # so persist this turn ourselves to keep the recent-turn
+                    # buffer and audit history intact for the next request.
+                    if (
+                        compacted_original_input is not None
+                        and client is not None
+                        and conversation_id
+                    ):
+                        await store_compacted_turn(
+                            client,
+                            to_llama_stack_conversation_id(conversation_id),
+                            compacted_original_input,
+                            output,
+                        )
                     a2a_parts = _convert_responses_content_to_a2a_parts(output)
                     if not a2a_parts and final_text:
                         a2a_parts = [Part(root=TextPart(text=final_text))]
