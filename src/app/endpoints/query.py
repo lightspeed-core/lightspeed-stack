@@ -39,8 +39,13 @@ from models.api.responses.error import (
 from models.api.responses.successful import QueryResponse
 from models.common.moderation import ShieldModerationResult
 from models.common.responses.responses_api_params import ResponsesApiParams
+from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
 from models.config import Action
+from utils.conversation_compaction import (
+    apply_compaction_blocking,
+    store_compacted_turn,
+)
 from utils.conversations import append_turn_items_to_conversation
 from utils.endpoints import (
     check_configuration_loaded,
@@ -196,6 +201,17 @@ async def query_endpoint_handler(
         inline_rag_context=inline_rag_context.context_text,
     )
 
+    # Compact the conversation if it is approaching the context window limit.
+    # When compaction is active, params carry explicit input and the
+    # conversation parameter is dropped (lightspeed-stack owns the context).
+    compaction = await apply_compaction_blocking(
+        client,
+        responses_params,
+        configuration.inference,
+        configuration.compaction,
+    )
+    responses_params = compaction.params
+
     # Handle Azure token refresh if needed
     if (
         responses_params.model.startswith("azure")
@@ -207,7 +223,11 @@ async def query_endpoint_handler(
 
     # Retrieve response using Responses API
     turn_summary = await retrieve_response(
-        client, responses_params, moderation_result, endpoint_path
+        client,
+        responses_params,
+        moderation_result,
+        endpoint_path,
+        original_input=compaction.original_input if compaction.summarized else None,
     )
 
     if moderation_result.decision == "passed":
@@ -282,6 +302,7 @@ async def retrieve_response(
     responses_params: ResponsesApiParams,
     moderation_result: ShieldModerationResult,
     endpoint_path: str = "",
+    original_input: Optional[ResponseInput] = None,
 ) -> TurnSummary:
     """
     Retrieve response from LLMs and agents.
@@ -294,17 +315,28 @@ async def retrieve_response(
         client: The AsyncLlamaStackClient to use for the request.
         responses_params: The Responses API parameters.
         moderation_result: The moderation result.
+        endpoint_path: The request path, for metrics/telemetry.
+        original_input: Set only in compacted mode (LCORE-1572). It is the new
+            user query before the explicit-input rewrite. When provided, the
+            turn is appended to the conversation here, because the conversation
+            parameter is no longer passed to Llama Stack and so the turn is not
+            stored automatically.
 
     Returns:
     -------
         TurnSummary: Summary of the LLM response content
     """
     response: Optional[OpenAIResponseObject] = None
+    # In compacted mode, the new turn must be stored against the original user
+    # query, not the explicit summaries-plus-recent input we send to inference.
+    turn_input = (
+        original_input if original_input is not None else responses_params.input
+    )
     if moderation_result.decision == "blocked":
         await append_turn_items_to_conversation(
             client,
             responses_params.conversation,
-            responses_params.input,
+            turn_input,
             [moderation_result.refusal_response],
         )
         return TurnSummary(
@@ -330,6 +362,16 @@ async def retrieve_response(
     except (LLSApiStatusError, OpenAIAPIStatusError) as e:
         error_response = handle_known_apistatus_errors(e, responses_params.model)
         raise HTTPException(**error_response.model_dump()) from e
+
+    # In compacted mode, store the completed turn ourselves (the conversation
+    # parameter was not sent, so Llama Stack did not persist it).
+    if original_input is not None:
+        await store_compacted_turn(
+            client,
+            responses_params.conversation,
+            original_input,
+            response.output,
+        )
 
     vector_store_ids = extract_vector_store_ids_from_tools(responses_params.tools)
     rag_id_mapping = configuration.rag_id_mapping

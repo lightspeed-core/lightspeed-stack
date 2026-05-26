@@ -18,6 +18,7 @@ from models.config import (
     AuthenticationConfiguration,
     AuthorizationConfiguration,
     AzureEntraIdConfiguration,
+    CompactionConfiguration,
     Configuration,
     ConversationHistoryConfiguration,
     Customization,
@@ -318,6 +319,21 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         return self._configuration.inference
+
+    @property
+    def compaction(self) -> CompactionConfiguration:
+        """Return conversation compaction configuration.
+
+        Returns:
+            CompactionConfiguration: The compaction configuration from the
+            loaded application configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.compaction
 
     @property
     def conversation_cache_configuration(self) -> ConversationHistoryConfiguration:
