@@ -41,6 +41,7 @@ from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from typing import Any, Optional, cast
 
+from llama_stack_api.openai_responses import OpenAIResponseMessage
 from llama_stack_client import AsyncLlamaStackClient
 from llama_stack_client.types.conversations.item_create_params import Item
 
@@ -160,21 +161,18 @@ def _marker_summaries(items: list[Any]) -> list[str]:
     return [_summary_text_of(item) for item in items if is_marker_item(item)]
 
 
-def _summary_input_message(summary_text: str) -> dict[str, Any]:
-    """Build an explicit input message carrying a summary for the model."""
-    return {
-        "type": "message",
-        "role": "user",
-        "content": [
-            {
-                "type": "input_text",
-                "text": f"Summary of earlier conversation:\n{summary_text}",
-            }
-        ],
-    }
+def _summary_input_message(summary_text: str) -> OpenAIResponseMessage:
+    """Build an explicit input message carrying a summary for the model.
+
+    Returns a typed ``OpenAIResponseMessage`` (a member of the ``ResponseInput``
+    union) so it serializes cleanly when the request body is dumped.
+    """
+    return OpenAIResponseMessage(
+        role="user", content=f"Summary of earlier conversation:\n{summary_text}"
+    )
 
 
-def _verbatim_input_message(item: Any) -> Optional[dict[str, Any]]:
+def _verbatim_input_message(item: Any) -> Optional[OpenAIResponseMessage]:
     """Render a recent conversation message item as an explicit input message.
 
     Only message items are rendered; non-message items (tool calls/results) are
@@ -188,29 +186,22 @@ def _verbatim_input_message(item: Any) -> Optional[dict[str, Any]]:
     if not text:
         return None
     role = item.get("role") if isinstance(item, dict) else getattr(item, "role", "user")
-    content_type = "output_text" if role == "assistant" else "input_text"
-    return {
-        "type": "message",
-        "role": role,
-        "content": [{"type": content_type, "text": text}],
-    }
+    if role not in ("system", "developer", "user", "assistant"):
+        role = "user"
+    # role validated above; cast satisfies the Literal-typed parameter.
+    return OpenAIResponseMessage(role=cast(Any, role), content=text)
 
 
 def _query_input_message(original_input: ResponseInput) -> list[Any]:
-    """Render the new user query (string or item list) as explicit input messages."""
+    """Render the new user query as explicit input items.
+
+    A string query becomes a single typed user message. An item list (e.g. from
+    the /v1/responses client) is already composed of typed ``ResponseItem``
+    objects, so it is passed through unchanged.
+    """
     if isinstance(original_input, str):
-        return [
-            {
-                "type": "message",
-                "role": "user",
-                "content": [{"type": "input_text", "text": original_input}],
-            }
-        ]
-    rendered: list[Any] = []
-    for item in original_input:
-        dumped = item.model_dump() if hasattr(item, "model_dump") else item
-        rendered.append(dumped)
-    return rendered
+        return [OpenAIResponseMessage(role="user", content=original_input)]
+    return list(original_input)
 
 
 def _build_explicit_input(

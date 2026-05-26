@@ -97,13 +97,13 @@ def test_build_explicit_input_shape() -> None:
         recent_items=[_msg("user", "recent q"), _msg("assistant", "recent a")],
         original_input="brand new question",
     )
-    texts = [part["content"][0]["text"] for part in built]
+    texts = [m.content for m in built]
     assert "Summary of earlier conversation:\nearlier stuff" in texts[0]
     assert texts[1] == "recent q"
     assert texts[2] == "recent a"
     assert texts[3] == "brand new question"
-    # the assistant turn is rendered with output_text content
-    assert built[2]["content"][0]["type"] == "output_text"
+    # items are typed OpenAIResponseMessage objects (so they serialize cleanly)
+    assert built[2].role == "assistant"
 
 
 def test_should_compact() -> None:
@@ -183,7 +183,7 @@ async def test_existing_marker_builds_explicit_input(mocker: MockerFixture) -> N
     assert result.summarized is True
     assert result.params.omit_conversation is True
     assert isinstance(result.params.input, list)
-    texts = [p["content"][0]["text"] for p in result.params.input]
+    texts = [m.content for m in result.params.input]
     assert texts[0].endswith("the earlier conversation summary")
     assert texts[-1] == "brand new"
     assert result.original_input == "brand new"
@@ -219,7 +219,7 @@ async def test_triggers_summarization_and_writes_marker(mocker: MockerFixture) -
     write_marker.assert_awaited_once()
     assert result.summarized is True
     assert result.params.omit_conversation is True
-    texts = [p["content"][0]["text"] for p in result.params.input]
+    texts = [m.content for m in result.params.input]
     assert "condensed earlier turns" in texts[0]
     assert texts[-1] == "follow-up"
 
