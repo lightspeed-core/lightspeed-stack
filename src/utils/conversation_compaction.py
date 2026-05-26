@@ -375,7 +375,8 @@ async def apply_compaction_blocking(
     ):
         if isinstance(item, CompactionResult):
             result = item
-    assert result is not None  # the generator always yields exactly one result
+    if result is None:  # pragma: no cover - the generator always yields one result
+        raise RuntimeError("apply_compaction did not yield a CompactionResult")
     return result
 
 
