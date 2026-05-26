@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from models.api.requests import QueryRequest
 from models.common.moderation import ShieldModerationResult
+from models.common.responses.types import ResponseInput
 from models.common.turn_summary import RAGContext
 
 
@@ -54,6 +55,14 @@ class ResponsesContext(BaseModel):
     generate_topic_summary: bool = Field(
         default=False,
         description="Whether to generate a topic summary for new conversations",
+    )
+    compacted_original_input: Optional[ResponseInput] = Field(
+        default=None,
+        description="Set only when conversation compaction (LCORE-1572) rewrote "
+        "the request: the original user input before the explicit-input "
+        "rewrite. When present, the completed turn is appended to the "
+        "conversation using this input, since the conversation parameter was "
+        "dropped and Llama Stack therefore does not store the turn.",
     )
 
 
