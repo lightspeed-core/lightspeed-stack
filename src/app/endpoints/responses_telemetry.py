@@ -10,8 +10,8 @@ from typing import Optional
 from fastapi import BackgroundTasks
 
 from log import get_logger
+from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.responses_context import ResponsesContext
 from models.common.turn_summary import TurnSummary
 from observability import ResponsesEventData, build_responses_event
 from observability.splunk import dispatch_splunk_event
