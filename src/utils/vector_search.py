@@ -640,7 +640,7 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
 
     Each source fetches using its per-source limit to build the reranking pool.
     Results are merged, sorted by score, reranked with a cross-encoder if
-    enabled, then capped at RAG_CONTENT_LIMIT. Enabled sources can be BYOK
+    enabled, then capped at INLINE_RAG_MAX_CHUNKS. Enabled sources can be BYOK
     and/or Solr OKP.
 
     Args:
@@ -655,7 +655,7 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
     if moderation_decision == "blocked":
         return RAGContext()
 
-    top_k = constants.RAG_CONTENT_LIMIT
+    top_k = constants.INLINE_RAG_MAX_CHUNKS
 
     # Fetch from each source using per-source limits for the reranking pool
     byok_chunks_task = _fetch_byok_rag(

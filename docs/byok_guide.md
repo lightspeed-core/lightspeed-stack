@@ -85,7 +85,7 @@ Inline RAG additionally supports:
 > `score_multiplier` does not apply to OKP results. To control the amount of retrieved
 > context, set the `BYOK_RAG_MAX_CHUNKS` and `OKP_RAG_MAX_CHUNKS` constants in `src/constants.py`
 > (defaults: 10 and 5 respectively). For Tool RAG, use `TOOL_RAG_MAX_CHUNKS` (default: 10).
-> The `RAG_CONTENT_LIMIT` constant (default: 10) caps the final merged inline RAG
+> The `INLINE_RAG_MAX_CHUNKS` constant (value: 10) caps the final merged inline RAG
 > chunks (BYOK + OKP) delivered to the LLM. Tool RAG is controlled independently
 > by `TOOL_RAG_MAX_CHUNKS`.
 

@@ -12,7 +12,7 @@ from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import ResponsesRequest
 from models.api.responses.successful import ResponsesResponse
-from models.common.responses.responses_context import ResponsesContext
+from models.common.responses.contexts import ResponsesContext
 from tests.integration.endpoints.test_query_byok_integration import (
     _build_base_mock_client,
     _make_byok_vector_io_response,
@@ -260,6 +260,12 @@ async def test_responses_byok_tool_rag_returns_tool_calls(  # pylint: disable=to
         == "file_search"
     ]
     assert len(file_search_tools) == 1
+    vs_ids = (
+        file_search_tools[0].get("vector_store_ids")
+        if isinstance(file_search_tools[0], dict)
+        else file_search_tools[0].vector_store_ids
+    )
+    assert vs_ids == ["vs-byok-knowledge"]
 
 
 # ==============================================================================
@@ -336,6 +342,12 @@ async def test_responses_byok_combined_inline_and_tool_rag(  # pylint: disable=t
         == "file_search"
     ]
     assert len(file_search_tools) == 1
+    vs_ids = (
+        file_search_tools[0].get("vector_store_ids")
+        if isinstance(file_search_tools[0], dict)
+        else file_search_tools[0].vector_store_ids
+    )
+    assert vs_ids == ["vs-byok-knowledge"]
 
 
 # ==============================================================================
@@ -490,7 +502,7 @@ async def test_responses_byok_score_multiplier_shifts_chunk_priority(  # pylint:
 
 
 # ==============================================================================
-# RAG_CONTENT_LIMIT Capping Tests
+# INLINE_RAG_MAX_CHUNKS Capping Tests
 # ==============================================================================
 
 
@@ -500,13 +512,13 @@ async def test_responses_rag_content_limit_caps_retrieved_results(  # pylint: di
     mocker: MockerFixture,
     test_request: Request,
 ) -> None:
-    """Test that RAG_CONTENT_LIMIT caps the number of returned chunks.
+    """Test that INLINE_RAG_MAX_CHUNKS caps the number of returned chunks.
 
-    A single source returns more chunks than RAG_CONTENT_LIMIT allows.
-    The context sent to the LLM should contain at most RAG_CONTENT_LIMIT chunks.
+    A single source returns more chunks than INLINE_RAG_MAX_CHUNKS allows.
+    The context sent to the LLM should contain at most INLINE_RAG_MAX_CHUNKS chunks.
 
     Verifies:
-    - Context chunk count does not exceed RAG_CONTENT_LIMIT
+    - Context chunk count does not exceed INLINE_RAG_MAX_CHUNKS
     - Returned chunks are the top-scoring ones
     """
     entry = mocker.MagicMock()
@@ -521,8 +533,8 @@ async def test_responses_rag_content_limit_caps_retrieved_results(  # pylint: di
     mock_client = _build_responses_mock_client(mocker)
     _patch_all_client_holders(mocker, mock_client)
 
-    # Generate more chunks than RAG_CONTENT_LIMIT
-    num_chunks = constants.RAG_CONTENT_LIMIT + 1
+    # Generate more chunks than INLINE_RAG_MAX_CHUNKS
+    num_chunks = constants.INLINE_RAG_MAX_CHUNKS + 1
     chunks_data = [
         (f"Chunk content {i}", f"chunk-{i}", round(0.50 + i * 0.03, 2))
         for i in range(num_chunks)
@@ -548,7 +560,7 @@ async def test_responses_rag_content_limit_caps_retrieved_results(  # pylint: di
 
     create_call = mock_client.responses.create.call_args_list[0]
     input_text = create_call.kwargs.get("input", "")
-    expected_header = f"file_search found {constants.RAG_CONTENT_LIMIT} chunks:"
+    expected_header = f"file_search found {constants.INLINE_RAG_MAX_CHUNKS} chunks:"
     assert expected_header in input_text
 
     # The highest-scored chunk should be present
@@ -563,14 +575,14 @@ async def test_responses_rag_content_limit_caps_across_multiple_sources(  # pyli
     mocker: MockerFixture,
     test_request: Request,
 ) -> None:
-    """Test that RAG_CONTENT_LIMIT caps chunks across multiple sources.
+    """Test that INLINE_RAG_MAX_CHUNKS caps chunks across multiple sources.
 
     Two sources each return several chunks. The combined result should not
-    exceed RAG_CONTENT_LIMIT and should contain the globally highest-scored
+    exceed INLINE_RAG_MAX_CHUNKS and should contain the globally highest-scored
     chunks regardless of source.
 
     Verifies:
-    - Total chunks across sources are capped at RAG_CONTENT_LIMIT
+    - Total chunks across sources are capped at INLINE_RAG_MAX_CHUNKS
     - Top-scoring chunks from both sources are included
     """
     entry_a = mocker.MagicMock()
@@ -590,7 +602,7 @@ async def test_responses_rag_content_limit_caps_across_multiple_sources(  # pyli
     _patch_all_client_holders(mocker, mock_client)
 
     # Overlapping score bands so top-k must pick from both sources
-    n = constants.RAG_CONTENT_LIMIT
+    n = constants.INLINE_RAG_MAX_CHUNKS
     resp_a = _make_vector_io_response(
         mocker,
         [
@@ -630,7 +642,7 @@ async def test_responses_rag_content_limit_caps_across_multiple_sources(  # pyli
 
     create_call = mock_client.responses.create.call_args_list[0]
     input_text = create_call.kwargs.get("input", "")
-    expected_header = f"file_search found {constants.RAG_CONTENT_LIMIT} chunks:"
+    expected_header = f"file_search found {constants.INLINE_RAG_MAX_CHUNKS} chunks:"
     assert expected_header in input_text
 
     # Both sources should survive the cap (high-scoring chunks from each)
@@ -648,16 +660,16 @@ async def test_responses_rag_content_limit_caps_inline_rag(  # pylint: disable=t
     mocker: MockerFixture,
     test_request: Request,
 ) -> None:
-    """Test that RAG_CONTENT_LIMIT caps inline RAG below BYOK_RAG_MAX_CHUNKS.
+    """Test that INLINE_RAG_MAX_CHUNKS caps inline RAG below BYOK_RAG_MAX_CHUNKS.
 
-    Sets RAG_CONTENT_LIMIT to 3 (below BYOK_RAG_MAX_CHUNKS=10) and feeds
+    Sets INLINE_RAG_MAX_CHUNKS to 3 (below BYOK_RAG_MAX_CHUNKS=10) and feeds
     10 chunks. The context sent to the LLM should contain at most 3 chunks.
 
     Verifies:
-    - Context chunk count equals the lowered RAG_CONTENT_LIMIT
+    - Context chunk count equals the lowered INLINE_RAG_MAX_CHUNKS
     - Only the highest-scored chunks appear in the context
     """
-    mocker.patch("utils.vector_search.constants.RAG_CONTENT_LIMIT", 3)
+    mocker.patch("utils.vector_search.constants.INLINE_RAG_MAX_CHUNKS", 3)
 
     entry = mocker.MagicMock()
     entry.rag_id = "big-source"

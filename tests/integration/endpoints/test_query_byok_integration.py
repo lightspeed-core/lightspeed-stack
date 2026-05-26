@@ -1066,7 +1066,7 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
 
 
 # ==============================================================================
-# RAG_CONTENT_LIMIT Capping Tests
+# INLINE_RAG_MAX_CHUNKS Capping Tests
 # ==============================================================================
 
 
@@ -1077,14 +1077,14 @@ async def test_query_rag_content_limit_caps_retrieved_results(  # pylint: disabl
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
-    """Test that RAG_CONTENT_LIMIT caps the number of returned chunks.
+    """Test that INLINE_RAG_MAX_CHUNKS caps the number of returned chunks.
 
-    A single source returns more chunks than RAG_CONTENT_LIMIT allows.
-    The response should contain at most RAG_CONTENT_LIMIT chunks and
+    A single source returns more chunks than INLINE_RAG_MAX_CHUNKS allows.
+    The response should contain at most INLINE_RAG_MAX_CHUNKS chunks and
     they should be the highest-scored ones.
 
     Verifies:
-    - Number of RAG chunks does not exceed RAG_CONTENT_LIMIT
+    - Number of RAG chunks does not exceed INLINE_RAG_MAX_CHUNKS
     - Returned chunks are the top-scoring ones
     """
     entry = mocker.MagicMock()
@@ -1101,8 +1101,8 @@ async def test_query_rag_content_limit_caps_retrieved_results(  # pylint: disabl
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
     mock_client = _build_base_mock_client(mocker)
 
-    # Generate more chunks than RAG_CONTENT_LIMIT
-    num_chunks = constants.RAG_CONTENT_LIMIT + 1
+    # Generate more chunks than INLINE_RAG_MAX_CHUNKS
+    num_chunks = constants.INLINE_RAG_MAX_CHUNKS + 1
     chunks_data = [
         (f"Chunk content {i}", f"chunk-{i}", round(0.50 + i * 0.03, 2))
         for i in range(num_chunks)
@@ -1141,7 +1141,7 @@ async def test_query_rag_content_limit_caps_retrieved_results(  # pylint: disabl
     )
 
     assert response.rag_chunks is not None
-    assert len(response.rag_chunks) == constants.RAG_CONTENT_LIMIT
+    assert len(response.rag_chunks) == constants.INLINE_RAG_MAX_CHUNKS
 
     # Check that the score is computed properly
     for chunk in response.rag_chunks:
@@ -1167,14 +1167,14 @@ async def test_query_rag_content_limit_caps_across_multiple_sources(  # pylint: 
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
-    """Test that RAG_CONTENT_LIMIT caps chunks across multiple sources.
+    """Test that INLINE_RAG_MAX_CHUNKS caps chunks across multiple sources.
 
     Two sources each return several chunks. The combined result should not
-    exceed RAG_CONTENT_LIMIT and should contain the globally highest-scored
+    exceed INLINE_RAG_MAX_CHUNKS and should contain the globally highest-scored
     chunks regardless of source.
 
     Verifies:
-    - Total chunks across sources are capped at RAG_CONTENT_LIMIT
+    - Total chunks across sources are capped at INLINE_RAG_MAX_CHUNKS
     - Top-scoring chunks from both sources are included
     """
     entry_a = mocker.MagicMock()
@@ -1194,7 +1194,7 @@ async def test_query_rag_content_limit_caps_across_multiple_sources(  # pylint: 
     mock_client = _build_base_mock_client(mocker)
 
     # Overlapping score bands so top-k must pick from both sources
-    n = constants.RAG_CONTENT_LIMIT
+    n = constants.INLINE_RAG_MAX_CHUNKS
     resp_a = _make_vector_io_response(
         mocker,
         [
@@ -1246,7 +1246,7 @@ async def test_query_rag_content_limit_caps_across_multiple_sources(  # pylint: 
     )
 
     assert response.rag_chunks is not None
-    assert len(response.rag_chunks) == constants.RAG_CONTENT_LIMIT
+    assert len(response.rag_chunks) == constants.INLINE_RAG_MAX_CHUNKS
 
     # Check that the score is computed properly
     for chunk in response.rag_chunks:
@@ -1275,16 +1275,16 @@ async def test_query_rag_content_limit_caps_inline_rag(  # pylint: disable=too-m
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
-    """Test that RAG_CONTENT_LIMIT caps inline RAG below BYOK_RAG_MAX_CHUNKS.
+    """Test that INLINE_RAG_MAX_CHUNKS caps inline RAG below BYOK_RAG_MAX_CHUNKS.
 
-    Sets RAG_CONTENT_LIMIT to 3 (below BYOK_RAG_MAX_CHUNKS=10) and feeds
+    Sets INLINE_RAG_MAX_CHUNKS to 3 (below BYOK_RAG_MAX_CHUNKS=10) and feeds
     10 chunks. The result should be capped at 3.
 
     Verifies:
-    - Number of inline RAG chunks equals the lowered RAG_CONTENT_LIMIT
+    - Number of inline RAG chunks equals the lowered INLINE_RAG_MAX_CHUNKS
     - Returned chunks are the top-scoring ones
     """
-    mocker.patch("utils.vector_search.constants.RAG_CONTENT_LIMIT", 3)
+    mocker.patch("utils.vector_search.constants.INLINE_RAG_MAX_CHUNKS", 3)
 
     entry = mocker.MagicMock()
     entry.rag_id = "big-source"

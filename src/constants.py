@@ -189,7 +189,7 @@ USER_QUOTA_LIMITER: Final[str] = "user_limiter"
 CLUSTER_QUOTA_LIMITER: Final[str] = "cluster_limiter"
 
 # Hard cap on total RAG chunks delivered to the LLM across all sources
-RAG_CONTENT_LIMIT: Final[int] = 10
+INLINE_RAG_MAX_CHUNKS: Final[int] = 10
 
 # RAG as a tool constants
 DEFAULT_RAG_TOOL: Final[str] = "file_search"
