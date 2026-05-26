@@ -76,6 +76,7 @@ from models.api.responses.error import (
 from models.api.responses.successful import StreamingQueryResponse
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
+from models.common.responses.types import ResponseInput
 from models.common.turn_summary import ReferencedDocument, TurnSummary
 from models.config import Action
 from utils.conversation_compaction import (
@@ -84,6 +85,7 @@ from utils.conversation_compaction import (
     apply_compaction,
     configured_conversation_cache,
     needs_compaction_path,
+    store_compacted_turn,
 )
 from utils.conversations import append_turn_items_to_conversation
 from utils.endpoints import (
@@ -369,12 +371,17 @@ async def retrieve_response_generator(
         if context.moderation_result.decision == "blocked":
             turn_summary.llm_response = context.moderation_result.message
             turn_summary.id = context.moderation_result.moderation_id
-            await append_turn_items_to_conversation(
-                context.client,
-                responses_params.conversation,
-                responses_params.input,
-                [context.moderation_result.refusal_response],
-            )
+            turn_summary.output_items = [context.moderation_result.refusal_response]
+            # In compacted mode the conversation parameter was omitted, so the
+            # refusal turn (with the original input) is persisted by
+            # generate_response; storing it here too would duplicate it.
+            if not responses_params.omit_conversation:
+                await append_turn_items_to_conversation(
+                    context.client,
+                    responses_params.conversation,
+                    responses_params.input,
+                    [context.moderation_result.refusal_response],
+                )
             media_type = context.query_request.media_type or MEDIA_TYPE_JSON
             return (
                 shield_violation_generator(
@@ -635,6 +642,7 @@ async def generate_response_with_compaction(
     )
 
     compacted = False
+    compacted_original_input: Optional[ResponseInput] = None
     try:
         async for item in apply_compaction(
             context.client,
@@ -651,6 +659,7 @@ async def generate_response_with_compaction(
             elif isinstance(item, CompactionResult):
                 responses_params = item.params
                 compacted = item.compacted
+                compacted_original_input = item.original_input
 
         generator, turn_summary = await retrieve_response_generator(
             responses_params=responses_params,
@@ -696,6 +705,7 @@ async def generate_response_with_compaction(
         turn_summary,
         emit_start=False,
         compacted=compacted,
+        original_input=compacted_original_input,
     ):
         yield event
 
@@ -707,6 +717,7 @@ async def generate_response(  # pylint: disable=too-many-arguments,too-many-posi
     turn_summary: TurnSummary,
     emit_start: bool = True,
     compacted: bool = False,
+    original_input: Optional[ResponseInput] = None,
 ) -> AsyncIterator[str]:
     """Wrap a generator with cleanup logic.
 
@@ -727,6 +738,9 @@ async def generate_response(  # pylint: disable=too-many-arguments,too-many-posi
             conversation parameter was not sent to Llama Stack, so the completed
             turn is appended to the conversation here rather than being stored
             automatically.
+        original_input: In compacted mode, the original user input before the
+            explicit-input rewrite. Used to persist the completed turn with its
+            structured input (preserving attachments); ``None`` otherwise.
 
     Yields:
         SSE-formatted strings from the wrapped generator
@@ -822,11 +836,15 @@ async def generate_response(  # pylint: disable=too-many-arguments,too-many-posi
     # buffer and audit history intact for the next request.
     if compacted:
         try:
-            await append_turn_to_conversation(
+            await store_compacted_turn(
                 context.client,
                 responses_params.conversation,
-                context.query_request.query,
-                turn_summary.llm_response,
+                (
+                    original_input
+                    if original_input is not None
+                    else context.query_request.query
+                ),
+                turn_summary.output_items,
             )
         except Exception:  # pylint: disable=broad-except
             logger.exception(
@@ -996,6 +1014,10 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
                 getattr(chunk, "response"),  # noqa: B009
             )
             turn_summary.llm_response = turn_summary.llm_response or "".join(text_parts)
+            # Capture structured output items for compacted-mode turn storage
+            # (LCORE-1572), so the persisted turn keeps non-text output items
+            # rather than being flattened to the response text.
+            turn_summary.output_items = list(latest_response_object.output or [])
             yield stream_event(
                 {
                     "id": chunk_id,

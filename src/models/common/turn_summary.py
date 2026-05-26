@@ -108,6 +108,11 @@ class TurnSummary(BaseModel):
     rag_chunks: list[RAGChunk] = Field(default_factory=list)
     referenced_documents: list[ReferencedDocument] = Field(default_factory=list)
     token_usage: TokenCounter = Field(default_factory=TokenCounter)
+    output_items: list[Any] = Field(
+        default_factory=list,
+        description="Structured response output items, captured for compacted-mode "
+        "turn persistence (LCORE-1572). Empty on the non-compacted path.",
+    )
 
 
 class ToolInfoSummary(BaseModel):
