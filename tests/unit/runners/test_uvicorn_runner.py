@@ -30,7 +30,6 @@ def test_start_uvicorn(mocker: MockerFixture) -> None:
         ssl_certfile=None,
         ssl_keyfile=None,
         ssl_keyfile_password="",
-        use_colors=True,
         access_log=True,
         log_config={},
     )
@@ -54,7 +53,6 @@ def test_start_uvicorn_different_host_port(mocker: MockerFixture) -> None:
         ssl_certfile=None,
         ssl_keyfile=None,
         ssl_keyfile_password="",
-        use_colors=True,
         access_log=True,
         log_config={},
     )
@@ -79,7 +77,6 @@ def test_start_uvicorn_empty_tls_configuration(mocker: MockerFixture) -> None:
         ssl_certfile=None,
         ssl_keyfile=None,
         ssl_keyfile_password="",
-        use_colors=True,
         access_log=True,
         log_config={},
     )
@@ -108,7 +105,6 @@ def test_start_uvicorn_tls_configuration(mocker: MockerFixture) -> None:
         ssl_certfile=Path("tests/configuration/server.crt"),
         ssl_keyfile=Path("tests/configuration/server.key"),
         ssl_keyfile_password="tests/configuration/password",
-        use_colors=True,
         access_log=True,
         log_config={},
     )
@@ -132,7 +128,6 @@ def test_start_uvicorn_with_root_path(mocker: MockerFixture) -> None:
         ssl_certfile=None,
         ssl_keyfile=None,
         ssl_keyfile_password="",
-        use_colors=True,
         access_log=True,
         log_config={},
     )
@@ -185,7 +180,6 @@ def test_start_uvicorn_respects_debug_log_level(
         ssl_certfile=None,
         ssl_keyfile=None,
         ssl_keyfile_password="",
-        use_colors=True,
         access_log=True,
         log_config={},
     )
