@@ -2975,7 +2975,10 @@ async def test_response_generator_failed_captures_output_items(
 async def test_persist_interrupted_turn_compacted_uses_original_input(
     mocker: MockerFixture,
 ) -> None:
-    """Interrupted compacted turn persists the original input, not the explicit rewrite (LCORE-1572)."""
+    """Interrupted compacted turn persists the original input (LCORE-1572).
+
+    Not the explicit rewrite carried on responses_params.input.
+    """
     conv = "123e4567-e89b-12d3-a456-426614174000"
     context = mocker.Mock(spec=ResponseGeneratorContext)
     context.client = mocker.AsyncMock()
