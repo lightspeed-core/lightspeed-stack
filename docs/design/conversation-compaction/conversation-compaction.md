@@ -286,6 +286,8 @@ class CompactionConfiguration(ConfigurationBase):
 
 Add `compaction` field to the root `Configuration` class.
 
+**Limitation — disabling after a conversation is compacted.** `enabled: false` is a full off-switch: requests pass through unchanged, with the `conversation` parameter intact (full-history replay). If compaction is disabled *after* a conversation has already been compacted, that conversation reverts to full-history replay — which can re-hit the HTTP 413 path and resend summary marker text through the model. Toggling `enabled` mid-conversation on an already-compacted conversation is therefore unsupported; keep it enabled for the lifetime of such conversations.
+
 # Implementation Suggestions
 
 ## Key files and insertion points
