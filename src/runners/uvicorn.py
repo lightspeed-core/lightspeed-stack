@@ -42,6 +42,5 @@ def start_uvicorn(
         ssl_keyfile=configuration.tls_config.tls_key_path,
         ssl_certfile=configuration.tls_config.tls_certificate_path,
         ssl_keyfile_password=str(configuration.tls_config.tls_key_password or ""),
-        use_colors=True,
         access_log=True,
     )
