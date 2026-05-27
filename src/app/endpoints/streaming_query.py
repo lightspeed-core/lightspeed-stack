@@ -11,6 +11,7 @@ from typing import Annotated, Any, Optional, cast
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from llama_stack_api import (
+    OpenAIResponseMessage,
     OpenAIResponseObject,
     OpenAIResponseObjectStream,
 )
@@ -481,6 +482,7 @@ async def _persist_interrupted_turn(
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
     turn_summary: TurnSummary,
+    original_input: Optional[ResponseInput] = None,
 ) -> None:
     """Persist the user query and an interrupted response into the conversation.
 
@@ -495,14 +497,31 @@ async def _persist_interrupted_turn(
         responses_params: The Responses API parameters.
         turn_summary: TurnSummary with llm_response already set to the
             interrupted message.
+        original_input: In compacted mode, the original user input before the
+            explicit-input rewrite. When set, the turn is persisted against it
+            (the ``conversation`` parameter was dropped, and
+            ``responses_params.input`` is the explicit rewrite); ``None``
+            otherwise (LCORE-1572).
     """
     try:
-        await append_turn_to_conversation(
-            context.client,
-            responses_params.conversation,
-            cast(str, responses_params.input),
-            INTERRUPTED_RESPONSE_MESSAGE,
-        )
+        if original_input is not None:
+            await append_turn_items_to_conversation(
+                context.client,
+                responses_params.conversation,
+                original_input,
+                [
+                    OpenAIResponseMessage(
+                        role="assistant", content=INTERRUPTED_RESPONSE_MESSAGE
+                    )
+                ],
+            )
+        else:
+            await append_turn_to_conversation(
+                context.client,
+                responses_params.conversation,
+                cast(str, responses_params.input),
+                INTERRUPTED_RESPONSE_MESSAGE,
+            )
     except Exception:  # pylint: disable=broad-except
         logger.exception(
             "Failed to append interrupted turn to conversation for request %s",
@@ -548,6 +567,7 @@ def _register_interrupt_callback(
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
     turn_summary: TurnSummary,
+    original_input: Optional[ResponseInput] = None,
 ) -> list[bool]:
     """Build an interrupt callback and register the stream for cancellation.
 
@@ -578,7 +598,9 @@ def _register_interrupt_callback(
             return
         guard[0] = True
         turn_summary.llm_response = INTERRUPTED_RESPONSE_MESSAGE
-        await _persist_interrupted_turn(context, responses_params, turn_summary)
+        await _persist_interrupted_turn(
+            context, responses_params, turn_summary, original_input
+        )
 
     current_task = asyncio.current_task()
     if current_task is not None:
@@ -746,7 +768,7 @@ async def generate_response(  # pylint: disable=too-many-arguments,too-many-posi
         SSE-formatted strings from the wrapped generator
     """
     persist_guard = _register_interrupt_callback(
-        context, responses_params, turn_summary
+        context, responses_params, turn_summary, original_input
     )
 
     stream_completed = False
@@ -788,7 +810,9 @@ async def generate_response(  # pylint: disable=too-many-arguments,too-many-posi
         if not persist_guard[0]:
             persist_guard[0] = True
             turn_summary.llm_response = INTERRUPTED_RESPONSE_MESSAGE
-            await _persist_interrupted_turn(context, responses_params, turn_summary)
+            await _persist_interrupted_turn(
+                context, responses_params, turn_summary, original_input
+            )
         yield stream_interrupted_event(context.request_id)
     finally:
         get_stream_interrupt_registry().deregister_stream(context.request_id)
@@ -1034,6 +1058,9 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
                 OpenAIResponseObject,
                 getattr(chunk, "response"),  # noqa: B009
             )
+            # Capture any partial output items so a compacted-mode turn is not
+            # persisted with empty output on these terminals (LCORE-1572).
+            turn_summary.output_items = list(latest_response_object.output or [])
             error_message = (
                 latest_response_object.error.message
                 if latest_response_object.error

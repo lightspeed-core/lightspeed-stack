@@ -230,10 +230,18 @@ async def _persist_blocked_response_turn(
     """
     if api_params.store:
         moderation_result = cast(ShieldModerationBlocked, context.moderation_result)
+        # In compacted mode the conversation parameter was dropped and
+        # api_params.input is the explicit-input rewrite, so persist the turn
+        # against the original user input instead (LCORE-1572).
+        user_input = (
+            context.compacted_original_input
+            if context.compacted_original_input is not None
+            else api_params.input
+        )
         await append_turn_items_to_conversation(
             client=context.client,
             conversation_id=api_params.conversation,
-            user_input=api_params.input,
+            user_input=user_input,
             llm_output=[moderation_result.refusal_response],
         )
 

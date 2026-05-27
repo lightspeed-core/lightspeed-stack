@@ -383,6 +383,13 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
         Zero or more CompactionStartedEvent, then exactly one CompactionResult.
     """
     if not compaction_config.enabled:
+        # ``enabled: false`` is a full off-switch: the request passes through
+        # unchanged (conversation parameter intact, full-history replay). Known
+        # limitation: disabling compaction *after* a conversation was already
+        # compacted reverts that conversation to full replay — which can re-hit
+        # the 413 path and resend marker text through the model. Toggling the
+        # flag mid-conversation on already-compacted conversations is therefore
+        # unsupported; leave it enabled for the lifetime of such conversations.
         yield CompactionResult(params, compacted=False)
         return
 

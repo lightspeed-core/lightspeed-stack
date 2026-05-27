@@ -46,6 +46,7 @@ from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 
 from app.endpoints.streaming_query import (
+    _persist_interrupted_turn,
     generate_response,
     response_generator,
     retrieve_response_generator,
@@ -2926,3 +2927,87 @@ class TestResponseGeneratorMCPCalls:
         # Should have both tool call and result (fallback behavior)
         assert len(mock_turn_summary.tool_calls) == 1
         assert len(mock_turn_summary.tool_results) == 1
+
+
+@pytest.mark.asyncio
+async def test_response_generator_failed_captures_output_items(
+    mocker: MockerFixture,
+) -> None:
+    """A failed terminal captures output_items for compacted persistence (LCORE-1572)."""
+    out_item = mocker.Mock()
+
+    async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
+        chunk = mocker.Mock(spec=FailedChunk)
+        chunk.type = "response.failed"
+        mock_response = mocker.Mock()
+        mock_response.output = [out_item]
+        mock_response.error = mocker.Mock(message="boom")
+        chunk.response = mock_response
+        yield chunk
+
+    mock_context = mocker.Mock(spec=ResponseGeneratorContext)
+    mock_context.query_request = QueryRequest(
+        query="test", media_type=MEDIA_TYPE_JSON
+    )  # pyright: ignore[reportCallIssue]
+    mock_context.model_id = "provider1/model1"
+    mock_context.vector_store_ids = []
+    mock_context.rag_id_mapping = {}
+    mock_context.inline_rag_context = RAGContext()
+
+    turn_summary = TurnSummary()
+    mocker.patch(
+        "app.endpoints.streaming_query.extract_token_usage",
+        return_value=TokenCounter(input_tokens=0, output_tokens=0),
+    )
+    mocker.patch(
+        "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
+    )
+
+    async for _ in response_generator(
+        mock_turn_response(), mock_context, turn_summary, endpoint_path=""
+    ):
+        pass
+
+    assert turn_summary.output_items == [out_item]
+
+
+@pytest.mark.asyncio
+async def test_persist_interrupted_turn_compacted_uses_original_input(
+    mocker: MockerFixture,
+) -> None:
+    """Interrupted compacted turn persists the original input, not the explicit rewrite (LCORE-1572)."""
+    conv = "123e4567-e89b-12d3-a456-426614174000"
+    context = mocker.Mock(spec=ResponseGeneratorContext)
+    context.client = mocker.AsyncMock()
+    context.request_id = "req-1"
+    context.user_id = "user_1"
+    context.conversation_id = conv
+    context.started_at = "2024-01-01T00:00:00Z"
+    context.skip_userid_check = False
+    context.query_request = QueryRequest(
+        query="hi", conversation_id=conv
+    )  # pyright: ignore[reportCallIssue]
+
+    responses_params = mocker.Mock(spec=ResponsesApiParams)
+    responses_params.conversation = conv
+    responses_params.model = "provider1/model1"
+    responses_params.input = ["explicit rewrite"]
+
+    turn_summary = TurnSummary()
+    items = mocker.patch(
+        "app.endpoints.streaming_query.append_turn_items_to_conversation",
+        new=mocker.AsyncMock(),
+    )
+    strs = mocker.patch(
+        "app.endpoints.streaming_query.append_turn_to_conversation",
+        new=mocker.AsyncMock(),
+    )
+    mocker.patch("app.endpoints.streaming_query.store_query_results")
+
+    await _persist_interrupted_turn(
+        context, responses_params, turn_summary, original_input="the original query"
+    )
+
+    items.assert_awaited_once()
+    assert items.call_args.args[2] == "the original query"
+    strs.assert_not_awaited()
