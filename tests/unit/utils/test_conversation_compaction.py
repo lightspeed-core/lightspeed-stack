@@ -3,6 +3,7 @@
 # Tests exercise internal helpers directly.
 # pylint: disable=protected-access
 
+from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
@@ -522,16 +523,28 @@ def test_configured_conversation_cache_returns_cache(mocker: MockerFixture) -> N
 def test_configured_conversation_cache_none_when_compaction_disabled(
     mocker: MockerFixture,
 ) -> None:
-    """Returns None when compaction is disabled, even if a cache is configured.
+    """Returns None when compaction is disabled, without reading the cache.
 
     Regression guard (LCORE-1572): the cache must not be initialized on every
-    request when compaction is off — doing so 500'd e2e requests on configs whose
-    SQLite cache could not be opened.
+    request when compaction is off — that 500'd e2e requests on configs whose
+    SQLite cache could not be opened. The stub's ``conversation_cache`` raises if
+    read, so the test fails on any eager access, not only on the return value.
     """
-    mock_config = mocker.patch.object(cc, "configuration")
-    mock_config.compaction.enabled = False
-    mock_config.conversation_cache_configuration.type = "sqlite"
-    mock_config.conversation_cache = object()
+
+    class _ConfigStub:  # pylint: disable=too-few-public-methods
+        """Config whose conversation_cache raises if accessed."""
+
+        compaction = SimpleNamespace(enabled=False)
+        conversation_cache_configuration = SimpleNamespace(type="sqlite")
+
+        @property
+        def conversation_cache(self) -> object:
+            """Fail the test if the disabled path reads the cache."""
+            raise AssertionError(
+                "conversation_cache must not be accessed when compaction is disabled"
+            )
+
+    mocker.patch.object(cc, "configuration", _ConfigStub())
     assert cc.configured_conversation_cache() is None
 
 
