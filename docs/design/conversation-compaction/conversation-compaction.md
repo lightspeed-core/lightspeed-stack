@@ -189,7 +189,7 @@ After 2nd compaction:  [summary of turns 1-N] + [summary of turns N+1-M] + [rece
 After 3rd compaction:  [summary 1] + [summary 2] + [summary 3] + [recent turns] + [query]
 ```
 
-When total summary token count itself approaches the context limit, fall back to recursive re-summarization of the oldest summary chunks.
+When the total summary token count itself approaches the context limit, the summary chunks are folded into a single chunk by recursive re-summarization. As built, the fold is **persisted** in the summary cache via `replace_summaries` and reused, not recomputed each request; an in-memory recompute-per-request fold was prototyped and rejected because it produces non-deterministic context across turns. Folding requires a persisting cache; marker-only mode keeps the additive chunks with no fold.
 
 Why additive over recursive: a PoC experiment with 50 queries and 4 compaction cycles showed that recursive summarization progressively loses early-conversation context. By the 4th cycle, the summary had lost Kubernetes fundamentals, Helm, and Istio details that were discussed in the first 15 turns. See `poc-results/01-analysis.txt` for full evidence.
 
@@ -225,11 +225,13 @@ class ConversationSummary(BaseModel):
 
 A conversation may have multiple summary chunks (one per compaction event). All cache backends (SQLite, Postgres, memory) need this schema extension.
 
+As built, the cache is the **preferred source of truth** for summary text at runtime: each chunk is written on compaction (`store_summary`) and the active set is read back from it (`get_summaries`). The Llama Stack marker items remain an authoritative fallback — used when no persisting cache is configured — and the audit record; the marker position still defines the recent-verbatim boundary. The recursive fold persists through `replace_summaries` (atomic delete-all + insert of the folded chunk), a cache operation added for this (LCORE-1571).
+
 ## Changed request flow after compaction
 
 After compaction, lightspeed-stack writes the summary as a marked conversation item (a message whose text begins with a recognizable sentinel) so it appears in the Conversations API and serves as lightspeed-stack's own boundary marker.
 
-When building context for a compacted conversation, lightspeed-stack fetches the conversation items, collects every marker's summary, takes the items after the last marker as the recent verbatim buffer, and sends `[summaries] + [recent items] + [new query]` as **explicit input**, **without** the `conversation` parameter. This is necessary because Llama Stack reloads the *full* stored message history whenever the `conversation` parameter is set — there is no marker-based selection hook (verified empirically; see the Changelog). Each completed turn is then appended back to the conversation items by lightspeed-stack, since Llama Stack no longer auto-stores it.
+When building context for a compacted conversation, lightspeed-stack fetches the conversation items, reads the active summaries from the summary cache (LCORE-1571) — falling back to the marker texts when no persisting cache is configured — takes the items after the last marker as the recent verbatim buffer, and sends `[summaries] + [recent items] + [new query]` as **explicit input**, **without** the `conversation` parameter. This is necessary because Llama Stack reloads the *full* stored message history whenever the `conversation` parameter is set — there is no marker-based selection hook (verified empirically; see the Changelog). Each completed turn is then appended back to the conversation items by lightspeed-stack, since Llama Stack no longer auto-stores it.
 
 This preserves a single continuous conversation identity. The `conversation_id` never changes, the user sees one conversation in the UI, and the Conversations API returns the full history including the summary marker items.
 
@@ -397,6 +399,25 @@ in Llama Stack. Compaction was also confirmed to apply to four endpoints —
 not the two originally listed; `/v1/responses` compacts silently to preserve
 OpenAI-API wire compatibility. Evidence and full reasoning: the spike doc
 (`conversation-compaction-spike.md`).
+
+**2026-05-27 — Summary cache as source of truth + persisted recursive fold (LCORE-1571/1572).**
+Refining the entry above (which framed the cache as "a parallel persistence
+layer"): as built, the summary cache (LCORE-1571) is the *preferred source of
+truth* for summary text. On each request the active summaries are read from the
+cache; the Llama Stack marker texts remain an authoritative fallback (used when
+no persisting cache is configured) and the audit record, and the marker position
+still defines the recent-verbatim boundary. The recursive re-summarization
+fallback (R3) is implemented as a *persisted* fold: when the accumulated
+summaries' own token count crosses the threshold they are collapsed into one and
+stored via a new cache operation, `replace_summaries` (atomic delete-all +
+insert), so the fold is computed once and reused rather than recomputed per
+request. An in-memory recompute-per-request fold was prototyped and rejected
+(non-deterministic context across turns). The A2A executor runs marker-only (it
+has no resolved `user_id` for the `(user_id, conversation_id)` cache key, so no
+persisted fold). `enabled: false` stays a full off-switch; disabling compaction
+mid-conversation on an already-compacted conversation reverts it to full-history
+replay (unsupported — see Configuration). The `CompactionResult` mode flag was
+renamed `summarized` → `compacted` for clarity.
 
 # Appendix A: PoC Evidence
 
