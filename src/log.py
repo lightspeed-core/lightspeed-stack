@@ -135,6 +135,7 @@ def build_logging_config() -> dict[t.Any, t.Any]:
             "%(asctime)s.%(msecs)03d %(levelprefix)s "
             '%(client_addr)s - "%(request_line)s" %(status_code)s'
         )
+        merged_config["formatters"]["access"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
         merged_config["formatters"]["default"]["fmt"] = DEFAULT_LOG_FORMAT
         merged_config["formatters"]["default"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
 
