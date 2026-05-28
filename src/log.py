@@ -7,7 +7,6 @@ import sys
 import typing as t
 from copy import deepcopy
 from datetime import datetime
-from functools import lru_cache
 
 import uvicorn.config
 from rich.text import Text
@@ -91,8 +90,7 @@ def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(f"{DEFAULT_LOGGER_NAME}.{name}")
 
 
-@lru_cache
-def setup_logging() -> dict[t.Any, t.Any]:
+def build_logging_config() -> dict[t.Any, t.Any]:
     """Create logging configuration."""
     handler = "default"
     log_level = resolve_log_level()
@@ -140,6 +138,9 @@ def setup_logging() -> dict[t.Any, t.Any]:
         merged_config["formatters"]["default"]["fmt"] = DEFAULT_LOG_FORMAT
         merged_config["formatters"]["default"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
 
-    logging.config.dictConfig(merged_config)
-
     return merged_config
+
+
+def setup_logging() -> None:
+    """Set up main logging configuration."""
+    logging.config.dictConfig(build_logging_config())
