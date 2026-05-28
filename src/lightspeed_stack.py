@@ -97,7 +97,6 @@ def main() -> None:
 
     if args.verbose:
         os.environ[LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR] = "DEBUG"
-        setup_logging.cache_clear()
         setup_logging()
 
     configuration.load_configuration(args.config_file)

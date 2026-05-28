@@ -191,7 +191,7 @@ def test_start_uvicorn_no_log_config(mocker: MockerFixture) -> None:
         host="localhost", port=8080, workers=1
     )  # pyright: ignore[reportCallIssue]
 
-    mock_setup_logging = mocker.patch("runners.uvicorn.setup_logging")
+    mock_setup_logging = mocker.patch("runners.uvicorn.build_logging_config")
     mock_setup_logging.side_effect = ValueError("Raised intentionally")
 
     with pytest.raises(ValueError, match="Raised intentionally"):

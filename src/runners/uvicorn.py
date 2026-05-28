@@ -4,7 +4,7 @@ import logging
 
 import uvicorn
 
-from log import get_logger, resolve_log_level, setup_logging
+from log import build_logging_config, get_logger, resolve_log_level
 from models.config import ServiceConfiguration
 
 logger = get_logger(__name__)
@@ -28,7 +28,7 @@ def start_uvicorn(
     log_level = resolve_log_level()
     logger.info("Starting Uvicorn with log level %s", logging.getLevelName(log_level))
     if log_config is None:
-        log_config = setup_logging()
+        log_config = build_logging_config()
 
     # please note:
     # TLS fields can be None, which means we will pass those values as None to uvicorn.run

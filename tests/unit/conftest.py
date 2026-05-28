@@ -10,7 +10,6 @@ from pytest_mock import AsyncMockType, MockerFixture
 
 from configuration import AppConfig
 from constants import DEFAULT_LOGGER_NAME
-from log import setup_logging
 
 type AgentFixtures = Generator[
     tuple[
@@ -34,7 +33,6 @@ def reset_logging_state():
     original logger state afterward. It also clears the setup_logging lru_cache
     so tests that call setup_logging() get a fresh configuration.
     """
-    setup_logging.cache_clear()
     logger = logging.getLogger(DEFAULT_LOGGER_NAME)
     original_propagate = logger.propagate
     original_handlers = logger.handlers[:]
@@ -43,7 +41,6 @@ def reset_logging_state():
 
     yield
 
-    setup_logging.cache_clear()
     logger.propagate = original_propagate
     logger.handlers = original_handlers
     logger.level = original_level
