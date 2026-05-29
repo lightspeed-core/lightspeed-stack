@@ -2,7 +2,7 @@ version: 2
 image_name: starter
 
 apis:
-- agents
+- responses
 - batches
 - datasetio
 - eval
@@ -59,7 +59,7 @@ providers:
     provider_id: model-context-protocol
     provider_type: remote::model-context-protocol
   vector_io: []
-  agents:
+  responses:
   - config:
       persistence:
         agent_state:

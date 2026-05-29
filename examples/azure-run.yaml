@@ -2,7 +2,7 @@ version: 2
 image_name: azure-configuration
 
 apis:
-- agents
+- responses
 - batches
 - datasetio
 - eval
@@ -63,7 +63,7 @@ providers:
         backend: kv_rag
     provider_id: faiss
     provider_type: inline::faiss
-  agents:
+  responses:
   - config:
       persistence:
         agent_state:

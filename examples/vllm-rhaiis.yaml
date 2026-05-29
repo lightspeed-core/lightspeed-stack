@@ -2,7 +2,7 @@ version: 2
 image_name: rhaiis-configuration
 
 apis:
-- agents
+- responses
 - batches
 - datasetio
 - eval
@@ -61,7 +61,7 @@ providers:
         backend: kv_default
     provider_id: faiss
     provider_type: inline::faiss
-  agents:
+  responses:
   - config:
       persistence:
         agent_state:

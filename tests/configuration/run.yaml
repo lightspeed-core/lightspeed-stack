@@ -2,7 +2,7 @@ version: '2'
 image_name: minimal-viable-llama-stack-configuration
 
 apis:
-  - agents
+  - responses
   - datasetio
   - eval
   - inference
@@ -17,7 +17,7 @@ datasets: []
 external_providers_dir: null
 logging: null
 providers:
-  agents:
+  responses:
   - provider_id: meta-reference
     provider_type: inline::meta-reference
     config:

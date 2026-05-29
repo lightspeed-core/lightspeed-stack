@@ -7,7 +7,7 @@
 version: 2
 
 apis:
-- agents
+- responses
 - batches
 - datasetio
 - eval
@@ -71,7 +71,7 @@ providers:
         backend: kv_default
     provider_id: faiss
     provider_type: inline::faiss
-  agents:
+  responses:
   - config:
       persistence:
         agent_state:
