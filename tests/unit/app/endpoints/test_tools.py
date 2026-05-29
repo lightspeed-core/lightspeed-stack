@@ -502,7 +502,7 @@ async def test_tools_endpoint_builtin_toolgroup(
     # Mock toolgroups.list response with built-in toolgroup
     mock_toolgroup = mocker.Mock()
     mock_toolgroup.identifier = "builtin-tools"  # Not in MCP server names
-    mock_toolgroup.provider_id = "rag-runtime"
+    mock_toolgroup.provider_id = "file-search"
     mock_toolgroup.type = "tool_group"
     mock_client.toolgroups.list.return_value = [mock_toolgroup]
 
@@ -535,7 +535,7 @@ async def test_tools_endpoint_builtin_toolgroup(
     assert len(response.tools) == 1
     assert response.tools[0]["identifier"] == "builtin_tool"
     assert response.tools[0]["server_source"] == "builtin"
-    assert response.tools[0]["provider_id"] == "rag-runtime"
+    assert response.tools[0]["provider_id"] == "file-search"
     assert response.tools[0]["type"] == "tool_group"
     assert response.tools[0]["parameters"] == []
 
@@ -610,7 +610,7 @@ async def test_tools_endpoint_mixed_toolgroups(mocker: MockerFixture) -> None:
     mock_toolgroup1.type = "tool_group"
     mock_toolgroup2 = mocker.Mock()
     mock_toolgroup2.identifier = "builtin-tools"  # Built-in toolgroup
-    mock_toolgroup2.provider_id = "rag-runtime"
+    mock_toolgroup2.provider_id = "file-search"
     mock_toolgroup2.type = "tool_group"
     mock_client.toolgroups.list.return_value = [mock_toolgroup1, mock_toolgroup2]
 
@@ -661,7 +661,7 @@ async def test_tools_endpoint_mixed_toolgroups(mocker: MockerFixture) -> None:
     assert mcp_tool["server_source"] == "http://localhost:3000"
     assert mcp_tool["provider_id"] == "model-context-protocol"
     assert builtin_tool["server_source"] == "builtin"
-    assert builtin_tool["provider_id"] == "rag-runtime"
+    assert builtin_tool["provider_id"] == "file-search"
 
 
 @pytest.mark.asyncio
@@ -908,10 +908,10 @@ class TestInputSchemaToParameters:
 
 @pytest.mark.asyncio
 async def test_tools_endpoint_rag_builtin_toolgroup(mocker: MockerFixture) -> None:
-    """Test that builtin::rag tools have correct fields (LCORE-1211 regression).
+    """Test that builtin::file_search tools have correct fields (LCORE-1211 regression).
 
     Reproduces the exact scenario from LCORE-1211: Llama Stack returns RAG
-    tools via the builtin::rag toolgroup using the ToolDef format.
+    tools via the builtin::file_search toolgroup using the ToolDef format.
     Previously, identifier, provider_id, parameters, and type were all
     returned as empty strings/lists.
     """
@@ -965,10 +965,10 @@ async def test_tools_endpoint_rag_builtin_toolgroup(mocker: MockerFixture) -> No
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
-    # Toolgroup matching the real Llama Stack builtin::rag
+    # Toolgroup matching the real Llama Stack builtin::file_search
     mock_toolgroup = mocker.Mock()
-    mock_toolgroup.identifier = "builtin::rag"
-    mock_toolgroup.provider_id = "rag-runtime"
+    mock_toolgroup.identifier = "builtin::file_search"
+    mock_toolgroup.provider_id = "file-search"
     mock_toolgroup.type = "tool_group"
     mock_client.toolgroups.list.return_value = [mock_toolgroup]
 
@@ -988,7 +988,7 @@ async def test_tools_endpoint_rag_builtin_toolgroup(mocker: MockerFixture) -> No
                 },
                 "required": ["query"],
             },
-            "toolgroup_id": "builtin::rag",
+            "toolgroup_id": "builtin::file_search",
             "metadata": None,
             "output_schema": None,
         },
@@ -1007,10 +1007,10 @@ async def test_tools_endpoint_rag_builtin_toolgroup(mocker: MockerFixture) -> No
 
     tool = response.tools[0]
     assert tool["identifier"] == "knowledge_search"
-    assert tool["provider_id"] == "rag-runtime"
+    assert tool["provider_id"] == "file-search"
     assert tool["type"] == "tool_group"
     assert tool["server_source"] == "builtin"
-    assert tool["toolgroup_id"] == "builtin::rag"
+    assert tool["toolgroup_id"] == "builtin::file_search"
 
     # Parameters converted from input_schema
     assert len(tool["parameters"]) == 1
@@ -1080,8 +1080,8 @@ async def test_tools_endpoint_empty_legacy_fields_overridden(
     mock_client_holder.return_value.get_client.return_value = mock_client
 
     mock_toolgroup = mocker.Mock()
-    mock_toolgroup.identifier = "builtin::rag"
-    mock_toolgroup.provider_id = "rag-runtime"
+    mock_toolgroup.identifier = "builtin::file_search"
+    mock_toolgroup.provider_id = "file-search"
     mock_toolgroup.type = "tool_group"
     mock_client.toolgroups.list.return_value = [mock_toolgroup]
 
@@ -1105,7 +1105,7 @@ async def test_tools_endpoint_empty_legacy_fields_overridden(
             "parameters": [],
             "provider_id": "",
             "type": "",
-            "toolgroup_id": "builtin::rag",
+            "toolgroup_id": "builtin::file_search",
             "metadata": None,
             "output_schema": None,
         },
@@ -1125,10 +1125,10 @@ async def test_tools_endpoint_empty_legacy_fields_overridden(
     tool = response.tools[0]
     # Empty legacy fields must be overridden by new sources
     assert tool["identifier"] == "knowledge_search"
-    assert tool["provider_id"] == "rag-runtime"
+    assert tool["provider_id"] == "file-search"
     assert tool["type"] == "tool_group"
     assert tool["server_source"] == "builtin"
-    assert tool["toolgroup_id"] == "builtin::rag"
+    assert tool["toolgroup_id"] == "builtin::file_search"
 
     # Parameters populated from input_schema, not empty legacy list
     assert len(tool["parameters"]) == 1

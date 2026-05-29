@@ -88,8 +88,8 @@ providers:
     provider_id: builtin
     provider_type: inline::builtin
   tool_runtime:
-  - provider_id: rag-runtime
-    provider_type: inline::rag-runtime
+  - provider_id: file-search
+    provider_type: inline::file-search
     config: {}
   - provider_id: model-context-protocol
     provider_type: remote::model-context-protocol
@@ -139,8 +139,8 @@ registered_resources:
   scoring_fns: []
   benchmarks: []
   tool_groups:
-  - toolgroup_id: builtin::rag
-    provider_id: rag-runtime
+  - toolgroup_id: builtin::file_search
+    provider_id: file-search
 telemetry:
   enabled: true
 vector_stores:
