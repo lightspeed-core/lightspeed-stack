@@ -3,6 +3,7 @@ image_name: minimal-viable-llama-stack-configuration
 
 apis:
   - responses
+  - conversations
   - datasetio
   - eval
   - inference
@@ -21,6 +22,10 @@ providers:
   responses:
   - provider_id: builtin
     provider_type: inline::builtin
+  conversations:
+  - provider_id: builtin
+    provider_type: inline::builtin
+    config: {}
     config:
       persistence:
         agent_state:

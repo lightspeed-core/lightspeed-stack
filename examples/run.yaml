@@ -9,6 +9,7 @@ version: 2
 apis:
 - responses
 - batches
+- conversations
 - datasetio
 - eval
 - files
@@ -83,6 +84,10 @@ providers:
           backend: sql_default
     provider_id: builtin
     provider_type: inline::builtin
+  conversations:
+  - provider_id: builtin
+    provider_type: inline::builtin
+    config: {}
   batches:
   - config:
       kvstore:
