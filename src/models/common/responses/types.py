@@ -39,6 +39,9 @@ from llama_stack_api.openai_responses import (
 from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchToolCall,
 )
+from llama_stack_api.openai_responses import (
+    OpenAIResponseOutputMessageReasoningItem as ReasoningItem,
+)
 from pydantic import Field
 
 
@@ -73,6 +76,7 @@ type ResponseItem = (
     | McpApprovalRequest
     | FunctionToolCall
     | McpApprovalResponse
+    | ReasoningItem
 )
 
 type ResponseInput = str | list[ResponseItem]

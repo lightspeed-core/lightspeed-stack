@@ -7,7 +7,7 @@ from typing import Final, Literal
 
 # Minimal and maximal supported Llama Stack version
 MINIMAL_SUPPORTED_LLAMA_STACK_VERSION: Final[str] = "0.2.17"
-MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION: Final[str] = "0.6.0"
+MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION: Final[str] = "0.7.0"
 
 UNABLE_TO_PROCESS_RESPONSE: Final[str] = "Unable to process this request"
 

@@ -103,6 +103,27 @@ def _parse_message_item(item: MessageOutput) -> Message:
     return Message(content=content_text, type=message_type, referenced_documents=None)
 
 
+def _extract_function_output_content(output: Any) -> str:
+    """Extract string content from function call output.
+
+    In llama-stack 0.7.0+, function output can be either a string or a list of content parts.
+    This helper extracts text from both formats.
+
+    Args:
+        output: Function output (str or list of content parts)
+
+    Returns:
+        Extracted text content as string
+    """
+    if isinstance(output, list):
+        text_parts = []
+        for part in output:
+            if hasattr(part, "type") and getattr(part, "type", None) == "text":
+                text_parts.append(getattr(part, "text", ""))
+        return " ".join(text_parts) if text_parts else ""
+    return output
+
+
 def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-statements
     item: ItemListResponse,
 ) -> tuple[Optional[ToolCallSummary], Optional[ToolResultSummary]]:
@@ -259,7 +280,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
             ToolResultSummary(
                 id=function_output.call_id,
                 status=function_output.status or "success",
-                content=function_output.output,
+                content=_extract_function_output_content(function_output.output),
                 type="function_call_output",
                 round=1,
             ),
