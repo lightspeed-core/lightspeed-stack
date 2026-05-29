@@ -11,6 +11,7 @@ apis:
 - safety
 - scoring
 - tool_runtime
+- tool_groups
 - vector_io
 
 benchmarks: []
