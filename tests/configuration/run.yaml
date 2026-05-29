@@ -18,8 +18,8 @@ external_providers_dir: null
 logging: null
 providers:
   responses:
-  - provider_id: meta-reference
-    provider_type: inline::meta-reference
+  - provider_id: builtin
+    provider_type: inline::builtin
     config:
       persistence:
         agent_state:
@@ -42,8 +42,8 @@ providers:
         namespace: localfs_datasetio
         backend: kv_default
   eval:
-  - provider_id: meta-reference
-    provider_type: inline::meta-reference
+  - provider_id: builtin
+    provider_type: inline::builtin
     config:
       kvstore:
         namespace: eval_store
@@ -85,8 +85,8 @@ providers:
       service_name: ''
       sinks: sqlite
       sqlite_db_path: .llama/distributions/ollama/trace_store.db
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_id: builtin
+    provider_type: inline::builtin
   tool_runtime:
   - provider_id: rag-runtime
     provider_type: inline::rag-runtime

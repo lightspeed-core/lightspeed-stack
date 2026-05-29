@@ -78,8 +78,8 @@ providers:
         responses:
           table_name: agents_responses
           backend: sql_default
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_id: builtin
+    provider_type: inline::builtin
   batches:
   - config:
       kvstore:
@@ -105,8 +105,8 @@ providers:
       kvstore:
         namespace: eval_store
         backend: kv_default
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_id: builtin
+    provider_type: inline::builtin
 scoring_fns: []
 server:
   port: 8321
