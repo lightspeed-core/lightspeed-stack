@@ -37,10 +37,10 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageMCPListTools as McpListTools,
 )
 from llama_stack_api.openai_responses import (
-    OpenAIResponseOutputMessageWebSearchToolCall as WebSearchToolCall,
+    OpenAIResponseOutputMessageReasoningItem as ReasoningItem,
 )
 from llama_stack_api.openai_responses import (
-    OpenAIResponseOutputMessageReasoningItem as ReasoningItem,
+    OpenAIResponseOutputMessageWebSearchToolCall as WebSearchToolCall,
 )
 from pydantic import Field
 

@@ -84,6 +84,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
+      - ./run.yaml:/app-root/run.yaml:z
       - ./lightspeed-stack.yaml:/app-root/lightspeed-stack.yaml:z
       - ./tests/e2e/secrets/mcp-token:/tmp/mcp-token:ro,z
       - ./tests/e2e/secrets/invalid-mcp-token:/tmp/invalid-mcp-token:ro,z
