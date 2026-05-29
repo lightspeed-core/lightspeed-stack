@@ -1691,8 +1691,8 @@
                                     "providers": {
                                         "agents": [
                                             {
-                                                "provider_id": "meta-reference",
-                                                "provider_type": "inline::meta-reference"
+                                                "provider_id": "builtin",
+                                                "provider_type": "inline::builtin"
                                             }
                                         ],
                                         "inference": [
@@ -14836,7 +14836,8 @@
                     "filename",
                     "start_index"
                 ],
-                "title": "OpenAIResponseAnnotationContainerFileCitation"
+                "title": "OpenAIResponseAnnotationContainerFileCitation",
+                "description": "Container file citation annotation referencing a file within a container."
             },
             "OpenAIResponseAnnotationFileCitation": {
                 "properties": {
@@ -14890,7 +14891,8 @@
                     "file_id",
                     "index"
                 ],
-                "title": "OpenAIResponseAnnotationFilePath"
+                "title": "OpenAIResponseAnnotationFilePath",
+                "description": "File path annotation referencing a generated file in response content."
             },
             "OpenAIResponseContentPartRefusal": {
                 "properties": {
@@ -15262,7 +15264,8 @@
                     "required",
                     "none"
                 ],
-                "title": "OpenAIResponseInputToolChoiceMode"
+                "title": "OpenAIResponseInputToolChoiceMode",
+                "description": "Enumeration of simple tool choice modes for response generation."
             },
             "OpenAIResponseInputToolChoiceWebSearch": {
                 "properties": {
@@ -15703,7 +15706,8 @@
                 "required": [
                     "text"
                 ],
-                "title": "OpenAIResponseOutputMessageContentOutputText"
+                "title": "OpenAIResponseOutputMessageContentOutputText",
+                "description": "Text content within an output message of an OpenAI response."
             },
             "OpenAIResponseOutputMessageFileSearchToolCall": {
                 "properties": {
@@ -15929,6 +15933,113 @@
                 "title": "OpenAIResponseOutputMessageMCPListTools",
                 "description": "MCP list tools output message containing available tools from an MCP server.\n\n:param id: Unique identifier for this MCP list tools operation\n:param type: Tool call type identifier, always \"mcp_list_tools\"\n:param server_label: Label identifying the MCP server providing the tools\n:param tools: List of available tools provided by the MCP server"
             },
+            "OpenAIResponseOutputMessageReasoningContent": {
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "title": "Text",
+                        "description": "The reasoning text content from the model."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "reasoning_text",
+                        "title": "Type",
+                        "description": "The type identifier, always 'reasoning_text'.",
+                        "default": "reasoning_text"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "text"
+                ],
+                "title": "OpenAIResponseOutputMessageReasoningContent",
+                "description": "Reasoning text from the model."
+            },
+            "OpenAIResponseOutputMessageReasoningItem": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Unique identifier for the reasoning output item."
+                    },
+                    "summary": {
+                        "items": {
+                            "$ref": "#/components/schemas/OpenAIResponseOutputMessageReasoningSummary"
+                        },
+                        "type": "array",
+                        "title": "Summary",
+                        "description": "Summary of the reasoning output."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "reasoning",
+                        "title": "Type",
+                        "description": "The type identifier, always 'reasoning'.",
+                        "default": "reasoning"
+                    },
+                    "content": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/OpenAIResponseOutputMessageReasoningContent"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Content",
+                        "description": "The reasoning content from the model."
+                    },
+                    "status": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "in_progress",
+                                    "completed",
+                                    "incomplete"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Status",
+                        "description": "The status of the reasoning output."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "summary"
+                ],
+                "title": "OpenAIResponseOutputMessageReasoningItem",
+                "description": "Reasoning output from the model, representing the model's thinking process."
+            },
+            "OpenAIResponseOutputMessageReasoningSummary": {
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "title": "Text",
+                        "description": "The summary text of the reasoning output."
+                    },
+                    "type": {
+                        "type": "string",
+                        "const": "summary_text",
+                        "title": "Type",
+                        "description": "The type identifier, always 'summary_text'.",
+                        "default": "summary_text"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "text"
+                ],
+                "title": "OpenAIResponseOutputMessageReasoningSummary",
+                "description": "A summary of reasoning output from the model."
+            },
             "OpenAIResponseOutputMessageWebSearchToolCall": {
                 "properties": {
                     "id": {
@@ -16031,6 +16142,23 @@
                             }
                         ],
                         "title": "Effort"
+                    },
+                    "summary": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "auto",
+                                    "concise",
+                                    "detailed"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Summary",
+                        "description": "Summary mode for reasoning output. One of 'auto', 'concise', or 'detailed'."
                     }
                 },
                 "type": "object",
@@ -16903,8 +17031,8 @@
                         "providers": {
                             "agents": [
                                 {
-                                    "provider_id": "meta-reference",
-                                    "provider_type": "inline::meta-reference"
+                                    "provider_id": "builtin",
+                                    "provider_type": "inline::builtin"
                                 }
                             ],
                             "inference": [
@@ -17946,6 +18074,9 @@
                     },
                     {
                         "$ref": "#/components/schemas/OpenAIResponseMCPApprovalResponse"
+                    },
+                    {
+                        "$ref": "#/components/schemas/OpenAIResponseOutputMessageReasoningItem"
                     }
                 ]
             },
@@ -18337,6 +18468,9 @@
                                 },
                                 {
                                     "$ref": "#/components/schemas/OpenAIResponseMCPApprovalRequest"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/OpenAIResponseOutputMessageReasoningItem"
                                 }
                             ],
                             "discriminator": {
@@ -18348,6 +18482,7 @@
                                     "mcp_call": "#/components/schemas/OpenAIResponseOutputMessageMCPCall",
                                     "mcp_list_tools": "#/components/schemas/OpenAIResponseOutputMessageMCPListTools",
                                     "message": "#/components/schemas/OpenAIResponseMessage",
+                                    "reasoning": "#/components/schemas/OpenAIResponseOutputMessageReasoningItem",
                                     "web_search_call": "#/components/schemas/OpenAIResponseOutputMessageWebSearchToolCall"
                                 }
                             }
@@ -19163,7 +19298,7 @@
                 },
                 "type": "object",
                 "title": "SearchRankingOptions",
-                "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter, Part II)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking (Part II).\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker (e.g., \"vllm/Qwen3-Reranker-0.6B\").\n    Required when ranker=\"neural\" or when weights contains \"neural\" (Part II)."
+                "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking.\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker (e.g., \"transformers/Qwen/Qwen3-Reranker-0.6B\").\n    Required when ranker=\"neural\" or when weights contains \"neural\"."
             },
             "SecurityScheme": {
                 "anyOf": [
