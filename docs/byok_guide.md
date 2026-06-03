@@ -10,6 +10,7 @@ The BYOK (Bring Your Own Knowledge) feature in Lightspeed Core enables users to 
 
 * [What is BYOK?](#what-is-byok)
 * [How BYOK Works](#how-byok-works)
+  * [Prioritization of BYOK content](#prioritization-of-byok-content)
 * [Prerequisites](#prerequisites)
 * [Configuration Guide](#configuration-guide)
   * [Step 1: Prepare Your Knowledge Sources](#step-1-prepare-your-knowledge-sources)
