@@ -161,7 +161,7 @@ You can use the embedding generation step mentioned in the rag-content repo:
 
 ```bash
 mkdir ./embeddings_model
-pdm run python ./scripts/download_embeddings_model.py -l ./embeddings_model/ -r sentence-transformers/all-mpnet-base-v2 
+uv run python ./scripts/download_embeddings_model.py -l ./embeddings_model/ -r sentence-transformers/all-mpnet-base-v2
 ```
 
 #### Option 2: Manual Download and Configuration
@@ -339,10 +339,6 @@ rag:
   tool:
     - company-docs
 ```
-
-> [!NOTE]
-> Your LLM inference provider (e.g., OpenAI, vLLM) must also be configured in your `run.yaml`.
-> For OpenAI, set the `OPENAI_API_KEY` environment variable.
 
 ### Example 2: Multiple Knowledge Sources with pgvector
 

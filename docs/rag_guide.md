@@ -223,11 +223,7 @@ Not yet supported.
 
 ### Ollama
 
-The `remote::ollama` provider can be used for inference. However, it does not support tool calling, including RAG.  
-While Ollama also exposes an OpenAI compatible endpoint that supports tool calling, it cannot currently be used due to limitations in the `remote::openai` provider. 
-
-Tool calling with Ollama is not yet supported.  
-Currently, tool calling is not supported out of the box. Some experimental patches exist (including internal workarounds), but these are not officially released.  
+The `remote::ollama` provider does not support tool calling, so RAG as a tool is not available. However, inline RAG is supported.
 
 ### vLLM Mistral
 
@@ -385,8 +381,4 @@ You are a helpful assistant with access to a 'knowledge_search' tool. When users
 # RAG annotations
 
 The top-level `vector_stores` block in [`run.yaml`](../examples/run.yaml) may include `annotation_prompt_params` to control whether extra RAG annotation instructions are injected into the model prompt (for example, citation-style markers). The default configuration sets `enable_annotations: false` under that block to avoid unwanted annotations.
-
----
-
-# References
 

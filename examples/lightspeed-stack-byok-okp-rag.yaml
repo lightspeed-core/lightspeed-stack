@@ -38,14 +38,14 @@ byok_rag:
   - rag_id: ocp-docs           # referenced in rag.inline / rag.tool
     rag_type: inline::faiss
     embedding_model: sentence-transformers/all-mpnet-base-v2
-    embedding_dimension: 1024
+    embedding_dimension: 768
     vector_db_id: vs_123       # Vector store ID (from index generation)
     db_path: /tmp/ocp.faiss
     score_multiplier: 1.0      # Weight for this vector store's results (Inline RAG only)
   - rag_id: knowledge-base     # referenced in rag.inline / rag.tool
     rag_type: inline::faiss
     embedding_model: sentence-transformers/all-mpnet-base-v2
-    embedding_dimension: 384
+    embedding_dimension: 768
     vector_db_id: vs_456       # Vector store ID (from index generation)
     db_path: /tmp/kb.faiss
     score_multiplier: 1.2      # Weight for this vector store's results (Inline RAG only)
