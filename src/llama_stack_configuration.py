@@ -22,6 +22,11 @@ BACKEND_TO_LLAMA_STACK_PROVIDER: dict[str, str] = {
     # "pgvector": "remote::pgvector",  # TODO(are-ces): add enrichment support
 }
 
+assert constants.DEFAULT_RAG_BACKEND in BACKEND_TO_LLAMA_STACK_PROVIDER, (
+    f"DEFAULT_RAG_BACKEND '{constants.DEFAULT_RAG_BACKEND}' has no entry in "
+    f"BACKEND_TO_LLAMA_STACK_PROVIDER — add a mapping before changing the default."
+)
+
 
 class YamlDumper(yaml.Dumper):  # pylint: disable=too-many-ancestors
     """Custom YAML dumper with proper indentation levels."""

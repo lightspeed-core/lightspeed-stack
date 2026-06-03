@@ -97,7 +97,12 @@ class TestRagConfiguration:
 
     def test_inline_with_byok_ids(self) -> None:
         """Test inline sources with BYOK rag IDs."""
+        stores = [
+            RagStore(rag_id="store-1", vector_db_id="vs_1", db_path="/tmp/s1.db"),
+            RagStore(rag_id="store-2", vector_db_id="vs_2", db_path="/tmp/s2.db"),
+        ]
         config = RagConfiguration(
+            byok=ByokConfiguration(stores=stores),
             retrieval=RetrievalConfiguration(
                 inline=RetrievalStrategyConfiguration(sources=["store-1", "store-2"]),
             ),
@@ -107,7 +112,9 @@ class TestRagConfiguration:
 
     def test_inline_with_okp_rag(self) -> None:
         """Test inline sources including the special OKP ID."""
+        store = RagStore(rag_id="store-1", vector_db_id="vs_1", db_path="/tmp/s1.db")
         config = RagConfiguration(
+            byok=ByokConfiguration(stores=[store]),
             retrieval=RetrievalConfiguration(
                 inline=RetrievalStrategyConfiguration(
                     sources=[constants.OKP_RAG_ID, "store-1"]
@@ -119,7 +126,9 @@ class TestRagConfiguration:
 
     def test_tool_with_okp_rag_and_byok(self) -> None:
         """Test tool sources with OKP and BYOK IDs."""
+        store = RagStore(rag_id="store-1", vector_db_id="vs_1", db_path="/tmp/s1.db")
         config = RagConfiguration(
+            byok=ByokConfiguration(stores=[store]),
             retrieval=RetrievalConfiguration(
                 inline=RetrievalStrategyConfiguration(sources=["store-1"]),
                 tool=RetrievalStrategyConfiguration(
@@ -143,6 +152,28 @@ class TestRagConfiguration:
         """Test that tool sources defaults to an empty list."""
         config = RagConfiguration()
         assert config.retrieval.tool.sources == []
+
+    def test_unknown_inline_source_rejected(self) -> None:
+        """Test that inline sources referencing undeclared rag_ids are rejected."""
+        store = RagStore(rag_id="store-1", vector_db_id="vs_1", db_path="/tmp/s1.db")
+        with pytest.raises(ValidationError, match="unknown RAG IDs"):
+            RagConfiguration(
+                byok=ByokConfiguration(stores=[store]),
+                retrieval=RetrievalConfiguration(
+                    inline=RetrievalStrategyConfiguration(
+                        sources=["store-1", "nonexistent"]
+                    ),
+                ),
+            )
+
+    def test_unknown_tool_source_rejected(self) -> None:
+        """Test that tool sources referencing undeclared rag_ids are rejected."""
+        with pytest.raises(ValidationError, match="unknown RAG IDs"):
+            RagConfiguration(
+                retrieval=RetrievalConfiguration(
+                    tool=RetrievalStrategyConfiguration(sources=["missing-store"]),
+                ),
+            )
 
     def test_no_unknown_fields_allowed(self) -> None:
         """Test that RagConfiguration rejects unknown fields."""

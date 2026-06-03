@@ -36,7 +36,7 @@ Both strategies can be enabled independently via the `rag` section of `lightspee
 
 > [!NOTE]
 > **Backward compatibility:** if neither `retrieval.inline.sources` nor `retrieval.tool.sources` is
-> configured, all BYOK vector stores registered in llama-stack are automatically exposed as
+> configured, all registered vector stores (BYOK and OKP) are automatically exposed as
 > Tool RAG (`file_search`). Inline RAG is **not** enabled in this fallback — only Tool RAG.
 
 ### Inline RAG chunk flow
@@ -122,7 +122,7 @@ This example shows how to configure a remote PostgreSQL database with the [pgvec
 
 > [!NOTE]
 > pgvector is not yet supported via `byok_rag` in `lightspeed-stack.yaml` (see [LCORE-2437](https://redhat.atlassian.net/browse/LCORE-2437)).
-> It must be configured directly in the Llama Stack configuration file.
+> It must be configured directly in the `run.yaml` configuration file.
 
 > You will need to install PostgreSQL with a matching version to pgvector, then log in with `psql` and enable the extension with:
 > ```sql

@@ -1779,6 +1779,17 @@ class RagStore(ConfigurationBase):
         description="Storage backend type (e.g. 'faiss').",
     )
 
+    @field_validator("backend")
+    @classmethod
+    def validate_backend(cls, value: str) -> str:
+        """Reject unsupported backend values at config load time."""
+        if value not in constants.SUPPORTED_RAG_BACKENDS:
+            raise ValueError(
+                f"Unsupported RAG backend '{value}'. "
+                f"Supported backends: {sorted(constants.SUPPORTED_RAG_BACKENDS)}"
+            )
+        return value
+
     embedding_model: str = Field(
         constants.DEFAULT_EMBEDDING_MODEL,
         min_length=1,
@@ -2051,6 +2062,24 @@ class RagConfiguration(ConfigurationBase):
         title="Retrieval configuration",
         description="Inline and tool retrieval strategy settings.",
     )
+
+    @model_validator(mode="after")
+    def validate_retrieval_sources(self) -> Self:
+        """Reject retrieval source IDs not declared in byok.stores or OKP."""
+        known_ids = {store.rag_id for store in self.byok.stores}
+        known_ids.add(constants.OKP_RAG_ID)
+
+        for strategy_name in ("inline", "tool"):
+            strategy = getattr(self.retrieval, strategy_name)
+            unknown = set(strategy.sources) - known_ids
+            if unknown:
+                raise ValueError(
+                    f"retrieval.{strategy_name}.sources contains unknown RAG IDs: "
+                    f"{sorted(unknown)}. "
+                    f"Declared IDs: {sorted(known_ids)}"
+                )
+
+        return self
 
 
 class RerankerConfiguration(ConfigurationBase):

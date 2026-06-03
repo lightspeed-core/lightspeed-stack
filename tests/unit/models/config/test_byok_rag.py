@@ -48,7 +48,7 @@ def test_rag_store_configuration_nondefault_values() -> None:
     """
     rag_store = RagStore(
         rag_id="rag_id",
-        backend="custom_backend",
+        backend="faiss",
         embedding_model="embedding_model",
         embedding_dimension=1024,
         vector_db_id="vector_db_id",
@@ -57,7 +57,7 @@ def test_rag_store_configuration_nondefault_values() -> None:
     )
     assert rag_store is not None
     assert rag_store.rag_id == "rag_id"
-    assert rag_store.backend == "custom_backend"
+    assert rag_store.backend == "faiss"
     assert rag_store.embedding_model == "embedding_model"
     assert rag_store.embedding_dimension == 1024
     assert rag_store.vector_db_id == "vector_db_id"
@@ -75,7 +75,7 @@ def test_rag_store_configuration_wrong_dimension() -> None:
     with pytest.raises(ValidationError, match="should be greater than 0"):
         _ = RagStore(
             rag_id="rag_id",
-            backend="custom_backend",
+            backend="faiss",
             embedding_model="embedding_model",
             embedding_dimension=-1024,
             vector_db_id="vector_db_id",
@@ -97,7 +97,7 @@ def test_rag_store_configuration_empty_rag_id() -> None:
     ):
         _ = RagStore(
             rag_id="",
-            backend="custom_backend",
+            backend="faiss",
             embedding_model="embedding_model",
             embedding_dimension=1024,
             vector_db_id="vector_db_id",
@@ -129,6 +129,19 @@ def test_rag_store_configuration_empty_backend() -> None:
         )
 
 
+def test_rag_store_configuration_unsupported_backend() -> None:
+    """Test that unsupported backend values are rejected."""
+    with pytest.raises(ValidationError, match="Unsupported RAG backend"):
+        _ = RagStore(
+            rag_id="rag_id",
+            backend="unsupported",
+            embedding_model="embedding_model",
+            embedding_dimension=1024,
+            vector_db_id="vector_db_id",
+            db_path="tests/configuration/rag.txt",
+        )
+
+
 def test_rag_store_configuration_empty_embedding_model() -> None:
     """Test the RagStore constructor.
 
@@ -142,7 +155,7 @@ def test_rag_store_configuration_empty_embedding_model() -> None:
     ):
         _ = RagStore(
             rag_id="rag_id",
-            backend="custom_backend",
+            backend="faiss",
             embedding_model="",
             embedding_dimension=1024,
             vector_db_id="vector_db_id",
@@ -164,7 +177,7 @@ def test_rag_store_configuration_empty_vector_db_id() -> None:
     ):
         _ = RagStore(
             rag_id="rag_id",
-            backend="custom_backend",
+            backend="faiss",
             embedding_model="embedding_model",
             embedding_dimension=1024,
             vector_db_id="",
@@ -177,7 +190,7 @@ def test_rag_store_configuration_custom_score_multiplier() -> None:
     """Test RagStore with custom score_multiplier."""
     rag_store = RagStore(
         rag_id="rag_id",
-        backend="custom_backend",
+        backend="faiss",
         vector_db_id="vector_db_id",
         embedding_model="embedding_model",
         embedding_dimension=1024,
@@ -192,7 +205,7 @@ def test_rag_store_configuration_score_multiplier_must_be_positive() -> None:
     with pytest.raises(ValidationError, match="greater than 0"):
         _ = RagStore(
             rag_id="rag_id",
-            backend="custom_backend",
+            backend="faiss",
             vector_db_id="vector_db_id",
             embedding_model="embedding_model",
             embedding_dimension=1024,

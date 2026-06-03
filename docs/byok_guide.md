@@ -317,7 +317,7 @@ byok_rag:
 
 > [!NOTE]
 > pgvector is not yet supported via `byok_rag` in `lightspeed-stack.yaml` (see [LCORE-2437](https://redhat.atlassian.net/browse/LCORE-2437)).
-> It must be configured directly in the Llama Stack configuration file.
+> It must be configured directly in the `run.yaml` configuration file.
 
 ```yaml
 vector_io:
@@ -371,11 +371,11 @@ rag:
 
 ### Example 2: Multiple Knowledge Sources with pgvector
 
-A configuration combining a local FAISS store (via `byok_rag`) with a remote pgvector store (configured directly in the Llama Stack configuration file):
+A configuration combining a local FAISS store (via `byok_rag`) with a remote pgvector store (configured directly in the `run.yaml` configuration file):
 
 > [!NOTE]
 > pgvector is not yet supported via `byok_rag` in `lightspeed-stack.yaml` (see [LCORE-2437](https://redhat.atlassian.net/browse/LCORE-2437)).
-> The pgvector provider must be configured directly in the Llama Stack configuration file.
+> The pgvector provider must be configured directly in the `run.yaml` configuration file.
 
 **`lightspeed-stack.yaml`** — FAISS store and RAG strategy:
 
@@ -402,7 +402,7 @@ rag:
     - local-docs
 ```
 
-**Llama Stack configuration file** — pgvector provider:
+**`run.yaml` configuration file** — pgvector provider:
 
 ```yaml
 vector_io:

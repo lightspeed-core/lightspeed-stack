@@ -169,6 +169,9 @@ CACHE_TYPE_POSTGRES: Final[str] = "postgres"
 CACHE_TYPE_NOOP: Final[str] = "noop"
 
 # BYOK RAG
+# Backends that have enrichment support in llama_stack_configuration.py
+SUPPORTED_RAG_BACKENDS: Final[frozenset[str]] = frozenset({"faiss"})
+
 # Default RAG backend for bring-your-own-knowledge RAG configurations
 DEFAULT_RAG_BACKEND: Final[str] = "faiss"
 
