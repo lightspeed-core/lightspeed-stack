@@ -11830,8 +11830,8 @@
                     "max_chunks": {
                         "type": "integer",
                         "exclusiveMinimum": 0.0,
-                        "title": "Max chunks per store",
-                        "description": "Maximum number of chunks fetched from each BYOK store.",
+                        "title": "Max BYOK chunks",
+                        "description": "Maximum total number of chunks returned across all BYOK stores.",
                         "default": 10
                     },
                     "stores": {

@@ -1978,8 +1978,8 @@ class ByokConfiguration(ConfigurationBase):
 
     max_chunks: PositiveInt = Field(
         default=constants.DEFAULT_BYOK_RAG_MAX_CHUNKS,
-        title="Max chunks per store",
-        description="Maximum number of chunks fetched from each BYOK store.",
+        title="Max BYOK chunks",
+        description="Maximum total number of chunks returned across all BYOK stores.",
     )
 
     stores: list[RagStore] = Field(

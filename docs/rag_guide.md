@@ -34,6 +34,33 @@ Lightspeed Core Stack (LCS) supports two complementary RAG strategies:
 
 Both strategies can be enabled independently via the `rag` section of `lightspeed-stack.yaml`. See [BYOK Feature Documentation](byok_guide.md) for configuration details.
 
+### Inline RAG chunk flow
+
+```mermaid
+flowchart TD
+    subgraph Sources["Source Fetching"]
+        B1["BYOK Store 1"] --> BPool
+        B2["BYOK Store 2"] --> BPool
+        BN["BYOK Store N"] --> BPool
+        BPool["BYOK Pool\ncapped at byok.max_chunks"]
+        OKP["OKP (Solr)\ncapped at okp.max_chunks"]
+    end
+
+    BPool --> Pool["Merged Pool\n(all chunks, sorted by score)"]
+    OKP --> Pool
+
+    Pool --> Decision{Reranker\nenabled?}
+
+    Decision -->|Yes| Rerank["Cross-Encoder Rerank\n+ BYOK score boost"]
+    Decision -->|No| Cut
+
+    Rerank --> Cut["Top K cut\nretrieval.inline.max_chunks"]
+
+    Cut --> Context["Final Inline RAG Context"]
+```
+
+Each BYOK store is queried in parallel, and the merged BYOK results are capped at `byok.max_chunks` total. OKP fetches up to `okp.max_chunks`. Together these form the reranking pool. If the reranker is enabled, the full pool is reranked with a cross-encoder and BYOK score boosts are applied. The result is capped at `retrieval.inline.max_chunks`.
+
 The **Embedding Model** is used to convert queries and documents into vector representations for similarity matching.
 
 > [!NOTE]

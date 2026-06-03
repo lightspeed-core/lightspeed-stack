@@ -37,7 +37,7 @@ quota_handlers:
 # RAG configuration
 rag:
   byok:
-    max_chunks: 10               # Max chunks fetched from each BYOK store
+    max_chunks: 10               # Max total chunks across all BYOK stores
     stores:
       - rag_id: ocp-docs         # Referenced in retrieval.inline / retrieval.tool
         backend: faiss
