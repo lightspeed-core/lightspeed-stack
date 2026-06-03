@@ -2066,6 +2066,7 @@ class RagConfiguration(ConfigurationBase):
     @model_validator(mode="after")
     def validate_retrieval_sources(self) -> Self:
         """Reject retrieval source IDs not declared in byok.stores or OKP."""
+        # pylint: disable=no-member
         known_ids = {store.rag_id for store in self.byok.stores}
         known_ids.add(constants.OKP_RAG_ID)
 

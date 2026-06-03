@@ -1712,7 +1712,7 @@ class TestResolveVectorStoreIds:
             rag_id=rag_id,
             vector_db_id=vector_db_id,
             db_path="tests/configuration/rag.txt",
-            backend="rag",
+            backend="faiss",
             embedding_model="model",
             embedding_dimension=768,
             score_multiplier=1.0,
