@@ -1947,7 +1947,7 @@ class RetrievalStrategyConfiguration(ConfigurationBase):
     )
 
     max_chunks: PositiveInt = Field(
-        constants.DEFAULT_INLINE_RAG_MAX_CHUNKS,
+        default=constants.DEFAULT_INLINE_RAG_MAX_CHUNKS,
         title="Max chunks",
         description="Maximum number of chunks returned by this retrieval strategy.",
     )
@@ -1977,7 +1977,7 @@ class ByokConfiguration(ConfigurationBase):
     """BYOK (Bring Your Own Knowledge) configuration."""
 
     max_chunks: PositiveInt = Field(
-        constants.DEFAULT_BYOK_RAG_MAX_CHUNKS,
+        default=constants.DEFAULT_BYOK_RAG_MAX_CHUNKS,
         title="Max chunks per store",
         description="Maximum number of chunks fetched from each BYOK store.",
     )
@@ -2020,7 +2020,7 @@ class OkpConfiguration(ConfigurationBase):
     )
 
     max_chunks: PositiveInt = Field(
-        constants.DEFAULT_OKP_RAG_MAX_CHUNKS,
+        default=constants.DEFAULT_OKP_RAG_MAX_CHUNKS,
         title="Max OKP chunks",
         description="Maximum number of chunks fetched from OKP.",
     )
