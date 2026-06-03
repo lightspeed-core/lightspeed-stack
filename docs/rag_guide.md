@@ -340,15 +340,16 @@ Example:
 **Chunk volume:**
 
 OKP and BYOK scores are not directly comparable (different scoring systems), so
-`score_multiplier` (a BYOK-only concept) does not apply to OKP results. To control
-the number of retrieved chunks, set the constants in `src/constants.py`:
+`score_multiplier` (a BYOK-only concept) does not apply to OKP results. However, when
+the reranker is enabled, it normalizes scores across sources using a cross-encoder model.
+To control the number of retrieved chunks, configure `max_chunks` in `lightspeed-stack.yaml`:
 
-| Constant | Value | Description |
-|----------|-------|-------------|
-| `INLINE_RAG_MAX_CHUNKS` | 10 | Hard upper bound on the final merged inline RAG chunks (BYOK + OKP) delivered to the LLM |
-| `OKP_RAG_MAX_CHUNKS` | 5 | Fetch hint for OKP (Inline RAG); controls how many chunks enter the reranking pool |
-| `BYOK_RAG_MAX_CHUNKS` | 10 | Fetch hint for BYOK stores (Inline RAG); controls how many chunks enter the reranking pool |
-| `TOOL_RAG_MAX_CHUNKS` | 10 | Max chunks retrieved via Tool RAG (`file_search`); independent from `INLINE_RAG_MAX_CHUNKS` |
+| Config path | Default | Description |
+|-------------|---------|-------------|
+| `rag.retrieval.inline.max_chunks` | 10 | Hard upper bound on the final merged inline RAG chunks (BYOK + OKP) delivered to the LLM |
+| `rag.okp.max_chunks` | 5 | Fetch limit for OKP (Inline RAG); controls how many chunks enter the reranking pool |
+| `rag.byok.max_chunks` | 10 | Fetch limit for BYOK stores (Inline RAG); controls how many chunks enter the reranking pool |
+| `rag.retrieval.tool.max_chunks` | 10 | Max chunks retrieved via Tool RAG (`file_search`); independent from inline max_chunks |
 
 **Limitations:**
 
