@@ -2394,10 +2394,15 @@ class Configuration(ConfigurationBase):
         Returns:
             Self: The validated configuration instance with reranker potentially enabled.
         """
+        # Check if BYOK RAG entries are configured
         # pylint: disable=no-member
         has_byok = len(self.rag.byok.stores) > 0
+
+        # Check if OKP is configured in inline RAG strategy
         has_okp = constants.OKP_RAG_ID in self.rag.retrieval.inline.sources
 
+        # If both BYOK and OKP are present and reranker is using default settings,
+        # ensure it's enabled for optimal results
         if (
             has_byok
             and has_okp

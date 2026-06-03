@@ -17,6 +17,11 @@ from log import get_logger
 
 logger = get_logger(__name__)
 
+BACKEND_TO_LLAMA_STACK_PROVIDER: dict[str, str] = {
+    "faiss": "inline::faiss",
+    # "pgvector": "remote::pgvector",  # TODO(are-ces): add enrichment support
+}
+
 
 class YamlDumper(yaml.Dumper):  # pylint: disable=too-many-ancestors
     """Custom YAML dumper with proper indentation levels."""
@@ -335,13 +340,22 @@ def construct_vector_io_providers_section(
             continue
         existing_ids.add(provider_id)
         added += 1
+
+        backend = brag.get("backend", constants.DEFAULT_RAG_BACKEND)
+        provider_type = BACKEND_TO_LLAMA_STACK_PROVIDER.get(backend)
+        if provider_type is None:
+            raise ValueError(
+                f"Unsupported backend '{backend}' for BYOK RAG '{rag_id}'. "
+                f"Supported backends: {list(BACKEND_TO_LLAMA_STACK_PROVIDER.keys())}"
+            )
+
         output.append(
             {
                 "provider_id": provider_id,
-                "provider_type": f"inline::{brag.get('backend', 'faiss')}",
+                "provider_type": provider_type,
                 "config": {
                     "persistence": {
-                        "namespace": "vector_io::faiss",
+                        "namespace": f"vector_io::{backend}",
                         "backend": backend_name,
                     }
                 },

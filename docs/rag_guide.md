@@ -34,6 +34,11 @@ Lightspeed Core Stack (LCS) supports two complementary RAG strategies:
 
 Both strategies can be enabled independently via the `rag` section of `lightspeed-stack.yaml`. See [BYOK Feature Documentation](byok_guide.md) for configuration details.
 
+> [!NOTE]
+> **Backward compatibility:** if neither `retrieval.inline.sources` nor `retrieval.tool.sources` is
+> configured, all BYOK vector stores registered in llama-stack are automatically exposed as
+> Tool RAG (`file_search`). Inline RAG is **not** enabled in this fallback — only Tool RAG.
+
 ### Inline RAG chunk flow
 
 ```mermaid
