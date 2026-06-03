@@ -1762,8 +1762,8 @@ class A2AStateConfiguration(ConfigurationBase):
         return None
 
 
-class ByokRag(ConfigurationBase):
-    """BYOK (Bring Your Own Knowledge) RAG configuration."""
+class RagStore(ConfigurationBase):
+    """BYOK (Bring Your Own Knowledge) RAG store configuration."""
 
     rag_id: str = Field(
         ...,
@@ -1772,11 +1772,11 @@ class ByokRag(ConfigurationBase):
         description="Unique RAG ID",
     )
 
-    rag_type: str = Field(
-        constants.DEFAULT_RAG_TYPE,
+    backend: str = Field(
+        constants.DEFAULT_RAG_BACKEND,
         min_length=1,
-        title="RAG type",
-        description="Type of RAG database.",
+        title="RAG backend",
+        description="Storage backend type (e.g. 'faiss').",
     )
 
     embedding_model: str = Field(
@@ -1936,35 +1936,56 @@ class QuotaHandlersConfiguration(ConfigurationBase):
     )
 
 
-class RagConfiguration(ConfigurationBase):
-    """RAG strategy configuration.
+class RetrievalStrategyConfiguration(ConfigurationBase):
+    """Configuration for a single retrieval strategy (inline or tool)."""
 
-    Controls which RAG sources are used for inline and tool-based retrieval.
-
-    Each strategy lists RAG IDs to include. The special ID ``"okp"`` defined in constants,
-    activates the OKP provider; all other IDs refer to entries in ``byok_rag``.
-
-    Backward compatibility:
-        - ``inline`` defaults to ``[]`` (no inline RAG).
-        - ``tool`` defaults to ``[]`` (no tool RAG).
-
-    If no RAG strategy is defined (inline and tool are empty),
-    the RAG tool will register all stores available to llama-stack.
-    """
-
-    inline: list[str] = Field(
+    sources: list[str] = Field(
         default_factory=list,
-        title="Inline RAG IDs",
-        description="RAG IDs whose sources are injected as context before the LLM call. "
-        f"Use '{constants.OKP_RAG_ID}' to enable OKP inline RAG. Empty by default (no inline RAG).",
+        title="RAG source IDs",
+        description="RAG IDs to use for this retrieval strategy. "
+        f"Use '{constants.OKP_RAG_ID}' to include the OKP vector store.",
     )
 
-    tool: list[str] = Field(
+    max_chunks: PositiveInt = Field(
+        constants.DEFAULT_INLINE_RAG_MAX_CHUNKS,
+        title="Max chunks",
+        description="Maximum number of chunks returned by this retrieval strategy.",
+    )
+
+
+class RetrievalConfiguration(ConfigurationBase):
+    """Configuration for inline and tool retrieval strategies."""
+
+    inline: RetrievalStrategyConfiguration = Field(
+        default_factory=lambda: RetrievalStrategyConfiguration(
+            max_chunks=constants.DEFAULT_INLINE_RAG_MAX_CHUNKS,
+        ),
+        title="Inline retrieval",
+        description="Inline RAG: context injected before the LLM request.",
+    )
+
+    tool: RetrievalStrategyConfiguration = Field(
+        default_factory=lambda: RetrievalStrategyConfiguration(
+            max_chunks=constants.DEFAULT_TOOL_RAG_MAX_CHUNKS,
+        ),
+        title="Tool retrieval",
+        description="Tool RAG: LLM can call file_search on demand.",
+    )
+
+
+class ByokConfiguration(ConfigurationBase):
+    """BYOK (Bring Your Own Knowledge) configuration."""
+
+    max_chunks: PositiveInt = Field(
+        constants.DEFAULT_BYOK_RAG_MAX_CHUNKS,
+        title="Max chunks per store",
+        description="Maximum number of chunks fetched from each BYOK store.",
+    )
+
+    stores: list[RagStore] = Field(
         default_factory=list,
-        title="Tool RAG IDs",
-        description="RAG IDs made available to the LLM as a file_search tool. "
-        f"Use '{constants.OKP_RAG_ID}' to include the OKP vector store. "
-        "When omitted, all registered BYOK vector stores are used (backward compatibility).",
+        title="BYOK RAG stores",
+        description="List of BYOK RAG store configurations.",
     )
 
 
@@ -1972,7 +1993,8 @@ class OkpConfiguration(ConfigurationBase):
     """OKP (Offline Knowledge Portal) provider configuration.
 
     Controls provider-specific behaviour for the OKP vector store.
-    Only relevant when ``"okp"`` is listed in ``rag.inline`` or ``rag.tool``.
+    Only relevant when ``"okp"`` is listed in ``rag.retrieval.inline.sources``
+    or ``rag.retrieval.tool.sources``.
     """
 
     rhokp_url: Optional[AnyHttpUrl] = Field(
@@ -1995,6 +2017,39 @@ class OkpConfiguration(ConfigurationBase):
         title="OKP chunk filter query",
         description="Additional OKP filter query applied to every OKP search request. "
         "Use Solr boolean syntax, e.g. 'product:ansible AND product:*openshift*'.",
+    )
+
+    max_chunks: PositiveInt = Field(
+        constants.DEFAULT_OKP_RAG_MAX_CHUNKS,
+        title="Max OKP chunks",
+        description="Maximum number of chunks fetched from OKP.",
+    )
+
+
+class RagConfiguration(ConfigurationBase):
+    """Unified RAG configuration.
+
+    Groups all RAG-related settings: BYOK stores, OKP provider, and
+    retrieval strategies (inline and tool).
+    """
+
+    byok: ByokConfiguration = Field(
+        default_factory=ByokConfiguration,
+        title="BYOK configuration",
+        description="Bring Your Own Knowledge store configurations and settings.",
+    )
+
+    okp: OkpConfiguration = Field(
+        default_factory=OkpConfiguration,
+        title="OKP configuration",
+        description=f"OKP provider settings. Only used when '{constants.OKP_RAG_ID}' "
+        "is listed in retrieval.inline.sources or retrieval.tool.sources.",
+    )
+
+    retrieval: RetrievalConfiguration = Field(
+        default_factory=RetrievalConfiguration,
+        title="Retrieval configuration",
+        description="Inline and tool retrieval strategy settings.",
     )
 
 
@@ -2171,13 +2226,6 @@ class Configuration(ConfigurationBase):
         description="Settings for human-in-the-loop approval of MCP tool invocations",
     )
 
-    byok_rag: list[ByokRag] = Field(
-        default_factory=list,
-        title="BYOK RAG configuration",
-        description="BYOK RAG configuration. This configuration can be used to "
-        "reconfigure Llama Stack through its run.yaml configuration file",
-    )
-
     a2a_state: A2AStateConfiguration = Field(
         default_factory=A2AStateConfiguration,
         title="A2A state configuration",
@@ -2216,14 +2264,8 @@ class Configuration(ConfigurationBase):
     rag: RagConfiguration = Field(
         default_factory=RagConfiguration,
         title="RAG configuration",
-        description="Configuration for all RAG strategies (inline and tool-based).",
-    )
-
-    okp: OkpConfiguration = Field(
-        default_factory=OkpConfiguration,
-        title="OKP configuration",
-        description=f"OKP provider settings. Only used when '{constants.OKP_RAG_ID}' is listed "
-        "in rag.inline or rag.tool.",
+        description="Unified RAG configuration: BYOK stores, OKP provider, "
+        "and retrieval strategies (inline and tool-based).",
     )
 
     reranker: RerankerConfiguration = Field(
@@ -2344,23 +2386,18 @@ class Configuration(ConfigurationBase):
     def validate_reranker_auto_enable(self) -> Self:
         """Automatically enable reranker when both BYOK and OKP RAG are configured.
 
-        When users have both BYOK entries in byok_rag and OKP
-        configured in the RAG strategies, automatically
-        enable the reranker if it's not explicitly disabled. This improves result
-        quality when multiple knowledge sources are available.
+        When users have both BYOK stores and OKP configured in the RAG
+        retrieval strategies, automatically enable the reranker if it's not
+        explicitly disabled. This improves result quality when multiple
+        knowledge sources are available.
 
         Returns:
             Self: The validated configuration instance with reranker potentially enabled.
         """
-        # Check if BYOK RAG entries are configured
-        has_byok = len(self.byok_rag) > 0
-
-        # Check if OKP is configured in either inline or tool RAG strategies
         # pylint: disable=no-member
-        has_okp = constants.OKP_RAG_ID in self.rag.inline
+        has_byok = len(self.rag.byok.stores) > 0
+        has_okp = constants.OKP_RAG_ID in self.rag.retrieval.inline.sources
 
-        # If both BYOK and OKP are present and reranker is using default settings,
-        # ensure it's enabled for optimal results
         if (
             has_byok
             and has_okp
@@ -2368,10 +2405,10 @@ class Configuration(ConfigurationBase):
             and not self.reranker.enabled
         ):
             logger.info(
-                "Automatically enabling reranker: Both BYOK RAG (%d entries) or "
-                "other inline RAG and OKP are configured. Reranking improves result "
-                "quality when multiple knowledge sources are available.",
-                len(self.byok_rag),
+                "Automatically enabling reranker: Both BYOK RAG (%d stores) and "
+                "OKP are configured. Reranking improves result quality when "
+                "multiple knowledge sources are available.",
+                len(self.rag.byok.stores),
             )
             self.reranker.enabled = True
 

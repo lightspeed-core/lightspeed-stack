@@ -338,7 +338,7 @@ def construct_vector_io_providers_section(
         output.append(
             {
                 "provider_id": provider_id,
-                "provider_type": brag.get("rag_type", "inline::faiss"),
+                "provider_type": f"inline::{brag.get('backend', 'faiss')}",
                 "config": {
                     "persistence": {
                         "namespace": "vector_io::faiss",
@@ -585,10 +585,18 @@ def generate_configuration(
     enrich_azure_entra_id_inference(ls_config, config.get("azure_entra_id"))
 
     # Enrichment: BYOK RAG
-    enrich_byok_rag(ls_config, config.get("byok_rag", []))
+    rag_section = config.get("rag", {})
+    byok_stores = rag_section.get("byok", {}).get("stores", [])
+    enrich_byok_rag(ls_config, byok_stores)
 
     # Enrichment: Solr - enabled when "okp" appears in either inline or tool list
-    enrich_solr(ls_config, config.get("rag", {}), config.get("okp", {}))
+    retrieval = rag_section.get("retrieval", {})
+    rag_config_for_solr = {
+        "inline": retrieval.get("inline", {}).get("sources", []),
+        "tool": retrieval.get("tool", {}).get("sources", []),
+    }
+    okp_config = rag_section.get("okp", {})
+    enrich_solr(ls_config, rag_config_for_solr, okp_config)
 
     dedupe_providers_vector_io(ls_config)
 

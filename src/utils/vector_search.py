@@ -250,7 +250,7 @@ async def _query_store_for_byok_rag(
     vector_store_id: str,
     query: str,
     weight: float,
-    max_chunks: int = constants.BYOK_RAG_MAX_CHUNKS,
+    max_chunks: int = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS,
 ) -> list[dict[str, Any]]:
     """Query a single vector store for BYOK RAG.
 
@@ -454,14 +454,14 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
             If provided, only these stores will be queried. If None, all stores
             (excluding Solr) will be queried.
         max_chunks: Maximum number of chunks to return. If None, uses
-            constants.BYOK_RAG_MAX_CHUNKS.
+            rag.byok.max_chunks from configuration.
 
     Returns:
         Tuple containing:
         - rag_chunks: RAG chunks from BYOK RAG
         - referenced_documents: Documents referenced in BYOK RAG results
     """
-    limit = max_chunks if max_chunks is not None else constants.BYOK_RAG_MAX_CHUNKS
+    limit = max_chunks if max_chunks is not None else configuration.rag.byok.max_chunks
     rag_chunks: list[RAGChunk] = []
     referenced_documents: list[ReferencedDocument] = []
 
@@ -470,17 +470,17 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
     # Per-request IDs are intersected with the config to prevent triggering inline RAG
     # for stores not explicitly configured for inline use.
     if vector_store_ids is None:
-        rag_ids_to_query = configuration.configuration.rag.inline
+        rag_ids_to_query = configuration.configuration.rag.retrieval.inline.sources
     else:
         rag_ids_to_query = [
             v
             for v in vector_store_ids
-            if v in set(configuration.configuration.rag.inline)
+            if v in set(configuration.configuration.rag.retrieval.inline.sources)
         ]
 
     # Translate user-facing rag_ids to llama-stack ids
     vector_store_ids_to_query: list[str] = resolve_vector_store_ids(
-        rag_ids_to_query, configuration.configuration.byok_rag
+        rag_ids_to_query, configuration.configuration.rag.byok.stores
     )
 
     # Request-level override: filter out Solr store, use the rest
@@ -562,7 +562,7 @@ async def _fetch_solr_rag(  # pylint: disable=too-many-locals
         query: The user's query
         solr: Structured Solr inline RAG request from the API (optional).
         max_chunks: Maximum number of chunks to return. If None, uses
-            constants.OKP_RAG_MAX_CHUNKS.
+            rag.okp.max_chunks from configuration.
 
     Returns:
         Tuple containing:
@@ -571,7 +571,7 @@ async def _fetch_solr_rag(  # pylint: disable=too-many-locals
     """
     rag_chunks: list[RAGChunk] = []
     referenced_documents: list[ReferencedDocument] = []
-    limit = constants.OKP_RAG_MAX_CHUNKS
+    limit = configuration.rag.okp.max_chunks
 
     if not _is_solr_enabled():
         logger.info("OKP vector IO is disabled, skipping OKP search")
@@ -655,11 +655,11 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
     if moderation_decision == "blocked":
         return RAGContext()
 
-    top_k = constants.INLINE_RAG_MAX_CHUNKS
+    top_k = configuration.rag.retrieval.inline.max_chunks
 
     # Fetch from each source using per-source limits for the reranking pool
     byok_chunks_task = _fetch_byok_rag(
-        client, query, vector_store_ids, max_chunks=constants.BYOK_RAG_MAX_CHUNKS
+        client, query, vector_store_ids, max_chunks=configuration.rag.byok.max_chunks
     )
     solr_chunks_task = _fetch_solr_rag(client, query, solr)
 

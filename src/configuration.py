@@ -479,7 +479,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         """Return OKP configuration."""
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
-        return self._configuration.okp
+        return self._configuration.rag.okp
 
     @property
     def reranker(self) -> "RerankerConfiguration":
@@ -502,12 +502,15 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         byok_mapping = {
-            brag.vector_db_id: brag.rag_id for brag in self._configuration.byok_rag
+            store.vector_db_id: store.rag_id
+            for store in self._configuration.rag.byok.stores
         }
 
-        rag = self._configuration.rag
+        retrieval = self._configuration.rag.retrieval
         okp_id = constants.OKP_RAG_ID
-        okp_enabled = okp_id in (rag.inline or []) or okp_id in (rag.tool or [])
+        okp_enabled = okp_id in (retrieval.inline.sources or []) or okp_id in (
+            retrieval.tool.sources or []
+        )
         okp_mapping = (
             {constants.SOLR_DEFAULT_VECTOR_STORE_ID: okp_id} if okp_enabled else {}
         )
@@ -527,8 +530,8 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         return {
-            brag.vector_db_id: brag.score_multiplier
-            for brag in self._configuration.byok_rag
+            store.vector_db_id: store.score_multiplier
+            for store in self._configuration.rag.byok.stores
         }
 
     @property
@@ -543,7 +546,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         """
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
-        return constants.OKP_RAG_ID in self._configuration.rag.inline
+        return constants.OKP_RAG_ID in self._configuration.rag.retrieval.inline.sources
 
     def resolve_index_name(
         self, vector_store_id: str, rag_id_mapping: Optional[dict[str, str]] = None
