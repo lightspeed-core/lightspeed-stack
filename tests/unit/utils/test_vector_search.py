@@ -22,7 +22,7 @@ from utils.vector_search import (
     _extract_byok_rag_chunks,
     _extract_solr_document_metadata,
     _fetch_byok_rag,
-    _fetch_solr_rag,
+    _fetch_okp_rag,
     _format_rag_context,
     _get_okp_base_url,
     _get_solr_vector_store_ids,
@@ -703,7 +703,7 @@ class TestFetchByokRag:
 
 
 class TestFetchSolrRag:
-    """Tests for _fetch_solr_rag async function."""
+    """Tests for _fetch_okp_rag async function."""
 
     @pytest.mark.asyncio
     async def test_solr_disabled(self, mocker: MockerFixture) -> None:
@@ -713,7 +713,7 @@ class TestFetchSolrRag:
         mocker.patch("utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
-        rag_chunks, referenced_docs = await _fetch_solr_rag(client_mock, "test query")
+        rag_chunks, referenced_docs = await _fetch_okp_rag(client_mock, "test query")
 
         assert rag_chunks == []
         assert referenced_docs == []
@@ -745,7 +745,7 @@ class TestFetchSolrRag:
         client_mock = mocker.AsyncMock()
         client_mock.vector_io.query.return_value = query_response
 
-        rag_chunks, _referenced_docs = await _fetch_solr_rag(client_mock, "test query")
+        rag_chunks, _referenced_docs = await _fetch_okp_rag(client_mock, "test query")
 
         assert len(rag_chunks) > 0
         assert rag_chunks[0].content == "Solr content"
@@ -775,7 +775,7 @@ class TestFetchSolrRag:
         client_mock = mocker.AsyncMock()
         client_mock.vector_io.query.return_value = query_response
 
-        await _fetch_solr_rag(
+        await _fetch_okp_rag(
             client_mock,
             "test query",
             SolrVectorSearchRequest(mode="semantic", filters={"fq": ["x:y"]}),

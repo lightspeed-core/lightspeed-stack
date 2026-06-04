@@ -443,7 +443,6 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
     client: AsyncLlamaStackClient,
     query: str,
     vector_store_ids: Optional[list[str]] = None,
-    max_chunks: Optional[int] = None,
 ) -> tuple[list[RAGChunk], list[ReferencedDocument]]:
     """Fetch chunks and documents from BYOK RAG sources.
 
@@ -453,15 +452,13 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
         vector_store_ids: Optional list of vector store IDs to query.
             If provided, only these stores will be queried. If None, all stores
             (excluding Solr) will be queried.
-        max_chunks: Maximum number of chunks to return. If None, uses
-            rag.byok.max_chunks from configuration.
 
     Returns:
         Tuple containing:
         - rag_chunks: RAG chunks from BYOK RAG
         - referenced_documents: Documents referenced in BYOK RAG results
     """
-    limit = max_chunks if max_chunks is not None else configuration.rag.byok.max_chunks
+    limit = configuration.rag.byok.max_chunks
     rag_chunks: list[RAGChunk] = []
     referenced_documents: list[ReferencedDocument] = []
 
@@ -550,7 +547,7 @@ async def _fetch_byok_rag(  # pylint: disable=too-many-locals
     return rag_chunks, referenced_documents
 
 
-async def _fetch_solr_rag(  # pylint: disable=too-many-locals
+async def _fetch_okp_rag(  # pylint: disable=too-many-locals
     client: AsyncLlamaStackClient,
     query: str,
     solr: Optional[SolrVectorSearchRequest] = None,
@@ -561,8 +558,6 @@ async def _fetch_solr_rag(  # pylint: disable=too-many-locals
         client: The AsyncLlamaStackClient to use for the request
         query: The user's query
         solr: Structured Solr inline RAG request from the API (optional).
-        max_chunks: Maximum number of chunks to return. If None, uses
-            rag.okp.max_chunks from configuration.
 
     Returns:
         Tuple containing:
@@ -658,10 +653,8 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
     top_k = configuration.rag.retrieval.inline.max_chunks
 
     # Fetch from each source using per-source limits for the reranking pool
-    byok_chunks_task = _fetch_byok_rag(
-        client, query, vector_store_ids, max_chunks=configuration.rag.byok.max_chunks
-    )
-    solr_chunks_task = _fetch_solr_rag(client, query, solr)
+    byok_chunks_task = _fetch_byok_rag(client, query, vector_store_ids)
+    solr_chunks_task = _fetch_okp_rag(client, query, solr)
 
     (byok_chunks, byok_documents), (solr_chunks, solr_documents) = await asyncio.gather(
         byok_chunks_task, solr_chunks_task
