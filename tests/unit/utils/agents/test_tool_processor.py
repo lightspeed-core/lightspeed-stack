@@ -106,7 +106,7 @@ class TestSummarizeNativeToolCall:
     def test_mcp_list_tools_call(self) -> None:
         """Test MCP list-tools action summary."""
         part = NativeToolCallPart(
-            tool_name=MCPServerTool.kind,
+            tool_name=f"{MCPServerTool.kind}:srv",
             args={"action": "list_tools"},
             tool_call_id="mcp-list-1",
         )
@@ -115,13 +115,26 @@ class TestSummarizeNativeToolCall:
 
         assert summary is not None
         assert summary.name == "mcp_list_tools"
-        assert summary.args == {"server_label": MCPServerTool.kind}
+        assert summary.args == {"server_label": "srv"}
         assert summary.type == "mcp_list_tools"
+
+    def test_mcp_list_tools_call_with_label(self) -> None:
+        """Test labeled MCP list-tools action uses the server label suffix."""
+        part = NativeToolCallPart(
+            tool_name=f"{MCPServerTool.kind}:myserver",
+            args={"action": "list_tools"},
+            tool_call_id="mcp-list-labeled",
+        )
+
+        summary = summarize_native_tool_call(part)
+
+        assert summary is not None
+        assert summary.args == {"server_label": "myserver"}
 
     def test_mcp_call(self) -> None:
         """Test MCP tool call summary."""
         part = NativeToolCallPart(
-            tool_name=MCPServerTool.kind,
+            tool_name=f"{MCPServerTool.kind}:srv",
             args={
                 "action": "call",
                 "tool_name": "remote_tool",
@@ -553,6 +566,19 @@ class TestProcessNativeToolResult:
         assert len(turn_state.turn_summary.referenced_documents) == 1
         assert turn_state.round_increment_pending
 
+    def test_records_labeled_mcp_result(self, turn_state: AgentTurnAccumulator) -> None:
+        """Test labeled MCP tool return is processed like unlabeled MCP returns."""
+        part = NativeToolReturnPart(
+            tool_name=f"{MCPServerTool.kind}:srv",
+            tool_call_id="mcp-labeled",
+            content={"output": "labeled-output"},
+        )
+
+        result = process_native_tool_result(turn_state, part)
+
+        assert result is not None
+        assert result.content == "labeled-output"
+
     def test_records_web_search_and_mcp_results(
         self, turn_state: AgentTurnAccumulator
     ) -> None:
@@ -563,7 +589,7 @@ class TestProcessNativeToolResult:
             content={"status": "success"},
         )
         mcp_part = NativeToolReturnPart(
-            tool_name=MCPServerTool.kind,
+            tool_name=f"{MCPServerTool.kind}:srv",
             tool_call_id="mcp-process",
             content={"output": "mcp-output"},
         )

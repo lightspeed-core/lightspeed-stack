@@ -33,6 +33,7 @@ from utils.responses import resolve_source_for_result
 logger = get_logger(__name__)
 
 _FILE_SEARCH_URL_KEYS = ("doc_url", "docs_url", "url", "link", "reference_url")
+_MCP_SERVER_TOOL_PREFIX = f"{MCPServerTool.kind}:"
 
 
 def summarize_function_tool_call(part: ToolCallPart) -> ToolCallSummary:
@@ -80,8 +81,8 @@ def summarize_native_tool_call(
                 args=args,
                 type="file_search_call",
             )
-        case MCPServerTool.kind:
-            label = part.tool_name.removeprefix(f"{MCPServerTool.kind}:")
+        case tool_name if tool_name.startswith(_MCP_SERVER_TOOL_PREFIX):
+            label = tool_name.removeprefix(_MCP_SERVER_TOOL_PREFIX)
             action = args.get("action")
             # MCP list tools
             if action == "list_tools":
@@ -180,7 +181,7 @@ def process_native_tool_result(
             state.turn_summary.referenced_documents.extend(referenced_documents)
         case WebSearchTool.kind:
             tool_result = summarize_web_search_result(part, state.tool_round)
-        case MCPServerTool.kind:
+        case tool_name if tool_name.startswith(_MCP_SERVER_TOOL_PREFIX):
             tool_result = summarize_mcp_tool_result(part, state.tool_round)
         case _:
             logger.warning(f"Unknown tool name: {part.tool_name}")
