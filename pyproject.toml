@@ -58,7 +58,7 @@ dependencies = [
     "jsonpath-ng>=1.6.1",
     "psycopg2-binary>=2.9.10",
     "litellm>=1.75.5.post1",
-    "urllib3==2.6.3",
+    "urllib3>=2.6.3",
     # Used for agent card configuration
     "PyYAML>=6.0.0",
     # Used for rag faiss support
