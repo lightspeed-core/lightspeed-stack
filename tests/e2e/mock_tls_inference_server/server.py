@@ -13,6 +13,7 @@ Certificates are generated on-the-fly using trustme at server startup.
 
 import datetime
 import json
+import os
 import ssl
 import threading
 import time
@@ -28,6 +29,25 @@ MODEL_ID = "mock-tls-model"
 TLS_PORT = 8443
 MTLS_PORT = 8444
 HOSTNAME_MISMATCH_PORT = 8445
+
+_DEFAULT_SERVER_CERT_DNS_NAMES: tuple[str, ...] = (
+    "mock-tls-inference",
+    "localhost",
+    "127.0.0.1",
+)
+
+
+def _server_cert_dns_names() -> tuple[str, ...]:
+    """Return DNS identities for the main server certificate.
+
+    Reads comma-separated ``TLS_CERT_DNS_NAMES`` (set in Konflux/Prow manifest).
+    Falls back to Docker Compose defaults when unset.
+    """
+    raw = os.environ.get("TLS_CERT_DNS_NAMES", "").strip()
+    if not raw:
+        return _DEFAULT_SERVER_CERT_DNS_NAMES
+    names = tuple(name.strip() for name in raw.split(",") if name.strip())
+    return names or _DEFAULT_SERVER_CERT_DNS_NAMES
 
 
 class OpenAIHandler(BaseHTTPRequestHandler):
@@ -221,8 +241,9 @@ def main() -> None:
 
     # Generate CA and certificates
     ca = trustme.CA()
-    # Server cert with SANs for Docker service name and localhost
-    server_cert = ca.issue_cert("mock-tls-inference", "localhost", "127.0.0.1")
+    server_dns_names = _server_cert_dns_names()
+    print(f"  Server cert DNS names: {', '.join(server_dns_names)}")
+    server_cert = ca.issue_cert(*server_dns_names)
     # Client cert for mTLS testing (use a simple hostname without spaces)
     client_cert = ca.issue_cert("tls-e2e-test-client")
 

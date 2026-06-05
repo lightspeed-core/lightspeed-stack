@@ -3,6 +3,7 @@
 import os
 import shutil
 import tempfile
+from pathlib import Path
 from typing import Any, Optional
 
 import yaml
@@ -18,6 +19,23 @@ from tests.e2e.utils.utils import is_prow_environment
 _DEFAULT_LOCAL_LLAMA_CONFIG_PATH = "run.yaml"
 _DEFAULT_LOCAL_LLAMA_CONFIG_BACKUP_PATH = "run.yaml.proxy-backup"
 _llama_config_backup_key: dict[str, Optional[str]] = {"value": None}
+
+
+def clear_llama_config_backup() -> None:
+    """Drop in-memory run.yaml backup (e.g. at start of tls.feature)."""
+    _llama_config_backup_key["value"] = None
+
+
+def reset_llama_run_config_to_pipeline_default() -> None:
+    """Reset llama-stack-config run.yaml to Konflux/Prow pipeline seed (run-ci.yaml)."""
+    if not is_prow_environment():
+        return
+    run_ci = Path(__file__).resolve().parents[1] / "configs" / "run-ci.yaml"
+    if not run_ci.is_file():
+        print(f"WARN: pipeline run.yaml seed not found at {run_ci}", flush=True)
+        return
+    print(f"Resetting llama-stack-config from {run_ci.name}...", flush=True)
+    update_llama_run_configmap(str(run_ci))
 
 
 def _local_llama_config_path() -> str:

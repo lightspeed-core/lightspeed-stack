@@ -1,0 +1,104 @@
+# Mock HTTPS OpenAI API for tls-*.feature (Konflux / Prow; no Docker Compose).
+# Llama Stack run.yaml uses https://e2e-mock-tls-inference.<ns>.svc.cluster.local:8443|8444|8445/v1
+apiVersion: v1
+kind: Pod
+metadata:
+  name: e2e-mock-tls-inference
+  labels:
+    app: e2e-mock-tls-inference
+spec:
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: e2e-mock-tls-inference
+      image: python:3.12-slim
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: PYTHONPATH
+          value: /app:/tmp/pydeps
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          pip install --quiet --no-cache-dir --target /tmp/pydeps 'trustme>=1.2.1' 'cryptography>=42.0.0'
+          NS="${POD_NAMESPACE:-default}"
+          export TLS_CERT_DNS_NAMES="mock-tls-inference,localhost,127.0.0.1,e2e-mock-tls-inference,e2e-mock-tls-inference.${NS}.svc.cluster.local"
+          exec python /app/server.py
+      ports:
+        - containerPort: 8443
+          name: tls
+        - containerPort: 8444
+          name: mtls
+        - containerPort: 8445
+          name: mismatch
+      volumeMounts:
+        - name: server-script
+          mountPath: /app/server.py
+          subPath: server.py
+          readOnly: true
+        - name: certs-work
+          mountPath: /certs
+      readinessProbe:
+        exec:
+          command:
+            - python3
+            - -c
+            - |
+              import ssl, urllib.request
+              ctx = ssl.create_default_context()
+              ctx.check_hostname = False
+              ctx.verify_mode = ssl.CERT_NONE
+              urllib.request.urlopen("https://localhost:8443/health", context=ctx)
+        initialDelaySeconds: 8
+        periodSeconds: 5
+      livenessProbe:
+        exec:
+          command:
+            - python3
+            - -c
+            - |
+              import ssl, urllib.request
+              ctx = ssl.create_default_context()
+              ctx.check_hostname = False
+              ctx.verify_mode = ssl.CERT_NONE
+              urllib.request.urlopen("https://localhost:8443/health", context=ctx)
+        initialDelaySeconds: 15
+        periodSeconds: 20
+  volumes:
+    - name: server-script
+      configMap:
+        name: e2e-mock-tls-inference-script
+    - name: certs-work
+      emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: e2e-mock-tls-inference
+spec:
+  selector:
+    app: e2e-mock-tls-inference
+  ports:
+    - name: tls
+      port: 8443
+      targetPort: tls
+    - name: mtls
+      port: 8444
+      targetPort: mtls
+    - name: mismatch
+      port: 8445
+      targetPort: mismatch
