@@ -69,7 +69,7 @@ R11
 Compaction must be blocking per conversation. If a request triggers compaction, concurrent requests on the same conversation must wait until compaction completes. This prevents race conditions (e.g., two requests both triggering compaction, or a new message being appended mid-compaction).
 
 R12
-The native streaming endpoint (`/v1/streaming_query`) must emit a compaction event (e.g., `{"event": "compaction"}`) before the summarization LLM call begins, so the client can display a progress indicator. Non-streaming requests (`/v1/query`) have no mid-request notification mechanism. The A2A executor compacts inline (it is not a browser SSE stream). `/v1/responses` is the OpenAI-compatible endpoint and compacts **silently** — it does not inject a non-standard event into the OpenAI-format stream, preserving wire compatibility.
+The native streaming endpoint (`/v1/streaming_query`) must emit a compaction event (e.g., `{"event": "compaction"}`) before the summarization LLM call begins, so the client can display a progress indicator. Non-streaming requests (`/v1/query`) have no mid-request notification mechanism. The A2A executor compacts inline (it is not a browser SSE stream). `/v1/responses` is the OpenAI-compatible endpoint and compacts **silently** here; emitting a `compaction` event on it would itself be spec-compliant under the OpenResponses extension-events convention, and that option is left open for a follow-up — silent is the initial choice to keep the endpoint a drop-in for clients written against the upstream OpenAI Responses API. Our own clients should use `/v1/streaming_query` to receive the event.
 
 # Use Cases
 
@@ -396,8 +396,10 @@ changed to the marker approach). The summary cache (Decision 8 / LCORE-1571)
 becomes a parallel persistence layer; the runtime boundary is the marker item
 in Llama Stack. Compaction was also confirmed to apply to four endpoints —
 `/v1/query`, `/v1/streaming_query`, the A2A executor, and `/v1/responses` —
-not the two originally listed; `/v1/responses` compacts silently to preserve
-OpenAI-API wire compatibility. Evidence and full reasoning: the spike doc
+not the two originally listed; `/v1/responses` compacts silently in this
+iteration to keep the endpoint a drop-in for clients written against the
+upstream OpenAI Responses API (see R12 for the spec-compliant extension-event
+option). Evidence and full reasoning: the spike doc
 (`conversation-compaction-spike.md`).
 
 **2026-05-27 — Summary cache as source of truth + persisted recursive fold (LCORE-1571/1572).**
