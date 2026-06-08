@@ -93,7 +93,9 @@ def wait_for_complete_response(context: Context) -> None:
     """Wait for the response to be complete."""
     context.response_data = _parse_streaming_response(context.response.text)
     context.response.raise_for_status()
-    assert context.response_data["finished"] is True
+    assert (
+        context.response_data["finished"] is True
+    ), f"Response is not finished: {context.response_data}"
 
 
 @step('I use "{endpoint}" to ask question')
@@ -366,7 +368,6 @@ def _parse_streaming_response(response_text: str) -> dict:
     full_response = ""
     full_response_split = []
     finished = False
-    first_token = True
     stream_error = (
         None  # {"status_code": int, "response": str, "cause": str} if event "error"
     )
@@ -380,10 +381,6 @@ def _parse_streaming_response(response_text: str) -> dict:
                 if event == "start":
                     conversation_id = data["data"]["conversation_id"]
                 elif event == "token":
-                    # Skip the first token (shield status message)
-                    if first_token:
-                        first_token = False
-                        continue
                     full_response_split.append(data["data"]["token"])
                 elif event == "turn_complete":
                     full_response = data["data"]["token"]

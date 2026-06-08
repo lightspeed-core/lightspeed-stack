@@ -41,6 +41,7 @@ from models.common.moderation import ShieldModerationResult
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.turn_summary import TurnSummary
 from models.config import Action
+from utils.agents.query import retrieve_agent_response
 from utils.conversations import append_turn_items_to_conversation
 from utils.endpoints import (
     check_configuration_loaded,
@@ -206,8 +207,13 @@ async def query_endpoint_handler(
         client = await AsyncLlamaStackClientHolder().update_azure_token()
 
     # Retrieve response using Responses API
-    turn_summary = await retrieve_response(
-        client, responses_params, moderation_result, endpoint_path
+    turn_summary = await retrieve_agent_response(
+        client=client,
+        responses_params=responses_params,
+        moderation_result=moderation_result,
+        endpoint_path=endpoint_path,
+        vector_store_ids=query_request.vector_store_ids or [],
+        rag_id_mapping=configuration.rag_id_mapping or {},
     )
 
     if moderation_result.decision == "passed":
