@@ -3,11 +3,24 @@
 import os
 from collections.abc import Generator
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import pytest
 from fastapi import Request, Response
 from fastapi.testclient import TestClient
+from llama_stack_api.openai_responses import OpenAIResponseObject
+from llama_stack_client.types import VersionInfo
+from pydantic_ai import AgentRunResultEvent
+from pydantic_ai.messages import (
+    ModelResponse,
+    NativeToolCallPart,
+    NativeToolReturnPart,
+    PartEndEvent,
+    PartStartEvent,
+    TextPart,
+)
+from pydantic_ai.native_tools import FileSearchTool, MCPServerTool
+from pydantic_ai.usage import RunUsage
 from pytest_mock import MockerFixture
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -70,9 +83,6 @@ def create_mock_llm_response(  # pylint: disable=too-many-arguments,too-many-pos
     Returns:
         Mock LLM response object with the specified configuration.
     """
-    # pylint: disable=import-outside-toplevel
-    from llama_stack_api.openai_responses import OpenAIResponseObject
-
     mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
     mock_response.id = "response-123"
 
@@ -152,6 +162,264 @@ def create_mock_tool_call(
     mock_tool_call.arguments = arguments or {}
     mock_tool_call.type = "tool_call"
     return mock_tool_call
+
+
+def create_agent_run_result(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    mocker: MockerFixture,
+    *,
+    content: str = "This is a test response about Ansible.",
+    response_id: str = "response-123",
+    input_tokens: int = 10,
+    output_tokens: int = 5,
+    model_response: Any = None,
+    new_messages: Optional[list[Any]] = None,
+) -> Any:
+    """Create a mock AgentRunResult wired for retrieve_agent_response.
+
+    Uses real pydantic-ai message types so build_turn_summary_from_agent_run
+    exercises the same path as production agent runs.
+
+    Args:
+        mocker: pytest-mock fixture.
+        content: Assistant text content for the run.
+        response_id: Provider response identifier.
+        input_tokens: Input token count for the run.
+        output_tokens: Output token count for the run.
+        model_response: Optional pre-built ModelResponse.
+        new_messages: Optional message sequence returned by new_messages().
+
+    Returns:
+        Mock AgentRunResult compatible with build_turn_summary_from_agent_run.
+    """
+    if model_response is None:
+        parts = [TextPart(content)] if content else []
+        model_response = ModelResponse(
+            parts=parts,
+            finish_reason="stop",
+            provider_response_id=response_id,
+        )
+
+    messages = new_messages if new_messages is not None else [model_response]
+    run_result = mocker.MagicMock()
+    run_result.response = model_response
+    run_result.usage = RunUsage(
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        requests=1,
+    )
+    run_result.new_messages.return_value = messages
+    return run_result
+
+
+def create_file_search_agent_run_result(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    mocker: MockerFixture,
+    *,
+    content: str,
+    response_id: str = "response-tool-rag",
+    queries: Optional[list[str]] = None,
+    results: Optional[list[dict[str, Any]]] = None,
+    input_tokens: int = 10,
+    output_tokens: int = 5,
+) -> Any:
+    """Create an AgentRunResult containing a native file_search tool call."""
+    call = NativeToolCallPart(
+        tool_name=FileSearchTool.kind,
+        args={"queries": queries or ["test query"]},
+        tool_call_id="call-fs-1",
+    )
+    return_part = NativeToolReturnPart(
+        tool_name=FileSearchTool.kind,
+        tool_call_id="call-fs-1",
+        content={
+            "status": "success",
+            "results": results or [],
+        },
+    )
+    model_response = ModelResponse(
+        parts=[call, return_part, TextPart(content)],
+        finish_reason="stop",
+        provider_response_id=response_id,
+    )
+    return create_agent_run_result(
+        mocker,
+        content=content,
+        response_id=response_id,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        model_response=model_response,
+    )
+
+
+def create_mcp_list_tools_agent_run_result(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    mocker: MockerFixture,
+    *,
+    content: str,
+    response_id: str = "response-mcplist",
+    server_label: str = "kubernetes-server",
+    tools: Optional[list[dict[str, Any]]] = None,
+    input_tokens: int = 15,
+    output_tokens: int = 20,
+) -> Any:
+    """Create an AgentRunResult containing an MCP list-tools native tool call."""
+    call = NativeToolCallPart(
+        tool_name=f"{MCPServerTool.kind}:{server_label}",
+        args={"action": "list_tools"},
+        tool_call_id="mcplist-101",
+    )
+    return_part = NativeToolReturnPart(
+        tool_name=f"{MCPServerTool.kind}:{server_label}",
+        tool_call_id="mcplist-101",
+        content={"tools": tools or []},
+    )
+    model_response = ModelResponse(
+        parts=[call, return_part, TextPart(content)],
+        finish_reason="stop",
+        provider_response_id=response_id,
+    )
+    return create_agent_run_result(
+        mocker,
+        content=content,
+        response_id=response_id,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        model_response=model_response,
+    )
+
+
+def configure_query_agent_mock(
+    mocker: MockerFixture,
+    *,
+    run_result: Any = None,
+    run_side_effect: Any = None,
+) -> Any:
+    """Patch build_agent for /query integration tests and return the mock agent.
+
+    Args:
+        mocker: pytest-mock fixture.
+        run_result: AgentRunResult returned by agent.run().
+        run_side_effect: Optional exception side effect for agent.run().
+
+    Returns:
+        Mock agent exposing AsyncMock run().
+    """
+    if run_result is None:
+        run_result = create_agent_run_result(mocker)
+
+    mock_agent = mocker.AsyncMock()
+    if run_side_effect is not None:
+        mock_agent.run = mocker.AsyncMock(side_effect=run_side_effect)
+    else:
+        mock_agent.run = mocker.AsyncMock(return_value=run_result)
+
+    build_agent_mock = mocker.patch(
+        "utils.agents.query.build_agent",
+        return_value=mock_agent,
+    )
+    mock_agent.build_agent_mock = build_agent_mock
+    return mock_agent
+
+
+def create_text_agent_stream_events(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    mocker: MockerFixture,
+    *,
+    content: str = "Based on the documentation, OpenShift is a Kubernetes distribution.",
+    response_id: str = "response-inline-stream",
+    input_tokens: int = 50,
+    output_tokens: int = 20,
+) -> list[Any]:
+    """Build pydantic-ai stream events for a simple text agent response."""
+    run_result = create_agent_run_result(
+        mocker,
+        content=content,
+        response_id=response_id,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
+    text_part = TextPart(content=content)
+    return [
+        PartStartEvent(index=0, part=text_part),
+        PartEndEvent(index=0, part=text_part),
+        AgentRunResultEvent(result=run_result),
+    ]
+
+
+def create_file_search_agent_stream_events(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    mocker: MockerFixture,
+    *,
+    content: str,
+    response_id: str = "response-tool-stream",
+    queries: Optional[list[str]] = None,
+    results: Optional[list[dict[str, Any]]] = None,
+    input_tokens: int = 60,
+    output_tokens: int = 25,
+) -> list[Any]:
+    """Build pydantic-ai stream events for a file_search tool agent response."""
+    run_result = create_file_search_agent_run_result(
+        mocker,
+        content=content,
+        response_id=response_id,
+        queries=queries,
+        results=results,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
+    call_part, return_part, text_part = run_result.response.parts
+    return [
+        PartEndEvent(index=0, part=call_part),
+        PartStartEvent(index=1, part=return_part),
+        PartStartEvent(index=2, part=text_part),
+        PartEndEvent(index=2, part=text_part),
+        AgentRunResultEvent(result=run_result),
+    ]
+
+
+def configure_streaming_agent_mock(
+    mocker: MockerFixture,
+    *,
+    stream_events: Optional[list[Any]] = None,
+) -> Any:
+    """Patch build_agent for /streaming_query integration tests.
+
+    Args:
+        mocker: pytest-mock fixture.
+        stream_events: Optional pydantic-ai events yielded by run_stream_events.
+
+    Returns:
+        Mock agent exposing run_stream_events().
+    """
+    events = stream_events or create_text_agent_stream_events(mocker)
+
+    def _run_stream_events_side_effect(_prompt: str) -> Any:
+        async def _event_stream() -> Any:
+            for event in events:
+                yield event
+
+        ctx = mocker.MagicMock()
+        ctx.__aenter__ = mocker.AsyncMock(return_value=_event_stream())
+        ctx.__aexit__ = mocker.AsyncMock(return_value=None)
+        return ctx
+
+    mock_agent = mocker.MagicMock()
+    mock_agent.run_stream_events = mocker.MagicMock(
+        side_effect=_run_stream_events_side_effect
+    )
+
+    build_agent_mock = mocker.patch(
+        "utils.agents.streaming.build_agent",
+        return_value=mock_agent,
+    )
+    mock_agent.build_agent_mock = build_agent_mock
+    return mock_agent
+
+
+def get_agent_responses_params(mock_client: Any) -> Any:
+    """Return ResponsesApiParams passed to the patched streaming build_agent."""
+    return mock_client.build_agent_mock.call_args[0][1]
+
+
+def get_agent_input_text(mock_client: Any) -> str:
+    """Return the agent prompt text from the patched streaming build_agent call."""
+    return cast(str, get_agent_responses_params(mock_client).input)
 
 
 # ==========================================
@@ -448,10 +716,6 @@ def mock_llama_stack_client_fixture(
     Yields:
         mock_client: The mocked Llama Stack client instance.
     """
-    # pylint: disable=import-outside-toplevel
-    from llama_stack_api.openai_responses import OpenAIResponseObject
-    from llama_stack_client.types import VersionInfo
-
     # Patch AsyncLlamaStackClientHolder at multiple import locations
     # This ensures the mock is active both during app startup (app.main)
     # and during endpoint execution (query, conversations_v1, responses, etc.)
@@ -483,6 +747,10 @@ def mock_llama_stack_client_fixture(
     mock_response.usage = mock_usage
 
     mock_client.responses.create.return_value = mock_response
+
+    mock_agent = configure_query_agent_mock(mocker)
+    mock_client.query_agent = mock_agent
+    mock_client.build_agent_mock = mock_agent.build_agent_mock
 
     # Mock models.list
     mock_model = mocker.MagicMock()

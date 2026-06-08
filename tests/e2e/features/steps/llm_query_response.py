@@ -93,7 +93,7 @@ def wait_for_complete_response(context: Context) -> None:
     """Wait for the response to be complete."""
     context.response_data = _parse_streaming_response(context.response.text)
     context.response.raise_for_status()
-    assert context.response_data["finished"] is True
+    assert context.response_data["finished"] is True, f"Response is not finished: {context.response_data}"
 
 
 @step('I use "{endpoint}" to ask question')

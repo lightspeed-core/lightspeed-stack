@@ -1,12 +1,13 @@
 """Integration tests for the /streaming_query endpoint (using Responses API)."""
 
-from collections.abc import AsyncIterator, Generator
+from collections.abc import Generator
 from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
+from llama_stack_client.types import VersionInfo
 from pytest_mock import AsyncMockType, MockerFixture
 
 from app.endpoints.streaming_query import streaming_query_endpoint_handler
@@ -14,6 +15,13 @@ from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import QueryRequest
 from models.common.query import Attachment
+from tests.integration.conftest import (
+    configure_streaming_agent_mock,
+    create_text_agent_stream_events,
+)
+from tests.integration.endpoints.test_query_byok_integration import (
+    _build_base_mock_client,
+)
 
 
 @pytest.fixture(name="mock_streaming_llama_stack_client")
@@ -22,32 +30,26 @@ def mock_llama_stack_streaming_fixture(
 ) -> Generator[Any, None, None]:
     """Mock only the Llama Stack client (holder + client).
 
-    Configures the client so the real handler runs: models, vector_stores,
-    conversations, shields, vector_io, and responses.create returning a minimal
-    stream. No other code paths are patched.
+    Configures the client so the real handler runs with a patched pydantic-ai
+    streaming agent. No other code paths are patched.
     """
     mock_holder_class = mocker.patch(
         "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
     )
-    mock_client = mocker.AsyncMock()
+    mock_client = _build_base_mock_client(mocker)
 
-    mock_model = mocker.MagicMock()
-    mock_model.id = "test-provider/test-model"
-    mock_model.custom_metadata = {
-        "provider_id": "test-provider",
-        "model_type": "llm",
-    }
-    mock_client.models.list.return_value = [mock_model]
-
-    mock_vector_stores_response = mocker.MagicMock()
-    mock_vector_stores_response.data = []
-    mock_client.vector_stores.list.return_value = mock_vector_stores_response
-
-    mock_conversation = mocker.MagicMock()
-    mock_conversation.id = "conv_" + "a" * 48
-    mock_client.conversations.create = mocker.AsyncMock(return_value=mock_conversation)
-
-    mock_client.shields.list.return_value = []
+    mock_agent = configure_streaming_agent_mock(
+        mocker,
+        stream_events=create_text_agent_stream_events(
+            mocker,
+            content="test",
+            response_id="response-stream-test",
+            input_tokens=10,
+            output_tokens=5,
+        ),
+    )
+    mock_client.streaming_agent = mock_agent
+    mock_client.build_agent_mock = mock_agent.build_agent_mock
 
     mock_client.conversations.items.create = mocker.AsyncMock()
 
@@ -56,20 +58,13 @@ def mock_llama_stack_streaming_fixture(
     mock_vector_io_response.scores = []
     mock_client.vector_io.query = mocker.AsyncMock(return_value=mock_vector_io_response)
 
-    async def _mock_stream() -> AsyncIterator[Any]:
-        chunk = mocker.MagicMock()
-        chunk.type = "response.output_text.done"
-        chunk.text = "test"
-        yield chunk
-
-    async def _responses_create(**kwargs: Any) -> Any:
-        if kwargs.get("stream", True):
-            return _mock_stream()
+    async def _responses_create(**_kwargs: Any) -> Any:
         mock_resp = mocker.MagicMock()
         mock_resp.output = [mocker.MagicMock(content="topic summary")]
         return mock_resp
 
     mock_client.responses.create = mocker.AsyncMock(side_effect=_responses_create)
+    mock_client.inspect.version.return_value = VersionInfo(version="0.2.22")
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
