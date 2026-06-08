@@ -3,6 +3,7 @@
 # Tests exercise internal helpers directly.
 # pylint: disable=protected-access
 
+import asyncio
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -561,3 +562,106 @@ def test_estimate_response_input_tokens_counts_list_form() -> None:
     )
     assert string_tokens > 10
     assert list_tokens > 10
+
+
+# --- per-conversation lock (R11): ref-counted cleanup ---
+
+
+@pytest.mark.asyncio
+async def test_conversation_lock_serializes_concurrent_callers() -> None:
+    """Two callers on the same conversation_id serialize: second waits for first."""
+    cc._conversation_locks.clear()
+    order: list[str] = []
+    a_started = asyncio.Event()
+    a_can_finish = asyncio.Event()
+
+    async def first() -> None:
+        async with cc._conversation_lock("conv_serial"):
+            order.append("a-enter")
+            a_started.set()
+            await a_can_finish.wait()
+            order.append("a-exit")
+
+    async def second() -> None:
+        await a_started.wait()
+        async with cc._conversation_lock("conv_serial"):
+            order.append("b-enter")
+            order.append("b-exit")
+
+    t1 = asyncio.create_task(first())
+    t2 = asyncio.create_task(second())
+    await a_started.wait()
+    # Yield the loop a few times so `second` reaches the lock acquire.
+    for _ in range(5):
+        await asyncio.sleep(0)
+    assert order == ["a-enter"]  # second is blocked behind first
+    a_can_finish.set()
+    await asyncio.gather(t1, t2)
+    assert order == ["a-enter", "a-exit", "b-enter", "b-exit"]
+
+
+@pytest.mark.asyncio
+async def test_conversation_lock_entry_deleted_after_last_release() -> None:
+    """The registry entry is removed once the last waiter exits (no leak)."""
+    cc._conversation_locks.clear()
+    async with cc._conversation_lock("conv_to_remove"):
+        assert "conv_to_remove" in cc._conversation_locks
+        assert cc._conversation_locks["conv_to_remove"].waiters == 1
+    assert "conv_to_remove" not in cc._conversation_locks
+
+
+@pytest.mark.asyncio
+async def test_conversation_lock_entry_kept_while_waiters_queued() -> None:
+    """While a second caller is queued, the entry stays (not evicted by the first exit)."""
+    cc._conversation_locks.clear()
+    inside_first = asyncio.Event()
+    first_can_finish = asyncio.Event()
+
+    async def first() -> None:
+        async with cc._conversation_lock("conv_queue"):
+            inside_first.set()
+            await first_can_finish.wait()
+
+    async def second() -> None:
+        await inside_first.wait()
+        async with cc._conversation_lock("conv_queue"):
+            pass
+
+    t1 = asyncio.create_task(first())
+    t2 = asyncio.create_task(second())
+    await inside_first.wait()
+
+    # Wait until `second` has registered as a waiter.
+    async def _wait_for_second() -> None:
+        while cc._conversation_locks.get("conv_queue") is None or (
+            cc._conversation_locks["conv_queue"].waiters < 2
+        ):
+            await asyncio.sleep(0)
+
+    await asyncio.wait_for(_wait_for_second(), timeout=2)
+    assert cc._conversation_locks["conv_queue"].waiters >= 2
+    first_can_finish.set()
+    await asyncio.gather(t1, t2)
+    assert "conv_queue" not in cc._conversation_locks
+
+
+@pytest.mark.asyncio
+async def test_conversation_lock_cleanup_on_cancellation() -> None:
+    """A cancelled holder does not leak its registry entry."""
+    cc._conversation_locks.clear()
+    inside = asyncio.Event()
+
+    async def holder() -> None:
+        async with cc._conversation_lock("conv_cancel"):
+            inside.set()
+            await asyncio.sleep(10)  # held until cancelled
+
+    t = asyncio.create_task(holder())
+    await inside.wait()
+    assert "conv_cancel" in cc._conversation_locks
+    t.cancel()
+    try:
+        await t
+    except asyncio.CancelledError:
+        pass
+    assert "conv_cancel" not in cc._conversation_locks

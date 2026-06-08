@@ -43,6 +43,7 @@ boundary between summarized history and the recent verbatim turns.
 
 import asyncio
 from collections.abc import AsyncIterator, Sequence
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Optional, cast
 
@@ -92,17 +93,51 @@ the model (:func:`_summary_input_message`).
 # Per-conversation locks (R11). A request that triggers compaction holds the
 # conversation's lock across the summarization LLM call so concurrent requests
 # on the same conversation wait rather than racing (e.g. double-compacting or
-# appending a turn mid-compaction).
-_conversation_locks: dict[str, asyncio.Lock] = {}
+# appending a turn mid-compaction). Entries are ref-counted: the registry mutex
+# guards lookup/insertion/deletion of an entry, and an entry is removed once
+# its last waiter exits — so the registry does not grow unbounded with the
+# set of conversation_ids ever seen by the process.
 
 
-def _get_lock(conversation_id: str) -> asyncio.Lock:
-    """Return the (process-wide) asyncio lock for a conversation, creating it lazily."""
-    lock = _conversation_locks.get(conversation_id)
-    if lock is None:
-        lock = asyncio.Lock()
-        _conversation_locks[conversation_id] = lock
-    return lock
+@dataclass
+class _LockEntry:
+    """Per-conversation lock paired with a count of in-flight waiters."""
+
+    lock: asyncio.Lock
+    waiters: int = 0
+
+
+_conversation_locks: dict[str, _LockEntry] = {}
+_locks_registry_mutex: asyncio.Lock = asyncio.Lock()
+
+
+@asynccontextmanager
+async def _conversation_lock(conversation_id: str) -> AsyncIterator[None]:
+    """Acquire the per-conversation lock and clean up the entry on last release.
+
+    The registry mutex guards lookup/insertion/deletion of the entry; the entry's
+    own lock serializes the critical section. ``waiters`` is incremented before
+    the critical section and decremented in ``finally``, so while any caller is
+    inside the ``async with`` body ``waiters`` is ``>= 1`` and the entry cannot
+    be evicted out from under concurrent waiters; once the last waiter exits
+    the entry is removed from the registry.
+    """
+    entry: Optional[_LockEntry] = None
+    try:
+        async with _locks_registry_mutex:
+            entry = _conversation_locks.get(conversation_id)
+            if entry is None:
+                entry = _LockEntry(lock=asyncio.Lock())
+                _conversation_locks[conversation_id] = entry
+            entry.waiters += 1
+        async with entry.lock:
+            yield
+    finally:
+        if entry is not None:
+            async with _locks_registry_mutex:
+                entry.waiters -= 1
+                if entry.waiters == 0:
+                    _conversation_locks.pop(conversation_id, None)
 
 
 @dataclass
@@ -342,6 +377,119 @@ def _should_compact(
     return estimated_tokens > threshold and estimated_tokens > config.token_floor
 
 
+def _load_compaction_state(
+    items: list[Any],
+    cache: Optional[Cache],
+    user_id: str,
+    conversation_id: str,
+    skip_user_id_check: bool,
+) -> tuple[list[str], list[ConversationSummary], list[Any]]:
+    """Read the current summary set and the recent-items buffer from the conversation.
+
+    The cache is the preferred source of truth for summary text; the Llama Stack
+    marker texts remain the authoritative fallback when no persisting cache is
+    configured. The recent-verbatim boundary is always derived from marker
+    position in the conversation items.
+
+    Returns ``(summaries, cached_summaries, recent_items)``.
+    """
+    cached_summaries = _read_cached_summaries(
+        cache, user_id, conversation_id, skip_user_id_check
+    )
+    summaries = (
+        [s.summary_text for s in cached_summaries]
+        if cached_summaries
+        else _marker_summaries(items)
+    )
+    recent_items = _items_after_last_marker(items)
+    return summaries, cached_summaries, recent_items
+
+
+def _estimate_total_tokens(
+    system_prompt: Optional[str],
+    summaries: list[str],
+    recent_items: list[Any],
+    original_input: ResponseInput,
+    encoding_name: str,
+) -> int:
+    """Estimate the total token count for the request as it would be sent."""
+    estimated = estimate_tokens(system_prompt or "", encoding_name)
+    estimated += sum(estimate_tokens(text, encoding_name) for text in summaries)
+    estimated += estimate_conversation_tokens(recent_items, encoding_name=encoding_name)
+    estimated += _estimate_response_input_tokens(original_input, encoding_name)
+    return estimated
+
+
+async def _persist_new_summary_chunk(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    client: AsyncLlamaStackClient,
+    conversation_id: str,
+    summary: ConversationSummary,
+    cache: Optional[Cache],
+    user_id: str,
+    skip_user_id_check: bool,
+) -> None:
+    """Persist a fresh summary chunk: write the Llama Stack marker + best-effort cache."""
+    await _write_summary_marker(client, conversation_id, summary.summary_text)
+    _store_cached_summary(cache, user_id, conversation_id, summary, skip_user_id_check)
+
+
+async def _maybe_persist_fold(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    client: AsyncLlamaStackClient,
+    model: str,
+    conversation_id: str,
+    cache: Optional[Cache],
+    user_id: str,
+    skip_user_id_check: bool,
+    cached_summaries: list[ConversationSummary],
+    summaries: list[str],
+    context_window: int,
+    threshold_ratio: float,
+    encoding_name: str,
+) -> tuple[list[str], list[ConversationSummary]]:
+    """Run the recursive fold (R3) if persisted summaries crossed the threshold.
+
+    Requires a persisting cache (marker-only conversations keep additive chunks).
+    Returns the (possibly updated) ``(summaries, cached_summaries)``; on a cache
+    write failure the unfolded values are returned unchanged.
+    """
+    if cache is None or len(cached_summaries) < 2:
+        return summaries, cached_summaries
+    summaries_tokens = sum(s.token_count for s in cached_summaries)
+    if summaries_tokens <= context_window * threshold_ratio:
+        return summaries, cached_summaries
+    logger.info(
+        "Folding %d summaries (%d tokens) for conversation %s",
+        len(cached_summaries),
+        summaries_tokens,
+        conversation_id,
+    )
+    folded = await recursively_resummarize(
+        client, model, cached_summaries, encoding_name
+    )
+    try:
+        cache.replace_summaries(user_id, conversation_id, folded, skip_user_id_check)
+    except CacheError as exc:  # keep the unfolded summaries
+        logger.warning("compaction: cache replace_summaries failed: %s", exc)
+        return summaries, cached_summaries
+    return [folded.summary_text], [folded]
+
+
+def _compacted_result(
+    params: ResponsesApiParams,
+    summaries: list[str],
+    recent_items: list[Any],
+    original_input: ResponseInput,
+) -> CompactionResult:
+    """Build the CompactionResult for compacted mode (explicit input + omit_conversation)."""
+    explicit_input = _build_explicit_input(summaries, recent_items, original_input)
+    compacted_params = params.model_copy(
+        update={"input": explicit_input, "omit_conversation": True}
+    )
+    return CompactionResult(
+        compacted_params, compacted=True, original_input=original_input
+    )
+
+
 async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     client: AsyncLlamaStackClient,
     params: ResponsesApiParams,
@@ -395,38 +543,26 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
 
     conversation_id = params.conversation
     model = params.model
-    system_prompt = params.instructions
     original_input = params.input
 
-    async with _get_lock(conversation_id):
+    async with _conversation_lock(conversation_id):
         items = await get_all_conversation_items(client, conversation_id)
-        recent_items = _items_after_last_marker(items)
-
-        # Summaries: the cache is the preferred source of truth (and the home of
-        # any persisted recursive fold); the Llama Stack marker texts remain an
-        # authoritative fallback when no persisting cache is available.
-        cached_summaries = _read_cached_summaries(
-            cache, user_id, conversation_id, skip_user_id_check
-        )
-        summaries = (
-            [s.summary_text for s in cached_summaries]
-            if cached_summaries
-            else _marker_summaries(items)
+        summaries, cached_summaries, recent_items = _load_compaction_state(
+            items, cache, user_id, conversation_id, skip_user_id_check
         )
 
         context_window = get_context_window(model, inference_config)
         if context_window is not None:
-            estimated = estimate_tokens(system_prompt or "", encoding_name)
-            estimated += sum(estimate_tokens(text, encoding_name) for text in summaries)
-            estimated += estimate_conversation_tokens(
-                recent_items, encoding_name=encoding_name
+            estimated = _estimate_total_tokens(
+                params.instructions,
+                summaries,
+                recent_items,
+                original_input,
+                encoding_name,
             )
-            estimated += _estimate_response_input_tokens(original_input, encoding_name)
-
             if _should_compact(estimated, context_window, compaction_config):
                 if emit_events:
                     yield CompactionStartedEvent(conversation_id=conversation_id)
-
                 budget = int(context_window * compaction_config.buffer_max_ratio)
                 old_items, keep_items = partition_conversation(
                     recent_items,
@@ -443,45 +579,30 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
                         summarized_through_turn=already + len(old_items),
                         encoding_name=encoding_name,
                     )
-                    await _write_summary_marker(
-                        client, conversation_id, summary.summary_text
-                    )
-                    _store_cached_summary(
-                        cache, user_id, conversation_id, summary, skip_user_id_check
+                    await _persist_new_summary_chunk(
+                        client,
+                        conversation_id,
+                        summary,
+                        cache,
+                        user_id,
+                        skip_user_id_check,
                     )
                     summaries.append(summary.summary_text)
                     cached_summaries = [*cached_summaries, summary]
                     recent_items = keep_items
-
-            # Recursive fold (R3): when the persisted summaries themselves grow
-            # past the threshold, collapse them into a single fold and persist it
-            # so it is reused rather than recomputed each request. Requires a
-            # persisting cache; marker-only conversations keep additive summaries.
-            if cache is not None and len(cached_summaries) >= 2:
-                summaries_tokens = sum(s.token_count for s in cached_summaries)
-                if (
-                    summaries_tokens
-                    > context_window * compaction_config.threshold_ratio
-                ):
-                    logger.info(
-                        "Folding %d summaries (%d tokens) for conversation %s",
-                        len(cached_summaries),
-                        summaries_tokens,
-                        conversation_id,
-                    )
-                    folded = await recursively_resummarize(
-                        client, model, cached_summaries, encoding_name
-                    )
-                    try:
-                        cache.replace_summaries(
-                            user_id, conversation_id, folded, skip_user_id_check
-                        )
-                        cached_summaries = [folded]
-                        summaries = [folded.summary_text]
-                    except CacheError as exc:  # keep the unfolded summaries
-                        logger.warning(
-                            "compaction: cache replace_summaries failed: %s", exc
-                        )
+            summaries, cached_summaries = await _maybe_persist_fold(
+                client,
+                model,
+                conversation_id,
+                cache,
+                user_id,
+                skip_user_id_check,
+                cached_summaries,
+                summaries,
+                context_window,
+                compaction_config.threshold_ratio,
+                encoding_name,
+            )
 
         if not summaries:
             # No compaction has ever happened for this conversation: leave the
@@ -491,13 +612,7 @@ async def apply_compaction(  # pylint: disable=too-many-arguments,too-many-posit
 
         # Compacted mode: lightspeed owns the context. Build explicit input and
         # stop passing the conversation parameter to inference.
-        explicit_input = _build_explicit_input(summaries, recent_items, original_input)
-        compacted_params = params.model_copy(
-            update={"input": explicit_input, "omit_conversation": True}
-        )
-        yield CompactionResult(
-            compacted_params, compacted=True, original_input=original_input
-        )
+        yield _compacted_result(params, summaries, recent_items, original_input)
 
 
 async def apply_compaction_blocking(  # pylint: disable=too-many-arguments,too-many-positional-arguments
