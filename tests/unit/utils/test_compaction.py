@@ -82,12 +82,9 @@ class TestIsMessageItem:
         """Tool-call item is not a message."""
         assert is_message_item(_ToolCallItem()) is False
 
-    def test_openai_dict_with_role(self) -> None:
-        """OpenAI-style dict with role key is a message."""
-        assert is_message_item({"role": "user", "content": "hi"}) is True
-
-    def test_dict_without_role(self) -> None:
-        """Dict without role key is not a message."""
+    def test_dict_is_not_a_message(self) -> None:
+        """Plain dicts are not treated as message items; only typed models are."""
+        assert is_message_item({"role": "user", "content": "hi"}) is False
         assert is_message_item({"content": "hi"}) is False
 
 
@@ -103,23 +100,11 @@ class TestExtractMessageText:
         """Plain string content on an object is returned as-is."""
         assert extract_message_text(_MessageItem("user", "hello")) == "hello"
 
-    def test_string_content_dict(self) -> None:
-        """Plain string content in a dict is returned as-is."""
-        assert extract_message_text({"role": "user", "content": "hi"}) == "hi"
-
     def test_list_content_with_text_attr(self) -> None:
         """List of content-parts with .text is joined."""
         item: Any = _MessageItem("user", "ignored")
         item.content = [_TextPart("one"), _TextPart("two")]
         assert extract_message_text(item) == "one two"
-
-    def test_list_content_with_text_dict(self) -> None:
-        """List of dicts with 'text' key is joined."""
-        item = {
-            "role": "user",
-            "content": [{"text": "alpha"}, {"text": "beta"}],
-        }
-        assert extract_message_text(item) == "alpha beta"
 
     def test_none_content(self) -> None:
         """None content yields the empty string."""
@@ -157,14 +142,14 @@ class TestFormatConversationForSummary:
         assert "function_call" not in out
         assert "user: hello" in out and "assistant: world" in out
 
-    def test_handles_dict_shape(self) -> None:
-        """OpenAI-style dicts are rendered alongside Llama-Stack items."""
+    def test_dicts_are_skipped(self) -> None:
+        """Plain dicts are not treated as messages and produce no output."""
         items: list[Any] = [
             {"role": "user", "content": "from dict"},
             _MessageItem("assistant", "from object"),
         ]
         out = format_conversation_for_summary(items)
-        assert "user: from dict" in out
+        assert "from dict" not in out
         assert "assistant: from object" in out
 
 

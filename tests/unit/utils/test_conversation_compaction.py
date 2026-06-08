@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
+from llama_stack_api.openai_responses import OpenAIResponseMessage
 from pytest_mock import MockerFixture
 
 from models.common.responses.responses_api_params import ResponsesApiParams
@@ -19,14 +20,14 @@ MODEL = "openai/gpt-4o-mini"
 CONV = "conv_abc123"
 
 
-def _msg(role: str, text: str) -> dict:
-    """Build a duck-typed conversation message item."""
-    return {"role": role, "content": text}
+def _msg(role: str, text: str) -> OpenAIResponseMessage:
+    """Build a typed Llama Stack message item for tests."""
+    return OpenAIResponseMessage(role=cast(Any, role), content=text)
 
 
-def _marker(text: str) -> dict:
-    """Build a summary marker message item."""
-    return {"role": "user", "content": f"{cc.MARKER_SENTINEL} {text}"}
+def _marker(text: str) -> OpenAIResponseMessage:
+    """Build a typed summary marker message item for tests."""
+    return OpenAIResponseMessage(role="user", content=f"{cc.MARKER_SENTINEL} {text}")
 
 
 def _params(input_text: str = "new question") -> ResponsesApiParams:

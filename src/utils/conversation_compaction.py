@@ -236,7 +236,7 @@ def _verbatim_input_message(item: Any) -> Optional[OpenAIResponseMessage]:
     text = extract_message_text(item)
     if not text:
         return None
-    role = item.get("role") if isinstance(item, dict) else getattr(item, "role", "user")
+    role = getattr(item, "role", "user")
     if role not in ("system", "developer", "user", "assistant"):
         role = "user"
     # role validated above; cast satisfies the Literal-typed parameter.

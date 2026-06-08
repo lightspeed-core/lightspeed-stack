@@ -83,10 +83,7 @@ def format_conversation_for_summary(items: list[Any]) -> str:
     for item in items:
         if not is_message_item(item):
             continue
-        if isinstance(item, dict):
-            role = item.get("role", "unknown")
-        else:
-            role = getattr(item, "role", "unknown")
+        role = getattr(item, "role", "unknown")
         text = extract_message_text(item)
         if text:
             lines.append(f"{role}: {text}")
