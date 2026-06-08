@@ -7,8 +7,17 @@
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client import APIConnectionError
+from pydantic_ai.messages import (
+    ModelRequest,
+    ModelResponse,
+    NativeToolCallPart,
+    NativeToolReturnPart,
+    TextPart,
+    ToolCallPart,
+    ToolReturnPart,
+)
+from pydantic_ai.native_tools import FileSearchTool
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
 
@@ -25,7 +34,9 @@ from models.database.conversations import UserConversation
 from tests.integration.conftest import (
     TEST_CONVERSATION_ID,
     TEST_NON_EXISTENT_ID,
-    create_mock_llm_response,
+    create_agent_run_result,
+    create_file_search_agent_run_result,
+    create_mcp_list_tools_agent_run_result,
 )
 
 # File-specific test constants
@@ -115,7 +126,7 @@ async def test_query_v2_endpoint_handles_connection_error(
     """
     _ = test_config
 
-    mock_llama_stack_client.responses.create.side_effect = APIConnectionError(
+    mock_llama_stack_client.query_agent.run.side_effect = APIConnectionError(
         request=mocker.Mock()
     )
 
@@ -453,50 +464,24 @@ async def test_query_v2_endpoint_with_tool_calls(
     """
     _ = test_config
 
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
-    mock_response.id = "response-789"
-
-    mock_tool_output = mocker.MagicMock()
-    mock_tool_output.type = "file_search_call"
-    mock_tool_output.id = "call-1"
-    mock_tool_output.queries = ["What is Ansible"]
-    mock_tool_output.status = "completed"
-    mock_result = mocker.MagicMock()
-    mock_result.file_id = "doc-1"
-    mock_result.filename = "ansible-docs.txt"
-    mock_result.score = 0.95
-    mock_result.text = "Ansible is an open-source automation tool..."
-    mock_result.attributes = {
-        "doc_url": "https://example.com/ansible-docs.txt",
-        "link": "https://example.com/ansible-docs.txt",
-    }
-    mock_result.model_dump = mocker.Mock(
-        return_value={
-            "file_id": "doc-1",
-            "filename": "ansible-docs.txt",
-            "score": 0.95,
-            "text": "Ansible is an open-source automation tool...",
-            "attributes": {
-                "doc_url": "https://example.com/ansible-docs.txt",
-                "link": "https://example.com/ansible-docs.txt",
-            },
-        }
+    tool_run_result = create_file_search_agent_run_result(
+        mocker,
+        content="Based on the documentation, Ansible is...",
+        response_id="response-789",
+        queries=["What is Ansible"],
+        results=[
+            {
+                "text": "Ansible is an open-source automation tool...",
+                "score": 0.95,
+                "attributes": {
+                    "doc_url": "https://example.com/ansible-docs.txt",
+                    "title": "ansible-docs.txt",
+                    "document_id": "doc-1",
+                },
+            }
+        ],
     )
-    mock_tool_output.results = [mock_result]
-
-    mock_message_output = mocker.MagicMock()
-    mock_message_output.type = "message"
-    mock_message_output.role = "assistant"
-    mock_message_output.content = "Based on the documentation, Ansible is..."
-
-    mock_response.output = [mock_tool_output, mock_message_output]
-    mock_response.stop_reason = "end_turn"
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 10
-    mock_usage.output_tokens = 5
-    mock_response.usage = mock_usage
-
-    mock_llama_stack_client.responses.create.return_value = mock_response
+    mock_llama_stack_client.query_agent.run.return_value = tool_run_result
 
     query_request = QueryRequest(query="What is Ansible?")
 
@@ -537,38 +522,23 @@ async def test_query_v2_endpoint_with_mcp_list_tools(
     """
     _ = test_config
 
-    mock_response = mocker.MagicMock()
-    mock_response.id = "response-mcplist"
-
-    mock_tool1 = mocker.MagicMock()
-    mock_tool1.name = "list_pods"
-    mock_tool1.description = "List Kubernetes pods"
-    mock_tool1.input_schema = {"type": "object", "properties": {}}
-
-    mock_tool2 = mocker.MagicMock()
-    mock_tool2.name = "get_deployment"
-    mock_tool2.description = "Get Kubernetes deployment"
-    mock_tool2.input_schema = {"type": "object", "properties": {}}
-
-    mock_mcp_list = mocker.MagicMock()
-    mock_mcp_list.type = "mcp_list_tools"
-    mock_mcp_list.id = "mcplist-101"
-    mock_mcp_list.server_label = "kubernetes-server"
-    mock_mcp_list.tools = [mock_tool1, mock_tool2]
-
-    mock_message = mocker.MagicMock()
-    mock_message.type = "message"
-    mock_message.role = "assistant"
-    mock_message.content = "Available tools: list_pods, get_deployment"
-
-    mock_response.output = [mock_mcp_list, mock_message]
-    mock_response.tool_calls = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 15
-    mock_usage.output_tokens = 20
-    mock_response.usage = mock_usage
-
-    mock_llama_stack_client.responses.create.return_value = mock_response
+    mcp_run_result = create_mcp_list_tools_agent_run_result(
+        mocker,
+        content="Available tools: list_pods, get_deployment",
+        tools=[
+            {
+                "name": "list_pods",
+                "description": "List Kubernetes pods",
+                "input_schema": {"type": "object", "properties": {}},
+            },
+            {
+                "name": "get_deployment",
+                "description": "Get Kubernetes deployment",
+                "input_schema": {"type": "object", "properties": {}},
+            },
+        ],
+    )
+    mock_llama_stack_client.query_agent.run.return_value = mcp_run_result
 
     query_request = QueryRequest(query="What tools are available?")
 
@@ -609,37 +579,46 @@ async def test_query_v2_endpoint_with_multiple_tool_types(
     """
     _ = test_config
 
-    mock_response = mocker.MagicMock()
-    mock_response.id = "response-multi"
-
-    mock_file_search = mocker.MagicMock()
-    mock_file_search.type = "file_search_call"
-    mock_file_search.id = "search-1"
-    mock_file_search.queries = ["Kubernetes deployment"]
-    mock_file_search.status = "completed"
-    mock_file_search.results = []
-
-    mock_function = mocker.MagicMock()
-    mock_function.type = "function_call"
-    mock_function.id = "func-2"
-    mock_function.call_id = "func-2"
-    mock_function.name = "calculate"
-    mock_function.arguments = '{"operation": "sum"}'
-    mock_function.status = "completed"
-
-    mock_message = mocker.MagicMock()
-    mock_message.type = "message"
-    mock_message.role = "assistant"
-    mock_message.content = "Based on documentation and calculations..."
-
-    mock_response.output = [mock_file_search, mock_function, mock_message]
-    mock_response.tool_calls = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 40
-    mock_usage.output_tokens = 60
-    mock_response.usage = mock_usage
-
-    mock_llama_stack_client.responses.create.return_value = mock_response
+    file_search_call = NativeToolCallPart(
+        tool_name=FileSearchTool.kind,
+        args={"queries": ["Kubernetes deployment"]},
+        tool_call_id="search-1",
+    )
+    file_search_return = NativeToolReturnPart(
+        tool_name=FileSearchTool.kind,
+        tool_call_id="search-1",
+        content={"status": "success", "results": []},
+    )
+    function_call = ToolCallPart(
+        tool_name="calculate",
+        args={"operation": "sum"},
+        tool_call_id="func-2",
+    )
+    function_return = ToolReturnPart(
+        tool_name="calculate",
+        content={"result": 2},
+        tool_call_id="func-2",
+    )
+    model_response = ModelResponse(
+        parts=[
+            file_search_call,
+            file_search_return,
+            function_call,
+            TextPart("Based on documentation and calculations..."),
+        ],
+        finish_reason="stop",
+        provider_response_id="response-multi",
+    )
+    multi_tool_run = create_agent_run_result(
+        mocker,
+        content="Based on documentation and calculations...",
+        response_id="response-multi",
+        input_tokens=40,
+        output_tokens=60,
+        model_response=model_response,
+        new_messages=[model_response, ModelRequest(parts=[function_return])],
+    )
+    mock_llama_stack_client.query_agent.run.return_value = multi_tool_run
 
     query_request = QueryRequest(query="Search docs and calculate deployment replicas")
 
@@ -711,9 +690,9 @@ async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
     assert response.conversation_id is not None
     assert response.response is not None
 
-    # Verify NO tools were passed to Llama Stack (despite vector stores being available)
-    call_kwargs = mock_llama_stack_client.responses.create.call_args.kwargs
-    assert call_kwargs.get("tools") is None
+    # Verify NO tools were passed to the agent (despite vector stores being available)
+    responses_params = mock_llama_stack_client.build_agent_mock.call_args[0][1]
+    assert responses_params.tools is None
 
 
 @pytest.mark.asyncio
@@ -770,11 +749,11 @@ async def test_query_v2_endpoint_uses_tools_when_available(
     assert response.conversation_id is not None
     assert response.response is not None
 
-    # Verify tools were passed to Llama Stack (real tool preparation logic ran)
-    call_kwargs = mock_llama_stack_client.responses.create.call_args_list[0].kwargs
-    assert call_kwargs.get("tools") is not None
-    assert len(call_kwargs["tools"]) > 0
-    assert any(tool.get("type") == "file_search" for tool in call_kwargs["tools"])
+    # Verify tools were passed to the agent (real tool preparation logic ran)
+    responses_params = mock_llama_stack_client.build_agent_mock.call_args[0][1]
+    assert responses_params.tools is not None
+    assert len(responses_params.tools) > 0
+    assert any(tool.type == "file_search" for tool in responses_params.tools)
 
 
 # ==========================================
@@ -876,16 +855,15 @@ async def test_query_v2_endpoint_updates_existing_conversation(
     original_topic = existing_conversation.topic_summary
     original_count = existing_conversation.message_count
 
-    # Create a proper mock response with all required attributes
-    mock_response = create_mock_llm_response(
+    # Create a proper agent run result with empty assistant text
+    empty_run_result = create_agent_run_result(
         mocker,
         content="",
+        response_id=EXISTING_CONV_ID,
         input_tokens=10,
         output_tokens=5,
     )
-    mock_response.id = EXISTING_CONV_ID
-    mock_response.output = []  # Override to empty for this test
-    mock_llama_stack_client.responses.create.return_value = mock_response
+    mock_llama_stack_client.query_agent.run.return_value = empty_run_result
 
     query_request = QueryRequest(query="Tell me more", conversation_id=EXISTING_CONV_ID)
 
@@ -1110,17 +1088,15 @@ async def test_query_v2_endpoint_with_shield_violation(
     """
     _ = test_config
 
-    # Configure Llama Stack mock to return response with violation
-    mock_response = create_mock_llm_response(
+    # Configure agent mock to return advisory shield-violation-style content
+    violation_run_result = create_agent_run_result(
         mocker,
         content="I cannot respond to this request",
-        refusal="Content violates safety policy",
+        response_id="response-violation",
         input_tokens=10,
         output_tokens=5,
     )
-    mock_response.id = "response-violation"
-
-    mock_llama_stack_client.responses.create.return_value = mock_response
+    mock_llama_stack_client.query_agent.run.return_value = violation_run_result
 
     query_request = QueryRequest(query="Inappropriate query")
 
@@ -1182,13 +1158,10 @@ async def test_query_v2_endpoint_without_shields(
     assert response.conversation_id is not None
     assert response.response is not None
 
-    # Verify extra_body was not included (or guardrails is empty)
-    call_kwargs = mock_llama_stack_client.responses.create.call_args.kwargs
-    if "extra_body" in call_kwargs:
-        assert (
-            "guardrails" not in call_kwargs["extra_body"]
-            or not call_kwargs["extra_body"]["guardrails"]
-        )
+    # Verify responses params passed to the agent do not include guardrails
+    responses_params = mock_llama_stack_client.build_agent_mock.call_args[0][1]
+    dumped_params = responses_params.model_dump(exclude_none=True)
+    assert "guardrails" not in dumped_params
 
 
 @pytest.mark.asyncio
@@ -1217,17 +1190,14 @@ async def test_query_v2_endpoint_handles_empty_llm_response(
     """
     _ = test_config
 
-    # Create a response with truly empty output array (no assistant messages)
-    mock_response = create_mock_llm_response(
+    empty_run_result = create_agent_run_result(
         mocker,
         content="",
+        response_id="response-empty",
         input_tokens=10,
         output_tokens=0,
     )
-    mock_response.id = "response-empty"
-    mock_response.output = []  # Override to test truly empty response
-
-    mock_llama_stack_client.responses.create.return_value = mock_response
+    mock_llama_stack_client.query_agent.run.return_value = empty_run_result
 
     query_request = QueryRequest(query="What is Ansible?")
 
@@ -1276,16 +1246,14 @@ async def test_query_v2_endpoint_quota_integration(
     _ = test_config
     _ = patch_db_session
 
-    mock_response = create_mock_llm_response(
+    quota_run_result = create_agent_run_result(
         mocker,
         content="",
+        response_id="response-quota",
         input_tokens=100,
         output_tokens=50,
     )
-    mock_response.id = "response-quota"
-    mock_response.output = []  # Override to empty for this test
-
-    mock_llama_stack_client.responses.create.return_value = mock_response
+    mock_llama_stack_client.query_agent.run.return_value = quota_run_result
 
     mock_consume = mocker.spy(app.endpoints.query, "consume_query_tokens")
     _ = mocker.spy(app.endpoints.query, "get_available_quotas")
@@ -1513,15 +1481,14 @@ async def test_query_v2_endpoint_uses_conversation_history_model(
     patch_db_session.add(existing_conv)
     patch_db_session.commit()
 
-    mock_response = create_mock_llm_response(
+    history_run_result = create_agent_run_result(
         mocker,
         content="",
+        response_id=EXISTING_CONV_ID,
         input_tokens=10,
         output_tokens=5,
     )
-    mock_response.id = EXISTING_CONV_ID
-    mock_response.output = []  # Override to empty for this test
-    mock_llama_stack_client.responses.create.return_value = mock_response
+    mock_llama_stack_client.query_agent.run.return_value = history_run_result
 
     query_request = QueryRequest(query="Tell me more", conversation_id=EXISTING_CONV_ID)
 
