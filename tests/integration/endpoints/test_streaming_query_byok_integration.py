@@ -3,13 +3,12 @@
 # pylint: disable=too-many-lines
 
 import json
-from collections.abc import AsyncIterator, Generator
+from collections.abc import Generator
 from typing import Any
 
 import pytest
 from fastapi import Request, status
 from fastapi.responses import StreamingResponse
-from llama_stack_api.openai_responses import OpenAIResponseObject
 from pytest_mock import AsyncMockType, MockerFixture
 
 import constants
@@ -17,6 +16,12 @@ from app.endpoints.streaming_query import streaming_query_endpoint_handler
 from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import QueryRequest
+from tests.integration.conftest import (
+    configure_streaming_agent_mock,
+    create_file_search_agent_stream_events,
+    get_agent_input_text,
+    get_agent_responses_params,
+)
 from tests.integration.endpoints.test_query_byok_integration import (
     _build_base_mock_client,
     _make_byok_vector_io_response,
@@ -50,39 +55,18 @@ async def _collect_sse_events(response: StreamingResponse) -> list[dict[str, Any
 def _build_base_streaming_mock_client(mocker: MockerFixture) -> Any:
     """Build a base mock Llama Stack client configured for streaming responses.
 
-    Extends the base query mock client with streaming-specific stubs:
-    conversations.items.create and a streaming responses.create.
+    Extends the base query mock client with a patched pydantic-ai streaming
+    agent and topic-summary responses.create stub.
     """
     mock_client = _build_base_mock_client(mocker)
 
-    # Streaming additions
+    mock_agent = configure_streaming_agent_mock(mocker)
+    mock_client.streaming_agent = mock_agent
+    mock_client.build_agent_mock = mock_agent.build_agent_mock
+
     mock_client.conversations.items.create = mocker.AsyncMock()
 
-    async def _mock_stream() -> AsyncIterator[Any]:
-        chunk = mocker.MagicMock()
-        chunk.type = "response.output_text.done"
-        chunk.text = (
-            "Based on the documentation, OpenShift is a Kubernetes distribution."
-        )
-        yield chunk
-
-        # Emit response.completed so referenced_documents propagate to end event
-        completed_chunk = mocker.MagicMock()
-        completed_chunk.type = "response.completed"
-        mock_final = mocker.MagicMock(spec=OpenAIResponseObject)
-        mock_final.id = "response-inline-stream"
-        mock_final.error = None
-        mock_usage = mocker.MagicMock()
-        mock_usage.input_tokens = 50
-        mock_usage.output_tokens = 20
-        mock_final.usage = mock_usage
-        mock_final.output = []
-        completed_chunk.response = mock_final
-        yield completed_chunk
-
-    async def _responses_create(**kwargs: Any) -> Any:
-        if kwargs.get("stream", True):
-            return _mock_stream()
+    async def _responses_create(**_kwargs: Any) -> Any:
         mock_resp = mocker.MagicMock()
         mock_resp.output = [mocker.MagicMock(content="topic summary")]
         return mock_resp
@@ -152,78 +136,32 @@ def mock_streaming_byok_tool_client_fixture(  # pylint: disable=too-many-stateme
     mock_list_result.data = [mock_vector_store]
     mock_client.vector_stores.list.return_value = mock_list_result
 
-    # Build a streaming response with file_search and completion events
-    async def _mock_tool_stream() -> AsyncIterator[Any]:
-        # file_search output item done
-        item_done_chunk = mocker.MagicMock()
-        item_done_chunk.type = "response.output_item.done"
-        item_done_chunk.output_index = 0
-
-        mock_item = mocker.MagicMock()
-        mock_item.type = "file_search_call"
-        mock_item.id = "call-fs-stream-1"
-        mock_item.queries = ["What is OpenShift?"]
-        mock_item.status = "completed"
-
-        mock_result = mocker.MagicMock()
-        mock_result.file_id = "doc-ocp-1"
-        mock_result.filename = "openshift-docs.txt"
-        mock_result.score = 0.92
-        mock_result.text = "OpenShift is a Kubernetes distribution by Red Hat."
-        mock_result.attributes = {
-            "doc_url": "https://docs.redhat.com/ocp/overview",
-        }
-        mock_result.model_dump = mocker.Mock(
-            return_value={
-                "file_id": "doc-ocp-1",
-                "filename": "openshift-docs.txt",
-                "score": 0.92,
-                "text": "OpenShift is a Kubernetes distribution.",
-                "attributes": {"doc_url": "https://docs.redhat.com/ocp/overview"},
-            }
-        )
-        mock_item.results = [mock_result]
-        item_done_chunk.item = mock_item
-        yield item_done_chunk
-
-        # Text done
-        text_done_chunk = mocker.MagicMock()
-        text_done_chunk.type = "response.output_text.done"
-        text_done_chunk.text = (
-            "Based on the documentation, OpenShift is a Kubernetes distribution."
-        )
-        yield text_done_chunk
-
-        # Response completed
-        completed_chunk = mocker.MagicMock()
-        completed_chunk.type = "response.completed"
-        mock_final_response = mocker.MagicMock(spec=OpenAIResponseObject)
-        mock_final_response.id = "response-tool-stream"
-        mock_final_response.error = None
-
-        mock_usage = mocker.MagicMock()
-        mock_usage.input_tokens = 60
-        mock_usage.output_tokens = 25
-        mock_final_response.usage = mock_usage
-
-        # file_search results in the final response output
-        mock_fs_output = mocker.MagicMock()
-        mock_fs_output.type = "file_search_call"
-        mock_fs_output.id = "call-fs-stream-1"
-        mock_fs_output.results = [mock_result]
-        mock_final_response.output = [mock_fs_output]
-
-        completed_chunk.response = mock_final_response
-        yield completed_chunk
-
-    async def _responses_create(**kwargs: Any) -> Any:
-        if kwargs.get("stream", True):
-            return _mock_tool_stream()
-        mock_resp = mocker.MagicMock()
-        mock_resp.output = [mocker.MagicMock(content="topic summary")]
-        return mock_resp
-
-    mock_client.responses.create = mocker.AsyncMock(side_effect=_responses_create)
+    mock_agent = configure_streaming_agent_mock(
+        mocker,
+        stream_events=create_file_search_agent_stream_events(
+            mocker,
+            content=(
+                "Based on the documentation, OpenShift is a Kubernetes distribution."
+            ),
+            response_id="response-tool-stream",
+            queries=["What is OpenShift?"],
+            results=[
+                {
+                    "text": "OpenShift is a Kubernetes distribution by Red Hat.",
+                    "score": 0.92,
+                    "attributes": {
+                        "doc_url": "https://docs.redhat.com/ocp/overview",
+                        "title": "openshift-docs.txt",
+                        "document_id": "doc-ocp-1",
+                    },
+                }
+            ],
+            input_tokens=60,
+            output_tokens=25,
+        ),
+    )
+    mock_client.streaming_agent = mock_agent
+    mock_client.build_agent_mock = mock_agent.build_agent_mock
 
     mock_holder_class.return_value.get_client.return_value = mock_client
     yield mock_client
@@ -309,12 +247,8 @@ async def test_streaming_query_byok_inline_rag_injects_context(
 
     assert isinstance(response, StreamingResponse)
 
-    # Verify RAG context was injected into responses.create input
-    # responses.create is the mock for the OpenAI-compatible LLM API call.
-    # .kwargs holds its keyword arguments, e.g. "input" is the full prompt text sent to the model.
-    create_call = mock_streaming_byok_client.responses.create.call_args_list[0]
-    call_kwargs = create_call.kwargs
-    input_text = call_kwargs["input"]
+    # Verify RAG context was injected into the agent prompt
+    input_text = get_agent_input_text(mock_streaming_byok_client)
     assert "file_search found" in input_text
     assert "OpenShift is a Kubernetes distribution" in input_text
 
@@ -448,11 +382,8 @@ async def test_streaming_query_byok_request_vector_store_ids_filters_configured_
     call_kwargs = mock_client.vector_io.query.call_args.kwargs
     assert call_kwargs["vector_store_id"] == "vs-source-a"
 
-    # Verify source-a context was injected into the LLM input
-    # responses.create is the mock for the OpenAI-compatible LLM API call.
-    # .kwargs holds its keyword arguments, e.g. "input" is the full prompt text sent to the model.
-    create_call = mock_client.responses.create.call_args_list[0]
-    input_text = create_call.kwargs["input"]
+    # Verify source-a context was injected into the agent prompt
+    input_text = get_agent_input_text(mock_client)
     assert "file_search found" in input_text
 
 
@@ -484,10 +415,7 @@ async def test_streaming_query_byok_inline_rag_empty_vector_store_ids_no_context
     assert isinstance(response, StreamingResponse)
     mock_streaming_byok_client.vector_io.query.assert_not_called()
 
-    # responses.create is the mock for the OpenAI-compatible LLM API call.
-    # .kwargs holds its keyword arguments, e.g. "input" is the full prompt text sent to the model.
-    create_call = mock_streaming_byok_client.responses.create.call_args_list[0]
-    input_text = create_call.kwargs["input"]
+    input_text = get_agent_input_text(mock_streaming_byok_client)
     assert "file_search found" not in input_text
 
 
@@ -525,11 +453,7 @@ async def test_streaming_query_byok_inline_rag_error_handled_gracefully(
     assert isinstance(response, StreamingResponse)
 
     # No inline RAG context should be injected when the search fails.
-    # "file_search found" is the header added by _format_rag_context when chunks are present.
-    # responses.create is the mock for the OpenAI-compatible LLM API call.
-    # .kwargs holds its keyword arguments, e.g. "input" is the full prompt text sent to the model.
-    create_call = mock_streaming_byok_client.responses.create.call_args_list[0]
-    input_text = create_call.kwargs["input"]
+    input_text = get_agent_input_text(mock_streaming_byok_client)
     assert "file_search found" not in input_text
 
 
@@ -725,17 +649,14 @@ async def test_streaming_query_byok_combined_inline_and_tool_rag(
     assert isinstance(response, StreamingResponse)
     assert response.status_code == status.HTTP_200_OK
 
-    # Verify inline RAG context was injected
-    # responses.create is the mock for the OpenAI-compatible LLM API call.
-    # .kwargs holds its keyword arguments, e.g. "input" is the full prompt text sent to the model.
-    create_call = mock_client.responses.create.call_args_list[0]
-    call_kwargs = create_call.kwargs
-    input_text = call_kwargs["input"]
+    # Verify inline RAG context was injected into the agent prompt
+    input_text = get_agent_input_text(mock_client)
     assert "file_search found" in input_text
 
-    # Verify tool RAG file_search was passed
-    assert call_kwargs.get("tools") is not None
-    assert any(tool.get("type") == "file_search" for tool in call_kwargs["tools"])
+    # Verify tool RAG file_search was passed to the agent
+    responses_params = get_agent_responses_params(mock_client)
+    assert responses_params.tools is not None
+    assert any(tool.type == "file_search" for tool in responses_params.tools)
 
 
 # ==============================================================================
@@ -812,10 +733,7 @@ async def test_streaming_query_byok_only_configured_rag_id_is_queried(
     ]
     assert "vs-source-b" not in queried_stores
 
-    # responses.create is the mock for the OpenAI-compatible LLM API call.
-    # .kwargs holds its keyword arguments, e.g. "input" is the full prompt text sent to the model.
-    create_call = mock_client.responses.create.call_args_list[0]
-    input_text = create_call.kwargs["input"]
+    input_text = get_agent_input_text(mock_client)
     assert "file_search found" in input_text
 
 
@@ -897,10 +815,7 @@ async def test_streaming_query_byok_score_multiplier_shifts_priority(  # pylint:
     assert isinstance(response, StreamingResponse)
 
     # Verify Doc B (weighted 2.0) appears before Doc A (weighted 0.9) in context
-    # responses.create is the mock for the OpenAI-compatible LLM API call.
-    # .kwargs holds its keyword arguments, e.g. "input" is the full prompt text sent to the model.
-    create_call = mock_client.responses.create.call_args_list[0]
-    input_text = create_call.kwargs["input"]
+    input_text = get_agent_input_text(mock_client)
     pos_b = input_text.find("Doc B low similarity boosted")
     pos_a = input_text.find("Doc A high similarity")
     assert pos_b != -1 and pos_a != -1
@@ -969,10 +884,7 @@ async def test_streaming_query_rag_content_limit_caps_context(  # pylint: disabl
     assert isinstance(response, StreamingResponse)
 
     # Verify the context header reports the capped count
-    # responses.create is the mock for the OpenAI-compatible LLM API call.
-    # .kwargs holds its keyword arguments, e.g. "input" is the full prompt text sent to the model.
-    create_call = mock_client.responses.create.call_args_list[0]
-    input_text = create_call.kwargs["input"]
+    input_text = get_agent_input_text(mock_client)
     expected_header = f"file_search found {constants.INLINE_RAG_MAX_CHUNKS} chunks:"
     assert expected_header in input_text
 
@@ -1058,10 +970,7 @@ async def test_streaming_query_rag_content_limit_caps_across_multiple_sources(  
 
     assert isinstance(response, StreamingResponse)
 
-    # responses.create is the mock for the OpenAI-compatible LLM API call.
-    # .kwargs holds its keyword arguments, e.g. "input" is the full prompt text sent to the model.
-    create_call = mock_client.responses.create.call_args_list[0]
-    input_text = create_call.kwargs["input"]
+    input_text = get_agent_input_text(mock_client)
     expected_header = f"file_search found {constants.INLINE_RAG_MAX_CHUNKS} chunks:"
     assert expected_header in input_text
 
@@ -1132,8 +1041,7 @@ async def test_streaming_query_rag_content_limit_caps_inline_rag(  # pylint: dis
 
     assert isinstance(response, StreamingResponse)
 
-    create_call = mock_client.responses.create.call_args_list[0]
-    input_text = create_call.kwargs["input"]
+    input_text = get_agent_input_text(mock_client)
     expected_header = "file_search found 3 chunks:"
     assert expected_header in input_text
 

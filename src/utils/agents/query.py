@@ -114,9 +114,7 @@ def map_pydantic_agent_run_error(
     if isinstance(exc, IncompleteToolCall):
         return PromptTooLongResponse(model=model_id)
     if isinstance(exc, UnexpectedModelBehavior):
-        if is_context_length_error(str(exc)):
-            return PromptTooLongResponse(model=model_id)
-        return InternalServerErrorResponse.query_failed(str(exc))
+        return PromptTooLongResponse(model=model_id)
     if isinstance(exc, UsageLimitExceeded):
         return QuotaExceededResponse.model(model_id)
     if isinstance(exc, ModelHTTPError):
