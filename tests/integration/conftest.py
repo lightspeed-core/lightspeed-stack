@@ -3,17 +3,20 @@
 import os
 from collections.abc import Generator
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import pytest
 from fastapi import Request, Response
 from fastapi.testclient import TestClient
 from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client.types import VersionInfo
+from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.messages import (
     ModelResponse,
     NativeToolCallPart,
     NativeToolReturnPart,
+    PartEndEvent,
+    PartStartEvent,
     TextPart,
 )
 from pydantic_ai.native_tools import FileSearchTool, MCPServerTool
@@ -314,6 +317,109 @@ def configure_query_agent_mock(
     )
     mock_agent.build_agent_mock = build_agent_mock
     return mock_agent
+
+
+def create_text_agent_stream_events(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    mocker: MockerFixture,
+    *,
+    content: str = "Based on the documentation, OpenShift is a Kubernetes distribution.",
+    response_id: str = "response-inline-stream",
+    input_tokens: int = 50,
+    output_tokens: int = 20,
+) -> list[Any]:
+    """Build pydantic-ai stream events for a simple text agent response."""
+    run_result = create_agent_run_result(
+        mocker,
+        content=content,
+        response_id=response_id,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
+    text_part = TextPart(content=content)
+    return [
+        PartStartEvent(index=0, part=text_part),
+        PartEndEvent(index=0, part=text_part),
+        AgentRunResultEvent(result=run_result),
+    ]
+
+
+def create_file_search_agent_stream_events(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    mocker: MockerFixture,
+    *,
+    content: str,
+    response_id: str = "response-tool-stream",
+    queries: Optional[list[str]] = None,
+    results: Optional[list[dict[str, Any]]] = None,
+    input_tokens: int = 60,
+    output_tokens: int = 25,
+) -> list[Any]:
+    """Build pydantic-ai stream events for a file_search tool agent response."""
+    run_result = create_file_search_agent_run_result(
+        mocker,
+        content=content,
+        response_id=response_id,
+        queries=queries,
+        results=results,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
+    call_part, return_part, text_part = run_result.response.parts
+    return [
+        PartEndEvent(index=0, part=call_part),
+        PartStartEvent(index=1, part=return_part),
+        PartStartEvent(index=2, part=text_part),
+        PartEndEvent(index=2, part=text_part),
+        AgentRunResultEvent(result=run_result),
+    ]
+
+
+def configure_streaming_agent_mock(
+    mocker: MockerFixture,
+    *,
+    stream_events: Optional[list[Any]] = None,
+) -> Any:
+    """Patch build_agent for /streaming_query integration tests.
+
+    Args:
+        mocker: pytest-mock fixture.
+        stream_events: Optional pydantic-ai events yielded by run_stream_events.
+
+    Returns:
+        Mock agent exposing run_stream_events().
+    """
+    events = stream_events or create_text_agent_stream_events(mocker)
+
+    def _run_stream_events_side_effect(_prompt: str) -> Any:
+        async def _event_stream() -> Any:
+            for event in events:
+                yield event
+
+        ctx = mocker.MagicMock()
+        ctx.__aenter__ = mocker.AsyncMock(return_value=_event_stream())
+        ctx.__aexit__ = mocker.AsyncMock(return_value=None)
+        return ctx
+
+    mock_agent = mocker.MagicMock()
+    mock_agent.run_stream_events = mocker.MagicMock(
+        side_effect=_run_stream_events_side_effect
+    )
+
+    build_agent_mock = mocker.patch(
+        "utils.agents.streaming.build_agent",
+        return_value=mock_agent,
+    )
+    mock_agent.build_agent_mock = build_agent_mock
+    return mock_agent
+
+
+def get_agent_responses_params(mock_client: Any) -> Any:
+    """Return ResponsesApiParams passed to the patched streaming build_agent."""
+    return mock_client.build_agent_mock.call_args[0][1]
+
+
+def get_agent_input_text(mock_client: Any) -> str:
+    """Return the agent prompt text from the patched streaming build_agent call."""
+    return cast(str, get_agent_responses_params(mock_client).input)
 
 
 # ==========================================
