@@ -10,6 +10,11 @@ and pydantic_ai registers them with a ``-call`` vendor_part_id suffix.  The buff
 deltas must be replayed with the matching suffix so pydantic_ai can append the
 streamed ``tool_args`` content to the correct part.
 
+When compaction omits the ``conversation`` parameter from inference requests,
+``LlamaStackResponsesModel`` appends completed turns to the conversation via
+``CompactionTurnContext`` (in :meth:`_responses_create` for non-streaming rounds,
+and on ``response.completed`` for streaming rounds in :meth:`request_stream`).
+
 This module provides ``LlamaStackResponsesModel`` which wraps the event stream to
 buffer those early delta events and replay them correctly once the item is announced.
 """
@@ -17,16 +22,18 @@ buffer those early delta events and replay them correctly once the item is annou
 from __future__ import annotations as _annotations
 
 from collections import defaultdict
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
-from typing import Any, cast
+from dataclasses import dataclass
+from typing import Any, Literal, Optional, cast, overload
 
+from llama_stack_client import AsyncLlamaStackClient
 from openai import AsyncStream
 from openai.types import responses
 from pydantic_ai import UnexpectedModelBehavior
 from pydantic_ai._run_context import RunContext
 from pydantic_ai._utils import PeekableAsyncStream, Unset, number_to_datetime
-from pydantic_ai.messages import ModelMessage, ModelResponse
+from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse
 from pydantic_ai.models import (
     ModelRequestParameters,
     StreamedResponse,
@@ -38,11 +45,36 @@ from pydantic_ai.models.openai import (
     OpenAIResponsesStreamedResponse,
     _map_api_errors,
 )
+from pydantic_ai.profiles import ModelProfileSpec
 from pydantic_ai.settings import ModelSettings
 
 from log import get_logger
+from models.common.responses.types import ResponseInput
+from pydantic_ai_lightspeed.llamastack._provider import LlamaStackProvider
+from utils.conversations import append_turn_items_to_conversation
 
 logger = get_logger(__name__)
+
+
+@dataclass
+class CompactionTurnContext:
+    """Mutable state for manually persisting compacted agent turns.
+
+    ``latest_round_input`` is initialized to the real user query. The create patch
+    leaves it unchanged on the first LLM round, then records pydantic-ai input
+    for follow-up rounds after that turn is persisted.
+
+    Attributes:
+        client: Llama Stack client used to append conversation items.
+        conversation_id: Conversation to store turns against.
+        latest_round_input: Input stored for the current or next inference round.
+        original_input_persisted: Whether the first compacted round was appended.
+    """
+
+    client: AsyncLlamaStackClient
+    conversation_id: str
+    latest_round_input: ResponseInput
+    original_input_persisted: bool = False
 
 
 class _FilteredResponseStream:
@@ -58,13 +90,19 @@ class _FilteredResponseStream:
     a closing ``}`` to complete the outer JSON object that pydantic_ai opens.
     """
 
-    def __init__(self, source: AsyncStream[responses.ResponseStreamEvent]) -> None:
+    def __init__(
+        self,
+        source: AsyncStream[responses.ResponseStreamEvent],
+        compaction: Optional[CompactionTurnContext] = None,
+    ) -> None:
         """Wrap an existing stream with reordering logic.
 
         Args:
             source: The raw OpenAI AsyncStream to reorder.
+            compaction: Compaction state for turn persistence, if active.
         """
         self._source = source
+        self._compaction = compaction
         self._announced_item_ids: set[str] = set()
         self._buffered_deltas: dict[
             str, list[responses.ResponseFunctionCallArgumentsDeltaEvent]
@@ -111,6 +149,19 @@ class _FilteredResponseStream:
                     )
                     self._buffered_deltas[event.item_id].append(event)
                     continue
+
+            if (
+                isinstance(event, responses.ResponseCompletedEvent)
+                and self._compaction is not None
+            ):
+                compaction = self._compaction
+                await append_turn_items_to_conversation(
+                    compaction.client,
+                    compaction.conversation_id,
+                    compaction.latest_round_input,
+                    cast(Sequence[Any], event.response.output),
+                )
+                compaction.original_input_persisted = True
 
             yield event
 
@@ -179,7 +230,107 @@ class LlamaStackResponsesModel(OpenAIResponsesModel):
     Overrides the streaming response processing to buffer and replay
     ``ResponseFunctionCallArgumentsDeltaEvent`` events that Llama Stack emits
     before the corresponding ``McpCall`` or ``ResponseFunctionToolCall`` item.
+
+    When ``compaction`` is set, completed inference rounds are appended to the
+    conversation because compacted mode omits the ``conversation`` parameter.
     """
+
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        model_name: str,
+        provider: LlamaStackProvider,
+        profile: ModelProfileSpec | None = None,
+        settings: ModelSettings | None = None,
+        compaction: Optional[CompactionTurnContext] = None,
+    ) -> None:
+        """Initialize the model.
+
+        Args:
+            model_name: Model identifier passed to pydantic-ai.
+            provider: Pydantic AI provider or provider name.
+            profile: Optional model profile override.
+            settings: Optional pydantic-ai model settings.
+            compaction: Compaction state when turns must be stored manually.
+        """
+        super().__init__(
+            model_name,
+            provider=provider,
+            profile=profile,
+            settings=settings,
+        )
+        self.compaction = compaction
+
+    @overload
+    async def _responses_create(
+        self,
+        messages: list[ModelRequest | ModelResponse],
+        stream: Literal[False],
+        model_settings: OpenAIResponsesModelSettings,
+        model_request_parameters: ModelRequestParameters,
+    ) -> responses.Response: ...
+
+    @overload
+    async def _responses_create(
+        self,
+        messages: list[ModelRequest | ModelResponse],
+        stream: Literal[True],
+        model_settings: OpenAIResponsesModelSettings,
+        model_request_parameters: ModelRequestParameters,
+    ) -> AsyncStream[responses.ResponseStreamEvent]: ...
+
+    async def _responses_create(
+        self,
+        messages: list[ModelRequest | ModelResponse],
+        stream: bool,
+        model_settings: OpenAIResponsesModelSettings,
+        model_request_parameters: ModelRequestParameters,
+    ) -> (
+        responses.Response | AsyncStream[responses.ResponseStreamEvent] | ModelResponse
+    ):
+        """Create a Responses API request with compacted turn persistence.
+
+        After the first compacted round is persisted, records pydantic-ai input
+        for follow-up tool-loop rounds. Non-streaming responses are appended
+        immediately; streaming persistence is handled in :meth:`request_stream`.
+        """
+        compaction = self.compaction
+        if compaction is not None and compaction.original_input_persisted:
+            request_params = await self._build_responses_request_params(
+                messages,
+                model_settings,
+                model_request_parameters,
+                self.profile,
+            )
+            compaction.latest_round_input = cast(ResponseInput, request_params.input)
+
+        result: (
+            responses.Response
+            | AsyncStream[responses.ResponseStreamEvent]
+            | ModelResponse
+        )
+        if stream:
+            result = await super()._responses_create(
+                messages, True, model_settings, model_request_parameters
+            )
+        else:
+            result = await super()._responses_create(
+                messages, False, model_settings, model_request_parameters
+            )
+
+        if (
+            compaction is not None
+            and not stream
+            and isinstance(result, responses.Response)
+        ):
+            await append_turn_items_to_conversation(
+                compaction.client,
+                compaction.conversation_id,
+                compaction.latest_round_input,
+                cast(Sequence[Any], result.output),
+            )
+            compaction.original_input_persisted = True
+
+        return result
 
     async def request(  # pylint: disable=unused-argument
         self,
@@ -274,7 +425,7 @@ class LlamaStackResponsesModel(OpenAIResponsesModel):
             messages, True, model_settings_cast, model_request_parameters
         )
 
-        filtered_stream = _FilteredResponseStream(response)
+        filtered_stream = _FilteredResponseStream(response, self.compaction)
 
         async with response:
             peekable: PeekableAsyncStream[

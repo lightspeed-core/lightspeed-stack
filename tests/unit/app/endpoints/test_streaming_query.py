@@ -709,54 +709,8 @@ class TestCreateResponseGenerator:
 
         assert isinstance(turn_summary, TurnSummary)
         assert turn_summary.llm_response == "Content blocked"
-        # Structured refusal captured for compacted-mode persistence (LCORE-1572).
-        assert turn_summary.output_items == [mock_moderation_result.refusal_response]
         # Non-compacted: the refusal turn is stored here.
         mock_append.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_retrieve_response_generator_shield_blocked_compacted(
-        self, mocker: MockerFixture
-    ) -> None:
-        """In compacted mode the shield refusal is not stored here (no double-store).
-
-        generate_response persists the compacted turn (with the original input),
-        so storing it again in the shield branch would duplicate it (LCORE-1572).
-        """
-        mock_client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.input = "explicit input"
-        mock_responses_params.conversation = "conv_123"
-        mock_responses_params.omit_conversation = True  # compacted
-
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.client = mock_client
-        mock_context.vector_store_ids = []
-        mock_context.rag_id_mapping = {}
-        mock_context.inline_rag_context = RAGContext()
-        mock_context.query_request = QueryRequest(
-            query="test", media_type=MEDIA_TYPE_TEXT
-        )  # pyright: ignore[reportCallIssue]
-
-        mock_moderation_result = mocker.Mock()
-        mock_moderation_result.decision = "blocked"
-        mock_moderation_result.message = "Content blocked"
-        mock_moderation_result.moderation_id = "mod_123"
-        mock_moderation_result.refusal_response = mocker.Mock()
-        mock_context.moderation_result = mock_moderation_result
-        mock_append = mocker.patch(
-            "app.endpoints.streaming_query.append_turn_items_to_conversation",
-            new=mocker.AsyncMock(),
-        )
-
-        _generator, turn_summary = await retrieve_response_generator(
-            mock_responses_params, mock_context, endpoint_path=""
-        )
-
-        assert turn_summary.output_items == [mock_moderation_result.refusal_response]
-        mock_append.assert_not_awaited()  # compacted: generate_response stores it
 
     @pytest.mark.asyncio
     async def test_retrieve_response_generator_connection_error(
@@ -1021,71 +975,6 @@ class TestGenerateResponse:
         assert len(result) > 0
         assert any("start" in item for item in result)
         assert any("end" in item for item in result)
-
-    @pytest.mark.asyncio
-    async def test_generate_response_compacted_persists_structured_turn(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Compacted mode persists the turn via store_compacted_turn with the
-        original input and structured output items, not flattened strings
-        (LCORE-1572)."""
-
-        async def mock_generator() -> AsyncIterator[str]:
-            yield "data: token\n\n"
-
-        conv_id = "123e4567-e89b-12d3-a456-426614174000"
-        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-        mock_context.conversation_id = conv_id
-        mock_context.user_id = "user_123"
-        mock_context.query_request = QueryRequest(
-            query="test", conversation_id=conv_id
-        )  # pyright: ignore[reportCallIssue]
-        mock_context.started_at = "2024-01-01T00:00:00Z"
-        mock_context.skip_userid_check = False
-        mock_context.request_id = "223e4567-e89b-12d3-a456-426614174000"
-        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
-
-        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
-        mock_responses_params.model = "provider1/model1"
-        mock_responses_params.conversation = conv_id
-
-        turn_summary = TurnSummary()
-        turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
-        output_item = mocker.Mock()
-        turn_summary.output_items = [output_item]
-
-        mock_config = mocker.Mock()
-        mock_config.quota_limiters = []
-        mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
-        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
-        mocker.patch(
-            "app.endpoints.streaming_query.get_available_quotas", return_value={}
-        )
-        mocker.patch("app.endpoints.streaming_query.store_query_results")
-        store_mock = mocker.patch(
-            "app.endpoints.streaming_query.store_compacted_turn",
-            new_callable=mocker.AsyncMock,
-        )
-
-        result = [
-            item
-            async for item in generate_response(
-                mock_generator(),
-                mock_context,
-                mock_responses_params,
-                turn_summary,
-                compacted=True,
-                original_input="the original query",
-            )
-        ]
-
-        assert any("end" in item for item in result)
-        store_mock.assert_awaited_once_with(
-            mock_context.client,
-            conv_id,
-            "the original query",
-            [output_item],
-        )
 
     @pytest.mark.asyncio
     async def test_generate_response_with_topic_summary(
@@ -2663,45 +2552,3 @@ class TestResponseGeneratorMCPCalls:
         # Should have both tool call and result (fallback behavior)
         assert len(mock_turn_summary.tool_calls) == 1
         assert len(mock_turn_summary.tool_results) == 1
-
-
-@pytest.mark.asyncio
-async def test_response_generator_failed_captures_output_items(
-    mocker: MockerFixture,
-) -> None:
-    """A failed terminal captures output_items for compacted persistence (LCORE-1572)."""
-    out_item = mocker.Mock()
-
-    async def mock_turn_response() -> AsyncIterator[OpenAIResponseObjectStream]:
-        chunk = mocker.Mock(spec=FailedChunk)
-        chunk.type = "response.failed"
-        mock_response = mocker.Mock()
-        mock_response.output = [out_item]
-        mock_response.error = mocker.Mock(message="boom")
-        chunk.response = mock_response
-        yield chunk
-
-    mock_context = mocker.Mock(spec=ResponseGeneratorContext)
-    mock_context.query_request = QueryRequest(
-        query="test", media_type=MEDIA_TYPE_JSON
-    )  # pyright: ignore[reportCallIssue]
-    mock_context.model_id = "provider1/model1"
-    mock_context.vector_store_ids = []
-    mock_context.rag_id_mapping = {}
-    mock_context.inline_rag_context = RAGContext()
-
-    turn_summary = TurnSummary()
-    mocker.patch(
-        "app.endpoints.streaming_query.extract_token_usage",
-        return_value=TokenCounter(input_tokens=0, output_tokens=0),
-    )
-    mocker.patch(
-        "app.endpoints.streaming_query.parse_referenced_documents", return_value=[]
-    )
-
-    async for _ in response_generator(
-        mock_turn_response(), mock_context, turn_summary, endpoint_path=""
-    ):
-        pass
-
-    assert turn_summary.output_items == [out_item]

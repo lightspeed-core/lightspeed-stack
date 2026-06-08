@@ -530,16 +530,20 @@ class TestRetrieveAgentResponseGenerator:
         assert turn_summary.id == blocked_moderation.moderation_id
 
     @pytest.mark.asyncio
-    async def test_blocked_moderation_skips_append_when_omit_conversation(
+    async def test_blocked_moderation_compacted_appends_with_original_input(
         self,
         mocker: MockerFixture,
         make_generator_context: Callable[..., ResponseGeneratorContext],
         make_responses_params: Callable[..., ResponsesApiParams],
         blocked_moderation: ShieldModerationBlocked,
     ) -> None:
-        """Test compacted mode does not append blocked turn to conversation."""
+        """Test compacted blocked turns persist with original_input, not explicit input."""
         context = make_generator_context(moderation_result=blocked_moderation)
-        responses_params = make_responses_params(omit_conversation=True)
+        responses_params = make_responses_params(
+            omit_conversation=True,
+            input_text="explicit summaries-plus-recent input",
+        )
+        original_input = "the real user query"
         mocker.patch(
             "utils.agents.streaming.shield_violation_generator",
             return_value=_async_iter([]),
@@ -553,9 +557,15 @@ class TestRetrieveAgentResponseGenerator:
             responses_params,
             context,
             ENDPOINT_PATH_STREAMING_QUERY,
+            original_input=original_input,
         )
 
-        mock_append.assert_not_awaited()
+        mock_append.assert_awaited_once_with(
+            context.client,
+            responses_params.conversation,
+            original_input,
+            [blocked_moderation.refusal_response],
+        )
 
     @pytest.mark.asyncio
     async def test_success_returns_agent_generator(
