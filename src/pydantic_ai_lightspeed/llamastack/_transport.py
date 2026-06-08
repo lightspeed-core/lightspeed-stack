@@ -17,6 +17,7 @@ from llama_stack.core.request_headers import (
 )
 from llama_stack.core.server.routes import find_matching_route
 from llama_stack.core.utils.context import preserve_contexts_async_generator
+from starlette.responses import StreamingResponse
 
 
 class _AsyncByteStream(httpx.AsyncByteStream):
@@ -183,9 +184,16 @@ class LlamaStackLibraryTransport(httpx.AsyncBaseTransport):
         result = await func(**merged_body)
 
         async def gen() -> AsyncGenerator[bytes, None]:
-            async for chunk in result:
-                data = json.dumps(convert_pydantic_to_json_value(chunk))
-                yield f"data: {data}\n\n".encode("utf-8")
+            if isinstance(result, StreamingResponse):
+                async for chunk in result.body_iterator:
+                    if isinstance(chunk, str):
+                        yield chunk.encode("utf-8")
+                    else:
+                        yield bytes(chunk)
+            else:
+                async for chunk in result:
+                    data = json.dumps(convert_pydantic_to_json_value(chunk))
+                    yield f"data: {data}\n\n".encode("utf-8")
 
         wrapped_gen = preserve_contexts_async_generator(gen(), [PROVIDER_DATA_VAR])
 
