@@ -84,6 +84,7 @@ async def retrieve_agent_response_generator(
     responses_params: ResponsesApiParams,
     context: ResponseGeneratorContext,
     endpoint_path: str,
+    original_input: Optional[ResponseInput] = None,
 ) -> tuple[AsyncIterator[str], TurnSummary]:
     """Return the SSE generator and mutable turn summary for an agent run.
 
@@ -91,6 +92,9 @@ async def retrieve_agent_response_generator(
         responses_params: Prepared Responses API parameters.
         context: Streaming request context and moderation result.
         endpoint_path: Endpoint path used for metric labeling.
+        original_input: In compacted mode, the original user input before the
+            explicit-input rewrite. Used to persist the completed turn with its
+            structured input (preserving attachments); ``None`` otherwise.
 
     Returns:
         Tuple of SSE async iterator and mutable turn summary.
@@ -100,14 +104,12 @@ async def retrieve_agent_response_generator(
         if context.moderation_result.decision == "blocked":
             turn_summary.llm_response = context.moderation_result.message
             turn_summary.id = context.moderation_result.moderation_id
-            turn_summary.output_items = [context.moderation_result.refusal_response]
-            if not responses_params.omit_conversation:
-                await append_turn_items_to_conversation(
-                    context.client,
-                    responses_params.conversation,
-                    responses_params.input,
-                    [context.moderation_result.refusal_response],
-                )
+            await append_turn_items_to_conversation(
+                context.client,
+                responses_params.conversation,
+                original_input or responses_params.input,
+                [context.moderation_result.refusal_response],
+            )
             media_type = context.query_request.media_type or MEDIA_TYPE_JSON
             return (
                 shield_violation_generator(
@@ -117,7 +119,9 @@ async def retrieve_agent_response_generator(
                 turn_summary,
             )
 
-        agent = build_agent(context.client, responses_params, configuration.skills)
+        agent = build_agent(
+            context.client, responses_params, configuration.skills, original_input
+        )
 
         return (
             agent_response_generator(

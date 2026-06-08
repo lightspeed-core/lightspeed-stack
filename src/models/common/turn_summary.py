@@ -5,7 +5,6 @@ Used on query and streaming paths.
 
 from typing import Any, Optional
 
-from llama_stack_api import OpenAIResponseOutput
 from pydantic import AnyUrl, BaseModel, Field
 
 from utils.token_counter import TokenCounter
@@ -109,11 +108,6 @@ class TurnSummary(BaseModel):
     rag_chunks: list[RAGChunk] = Field(default_factory=list)
     referenced_documents: list[ReferencedDocument] = Field(default_factory=list)
     token_usage: TokenCounter = Field(default_factory=TokenCounter)
-    output_items: list[OpenAIResponseOutput] = Field(
-        default_factory=list,
-        description="Structured response output items, captured for compacted-mode "
-        "turn persistence (LCORE-1572). Empty on the non-compacted path.",
-    )
 
 
 class ToolInfoSummary(BaseModel):

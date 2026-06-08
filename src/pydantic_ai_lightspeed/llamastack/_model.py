@@ -1,87 +1,97 @@
-"""Custom OpenAI Responses model that works around Llama Stack streaming quirks.
+"""Llama Stack Responses model adapter for pydantic-ai.
 
-Llama Stack's Responses API emits ``ResponseFunctionCallArgumentsDeltaEvent`` for MCP
-tool calls *before* the corresponding ``ResponseOutputItemAddedEvent``.  pydantic_ai's
-default handler creates an orphan ``ToolCallPartDelta`` for the unannounced item_id,
-which later causes an IndexError in ``part_end_event``.
-
-Additionally, MCP tool calls arrive as ``McpCall`` items (not ``ResponseFunctionToolCall``),
-and pydantic_ai registers them with a ``-call`` vendor_part_id suffix.  The buffered
-deltas must be replayed with the matching suffix so pydantic_ai can append the
-streamed ``tool_args`` content to the correct part.
-
-This module provides ``LlamaStackResponsesModel`` which wraps the event stream to
-buffer those early delta events and replay them correctly once the item is announced.
+Patches client.responses.create to reorder streaming tool-call events and to
+persist compacted conversation turns when the conversation parameter is omitted
+from inference requests.
 """
 
 from __future__ import annotations as _annotations
 
 from collections import defaultdict
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
-from typing import Any, cast
+from collections.abc import AsyncIterator, Sequence
+from dataclasses import dataclass
+from typing import Any, Optional, Self, cast
 
+from llama_stack_client import AsyncLlamaStackClient
 from openai import AsyncStream
 from openai.types import responses
-from pydantic_ai import UnexpectedModelBehavior
-from pydantic_ai._run_context import RunContext
-from pydantic_ai._utils import PeekableAsyncStream, Unset, number_to_datetime
-from pydantic_ai.messages import ModelMessage
-from pydantic_ai.models import (
-    ModelRequestParameters,
-    StreamedResponse,
-    check_allow_model_requests,
-)
-from pydantic_ai.models.openai import (
-    OpenAIResponsesModel,
-    OpenAIResponsesModelSettings,
-    OpenAIResponsesStreamedResponse,
-    _map_api_errors,
-)
+from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.settings import ModelSettings
 
 from log import get_logger
+from models.common.responses.types import ResponseInput
+from utils.conversations import append_turn_items_to_conversation
 
 logger = get_logger(__name__)
 
 
-class _FilteredResponseStream:
-    """Wraps an OpenAI AsyncStream to reorder spurious events from Llama Stack.
+@dataclass
+class CompactionTurnContext:
+    """Mutable state for manually persisting compacted agent turns.
 
-    Llama Stack emits ``ResponseFunctionCallArgumentsDeltaEvent`` for MCP tool calls
-    *before* the ``ResponseOutputItemAddedEvent`` that announces them.  This wrapper
-    buffers those early deltas and replays them once the announcement arrives.
+    latest_round_input is initialized to the real user query. The create patch
+    leaves it unchanged on the first LLM round, then records pydantic-ai input
+    for follow-up rounds after that turn is persisted.
 
-    For ``McpCall`` items specifically, pydantic_ai registers the part with a
-    ``-call`` vendor_part_id suffix.  Buffered deltas are therefore replayed as a
-    single combined event with the suffixed ``item_id`` so they match the part, plus
-    a closing ``}`` to complete the outer JSON object that pydantic_ai opens.
+    Attributes:
+        client: Llama Stack client used to append conversation items.
+        conversation_id: Conversation to store turns against.
+        latest_round_input: Input stored for the current or next inference round.
+        original_input_persisted: Whether the first compacted round was appended.
     """
 
-    def __init__(self, source: AsyncStream[responses.ResponseStreamEvent]) -> None:
-        """Wrap an existing stream with reordering logic.
+    client: AsyncLlamaStackClient
+    conversation_id: str
+    latest_round_input: ResponseInput
+    original_input_persisted: bool = False
+
+
+class _NormalizedLlamaStackStream:
+    """AsyncStream wrapper that normalizes Llama Stack response events.
+
+    Buffers early tool-call argument deltas and replays them after the matching
+    output item is announced. Optionally appends completed turns when compacted.
+    """
+
+    def __init__(
+        self,
+        source: AsyncStream[responses.ResponseStreamEvent],
+        compaction: Optional[CompactionTurnContext] = None,
+    ) -> None:
+        """Initialize the stream wrapper.
 
         Args:
-            source: The raw OpenAI AsyncStream to reorder.
+            source: Raw Responses API stream from the OpenAI SDK.
+            compaction: Compaction state for turn persistence, if active.
         """
         self._source = source
+        self._compaction = compaction
         self._announced_item_ids: set[str] = set()
         self._buffered_deltas: dict[
             str, list[responses.ResponseFunctionCallArgumentsDeltaEvent]
         ] = defaultdict(list)
 
     async def close(self) -> None:
-        """Close the underlying stream."""
+        """Close the underlying SDK stream."""
         await self._source.close()
 
-    def __aiter__(self) -> AsyncIterator[responses.ResponseStreamEvent]:
-        """Return async iterator that reorders events."""
-        return self._filtered_iter()
+    async def __aenter__(self) -> Self:
+        """Enter the underlying stream context manager."""
+        await self._source.__aenter__()
+        return self
 
-    async def _filtered_iter(
+    async def __aexit__(self, *args: Any) -> None:
+        """Exit the underlying stream context manager."""
+        await self._source.__aexit__(*args)
+
+    def __aiter__(self) -> AsyncIterator[responses.ResponseStreamEvent]:
+        """Return an async iterator over normalized stream events."""
+        return self._iter_normalized_events()
+
+    async def _iter_normalized_events(
         self,
     ) -> AsyncIterator[responses.ResponseStreamEvent]:
-        """Yield events, buffering early argument deltas until their item is announced."""
+        """Yield stream events in the order expected by pydantic-ai."""
         async for event in self._source:
             if isinstance(event, responses.ResponseOutputItemAddedEvent):
                 if (
@@ -91,7 +101,7 @@ class _FilteredResponseStream:
                     item_id = event.item.id
                     self._announced_item_ids.add(item_id)
                     yield event
-                    for delta in self._replay_buffered_deltas(item_id):
+                    for delta in self._replay_function_tool_deltas(item_id):
                         yield delta
                     continue
 
@@ -99,7 +109,7 @@ class _FilteredResponseStream:
                     item_id = event.item.id
                     self._announced_item_ids.add(item_id)
                     yield event
-                    for delta in self._replay_mcp_buffered_deltas(item_id):
+                    for delta in self._replay_mcp_tool_deltas(item_id):
                         yield delta
                     continue
 
@@ -112,18 +122,31 @@ class _FilteredResponseStream:
                     self._buffered_deltas[event.item_id].append(event)
                     continue
 
+            if (
+                isinstance(event, responses.ResponseCompletedEvent)
+                and self._compaction is not None
+            ):
+                compaction = self._compaction
+                await append_turn_items_to_conversation(
+                    compaction.client,
+                    compaction.conversation_id,
+                    compaction.latest_round_input,
+                    cast(Sequence[Any], event.response.output),
+                )
+                compaction.original_input_persisted = True
+
             yield event
 
-    def _replay_buffered_deltas(
+    def _replay_function_tool_deltas(
         self, item_id: str
     ) -> list[responses.ResponseFunctionCallArgumentsDeltaEvent]:
-        """Return buffered deltas for a ``ResponseFunctionToolCall`` announcement.
+        """Return buffered deltas for a function tool-call item.
 
         Args:
-            item_id: The announced item ID.
+            item_id: Output item id from ResponseOutputItemAddedEvent.
 
         Returns:
-            List of buffered delta events to yield, unchanged.
+            Buffered argument delta events for the item, if any.
         """
         buffered = self._buffered_deltas.pop(item_id, [])
         if buffered:
@@ -134,28 +157,22 @@ class _FilteredResponseStream:
             )
         return buffered
 
-    def _replay_mcp_buffered_deltas(
+    def _replay_mcp_tool_deltas(
         self, item_id: str
     ) -> list[responses.ResponseFunctionCallArgumentsDeltaEvent]:
-        """Return buffered deltas for an ``McpCall`` announcement.
-
-        pydantic_ai registers ``McpCall`` parts with ``vendor_part_id=f'{id}-call'``
-        and seeds the args string with everything up to ``"tool_args":``.  The
-        buffered deltas contain the actual ``tool_args`` content.  We combine them
-        into a single delta with the suffixed ``item_id`` and append a closing ``}``
-        to complete the outer JSON object that pydantic_ai opened.
+        """Return buffered MCP deltas as a single function-call delta event.
 
         Args:
-            item_id: The announced McpCall item ID.
+            item_id: MCP output item id from ResponseOutputItemAddedEvent.
 
         Returns:
-            List containing one synthetic delta event, or empty if nothing buffered.
+            A one-element list with a synthetic delta for pydantic-ai, or empty.
         """
         buffered = self._buffered_deltas.pop(item_id, [])
         if not buffered:
             return []
 
-        combined_args = "".join(d.delta for d in buffered) + "}"
+        combined_args = "".join(delta.delta for delta in buffered) + "}"
         logger.debug(
             "Replaying %d buffered MCP argument deltas as single event "
             "for item_id=%s-call",
@@ -174,72 +191,87 @@ class _FilteredResponseStream:
 
 
 class LlamaStackResponsesModel(OpenAIResponsesModel):
-    """OpenAI Responses model with Llama Stack streaming compatibility fixes.
+    """OpenAI Responses model with Llama Stack streaming and compaction support."""
 
-    Overrides the streaming response processing to buffer and replay
-    ``ResponseFunctionCallArgumentsDeltaEvent`` events that Llama Stack emits
-    before the corresponding ``McpCall`` or ``ResponseFunctionToolCall`` item.
-    """
-
-    @asynccontextmanager
-    async def request_stream(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
-        messages: list[ModelMessage],
-        model_settings: ModelSettings | None,
-        model_request_parameters: ModelRequestParameters,
-        run_context: RunContext[Any] | None = None,
-    ) -> AsyncIterator[StreamedResponse]:
-        """Request a streaming response, filtering Llama Stack-specific event quirks.
+        model_name: str,
+        *,
+        provider: Any = "openai",
+        profile: Any = None,
+        settings: ModelSettings | None = None,
+        compaction: Optional[CompactionTurnContext] = None,
+    ) -> None:
+        """Initialize the model and patch client.responses.create.
 
         Args:
-            messages: Model messages for the request.
-            model_settings: Model-specific settings.
-            model_request_parameters: Request parameters for the model.
-            run_context: Optional run context from the agent.
-
-        Yields:
-            A StreamedResponse with the filtered event stream.
+            model_name: Model identifier passed to pydantic-ai.
+            provider: Pydantic AI provider or provider name.
+            profile: Optional model profile override.
+            settings: Optional pydantic-ai model settings.
+            compaction: Compaction state when turns must be stored manually.
         """
-        check_allow_model_requests()
-        model_settings, model_request_parameters = self.prepare_request(
-            model_settings,
-            model_request_parameters,
+        super().__init__(
+            model_name,
+            provider=provider,
+            profile=profile,
+            settings=settings,
         )
-        model_settings_cast = cast(OpenAIResponsesModelSettings, model_settings or {})
-        response = await self._responses_create(
-            messages, True, model_settings_cast, model_request_parameters
-        )
+        self.compaction = compaction
+        self._patch_responses_create()
 
-        filtered_stream = _FilteredResponseStream(response)
+    def _patch_responses_create(self) -> None:
+        """Replace client.responses.create with a wrapper for the model lifetime.
 
-        async with response:
-            peekable: PeekableAsyncStream[
-                responses.ResponseStreamEvent, _FilteredResponseStream
-            ] = PeekableAsyncStream(filtered_stream)
+        pydantic-ai calls responses.create for every inference round. The wrapper
+        runs before and after the real SDK method:
 
-            with _map_api_errors(self.model_name):
-                first_chunk = await peekable.peek()
+        Before (compacted mode only, after the first round is persisted):
+            Copy kwargs input into CompactionTurnContext.latest_round_input so
+            follow-up tool-loop rounds can be appended with the input pydantic-ai
+            actually sent. The first round is left unchanged so the real user query
+            is stored instead of the compacted explicit rewrite.
 
-            if isinstance(first_chunk, Unset):
-                raise UnexpectedModelBehavior(
-                    "Streamed response ended without content or tool calls"
+        After, depending on stream:
+
+        * stream=True — return _NormalizedLlamaStackStream around the SDK stream to
+          reorder early tool-call deltas and, when compacted, append the turn on
+          response.completed.
+        * stream=False — when compacted, append the completed turn immediately
+          using latest_round_input and mark the first round as persisted.
+
+        Stream normalization is always applied; compaction hooks run only when
+        self.compaction is set.
+        """
+        responses_api = self.client.responses
+        original_create = responses_api.create
+
+        async def create(*args: Any, **kwargs: Any) -> Any:
+            if (
+                self.compaction is not None
+                and "input" in kwargs
+                and self.compaction.original_input_persisted
+            ):
+                self.compaction.latest_round_input = cast(
+                    ResponseInput, kwargs["input"]
                 )
 
-            if not isinstance(first_chunk, responses.ResponseCreatedEvent):
-                raise UnexpectedModelBehavior(
-                    f"Expected ResponseCreatedEvent, got {type(first_chunk).__name__}"
+            result = await original_create(*args, **kwargs)
+
+            if kwargs.get("stream"):
+                return _NormalizedLlamaStackStream(
+                    cast(AsyncStream[responses.ResponseStreamEvent], result),
+                    self.compaction,
                 )
 
-            yield OpenAIResponsesStreamedResponse(
-                model_request_parameters=model_request_parameters,
-                _model_name=first_chunk.response.model,
-                _model_settings=model_settings_cast,
-                _response=peekable,  # type: ignore[arg-type]
-                _provider_name=self._provider.name,
-                _provider_url=self._provider.base_url,
-                _provider_timestamp=(
-                    number_to_datetime(first_chunk.response.created_at)
-                    if first_chunk.response.created_at
-                    else None
-                ),
-            )
+            if self.compaction is not None:
+                await append_turn_items_to_conversation(
+                    self.compaction.client,
+                    self.compaction.conversation_id,
+                    self.compaction.latest_round_input,
+                    cast(Sequence[Any], result.output),
+                )
+                self.compaction.original_input_persisted = True
+            return result
+
+        responses_api.create = create  # type: ignore[method-assign]
