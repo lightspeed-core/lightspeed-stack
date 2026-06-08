@@ -269,24 +269,28 @@ def _make_byok_config(tmp_path: Any) -> AppConfig:
             "user_data_collection": {},
             "authentication": {"module": "noop"},
             "authorization": {"access_rules": []},
-            "byok_rag": [
-                {
-                    "rag_id": "ocp-4.18-docs",
-                    "rag_type": "inline::faiss",
-                    "embedding_model": "all-MiniLM-L6-v2",
-                    "embedding_dimension": 384,
-                    "vector_db_id": "vs_abc123",
-                    "db_path": str(db_file),
+            "rag": {
+                "byok": {
+                    "stores": [
+                        {
+                            "rag_id": "ocp-4.18-docs",
+                            "backend": "faiss",
+                            "embedding_model": "all-MiniLM-L6-v2",
+                            "embedding_dimension": 384,
+                            "vector_db_id": "vs_abc123",
+                            "db_path": str(db_file),
+                        },
+                        {
+                            "rag_id": "company-kb",
+                            "backend": "faiss",
+                            "embedding_model": "all-MiniLM-L6-v2",
+                            "embedding_dimension": 384,
+                            "vector_db_id": "vs_def456",
+                            "db_path": str(db_file),
+                        },
+                    ],
                 },
-                {
-                    "rag_id": "company-kb",
-                    "rag_type": "inline::faiss",
-                    "embedding_model": "all-MiniLM-L6-v2",
-                    "embedding_dimension": 384,
-                    "vector_db_id": "vs_def456",
-                    "db_path": str(db_file),
-                },
-            ],
+            },
         }
     )
     return cfg
@@ -379,7 +383,7 @@ async def test_rag_info_endpoint_accepts_rag_id_from_config(
 def test_resolve_rag_id_to_vector_db_id_with_mapping(tmp_path: Path) -> None:
     """Test that _resolve_rag_id_to_vector_db_id maps rag_id to vector_db_id."""
     byok_config = _make_byok_config(str(tmp_path))
-    byok_rags = byok_config.configuration.byok_rag
+    byok_rags = byok_config.configuration.rag.byok.stores
     assert _resolve_rag_id_to_vector_db_id("ocp-4.18-docs", byok_rags) == "vs_abc123"
     assert _resolve_rag_id_to_vector_db_id("company-kb", byok_rags) == "vs_def456"
 
@@ -387,5 +391,5 @@ def test_resolve_rag_id_to_vector_db_id_with_mapping(tmp_path: Path) -> None:
 def test_resolve_rag_id_to_vector_db_id_passthrough(tmp_path: Path) -> None:
     """Test that unmapped IDs are passed through unchanged."""
     byok_config = _make_byok_config(str(tmp_path))
-    byok_rags = byok_config.configuration.byok_rag
+    byok_rags = byok_config.configuration.rag.byok.stores
     assert _resolve_rag_id_to_vector_db_id("vs_unknown", byok_rags) == "vs_unknown"

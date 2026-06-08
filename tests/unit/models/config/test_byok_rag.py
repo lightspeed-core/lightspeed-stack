@@ -1,4 +1,4 @@
-"""Unit tests for ByokRag model."""
+"""Unit tests for RagStore model."""
 
 import pytest
 from pydantic import ValidationError
@@ -6,76 +6,76 @@ from pydantic import ValidationError
 from constants import (
     DEFAULT_EMBEDDING_DIMENSION,
     DEFAULT_EMBEDDING_MODEL,
-    DEFAULT_RAG_TYPE,
+    DEFAULT_RAG_BACKEND,
     DEFAULT_SCORE_MULTIPLIER,
 )
-from models.config import ByokRag
+from models.config import RagStore
 
 
-def test_byok_rag_configuration_default_values() -> None:
-    """Test the ByokRag constructor.
+def test_rag_store_configuration_default_values() -> None:
+    """Test the RagStore constructor.
 
-    Verify that ByokRag initializes correctly when only required fields are provided.
+    Verify that RagStore initializes correctly when only required fields are provided.
 
     Asserts that the instance stores the given `rag_id`, `vector_db_id`, and
     `db_path`, and that unspecified fields use the module's default values for
-    `rag_type`, `embedding_model`, `embedding_dimension`, and
+    `backend`, `embedding_model`, `embedding_dimension`, and
     `score_multiplier`.
     """
-    byok_rag = ByokRag(  # pyright: ignore[reportCallIssue]
+    rag_store = RagStore(  # pyright: ignore[reportCallIssue]
         rag_id="rag_id",
         vector_db_id="vector_db_id",
         db_path="tests/configuration/rag.txt",
     )
-    assert byok_rag is not None
-    assert byok_rag.rag_id == "rag_id"
-    assert byok_rag.rag_type == DEFAULT_RAG_TYPE
-    assert byok_rag.embedding_model == DEFAULT_EMBEDDING_MODEL
-    assert byok_rag.embedding_dimension == DEFAULT_EMBEDDING_DIMENSION
-    assert byok_rag.vector_db_id == "vector_db_id"
-    assert byok_rag.db_path == "tests/configuration/rag.txt"
-    assert byok_rag.score_multiplier == DEFAULT_SCORE_MULTIPLIER
+    assert rag_store is not None
+    assert rag_store.rag_id == "rag_id"
+    assert rag_store.backend == DEFAULT_RAG_BACKEND
+    assert rag_store.embedding_model == DEFAULT_EMBEDDING_MODEL
+    assert rag_store.embedding_dimension == DEFAULT_EMBEDDING_DIMENSION
+    assert rag_store.vector_db_id == "vector_db_id"
+    assert rag_store.db_path == "tests/configuration/rag.txt"
+    assert rag_store.score_multiplier == DEFAULT_SCORE_MULTIPLIER
 
 
-def test_byok_rag_configuration_nondefault_values() -> None:
-    """Test the ByokRag constructor.
+def test_rag_store_configuration_nondefault_values() -> None:
+    """Test the RagStore constructor.
 
-    Verify that ByokRag class accepts and stores non-default configuration values.
+    Verify that RagStore class accepts and stores non-default configuration values.
 
-    Asserts that rag_id, rag_type, embedding_model, embedding_dimension, and
+    Asserts that rag_id, backend, embedding_model, embedding_dimension, and
     vector_db_id match the provided inputs and that db_path is converted to a
     Path.
     """
-    byok_rag = ByokRag(
+    rag_store = RagStore(
         rag_id="rag_id",
-        rag_type="rag_type",
+        backend="faiss",
         embedding_model="embedding_model",
         embedding_dimension=1024,
         vector_db_id="vector_db_id",
         db_path="tests/configuration/rag.txt",
         score_multiplier=1.0,
     )
-    assert byok_rag is not None
-    assert byok_rag.rag_id == "rag_id"
-    assert byok_rag.rag_type == "rag_type"
-    assert byok_rag.embedding_model == "embedding_model"
-    assert byok_rag.embedding_dimension == 1024
-    assert byok_rag.vector_db_id == "vector_db_id"
-    assert byok_rag.db_path == "tests/configuration/rag.txt"
+    assert rag_store is not None
+    assert rag_store.rag_id == "rag_id"
+    assert rag_store.backend == "faiss"
+    assert rag_store.embedding_model == "embedding_model"
+    assert rag_store.embedding_dimension == 1024
+    assert rag_store.vector_db_id == "vector_db_id"
+    assert rag_store.db_path == "tests/configuration/rag.txt"
 
 
-def test_byok_rag_configuration_wrong_dimension() -> None:
-    """Test the ByokRag constructor.
+def test_rag_store_configuration_wrong_dimension() -> None:
+    """Test the RagStore constructor.
 
-    Verify constructing ByokRag with embedding_dimension less than or equal to
+    Verify constructing RagStore with embedding_dimension less than or equal to
     zero raises a ValidationError.
 
     The raised ValidationError's message must contain "should be greater than 0".
     """
     with pytest.raises(ValidationError, match="should be greater than 0"):
-        _ = ByokRag(
+        _ = RagStore(
             rag_id="rag_id",
-            rag_type="rag_type",
+            backend="faiss",
             embedding_model="embedding_model",
             embedding_dimension=-1024,
             vector_db_id="vector_db_id",
@@ -84,10 +84,10 @@ def test_byok_rag_configuration_wrong_dimension() -> None:
         )
 
 
-def test_byok_rag_configuration_empty_rag_id() -> None:
-    """Test the ByokRag constructor.
+def test_rag_store_configuration_empty_rag_id() -> None:
+    """Test the RagStore constructor.
 
-    Validate that constructing a ByokRag with an empty `rag_id` raises a validation error.
+    Validate that constructing a RagStore with an empty `rag_id` raises a validation error.
 
     Expects a `pydantic.ValidationError` whose message contains "String should
     have at least 1 character".
@@ -95,9 +95,9 @@ def test_byok_rag_configuration_empty_rag_id() -> None:
     with pytest.raises(
         ValidationError, match="String should have at least 1 character"
     ):
-        _ = ByokRag(
+        _ = RagStore(
             rag_id="",
-            rag_type="rag_type",
+            backend="faiss",
             embedding_model="embedding_model",
             embedding_dimension=1024,
             vector_db_id="vector_db_id",
@@ -106,21 +106,21 @@ def test_byok_rag_configuration_empty_rag_id() -> None:
         )
 
 
-def test_byok_rag_configuration_empty_rag_type() -> None:
-    """Test the ByokRag constructor.
+def test_rag_store_configuration_empty_backend() -> None:
+    """Test the RagStore constructor.
 
-    Verify that constructing a ByokRag with an empty `rag_type` raises a validation error.
+    Verify that constructing a RagStore with an empty `backend` raises a validation error.
 
     Raises:
-        ValidationError: if `rag_type` is an empty string; error message
+        ValidationError: if `backend` is an empty string; error message
         includes "String should have at least 1 character".
     """
     with pytest.raises(
         ValidationError, match="String should have at least 1 character"
     ):
-        _ = ByokRag(
+        _ = RagStore(
             rag_id="rag_id",
-            rag_type="",
+            backend="",
             embedding_model="embedding_model",
             embedding_dimension=1024,
             vector_db_id="vector_db_id",
@@ -129,10 +129,23 @@ def test_byok_rag_configuration_empty_rag_type() -> None:
         )
 
 
-def test_byok_rag_configuration_empty_embedding_model() -> None:
-    """Test the ByokRag constructor.
+def test_rag_store_configuration_unsupported_backend() -> None:
+    """Test that unsupported backend values are rejected."""
+    with pytest.raises(ValidationError, match="Unsupported RAG backend"):
+        _ = RagStore(
+            rag_id="rag_id",
+            backend="unsupported",
+            embedding_model="embedding_model",
+            embedding_dimension=1024,
+            vector_db_id="vector_db_id",
+            db_path="tests/configuration/rag.txt",
+        )
 
-    Verify that constructing a ByokRag with an empty `embedding_model` raises a validation error.
+
+def test_rag_store_configuration_empty_embedding_model() -> None:
+    """Test the RagStore constructor.
+
+    Verify that constructing a RagStore with an empty `embedding_model` raises a validation error.
 
     Expects a pydantic.ValidationError whose message contains "String should
     have at least 1 character".
@@ -140,9 +153,9 @@ def test_byok_rag_configuration_empty_embedding_model() -> None:
     with pytest.raises(
         ValidationError, match="String should have at least 1 character"
     ):
-        _ = ByokRag(
+        _ = RagStore(
             rag_id="rag_id",
-            rag_type="rag_type",
+            backend="faiss",
             embedding_model="",
             embedding_dimension=1024,
             vector_db_id="vector_db_id",
@@ -151,10 +164,10 @@ def test_byok_rag_configuration_empty_embedding_model() -> None:
         )
 
 
-def test_byok_rag_configuration_empty_vector_db_id() -> None:
-    """Test the ByokRag constructor.
+def test_rag_store_configuration_empty_vector_db_id() -> None:
+    """Test the RagStore constructor.
 
-    Ensure constructing a ByokRag with an empty `vector_db_id` raises a ValidationError.
+    Ensure constructing a RagStore with an empty `vector_db_id` raises a ValidationError.
 
     Asserts that Pydantic validation fails with a message containing "String
     should have at least 1 character".
@@ -162,9 +175,9 @@ def test_byok_rag_configuration_empty_vector_db_id() -> None:
     with pytest.raises(
         ValidationError, match="String should have at least 1 character"
     ):
-        _ = ByokRag(
+        _ = RagStore(
             rag_id="rag_id",
-            rag_type="rag_type",
+            backend="faiss",
             embedding_model="embedding_model",
             embedding_dimension=1024,
             vector_db_id="",
@@ -173,26 +186,26 @@ def test_byok_rag_configuration_empty_vector_db_id() -> None:
         )
 
 
-def test_byok_rag_configuration_custom_score_multiplier() -> None:
-    """Test ByokRag with custom score_multiplier."""
-    byok_rag = ByokRag(
+def test_rag_store_configuration_custom_score_multiplier() -> None:
+    """Test RagStore with custom score_multiplier."""
+    rag_store = RagStore(
         rag_id="rag_id",
-        rag_type="rag_type",
+        backend="faiss",
         vector_db_id="vector_db_id",
         embedding_model="embedding_model",
         embedding_dimension=1024,
         db_path="tests/configuration/rag.txt",
         score_multiplier=2.5,
     )
-    assert byok_rag.score_multiplier == 2.5
+    assert rag_store.score_multiplier == 2.5
 
 
-def test_byok_rag_configuration_score_multiplier_must_be_positive() -> None:
+def test_rag_store_configuration_score_multiplier_must_be_positive() -> None:
     """Test that score_multiplier must be greater than 0."""
     with pytest.raises(ValidationError, match="greater than 0"):
-        _ = ByokRag(
+        _ = RagStore(
             rag_id="rag_id",
-            rag_type="rag_type",
+            backend="faiss",
             vector_db_id="vector_db_id",
             embedding_model="embedding_model",
             embedding_dimension=1024,

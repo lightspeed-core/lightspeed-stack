@@ -34,6 +34,38 @@ Lightspeed Core Stack (LCS) supports two complementary RAG strategies:
 
 Both strategies can be enabled independently via the `rag` section of `lightspeed-stack.yaml`. See [BYOK Feature Documentation](byok_guide.md) for configuration details.
 
+> [!NOTE]
+> **Backward compatibility:** if neither `retrieval.inline.sources` nor `retrieval.tool.sources` is
+> configured, all registered vector stores (BYOK and OKP) are automatically exposed as
+> Tool RAG (`file_search`). Inline RAG is **not** enabled in this fallback — only Tool RAG.
+
+### Inline RAG chunk flow
+
+```mermaid
+flowchart TD
+    subgraph Sources["Source Fetching"]
+        B1["BYOK Store 1"] --> BPool
+        B2["BYOK Store 2"] --> BPool
+        BN["BYOK Store N"] --> BPool
+        BPool["BYOK Pool\ncapped at byok.max_chunks"]
+        OKP["OKP (Solr)\ncapped at okp.max_chunks"]
+    end
+
+    BPool --> Pool["Merged Pool\n(all chunks, sorted by score)"]
+    OKP --> Pool
+
+    Pool --> Decision{Reranker\nenabled?}
+
+    Decision -->|Yes| Rerank["Cross-Encoder Rerank\n+ BYOK score boost"]
+    Decision -->|No| Cut
+
+    Rerank --> Cut["Top K cut\nretrieval.inline.max_chunks"]
+
+    Cut --> Context["Final Inline RAG Context"]
+```
+
+Each BYOK store is queried in parallel, and the merged BYOK results are capped at `byok.max_chunks` total. OKP fetches up to `okp.max_chunks`. Together these form the reranking pool. If the reranker is enabled, the full pool is reranked with a cross-encoder and BYOK score boosts are applied. The result is capped at `retrieval.inline.max_chunks`.
+
 The **Embedding Model** is used to convert queries and documents into vector representations for similarity matching.
 
 > [!NOTE]
@@ -90,7 +122,7 @@ This example shows how to configure a remote PostgreSQL database with the [pgvec
 
 > [!NOTE]
 > pgvector is not yet supported via `byok_rag` in `lightspeed-stack.yaml` (see [LCORE-2437](https://redhat.atlassian.net/browse/LCORE-2437)).
-> It must be configured directly in the Llama Stack configuration file.
+> It must be configured directly in the `run.yaml` configuration file.
 
 > You will need to install PostgreSQL with a matching version to pgvector, then log in with `psql` and enable the extension with:
 > ```sql
@@ -313,15 +345,16 @@ Example:
 **Chunk volume:**
 
 OKP and BYOK scores are not directly comparable (different scoring systems), so
-`score_multiplier` (a BYOK-only concept) does not apply to OKP results. To control
-the number of retrieved chunks, set the constants in `src/constants.py`:
+`score_multiplier` (a BYOK-only concept) does not apply to OKP results. However, when
+the reranker is enabled, it normalizes scores across sources using a cross-encoder model.
+To control the number of retrieved chunks, configure `max_chunks` in `lightspeed-stack.yaml`:
 
-| Constant | Value | Description |
-|----------|-------|-------------|
-| `INLINE_RAG_MAX_CHUNKS` | 10 | Hard upper bound on the final merged inline RAG chunks (BYOK + OKP) delivered to the LLM |
-| `OKP_RAG_MAX_CHUNKS` | 5 | Fetch hint for OKP (Inline RAG); controls how many chunks enter the reranking pool |
-| `BYOK_RAG_MAX_CHUNKS` | 10 | Fetch hint for BYOK stores (Inline RAG); controls how many chunks enter the reranking pool |
-| `TOOL_RAG_MAX_CHUNKS` | 10 | Max chunks retrieved via Tool RAG (`file_search`); independent from `INLINE_RAG_MAX_CHUNKS` |
+| Config path | Default | Description |
+|-------------|---------|-------------|
+| `rag.retrieval.inline.max_chunks` | 10 | Hard upper bound on the final merged inline RAG chunks (BYOK + OKP) delivered to the LLM |
+| `rag.okp.max_chunks` | 5 | Fetch limit for OKP (Inline RAG); controls how many chunks enter the reranking pool |
+| `rag.byok.max_chunks` | 10 | Fetch limit for BYOK stores (Inline RAG); controls how many chunks enter the reranking pool |
+| `rag.retrieval.tool.max_chunks` | 10 | Max chunks retrieved via Tool RAG (`file_search`); independent from inline max_chunks |
 
 **Limitations:**
 

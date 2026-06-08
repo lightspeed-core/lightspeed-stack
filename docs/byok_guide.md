@@ -10,6 +10,7 @@ The BYOK (Bring Your Own Knowledge) feature in Lightspeed Core enables users to 
 
 * [What is BYOK?](#what-is-byok)
 * [How BYOK Works](#how-byok-works)
+  * [Prioritization of BYOK content](#prioritization-of-byok-content)
 * [Prerequisites](#prerequisites)
 * [Configuration Guide](#configuration-guide)
   * [Step 1: Prepare Your Knowledge Sources](#step-1-prepare-your-knowledge-sources)
@@ -77,17 +78,45 @@ Both modes rely on:
 - **Vector Database**: Your indexed knowledge sources stored as vector embeddings
 - **Embedding Model**: Converts queries and documents into vector representations for similarity matching
 
-Inline RAG additionally supports:
-- **Score Multiplier**: Optional weight applied per BYOK vector store when mixing multiple sources. Allows custom prioritization of content.
+### Prioritization of BYOK content
 
-> [!NOTE]
-> OKP and BYOK scores are not directly comparable (different scoring systems), so
-> `score_multiplier` does not apply to OKP results. To control the amount of retrieved
-> context, set the `BYOK_RAG_MAX_CHUNKS` and `OKP_RAG_MAX_CHUNKS` constants in `src/constants.py`
-> (defaults: 10 and 5 respectively). For Tool RAG, use `TOOL_RAG_MAX_CHUNKS` (default: 10).
-> The `INLINE_RAG_MAX_CHUNKS` constant (value: 10) caps the final merged inline RAG
-> chunks (BYOK + OKP) delivered to the LLM. Tool RAG is controlled independently
-> by `TOOL_RAG_MAX_CHUNKS`.
+When multiple BYOK stores are configured for Inline RAG, their results are merged and ranked. Two mechanisms control prioritization:
+
+- **Score Multiplier** (`score_multiplier`): A per-store weight applied to raw similarity scores during Inline RAG. Values > 1.0 boost a store's results; values < 1.0 reduce them. Only affects BYOK stores — OKP scores use a different scoring system and are not comparable.
+
+- **Reranker**: When enabled, a cross-encoder model re-scores the merged chunk pool (BYOK + OKP) using semantic similarity to the query. This normalizes scores across sources, making OKP and BYOK results directly comparable. BYOK score boosts are applied after reranking.
+
+**Chunk limits** control how many chunks flow through the pipeline. Configure them in `lightspeed-stack.yaml`:
+
+| Config path | Default | Description |
+|-------------|---------|-------------|
+| `rag.byok.max_chunks` | 10 | Total chunks fetched across all BYOK stores |
+| `rag.okp.max_chunks` | 5 | Chunks fetched from OKP |
+| `rag.retrieval.inline.max_chunks` | 10 | Final cap on merged inline RAG chunks delivered to the LLM |
+| `rag.retrieval.tool.max_chunks` | 10 | Max chunks retrieved via Tool RAG (`file_search`) |
+
+```mermaid
+flowchart TD
+    subgraph Sources["Source Fetching"]
+        B1["BYOK Store 1"] --> BPool
+        B2["BYOK Store 2"] --> BPool
+        BN["BYOK Store N"] --> BPool
+        BPool["BYOK Pool\ncapped at rag.byok.max_chunks"]
+        OKP["OKP (Solr)\ncapped at rag.okp.max_chunks"]
+    end
+
+    BPool --> Pool["Merged Pool\n(all chunks, sorted by score)"]
+    OKP --> Pool
+
+    Pool --> Decision{Reranker\nenabled?}
+
+    Decision -->|Yes| Rerank["Cross-Encoder Rerank\n+ BYOK score boost"]
+    Decision -->|No| Cut
+
+    Rerank --> Cut["Top K cut\nrag.retrieval.inline.max_chunks"]
+
+    Cut --> Context["Final Inline RAG Context"]
+```
 
 ---
 
@@ -288,7 +317,7 @@ byok_rag:
 
 > [!NOTE]
 > pgvector is not yet supported via `byok_rag` in `lightspeed-stack.yaml` (see [LCORE-2437](https://redhat.atlassian.net/browse/LCORE-2437)).
-> It must be configured directly in the Llama Stack configuration file.
+> It must be configured directly in the `run.yaml` configuration file.
 
 ```yaml
 vector_io:
@@ -342,11 +371,11 @@ rag:
 
 ### Example 2: Multiple Knowledge Sources with pgvector
 
-A configuration combining a local FAISS store (via `byok_rag`) with a remote pgvector store (configured directly in the Llama Stack configuration file):
+A configuration combining a local FAISS store (via `byok_rag`) with a remote pgvector store (configured directly in the `run.yaml` configuration file):
 
 > [!NOTE]
 > pgvector is not yet supported via `byok_rag` in `lightspeed-stack.yaml` (see [LCORE-2437](https://redhat.atlassian.net/browse/LCORE-2437)).
-> The pgvector provider must be configured directly in the Llama Stack configuration file.
+> The pgvector provider must be configured directly in the `run.yaml` configuration file.
 
 **`lightspeed-stack.yaml`** — FAISS store and RAG strategy:
 
@@ -373,7 +402,7 @@ rag:
     - local-docs
 ```
 
-**Llama Stack configuration file** — pgvector provider:
+**`run.yaml` configuration file** — pgvector provider:
 
 ```yaml
 vector_io:

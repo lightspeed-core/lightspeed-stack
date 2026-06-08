@@ -17,6 +17,17 @@ from log import get_logger
 
 logger = get_logger(__name__)
 
+BACKEND_TO_LLAMA_STACK_PROVIDER: dict[str, str] = {
+    "faiss": "inline::faiss",
+    # "pgvector": "remote::pgvector",  # TODO(are-ces): add enrichment support
+}
+
+if constants.DEFAULT_RAG_BACKEND not in BACKEND_TO_LLAMA_STACK_PROVIDER:
+    raise ValueError(
+        f"DEFAULT_RAG_BACKEND '{constants.DEFAULT_RAG_BACKEND}' has no entry in "
+        f"BACKEND_TO_LLAMA_STACK_PROVIDER — add a mapping before changing the default."
+    )
+
 
 class YamlDumper(yaml.Dumper):  # pylint: disable=too-many-ancestors
     """Custom YAML dumper with proper indentation levels."""
@@ -335,13 +346,22 @@ def construct_vector_io_providers_section(
             continue
         existing_ids.add(provider_id)
         added += 1
+
+        backend = brag.get("backend", constants.DEFAULT_RAG_BACKEND)
+        provider_type = BACKEND_TO_LLAMA_STACK_PROVIDER.get(backend)
+        if provider_type is None:
+            raise ValueError(
+                f"Unsupported backend '{backend}' for BYOK RAG '{rag_id}'. "
+                f"Supported backends: {list(BACKEND_TO_LLAMA_STACK_PROVIDER.keys())}"
+            )
+
         output.append(
             {
                 "provider_id": provider_id,
-                "provider_type": brag.get("rag_type", "inline::faiss"),
+                "provider_type": provider_type,
                 "config": {
                     "persistence": {
-                        "namespace": "vector_io::faiss",
+                        "namespace": f"vector_io::{backend}",
                         "backend": backend_name,
                     }
                 },
@@ -585,10 +605,18 @@ def generate_configuration(
     enrich_azure_entra_id_inference(ls_config, config.get("azure_entra_id"))
 
     # Enrichment: BYOK RAG
-    enrich_byok_rag(ls_config, config.get("byok_rag", []))
+    rag_section = config.get("rag", {})
+    byok_stores = rag_section.get("byok", {}).get("stores", [])
+    enrich_byok_rag(ls_config, byok_stores)
 
     # Enrichment: Solr - enabled when "okp" appears in either inline or tool list
-    enrich_solr(ls_config, config.get("rag", {}), config.get("okp", {}))
+    retrieval = rag_section.get("retrieval", {})
+    rag_config_for_solr = {
+        "inline": retrieval.get("inline", {}).get("sources", []),
+        "tool": retrieval.get("tool", {}).get("sources", []),
+    }
+    okp_config = rag_section.get("okp", {})
+    enrich_solr(ls_config, rag_config_for_solr, okp_config)
 
     dedupe_providers_vector_io(ls_config)
 

@@ -238,7 +238,7 @@ def byok_config_fixture(test_config: AppConfig, mocker: MockerFixture) -> AppCon
     byok_entry.score_multiplier = 1.0
     byok_entry.model_dump.return_value = {
         "rag_id": "test-knowledge",
-        "rag_type": "inline::faiss",
+        "backend": "faiss",
         "embedding_model": "sentence-transformers/all-mpnet-base-v2",
         "embedding_dimension": 768,
         "vector_db_id": "vs-byok-knowledge",
@@ -246,8 +246,8 @@ def byok_config_fixture(test_config: AppConfig, mocker: MockerFixture) -> AppCon
         "score_multiplier": 1.0,
     }
 
-    test_config.configuration.byok_rag = [byok_entry]
-    test_config.configuration.rag.inline = ["test-knowledge"]
+    test_config.configuration.rag.byok.stores = [byok_entry]
+    test_config.configuration.rag.retrieval.inline.sources = ["test-knowledge"]
 
     return test_config
 
@@ -263,7 +263,7 @@ def byok_tool_config_fixture(
     byok_entry.score_multiplier = 1.0
     byok_entry.model_dump.return_value = {
         "rag_id": "test-knowledge",
-        "rag_type": "inline::faiss",
+        "backend": "faiss",
         "embedding_model": "sentence-transformers/all-mpnet-base-v2",
         "embedding_dimension": 768,
         "vector_db_id": "vs-byok-knowledge",
@@ -271,9 +271,9 @@ def byok_tool_config_fixture(
         "score_multiplier": 1.0,
     }
 
-    test_config.configuration.byok_rag = [byok_entry]
-    test_config.configuration.rag.inline = []
-    test_config.configuration.rag.tool = ["test-knowledge"]
+    test_config.configuration.rag.byok.stores = [byok_entry]
+    test_config.configuration.rag.retrieval.inline.sources = []
+    test_config.configuration.rag.retrieval.tool.sources = ["test-knowledge"]
 
     return test_config
 
@@ -345,8 +345,8 @@ async def test_streaming_query_byok_inline_rag_with_request_vector_store_ids(
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
-    test_config.configuration.rag.inline = ["source-a"]
+    test_config.configuration.rag.byok.stores = [entry_a, entry_b]
+    test_config.configuration.rag.retrieval.inline.sources = ["source-a"]
 
     mock_holder_class = mocker.patch(
         "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
@@ -409,8 +409,8 @@ async def test_streaming_query_byok_request_vector_store_ids_filters_configured_
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
-    test_config.configuration.rag.inline = ["source-a", "source-b"]
+    test_config.configuration.rag.byok.stores = [entry_a, entry_b]
+    test_config.configuration.rag.retrieval.inline.sources = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch(
         "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
@@ -689,9 +689,9 @@ async def test_streaming_query_byok_combined_inline_and_tool_rag(
     byok_entry.rag_id = "test-knowledge"
     byok_entry.vector_db_id = "vs-byok-knowledge"
     byok_entry.score_multiplier = 1.0
-    test_config.configuration.byok_rag = [byok_entry]
-    test_config.configuration.rag.inline = ["test-knowledge"]
-    test_config.configuration.rag.tool = ["test-knowledge"]
+    test_config.configuration.rag.byok.stores = [byok_entry]
+    test_config.configuration.rag.retrieval.inline.sources = ["test-knowledge"]
+    test_config.configuration.rag.retrieval.tool.sources = ["test-knowledge"]
 
     # Mock Llama Stack client
     mock_holder_class = mocker.patch(
@@ -772,8 +772,8 @@ async def test_streaming_query_byok_only_configured_rag_id_is_queried(
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
-    test_config.configuration.rag.inline = ["source-a"]
+    test_config.configuration.rag.byok.stores = [entry_a, entry_b]
+    test_config.configuration.rag.retrieval.inline.sources = ["source-a"]
 
     mock_holder_class = mocker.patch(
         "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
@@ -851,8 +851,8 @@ async def test_streaming_query_byok_score_multiplier_shifts_priority(  # pylint:
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 5.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
-    test_config.configuration.rag.inline = ["source-a", "source-b"]
+    test_config.configuration.rag.byok.stores = [entry_a, entry_b]
+    test_config.configuration.rag.retrieval.inline.sources = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch(
         "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
@@ -933,8 +933,8 @@ async def test_streaming_query_rag_content_limit_caps_context(  # pylint: disabl
     entry.vector_db_id = "vs-big-source"
     entry.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry]
-    test_config.configuration.rag.inline = ["big-source"]
+    test_config.configuration.rag.byok.stores = [entry]
+    test_config.configuration.rag.retrieval.inline.sources = ["big-source"]
 
     mock_holder_class = mocker.patch(
         "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
@@ -942,7 +942,7 @@ async def test_streaming_query_rag_content_limit_caps_context(  # pylint: disabl
     mock_client = _build_base_streaming_mock_client(mocker)
 
     # Generate more chunks than INLINE_RAG_MAX_CHUNKS
-    num_chunks = constants.INLINE_RAG_MAX_CHUNKS + 5
+    num_chunks = constants.DEFAULT_INLINE_RAG_MAX_CHUNKS + 5
     chunks_data = [
         (f"Chunk content {i}", f"chunk-{i}", round(0.50 + i * 0.03, 2))
         for i in range(num_chunks)
@@ -973,7 +973,9 @@ async def test_streaming_query_rag_content_limit_caps_context(  # pylint: disabl
     # .kwargs holds its keyword arguments, e.g. "input" is the full prompt text sent to the model.
     create_call = mock_client.responses.create.call_args_list[0]
     input_text = create_call.kwargs["input"]
-    expected_header = f"file_search found {constants.INLINE_RAG_MAX_CHUNKS} chunks:"
+    expected_header = (
+        f"file_search found {constants.DEFAULT_INLINE_RAG_MAX_CHUNKS} chunks:"
+    )
     assert expected_header in input_text
 
     # The lowest-scoring chunk should NOT be in the context
@@ -1009,8 +1011,8 @@ async def test_streaming_query_rag_content_limit_caps_across_multiple_sources(  
     entry_b.vector_db_id = "vs-source-b"
     entry_b.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry_a, entry_b]
-    test_config.configuration.rag.inline = ["source-a", "source-b"]
+    test_config.configuration.rag.byok.stores = [entry_a, entry_b]
+    test_config.configuration.rag.retrieval.inline.sources = ["source-a", "source-b"]
 
     mock_holder_class = mocker.patch(
         "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
@@ -1018,7 +1020,7 @@ async def test_streaming_query_rag_content_limit_caps_across_multiple_sources(  
     mock_client = _build_base_streaming_mock_client(mocker)
 
     # Overlapping score bands so top-k must pick from both sources
-    n = constants.INLINE_RAG_MAX_CHUNKS
+    n = constants.DEFAULT_INLINE_RAG_MAX_CHUNKS
     resp_a = _make_vector_io_response(
         mocker,
         [
@@ -1062,7 +1064,9 @@ async def test_streaming_query_rag_content_limit_caps_across_multiple_sources(  
     # .kwargs holds its keyword arguments, e.g. "input" is the full prompt text sent to the model.
     create_call = mock_client.responses.create.call_args_list[0]
     input_text = create_call.kwargs["input"]
-    expected_header = f"file_search found {constants.INLINE_RAG_MAX_CHUNKS} chunks:"
+    expected_header = (
+        f"file_search found {constants.DEFAULT_INLINE_RAG_MAX_CHUNKS} chunks:"
+    )
     assert expected_header in input_text
 
     # Both sources must appear in the context (overlapping scores guarantee this)
@@ -1090,15 +1094,14 @@ async def test_streaming_query_rag_content_limit_caps_inline_rag(  # pylint: dis
     - Context chunk count equals the lowered INLINE_RAG_MAX_CHUNKS
     - Only the highest-scored chunks appear in the context
     """
-    mocker.patch("utils.vector_search.constants.INLINE_RAG_MAX_CHUNKS", 3)
-
     entry = mocker.MagicMock()
     entry.rag_id = "big-source"
     entry.vector_db_id = "vs-big-source"
     entry.score_multiplier = 1.0
 
-    test_config.configuration.byok_rag = [entry]
-    test_config.configuration.rag.inline = ["big-source"]
+    test_config.configuration.rag.byok.stores = [entry]
+    test_config.configuration.rag.retrieval.inline.sources = ["big-source"]
+    test_config.configuration.rag.retrieval.inline.max_chunks = 3
     test_config.configuration.reranker.enabled = False
 
     mock_holder_class = mocker.patch(
@@ -1106,7 +1109,7 @@ async def test_streaming_query_rag_content_limit_caps_inline_rag(  # pylint: dis
     )
     mock_client = _build_base_streaming_mock_client(mocker)
 
-    num_chunks = constants.BYOK_RAG_MAX_CHUNKS
+    num_chunks = constants.DEFAULT_BYOK_RAG_MAX_CHUNKS
     chunks_data = [
         (f"Chunk content {i}", f"chunk-{i}", round(0.50 + i * 0.03, 2))
         for i in range(num_chunks)
