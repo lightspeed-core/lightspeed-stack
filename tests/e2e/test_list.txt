@@ -1,1 +1,3 @@
+features/inline_rag.feature
 features/streaming_query.feature
+features/mcp.feature

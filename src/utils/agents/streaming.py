@@ -243,6 +243,7 @@ async def agent_response_generator(
     logger.debug("Starting agent streaming response processing")
     async with agent.run_stream_events(prompt) as stream:
         async for event in stream:
+            print(f"event: {event.event_kind}")
             if payload := dispatch_stream_event(event, dispatch_state):
                 yield serialize_event(payload, media_type)
 
@@ -347,12 +348,13 @@ def _(
         )
     else:
         final_text = state.run_result.response.text or "".join(state.text_parts)
-    state.chunk_id += 1
 
-    return TurnCompleteStreamPayload.create(
+    payload = TurnCompleteStreamPayload.create(
         chunk_id=state.chunk_id,
         token=final_text,
     )
+    state.chunk_id += 1
+    return payload
 
 
 @dispatch_stream_event.register

@@ -93,23 +93,9 @@ def wait_for_complete_response(context: Context) -> None:
     """Wait for the response to be complete."""
     context.response_data = _parse_streaming_response(context.response.text)
     context.response.raise_for_status()
-    assert context.response_data["finished"] is True, f"Response is not finished: {context.response_data}"
-
-
-@step('I use "{endpoint}" to ask question')
-def ask_question(context: Context, endpoint: str) -> None:
-    """Call the service REST API endpoint with question."""
-    base = f"http://{context.hostname}:{context.port}"
-    path = f"{context.api_prefix}/{endpoint}".replace("//", "/")
-    url = base + path
-
-    # Replace {MODEL} and {PROVIDER} placeholders with actual values
-    json_str = replace_placeholders(context, context.text or "{}")
-
-    data = json.loads(json_str)
-    context.response = request_with_transient_retry(
-        method="POST", url=url, json=data, timeout=DEFAULT_LLM_TIMEOUT
-    )
+    assert (
+        context.response_data["finished"] is True
+    ), f"Response is not finished: {context.response_data}"
 
 
 def _read_streamed_response(response: requests.Response) -> str:
@@ -124,41 +110,72 @@ def _read_streamed_response(response: requests.Response) -> str:
     return "".join(chunks)
 
 
-@step('I use "{endpoint}" to ask question with authorization header')
-def ask_question_authorized(context: Context, endpoint: str) -> None:
-    """Call the service REST API endpoint with question."""
+def _uses_sse(endpoint: str, data: dict[str, Any]) -> bool:
+    """Return whether the endpoint delivers an SSE stream for the given payload."""
+    return endpoint == "streaming_query" or (
+        endpoint == "responses" and bool(data.get("stream"))
+    )
+
+
+def _post_question(
+    context: Context,
+    endpoint: str,
+    headers: dict[str, str] | None = None,
+    extra_data: dict[str, Any] | None = None,
+) -> requests.Response:
+    """POST a question to the service REST API endpoint.
+
+    Parameters:
+        context: Behave context with hostname, port, and request body text.
+        endpoint: API endpoint name (e.g. ``query``, ``streaming_query``).
+        headers: Optional HTTP headers (e.g. authorization).
+        extra_data: Optional fields merged into the JSON request body.
+
+    Returns:
+        The HTTP response, with streamed bodies fully consumed when applicable.
+    """
     base = f"http://{context.hostname}:{context.port}"
     path = f"{context.api_prefix}/{endpoint}".replace("//", "/")
     url = base + path
 
-    # Replace {MODEL} and {PROVIDER} placeholders with actual values
     json_str = replace_placeholders(context, context.text or "{}")
-
     data = json.loads(json_str)
-    use_sse = endpoint == "streaming_query" or (
-        endpoint == "responses" and bool(data.get("stream"))
-    )
-    if use_sse:
+    if extra_data:
+        data.update(extra_data)
+
+    if _uses_sse(endpoint, data):
         resp = request_with_transient_retry(
             method="POST",
             url=url,
             json=data,
-            headers=context.auth_headers,
+            headers=headers,
             timeout=DEFAULT_LLM_TIMEOUT,
             stream=True,
         )
         # Consume stream so server close after error event does not raise
         body = _read_streamed_response(resp)
         resp._content = body.encode(resp.encoding or "utf-8")
-        context.response = resp
-    else:
-        context.response = request_with_transient_retry(
-            method="POST",
-            url=url,
-            json=data,
-            headers=context.auth_headers,
-            timeout=DEFAULT_LLM_TIMEOUT,
-        )
+        return resp
+
+    return request_with_transient_retry(
+        method="POST",
+        url=url,
+        json=data,
+        headers=headers,
+        timeout=DEFAULT_LLM_TIMEOUT,
+    )
+
+
+@step('I use "{endpoint}" to ask question')
+def ask_question(context: Context, endpoint: str) -> None:
+    """Call the service REST API endpoint with question."""
+    context.response = _post_question(context, endpoint)
+
+
+@step('I use "{endpoint}" to ask question with authorization header')
+def ask_question_authorized(context: Context, endpoint: str) -> None:
+    """Call the service REST API endpoint with question."""
+    context.response = _post_question(context, endpoint, headers=context.auth_headers)
 
 
 # Query length chosen to exceed typical model context windows (e.g. 128k tokens)
@@ -188,19 +205,12 @@ def store_conversation_details(context: Context) -> None:
 @step('I use "{endpoint}" to ask question with same conversation_id')
 def ask_question_in_same_conversation(context: Context, endpoint: str) -> None:
     """Call the service REST API endpoint with question, but use the existing conversation id."""
-    base = f"http://{context.hostname}:{context.port}"
-    path = f"{context.api_prefix}/{endpoint}".replace("//", "/")
-    url = base + path
-
-    # Replace {MODEL} and {PROVIDER} placeholders with actual values
-    json_str = replace_placeholders(context, context.text or "{}")
-
-    data = json.loads(json_str)
-    headers = context.auth_headers if hasattr(context, "auth_headers") else {}
-    data["conversation_id"] = context.response_data["conversation_id"]
-
-    context.response = request_with_transient_retry(
-        method="POST", url=url, json=data, headers=headers, timeout=DEFAULT_LLM_TIMEOUT
+    headers = context.auth_headers if hasattr(context, "auth_headers") else None
+    context.response = _post_question(
+        context,
+        endpoint,
+        headers=headers,
+        extra_data={"conversation_id": context.response_data["conversation_id"]},
     )
 
 
@@ -366,12 +376,12 @@ def _parse_streaming_response(response_text: str) -> dict:
     full_response = ""
     full_response_split = []
     finished = False
-    first_token = True
     stream_error = (
         None  # {"status_code": int, "response": str, "cause": str} if event "error"
     )
 
     for line in lines:
+        print(f"line: {line}")
         if line.startswith("data: "):
             try:
                 data = json.loads(line[6:])  # Remove 'data: ' prefix
@@ -380,10 +390,6 @@ def _parse_streaming_response(response_text: str) -> dict:
                 if event == "start":
                     conversation_id = data["data"]["conversation_id"]
                 elif event == "token":
-                    # Skip the first token (shield status message)
-                    if first_token:
-                        first_token = False
-                        continue
                     full_response_split.append(data["data"]["token"])
                 elif event == "turn_complete":
                     full_response = data["data"]["token"]
