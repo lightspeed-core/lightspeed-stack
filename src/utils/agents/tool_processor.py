@@ -479,7 +479,7 @@ def summarize_mcp_tool_result(
         Tool result summary in LCS turn-summary format.
     """
     content = cast(dict[str, Any], part.content)
-    if "tools" in content or "error" in content:
+    if "tools" in content:
         return summarize_mcp_list_tools_result(part, tool_round)
     return summarize_mcp_call_result(part, tool_round)
 

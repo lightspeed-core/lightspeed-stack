@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TypeAlias, cast
+from typing import Optional, TypeAlias, cast
 
 from fastapi import HTTPException
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
@@ -33,6 +33,7 @@ from models.api.responses.error import (
 from models.common.agents import AgentTurnAccumulator
 from models.common.moderation import ShieldModerationResult
 from models.common.responses.responses_api_params import ResponsesApiParams
+from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
 from utils.agents.tool_processor import (
     process_function_tool_call,
@@ -281,6 +282,7 @@ async def retrieve_agent_response(
     responses_params: ResponsesApiParams,
     moderation_result: ShieldModerationResult,
     endpoint_path: str,
+    _original_input: Optional[ResponseInput] = None,
 ) -> TurnSummary:
     """Retrieve a turn summary from a blocking agent run.
 
@@ -291,6 +293,7 @@ async def retrieve_agent_response(
         responses_params: Prepared Responses API parameters.
         moderation_result: Shield moderation outcome for the turn.
         endpoint_path: Endpoint path used for metric labeling.
+        _original_input: Original user input before the explicit-input rewrite.
 
     Returns:
         Turn summary for the completed agent run.

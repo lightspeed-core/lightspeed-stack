@@ -127,7 +127,7 @@ class TestQueryEndpointHandler:
             return_value=mock_client_holder,
         )
         mocker.patch(
-            "app.endpoints.query.get_topic_summary",
+            "app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
         )
         mocker.patch(
@@ -153,11 +153,14 @@ class TestQueryEndpointHandler:
             "Kubernetes is a container orchestration platform"
         )
 
-        async def mock_retrieve_response(*_args: Any, **_kwargs: Any) -> TurnSummary:
+        async def mock_retrieve_agent_response(
+            *_args: Any, **_kwargs: Any
+        ) -> TurnSummary:
             return mock_turn_summary
 
         mocker.patch(
-            "app.endpoints.query.retrieve_response", side_effect=mock_retrieve_response
+            "app.endpoints.query.retrieve_agent_response",
+            side_effect=mock_retrieve_agent_response,
         )
 
         mocker.patch(
@@ -245,7 +248,7 @@ class TestQueryEndpointHandler:
         mock_turn_summary.referenced_documents = [tool_doc]
 
         mocker.patch(
-            "app.endpoints.query.retrieve_response",
+            "app.endpoints.query.retrieve_agent_response",
             new=mocker.AsyncMock(return_value=mock_turn_summary),
         )
         mocker.patch("app.endpoints.query.store_query_results")
@@ -317,7 +320,7 @@ class TestQueryEndpointHandler:
             new=mocker.AsyncMock(return_value=ShieldModerationPassed()),
         )
         mocker.patch(
-            "app.endpoints.query.retrieve_response",
+            "app.endpoints.query.retrieve_agent_response",
             new=mocker.AsyncMock(return_value=TurnSummary()),
         )
         mocker.patch("app.endpoints.query.store_query_results")
@@ -373,7 +376,7 @@ class TestQueryEndpointHandler:
             return_value=mock_client_holder,
         )
         mocker.patch(
-            "app.endpoints.query.get_topic_summary",
+            "app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
         )
         mocker.patch(
@@ -394,11 +397,14 @@ class TestQueryEndpointHandler:
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
 
-        async def mock_retrieve_response(*_args: Any, **_kwargs: Any) -> TurnSummary:
+        async def mock_retrieve_agent_response(
+            *_args: Any, **_kwargs: Any
+        ) -> TurnSummary:
             return TurnSummary()
 
         mocker.patch(
-            "app.endpoints.query.retrieve_response", side_effect=mock_retrieve_response
+            "app.endpoints.query.retrieve_agent_response",
+            side_effect=mock_retrieve_agent_response,
         )
         mocker.patch(
             "app.endpoints.query.normalize_conversation_id", return_value="123"
@@ -459,11 +465,11 @@ class TestQueryEndpointHandler:
         )
 
         mocker.patch(
-            "app.endpoints.query.retrieve_response",
+            "app.endpoints.query.retrieve_agent_response",
             new=mocker.AsyncMock(return_value=TurnSummary()),
         )
-        mock_get_topic_summary = mocker.patch(
-            "app.endpoints.query.get_topic_summary",
+        mock_maybe_get_topic_summary = mocker.patch(
+            "app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value="Topic: Kubernetes"),
         )
         mocker.patch(
@@ -480,7 +486,7 @@ class TestQueryEndpointHandler:
             mcp_headers={},
         )
 
-        mock_get_topic_summary.assert_called_once()
+        mock_maybe_get_topic_summary.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_query_azure_token_refresh(
@@ -511,7 +517,7 @@ class TestQueryEndpointHandler:
             return_value=mock_client_holder,
         )
         mocker.patch(
-            "app.endpoints.query.get_topic_summary",
+            "app.endpoints.query.maybe_get_topic_summary",
             new=mocker.AsyncMock(return_value=None),
         )
         mocker.patch(
@@ -545,11 +551,14 @@ class TestQueryEndpointHandler:
             return_value=mock_updated_client
         )
 
-        async def mock_retrieve_response(*_args: Any, **_kwargs: Any) -> TurnSummary:
+        async def mock_retrieve_agent_response(
+            *_args: Any, **_kwargs: Any
+        ) -> TurnSummary:
             return TurnSummary()
 
         mocker.patch(
-            "app.endpoints.query.retrieve_response", side_effect=mock_retrieve_response
+            "app.endpoints.query.retrieve_agent_response",
+            side_effect=mock_retrieve_agent_response,
         )
         mocker.patch(
             "app.endpoints.query.normalize_conversation_id", return_value="123"

@@ -15,6 +15,7 @@ from llama_stack_client import (
 from openai._exceptions import (
     APIStatusError as OpenAIAPIStatusError,
 )
+from typing_extensions import deprecated
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -42,6 +43,7 @@ from models.common.responses.responses_api_params import ResponsesApiParams
 from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
 from models.config import Action
+from utils.agents.query import retrieve_agent_response
 from utils.conversation_compaction import (
     apply_compaction_blocking,
     configured_conversation_cache,
@@ -68,7 +70,7 @@ from utils.responses import (
     build_turn_summary,
     deduplicate_referenced_documents,
     extract_vector_store_ids_from_tools,
-    get_topic_summary,
+    maybe_get_topic_summary,
     prepare_responses_params,
 )
 from utils.shields import run_shield_moderation, validate_shield_ids_override
@@ -226,12 +228,12 @@ async def query_endpoint_handler(
         client = await AsyncLlamaStackClientHolder().update_azure_token()
 
     # Retrieve response using Responses API
-    turn_summary = await retrieve_response(
+    turn_summary = await retrieve_agent_response(
         client,
         responses_params,
         moderation_result,
         endpoint_path,
-        original_input=compaction.original_input if compaction.compacted else None,
+        compaction.original_input if compaction.compacted else None,
     )
 
     if moderation_result.decision == "passed":
@@ -249,13 +251,15 @@ async def query_endpoint_handler(
         )
 
     # Get topic summary for new conversation
-    if not user_conversation and query_request.generate_topic_summary:
-        logger.debug("Generating topic summary for new conversation")
-        topic_summary = await get_topic_summary(
-            query_request.query, client, responses_params.model
-        )
-    else:
-        topic_summary = None
+    should_generate = not user_conversation and bool(
+        query_request.generate_topic_summary
+    )
+    topic_summary = await maybe_get_topic_summary(
+        generate_topic_summary=should_generate,
+        input_text=query_request.query,
+        client=client,
+        model_id=responses_params.model,
+    )
 
     logger.info("Consuming tokens")
     consume_query_tokens(
@@ -301,6 +305,10 @@ async def query_endpoint_handler(
     )
 
 
+@deprecated(
+    "Deprecated in favor of utils.agents.query.retrieve_agent_response.",
+    stacklevel=2,
+)
 async def retrieve_response(
     client: AsyncLlamaStackClient,
     responses_params: ResponsesApiParams,

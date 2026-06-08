@@ -430,7 +430,8 @@ class TestSummarizeMcpResults:
             content={
                 "tools": [
                     {"name": "tool_a", "description": "does things"},
-                ]
+                ],
+                "error": None,
             },
         )
 
@@ -447,7 +448,7 @@ class TestSummarizeMcpResults:
         part = NativeToolReturnPart(
             tool_name=f"{MCPServerTool.kind}:srv",
             tool_call_id="mcp-list-err",
-            content={"error": "unavailable"},
+            content={"tools": [], "error": "unavailable"},
         )
 
         result = summarize_mcp_list_tools_result(part, tool_round=1)
@@ -460,12 +461,12 @@ class TestSummarizeMcpResults:
         success_part = NativeToolReturnPart(
             tool_name=f"{MCPServerTool.kind}:srv",
             tool_call_id="mcp-call-ok",
-            content={"output": "done"},
+            content={"output": "done", "error": None},
         )
         error_part = NativeToolReturnPart(
             tool_name=f"{MCPServerTool.kind}:srv",
             tool_call_id="mcp-call-err",
-            content={"error": "failed"},
+            content={"output": None, "error": "failed"},
         )
 
         success = summarize_mcp_call_result(success_part, tool_round=2)
@@ -477,16 +478,16 @@ class TestSummarizeMcpResults:
         assert error.content == "failed"
 
     def test_mcp_tool_result_dispatches_by_shape(self) -> None:
-        """Test summarize_mcp_tool_result routes list-tools vs call payloads."""
+        """Test summarize_mcp_tool_result routes pydantic-ai MCP return shapes."""
         list_part = NativeToolReturnPart(
             tool_name=f"{MCPServerTool.kind}:srv",
             tool_call_id="dispatch-list",
-            content={"tools": []},
+            content={"tools": [], "error": None},
         )
         call_part = NativeToolReturnPart(
             tool_name=f"{MCPServerTool.kind}:srv",
             tool_call_id="dispatch-call",
-            content={"output": "ok"},
+            content={"output": "ok", "error": None},
         )
 
         list_result = summarize_mcp_tool_result(list_part, tool_round=1)
@@ -494,6 +495,19 @@ class TestSummarizeMcpResults:
 
         assert list_result.type == "mcp_list_tools"
         assert call_result.type == "mcp_call"
+
+    def test_mcp_call_with_error_field_not_routed_to_list_tools(self) -> None:
+        """Test MCP call returns are not misrouted when error is always present."""
+        call_part = NativeToolReturnPart(
+            tool_name=f"{MCPServerTool.kind}:srv",
+            tool_call_id="dispatch-call-only-error",
+            content={"output": "ok", "error": None},
+        )
+
+        result = summarize_mcp_tool_result(call_part, tool_round=1)
+
+        assert result.type == "mcp_call"
+        assert result.content == "ok"
 
 
 class TestSummarizeFileSearchResult:
@@ -571,7 +585,7 @@ class TestProcessNativeToolResult:
         part = NativeToolReturnPart(
             tool_name=f"{MCPServerTool.kind}:srv",
             tool_call_id="mcp-labeled",
-            content={"output": "labeled-output"},
+            content={"output": "labeled-output", "error": None},
         )
 
         result = process_native_tool_result(turn_state, part)
@@ -591,7 +605,7 @@ class TestProcessNativeToolResult:
         mcp_part = NativeToolReturnPart(
             tool_name=f"{MCPServerTool.kind}:srv",
             tool_call_id="mcp-process",
-            content={"output": "mcp-output"},
+            content={"output": "mcp-output", "error": None},
         )
 
         web_result = process_native_tool_result(turn_state, web_part)
