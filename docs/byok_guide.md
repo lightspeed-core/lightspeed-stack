@@ -113,6 +113,14 @@ Before implementing BYOK, ensure you have:
 
 ## Configuration Guide
 
+> [!WARNING]
+> **Deprecated in 0.7.0**: The top-level `byok_rag`, `rag`, `okp`, and `reranker` sections
+> are deprecated. In 0.7.0, all RAG-related configuration is unified under a single `rag`
+> section: BYOK stores move to `rag.byok.stores` (with `backend` instead of `rag_type`),
+> retrieval strategies move to `rag.retrieval.inline`/`rag.retrieval.tool`, OKP moves to
+> `rag.okp`, and the reranker moves to `rag.retrieval.inline.reranker`.
+> See the [v0.7.0 Migration Guide](migrations/v0.7.0.md) for full details and examples.
+
 ### Step 1: Prepare Your Knowledge Sources
 
 1. **Collect your documents**: Gather all knowledge sources you want to include
