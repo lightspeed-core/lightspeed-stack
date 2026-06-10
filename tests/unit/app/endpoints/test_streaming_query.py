@@ -1217,6 +1217,73 @@ class TestGenerateResponse:
         assert len(result) > 0
 
     @pytest.mark.asyncio
+    async def test_generate_response_topic_summary_failure_does_not_abort_stream(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test stream completes when post-stream topic summary generation fails.
+
+        The topic summary is generated after the stream has already started, so a
+        raised exception must be caught and logged rather than propagated (which
+        would otherwise trigger "response already started").
+        """
+
+        async def mock_generator() -> AsyncIterator[str]:
+            yield "data: token\n\n"
+
+        mock_context = mocker.Mock(spec=ResponseGeneratorContext)
+        mock_context.conversation_id = "conv_123"
+        mock_context.user_id = "user_123"
+        mock_context.vector_store_ids = []
+        mock_context.rag_id_mapping = {}
+        mock_context.inline_rag_context = RAGContext()
+        mock_context.query_request = QueryRequest(
+            query="test", generate_topic_summary=True
+        )  # pyright: ignore[reportCallIssue]
+        mock_context.started_at = "2024-01-01T00:00:00Z"
+        mock_context.skip_userid_check = False
+        mock_context.request_id = "123e4567-e89b-12d3-a456-426614174000"
+        mock_context.client = mocker.AsyncMock(spec=AsyncLlamaStackClient)
+
+        mock_responses_params = mocker.Mock(spec=ResponsesApiParams)
+        mock_responses_params.model = "provider1/model1"
+
+        mock_turn_summary = TurnSummary()
+        mock_turn_summary.token_usage = TokenCounter(input_tokens=10, output_tokens=5)
+
+        mock_config = mocker.Mock()
+        mock_config.quota_limiters = []
+        mocker.patch("app.endpoints.streaming_query.configuration", mock_config)
+        mocker.patch("app.endpoints.streaming_query.consume_query_tokens")
+        mocker.patch(
+            "app.endpoints.streaming_query.get_available_quotas", return_value={}
+        )
+        mocker.patch(
+            "app.endpoints.streaming_query.get_topic_summary",
+            new=mocker.AsyncMock(
+                side_effect=HTTPException(status_code=500, detail="context length")
+            ),
+        )
+        store_results_mock = mocker.patch(
+            "app.endpoints.streaming_query.store_query_results"
+        )
+
+        result = []
+        async for item in generate_response(
+            mock_generator(),
+            mock_context,
+            mock_responses_params,
+            mock_turn_summary,
+        ):
+            result.append(item)
+
+        # The stream still completes (post-stream side effects run) and the
+        # topic summary failure does not propagate.
+        assert len(result) > 0
+        store_results_mock.assert_called_once()
+        call_kwargs = store_results_mock.call_args.kwargs
+        assert call_kwargs["topic_summary"] is None
+
+    @pytest.mark.asyncio
     async def test_generate_response_connection_error(
         self, mocker: MockerFixture
     ) -> None:
