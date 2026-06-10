@@ -13,11 +13,17 @@ LLAMA_STACK_CONFIG ?= run.yaml
 
 # Container configuration
 LLAMA_STACK_CONTAINER_NAME ?= lightspeed-llama-stack
+LLAMA_STACK_DEPS_IMAGE ?= lightspeed-llama-stack-deps:local
 LLAMA_STACK_IMAGE ?= lightspeed-llama-stack:local
 LLAMA_STACK_PORT ?= 8321
 CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 
-.PHONY: run run-stack build-llama-stack-image remove-llama-stack-container stop-llama-stack-container start-llama-stack-container wait-for-llama-stack-health clean-llama-stack
+# Dependency change detection
+DEPS_HASH_FILE := .llama-stack-deps.hash
+CURRENT_DEPS_HASH := $(shell cat pyproject.toml uv.lock providers/pyproject.toml providers/uv.lock 2>/dev/null | shasum -a 256 | cut -d' ' -f1)
+STORED_DEPS_HASH := $(shell cat $(DEPS_HASH_FILE) 2>/dev/null)
+
+.PHONY: run run-stack build-llama-stack-deps-image ensure-llama-stack-deps-image build-llama-stack-image remove-llama-stack-container stop-llama-stack-container start-llama-stack-container wait-for-llama-stack-health clean-llama-stack
 
 run-stack: ## Run lightspeed-stack directly, without building dependent service/s
 	uv run src/lightspeed_stack.py -c $(CONFIG)
@@ -27,13 +33,44 @@ run: start-llama-stack-container ## Run the service locally with dependent servi
 	@trap 'echo ""; echo "Stopping services..."; $(MAKE) stop-llama-stack-container' EXIT INT TERM; \
 	$(MAKE) run-stack
 
-build-llama-stack-image: remove-llama-stack-container ## Build llama-stack container image
-	@echo "Building llama-stack container image..."
+build-llama-stack-deps-image: ## Force rebuild the deps base image
+	@echo "Building llama-stack deps image..."
 	@if [ -z "$(CONTAINER_RUNTIME)" ]; then \
 		echo "ERROR: No container runtime found. Install podman or docker."; \
 		exit 1; \
 	fi
-	$(CONTAINER_RUNTIME) build -f deploy/llama-stack/test.containerfile -t $(LLAMA_STACK_IMAGE) .
+	@if $(CONTAINER_RUNTIME) image inspect $(LLAMA_STACK_DEPS_IMAGE) >/dev/null 2>&1; then \
+		echo "Removing existing deps image to avoid dangling images..."; \
+		$(CONTAINER_RUNTIME) rmi $(LLAMA_STACK_DEPS_IMAGE); \
+	fi
+	$(CONTAINER_RUNTIME) build -f deploy/llama-stack/test.containerfile --target deps-builder -t $(LLAMA_STACK_DEPS_IMAGE) .
+	@echo "$(CURRENT_DEPS_HASH)" > $(DEPS_HASH_FILE)
+	@echo "✓ Deps image built and hash saved"
+
+ensure-llama-stack-deps-image: ## Build deps image only if missing or dependencies changed
+	@if [ -z "$(CONTAINER_RUNTIME)" ]; then \
+		echo "ERROR: No container runtime found. Install podman or docker."; \
+		exit 1; \
+	fi
+	@if ! $(CONTAINER_RUNTIME) image inspect $(LLAMA_STACK_DEPS_IMAGE) >/dev/null 2>&1; then \
+		echo "Deps image not found, building..."; \
+		$(MAKE) build-llama-stack-deps-image; \
+	elif [ "$(CURRENT_DEPS_HASH)" != "$(STORED_DEPS_HASH)" ]; then \
+		echo "Dependencies changed (pyproject.toml or uv.lock), rebuilding deps image..."; \
+		$(MAKE) build-llama-stack-deps-image; \
+	else \
+		echo "✓ Deps image is up-to-date (skipping rebuild)"; \
+	fi
+
+build-llama-stack-image: ensure-llama-stack-deps-image ## Build llama-stack app image (source-only layer on top of deps)
+	@echo "Building llama-stack app image..."
+	@if $(CONTAINER_RUNTIME) image inspect $(LLAMA_STACK_IMAGE) >/dev/null 2>&1; then \
+		echo "Removing existing app image to avoid dangling images..."; \
+		$(CONTAINER_RUNTIME) rmi $(LLAMA_STACK_IMAGE); \
+	fi
+	$(CONTAINER_RUNTIME) build -f deploy/llama-stack/test.containerfile \
+		--build-arg DEPS_IMAGE=$(LLAMA_STACK_DEPS_IMAGE) \
+		-t $(LLAMA_STACK_IMAGE) .
 
 stop-llama-stack-container: ## Gracefully stop llama-stack container
 	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) inspect $(LLAMA_STACK_CONTAINER_NAME) >/dev/null 2>&1; then \
@@ -57,7 +94,7 @@ remove-llama-stack-container: ## Remove llama-stack container (saves logs first)
 		echo "✓ Container removed (logs saved to /tmp/llama-stack-last-run.log)"; \
 	fi
 
-start-llama-stack-container: build-llama-stack-image ## Start llama-stack container
+start-llama-stack-container: remove-llama-stack-container build-llama-stack-image ## Start llama-stack container
 	@echo "Starting llama-stack container..."
 	$(CONTAINER_RUNTIME) run -d \
 		--name $(LLAMA_STACK_CONTAINER_NAME) \
@@ -122,11 +159,16 @@ wait-for-llama-stack-health: ## Wait for llama-stack container to be healthy
 	$(CONTAINER_RUNTIME) logs $(LLAMA_STACK_CONTAINER_NAME); \
 	exit 1
 
-clean-llama-stack: remove-llama-stack-container ## Remove container and image
+clean-llama-stack: remove-llama-stack-container ## Remove containers, images, and deps hash
 	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) images -q $(LLAMA_STACK_IMAGE) | grep -q .; then \
-		echo "Removing llama-stack image..."; \
+		echo "Removing llama-stack app image..."; \
 		$(CONTAINER_RUNTIME) rmi $(LLAMA_STACK_IMAGE); \
 	fi
+	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) images -q $(LLAMA_STACK_DEPS_IMAGE) | grep -q .; then \
+		echo "Removing llama-stack deps image..."; \
+		$(CONTAINER_RUNTIME) rmi $(LLAMA_STACK_DEPS_IMAGE); \
+	fi
+	@rm -f $(DEPS_HASH_FILE)
 
 run-llama-stack: ## Start Llama Stack with enriched config (for local service mode)
 	uv run src/llama_stack_configuration.py -c $(CONFIG) -i $(LLAMA_STACK_CONFIG) -o $(LLAMA_STACK_CONFIG) && \
