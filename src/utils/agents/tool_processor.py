@@ -140,13 +140,16 @@ def process_native_tool_call(
     Returns:
         Tool call summary when recorded, otherwise None if already emitted.
     """
+    logger.error(f"Processing native tool call: {part.tool_call_id}")
     if part.tool_call_id in state.emitted_tool_call_ids:
+        logger.error(f"Tool call already emitted: {part.tool_call_id}")
         return None
     if summary := summarize_native_tool_call(part):
         state.increment_round_if_pending()
         state.emitted_tool_call_ids.add(summary.id)
         state.turn_summary.tool_calls.append(summary)
         return summary
+    logger.error(f"Tool call not summarized: {part.tool_call_id}")
     return None
 
 
@@ -479,7 +482,7 @@ def summarize_mcp_tool_result(
         Tool result summary in LCS turn-summary format.
     """
     content = cast(dict[str, Any], part.content)
-    if "tools" in content or "error" in content:
+    if "tools" in content and "error" in content:
         return summarize_mcp_list_tools_result(part, tool_round)
     return summarize_mcp_call_result(part, tool_round)
 

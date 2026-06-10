@@ -257,6 +257,8 @@ def build_turn_summary_from_agent_run(
             for tool_call_part in message.tool_calls:
                 process_function_tool_call(state, tool_call_part)
             for call_part, return_part in message.native_tool_calls:
+                logger.error(f"Native tool call: {repr(call_part)}")
+                logger.error(f"Native tool return: {repr(return_part)}")
                 process_native_tool_call(state, call_part)
                 process_native_tool_result(state, return_part)
         elif isinstance(message, ModelRequest):
