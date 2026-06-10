@@ -27,10 +27,19 @@ from models.api.responses.error import InternalServerErrorResponse
 from sentry import initialize_sentry
 from utils.common import register_mcp_servers_async
 from utils.llama_stack_version import check_llama_stack_version
+from utils.vertexai_thought_signature import (
+    apply_patch as apply_vertexai_thought_signature_patch,
+)
 
 logger = get_logger(__name__)
 
 logger.info("Initializing app")
+
+# DOWNSTREAM PATCH: carry Gemini 3 thought signatures through llama-stack's
+# Vertex AI converter so multi-turn tool calls against gemini-3.x models do not
+# fail with HTTP 400. Applied at import time so every worker process patches
+# before serving requests. Remove once the fix lands upstream.
+apply_vertexai_thought_signature_patch()
 
 
 service_name = configuration.configuration.name
