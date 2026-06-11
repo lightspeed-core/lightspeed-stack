@@ -1,7 +1,7 @@
 # vim: set filetype=dockerfile
-ARG BUILDER_BASE_IMAGE=registry.access.redhat.com/ubi9/python-312
+ARG BUILDER_BASE_IMAGE=registry.access.redhat.com/ubi9/python-312:9.8-1781023618
 ARG BUILDER_DNF_COMMAND=dnf
-ARG RUNTIME_BASE_IMAGE=registry.access.redhat.com/ubi9/python-312-minimal
+ARG RUNTIME_BASE_IMAGE=registry.access.redhat.com/ubi9/python-312-minimal:9.8-1781061228
 ARG RUNTIME_DNF_COMMAND=microdnf
 
 FROM ${BUILDER_BASE_IMAGE} AS builder
@@ -24,7 +24,7 @@ USER root
 # Install gcc - required by polyleven python package on aarch64
 # (dependency of autoevals, no pre-built binary wheels for linux on aarch64)
 # cmake and cargo are required by fastuuid, maturin
-RUN ${BUILDER_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc gcc-c++ cmake cargo
+RUN ${BUILDER_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc g++ cmake cargo
 
 # Install uv package manager
 RUN pip3.12 install "uv>=0.8.15"

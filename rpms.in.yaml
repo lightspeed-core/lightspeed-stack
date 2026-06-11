@@ -1,12 +1,12 @@
 packages:
   [
     gcc,
-    gcc-c++,
+    g++,
     jq,
     patch,
     cmake,
     cargo,
   ]
 contentOrigin:
-  repofiles: ["./redhat.repo"]
+  repofiles: ["./ubi.repo"]
 arches: [x86_64, aarch64]
