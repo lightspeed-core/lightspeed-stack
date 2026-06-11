@@ -13,10 +13,8 @@ service:
 # To use a different port: override with 'make run LLAMA_STACK_PORT=<port>' and update the url below,
 # or run llama-stack manually and don't use 'make run'.
 llama_stack:
-  # use_as_library_client: false
-  # url: http://localhost:8321
-  use_as_library_client: true
-  library_client_config_path: run.yaml
+  use_as_library_client: false
+  url: http://localhost:8321
   # api_key: custom-key  # Uncomment if your llama-stack requires authentication
 user_data_collection:
   feedback_enabled: true
@@ -33,7 +31,3 @@ conversation_cache:
 authentication:
   module: "noop"
 
-mcp_servers:
-  - name: "datautils"
-    provider_id: "model-context-protocol"
-    url: "http://localhost:3000/mcp"

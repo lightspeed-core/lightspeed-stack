@@ -7,10 +7,13 @@ from typing import Any, Final, cast
 from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
 from llama_stack_client import AsyncLlamaStackClient
 from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIResponsesModel, OpenAIResponsesModelSettings
+from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 
 from models.common.responses.responses_api_params import ResponsesApiParams
-from pydantic_ai_lightspeed.llamastack import LlamaStackProvider
+from pydantic_ai_lightspeed.llamastack import (
+    LlamaStackProvider,
+    LlamaStackResponsesModel,
+)
 
 _LLS_RESPONSES_EXTRA_FIELDS: Final[frozenset[str]] = frozenset(
     {
@@ -92,7 +95,7 @@ def build_agent(
     provider = _llama_stack_provider_from_client(client)
     settings = _model_settings_from_responses_params(responses_params)
 
-    model = OpenAIResponsesModel(
+    model = LlamaStackResponsesModel(
         responses_params.model,
         provider=provider,
         settings=settings,

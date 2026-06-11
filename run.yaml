@@ -15,6 +15,7 @@ apis:
 benchmarks: []
 datasets: []
 image_name: starter
+external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR}
 
 providers:
   inference:
@@ -53,9 +54,6 @@ providers:
   - config: {} # Enable the RAG tool
     provider_id: rag-runtime
     provider_type: inline::rag-runtime
-  - config: {} # Enable MCP servers registered in lightspeed-stack.yaml
-    provider_id: model-context-protocol
-    provider_type: remote::model-context-protocol
   vector_io:
   - config:
       persistence:

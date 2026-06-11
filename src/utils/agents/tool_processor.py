@@ -140,16 +140,14 @@ def process_native_tool_call(
     Returns:
         Tool call summary when recorded, otherwise None if already emitted.
     """
-    logger.error(f"Processing native tool call: {part.tool_call_id}")
     if part.tool_call_id in state.emitted_tool_call_ids:
-        logger.error(f"Tool call already emitted: {part.tool_call_id}")
         return None
     if summary := summarize_native_tool_call(part):
         state.increment_round_if_pending()
         state.emitted_tool_call_ids.add(summary.id)
         state.turn_summary.tool_calls.append(summary)
         return summary
-    logger.error(f"Tool call not summarized: {part.tool_call_id}")
+    logger.warning("Tool call not summarized: %s", part.tool_call_id)
     return None
 
 

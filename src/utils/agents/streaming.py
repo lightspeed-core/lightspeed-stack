@@ -243,9 +243,9 @@ async def agent_response_generator(
     logger.debug("Starting agent streaming response processing")
     async with agent.run_stream_events(prompt) as stream:
         async for event in stream:
-            logger.error(f"event: {event.event_kind} {repr(event)[:100]}")
+            logger.error(f"event: {event.event_kind} {repr(event)}")
             if payload := dispatch_stream_event(event, dispatch_state):
-                #print(f"payload: {payload.serialize_json()}")
+                # print(f"payload: {payload.serialize_json()}")
                 yield serialize_event(payload, media_type)
 
     if dispatch_state.run_result is None:
@@ -379,7 +379,7 @@ def _(
 
     if isinstance(part, NativeToolReturnPart):
         if tool_result := process_native_tool_result(state, part):
-            #print(f"Tool result summarized: {tool_result.model_dump_json()}")
+            # print(f"Tool result summarized: {tool_result.model_dump_json()}")
             return ToolResultStreamPayload(data=tool_result)
         return None
 
@@ -433,7 +433,6 @@ def _(
 
     if isinstance(part, NativeToolCallPart):
         if summary := process_native_tool_call(state, part):
-            #print(f"Tool call summarized: {summary.model_dump_json()}")
             return ToolCallStreamPayload(data=summary)
         return None
 

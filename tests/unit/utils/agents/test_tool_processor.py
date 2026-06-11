@@ -240,6 +240,57 @@ class TestProcessNativeToolCall:
         process_native_tool_call(turn_state, known)
         assert process_native_tool_call(turn_state, known) is None
 
+    def test_defers_incomplete_mcp_call_until_tool_name_present(
+        self, turn_state: AgentTurnAccumulator
+    ) -> None:
+        """Test MCP call PartEnd is skipped until streamed args include tool_name."""
+        incomplete = NativeToolCallPart(
+            tool_name=f"{MCPServerTool.kind}:datautils",
+            tool_call_id="fc-mcp-incomplete",
+            args=None,
+            provider_name="llama-stack",
+        )
+        complete = NativeToolCallPart(
+            tool_name=f"{MCPServerTool.kind}:datautils",
+            tool_call_id="fc-mcp-incomplete",
+            args={
+                "action": "call_tool",
+                "tool_name": "unit_convert",
+                "tool_args": {"value": 100, "from_unit": "mi", "to_unit": "km"},
+            },
+            provider_name="llama-stack",
+        )
+
+        assert process_native_tool_call(turn_state, incomplete) is None
+        assert turn_state.emitted_tool_call_ids == set()
+
+        summary = process_native_tool_call(turn_state, complete)
+
+        assert summary is not None
+        assert summary.name == "unit_convert"
+        assert summary.type == "mcp_call"
+        assert summary.args == {
+            "value": 100,
+            "from_unit": "mi",
+            "to_unit": "km",
+        }
+
+    def test_emits_mcp_list_tools_without_deferral(
+        self, turn_state: AgentTurnAccumulator
+    ) -> None:
+        """Test MCP list-tools calls emit on first PartEnd with full args."""
+        part = NativeToolCallPart(
+            tool_name=f"{MCPServerTool.kind}:datautils",
+            tool_call_id="mcp-list-1",
+            args={"action": "list_tools"},
+            provider_name="llama-stack",
+        )
+
+        summary = process_native_tool_call(turn_state, part)
+
+        assert summary is not None
+        assert summary.type == "mcp_list_tools"
+
 
 class TestSummarizeFunctionToolResult:
     """Tests for summarize_function_tool_result."""
@@ -481,12 +532,12 @@ class TestSummarizeMcpResults:
         list_part = NativeToolReturnPart(
             tool_name=f"{MCPServerTool.kind}:srv",
             tool_call_id="dispatch-list",
-            content={"tools": []},
+            content={"tools": [], "error": None},
         )
         call_part = NativeToolReturnPart(
             tool_name=f"{MCPServerTool.kind}:srv",
             tool_call_id="dispatch-call",
-            content={"output": "ok"},
+            content={"output": "ok", "error": None},
         )
 
         list_result = summarize_mcp_tool_result(list_part, tool_round=1)

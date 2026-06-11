@@ -746,7 +746,7 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
         # Store MCP call item info for later lookup when arguments.done event occurs
         elif event_type == "response.output_item.added":
             item_added_chunk = cast(OutputItemAddedChunk, chunk)
-            
+
             if item_added_chunk.item.type == "mcp_call":
                 mcp_call_item = cast(MCPCall, item_added_chunk.item)
                 mcp_calls[item_added_chunk.output_index] = (
