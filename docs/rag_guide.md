@@ -63,6 +63,14 @@ Download a local embedding model such as `sentence-transformers/all-mpnet-base-v
 
 ## Configure BYOK Knowledge Sources
 
+> [!WARNING]
+> **Deprecated in 0.7.0**: The top-level `byok_rag`, `rag`, `okp`, and `reranker` sections
+> are deprecated. In 0.7.0, all RAG-related configuration is unified under a single `rag`
+> section: stores move to `rag.byok.stores` (with `backend` instead of `rag_type`),
+> retrieval strategies move to `rag.retrieval.inline`/`rag.retrieval.tool`, OKP moves to
+> `rag.okp`, and the reranker moves to `rag.retrieval.inline.reranker`.
+> See the [v0.7.0 Migration Guide](migrations/v0.7.0.md) for full details and examples.
+
 BYOK knowledge sources are configured in the `byok_rag` section of `lightspeed-stack.yaml`. The required configuration is automatically generated at startup when using `make run`, `make run-stack`, `docker-compose`, or library mode — no manual enrichment is needed.
 
 ### FAISS example
@@ -296,6 +304,12 @@ Example:
 
 
 **Chunk volume:**
+
+> [!WARNING]
+> **Deprecated in 0.7.0**: The chunk limit constants below are replaced by configurable
+> fields in `lightspeed-stack.yaml` (`rag.byok.max_chunks`, `rag.okp.max_chunks`,
+> `rag.retrieval.inline.max_chunks`, `rag.retrieval.tool.max_chunks`).
+> See the [v0.7.0 Migration Guide](migrations/v0.7.0.md) for details.
 
 OKP and BYOK scores are not directly comparable (different scoring systems), so
 `score_multiplier` (a BYOK-only concept) does not apply to OKP results. To control
