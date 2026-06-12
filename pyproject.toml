@@ -220,6 +220,10 @@ pythonpath = [
 addopts = [
     "--import-mode=importlib",
 ]
+markers = [
+    "destructive: marks tests as destructive (deselect with '-m \"not destructive\"')",
+    "order: controls test execution order (requires pytest-order plugin)",
+]
 
 [tool.pylint.main]
 source-roots = "src"

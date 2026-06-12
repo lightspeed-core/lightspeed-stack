@@ -28,4 +28,6 @@ jobs:
       - name: Install pdm  # Required for dynamic version test
         run: uv pip install pdm
       - name: Run integration tests
+        env:
+          OPENAI_API_KEY: "sk-dummy-key-for-testing"
         run: uv run pytest tests/integration --cov=src --cov=runner --cov-report term-missing
