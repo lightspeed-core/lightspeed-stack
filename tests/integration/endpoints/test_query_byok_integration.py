@@ -7,7 +7,6 @@ from typing import Any
 
 import pytest
 from fastapi import Request
-from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client.types import VersionInfo
 from pytest_mock import AsyncMockType, MockerFixture
 
@@ -17,6 +16,12 @@ from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import QueryRequest
 from models.api.responses.successful import QueryResponse
+from tests.integration.conftest import (
+    configure_query_agent_mock,
+    create_agent_run_result,
+    create_file_search_agent_run_result,
+    create_mock_llm_response,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -87,8 +92,8 @@ def _make_vector_io_response(
 def _build_base_mock_client(mocker: MockerFixture) -> Any:
     """Build a base mock Llama Stack client with common stubs.
 
-    Configures models, shields, conversations, version, and a default
-    responses.create return value.
+    Configures models, shields, conversations, version, and a default agent.run
+    return value. responses.create remains available for topic summary generation.
     """
     mock_client = mocker.AsyncMock()
 
@@ -112,24 +117,27 @@ def _build_base_mock_client(mocker: MockerFixture) -> Any:
     # Version
     mock_client.inspect.version.return_value = VersionInfo(version="0.4.3")
 
-    # Default response
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
-    mock_response.id = "response-byok"
-    mock_output_item = mocker.MagicMock()
-    mock_output_item.type = "message"
-    mock_output_item.role = "assistant"
-    mock_output_item.content = (
-        "Based on the documentation, OpenShift is a Kubernetes distribution."
+    mock_client.responses.create.return_value = create_mock_llm_response(
+        mocker,
+        content="OpenShift overview",
+        input_tokens=10,
+        output_tokens=5,
     )
-    mock_output_item.refusal = None
-    mock_response.output = [mock_output_item]
-    mock_response.stop_reason = "end_turn"
-    mock_response.tool_calls = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 50
-    mock_usage.output_tokens = 20
-    mock_response.usage = mock_usage
-    mock_client.responses.create.return_value = mock_response
+
+    mock_agent = configure_query_agent_mock(
+        mocker,
+        run_result=create_agent_run_result(
+            mocker,
+            content=(
+                "Based on the documentation, OpenShift is a Kubernetes distribution."
+            ),
+            response_id="response-byok",
+            input_tokens=50,
+            output_tokens=20,
+        ),
+    )
+    mock_client.query_agent = mock_agent
+    mock_client.build_agent_mock = mock_agent.build_agent_mock
 
     return mock_client
 
@@ -171,8 +179,8 @@ def mock_byok_tool_rag_client_fixture(
 ) -> Generator[Any, None, None]:
     """Mock Llama Stack client with BYOK tool RAG (file_search) configured.
 
-    Configures vector_stores.list with a BYOK store and responses.create
-    to return a file_search_call output item alongside the assistant message.
+    Configures vector_stores.list with a BYOK store and agent.run to return
+    a file_search tool result alongside the assistant message.
     """
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
     mock_client = _build_base_mock_client(mocker)
@@ -190,54 +198,26 @@ def mock_byok_tool_rag_client_fixture(
     mock_list_result.data = [mock_vector_store]
     mock_client.vector_stores.list.return_value = mock_list_result
 
-    # Response with file_search tool call
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
-    mock_response.id = "response-tool-rag"
-
-    mock_tool_output = mocker.MagicMock()
-    mock_tool_output.type = "file_search_call"
-    mock_tool_output.id = "call-fs-1"
-    mock_tool_output.queries = ["What is OpenShift?"]
-    mock_tool_output.status = "completed"
-
-    mock_result = mocker.MagicMock()
-    mock_result.file_id = "doc-ocp-1"
-    mock_result.filename = "openshift-docs.txt"
-    mock_result.score = 0.92
-    mock_result.text = "OpenShift is a Kubernetes distribution by Red Hat."
-    mock_result.attributes = {
-        "doc_url": "https://docs.redhat.com/ocp/overview",
-        "link": "https://docs.redhat.com/ocp/overview",
-    }
-    mock_result.model_dump = mocker.Mock(
-        return_value={
-            "file_id": "doc-ocp-1",
-            "filename": "openshift-docs.txt",
-            "score": 0.92,
-            "text": "OpenShift is a Kubernetes distribution by Red Hat.",
-            "attributes": {
-                "doc_url": "https://docs.redhat.com/ocp/overview",
-            },
-        }
+    tool_run_result = create_file_search_agent_run_result(
+        mocker,
+        content=("Based on the documentation, OpenShift is a Kubernetes distribution."),
+        response_id="response-tool-rag",
+        queries=["What is OpenShift?"],
+        results=[
+            {
+                "text": "OpenShift is a Kubernetes distribution by Red Hat.",
+                "score": 0.92,
+                "attributes": {
+                    "doc_url": "https://docs.redhat.com/ocp/overview",
+                    "title": "openshift-docs.txt",
+                    "document_id": "doc-ocp-1",
+                },
+            }
+        ],
+        input_tokens=60,
+        output_tokens=25,
     )
-    mock_tool_output.results = [mock_result]
-
-    mock_message = mocker.MagicMock()
-    mock_message.type = "message"
-    mock_message.role = "assistant"
-    mock_message.content = (
-        "Based on the documentation, OpenShift is a Kubernetes distribution."
-    )
-    mock_message.refusal = None
-
-    mock_response.output = [mock_tool_output, mock_message]
-    mock_response.stop_reason = "end_turn"
-    mock_response.tool_calls = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 60
-    mock_usage.output_tokens = 25
-    mock_response.usage = mock_usage
-    mock_client.responses.create.return_value = mock_response
+    mock_client.query_agent.run.return_value = tool_run_result
 
     mock_holder_class.return_value.get_client.return_value = mock_client
     yield mock_client
@@ -317,7 +297,7 @@ async def test_query_byok_inline_rag_injects_context(
 
     Verifies:
     - vector_io.query is called for BYOK inline RAG
-    - RAG context is injected into the responses.create input
+    - RAG context is injected into the agent prompt
     - Response includes RAG chunks from inline sources
     """
     _ = byok_config
@@ -353,13 +333,10 @@ async def test_query_byok_inline_rag_injects_context(
     call_kwargs = mock_byok_client.vector_io.query.call_args.kwargs
     assert call_kwargs["query"] == "What is OpenShift?"
 
-    # Verify RAG context was injected into responses.create input
-    # Use call_args_list[0] — the first call is the main query;
-    # a second call may follow for topic summary generation.
-    create_kwargs = mock_byok_client.responses.create.call_args_list[0].kwargs
-    input_text = create_kwargs["input"]
-    assert "file_search found" in input_text
-    assert "OpenShift is a Kubernetes distribution" in input_text
+    # Verify RAG context was injected into the agent prompt
+    prompt = mock_byok_client.query_agent.run.call_args.args[0]
+    assert "file_search found" in prompt
+    assert "OpenShift is a Kubernetes distribution" in prompt
 
     # Verify RAG chunks are included in the response
     assert response.rag_chunks is not None
@@ -802,47 +779,27 @@ async def test_query_byok_combined_inline_and_tool_rag(  # pylint: disable=too-m
     mock_list_result.data = [mock_vector_store]
     mock_client.vector_stores.list.return_value = mock_list_result
 
-    # Response includes file_search_call (tool RAG result)
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
-    mock_response.id = "response-combined"
-
-    mock_tool_output = mocker.MagicMock()
-    mock_tool_output.type = "file_search_call"
-    mock_tool_output.id = "call-fs-combined"
-    mock_tool_output.queries = ["What is OpenShift?"]
-    mock_tool_output.status = "completed"
-
-    mock_result = mocker.MagicMock()
-    mock_result.file_id = "doc-tool-1"
-    mock_result.filename = "tool-doc.txt"
-    mock_result.score = 0.90
-    mock_result.text = "Tool-based RAG result about OpenShift."
-    mock_result.attributes = {"doc_url": "https://example.com/tool-doc"}
-    mock_result.model_dump = mocker.Mock(
-        return_value={
-            "file_id": "doc-tool-1",
-            "filename": "tool-doc.txt",
-            "score": 0.90,
-            "text": "Tool-based RAG result about OpenShift.",
-            "attributes": {"doc_url": "https://example.com/tool-doc"},
-        }
+    # Agent run includes file_search tool RAG result
+    combined_run_result = create_file_search_agent_run_result(
+        mocker,
+        content="Combined answer from inline and tool RAG.",
+        response_id="response-combined",
+        queries=["What is OpenShift?"],
+        results=[
+            {
+                "text": "Tool-based RAG result about OpenShift.",
+                "score": 0.90,
+                "attributes": {
+                    "doc_url": "https://example.com/tool-doc",
+                    "title": "tool-doc.txt",
+                    "document_id": "doc-tool-1",
+                },
+            }
+        ],
+        input_tokens=80,
+        output_tokens=30,
     )
-    mock_tool_output.results = [mock_result]
-
-    mock_message = mocker.MagicMock()
-    mock_message.type = "message"
-    mock_message.role = "assistant"
-    mock_message.content = "Combined answer from inline and tool RAG."
-    mock_message.refusal = None
-
-    mock_response.output = [mock_tool_output, mock_message]
-    mock_response.stop_reason = "end_turn"
-    mock_response.tool_calls = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 80
-    mock_usage.output_tokens = 30
-    mock_response.usage = mock_usage
-    mock_client.responses.create.return_value = mock_response
+    mock_client.query_agent.run.return_value = combined_run_result
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
