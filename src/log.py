@@ -1,17 +1,42 @@
 """Log utilities."""
 
 import logging
+import logging.config
 import os
 import sys
+import typing as t
+from copy import deepcopy
+from datetime import datetime
 
-from rich.logging import RichHandler
+import uvicorn.config
+from rich.text import Text
 
 from constants import (
     DEFAULT_LOG_FORMAT,
     DEFAULT_LOG_LEVEL,
+    DEFAULT_LOGGER_NAME,
     LIGHTSPEED_STACK_DISABLE_RICH_HANDLER_ENV_VAR,
     LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR,
 )
+
+
+def _ms_time_format(dt: datetime) -> Text:
+    """Format datetime object with zero padded milliseconds."""
+    return Text(dt.strftime("%Y-%m-%d %H:%M:%S.") + f"{dt.microsecond // 1000:03d}")
+
+
+def _deep_merge(
+    mapping: dict[t.Any, t.Any], updates: dict[t.Any, t.Any]
+) -> dict[t.Any, t.Any]:
+    """Recursively merge updates into mapping."""
+    merged = mapping.copy()
+    for k, v in updates.items():
+        if k in merged and isinstance(merged[k], dict) and isinstance(v, dict):
+            merged[k] = _deep_merge(merged[k], v)
+        else:
+            merged[k] = v
+
+    return merged
 
 
 def resolve_log_level() -> int:
@@ -50,62 +75,73 @@ def resolve_log_level() -> int:
     return validated_level
 
 
-def create_log_handler() -> logging.Handler:
-    """
-    Create and return a configured log handler based on TTY availability and environment settings.
-
-    If LIGHTSPEED_STACK_DISABLE_RICH_HANDLER is set to any non-empty value,
-    returns a StreamHandler with plain-text formatting. Otherwise, if stderr
-    is connected to a terminal (TTY), returns a RichHandler for rich-formatted
-    console output. If neither condition is met, returns a StreamHandler with
-    plain-text formatting suitable for non-TTY environments (e.g., containers).
-
-    Returns:
-        logging.Handler: A configured handler instance (RichHandler or StreamHandler).
-    """
-    # Check if RichHandler is explicitly disabled via environment variable
-    if os.environ.get(LIGHTSPEED_STACK_DISABLE_RICH_HANDLER_ENV_VAR):
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter(DEFAULT_LOG_FORMAT))
-        return handler
-
-    if sys.stderr.isatty():
-        # RichHandler's columnar layout assumes a real terminal.
-        # RichHandler handles its own formatting, so no formatter is set.
-        return RichHandler()
-
-    # In containers without a TTY, Rich falls back to 80 columns and
-    # the columns consume most of that width, leaving ~40 chars for the actual message.
-    # Tracebacks become nearly unreadable. Use a plain StreamHandler instead.
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter(DEFAULT_LOG_FORMAT))
-    return handler
-
-
 def get_logger(name: str) -> logging.Logger:
-    """
-    Get a logger configured for Rich console output.
+    """Create a common logger for all modules in this package."""
+    # The need for this function should be removed in the future.
+    #
+    # Normally this is derived from the package name (__name__).
+    #
+    # Since this program is sometimes called from from the entrypoint and
+    # sometimes called from src/lightspeed_stack.py, the value for __name__
+    # does not contain a consistent root value.
+    #
+    # How the application is installed and run needs to be streamlined so that
+    # __name__ provides the expected value in all cases.
+    return logging.getLogger(f"{DEFAULT_LOGGER_NAME}.{name}")
 
-    The returned logger has its level set based on the LIGHTSPEED_STACK_LOG_LEVEL
-    environment variable (defaults to INFO), its handlers replaced with a single
-    handler (RichHandler for TTY or StreamHandler for non-TTY), and propagation
-    to ancestor loggers disabled.
 
-    Parameters:
-    ----------
-        name (str): Name of the logger to retrieve or create.
+def build_logging_config() -> dict[t.Any, t.Any]:
+    """Create logging configuration."""
+    handler = "default"
+    log_level = resolve_log_level()
+    if sys.stderr.isatty() and not os.environ.get(
+        LIGHTSPEED_STACK_DISABLE_RICH_HANDLER_ENV_VAR
+    ):
+        handler = "rich"
 
-    Returns:
-    -------
-        logging.Logger: The configured logger instance.
-    """
-    logger = logging.getLogger(name)
+    logging_conf = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "handlers": {
+            "rich": {
+                "()": "rich.logging.RichHandler",
+                "show_time": True,
+                "log_time_format": _ms_time_format,
+                "level": log_level,
+            },
+        },
+        "loggers": {
+            DEFAULT_LOGGER_NAME: {
+                "handlers": [handler],
+                "level": log_level,
+                "propagate": False,
+            },
+            "llama_stack_client": {
+                "handlers": [handler],
+                "level": log_level,
+                "propagate": False,
+            },
+        },
+    }
 
-    # Skip reconfiguration if logger already has handlers from a prior call
-    if logger.handlers:
-        return logger
+    # Create a deep copy of uvicorn's logging config to avoid mutating global state.
+    merged_config = _deep_merge(deepcopy(uvicorn.config.LOGGING_CONFIG), logging_conf)
 
-    logger.handlers = [create_log_handler()]
-    logger.propagate = False
-    logger.setLevel(resolve_log_level())
-    return logger
+    if handler == "rich":
+        merged_config["loggers"]["uvicorn"]["handlers"] = [handler]
+        merged_config["loggers"]["uvicorn.access"]["handlers"] = [handler]
+    else:
+        merged_config["formatters"]["access"]["fmt"] = (
+            "%(asctime)s.%(msecs)03d %(levelprefix)s "
+            '%(client_addr)s - "%(request_line)s" %(status_code)s'
+        )
+        merged_config["formatters"]["access"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
+        merged_config["formatters"]["default"]["fmt"] = DEFAULT_LOG_FORMAT
+        merged_config["formatters"]["default"]["datefmt"] = "%Y-%m-%d %H:%M:%S"
+
+    return merged_config
+
+
+def setup_logging() -> None:
+    """Set up main logging configuration."""
+    logging.config.dictConfig(build_logging_config())

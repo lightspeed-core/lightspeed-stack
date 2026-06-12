@@ -18,7 +18,7 @@ from llama_stack_configuration import (
     enrich_byok_rag,
     enrich_solr,
 )
-from log import get_logger
+from log import get_logger, setup_logging
 from models.api.responses.error import ServiceUnavailableResponse
 from models.config import LlamaStackConfiguration
 from utils.types import Singleton
@@ -65,6 +65,11 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
         client = AsyncLlamaStackAsLibraryClient(self._config_path)
         await client.initialize()
         self._lsc = client
+
+        # Re-apply logging configuration after ogx's setup_logging() is called.
+        # This ensures the desired logging configuration is applied when
+        # using AsyncLlamaStackAsLibraryClient.
+        setup_logging()
 
     def _load_service_client(self, config: LlamaStackConfiguration) -> None:
         """Initialize client in service mode (remote HTTP)."""
@@ -151,6 +156,11 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
             )
             raise HTTPException(**error_response.model_dump()) from e
         self._lsc = client
+        # Re-apply logging configuration after ogx's setup_logging() is called.
+        # This ensures the desired logging configuration is applied when
+        # using AsyncLlamaStackAsLibraryClient.
+        setup_logging()
+
         return client
 
     async def check_model_available(self, model_id: str) -> tuple[bool, str]:
@@ -247,6 +257,11 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
             )
             await client.initialize()
             self._lsc = client
+            # Re-apply logging configuration after ogx's setup_logging() is called.
+            # This ensures the desired logging configuration is applied when
+            # using AsyncLlamaStackAsLibraryClient.
+            setup_logging()
+
             return client
 
         # Service client mode

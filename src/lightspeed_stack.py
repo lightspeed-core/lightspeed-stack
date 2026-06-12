@@ -4,39 +4,17 @@ This source file contains entry point to the service. It is implemented in the
 main() function.
 """
 
-import logging
 import os
-import sys
 from argparse import ArgumentParser
 
 from configuration import configuration
 from constants import LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR
-from log import create_log_handler, get_logger, resolve_log_level
+from log import get_logger, setup_logging
 from runners.quota_scheduler import start_quota_scheduler
 from runners.uvicorn import start_uvicorn
 from utils import schema_dumper
 
-# Resolve log level and handler from centralized logging utilities
-log_level = resolve_log_level()
-
-# Configure root logger. basicConfig(force=True) is intentionally root-logger-specific.
-# RichHandler needs format="%(message)s" to prevent double-formatting by the root Formatter.
-handler = create_log_handler()
-if sys.stderr.isatty():
-    logging.basicConfig(
-        level=log_level,
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[handler],
-        force=True,
-    )
-else:
-    logging.basicConfig(
-        level=log_level,
-        handlers=[handler],
-        force=True,
-    )
-
+setup_logging()
 logger = get_logger(__name__)
 
 
@@ -119,11 +97,7 @@ def main() -> None:
 
     if args.verbose:
         os.environ[LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR] = "DEBUG"
-        logging.getLogger().setLevel(logging.DEBUG)
-        for logger_name in logging.Logger.manager.loggerDict:
-            existing_logger = logging.getLogger(logger_name)
-            if isinstance(existing_logger, logging.Logger):
-                existing_logger.setLevel(logging.DEBUG)
+        setup_logging()
 
     configuration.load_configuration(args.config_file)
     logger.info("Configuration: %s", configuration.configuration)

@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
+from constants import DEFAULT_LOGGER_NAME
 from models.config import Configuration, RlsapiV1Configuration
 
 # --- Test RlsapiV1Configuration ---
@@ -133,15 +134,12 @@ def test_quota_subject_warns_when_no_limiters(caplog: pytest.LogCaptureFixture) 
         authentication={"module": "noop"},
         quota_handlers={},
     )
-    config_logger = logging.getLogger("models.config")
-    config_logger.propagate = True
-    try:
-        with caplog.at_level(logging.WARNING):
-            Configuration(**config_dict)
+    with caplog.at_level(
+        logging.WARNING, logger=f"{DEFAULT_LOGGER_NAME}.models.config"
+    ):
+        Configuration(**config_dict)
 
-        assert "quota enforcement is not fully configured" in caplog.text
-    finally:
-        config_logger.propagate = False
+    assert "quota enforcement is not fully configured" in caplog.text
 
 
 def test_quota_subject_warns_when_no_storage_backend(
@@ -163,12 +161,9 @@ def test_quota_subject_warns_when_no_storage_backend(
             ],
         },
     )
-    config_logger = logging.getLogger("models.config")
-    config_logger.propagate = True
-    try:
-        with caplog.at_level(logging.WARNING):
-            Configuration(**config_dict)
+    with caplog.at_level(
+        logging.WARNING, logger=f"{DEFAULT_LOGGER_NAME}.models.config"
+    ):
+        Configuration(**config_dict)
 
-        assert "quota enforcement is not fully configured" in caplog.text
-    finally:
-        config_logger.propagate = False
+    assert "quota enforcement is not fully configured" in caplog.text

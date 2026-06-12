@@ -235,10 +235,11 @@ OKP_RAG_ID: Final[str] = "okp"
 # Environment variable name for configurable log level
 LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR: Final[str] = "LIGHTSPEED_STACK_LOG_LEVEL"
 # Default log level when environment variable is not set
+DEFAULT_LOGGER_NAME: Final[str] = "lightspeed_stack"
 DEFAULT_LOG_LEVEL: Final[str] = "INFO"
 # Default log format for plain-text logging in non-TTY environments
 DEFAULT_LOG_FORMAT: Final[str] = (
-    "%(asctime)s %(levelname)-8s %(name)s:%(lineno)d %(message)s"
+    "%(asctime)s.%(msecs)03d %(levelprefix)s %(message)s  [%(name)s:%(lineno)d]"
 )
 # Environment variable to force StreamHandler instead of RichHandler
 # Set to any non-empty value to disable RichHandler
