@@ -647,11 +647,23 @@ async def generate_response(  # pylint: disable=too-many-arguments,too-many-posi
         should_generate = context.query_request.generate_topic_summary
         if should_generate:
             logger.debug("Generating topic summary for new conversation")
-            topic_summary = await get_topic_summary(
-                context.query_request.query,
-                context.client,
-                responses_params.model,
-            )
+            # The stream has already started here, so a raised exception cannot
+            # be turned into a clean HTTP error response ("response already
+            # started"). Topic summaries are non-essential metadata, so failures
+            # (e.g. context-length overflow on a very large query) are caught and
+            # logged rather than aborting the already-streamed answer.
+            try:
+                topic_summary = await get_topic_summary(
+                    context.query_request.query,
+                    context.client,
+                    responses_params.model,
+                )
+            except Exception:  # pylint: disable=broad-except
+                logger.exception(
+                    "Failed to generate topic summary for new conversation, "
+                    "request %s",
+                    context.request_id,
+                )
 
     # Consume tokens
     logger.info("Consuming tokens")
