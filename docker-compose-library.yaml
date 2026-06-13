@@ -19,6 +19,7 @@ services:
       - ./run.yaml:/app-root/run.yaml:Z
       - ${GCP_KEYS_PATH:-./tmp/.gcp-keys-dummy}:/opt/app-root/.gcp-keys:ro
       - ./tests/e2e/rag:/opt/app-root/src/.llama/storage/rag:Z
+      - ${HF_CACHE_PATH:-./tmp/.hf-cache}:/opt/app-root/src/.cache/huggingface
       - ./tests/e2e/secrets/mcp-token:/tmp/mcp-token:ro,z
       - ./tests/e2e/secrets/invalid-mcp-token:/tmp/invalid-mcp-token:ro,z
     environment:
@@ -57,6 +58,8 @@ services:
       - LLAMA_STACK_LOGGING=${LLAMA_STACK_LOGGING:-}
       # FAISS test and inline RAG config
       - FAISS_VECTOR_STORE_ID=${FAISS_VECTOR_STORE_ID:-}
+      # Prevent HuggingFace Hub update checks (HTTP 429 rate-limiting in CI from parallel jobs).
+      - HF_HUB_OFFLINE=1
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/liveness"]
       interval: 10s   # how often to run the check

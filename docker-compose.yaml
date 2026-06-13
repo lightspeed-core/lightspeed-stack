@@ -21,6 +21,7 @@ services:
       - llama-storage:/opt/app-root/src/.llama/storage
       - ./tests/e2e/rag:/opt/app-root/src/.llama/storage/rag:z
       - mock-tls-certs:/certs:ro
+      - ${HF_CACHE_PATH:-./tmp/.hf-cache}:/opt/app-root/src/.cache/huggingface
     environment:
       - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
       - TAVILY_SEARCH_API_KEY=${TAVILY_SEARCH_API_KEY:-}
@@ -56,6 +57,8 @@ services:
       - LLAMA_STACK_LOGGING=${LLAMA_STACK_LOGGING:-}
       # FAISS test
       - FAISS_VECTOR_STORE_ID=${FAISS_VECTOR_STORE_ID:-}
+      # Prevent HuggingFace Hub update checks (HTTP 429 rate-limiting in CI from parallel jobs).
+      - HF_HUB_OFFLINE=1
       # OKP/Solr RAG
       - RH_SERVER_OKP=${RH_SERVER_OKP:-}
       - SOLR_URL=${SOLR_URL:-}

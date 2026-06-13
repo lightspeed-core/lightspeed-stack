@@ -146,6 +146,20 @@ jobs:
           echo "$BODY"
           [ "$HTTP_CODE" = "200" ]
 
+      - name: Cache HuggingFace embedding model
+        uses: actions/cache@v4
+        with:
+          path: /tmp/hf-cache
+          key: hf-sentence-transformers-all-mpnet-base-v2
+
+      - name: Pre-download HuggingFace embedding model
+        env:
+          HF_HOME: /tmp/hf-cache
+        run: |
+          pip install -q sentence-transformers
+          python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-mpnet-base-v2')"
+          echo "HF_CACHE_PATH=/tmp/hf-cache" >> $GITHUB_ENV
+
       - name: Docker Login for quay access
         env:
           QUAY_ROBOT_USERNAME: ${{ secrets.QUAY_DOWNSTREAM_USERNAME }}
