@@ -203,6 +203,9 @@ OKP_RAG_MAX_CHUNKS: Final[int] = 5  # retrieved from OKP RAG
 # Score multiplier applied to BYOK chunks after cross-encoder reranking (Solr chunks unchanged)
 BYOK_RAG_RERANK_BOOST: Final[float] = 1.2
 
+# Default minimum raw similarity per BYOK store
+DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE: Final[float] = 0.3
+
 # Solr OKP constants
 SOLR_VECTOR_SEARCH_DEFAULT_K: Final[int] = 5
 SOLR_VECTOR_SEARCH_DEFAULT_SCORE_THRESHOLD: Final[float] = 0.3
