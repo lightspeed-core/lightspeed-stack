@@ -2,16 +2,19 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
-from typing import Any
+from typing import Any, Optional
 
 from pydantic_ai import RunContext
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
+    ModelRequestPart,
     ModelResponse,
+    ModelResponsePart,
     TextContent,
     TextPart,
+    UserContent,
     UserPromptPart,
 )
 from pydantic_ai.models import ModelRequestContext
@@ -27,7 +30,7 @@ from pydantic_ai_lightspeed.capabilities.redaction.core import (
 
 def _redact_string_content(
     text: str, compiled_patterns: CompiledPatterns
-) -> str | None:
+) -> Optional[str]:
     """Redact PII from a string and return the redacted version if changed.
 
     Args:
@@ -45,7 +48,7 @@ def _redact_string_content(
 
 def _redact_text_content(
     item: TextContent, compiled_patterns: CompiledPatterns
-) -> TextContent | None:
+) -> Optional[TextContent]:
     """Redact PII from TextContent and return a new instance if changed.
 
     Args:
@@ -62,8 +65,8 @@ def _redact_text_content(
 
 
 def _redact_content_item(
-    item: Any, compiled_patterns: CompiledPatterns
-) -> tuple[Any, bool]:
+    item: UserContent, compiled_patterns: CompiledPatterns
+) -> tuple[UserContent, bool]:
     """Redact a single content item and indicate whether it changed.
 
     Args:
@@ -89,8 +92,8 @@ def _redact_content_item(
 
 
 def _redact_content_list(
-    content: Sequence[Any], compiled_patterns: CompiledPatterns
-) -> list[Any] | None:
+    content: Sequence[UserContent], compiled_patterns: CompiledPatterns
+) -> Optional[list[UserContent]]:
     """Redact PII from a list of content items.
 
     Args:
@@ -100,7 +103,7 @@ def _redact_content_list(
     Returns:
         A new list with redacted items if any changed, None otherwise.
     """
-    new_items: list[Any] = []
+    new_items: list[UserContent] = []
     any_changed = False
 
     for item in content:
@@ -142,8 +145,8 @@ def _redact_user_prompt_part(
 
 
 def _redact_message_parts(
-    parts: Sequence[Any], compiled_patterns: CompiledPatterns
-) -> list[Any] | None:
+    parts: Sequence[ModelRequestPart], compiled_patterns: CompiledPatterns
+) -> Optional[list[ModelRequestPart]]:
     """Redact PII from message parts.
 
     Args:
@@ -153,7 +156,7 @@ def _redact_message_parts(
     Returns:
         A new list with redacted parts if any changed, None otherwise.
     """
-    new_parts: list[Any] = []
+    new_parts: list[ModelRequestPart] = []
     any_changed = False
 
     for part in parts:
@@ -171,7 +174,7 @@ def _redact_message_parts(
 
 def _redact_model_request(
     message: ModelRequest, compiled_patterns: CompiledPatterns
-) -> ModelRequest | None:
+) -> Optional[ModelRequest]:
     """Redact PII from a ModelRequest message.
 
     Args:
@@ -237,7 +240,7 @@ def _redact_response(
         A new ModelResponse with redacted content, or the original.
     """
     changed = False
-    new_parts: list[Any] = []
+    new_parts: list[ModelResponsePart] = []
 
     for part in response.parts:
         if isinstance(part, TextPart):
