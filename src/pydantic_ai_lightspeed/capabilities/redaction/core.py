@@ -2,25 +2,9 @@
 
 from re import Pattern
 
-from pydantic import BaseModel, ConfigDict
+from models.config import RedactionResult
 
 CompiledPatterns = list[tuple[Pattern[str], str]]
-
-
-class RedactionResult(BaseModel):
-    """Result of applying PII redaction rules to text.
-
-    Attributes:
-        content: The text after all redaction rules have been applied.
-        redacted: True if at least one rule matched and changed the text.
-        redaction_count: Total number of substitutions made across all rules.
-    """
-
-    model_config = ConfigDict(frozen=True)
-
-    content: str
-    redacted: bool
-    redaction_count: int
 
 
 def redact_text(
