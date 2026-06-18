@@ -5,9 +5,9 @@ import re
 import pytest
 from pydantic import ValidationError
 
+from models.config import RedactionResult
 from pydantic_ai_lightspeed.capabilities.redaction.core import (
     CompiledPatterns,
-    RedactionResult,
     redact_text,
 )
 
