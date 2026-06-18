@@ -19,9 +19,7 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models import ModelRequestContext
 
-from pydantic_ai_lightspeed.capabilities.redaction.config import (
-    RedactionConfig,
-)
+from models.config import RedactionConfig
 from pydantic_ai_lightspeed.capabilities.redaction.core import (
     CompiledPatterns,
     redact_text,
