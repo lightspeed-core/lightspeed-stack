@@ -10,6 +10,7 @@ from argparse import ArgumentParser
 import constants
 from configuration import configuration
 from constants import LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR
+from llama_stack_configuration import migrate_config_dumb
 from log import get_logger, setup_logging
 from runners.quota_scheduler import start_quota_scheduler
 from runners.uvicorn import start_uvicorn
@@ -75,6 +76,31 @@ def create_argument_parser() -> ArgumentParser:
         f"{constants.DEFAULT_SYNTHESIZED_CONFIG_PATH})",
         default=None,
     )
+    parser.add_argument(
+        "--migrate-config",
+        dest="migrate_config",
+        help="migrate a legacy two-file config to a unified single file and "
+        "exit. Lifts the run.yaml given by --run-yaml into the "
+        "llama_stack.config.native_override of the -c lightspeed-stack.yaml "
+        "and writes the result to --migrate-output. Replace literal secrets "
+        "with ${env.VAR} references before or after migrating.",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--run-yaml",
+        dest="run_yaml",
+        help="path to the legacy Llama Stack run.yaml to migrate "
+        "(used with --migrate-config)",
+        default=None,
+    )
+    parser.add_argument(
+        "--migrate-output",
+        dest="migrate_output",
+        help="path to write the unified lightspeed-stack.yaml "
+        "(used with --migrate-config)",
+        default=None,
+    )
 
     return parser
 
@@ -90,9 +116,10 @@ def main() -> None:
       configuration.json and exits (exits with status 1 on failure).
     - If --dump-schema is provided, writes the active configuration schema to
       schema.json and exits (exits with status 1 on failure).
-    - If --generate-llama-stack-configuration is provided, generates and stores
-      the Llama Stack configuration to the specified output file and exits
-      (exits with status 1 on failure).
+    - If --migrate-config is provided, migrates the legacy two-file config
+      (--run-yaml plus the -c lightspeed-stack.yaml) into a unified single
+      file at --migrate-output and exits (status 1 on failure or missing
+      flags).
     - Otherwise, sets LIGHTSPEED_STACK_CONFIG_PATH for worker processes, starts
       the quota scheduler, and starts the Uvicorn web service.
 
@@ -107,6 +134,24 @@ def main() -> None:
     if args.verbose:
         os.environ[LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR] = "DEBUG"
         setup_logging()
+
+    # --migrate-config converts a legacy two-file config to a unified single
+    # file and exits. It reads the legacy files raw (the -c config still uses
+    # the legacy library_client_config_path shape), so it must run before
+    # load_configuration, which would validate against the current schema.
+    if args.migrate_config:
+        if args.run_yaml is None or args.migrate_output is None:
+            logger.error("--migrate-config requires --run-yaml and --migrate-output")
+            raise SystemExit(1)
+        try:
+            migrate_config_dumb(args.run_yaml, args.config_file, args.migrate_output)
+            logger.info(
+                "Migrated unified configuration written to %s", args.migrate_output
+            )
+        except Exception as e:
+            logger.error("Failed to migrate configuration: %s", e)
+            raise SystemExit(1) from e
+        return
 
     configuration.load_configuration(args.config_file)
     logger.info("Configuration: %s", configuration.configuration)
