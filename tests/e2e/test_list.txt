@@ -32,3 +32,4 @@ features/tls-ca.feature
 features/tls-mtls.feature
 features/tls-tlsv13.feature
 features/opentelemetry.feature
+features/skills.feature

@@ -364,7 +364,9 @@ def _parse_streaming_response(response_text: str) -> dict:
     lines = response_text.strip().split("\n")
     conversation_id = None
     full_response = ""
-    full_response_split = []
+    full_response_split: list[str] = []
+    tool_calls: list[dict[str, Any]] = []
+    tool_results: list[dict[str, Any]] = []
     finished = False
     stream_error = (
         None  # {"status_code": int, "response": str, "cause": str} if event "error"
@@ -380,6 +382,10 @@ def _parse_streaming_response(response_text: str) -> dict:
                     conversation_id = data["data"]["conversation_id"]
                 elif event == "token":
                     full_response_split.append(data["data"]["token"])
+                elif event == "tool_call":
+                    tool_calls.append(data["data"])
+                elif event == "tool_result":
+                    tool_results.append(data["data"])
                 elif event == "turn_complete":
                     full_response = data["data"]["token"]
                 elif event == "end":
@@ -393,6 +399,23 @@ def _parse_streaming_response(response_text: str) -> dict:
         "conversation_id": conversation_id,
         "response": "".join(full_response_split),
         "response_complete": full_response,
+        "tool_calls": tool_calls,
+        "tool_results": tool_results,
         "finished": finished,
         "stream_error": stream_error,
     }
+
+
+@then("The response is the last streamed fragment")
+def response_is_last_streamed_fragment(context: Context) -> None:
+    """Assert streaming finished and flag context for field checks.
+
+    Sets ``context.use_streaming_response_data`` so subsequent steps
+    read from ``context.response_data`` instead of the raw HTTP JSON.
+    """
+    assert hasattr(context, "response_data"), "Streaming response has not been parsed"
+    assert (
+        context.response_data.get("finished") is True
+    ), "Streaming response not finished"
+    context.use_streaming_response_data = True
+    print(context.response_data)

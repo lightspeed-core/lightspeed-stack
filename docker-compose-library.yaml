@@ -20,6 +20,7 @@ services:
       - ${GCP_KEYS_PATH:-./tmp/.gcp-keys-dummy}:/opt/app-root/.gcp-keys:ro
       - ./tests/e2e/rag:/opt/app-root/src/.llama/storage/rag:Z
       - ${HF_CACHE_PATH:-./tmp/.hf-cache}:/opt/app-root/src/.cache/huggingface
+      - ./tests/e2e/skills:/app-root/skills:ro,Z
       - ./tests/e2e/secrets/mcp-token:/tmp/mcp-token:ro,z
       - ./tests/e2e/secrets/invalid-mcp-token:/tmp/invalid-mcp-token:ro,z
     environment:
