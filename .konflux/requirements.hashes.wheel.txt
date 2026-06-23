@@ -154,6 +154,8 @@ pydantic-core==2.41.5 \
     --hash=sha256:41f74ba1ea18462d7cc27155581a9b23165adc7b009c6d467542274d63db163c
 python-dateutil==2.9.0.post0 \
     --hash=sha256:c112f3de33b4ef01360132ef116d72df91cdf628f136b70f1fc9a9eb19137cb9
+python-dotenv==1.2.2 \
+    --hash=sha256:8b37db35fd3b8d36cf182846a9b3ad4c598eb6181a5afb1a1b5a54e3ff9c730c
 pyyaml==6.0.3 \
     --hash=sha256:84a2acfe1e8dfcf8be95fa61611ea7637f8bfcff49761a6a8c396aaa0b6d94a9 \
     --hash=sha256:bcaf1b152ce8cd6ec4ff56f8ca929f176eb01e6aa472fe10b3ea31f19e15fb39 \
