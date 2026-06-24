@@ -1199,6 +1199,86 @@ def test_score_multiplier_mapping_not_loaded() -> None:
         _ = cfg.score_multiplier_mapping
 
 
+def test_relevance_cutoff_mapping_empty_when_no_byok(minimal_config: AppConfig) -> None:
+    """Test that relevance_cutoff_mapping returns empty dict when no BYOK RAG configured."""
+    assert minimal_config.relevance_cutoff_mapping == {}
+
+
+def test_relevance_cutoff_mapping_with_byok_defaults(tmp_path: Path) -> None:
+    """Test that relevance_cutoff_mapping uses default cutoff when not specified."""
+    db_file = tmp_path / "test.db"
+    db_file.touch()
+    cfg = AppConfig()
+    cfg.init_from_dict(
+        {
+            "name": "test",
+            "service": {"host": "localhost", "port": 8080},
+            "llama_stack": {
+                "api_key": "k",
+                "url": "http://test.com:1234",
+                "use_as_library_client": False,
+            },
+            "user_data_collection": {},
+            "authentication": {"module": "noop"},
+            "byok_rag": [
+                {
+                    "rag_id": "my-kb",
+                    "vector_db_id": "vs-001",
+                    "db_path": str(db_file),
+                },
+            ],
+        }
+    )
+    assert cfg.relevance_cutoff_mapping == {
+        "vs-001": constants.DEFAULT_BYOK_RAG_RELEVANCE_CUTOFF_SCORE,
+    }
+
+
+def test_relevance_cutoff_mapping_with_custom_values(tmp_path: Path) -> None:
+    """Test that relevance_cutoff_mapping builds correct mapping with custom values."""
+    db_file1 = tmp_path / "test1.db"
+    db_file1.touch()
+    db_file2 = tmp_path / "test2.db"
+    db_file2.touch()
+    cfg = AppConfig()
+    cfg.init_from_dict(
+        {
+            "name": "test",
+            "service": {"host": "localhost", "port": 8080},
+            "llama_stack": {
+                "api_key": "k",
+                "url": "http://test.com:1234",
+                "use_as_library_client": False,
+            },
+            "user_data_collection": {},
+            "authentication": {"module": "noop"},
+            "byok_rag": [
+                {
+                    "rag_id": "kb1",
+                    "vector_db_id": "vs-001",
+                    "db_path": str(db_file1),
+                    "relevance_cutoff_score": 0.55,
+                },
+                {
+                    "rag_id": "kb2",
+                    "vector_db_id": "vs-002",
+                    "db_path": str(db_file2),
+                    "relevance_cutoff_score": 0.1,
+                },
+            ],
+        }
+    )
+    assert cfg.relevance_cutoff_mapping == {"vs-001": 0.55, "vs-002": 0.1}
+
+
+def test_relevance_cutoff_mapping_not_loaded() -> None:
+    """Test that relevance_cutoff_mapping raises when config not loaded."""
+    cfg = AppConfig()
+    cfg._configuration = None
+    with pytest.raises(LogicError):
+        _ = cfg.relevance_cutoff_mapping
+
+
 wrong_configurations = [
     {
         "name": "Colin Adams",
