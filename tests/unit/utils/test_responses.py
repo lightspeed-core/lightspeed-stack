@@ -56,7 +56,12 @@ from pytest_mock import MockerFixture
 import constants
 from models.api.requests import QueryRequest
 from models.common.responses.types import InputTool, InputToolMCP
-from models.config import ApprovalFilter, ByokRag, ModelContextProtocolServer
+from models.config import (
+    ApprovalFilter,
+    ByokRag,
+    InferenceConfiguration,
+    ModelContextProtocolServer,
+)
 from utils.query import normalize_vertex_ai_model_id
 from utils.responses import (
     _build_chunk_attributes,
@@ -1976,7 +1981,7 @@ class TestPrepareResponsesParams:
         )  # pyright: ignore[reportCallIssue]
 
         mock_config = mocker.Mock()
-        mock_config.inference = None
+        mock_config.inference = InferenceConfiguration()
         mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
@@ -2012,7 +2017,7 @@ class TestPrepareResponsesParams:
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
 
         mock_config = mocker.Mock()
-        mock_config.inference = None
+        mock_config.inference = InferenceConfiguration()
         mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
@@ -2038,7 +2043,7 @@ class TestPrepareResponsesParams:
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
         mock_config = mocker.Mock()
-        mock_config.inference = None
+        mock_config.inference = InferenceConfiguration()
         mocker.patch("utils.responses.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
@@ -2064,7 +2069,7 @@ class TestPrepareResponsesParams:
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
 
         mock_config = mocker.Mock()
-        mock_config.inference = None
+        mock_config.inference = InferenceConfiguration()
         mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
@@ -2088,7 +2093,7 @@ class TestPrepareResponsesParams:
 
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
         mock_config = mocker.Mock()
-        mock_config.inference = None
+        mock_config.inference = InferenceConfiguration()
         mocker.patch("utils.responses.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
@@ -2131,7 +2136,7 @@ class TestPrepareResponsesParams:
         ]
 
         mock_config = mocker.Mock()
-        mock_config.inference = None
+        mock_config.inference = InferenceConfiguration()
         mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch(
@@ -2179,7 +2184,7 @@ class TestPrepareResponsesParams:
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
 
         mock_config = mocker.Mock()
-        mock_config.inference = None
+        mock_config.inference = InferenceConfiguration()
         mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
@@ -2211,7 +2216,7 @@ class TestPrepareResponsesParams:
         query_request = QueryRequest(query="test")  # pyright: ignore[reportCallIssue]
 
         mock_config = mocker.Mock()
-        mock_config.inference = None
+        mock_config.inference = InferenceConfiguration()
         mocker.patch("utils.responses.configuration", mock_config)
         mocker.patch("utils.responses.get_system_prompt", return_value="System prompt")
         mocker.patch("utils.responses.prepare_tools", return_value=None)
