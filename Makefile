@@ -35,6 +35,15 @@ test-e2e: ## Run end to end tests for the service
 test-e2e-local: ## Run end to end tests for the service
 	uv run behave --color --format pretty --tags=-skip -D dump_errors=true @tests/e2e/test_list.txt
 
+#   E2E_BEHAVE_TAG_EXPR='not @skip and @e2e_group_2' make test-e2e-tagged-local
+E2E_BEHAVE_TAG_EXPR ?= not @skip and (e2e_group_1 or e2e_group_2 or e2e_group_3)
+
+test-e2e-tagged: ## Run e2e tests with E2E_BEHAVE_TAG_EXPR (default: all @e2e_group_*)
+	script -q -e -c "uv run behave --color --format pretty --tags=\"$(E2E_BEHAVE_TAG_EXPR)\" -D dump_errors=true @tests/e2e/test_list.txt"
+
+test-e2e-tagged-local: ## Same as test-e2e-tagged without script wrapper
+	uv run behave --color --format pretty --tags="$(E2E_BEHAVE_TAG_EXPR)" -D dump_errors=true @tests/e2e/test_list.txt
+
 benchmarks: ## Run benchmarks
 	uv run python -m pytest -vv tests/benchmarks/
 
@@ -119,7 +128,7 @@ upload-distribution-archives:	## Upload distribution archives into Python regist
 	uv run python -m twine upload --repository ${PYTHON_REGISTRY} dist/*
 
 konflux-requirements:	## Generate hermetic requirements.*.txt file for konflux build
-	./scripts/konflux_requirements.sh
+	python3 scripts/konflux_resolve.py --profile cpu
 
 konflux-rpm-lock:	## Generate rpm.lock.yaml file for konflux build
 	./scripts/generate-rpm-lock.sh

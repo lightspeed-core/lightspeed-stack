@@ -1,0 +1,3 @@
+# override these package to the version available on RHOAI wheels index:
+# https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple
+packaging<26

@@ -32,7 +32,7 @@ RUN pip3.12 install "uv>=0.8.15"
 # Add explicit files and directories
 # (avoid accidental inclusion of local directories or env files or credentials)
 COPY ${LSC_SOURCE_DIR}/src ./src
-COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR}/README.md ${LSC_SOURCE_DIR}/uv.lock ${LSC_SOURCE_DIR}/requirements.*.txt ./
+COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR}/README.md ${LSC_SOURCE_DIR}/uv.lock ${LSC_SOURCE_DIR}/.konflux/requirements.*.txt ./
 
 # lightspeed-providers:
 # Fully hermetic — uses prefetched artifact or pinned commit from GitHub
@@ -68,10 +68,11 @@ RUN set -eux; \
 # PIP_NO_INDEX=true
 RUN if [ -f /cachi2/cachi2.env ]; then \
     . /cachi2/cachi2.env && \
-    uv venv --seed --no-index --find-links ${PIP_FIND_LINKS} && \
+    python3.12 -c "import os,re;d=os.environ['PIP_FIND_LINKS'];fs=os.listdir(d);rp={re.split(r'-\d+-(?:cp|py|pp)',f)[0] for f in fs if f.endswith('.whl') and re.search(r'-\d+-(?:cp|py|pp)',f)};[os.remove(os.path.join(d,f)) for f in fs if f.endswith('.whl') and not re.search(r'-\d+-(?:cp|py|pp)',f) and f.rsplit('-',3)[0] in rp]" && \
+    uv venv && \
     . .venv/bin/activate && \
-    pip install --no-cache-dir --ignore-installed --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.source.txt && \
-    pip check; \
+    pip3.12 install --no-cache-dir --ignore-installed --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.wheel.pypi.txt -r requirements.hashes.source.txt && \
+    pip3.12 check; \
     else \
     uv sync --locked --no-dev --group llslibdev; \
     fi
@@ -137,7 +138,7 @@ ENTRYPOINT ["python3.12", "src/lightspeed_stack.py"]
 LABEL vendor="Red Hat, Inc." \
     name="lightspeed-core/lightspeed-stack-rhel9" \
     com.redhat.component="lightspeed-core/lightspeed-stack" \
-    cpe="cpe:/a:redhat:lightspeed_core:0.4::el9" \
+    cpe="cpe:/a:redhat:lightspeed_core:0.5::el9" \
     io.k8s.display-name="Lightspeed Stack" \
     summary="A service that provides a REST API for the Lightspeed Core Stack." \
     description="Lightspeed Core Stack (LCS) is an AI-powered assistant that provides answers to product questions using backend LLM services, agents, and RAG databases." \

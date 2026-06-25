@@ -1,0 +1,16 @@
+[common]
+python_version = "3.12"
+platforms = ["x86_64", "aarch64"]
+bootstrap_packages = ["maturin"]
+
+[profiles.cpu]
+rhoai_index_url = "https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/"
+output_suffix = ""
+tekton_files = [
+    ".tekton/lightspeed-stack-pull-request.yaml",
+    ".tekton/lightspeed-stack-push.yaml",
+    ".tekton/lightspeed-stack-0-5-pull-request.yaml",
+    ".tekton/lightspeed-stack-0-5-push.yaml",
+    ".tekton/lightspeed-stack-release-0-5-pull-request.yaml",
+    ".tekton/lightspeed-stack-release-0-5-push.yaml",
+]
