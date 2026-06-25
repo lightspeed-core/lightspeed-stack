@@ -466,6 +466,11 @@ async def responses_endpoint_handler(
 
     api_params = ResponsesApiParams.model_validate(updated_request.model_dump())
 
+    if "max_infer_iters" not in original_request.model_fields_set:
+        api_params.max_infer_iters = configuration.inference.max_infer_iters
+    if "max_tool_calls" not in original_request.model_fields_set:
+        api_params.max_tool_calls = configuration.inference.max_tool_calls
+
     # Compact the conversation if it is approaching the context window limit.
     # /v1/responses is OpenAI-compatible, so compaction is silent (no custom SSE
     # event): summarization happens before the response is created, and the turn
