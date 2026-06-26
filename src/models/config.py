@@ -31,6 +31,7 @@ import constants
 from log import get_logger
 from utils import checks
 from utils.mcp_auth_headers import resolve_authorization_headers
+from utils.types import CompiledPatterns
 
 logger = get_logger(__name__)
 
@@ -2381,7 +2382,7 @@ class RedactionConfig(ConfigurationBase):
         description=("When False, patterns are compiled with re.IGNORECASE"),
     )
 
-    _compiled_patterns: list[tuple[Pattern[str], str]] = PrivateAttr(
+    _compiled_patterns: CompiledPatterns = PrivateAttr(
         default_factory=list,
     )
 
@@ -2398,7 +2399,7 @@ class RedactionConfig(ConfigurationBase):
             The validated configuration instance.
         """
         global_case_sensitive = self.case_sensitive
-        compiled: list[tuple[Pattern[str], str]] = []
+        compiled: CompiledPatterns = []
         for rule in self.rules:
             effective = (
                 rule.case_sensitive
@@ -2415,7 +2416,7 @@ class RedactionConfig(ConfigurationBase):
         return self
 
     @property
-    def compiled_patterns(self) -> list[tuple[Pattern[str], str]]:
+    def compiled_patterns(self) -> CompiledPatterns:
         """Pre-compiled (regex, replacement) pairs.
 
         Returns a shallow copy to prevent mutation of internal state.

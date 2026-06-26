@@ -1,10 +1,8 @@
 """Core redaction logic for PII detection and replacement."""
 
-from re import Pattern
-
 from pydantic import BaseModel, ConfigDict
 
-CompiledPatterns = list[tuple[Pattern[str], str]]
+from utils.types import CompiledPatterns
 
 
 class RedactionResult(BaseModel):
