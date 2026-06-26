@@ -90,3 +90,71 @@ def test_context_windows_rejects_negative_size() -> None:
         InferenceConfiguration(
             context_windows={"openai/gpt-4o-mini": -1},
         )  # pyright: ignore[reportCallIssue]
+
+
+def test_max_infer_iters_default() -> None:
+    """Test that max_infer_iters defaults to 10."""
+    config = InferenceConfiguration()  # pyright: ignore[reportCallIssue]
+    assert config.max_infer_iters == 10
+
+
+def test_max_tool_calls_default() -> None:
+    """Test that max_tool_calls defaults to 30."""
+    config = InferenceConfiguration()  # pyright: ignore[reportCallIssue]
+    assert config.max_tool_calls == 30
+
+
+def test_max_infer_iters_accepts_positive_int() -> None:
+    """Test that max_infer_iters accepts a positive integer."""
+    config = InferenceConfiguration(
+        max_infer_iters=5
+    )  # pyright: ignore[reportCallIssue]
+    assert config.max_infer_iters == 5
+
+
+def test_max_tool_calls_accepts_positive_int() -> None:
+    """Test that max_tool_calls accepts a positive integer."""
+    config = InferenceConfiguration(
+        max_tool_calls=20
+    )  # pyright: ignore[reportCallIssue]
+    assert config.max_tool_calls == 20
+
+
+def test_max_infer_iters_rejects_zero() -> None:
+    """Test that max_infer_iters rejects zero."""
+    with pytest.raises(ValueError):
+        InferenceConfiguration(max_infer_iters=0)  # pyright: ignore[reportCallIssue]
+
+
+def test_max_infer_iters_rejects_negative() -> None:
+    """Test that max_infer_iters rejects a negative value."""
+    with pytest.raises(ValueError):
+        InferenceConfiguration(max_infer_iters=-1)  # pyright: ignore[reportCallIssue]
+
+
+def test_max_tool_calls_rejects_zero() -> None:
+    """Test that max_tool_calls rejects zero."""
+    with pytest.raises(ValueError):
+        InferenceConfiguration(max_tool_calls=0)  # pyright: ignore[reportCallIssue]
+
+
+def test_max_tool_calls_rejects_negative() -> None:
+    """Test that max_tool_calls rejects a negative value."""
+    with pytest.raises(ValueError):
+        InferenceConfiguration(max_tool_calls=-1)  # pyright: ignore[reportCallIssue]
+
+
+def test_max_infer_iters_accepts_none() -> None:
+    """Test that max_infer_iters accepts None to disable the limit."""
+    config = InferenceConfiguration(
+        max_infer_iters=None
+    )  # pyright: ignore[reportCallIssue]
+    assert config.max_infer_iters is None
+
+
+def test_max_tool_calls_accepts_none() -> None:
+    """Test that max_tool_calls accepts None to disable the limit."""
+    config = InferenceConfiguration(
+        max_tool_calls=None
+    )  # pyright: ignore[reportCallIssue]
+    assert config.max_tool_calls is None

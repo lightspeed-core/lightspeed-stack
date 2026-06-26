@@ -464,6 +464,11 @@ async def responses_endpoint_handler(
             original_request.input, inline_rag_context.context_text
         )
 
+    if "max_infer_iters" not in original_request.model_fields_set:
+        updated_request.max_infer_iters = configuration.inference.max_infer_iters
+    if "max_tool_calls" not in original_request.model_fields_set:
+        updated_request.max_tool_calls = configuration.inference.max_tool_calls
+
     api_params = ResponsesApiParams.model_validate(updated_request.model_dump())
 
     # Compact the conversation if it is approaching the context window limit.
