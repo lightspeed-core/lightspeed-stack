@@ -1,0 +1,10 @@
+--index-url https://pypi.org/simple
+a2a-sdk==0.3.26 \
+    --hash=sha256:44068e2d037afbb07ab899267439e9bc7eaa7ac2af94f1e8b239933c993ad52d \
+    --hash=sha256:754e0573f6d33b225c1d8d51f640efa69cbbed7bdfb06ce9c3540ea9f58d4a91
+opentelemetry-distro==0.60b1 \
+    --hash=sha256:581104a786f5df252f4dfe725e0ae16337a26da902acb92d8b3e7aee29f0c76e \
+    --hash=sha256:8b7326b83a55ff7b17bb92225a86e2736a004f6af7aff00cb5d87b2d8e5bc283
+pydantic-ai-skills==0.11.0 \
+    --hash=sha256:af8d78d451ce192dd2ef33abe86ad900bd51d9fd10c81a11abee82f62e8daf30 \
+    --hash=sha256:d4040f0b81da34e25b8f14dac5e1895e59d00390db8896448aac1ed1a4d0cf90
