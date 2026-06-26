@@ -132,9 +132,8 @@ ENV PYTHONPATH="/app-root"
 
 # Pre-download embedding model for OKP/Solr vector search (~61MB, baked into image).
 # Uses a dedicated path so the docker-compose HF cache volume mount does not shadow it.
-ENV HF_HOME=/app-root/.hf-models
 RUN mkdir -p /app-root/.hf-models && \
-    python3.12 -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('ibm-granite/granite-embedding-30m-english')" && \
+    HF_HOME=/app-root/.hf-models python3.12 -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('ibm-granite/granite-embedding-30m-english')" && \
     chown -R 1001:1001 /app-root/.hf-models
 
 # Run the application
