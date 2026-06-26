@@ -1,0 +1,5 @@
+# Constraints for PyPI sdist resolution.
+# xai-sdk requires packaging<26
+packaging<26
+# faiss-cpu 1.14.x has no sdist; 1.12.0 is the latest with one
+faiss-cpu==1.12.0

@@ -1,0 +1,23 @@
+packages:
+  [
+    gcc,
+    gcc-c++,
+    jq,
+    patch,
+    cmake,
+    cargo,
+    python3.12-devel,
+    openssl-devel,
+    libffi-devel,
+    libpq-devel,
+    libjpeg-turbo-devel,
+    zlib-devel,
+    bzip2-devel,
+    xz-devel,
+    autoconf,
+    automake,
+    libtool,
+  ]
+contentOrigin:
+  repofiles: ["ubi.repo"]
+arches: [x86_64, aarch64]

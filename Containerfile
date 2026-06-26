@@ -3,7 +3,6 @@ ARG BUILDER_BASE_IMAGE=registry.access.redhat.com/ubi9/python-312
 ARG BUILDER_DNF_COMMAND=dnf
 ARG RUNTIME_BASE_IMAGE=registry.access.redhat.com/ubi9/python-312-minimal
 ARG RUNTIME_DNF_COMMAND=microdnf
-
 FROM ${BUILDER_BASE_IMAGE} AS builder
 
 ARG BUILDER_DNF_COMMAND=dnf
@@ -24,15 +23,26 @@ USER root
 # Install gcc - required by polyleven python package on aarch64
 # (dependency of autoevals, no pre-built binary wheels for linux on aarch64)
 # cmake and cargo are required by fastuuid, maturin
-RUN ${BUILDER_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc gcc-c++ cmake cargo
+RUN ${BUILDER_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs \
+    gcc gcc-c++ cmake cargo \
+    python3.12-devel openssl-devel libffi-devel libpq-devel \
+    libjpeg-turbo-devel zlib-devel bzip2-devel xz-devel \
+    autoconf automake libtool
 
-# Install uv package manager
-RUN pip3.12 install "uv>=0.8.15"
+# Install uv package manager (from prefetched wheel in hermetic mode, from PyPI otherwise)
+RUN if [ -d /cachi2/output/deps/generic ]; then \
+    ARCH=$(uname -m) && \
+    pip3.12 install --no-index \
+        /cachi2/output/deps/generic/pip-*.whl \
+        /cachi2/output/deps/generic/uv-*${ARCH}*.whl; \
+    else \
+    pip3.12 install "uv>=0.8.15"; \
+    fi
 
 # Add explicit files and directories
 # (avoid accidental inclusion of local directories or env files or credentials)
 COPY ${LSC_SOURCE_DIR}/src ./src
-COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR}/README.md ${LSC_SOURCE_DIR}/uv.lock ${LSC_SOURCE_DIR}/requirements.*.txt ./
+COPY ${LSC_SOURCE_DIR}/pyproject.toml ${LSC_SOURCE_DIR}/LICENSE ${LSC_SOURCE_DIR}/README.md ${LSC_SOURCE_DIR}/uv.lock ${LSC_SOURCE_DIR}/.konflux/requirements.*.txt ./
 
 # lightspeed-providers:
 # Fully hermetic — uses prefetched artifact or pinned commit from GitHub
@@ -68,9 +78,18 @@ RUN set -eux; \
 # PIP_NO_INDEX=true
 RUN if [ -f /cachi2/cachi2.env ]; then \
     . /cachi2/cachi2.env && \
-    uv venv --seed --no-index --find-links ${PIP_FIND_LINKS} && \
+    ARCH=$(uname -m) && \
+    GENERIC=/cachi2/output/deps/generic && \
+    mkdir -p ${HOME}/.cargo /root/.cargo && \
+    printf '[source.crates-io]\nreplace-with = "local-vendored"\n\n[source.local-vendored]\ndirectory = "/cachi2/output/deps/cargo"\n' | tee ${HOME}/.cargo/config.toml /root/.cargo/config.toml > /dev/null && \
+    uv venv && \
     . .venv/bin/activate && \
-    pip install --no-cache-dir --ignore-installed --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.source.txt && \
+    pip3.12 install --no-index --no-deps ${GENERIC}/pip-*.whl && \
+    pip install --no-cache-dir --no-index --no-deps \
+        $(find ${GENERIC} -name "torch-*${ARCH}*.whl") \
+        $(find ${GENERIC} -name "tiktoken-*${ARCH}*.whl") \
+        $(find ${GENERIC} -name "pyarrow-*${ARCH}*.whl") && \
+    pip install --no-cache-dir --ignore-installed --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.source.txt && \
     pip check; \
     else \
     uv sync --locked --no-dev --group llslibdev; \
@@ -137,7 +156,7 @@ ENTRYPOINT ["python3.12", "src/lightspeed_stack.py"]
 LABEL vendor="Red Hat, Inc." \
     name="lightspeed-core/lightspeed-stack-rhel9" \
     com.redhat.component="lightspeed-core/lightspeed-stack" \
-    cpe="cpe:/a:redhat:lightspeed_core:0.4::el9" \
+    cpe="cpe:/a:redhat:lightspeed_core:0.5::el9" \
     io.k8s.display-name="Lightspeed Stack" \
     summary="A service that provides a REST API for the Lightspeed Core Stack." \
     description="Lightspeed Core Stack (LCS) is an AI-powered assistant that provides answers to product questions using backend LLM services, agents, and RAG databases." \

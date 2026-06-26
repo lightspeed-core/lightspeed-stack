@@ -8,6 +8,28 @@ calver==2025.10.20
     # via trove-classifiers
 cython==3.2.4
     # via oracledb
+pkgconfig==1.6.0
+    # via aiohttp
+expandvars==1.1.2
+    # via frozenlist, propcache, yarl
+meson==1.11.0
+    # via meson-python, pandas
+meson-python==0.20.0
+    # via numpy, pandas, scikit-learn, scipy
+pbr==7.0.3
+    # via oci
+pkginfo==1.12.1.2
+    # via google-genai
+pybind11==3.0.4
+    # via pillow, scipy
+pythran==0.18.1
+    # via scipy
+pyproject-metadata==0.11.0
+    # via meson-python
+twine==6.2.0
+    # via google-genai
+tomli==2.4.1
+    # via frozenlist, propcache, yarl
 dunamai==1.26.0
     # via uv-dynamic-versioning
 flit-core==3.12.0
