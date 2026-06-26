@@ -60,8 +60,6 @@ services:
       - FAISS_VECTOR_STORE_ID=${FAISS_VECTOR_STORE_ID:-}
       # Pass env var from shell into container to access OKP
       - RH_SERVER_OKP=${RH_SERVER_OKP:-}
-      # HuggingFace cache override — set to /app-root/.hf-models to use the baked embedding model.
-      - HF_HOME=${HF_HOME:-}
       # Prevent HuggingFace Hub update checks (HTTP 429 rate-limiting in CI from parallel jobs).
       - HF_HUB_OFFLINE=${HF_HUB_OFFLINE:-1}
     healthcheck:
