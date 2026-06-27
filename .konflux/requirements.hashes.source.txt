@@ -1,0 +1,16 @@
+--index-url https://pypi.org/simple
+a2a-sdk==0.3.26 \
+    --hash=sha256:44068e2d037afbb07ab899267439e9bc7eaa7ac2af94f1e8b239933c993ad52d \
+    --hash=sha256:754e0573f6d33b225c1d8d51f640efa69cbbed7bdfb06ce9c3540ea9f58d4a91
+llama-stack==0.5.4 \
+    --hash=sha256:709eb082c77db40e5ca1ed3e1a9d680ece310ea4f52638e4a771ed13676ba573 \
+    --hash=sha256:919df1fd4eb4e873420b43a6fce4b74e7ee762853b4627c73b70b0ee1a94c073
+llama-stack-api==0.5.4 \
+    --hash=sha256:40fc7fbf901642831cf2ad83bc25013d7f2538463c1bd5ec1b43985c5d6ed90a \
+    --hash=sha256:8fec636ecec90b150507ca767d7a6f042df8b6c77acdaba7b397247f5bde3c70
+llama-stack-client==0.5.4 \
+    --hash=sha256:6d910c51f917a9ab27b1ec5579fb9167184b9a3a5223abe5c34da123609caf7e \
+    --hash=sha256:89b274f46804f2e705d50716576dc6e4f63d15ae545b4eb2933f5caa490b4d8c
+opentelemetry-distro==0.63b1 \
+    --hash=sha256:b405b04ad70e430390265eb38e82e067a84ca1f49a21429eaadb930c13330d66 \
+    --hash=sha256:f435098abc7953f58226e8bf79e4c90bc6b32e50aa75d6fa074201db8243b577

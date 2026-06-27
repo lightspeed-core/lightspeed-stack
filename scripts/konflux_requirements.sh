@@ -12,7 +12,7 @@ WHEEL_FILE="requirements.wheel.txt"
 SOURCE_HASH_FILE="requirements.hashes.source.txt"
 WHEEL_HASH_FILE="requirements.hashes.wheel.txt"
 BUILD_FILE="requirements-build.txt"
-RHOAI_INDEX_URL="https://console.redhat.com/api/pypi/public-rhai/rhoai/3.3/cpu-ubi9/simple/"
+RHOAI_INDEX_URL="https://packages.redhat.com/api/pypi/public-rhai/rhoai/3.4/cpu-ubi9/simple/"
 
 # extra wheels to be included in the wheel list, often come from build-time dependencies
 EXTRA_WHEELS="uv,pip,maturin"

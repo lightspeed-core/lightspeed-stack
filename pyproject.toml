@@ -28,9 +28,9 @@ dependencies = [
     # Used by authentication/k8s integration
     "kubernetes>=30.1.0",
     # Used to call Llama Stack APIs
-    "llama-stack==0.5.2",
-    "llama-stack-client==0.5.2",
-    "llama-stack-api==0.5.2",
+    "llama-stack==0.5.4",
+    "llama-stack-client==0.5.4",
+    "llama-stack-api==0.5.4",
     # Used by Logger
     "rich>=14.0.0",
     # Used by JWK token auth handler
@@ -58,7 +58,7 @@ dependencies = [
     "jsonpath-ng>=1.6.1",
     "psycopg2-binary>=2.9.10",
     # LCORE-1565
-    "litellm>=1.75.5.post1,<=1.82.6",
+    "litellm>=1.75.5.post1,<=1.84.0",
     "urllib3>=2.6.3",
     # Used for agent card configuration
     "PyYAML>=6.0.0",
@@ -181,7 +181,7 @@ llslibdev = [
     "google-cloud-aiplatform>=1.130.0",
     # API inference: remote::watsonx
     # LCORE-1565
-    "litellm>=1.81.0,<=1.82.6",
+    "litellm>=1.81.0,<=1.84.0",
     # Other
     "autoevals>=0.0.129",
     "fire>=0.7.0",
@@ -224,6 +224,9 @@ disable = ["R0801"]
 
 [tool.ruff]
 extend-exclude = ["tests/profiles/syntax_error.py"]
+
+[tool.black]
+target-version = ["py312"]
 
 [tool.ruff.lint]
 extend-select = ["TID251", "UP006", "UP007", "UP010", "UP017", "UP035", "RUF100", "B009", "B010", "DTZ005", "D202", "I001"]
