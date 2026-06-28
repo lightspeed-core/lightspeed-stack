@@ -1711,6 +1711,8 @@
             "description": "Canonical, backend-agnostic provider identifier mapped to a Llama Stack provider_type by the synthesizer.",
             "enum": [
               "openai",
+              "ollama",
+              "vllm",
               "sentence_transformers",
               "azure",
               "vertexai",
