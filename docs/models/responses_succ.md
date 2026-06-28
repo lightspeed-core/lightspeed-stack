@@ -2,18 +2,9 @@
 
 
 
-## 🌍 Base URL
-
-
-| URL | Description |
-|-----|-------------|
-
-
-# 🛠️ APIs
-
 ---
 
-# 📋 Components
+# 📋 Schemas for successful responses models
 
 
 

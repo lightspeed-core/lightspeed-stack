@@ -2,18 +2,10 @@
 
 
 
-## 🌍 Base URL
-
-
-| URL | Description |
-|-----|-------------|
-
-
-# 🛠️ APIs
 
 ---
 
-# 📋 Components
+# 📋 Schemas for common models
 
 
 
