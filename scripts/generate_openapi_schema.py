@@ -37,10 +37,10 @@ def read_version_from_openapi(filename: str) -> str:
         assert "info" in pre_generated_schema, "node 'info' not found in openapi.json"
         info = pre_generated_schema["info"]
         assert "version" in info, "node 'version' not found in 'info'"
-        return info["version"]
+        return str(info["version"])
 
 
-def read_version_from_pyproject():
+def read_version_from_pyproject() -> str:
     """
     Obtain the project's version using PDM (`pdm show --version`), which supports dynamic versions.
 
