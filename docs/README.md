@@ -65,7 +65,18 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 ## Models
 
-[Reguests](https://lightspeed-core.github.io/lightspeed-stack/models/requests.html)
+[Common](https://lightspeed-core.github.io/lightspeed-stack/models/common.html)
+
+[Database](https://lightspeed-core.github.io/lightspeed-stack/models/database.html)
+
+[Requests](https://lightspeed-core.github.io/lightspeed-stack/models/requests.html)
+
+[Successful responses](https://lightspeed-core.github.io/lightspeed-stack/models/responses_succ.html)
+
+[Error responses](https://lightspeed-core.github.io/lightspeed-stack/models/responses_errors.html)
+
+[Compaction](https://lightspeed-core.github.io/lightspeed-stack/models/compaction.html)
+
 
 ## Design documents
 
