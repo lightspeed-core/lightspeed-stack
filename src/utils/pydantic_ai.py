@@ -6,7 +6,8 @@ from typing import Any, Final, Optional, cast
 
 from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
 from llama_stack_client import AsyncLlamaStackClient
-from pydantic_ai import Agent, AgentCapability
+from pydantic_ai.agent import Agent
+from pydantic_ai.capabilities import AgentCapability
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from pydantic_ai_skills import SkillsCapability
 
@@ -97,7 +98,7 @@ def _skills_capability(
 
 def _agent_capabilities(
     skills: Optional[SkillsConfiguration],
-) -> Optional[list[AgentCapability[None]]]:
+) -> Optional[list[AgentCapability[Any]]]:
     """Assemble pydantic-ai capabilities for an LCS agent.
 
     Args:
@@ -106,7 +107,7 @@ def _agent_capabilities(
     Returns:
         Configured capabilities, or None when no capabilities are enabled.
     """
-    capabilities: list[AgentCapability[None]] = []
+    capabilities: list[AgentCapability[SkillsCapability]] = []
     if skills_capability := _skills_capability(skills):
         capabilities.append(skills_capability)
     return capabilities or None
