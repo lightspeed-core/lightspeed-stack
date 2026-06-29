@@ -5,6 +5,8 @@ from __future__ import annotations as _annotations
 from typing import TYPE_CHECKING, Optional
 
 import httpx
+from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
+from llama_stack_client import AsyncLlamaStackClient
 from openai import AsyncOpenAI
 from pydantic_ai import ModelProfile
 from pydantic_ai.models import create_async_http_client
@@ -14,7 +16,9 @@ from pydantic_ai.providers import Provider
 from pydantic_ai_lightspeed.llamastack._transport import LlamaStackLibraryTransport
 
 if TYPE_CHECKING:
-    from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
+    from llama_stack.core.library_client import (  # pylint: disable=reimported
+        AsyncLlamaStackAsLibraryClient,
+    )
 
 DEFAULT_BASE_URL = "http://localhost:8321/v1"
 
@@ -47,6 +51,33 @@ class LlamaStackProvider(Provider[AsyncOpenAI]):
     def model_profile(model_name: str) -> Optional[ModelProfile]:
         """Return the model profile for the named model, if available."""
         return openai_model_profile(model_name)
+
+    @staticmethod
+    def from_llama_stack_client(
+        client: AsyncLlamaStackClient | AsyncLlamaStackAsLibraryClient,
+    ) -> LlamaStackProvider:
+        """Create a ``LlamaStackProvider`` from a Llama Stack client.
+
+        For an ``AsyncLlamaStackAsLibraryClient``, delegates to library mode.
+        For an ``AsyncLlamaStackClient``, extracts the base URL, API key, and
+        underlying HTTP client to create a server-mode provider.
+
+        Args:
+            client: A Llama Stack client (server or library variant).
+
+        Returns:
+            Configured ``LlamaStackProvider`` instance.
+        """
+        if isinstance(client, AsyncLlamaStackAsLibraryClient):
+            return LlamaStackProvider(library_client=client)
+        api_key = client.api_key or "not-needed"
+        base = str(client.base_url).rstrip("/")
+        base_url = base if base.endswith("/v1") else f"{base}/v1"
+        return LlamaStackProvider(
+            base_url=base_url,
+            api_key=api_key,
+            http_client=client._client,  # pylint: disable=protected-access
+        )
 
     def __init__(
         self,
