@@ -70,10 +70,11 @@ RUN set -eux; \
 RUN if [ -f /cachi2/cachi2.env ]; then \
     . /cachi2/cachi2.env && \
     python3.12 -c "import os,re;d=os.environ['PIP_FIND_LINKS'];fs=os.listdir(d);rp={re.split(r'-\d+-(?:cp|py|pp)',f)[0] for f in fs if f.endswith('.whl') and re.search(r'-\d+-(?:cp|py|pp)',f)};[os.remove(os.path.join(d,f)) for f in fs if f.endswith('.whl') and not re.search(r'-\d+-(?:cp|py|pp)',f) and f.rsplit('-',3)[0] in rp]" && \
-    uv venv && \
+    uv venv --python python3.12 && \
     . .venv/bin/activate && \
-    pip3.12 install --no-cache-dir --ignore-installed --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.wheel.pypi.txt -r requirements.hashes.source.txt && \
-    pip3.12 check; \
+    sed -i '/^--index-url/d' requirements.hashes.wheel.txt requirements.hashes.wheel.pypi.txt requirements.hashes.source.txt && \
+    uv pip install --no-cache --reinstall --no-index --find-links ${PIP_FIND_LINKS} --no-deps -r requirements.hashes.wheel.txt -r requirements.hashes.wheel.pypi.txt -r requirements.hashes.source.txt && \
+    uv pip check; \
     else \
     uv sync --locked --no-dev --group llslibdev; \
     fi
