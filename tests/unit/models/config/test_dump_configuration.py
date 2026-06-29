@@ -163,6 +163,8 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
                 "default_model": None,
                 "context_windows": {},
                 "providers": [],
+                "max_infer_iters": 10,
+                "max_tool_calls": 30,
             },
             "database": {
                 "sqlite": {
@@ -375,6 +377,8 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
                 "default_model": "default_model",
                 "context_windows": {},
                 "providers": [],
+                "max_infer_iters": 10,
+                "max_tool_calls": 30,
             },
             "database": {
                 "sqlite": None,
@@ -731,6 +735,8 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "default_model": "default_model",
                 "context_windows": {},
                 "providers": [],
+                "max_infer_iters": 10,
+                "max_tool_calls": 30,
             },
             "database": {
                 "sqlite": None,
@@ -986,6 +992,8 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 "default_model": "default_model",
                 "context_windows": {},
                 "providers": [],
+                "max_infer_iters": 10,
+                "max_tool_calls": 30,
             },
             "database": {
                 "sqlite": None,
@@ -1221,6 +1229,8 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 "default_model": "default_model",
                 "context_windows": {},
                 "providers": [],
+                "max_infer_iters": 10,
+                "max_tool_calls": 30,
             },
             "database": {
                 "sqlite": None,
@@ -1451,6 +1461,8 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 "default_model": "default_model",
                 "context_windows": {},
                 "providers": [],
+                "max_infer_iters": 10,
+                "max_tool_calls": 30,
             },
             "database": {
                 "sqlite": None,
@@ -1826,6 +1838,8 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
                 "default_model": "default_model",
                 "context_windows": {},
                 "providers": [],
+                "max_infer_iters": 10,
+                "max_tool_calls": 30,
             },
             "database": {
                 "sqlite": None,
@@ -2047,6 +2061,8 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
                 "default_model": "default_model",
                 "context_windows": {},
                 "providers": [],
+                "max_infer_iters": 10,
+                "max_tool_calls": 30,
             },
             "database": {
                 "sqlite": None,
@@ -2268,6 +2284,8 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
                 "default_model": "default_model",
                 "context_windows": {},
                 "providers": [],
+                "max_infer_iters": 10,
+                "max_tool_calls": 30,
             },
             "database": {
                 "sqlite": None,
@@ -2496,6 +2514,8 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
                 "default_model": "default_model",
                 "context_windows": {},
                 "providers": [],
+                "max_infer_iters": 10,
+                "max_tool_calls": 30,
             },
             "database": {
                 "sqlite": None,
