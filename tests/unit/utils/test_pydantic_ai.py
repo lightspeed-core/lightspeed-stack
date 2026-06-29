@@ -344,3 +344,22 @@ class TestBuildAgent:
             type(capability) for capability in agent._root_capability.capabilities
         }
         assert SkillsCapability not in capability_types
+
+    def test_agent_excludes_tool_capabilities_when_no_tools(
+        self,
+        mock_client: AsyncLlamaStackClient,
+        mock_params: ResponsesApiParams,
+        mock_skills_configuration: SkillsConfiguration,
+    ) -> None:
+        """Test that build_agent omits tool-bearing capabilities when no_tools=True."""
+        agent = build_agent(
+            mock_client,
+            mock_params,
+            mock_skills_configuration,
+            no_tools=True,
+        )
+
+        capability_types = {
+            type(capability) for capability in agent._root_capability.capabilities
+        }
+        assert SkillsCapability not in capability_types

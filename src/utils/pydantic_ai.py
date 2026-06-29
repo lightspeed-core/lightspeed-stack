@@ -7,7 +7,7 @@ from typing import Any, Final, Optional, cast
 from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
 from llama_stack_client import AsyncLlamaStackClient
 from pydantic_ai.agent import Agent
-from pydantic_ai.capabilities import AgentCapability
+from pydantic_ai.capabilities import AbstractCapability, AgentCapability
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from pydantic_ai_skills import SkillsCapability
 
@@ -98,18 +98,29 @@ def _skills_capability(
 
 def _agent_capabilities(
     skills: Optional[SkillsConfiguration],
-) -> Optional[list[AgentCapability[Any]]]:
+    no_tools: bool = False,
+) -> Optional[list[AgentCapability[object]]]:
     """Assemble pydantic-ai capabilities for an LCS agent.
 
     Args:
         skills: Agent skills configuration from LCS, or None when skills are disabled.
+        no_tools: When True, omit capabilities that expose a toolset via ``get_toolset()``.
 
     Returns:
         Configured capabilities, or None when no capabilities are enabled.
     """
-    capabilities: list[AgentCapability[SkillsCapability]] = []
+    capabilities: list[AgentCapability[object]] = []
     if skills_capability := _skills_capability(skills):
         capabilities.append(skills_capability)
+    if no_tools:
+        capabilities = [
+            capability
+            for capability in capabilities
+            if not (
+                isinstance(capability, AbstractCapability)
+                and capability.get_toolset() is not None
+            )
+        ]
     return capabilities or None
 
 
@@ -117,6 +128,7 @@ def build_agent(
     client: AsyncLlamaStackClient | AsyncLlamaStackAsLibraryClient,
     responses_params: ResponsesApiParams,
     skills: Optional[SkillsConfiguration],
+    no_tools: bool = False,
 ) -> Agent[None, str]:
     """Build a Pydantic AI agent that mirrors ``responses_params`` on the Llama Stack backend.
 
@@ -129,6 +141,7 @@ def build_agent(
         client: Initialized Llama Stack client from ``AsyncLlamaStackClientHolder().get_client()``.
         responses_params: Parameters produced by ``prepare_responses_params`` for this turn.
         skills: Agent skills configuration from LCS, or None when skills are disabled.
+        no_tools: When True, omit capabilities that expose a toolset via ``get_toolset()``.
 
     Returns:
         ``Agent`` configured for ``await agent.run(...)`` (or streaming) against the same
@@ -136,6 +149,7 @@ def build_agent(
     """
     provider = llama_stack_provider_from_client(client)
     settings = _model_settings_from_responses_params(responses_params)
+    capabilities = _agent_capabilities(skills, no_tools=no_tools)
 
     model = LlamaStackResponsesModel(
         responses_params.model,
@@ -145,6 +159,6 @@ def build_agent(
     return Agent(
         model,
         instructions=responses_params.instructions,
-        capabilities=_agent_capabilities(skills),
+        capabilities=capabilities,
         defer_model_check=True,
     )
