@@ -148,9 +148,9 @@ class TestContainerBuild:
             timeout=PORT_QUERY_TIMEOUT,
         )
         assert result.returncode == 0, "Failed to list images"
-        assert (
-            "lightspeed-llama-stack" in result.stdout
-        ), "Image not found in image list"
+        assert "lightspeed-llama-stack" in result.stdout, (
+            "Image not found in image list"
+        )
 
     def test_build_is_idempotent_via_image_id(self, container_runtime):
         """Test that rebuilding without changes yields the exact same Image ID.
@@ -161,7 +161,13 @@ class TestContainerBuild:
         """
         # Trigger the first build
         subprocess.run(
-            ["make", "build-llama-stack-image"],
+            [
+                container_runtime,
+                "build",
+                "-f",
+                "deploy/llama-stack/test.containerfile",
+                "lightspeed-llama-stack",
+            ],
             check=True,
             timeout=CONTAINER_BUILD_TIMEOUT,
         )
@@ -170,7 +176,13 @@ class TestContainerBuild:
 
         # Trigger the second build (should be 100% cached)
         subprocess.run(
-            ["make", "build-llama-stack-image"],
+            [
+                container_runtime,
+                "build",
+                "-f",
+                "deploy/llama-stack/test.containerfile",
+                "lightspeed-llama-stack",
+            ],
             check=True,
             timeout=CONTAINER_BUILD_TIMEOUT,
         )
@@ -208,9 +220,9 @@ class TestLlamaStackDeployment:
             text=True,
             timeout=PORT_QUERY_TIMEOUT,
         )
-        assert (
-            managed_container in result.stdout
-        ), f"Container {managed_container} not found in running containers"
+        assert managed_container in result.stdout, (
+            f"Container {managed_container} not found in running containers"
+        )
 
     def test_container_becomes_healthy(self, container_runtime, managed_container):
         """Poll engine internal health state until status is healthy.
@@ -252,12 +264,12 @@ class TestLlamaStackDeployment:
                     url, timeout=HEALTH_CHECK_TIMEOUT
                 ) as response:
                     body = response.read().decode("utf-8").lower()
-                    assert (
-                        response.status == 200
-                    ), f"Health endpoint returned status {response.status}"
-                    assert (
-                        "status" in body
-                    ), f"Health response missing 'status' field: {body}"
+                    assert response.status == 200, (
+                        f"Health endpoint returned status {response.status}"
+                    )
+                    assert "status" in body, (
+                        f"Health response missing 'status' field: {body}"
+                    )
                     return
             except (urllib.error.URLError, ConnectionError) as e:
                 if attempt == NETWORK_BINDING_MAX_ATTEMPTS - 1:  # Last attempt
@@ -282,9 +294,9 @@ class TestLlamaStackDeployment:
             timeout=PORT_QUERY_TIMEOUT,
         )
         assert result.returncode == 0, "Failed to query port mappings"
-        assert (
-            "8321" in result.stdout
-        ), f"Port 8321 not found in port mappings: {result.stdout}"
+        assert "8321" in result.stdout, (
+            f"Port 8321 not found in port mappings: {result.stdout}"
+        )
 
     @pytest.mark.parametrize(
         "file_path",
@@ -311,9 +323,9 @@ class TestLlamaStackDeployment:
             capture_output=True,
             timeout=HEALTH_CHECK_TIMEOUT,
         )
-        assert (
-            result.returncode == 0
-        ), f"Required mount missing or not a file: {file_path}"
+        assert result.returncode == 0, (
+            f"Required mount missing or not a file: {file_path}"
+        )
 
 
 class TestContainerCustomConfiguration:
@@ -348,9 +360,9 @@ class TestContainerCustomConfiguration:
                 timeout=5,
             )
             assert result.returncode == 0, "Failed to query port mappings"
-            assert (
-                custom_port in result.stdout
-            ), f"Custom port {custom_port} not found in port mappings: {result.stdout}"
+            assert custom_port in result.stdout, (
+                f"Custom port {custom_port} not found in port mappings: {result.stdout}"
+            )
         finally:
             subprocess.run(
                 [container_runtime, "rm", "-f", container_name],
@@ -412,9 +424,9 @@ class TestContainerTeardown:
                 text=True,
                 timeout=5,
             )
-            assert (
-                container_name not in result.stdout
-            ), f"Container {container_name} still running after stop"
+            assert container_name not in result.stdout, (
+                f"Container {container_name} still running after stop"
+            )
 
         finally:
             subprocess.run(
@@ -464,9 +476,9 @@ class TestContainerTeardown:
             )
 
             # Verify log file was created and is not empty
-            assert os.path.exists(
-                target_log
-            ), f"Container logs were not written to {target_log}"
+            assert os.path.exists(target_log), (
+                f"Container logs were not written to {target_log}"
+            )
             assert os.path.getsize(target_log) > 0, "Log file was created but is empty"
 
         finally:
@@ -533,9 +545,9 @@ class TestContainerTeardown:
             text=True,
             timeout=PORT_QUERY_TIMEOUT,
         )
-        assert (
-            container_name not in result.stdout
-        ), f"Container {container_name} still exists after clean"
+        assert container_name not in result.stdout, (
+            f"Container {container_name} still exists after clean"
+        )
 
         # Verify image is removed
         result = subprocess.run(
@@ -551,7 +563,7 @@ class TestContainerErrorScenarios:
     """Test error handling and edge cases."""
 
     def test_double_start_replaces_container(self, container_runtime):
-        """Test that starting container twice replaces the first instance.
+        """Test that starting container twice uses the same instance.
 
         Parameters
         ----------
@@ -615,9 +627,9 @@ class TestContainerErrorScenarios:
             second_id = result.stdout.strip()
 
             # IDs should be different (new container created)
-            assert (
-                first_id != second_id
-            ), f"Container was not replaced on second start (ID: {first_id})"
+            assert first_id == second_id, (
+                f"Container was replaced on second start (ID: {first_id})"
+            )
 
         finally:
             subprocess.run(

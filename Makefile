@@ -16,27 +16,27 @@ LLAMA_STACK_CONTAINER_NAME ?= lightspeed-llama-stack
 LLAMA_STACK_IMAGE ?= lightspeed-llama-stack:local
 LLAMA_STACK_PORT ?= 8321
 CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
+FRESH ?= false
 
-.PHONY: run run-stack build-llama-stack-image remove-llama-stack-container stop-llama-stack-container start-llama-stack-container wait-for-llama-stack-health clean-llama-stack
-
-run-stack: ## Run lightspeed-stack directly, without building dependent service/s
-	uv run src/lightspeed_stack.py -c $(CONFIG)
+.PHONY: run ensure-container-runtime build-llama-stack-image stop-llama-stack-container remove-llama-stack-container start-llama-stack-container wait-for-llama-stack-health clean-llama-stack
 
 run: start-llama-stack-container ## Run the service locally with dependent services
 	@echo "Starting Lightspeed Core Stack..."
-	@trap 'echo ""; echo "Stopping services..."; $(MAKE) stop-llama-stack-container' EXIT INT TERM; \
-	$(MAKE) run-stack
+	@trap 'echo ""; echo "Stopping services..."; $(MAKE) stop-llama-stack-container' INT TERM; \
+	uv run src/lightspeed_stack.py -c $(CONFIG)
 
-build-llama-stack-image: remove-llama-stack-container ## Build llama-stack container image
-	@echo "Building llama-stack container image..."
+ensure-container-runtime:
 	@if [ -z "$(CONTAINER_RUNTIME)" ]; then \
 		echo "ERROR: No container runtime found. Install podman or docker."; \
 		exit 1; \
 	fi
+
+build-llama-stack-image: ensure-container-runtime clean-llama-stack ## Build llama-stack container image
+	@echo "Building llama-stack container image..."
 	$(CONTAINER_RUNTIME) build -f deploy/llama-stack/test.containerfile -t $(LLAMA_STACK_IMAGE) .
 
-stop-llama-stack-container: ## Gracefully stop llama-stack container
-	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) inspect $(LLAMA_STACK_CONTAINER_NAME) >/dev/null 2>&1; then \
+stop-llama-stack-container: ensure-container-runtime ## Gracefully stop llama-stack container
+	@if $(CONTAINER_RUNTIME) inspect $(LLAMA_STACK_CONTAINER_NAME) >/dev/null 2>&1; then \
 		echo "Stopping llama-stack container (timeout: 10s)..."; \
 		if $(CONTAINER_RUNTIME) stop -t 10 $(LLAMA_STACK_CONTAINER_NAME) 2>/dev/null; then \
 			echo "✓ Container stopped gracefully"; \
@@ -48,8 +48,8 @@ stop-llama-stack-container: ## Gracefully stop llama-stack container
 		fi; \
 	fi
 
-remove-llama-stack-container: ## Remove llama-stack container (saves logs first)
-	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) inspect $(LLAMA_STACK_CONTAINER_NAME) >/dev/null 2>&1; then \
+remove-llama-stack-container: ensure-container-runtime ## Remove llama-stack container (saves logs first)
+	@if $(CONTAINER_RUNTIME) inspect $(LLAMA_STACK_CONTAINER_NAME) >/dev/null 2>&1; then \
 		echo "Saving container logs before removal..."; \
 		$(CONTAINER_RUNTIME) logs $(LLAMA_STACK_CONTAINER_NAME) > /tmp/llama-stack-last-run.log 2>&1 || true; \
 		echo "Removing llama-stack container..."; \
@@ -57,8 +57,23 @@ remove-llama-stack-container: ## Remove llama-stack container (saves logs first)
 		echo "✓ Container removed (logs saved to /tmp/llama-stack-last-run.log)"; \
 	fi
 
-start-llama-stack-container: build-llama-stack-image ## Start llama-stack container
-	@echo "Starting llama-stack container..."
+start-llama-stack-container: ensure-container-runtime ## Start llama-stack container (use FRESH=true to force rebuild)
+	@if [ "$(FRESH)" = "true" ]; then \
+		$(MAKE) build-llama-stack-image; \
+	elif $(CONTAINER_RUNTIME) inspect $(LLAMA_STACK_CONTAINER_NAME) >/dev/null 2>&1; then \
+		if [ "$$($(CONTAINER_RUNTIME) inspect -f '{{.State.Running}}' $(LLAMA_STACK_CONTAINER_NAME) 2>/dev/null)" = "true" ]; then \
+			echo "Container is already running."; \
+		else \
+			echo "Starting existing container..."; \
+			$(CONTAINER_RUNTIME) start $(LLAMA_STACK_CONTAINER_NAME); \
+		fi; \
+		$(MAKE) wait-for-llama-stack-health; \
+		exit 0; \
+	elif ! $(CONTAINER_RUNTIME) image inspect $(LLAMA_STACK_IMAGE) >/dev/null 2>&1; then \
+		echo "Image not found, building..."; \
+		$(MAKE) build-llama-stack-image; \
+	fi; \
+	echo "Starting llama-stack container..."; \
 	$(CONTAINER_RUNTIME) run -d \
 		--name $(LLAMA_STACK_CONTAINER_NAME) \
 		-p $(LLAMA_STACK_PORT):8321 \
@@ -103,10 +118,10 @@ start-llama-stack-container: build-llama-stack-image ## Start llama-stack contai
 		-e SOLR_CONTENT_FIELD \
 		-e SOLR_EMBEDDING_MODEL \
 		-e SOLR_EMBEDDING_DIM \
-		$(LLAMA_STACK_IMAGE)
-	@$(MAKE) wait-for-llama-stack-health
+		$(LLAMA_STACK_IMAGE); \
+	$(MAKE) wait-for-llama-stack-health
 
-wait-for-llama-stack-health: ## Wait for llama-stack container to be healthy
+wait-for-llama-stack-health: ensure-container-runtime ## Wait for llama-stack container to be healthy
 	@echo "Waiting for llama-stack container to be healthy..."
 	@for i in {1..30}; do \
 		STATUS=$$($(CONTAINER_RUNTIME) inspect --format='{{.State.Health.Status}}' $(LLAMA_STACK_CONTAINER_NAME) 2>/dev/null || echo "no-healthcheck"); \
@@ -122,8 +137,8 @@ wait-for-llama-stack-health: ## Wait for llama-stack container to be healthy
 	$(CONTAINER_RUNTIME) logs $(LLAMA_STACK_CONTAINER_NAME); \
 	exit 1
 
-clean-llama-stack: remove-llama-stack-container ## Remove container and image
-	@if [ -n "$(CONTAINER_RUNTIME)" ] && $(CONTAINER_RUNTIME) images -q $(LLAMA_STACK_IMAGE) | grep -q .; then \
+clean-llama-stack: ensure-container-runtime remove-llama-stack-container ## Remove containers and images
+	@if $(CONTAINER_RUNTIME) image inspect $(LLAMA_STACK_IMAGE) >/dev/null 2>&1; then \
 		echo "Removing llama-stack image..."; \
 		$(CONTAINER_RUNTIME) rmi $(LLAMA_STACK_IMAGE); \
 	fi
