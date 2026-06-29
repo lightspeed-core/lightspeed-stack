@@ -282,7 +282,7 @@ async def retrieve_agent_response(
     responses_params: ResponsesApiParams,
     moderation_result: ShieldModerationResult,
     endpoint_path: str,
-    _original_input: Optional[ResponseInput] = None,
+    original_input: Optional[ResponseInput] = None,
 ) -> TurnSummary:
     """Retrieve a turn summary from a blocking agent run.
 
@@ -293,7 +293,7 @@ async def retrieve_agent_response(
         responses_params: Prepared Responses API parameters.
         moderation_result: Shield moderation outcome for the turn.
         endpoint_path: Endpoint path used for metric labeling.
-        _original_input: Original user input before the explicit-input rewrite.
+        original_input: Original user input before the explicit-input rewrite.
 
     Returns:
         Turn summary for the completed agent run.
@@ -305,7 +305,7 @@ async def retrieve_agent_response(
         await append_turn_items_to_conversation(
             client,
             responses_params.conversation,
-            responses_params.input,
+            original_input or responses_params.input,
             [moderation_result.refusal_response],
         )
         return TurnSummary(
@@ -313,7 +313,9 @@ async def retrieve_agent_response(
             llm_response=moderation_result.message,
         )
     try:
-        agent = build_agent(client, responses_params, configuration.skills)
+        agent = build_agent(
+            client, responses_params, configuration.skills, original_input
+        )
         logger.debug("Starting agent non-streaming response processing")
         run_result = await agent.run(cast(str, responses_params.input))
     except (AgentRunError, APIStatusError, APIConnectionError, RuntimeError) as exc:

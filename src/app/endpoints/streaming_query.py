@@ -338,6 +338,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         responses_params=responses_params,
         context=context,
         endpoint_path=endpoint_path,
+        original_input=None,
     )
 
     # Combine inline RAG results (BYOK + Solr) with tool-based results
@@ -353,6 +354,8 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
             responses_params=responses_params,
             turn_summary=turn_summary,
             background_topic_summary_tasks=_background_topic_summary_tasks,
+            emit_start=True,
+            original_input=None,
         ),
         media_type=response_media_type,
     )
@@ -387,7 +390,6 @@ async def retrieve_response_generator(
         if context.moderation_result.decision == "blocked":
             turn_summary.llm_response = context.moderation_result.message
             turn_summary.id = context.moderation_result.moderation_id
-            turn_summary.output_items = [context.moderation_result.refusal_response]
             # In compacted mode the conversation parameter was omitted, so the
             # refusal turn (with the original input) is persisted by
             # generate_response; storing it here too would duplicate it.
@@ -506,6 +508,7 @@ async def generate_response_with_compaction(
             responses_params=responses_params,
             context=context,
             endpoint_path=endpoint_path,
+            original_input=compacted_original_input,
         )
     except HTTPException as e:
         yield http_exception_stream_event(e)
@@ -705,7 +708,7 @@ async def generate_response(  # pylint: disable=too-many-arguments,too-many-posi
                     if original_input is not None
                     else context.query_request.query
                 ),
-                turn_summary.output_items,
+                [],  # field was removed from TurnSummary
             )
         except Exception:  # pylint: disable=broad-except
             logger.exception(
@@ -884,10 +887,6 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
                 getattr(chunk, "response"),  # noqa: B009
             )
             turn_summary.llm_response = turn_summary.llm_response or "".join(text_parts)
-            # Capture structured output items for compacted-mode turn storage
-            # (LCORE-1572), so the persisted turn keeps non-text output items
-            # rather than being flattened to the response text.
-            turn_summary.output_items = list(latest_response_object.output or [])
             event_id = chunk_id
             chunk_id += 1
             turn_summary.next_chunk_id = chunk_id
@@ -906,9 +905,6 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
                 OpenAIResponseObject,
                 getattr(chunk, "response"),  # noqa: B009
             )
-            # Capture any partial output items so a compacted-mode turn is not
-            # persisted with empty output on these terminals (LCORE-1572).
-            turn_summary.output_items = list(latest_response_object.output or [])
             error_message = (
                 latest_response_object.error.message
                 if latest_response_object.error

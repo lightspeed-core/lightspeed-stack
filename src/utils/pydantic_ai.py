@@ -11,9 +11,11 @@ from pydantic_ai.capabilities import AgentCapability
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from pydantic_ai_skills import SkillsCapability
 
+from models.common.responses import ResponseInput
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.config import SkillsConfiguration
 from pydantic_ai_lightspeed.llamastack import (
+    CompactionTurnContext,
     LlamaStackProvider,
     LlamaStackResponsesModel,
 )
@@ -117,6 +119,7 @@ def build_agent(
     client: AsyncLlamaStackClient | AsyncLlamaStackAsLibraryClient,
     responses_params: ResponsesApiParams,
     skills: Optional[SkillsConfiguration],
+    original_input: Optional[ResponseInput] = None,
 ) -> Agent[None, str]:
     """Build a Pydantic AI agent that mirrors ``responses_params`` on the Llama Stack backend.
 
@@ -129,6 +132,7 @@ def build_agent(
         client: Initialized Llama Stack client from ``AsyncLlamaStackClientHolder().get_client()``.
         responses_params: Parameters produced by ``prepare_responses_params`` for this turn.
         skills: Agent skills configuration from LCS, or None when skills are disabled.
+        original_input: When set, enables compacted-turn persistence on the model.
 
     Returns:
         ``Agent`` configured for ``await agent.run(...)`` (or streaming) against the same
@@ -137,10 +141,21 @@ def build_agent(
     provider = llama_stack_provider_from_client(client)
     settings = _model_settings_from_responses_params(responses_params)
 
+    compaction = (
+        CompactionTurnContext(
+            client=client,
+            conversation_id=responses_params.conversation,
+            latest_round_input=original_input,
+        )
+        if original_input is not None
+        else None
+    )
+
     model = LlamaStackResponsesModel(
         responses_params.model,
         provider=provider,
         settings=settings,
+        compaction=compaction,
     )
     return Agent(
         model,
