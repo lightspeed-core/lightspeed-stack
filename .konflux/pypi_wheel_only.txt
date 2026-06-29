@@ -1,0 +1,5 @@
+# Packages where PyPI has an sdist but it cannot be built reliably.
+# Rust/C++ bootstrap, binary-only distributions, CUDA stack.
+#
+# Pure-Python packages whose build backends pull in C-extension deps
+# (e.g. jinja2→markupsafe) that conflict with RHOAI-rebuilt wheels.
