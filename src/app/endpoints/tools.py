@@ -28,6 +28,7 @@ from utils.mcp_headers import (
     mcp_headers_dependency,
 )
 from utils.mcp_oauth_probe import check_mcp_auth
+from utils.pydantic_ai import get_agent_capability_tools
 from utils.tool_formatter import format_tools_list
 
 logger = get_logger(__name__)
@@ -238,11 +239,25 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
             server_source,
         )
 
+    existing_tool_ids = {
+        tool.get("identifier") for tool in consolidated_tools if tool.get("identifier")
+    }
+    capability_tools = get_agent_capability_tools(configuration.skills)
+    for tool_dict in capability_tools:
+        identifier = tool_dict.get("identifier")
+        if identifier and identifier not in existing_tool_ids:
+            consolidated_tools.append(tool_dict)
+            existing_tool_ids.add(identifier)
+
+    builtin_tool_count = len(
+        [t for t in consolidated_tools if t.get("server_source") == "builtin"]
+    )
+    mcp_tool_count = len(consolidated_tools) - builtin_tool_count
     logger.info(
         "Retrieved total of %d tools (%d from built-in toolgroups, %d from MCP servers)",
         len(consolidated_tools),
-        len([t for t in consolidated_tools if t.get("server_source") == "builtin"]),
-        len([t for t in consolidated_tools if t.get("server_source") != "builtin"]),
+        builtin_tool_count,
+        mcp_tool_count,
     )
 
     # Format tools with structured description parsing

@@ -17,6 +17,7 @@ from utils.pydantic_ai import (
     _model_settings_from_responses_params,
     _skills_capability,
     build_agent,
+    get_agent_capability_tools,
     llama_stack_provider_from_client,
 )
 
@@ -363,3 +364,46 @@ class TestBuildAgent:
             type(capability) for capability in agent._root_capability.capabilities
         }
         assert SkillsCapability not in capability_types
+
+
+class TestGetAgentCapabilityTools:
+    """Tests for get_agent_capability_tools."""
+
+    def test_returns_empty_list_when_skills_not_configured(self) -> None:
+        """Test that missing skills configuration yields no capability tools."""
+        assert not get_agent_capability_tools(None)
+        assert not get_agent_capability_tools(SkillsConfiguration(paths=[]))
+
+    def test_returns_skills_tools_when_configured(
+        self, mock_skills_configuration: SkillsConfiguration
+    ) -> None:
+        """Test that configured skills expose pydantic-ai skill tools."""
+        tools = get_agent_capability_tools(mock_skills_configuration)
+
+        assert [tool["identifier"] for tool in tools] == [
+            "list_skills",
+            "load_skill",
+            "read_skill_resource",
+            "run_skill_script",
+        ]
+        assert all(
+            tool["provider_id"] == "agent-skills"
+            and tool["toolgroup_id"] == "builtin::agent-skills"
+            and tool["server_source"] == "builtin"
+            and tool["type"] == "tool"
+            for tool in tools
+        )
+
+        load_skill = next(tool for tool in tools if tool["identifier"] == "load_skill")
+        assert load_skill["parameters"] == [
+            {
+                "name": "skill_name",
+                "description": (
+                    "Exact name from your available skills list.\n"
+                    'Must match exactly (e.g., "data-analysis" not "data analysis").'
+                ),
+                "parameter_type": "string",
+                "required": True,
+                "default": None,
+            }
+        ]

@@ -23,6 +23,7 @@ from models.config import (
     LlamaStackConfiguration,
     ModelContextProtocolServer,
     ServiceConfiguration,
+    SkillsConfiguration,
     TLSConfiguration,
     UserDataCollection,
 )
@@ -1135,3 +1136,44 @@ async def test_tools_endpoint_empty_legacy_fields_overridden(
     assert tool["parameters"][0]["name"] == "query"
     assert tool["parameters"][0]["parameter_type"] == "string"
     assert tool["parameters"][0]["required"] is True
+
+
+@pytest.mark.asyncio
+async def test_tools_endpoint_includes_agent_capability_tools(
+    mocker: MockerFixture,
+    mock_configuration: Configuration,  # pylint: disable=redefined-outer-name
+    mock_skills_configuration: SkillsConfiguration,
+) -> None:
+    """Test that configured pydantic-ai capabilities appear in /tools output."""
+    config_with_skills = mock_configuration.model_copy(
+        update={"skills": mock_skills_configuration}
+    )
+    app_config = AppConfig()
+    app_config._configuration = config_with_skills
+    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+
+    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client = mocker.AsyncMock()
+    mock_client_holder.return_value.get_client.return_value = mock_client
+    mock_client.toolgroups.list.return_value = []
+
+    mock_request = mocker.Mock()
+    mock_auth = MOCK_AUTH
+
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+        mock_request, mock_auth, {}
+    )
+
+    tool_ids = [tool["identifier"] for tool in response.tools]
+    assert "list_skills" in tool_ids
+    assert "load_skill" in tool_ids
+    assert "read_skill_resource" in tool_ids
+    assert "run_skill_script" in tool_ids
+
+    list_skills = next(
+        tool for tool in response.tools if tool["identifier"] == "list_skills"
+    )
+    assert list_skills["provider_id"] == "agent-skills"
+    assert list_skills["toolgroup_id"] == "builtin::agent-skills"
+    assert list_skills["server_source"] == "builtin"
