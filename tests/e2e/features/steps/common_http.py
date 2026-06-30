@@ -318,3 +318,30 @@ def set_header(context: Context, header_name: str) -> None:
         except json.JSONDecodeError:
             pass
     context.auth_headers[header_name] = value
+
+
+@then('The body of the "{field}" field of the response is the following')
+def check_response_field_body(context: Context, field: str) -> None:
+    """Check the content of a specific field in the response body.
+
+    Parameters:
+        context: Behave context with ``response`` and/or ``response_data``.
+        field: Name of the field to check (e.g. ``tool_results``).
+    """
+    if getattr(context, "use_streaming_response_data", False):
+        response_body = context.response_data
+    else:
+        assert context.response is not None, "Request needs to be performed first"
+        response_body = context.response.json()
+
+    assert field in response_body, (
+        f"Field '{field}' not found in response. "
+        f"Available fields: {list(response_body.keys())}"
+    )
+
+    actual_value = response_body[field]
+
+    assert context.text, "Expected value for response field body is missing"
+
+    expected_value = json.loads(context.text)
+    validate_json_partially(actual_value, expected_value)
