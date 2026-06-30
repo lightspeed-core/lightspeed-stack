@@ -32,3 +32,8 @@ features/tls-ca.feature
 features/tls-mtls.feature
 features/tls-tlsv13.feature
 features/opentelemetry.feature
+features/unified-mode-boot.feature
+features/unified-mode-legacy.feature
+features/unified-mode-validation.feature
+features/unified-mode-migration.feature
+features/unified-mode-synthesis.feature
