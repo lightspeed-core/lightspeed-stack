@@ -1378,6 +1378,8 @@ The version X.Y.Z indicates:
 * Y is the minor version (backward-compatible), and
 * Z is the patch version (backward-compatible bug fix).
 
+For upgrade instructions between versions, see the [Migration Guides](docs/migrations/).
+
 # Konflux
 
 The official image of Lightspeed Core Stack is built on [Konflux](https://konflux-ui.apps.kflux-prd-rh02.0fk9.p1.openshiftapps.com/ns/lightspeed-core-tenant/applications/lightspeed-stack).

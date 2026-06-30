@@ -42,6 +42,10 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [Unsupported versions](https://lightspeed-core.github.io/lightspeed-stack/versions_unsupported.html)
 
+## Migration guides
+
+[Migration guides](https://lightspeed-core.github.io/lightspeed-stack/migrations/)
+
 ## Info for developers
 
 [Contributing guide](https://lightspeed-core.github.io/lightspeed-stack/contributing_guide.html)
