@@ -85,6 +85,7 @@ async def retrieve_agent_response_generator(
     responses_params: ResponsesApiParams,
     context: ResponseGeneratorContext,
     endpoint_path: str,
+    no_tools: bool = False,
 ) -> tuple[AsyncIterator[str], TurnSummary]:
     """Return the SSE generator and mutable turn summary for an agent run.
 
@@ -92,6 +93,7 @@ async def retrieve_agent_response_generator(
         responses_params: Prepared Responses API parameters.
         context: Streaming request context and moderation result.
         endpoint_path: Endpoint path used for metric labeling.
+        no_tools: Whether to skip tool processing.
 
     Returns:
         Tuple of SSE async iterator and mutable turn summary.
@@ -118,7 +120,9 @@ async def retrieve_agent_response_generator(
                 turn_summary,
             )
 
-        agent = build_agent(context.client, responses_params, configuration.skills)
+        agent = build_agent(
+            context.client, responses_params, configuration.skills, no_tools=no_tools
+        )
 
         return (
             agent_response_generator(

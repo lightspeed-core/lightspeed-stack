@@ -338,6 +338,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         responses_params=responses_params,
         context=context,
         endpoint_path=endpoint_path,
+        no_tools=bool(query_request.no_tools),
     )
 
     # Combine inline RAG results (BYOK + Solr) with tool-based results

@@ -234,6 +234,7 @@ async def query_endpoint_handler(
         moderation_result,
         endpoint_path,
         compaction.original_input if compaction.compacted else None,
+        no_tools=bool(query_request.no_tools),
     )
 
     if moderation_result.decision == "passed":
