@@ -1729,6 +1729,26 @@ class InferenceConfiguration(ConfigurationBase):
         "meaning and are independent of this list.",
     )
 
+    max_infer_iters: Optional[PositiveInt] = Field(
+        default=10,
+        title="Default max inference iterations",
+        description="Server-side default for the maximum number of inference "
+        "iterations a model can perform in a single request. Prevents small "
+        "models from looping indefinitely on tool calls. "
+        "Per-request values take precedence over this default. "
+        "Set to None to disable the limit.",
+    )
+
+    max_tool_calls: Optional[PositiveInt] = Field(
+        default=30,
+        title="Default max tool calls",
+        description="Server-side default for the maximum number of tool calls "
+        "allowed in a single response. Prevents small models from exhausting "
+        "the context window with repeated tool calls. "
+        "Per-request values take precedence over this default. "
+        "Set to None to disable the limit.",
+    )
+
     @model_validator(mode="after")
     def check_default_model_and_provider(self) -> Self:
         """

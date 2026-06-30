@@ -429,6 +429,8 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
         stream=stream,
         store=store,
         extra_headers=extra_headers,
+        max_infer_iters=configuration.inference.max_infer_iters,
+        max_tool_calls=configuration.inference.max_tool_calls,
     )
 
 
