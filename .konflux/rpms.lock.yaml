@@ -32,20 +32,6 @@ arches:
     name: cmake-rpm-macros
     evr: 3.26.5-2.el9
     sourcerpm: cmake-3.26.5-2.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/g/gcc-c++-11.5.0-5.el9_5.aarch64.rpm
-    repoid: rhel-9-for-aarch64-appstream-eus-rpms
-    size: 12999288
-    checksum: sha256:a9ff0bd2a2b3483e07dcf87f8137a6358f36f5300c934b90500f119f884e3463
-    name: gcc-c++
-    evr: 11.5.0-5.el9_5
-    sourcerpm: gcc-11.5.0-5.el9_5.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/l/libstdc++-devel-11.5.0-5.el9_5.aarch64.rpm
-    repoid: rhel-9-for-aarch64-appstream-eus-rpms
-    size: 2526795
-    checksum: sha256:83a2006137335a9b17a05a02a54481abcdfd295b280b924c51caaacd7bf07ad6
-    name: libstdc++-devel
-    evr: 11.5.0-5.el9_5
-    sourcerpm: gcc-11.5.0-5.el9_5.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/aarch64/appstream/os/Packages/l/libuv-1.42.0-2.el9_4.aarch64.rpm
     repoid: rhel-9-for-aarch64-appstream-eus-rpms
     size: 150129
@@ -120,20 +106,6 @@ arches:
     name: cmake-rpm-macros
     evr: 3.26.5-2.el9
     sourcerpm: cmake-3.26.5-2.el9.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/g/gcc-c++-11.5.0-5.el9_5.x86_64.rpm
-    repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 13479598
-    checksum: sha256:b8392274e302d665bc132aee4ed023f8a777d9c446531679ede18150d7867189
-    name: gcc-c++
-    evr: 11.5.0-5.el9_5
-    sourcerpm: gcc-11.5.0-5.el9_5.src.rpm
-  - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/l/libstdc++-devel-11.5.0-5.el9_5.x86_64.rpm
-    repoid: rhel-9-for-x86_64-appstream-eus-rpms
-    size: 2531717
-    checksum: sha256:84695eeeb1daa8ff74baf7efd9fc57fb136bec7e8a2ca56c105be6d83ec22d07
-    name: libstdc++-devel
-    evr: 11.5.0-5.el9_5
-    sourcerpm: gcc-11.5.0-5.el9_5.src.rpm
   - url: https://cdn.redhat.com/content/eus/rhel9/9.6/x86_64/appstream/os/Packages/l/libuv-1.42.0-2.el9_4.x86_64.rpm
     repoid: rhel-9-for-x86_64-appstream-eus-rpms
     size: 154427
