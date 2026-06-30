@@ -24,6 +24,7 @@ hatchling==1.30.1
     #   a2a-sdk
     #   hatch-fancy-pypi-readme
     #   opentelemetry-distro
+    #   pythainlp
     #   uv-dynamic-versioning
 pathspec==1.1.1
     # via hatchling
@@ -44,18 +45,7 @@ trove-classifiers==2026.6.1.19
     # via hatchling
 uv-dynamic-versioning==0.14.0
     # via a2a-sdk
-vcs-versioning==2.2.0
+vcs-versioning==2.2.2
     # via setuptools-scm
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==82.0.1
-    # via
-    #   calver
-    #   llama-stack
-    #   llama-stack-api
-    #   markupsafe
-    #   pathspec
-    #   pluggy
-    #   setuptools-scm
-    #   trove-classifiers
-    #   vcs-versioning
