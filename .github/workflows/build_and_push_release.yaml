@@ -28,14 +28,22 @@ jobs:
           sudo apt install -y buildah qemu-user-static
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Fetch submodules (required for lightspeed-providers)
+          submodules: 'recursive'
+          # Fetch all tags to determine latest stable version
+          fetch-tags: true
+      - name: Determine if latest tag should be applied
+        id: check_latest
+        run: ./scripts/latest-tag.py
       - name: Build image with Buildah
         id: build_image
         uses: redhat-actions/buildah-build@v2
         with:
           image: ${{ env.IMAGE_NAME }}
-          tags: |
+          tags: >-
             ${{ env.GIT_TAG }}
-            ${{ env.LATEST_TAG }}
+            ${{ steps.check_latest.outputs.apply_latest == 'true' && env.LATEST_TAG || '' }}
           containerfiles: |
             ${{ env.CONTAINER_FILE }}
           archs: amd64, arm64
@@ -48,7 +56,7 @@ jobs:
       - name: Check manifest
         run: |
           set -x
-          buildah manifest inspect ${{ steps.build_image.outputs.image }}:${{ env.LATEST_TAG }}
+          buildah manifest inspect ${{ steps.build_image.outputs.image-with-tag }}
       - name: Push image to Quay.io
         uses: redhat-actions/push-to-registry@v2
         with:
