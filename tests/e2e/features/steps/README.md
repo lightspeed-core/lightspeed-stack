@@ -30,11 +30,11 @@ LLM query and response steps.
 ## [models.py](models.py)
 Steps for /models endpoint.
 
-## [prompts.py](prompts.py)
-Behave steps for /v1/prompts endpoint end-to-end tests.
-
 ## [place_holder.py](place_holder.py)
 Implementation of placeholder test steps.
+
+## [prompts.py](prompts.py)
+Behave steps for /v1/prompts endpoint end-to-end tests.
 
 ## [proxy.py](proxy.py)
 Step definitions for proxy and TLS networking e2e tests.
