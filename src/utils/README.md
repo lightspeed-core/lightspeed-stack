@@ -15,14 +15,23 @@ Conversation compaction — partitioning, summarization, additive fold-up.
 ## [connection_decorator.py](connection_decorator.py)
 Decorator that makes sure the object is 'connected' according to it's connected predicate.
 
+## [conversation_compaction.py](conversation_compaction.py)
+Runtime integration of conversation compaction into the request flow.
+
 ## [conversations.py](conversations.py)
 Utilities for conversations.
+
+## [degraded_mode.py](degraded_mode.py)
+Degraded mode state tracking.
 
 ## [endpoints.py](endpoints.py)
 Utility functions for endpoint handlers.
 
 ## [llama_stack_version.py](llama_stack_version.py)
 Check if the Llama Stack version is supported by the LCS.
+
+## [markdown_repair.py](markdown_repair.py)
+Utilities for repairing truncated markdown content.
 
 ## [mcp_auth_headers.py](mcp_auth_headers.py)
 Utilities for resolving MCP server authorization headers.
@@ -35,6 +44,9 @@ Probe MCP servers for OAuth and raise 401 with WWW-Authenticate when required.
 
 ## [prompts.py](prompts.py)
 Utility functions for system prompts.
+
+## [pydantic_ai.py](pydantic_ai.py)
+Helpers for running Pydantic AI agents against Llama Stack (Responses API compatibility).
 
 ## [query.py](query.py)
 Utility functions for working with queries.
@@ -58,7 +70,10 @@ Function to dump the configuration schema into OpenAPI-compatible format.
 Utility functions for working with Llama Stack shields.
 
 ## [stream_interrupts.py](stream_interrupts.py)
-In-memory registry for interrupting active streaming requests.
+Stream interrupt registry and persistence utilities.
+
+## [streaming_sse.py](streaming_sse.py)
+SSE formatting helpers for streaming query responses.
 
 ## [suid.py](suid.py)
 Session ID utility functions.
