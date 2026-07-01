@@ -143,8 +143,27 @@ spec:
             secretKeyRef:
               name: openai-api-key-secret
               key: key
+              optional: true
         - name: E2E_OPENAI_MODEL
           value: "gpt-4o-mini"
+        - name: VLLM_URL
+          valueFrom:
+            secretKeyRef:
+              name: vllm-url-secret
+              key: key
+              optional: true
+        - name: VLLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: vllm-api-key-secret
+              key: key
+              optional: true
+        - name: VLLM_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: vllm-model-secret
+              key: key
+              optional: true
         - name: FAISS_VECTOR_STORE_ID
           valueFrom:
             secretKeyRef:
