@@ -27,7 +27,6 @@ from models.config import (
     QuestionValidityConfig,
 )
 from pydantic_ai_lightspeed.llamastack import LlamaStackResponsesModel
-from utils.pydantic_ai import llama_stack_provider_from_client
 
 logger = get_logger(__name__)
 
@@ -55,21 +54,6 @@ def _extract_message_str_from_user_content(user_content: Sequence[UserContent]) 
     return "\n".join(str_arr)
 
 
-def _create_model_from_llama_stack_client(model_id: str) -> LlamaStackResponsesModel:
-    """Create a LlamaStackResponsesModel from the shared Llama Stack client.
-
-    Parameters:
-        model_id: The model identifier to use for the responses model.
-
-    Returns:
-        A configured LlamaStackResponsesModel instance.
-    """
-    client = AsyncLlamaStackClientHolder().get_client()
-    provider = llama_stack_provider_from_client(client)
-    settings = OpenAIResponsesModelSettings(openai_store=False)
-    return LlamaStackResponsesModel(model_id, provider=provider, settings=settings)
-
-
 @dataclass
 class QuestionValidity(AbstractCapability[None]):
     """Block or modify user input based on a guardrail check.
@@ -91,7 +75,13 @@ class QuestionValidity(AbstractCapability[None]):
 
     def __post_init__(self) -> None:
         """Initialize the model instance from the configured model ID."""
-        self._model = _create_model_from_llama_stack_client(self.config.model_id)
+        llama_stack_client = AsyncLlamaStackClientHolder().get_client()
+
+        self._model = LlamaStackResponsesModel.from_llama_stack_client(
+            self.config.model_id,
+            llama_stack_client,
+            model_settings=OpenAIResponsesModelSettings(openai_store=False),
+        )
 
     def _build_prompt(self, message: str | Sequence[UserContent] | None) -> str:
         """Build the classification prompt from the user message.

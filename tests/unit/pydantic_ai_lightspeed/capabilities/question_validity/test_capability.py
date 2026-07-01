@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 from pydantic_ai import AgentRunResult, RunContext
 from pydantic_ai.messages import ImageUrl, ModelResponse, TextContent, TextPart
+from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from pydantic_ai.usage import RequestUsage, RunUsage
 from pytest_mock import MockerFixture, MockType
 
@@ -20,9 +21,10 @@ from pydantic_ai_lightspeed.capabilities.question_validity._capability import (
     SUBJECT_ALLOWED,
     SUBJECT_REJECTED,
     QuestionValidity,
-    _create_model_from_llama_stack_client,
     _extract_message_str_from_user_content,
 )
+
+_MODULE = "pydantic_ai_lightspeed.capabilities.question_validity._capability"
 
 
 class TestExtractMessageStrFromUserContent:
@@ -104,72 +106,35 @@ class TestQuestionValidityConfigInit:
             QuestionValidityConfig(model_id="test", unknown_field="value")  # type: ignore[call-arg]
 
 
-class TestCreateModelFromLlamaStackClient:
-    """Tests for _create_model_from_llama_stack_client factory function."""
-
-    _MODULE = "pydantic_ai_lightspeed.capabilities.question_validity._capability"
-
-    def test_creates_model_with_correct_wiring(self, mocker: MockerFixture) -> None:
-        """Test that the factory wires client, provider, and model correctly."""
-        mock_client = mocker.Mock()
-        mock_holder = mocker.patch(f"{self._MODULE}.AsyncLlamaStackClientHolder")
-        mock_holder.return_value.get_client.return_value = mock_client
-
-        mock_provider = mocker.Mock()
-        mocker.patch(
-            f"{self._MODULE}.llama_stack_provider_from_client",
-            return_value=mock_provider,
-        )
-
-        mock_model_cls = mocker.patch(f"{self._MODULE}.LlamaStackResponsesModel")
-
-        result = _create_model_from_llama_stack_client("test-model")
-
-        mock_holder.return_value.get_client.assert_called_once()
-        mock_model_cls.assert_called_once()
-        call_args = mock_model_cls.call_args
-        assert call_args.args[0] == "test-model"
-        assert call_args.kwargs["provider"] is mock_provider
-        settings = call_args.kwargs["settings"]
-        assert settings == {"openai_store": False}
-        assert result is mock_model_cls.return_value
-
-    def test_passes_client_to_provider_factory(self, mocker: MockerFixture) -> None:
-        """Test that the client from the holder is passed to the provider factory."""
-        mock_client = mocker.Mock()
-        mock_holder = mocker.patch(f"{self._MODULE}.AsyncLlamaStackClientHolder")
-        mock_holder.return_value.get_client.return_value = mock_client
-
-        mock_from_client = mocker.patch(
-            f"{self._MODULE}.llama_stack_provider_from_client",
-        )
-
-        _create_model_from_llama_stack_client("any-model")
-
-        mock_from_client.assert_called_once_with(mock_client)
-
-
 class TestQuestionValidityInit:
     """Tests for QuestionValidity dataclass initialization."""
 
-    _MODULE = "pydantic_ai_lightspeed.capabilities.question_validity._capability"
+    def test_post_init_wires_client_and_model(self, mocker: MockerFixture) -> None:
+        """Test that __post_init__ obtains the client and passes it to from_llama_stack_client."""
+        mock_client = mocker.Mock()
+        mock_holder = mocker.patch(f"{_MODULE}.AsyncLlamaStackClientHolder")
+        mock_holder.return_value.get_client.return_value = mock_client
 
-    def test_post_init_calls_create_model(self, mocker: MockerFixture) -> None:
-        """Test that __post_init__ delegates to _create_model_from_llama_stack_client."""
-        mock_create = mocker.patch(
-            f"{self._MODULE}._create_model_from_llama_stack_client",
+        mock_from_client = mocker.patch(
+            f"{_MODULE}.LlamaStackResponsesModel.from_llama_stack_client",
         )
-        config = QuestionValidityConfig(model_id="my-model")
 
+        config = QuestionValidityConfig(model_id="test-model")
         QuestionValidity(config=config)
 
-        mock_create.assert_called_once_with("my-model")
+        mock_holder.return_value.get_client.assert_called_once()
+        mock_from_client.assert_called_once_with(
+            "test-model",
+            mock_client,
+            model_settings=OpenAIResponsesModelSettings(openai_store=False),
+        )
 
     def test_model_is_assigned_from_factory(self, mocker: MockerFixture) -> None:
-        """Test that the model returned by the factory is stored on the instance."""
+        """Test that the model returned by from_llama_stack_client is stored."""
         mock_model = mocker.Mock()
+        mocker.patch(f"{_MODULE}.AsyncLlamaStackClientHolder")
         mocker.patch(
-            f"{self._MODULE}._create_model_from_llama_stack_client",
+            f"{_MODULE}.LlamaStackResponsesModel.from_llama_stack_client",
             return_value=mock_model,
         )
         config = QuestionValidityConfig(model_id="test")
@@ -182,12 +147,11 @@ class TestQuestionValidityInit:
 class TestBuildPrompt:
     """Tests for QuestionValidity._build_prompt method."""
 
-    _MODULE = "pydantic_ai_lightspeed.capabilities.question_validity._capability"
-
     @pytest.fixture(autouse=True)
     def _mock_create_model(self, mocker: MockerFixture) -> None:
-        """Mock _create_model_from_llama_stack_client for all tests."""
-        mocker.patch(f"{self._MODULE}._create_model_from_llama_stack_client")
+        """Mock model creation for all tests."""
+        mocker.patch(f"{_MODULE}.AsyncLlamaStackClientHolder")
+        mocker.patch(f"{_MODULE}.LlamaStackResponsesModel.from_llama_stack_client")
 
     @pytest.fixture(name="question_validity")
     def question_validity_fixture(self) -> QuestionValidity:
@@ -245,12 +209,11 @@ class TestBuildPrompt:
 class TestWrapRun:
     """Tests for QuestionValidity.wrap_run method."""
 
-    _MODULE = "pydantic_ai_lightspeed.capabilities.question_validity._capability"
-
     @pytest.fixture(autouse=True)
     def _mock_create_model(self, mocker: MockerFixture) -> None:
-        """Mock _create_model_from_llama_stack_client for all tests."""
-        mocker.patch(f"{self._MODULE}._create_model_from_llama_stack_client")
+        """Mock model creation for all tests."""
+        mocker.patch(f"{_MODULE}.AsyncLlamaStackClientHolder")
+        mocker.patch(f"{_MODULE}.LlamaStackResponsesModel.from_llama_stack_client")
 
     @pytest.fixture(name="mock_ctx")
     def mock_ctx_fixture(self, mocker: MockerFixture) -> RunContext:
