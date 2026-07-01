@@ -94,6 +94,7 @@ def wait_for_complete_response(context: Context) -> None:
     context.response_data = _parse_streaming_response(context.response.text)
     context.response.raise_for_status()
     assert context.response_data["finished"] is True
+    context.use_streaming_response_data = True
 
 
 @step('I use "{endpoint}" to ask question')
@@ -364,7 +365,9 @@ def _parse_streaming_response(response_text: str) -> dict:
     lines = response_text.strip().split("\n")
     conversation_id = None
     full_response = ""
-    full_response_split = []
+    full_response_split: list[str] = []
+    tool_calls: list[dict[str, Any]] = []
+    tool_results: list[dict[str, Any]] = []
     finished = False
     stream_error = (
         None  # {"status_code": int, "response": str, "cause": str} if event "error"
@@ -380,6 +383,10 @@ def _parse_streaming_response(response_text: str) -> dict:
                     conversation_id = data["data"]["conversation_id"]
                 elif event == "token":
                     full_response_split.append(data["data"]["token"])
+                elif event == "tool_call":
+                    tool_calls.append(data["data"])
+                elif event == "tool_result":
+                    tool_results.append(data["data"])
                 elif event == "turn_complete":
                     full_response = data["data"]["token"]
                 elif event == "end":
@@ -393,6 +400,8 @@ def _parse_streaming_response(response_text: str) -> dict:
         "conversation_id": conversation_id,
         "response": "".join(full_response_split),
         "response_complete": full_response,
+        "tool_calls": tool_calls,
+        "tool_results": tool_results,
         "finished": finished,
         "stream_error": stream_error,
     }

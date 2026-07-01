@@ -37,3 +37,4 @@ features/unified-mode-legacy.feature
 features/unified-mode-validation.feature
 features/unified-mode-migration.feature
 features/unified-mode-synthesis.feature
+features/skills.feature

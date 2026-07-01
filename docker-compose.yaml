@@ -87,6 +87,7 @@ services:
       - "8080:8080"
     volumes:
       - ./lightspeed-stack.yaml:/app-root/lightspeed-stack.yaml:z
+      - ./tests/e2e/skills:/app-root/skills:ro,z
       - ./tests/e2e/secrets/mcp-token:/tmp/mcp-token:ro,z
       - ./tests/e2e/secrets/invalid-mcp-token:/tmp/invalid-mcp-token:ro,z
     environment:
