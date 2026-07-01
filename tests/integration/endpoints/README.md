@@ -30,6 +30,12 @@ Integration tests for the /query endpoint BYOK inline and tool RAG functionality
 ## [test_query_integration.py](test_query_integration.py)
 Integration tests for the /query endpoint (using Responses API).
 
+## [test_responses_byok_integration.py](test_responses_byok_integration.py)
+Integration tests for the /responses endpoint BYOK RAG functionality.
+
+## [test_responses_integration.py](test_responses_integration.py)
+Integration tests for the /v1/responses endpoint.
+
 ## [test_rlsapi_v1_integration.py](test_rlsapi_v1_integration.py)
 Integration tests for the rlsapi v1 /infer endpoint.
 
