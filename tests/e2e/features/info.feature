@@ -18,7 +18,7 @@ Feature: Info tests
   Scenario: Check if info endpoint is working
      When I access REST API endpoint "info" using HTTP GET method
      Then The status code of the response is 200
-      And The body of the response has proper name Lightspeed Core Service (LCS) and version 0.6.0rc2
+      And The body of the response has proper name Lightspeed Core Service (LCS) and version 0.6.0
       And The body of the response has llama-stack version 0.6.0
 
   Scenario: Check if shields endpoint is working
