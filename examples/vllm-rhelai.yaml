@@ -12,7 +12,7 @@ apis:
 - scoring
 - tool_runtime
 - vector_io
-      
+
 benchmarks: []
 datasets: []
 # external_providers_dir: /opt/app-root/src/.llama/providers.d
@@ -22,14 +22,15 @@ providers:
   - provider_id: vllm
     provider_type: remote::vllm
     config:
-      url: http://${env.RHEL_AI_URL}:${env.RHEL_AI_PORT}/v1/
-      api_token: ${env.RHEL_AI_API_KEY}
+      base_url: ${env.VLLM_URL}/v1/
+      api_token: ${env.VLLM_API_KEY:=}
       tls_verify: false
       max_tokens: 2048
   - provider_id: openai
     provider_type: remote::openai
     config:
       api_key: ${env.OPENAI_API_KEY}
+      allowed_models: ["gpt-4o-mini"]
   - config: {}
     provider_id: sentence-transformers
     provider_type: inline::sentence-transformers
@@ -47,20 +48,24 @@ providers:
     provider_id: llama-guard
     provider_type: inline::llama-guard
   scoring:
-  - config: {}
-    provider_id: basic
+  - provider_id: basic
     provider_type: inline::basic
+    config: {}
+  - provider_id: llm-as-judge
+    provider_type: inline::llm-as-judge
+    config: {}
+  - provider_id: braintrust
+    provider_type: inline::braintrust
+    config:
+      openai_api_key: '********'
   tool_runtime:
-  - config: {}
+  - config: {} # Enable the RAG tool
     provider_id: rag-runtime
     provider_type: inline::rag-runtime
-  vector_io:
-  - config:
-      persistence:
-        namespace: vector_io::faiss
-        backend: kv_default
-    provider_id: faiss
-    provider_type: inline::faiss
+  - config: {} # Enable MCP (Model Context Protocol) support
+    provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
+  vector_io: []
   agents:
   - config:
       persistence:
@@ -106,7 +111,7 @@ storage:
   backends:
     kv_default:
       type: kv_sqlite
-      db_path: ${env.KV_STORE_PATH:=~/.llama/storage/rag/kv_store.db}
+      db_path: ${env.KV_STORE_PATH:=~/.llama/storage/kv_store.db}
     sql_default:
       type: sql_sqlite
       db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
@@ -127,24 +132,31 @@ storage:
       backend: kv_default
 registered_resources:
   models:
-  - model_id: ${env.RHEL_AI_MODEL}
-    provider_id: vllm
+  - model_id: ${env.VLLM_MODEL}
     model_type: llm
-    provider_model_id: ${env.RHEL_AI_MODEL}
+    provider_id: vllm
+    provider_model_id: ${env.VLLM_MODEL}
+  - model_id: all-mpnet-base-v2
+    model_type: embedding
+    provider_id: sentence-transformers
+    provider_model_id: all-mpnet-base-v2
+    metadata:
+      embedding_dimension: 768
   shields:
   - shield_id: llama-guard
     provider_id: llama-guard
     provider_shield_id: openai/gpt-4o-mini
+  vector_stores: []
   datasets: []
   scoring_fns: []
   benchmarks: []
   tool_groups:
-  - toolgroup_id: builtin::rag
+  - toolgroup_id: builtin::rag # Register the RAG tool
     provider_id: rag-runtime
 vector_stores:
   default_provider_id: faiss
-  default_embedding_model:
+  default_embedding_model: # Define the default embedding model for RAG
     provider_id: sentence-transformers
-    model_id: nomic-ai/nomic-embed-text-v1.5
+    model_id: all-mpnet-base-v2
 safety:
   default_shield_id: llama-guard

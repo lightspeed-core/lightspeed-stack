@@ -1,5 +1,6 @@
 #!/bin/bash
-# Konflux / OpenAI integration E2E: Llama Stack run-from-source + tests/e2e/configs/run-ci.yaml.
+# Konflux integration E2E: Llama Stack run-from-source + configurable inference provider.
+# Default: OpenAI (run-ci.yaml). For RHEL AI vLLM: set LLAMA_STACK_CONFIG and LCS_CONFIG env vars.
 # Prow (vLLM) workflow uses pipeline.sh unchanged.
 set -euo pipefail
 trap 'echo "❌ Pipeline failed at line $LINENO"; exit 1' ERR
@@ -50,7 +51,10 @@ fi
 
 [[ -n "$QUAY_ROBOT_NAME" ]] && log "✅ QUAY_ROBOT_NAME is set" || { echo "❌ Missing QUAY_ROBOT_NAME"; exit 1; }
 [[ -n "$QUAY_ROBOT_PASSWORD" ]] && log "✅ QUAY_ROBOT_PASSWORD is set" || { echo "❌ Missing QUAY_ROBOT_PASSWORD"; exit 1; }
-[[ -n "$OPENAI_API_KEY" ]] && log "✅ OPENAI_API_KEY is set" || { echo "❌ Missing OPENAI_API_KEY"; exit 1; }
+[[ -n "${OPENAI_API_KEY:-}" ]] && log "✅ OPENAI_API_KEY is set" || { echo "❌ Missing OPENAI_API_KEY"; exit 1; }
+if [[ -n "${VLLM_URL:-}" ]]; then
+  log "✅ VLLM_URL is set: $VLLM_URL (RHEL AI mode)"
+fi
 
 # Basic info (skip when QUIET to keep Konflux UI focused on test logs)
 if [ "$QUIET" != "1" ]; then ls -A || true; oc version; oc whoami; fi
@@ -68,6 +72,11 @@ create_secret() {
 }
 
 create_secret openai-api-key-secret --from-literal=key="$OPENAI_API_KEY"
+if [[ -n "${VLLM_URL:-}" ]]; then
+  create_secret vllm-url-secret --from-literal=key="$VLLM_URL"
+  create_secret vllm-api-key-secret --from-literal=key="${VLLM_API_KEY:-}"
+  create_secret vllm-model-secret --from-literal=key="${VLLM_MODEL:-meta-llama/Llama-3.2-1B-Instruct}"
+fi
 
 # MCPFileAuth E2E: secret mounted at /tmp/mcp-token in LCS pod (same as docker-compose)
 if [ -f "$REPO_ROOT/tests/e2e/secrets/mcp-token" ]; then
@@ -162,13 +171,16 @@ spec:
 EOF
 log "✅ llama-stack-app-root PVC created"
 
-# Llama run config: single source with GitHub E2E (tests/e2e/configs/run-ci.yaml).
-# Lightspeed stack: same tree as local/docker E2E (tests/e2e/configuration/server-mode).
+# Configurable config paths: default to OpenAI, override for RHEL AI / vLLM.
+LLAMA_STACK_CONFIG="${LLAMA_STACK_CONFIG:-$REPO_ROOT/tests/e2e/configs/run-ci.yaml}"
+LCS_CONFIG="${LCS_CONFIG:-$REPO_ROOT/tests/e2e/configuration/server-mode/lightspeed-stack.yaml}"
+log "Llama Stack config: $LLAMA_STACK_CONFIG"
+log "LCS config: $LCS_CONFIG"
 oc create configmap llama-stack-config -n "$NAMESPACE" \
-  --from-file=run.yaml="$REPO_ROOT/tests/e2e/configs/run-ci.yaml" \
+  --from-file=run.yaml="$LLAMA_STACK_CONFIG" \
   --dry-run=client -o yaml | oc apply -f -
 oc create configmap lightspeed-stack-config -n "$NAMESPACE" \
-  --from-file=lightspeed-stack.yaml="$REPO_ROOT/tests/e2e/configuration/server-mode/lightspeed-stack.yaml" \
+  --from-file=lightspeed-stack.yaml="$LCS_CONFIG" \
   --dry-run=client -o yaml | oc apply -f -
 
 # Create RAG data ConfigMap from the e2e test RAG data
@@ -370,8 +382,13 @@ export E2E_LLAMA_PORT="8321"
 # Same pattern as tests/e2e-prow/rhoai/pipeline.sh and .github/workflows/e2e_tests_*.yaml:
 # Behave {MODEL}/{PROVIDER} use these when set; avoids wrong fallbacks if /v1/models
 # discovery in before_all is empty (matches run-ci.yaml openai + E2E_OPENAI_MODEL).
-: "${E2E_DEFAULT_PROVIDER_OVERRIDE:=openai}"
-: "${E2E_DEFAULT_MODEL_OVERRIDE:=${E2E_OPENAI_MODEL:-gpt-4o-mini}}"
+if [[ -n "${VLLM_URL:-}" ]]; then
+  : "${E2E_DEFAULT_PROVIDER_OVERRIDE:=vllm}"
+  : "${E2E_DEFAULT_MODEL_OVERRIDE:=${VLLM_MODEL:-meta-llama/Llama-3.2-1B-Instruct}}"
+else
+  : "${E2E_DEFAULT_PROVIDER_OVERRIDE:=openai}"
+  : "${E2E_DEFAULT_MODEL_OVERRIDE:=${E2E_OPENAI_MODEL:-gpt-4o-mini}}"
+fi
 export E2E_DEFAULT_PROVIDER_OVERRIDE E2E_DEFAULT_MODEL_OVERRIDE
 log "LCS accessible at: http://$E2E_LSC_HOSTNAME:8080"
 log "Mock JWKS accessible at: http://$E2E_JWKS_HOSTNAME:8000"
