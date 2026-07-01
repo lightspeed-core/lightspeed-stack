@@ -19,6 +19,7 @@ from llama_stack_configuration import (
     apply_high_level_inference,
     deep_merge_list_replace,
     load_default_baseline,
+    migrate_config_dumb,
     synthesize_configuration,
     synthesize_to_file,
 )
@@ -369,3 +370,78 @@ def test_synthesize_to_file_tightens_perms_on_overwrite(tmp_path: Path) -> None:
     synthesize_to_file(lcs, str(out), str(tmp_path))
     assert stat.S_IMODE(os.stat(out).st_mode) == 0o600
     assert yaml.safe_load(out.read_text(encoding="utf-8")) == {"v": 3}
+
+
+# ---------------------------------------------------------------------------
+# migrate_config_dumb (LCORE-2337)
+# ---------------------------------------------------------------------------
+
+
+# A representative legacy run.yaml body with nested maps, lists, and env refs.
+_LEGACY_RUN_YAML: dict[str, Any] = {
+    "version": 2,
+    "apis": ["agents", "inference", "safety", "vector_io"],
+    "providers": {
+        "inference": [
+            {
+                "provider_id": "openai",
+                "provider_type": "remote::openai",
+                "config": {
+                    "api_key": "${env.OPENAI_API_KEY}",
+                    "allowed_models": ["gpt-4o-mini"],
+                },
+            },
+            {
+                "provider_id": "sentence-transformers",
+                "provider_type": "inline::sentence-transformers",
+            },
+        ],
+    },
+    "safety": {"default_shield_id": "llama-guard", "excluded_categories": []},
+}
+
+
+def _write_legacy_pair(tmp_path: Path) -> tuple[str, str]:
+    """Write a legacy run.yaml + lightspeed-stack.yaml pair, return their paths."""
+    run_path = tmp_path / "run.yaml"
+    run_path.write_text(yaml.dump(_LEGACY_RUN_YAML), encoding="utf-8")
+    lcs = {
+        "name": "LCS",
+        "service": {"host": "localhost", "port": 8080},
+        "llama_stack": {
+            "use_as_library_client": True,
+            "library_client_config_path": "run.yaml",
+        },
+    }
+    lcs_path = tmp_path / "lightspeed-stack.yaml"
+    lcs_path.write_text(yaml.dump(lcs), encoding="utf-8")
+    return str(run_path), str(lcs_path)
+
+
+def test_migrate_config_dumb_structure(tmp_path: Path) -> None:
+    """Dumb migration lifts run.yaml into native_override and drops the legacy path."""
+    run_path, lcs_path = _write_legacy_pair(tmp_path)
+    out_path = tmp_path / "unified.yaml"
+    migrate_config_dumb(run_path, lcs_path, str(out_path))
+
+    migrated = yaml.safe_load(out_path.read_text(encoding="utf-8"))
+    # unrelated top-level content preserved
+    assert migrated["name"] == "LCS"
+    assert migrated["service"] == {"host": "localhost", "port": 8080}
+    # legacy path dropped; use_as_library_client preserved
+    assert "library_client_config_path" not in migrated["llama_stack"]
+    assert migrated["llama_stack"]["use_as_library_client"] is True
+    # whole run.yaml lifted into native_override with an empty baseline
+    assert migrated["llama_stack"]["config"]["baseline"] == "empty"
+    assert migrated["llama_stack"]["config"]["native_override"] == _LEGACY_RUN_YAML
+
+
+def test_migrate_then_synthesize_reproduces_run_yaml(tmp_path: Path) -> None:
+    """Round-trip: migrate -> synthesize reproduces the original run.yaml (R4)."""
+    run_path, lcs_path = _write_legacy_pair(tmp_path)
+    out_path = tmp_path / "unified.yaml"
+    migrate_config_dumb(run_path, lcs_path, str(out_path))
+
+    migrated = yaml.safe_load(out_path.read_text(encoding="utf-8"))
+    synthesized = synthesize_configuration(migrated)
+    assert synthesized == _LEGACY_RUN_YAML
