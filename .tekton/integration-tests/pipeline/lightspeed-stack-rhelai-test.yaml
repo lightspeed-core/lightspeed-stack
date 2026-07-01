@@ -75,8 +75,7 @@ spec:
                     path: token
         steps:
           - name: create-instance
-            # TODO(are-ces): pin to v0.14.2 once released
-            image: quay.io/redhat-developer/mapt:v1.0.0-dev
+            image: quay.io/redhat-developer/mapt:v0.14.2
             imagePullPolicy: Always
             env:
               - name: HOME
@@ -445,8 +444,7 @@ spec:
                     path: token
         steps:
           - name: destroy-instance
-            # TODO(are-ces): pin to v0.14.2 once released
-            image: quay.io/redhat-developer/mapt:v1.0.0-dev
+            image: quay.io/redhat-developer/mapt:v0.14.2
             imagePullPolicy: Always
             env:
               - name: HOME
