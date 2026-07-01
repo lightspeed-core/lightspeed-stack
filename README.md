@@ -142,7 +142,7 @@ Lightspeed Core Stack is based on the FastAPI framework (Uvicorn). The service i
   | IBM WatsonX     | https://www.ibm.com/products/watsonx                                  |
   | AWS Bedrock     | https://aws.amazon.com/bedrock                                        |
   | RHOAI (vLLM)    | See tests/e2e-prow/rhoai/configs/run.yaml                             |
-  | RHEL AI (vLLM)  | See tests/e2e/configs/run-rhelai.yaml                                 |
+  | RHEL AI (RHAIIS/vLLM) | See tests/e2e/configs/run-rhelai.yaml                            |
 
   See `docs/providers.md` for configuration details.
 
@@ -242,8 +242,7 @@ __Note__: Support for individual models is dependent on the specific inference p
 | OpenAI         | gpt-5, gpt-4o, gpt-4-turbo, gpt-4.1, o1, o3, o4                               | Yes           | remote::openai   | [1](examples/openai-faiss-run.yaml) [2](examples/openai-pgvector-run.yaml) |
 | OpenAI         | gpt-3.5-turbo, gpt-4                                                         | No            | remote::openai   |                                                                            |
 | RHOAI (vLLM)   | meta-llama/Llama-3.2-1B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e-prow/rhoai/configs/run.yaml)                                 |
-| RHAIIS (vLLM)  | meta-llama/Llama-3.1-8B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e/configs/run-rhaiis.yaml)                                     |
-| RHEL AI (vLLM) | meta-llama/Llama-3.1-8B-Instruct                                             | Yes           | remote::vllm     | [1](tests/e2e/configs/run-rhelai.yaml)                                     |
+| RHEL AI (RHAIIS/vLLM) | meta-llama/Llama-3.1-8B-Instruct                                      | Yes           | remote::vllm     | [1](tests/e2e/configs/run-rhelai.yaml) [2](tests/e2e/configs/run-rhaiis.yaml) |
 | Azure          | gpt-5, gpt-5-mini, gpt-5-nano, gpt-4o-mini, o3-mini, o4-mini, o1             | Yes           | remote::azure    | [1](examples/azure-run.yaml)                                               |
 | Azure          | gpt-5-chat, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano,  o1-mini                    | No or limited | remote::azure    |                                                                            |
 | VertexAI       | google/gemini-2.0-flash, google/gemini-2.5-flash, google/gemini-2.5-pro [^1] | Yes           | remote::vertexai | [1](examples/vertexai-run.yaml)                                            |
