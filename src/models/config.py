@@ -2638,7 +2638,7 @@ class Configuration(ConfigurationBase):
         Returns:
             Self: The model instance after validation.
         """
-        # Get authentication module value (pyright: ignore attribute access on Field)
+        # Get authentication module value
         auth_module = getattr(self.authentication, "module", None)
 
         # Filter out misconfigured MCP servers
