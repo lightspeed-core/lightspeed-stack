@@ -1,0 +1,88 @@
+name: OKP Quality Gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'src/llama_stack_configuration.py'
+      - 'src/constants.py'
+      - 'src/configuration.py'
+      - 'src/models/config.py'
+      - 'src/utils/vector_search.py'
+      - 'src/utils/reranker.py'
+      - 'src/app/endpoints/query.py'
+      - 'src/app/endpoints/streaming_query.py'
+      - 'src/app/endpoints/responses.py'
+      - 'src/app/endpoints/rags.py'
+      - 'src/client.py'
+      - 'providers/**/solr_vector_io/**'
+      - 'deploy/lightspeed-stack/Containerfile'
+      - 'docker-compose-library.yaml'
+
+jobs:
+  okp-quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Trigger GitLab evaluation pipeline
+        id: trigger
+        env:
+          GITLAB_TRIGGER_TOKEN: ${{ secrets.GITLAB_TRIGGER_TOKEN }}
+          GITLAB_PROJECT_ID: ${{ vars.GITLAB_PROJECT_ID }}
+        run: |
+          RESPONSE=$(curl --silent --show-error --fail \
+            --request POST \
+            --form "token=${GITLAB_TRIGGER_TOKEN}" \
+            --form "ref=ci-trigger-test" \
+            --form "variables[PR_REPO]=${{ github.event.pull_request.head.repo.full_name }}" \
+            --form "variables[PR_BRANCH]=${{ github.event.pull_request.head.ref }}" \
+            --form "variables[PR_SHA]=${{ github.event.pull_request.head.sha }}" \
+            "https://gitlab.cee.redhat.com/api/v4/projects/${GITLAB_PROJECT_ID}/trigger/pipeline")
+
+          PIPELINE_ID=$(echo "$RESPONSE" | jq -r '.id')
+          PIPELINE_URL=$(echo "$RESPONSE" | jq -r '.web_url')
+
+          if [ "$PIPELINE_ID" = "null" ] || [ -z "$PIPELINE_ID" ]; then
+            echo "Failed to trigger pipeline. Response:"
+            echo "$RESPONSE"
+            exit 1
+          fi
+
+          echo "pipeline_id=${PIPELINE_ID}" >> "$GITHUB_OUTPUT"
+          echo "Triggered GitLab pipeline #${PIPELINE_ID}: ${PIPELINE_URL}"
+
+      - name: Wait for GitLab pipeline to complete
+        env:
+          GITLAB_API_TOKEN: ${{ secrets.GITLAB_API_TOKEN }}
+          GITLAB_PROJECT_ID: ${{ vars.GITLAB_PROJECT_ID }}
+        run: |
+          PIPELINE_ID=${{ steps.trigger.outputs.pipeline_id }}
+          echo "Waiting for pipeline #${PIPELINE_ID}..."
+
+          while true; do
+            RESPONSE=$(curl --silent --show-error \
+              --header "PRIVATE-TOKEN: ${GITLAB_API_TOKEN}" \
+              "https://gitlab.cee.redhat.com/api/v4/projects/${GITLAB_PROJECT_ID}/pipelines/${PIPELINE_ID}")
+
+            STATUS=$(echo "$RESPONSE" | jq -r '.status')
+
+            case "$STATUS" in
+              success)
+                echo "Pipeline #${PIPELINE_ID} passed!"
+                exit 0
+                ;;
+              failed|canceled)
+                echo "Pipeline #${PIPELINE_ID} ${STATUS}."
+                echo "View details: $(echo "$RESPONSE" | jq -r '.web_url')"
+                exit 1
+                ;;
+              created|waiting_for_resource|preparing|pending|running)
+                echo "Status: ${STATUS}. Checking again in 60s..."
+                sleep 60
+                ;;
+              *)
+                echo "Unexpected status: ${STATUS}. Checking again in 60s..."
+                sleep 60
+                ;;
+            esac
+          done
