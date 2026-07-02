@@ -80,9 +80,46 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 ## Design documents
 
-[Conversation compaction](https://lightspeed-core.github.io/lightspeed-stack/design/conversation-compaction/conversation-compaction.html)
+### Agent skills
 
-[Supporting backport changes for releases](https://lightspeed-core.github.io/lightspeed-stack/design/supporting-backport-changes-for-releases/supporting-backport-changes-for-releases.html)
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/agent-skills/agent-skills-spike.html)
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/agent-skills/agent-skills.html)
+
+### Automatic conversation expiration
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/automatic-conversation-expiration/automatic-conversation-expiration.html)
+
+### BYOK PDF support
+
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/byok-pdf/byok-pdf-spike.html)
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/byok-pdf/byok-pdf.html)
+
+### Conversation compaction
+
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/conversation-compaction/conversation-compaction-spike.html)
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/conversation-compaction/conversation-compaction.html)
+
+### Supporting backport changes for releases
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/supporting-backport-changes-for-releases/supporting-backport-changes-for-releases.html)
+
+### Human-in-the-loop (HIL)
+
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/human-in-the-loop/human-in-the-loop-spike.html)
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/human-in-the-loop/human-in-the-loop.html)
+
+### Llama Stack config merge (unified `lightspeed-stack.yaml`)
+
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/llama-stack-config-merge/llama-stack-config-merge-spike.html)
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/llama-stack-config-merge/llama-stack-config-merge.html)
+
+### Low overhead deployment for server mode
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/low-overhead-deployment-for-server-mode/low-overhead-deployment-for-server-mode.html)
+
+### OpenTelemetry tracing in Lightspeed Core
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/observability-opentelemetry/observability-opentelemetry.html)
 
 ## Testing
 
