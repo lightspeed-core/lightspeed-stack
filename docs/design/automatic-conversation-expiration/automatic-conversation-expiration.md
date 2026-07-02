@@ -210,6 +210,230 @@ Runner will regularly perform the following operations in a loop:
 ### Pros
 ### Cons
 
+## Configuration options
+
+## Performance impact
+
+## Requirements
+
+# Architecture
+
+## Trigger mechanism
+
+## Existing storage / data model
+
+```sql
+CREATE TABLE user_conversation (
+            id VARCHAR NOT NULL, 
+            user_id VARCHAR NOT NULL, 
+            last_used_model VARCHAR NOT NULL, 
+            last_used_provider VARCHAR NOT NULL, 
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+            last_message_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+            last_response_id VARCHAR, 
+            message_count INTEGER NOT NULL, 
+            topic_summary VARCHAR NOT NULL, 
+            PRIMARY KEY (id)
+);
+CREATE INDEX ix_user_conversation_user_id ON user_conversation (user_id);
+```
+
+```sql
+CREATE TABLE user_conversation (
+            id VARCHAR NOT NULL, 
+            user_id VARCHAR NOT NULL, 
+            last_used_model VARCHAR NOT NULL, 
+            last_used_provider VARCHAR NOT NULL, 
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+            last_message_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+            last_response_id VARCHAR, 
+            message_count INTEGER NOT NULL, 
+            topic_summary VARCHAR NOT NULL, 
+            PRIMARY KEY (id)
+);
+CREATE INDEX ix_user_conversation_user_id ON user_conversation (user_id);
+```
+
+```sql
+CREATE TABLE user_turn (
+            conversation_id VARCHAR NOT NULL, 
+            turn_number INTEGER NOT NULL, 
+            started_at DATETIME NOT NULL, 
+            completed_at DATETIME NOT NULL, 
+            provider VARCHAR NOT NULL, 
+            model VARCHAR NOT NULL, 
+            response_id VARCHAR, 
+            PRIMARY KEY (conversation_id, turn_number), 
+            FOREIGN KEY(conversation_id) REFERENCES user_conversation (id) ON DELETE CASCADE
+);
+CREATE INDEX ix_user_turn_response_id ON user_turn (response_id);
+```
+
+```sql
+CREATE TABLE cache (
+            user_id              text NOT NULL,
+            conversation_id      text NOT NULL,
+            created_at           int NOT NULL,
+            started_at           text,
+            completed_at         text,
+            query                text,
+            response             text,
+            provider             text,
+            model                text,
+            referenced_documents text,
+            tool_calls           text,
+            tool_results         text,
+            PRIMARY KEY(user_id, conversation_id, created_at)
+        );
+
+CREATE INDEX timestamps
+            ON cache (created_at)
+        ;
+```
+
+```sql
+CREATE TABLE conversation_summaries (
+            user_id                 text NOT NULL,
+            conversation_id         text NOT NULL,
+            created_at              text NOT NULL,
+            summarized_through_turn int  NOT NULL,
+            token_count             int  NOT NULL,
+            model_used              text NOT NULL,
+            summary_text            text NOT NULL,
+            PRIMARY KEY(user_id, conversation_id, created_at)
+        );
+```
+
+```sql
+CREATE TABLE conversations (
+            user_id                text NOT NULL,
+            conversation_id        text NOT NULL,
+            topic_summary          text,
+            last_message_timestamp int NOT NULL,
+            PRIMARY KEY(user_id, conversation_id)
+        );
+```
+
+## Storage / data model changes
+
+## Alternative designs considered
+
+# Acceptance criteria
+
+## Configurable idle TTL enforcement (core)
+
+- **Given** a tenant has an idle TTL configured for conversations
+- **When** a conversation’s idle time (time since last activity) exceeds the configured TTL
+- **Then** the system automatically deletes the conversation from every applicable persistence layer
+- **And** the conversation is no longer retrievable via the public/API read paths.
+
+## Active session usability preserved
+
+- **Given** a conversation is within the configured idle TTL window
+- **When** the user sends a message (or otherwise triggers defined “activity”)
+- **Then** the system updates the conversation’s last activity timestamp
+- **And** the conversation is not deleted while activity continues before TTL expiry.
+
+## Predictable compliance behavior for high-security tenants
+
+- **Given** a high-security tenant defines a retention policy as “no conversation data older than X idle time”
+- **When** the tenant’s TTL configuration is set to match X
+- **Then** the system deletes conversations using that TTL
+- **And** deletion events include audit metadata that enables deterministic review of why and when deletion occurred.
+
+## Automated deletion across multiple persistence layers
+
+- **Given** a conversation is stored in multiple configured persistence layers
+- **When** idle TTL expiration triggers deletion
+- **Then** deletion propagates to all those layers
+- **And** no layer continues to serve or return the conversation after the deletion completes (per API/read guarantees).
+
+## Stale conversation cleanup during low traffic
+
+- **Given** conversations exist that are past their idle TTL
+- **When** the system’s background cleanup/sweep runs
+- **Then** all expired conversations are deleted without requiring user-initiated API deletion.
+
+## Idempotent handling of concurrent activity
+
+- **Given** a conversation is at/near the TTL expiration threshold
+- **When** a user sends new activity at roughly the same time as a scheduled deletion job executes
+- **Then** the system must not delete a conversation that has received valid new activity within the intended TTL semantics
+- **And** deletion is idempotent (repeated delete attempts do not corrupt state or re-create data).
+
+## Tenant-specific retention profiles
+
+- **Given** multiple tenants have different TTL configurations
+- **When** conversations are evaluated for expiration
+- **Then** each conversation expires according to its tenant’s TTL
+- **And** deletion workflows cannot delete or affect data from other tenants.
+
+## Programmatic manual deletion still supported
+
+- **Given** a customer calls the REST delete conversation endpoint for a conversation
+- **When** the delete request is processed
+- **Then** the conversation is removed from all applicable persistence layers according to manual deletion semantics
+- **And** any later idle TTL cleanup run does not fail due to already-deleted state
+- **And** no subsequent job reintroduces the deleted conversation.
+
+## Deletion when users stop mid-session
+
+- **Given** a user stops interacting with a conversation and no manual deletion is performed
+- **When** the conversation remains idle beyond TTL
+- **Then** the system deletes the conversation automatically
+- **And** subsequent attempts to continue the conversation according to the product contract do not return the expired conversation data.
+
+## Bulk/periodic expiration windows
+
+- **Given** TTL-based deletion is performed by periodic sweeps running every N minutes
+- **When** a conversation exceeds TTL by more than the sweep window timing
+- **Then** the conversation is deleted within the system’s defined bounded delay after TTL expiry
+- **And** deletion occurs in a way that prevents partial cleanup from leaving readable remnants.
+
+## Retention policy changes take effect predictably
+
+- **Given** an admin updates the tenant’s idle TTL from one value to another
+- **When** the system next evaluates conversations under the updated policy (according to the documented rule)
+- **Then** existing conversations expire according to the defined “next evaluation” or “recompute deadlines” behavior
+- **And** the system never extends retention beyond what the documented policy change semantics imply.
+
+## Audit/logging for compliance evidence
+
+- **Given** idle TTL deletion (and/or manual deletion) occurs for a conversation
+- **When** the deletion event is recorded
+- **Then** the audit record includes at minimum:
+  - conversation identifier
+  - tenant identifier
+  - deletion timestamp
+  - deletion reason (idle TTL expired vs manual)
+  - the last-activity timestamp (or TTL basis) used for the decision
+- **And** audit records are available for authorized audit/compliance retrieval per the system’s access rules.
+
+# Unknowns
+
+# References
+
+# JIRA stories
+
+## Epics created
+
+| Epic       | Description                                             | Link                                           |
+|------------|---------------------------------------------------------|------------------------------------------------|
+| LCORE-2870 | Refactor runners code to be more modular                | https://redhat.atlassian.net/browse/LCORE-2870 |
+| LCORE-2864 | Expose configured conversation expiration duration      | https://redhat.atlassian.net/browse/LCORE-2864 |
+| LCORE-2865 | Update conversation activity tracking for expiration    | https://redhat.atlassian.net/browse/LCORE-2865 |
+| LCORE-2866 | Expose remaining time until conversation expiration     | https://redhat.atlassian.net/browse/LCORE-2866 |
+| LCORE-2867 | Add configurable conversation inactivity timeout        | https://redhat.atlassian.net/browse/LCORE-2867 |
+| LCORE-2868 | Implement automatic deletion of expired conversations   | https://redhat.atlassian.net/browse/LCORE-2868 |
+| LCORE-2869 | Add tests and documentation for conversation expiration | https://redhat.atlassian.net/browse/LCORE-2869 |
+
+## Stories created
+
+| Epic       | Story      | Description                                                                        | Link                                           |
+|------------|------------|------------------------------------------------------------------------------------|------------------------------------------------|
+| LCORE-0000 | LCORE-0000 |                                                                                    | https://redhat.atlassian.net/browse/LCORE-0000 |
+
+
 # Changelog
 
 TODO: Record significant changes after initial creation.
