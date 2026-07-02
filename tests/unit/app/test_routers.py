@@ -1,9 +1,12 @@
 """Unit tests for routers.py."""
 
 from collections.abc import Callable, Sequence
+from enum import Enum
 from typing import Any, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, routing
+from fastapi.params import Depends
+from starlette.routing import BaseRoute
 
 from app.endpoints import (
     a2a,
@@ -54,14 +57,16 @@ class MockFastAPI(FastAPI):
         router: Any,
         *,
         prefix: str = "",
-        tags: Optional[list] = None,
-        dependencies: Optional[Sequence] = None,
-        responses: Optional[dict] = None,  # pylint: disable=redefined-outer-name
+        tags: Optional[list[str | Enum]] = None,
+        dependencies: Optional[Sequence[Depends]] = None,
+        responses: Optional[  # pylint: disable=redefined-outer-name
+            dict[int | str, dict[str, Any]]
+        ] = None,
         deprecated: Optional[bool] = None,
         include_in_schema: Optional[bool] = None,
         default_response_class: Optional[Any] = None,
-        callbacks: Optional[list] = None,
-        generate_unique_id_function: Optional[Callable] = None,
+        callbacks: Optional[list[BaseRoute]] = None,
+        generate_unique_id_function: Optional[Callable[[routing.APIRoute], str]] = None,
     ) -> None:
         """Register new router.
 
