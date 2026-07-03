@@ -50,7 +50,7 @@ from llama_stack_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
 )
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
-from pydantic import AnyUrl
+from pydantic import AnyUrl, BaseModel
 from pytest_mock import MockerFixture
 
 import constants
@@ -254,7 +254,7 @@ def test_extract_text_with_real_world_structure() -> None:
     output_item = make_output_item(
         item_type="message", role="assistant", content=content
     )
-    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
+    result = extract_text_from_response_item(output_item)
 
     expected = "I can help you with that. Here's the information you requested: The answer is 42."
     assert result == expected
@@ -275,7 +275,7 @@ def test_extract_text_preserves_order() -> None:
     output_item = make_output_item(
         item_type="message", role="assistant", content=content
     )
-    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
+    result = extract_text_from_response_item(output_item)
 
     assert result == "First Second Third Fourth"
 
@@ -293,7 +293,7 @@ def test_extract_text_with_refusal_content() -> None:
     output_item = make_output_item(
         item_type="message", role="assistant", content=content
     )
-    result = extract_text_from_response_item(output_item)  # type: ignore[arg-type]
+    result = extract_text_from_response_item(output_item)
 
     assert result == "I understand your request, but I cannot help with that."
 
@@ -316,7 +316,7 @@ class TestExtractTextFromResponseItems:
         output_item = make_output_item(
             item_type="message", role="assistant", content="Hello world"
         )
-        result = extract_text_from_response_items([output_item])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([output_item])
         assert result == "Hello world"
 
     def test_extract_text_from_response_items_multiple_items(self) -> None:
@@ -327,7 +327,7 @@ class TestExtractTextFromResponseItems:
         item2 = make_output_item(
             item_type="message", role="assistant", content="Second message"
         )
-        result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([item1, item2])
         assert result == "First message Second message"
 
     def test_extract_text_from_response_items_filters_non_messages(self) -> None:
@@ -338,7 +338,7 @@ class TestExtractTextFromResponseItems:
         item2 = make_output_item(
             item_type="function_call", role="assistant", content="Should be ignored"
         )
-        result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([item1, item2])
         assert result == "Valid message"
 
     def test_extract_text_from_response_items_includes_all_roles(self) -> None:
@@ -349,7 +349,7 @@ class TestExtractTextFromResponseItems:
         item2 = make_output_item(
             item_type="message", role="user", content="User message"
         )
-        result = extract_text_from_response_items([item1, item2])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([item1, item2])
         # All message items are included (generalizes for input and output)
         assert result == "Assistant message User message"
 
@@ -362,7 +362,7 @@ class TestExtractTextFromResponseItems:
         output_item = make_output_item(
             item_type="message", role="assistant", content=content
         )
-        result = extract_text_from_response_items([output_item])  # type: ignore[arg-type]
+        result = extract_text_from_response_items([output_item])
         assert result == "Part 1 Part 2"
 
 
@@ -3311,10 +3311,10 @@ class TestMergeTools:
 
     def test_merge_no_conflicts(self) -> None:
         """Test merging client and server tools without conflicts."""
-        client_tools: list = [
+        client_tools: list[BaseModel] = [
             InputToolMCP(server_label="client-mcp", server_url="http://client"),
         ]
-        server_tools: list = [
+        server_tools: list[BaseModel] = [
             InputToolMCP(server_label="server-mcp", server_url="http://server"),
             InputToolFileSearch(type="file_search", vector_store_ids=["vs1"]),
         ]
@@ -3327,10 +3327,10 @@ class TestMergeTools:
 
     def test_merge_mcp_label_conflict_raises_409(self) -> None:
         """Test that conflicting MCP server_labels raise a 409 error."""
-        client_tools: list = [
+        client_tools: list[BaseModel] = [
             InputToolMCP(server_label="shared-label", server_url="http://client"),
         ]
-        server_tools: list = [
+        server_tools: list[BaseModel] = [
             InputToolMCP(server_label="shared-label", server_url="http://server"),
         ]
         with pytest.raises(HTTPException) as exc_info:
@@ -3342,10 +3342,10 @@ class TestMergeTools:
 
     def test_merge_file_search_conflict_raises_409(self) -> None:
         """Test that duplicate file_search tools raise a 409 error."""
-        client_tools: list = [
+        client_tools: list[BaseModel] = [
             InputToolFileSearch(type="file_search", vector_store_ids=["client-vs"]),
         ]
-        server_tools: list = [
+        server_tools: list[BaseModel] = [
             InputToolFileSearch(type="file_search", vector_store_ids=["server-vs"]),
         ]
         with pytest.raises(HTTPException) as exc_info:
@@ -3357,7 +3357,7 @@ class TestMergeTools:
 
     def test_merge_empty_server_tools(self) -> None:
         """Test merging when server has no tools."""
-        client_tools: list = [
+        client_tools: list[BaseModel] = [
             InputToolMCP(server_label="client-mcp", server_url="http://client"),
         ]
         result = _merge_tools(client_tools, [])
@@ -3366,7 +3366,7 @@ class TestMergeTools:
 
     def test_merge_empty_client_tools(self) -> None:
         """Test merging when client has no tools."""
-        server_tools: list = [
+        server_tools: list[BaseModel] = [
             InputToolMCP(server_label="server-mcp", server_url="http://server"),
         ]
         result = _merge_tools([], server_tools)
@@ -3377,11 +3377,11 @@ class TestMergeTools:
         self,
     ) -> None:
         """Test client MCP with different label does not conflict with server MCP."""
-        client_tools: list = [
+        client_tools: list[BaseModel] = [
             InputToolMCP(server_label="client-a", server_url="http://a"),
             InputToolMCP(server_label="client-b", server_url="http://b"),
         ]
-        server_tools: list = [
+        server_tools: list[BaseModel] = [
             InputToolMCP(server_label="server-c", server_url="http://c"),
         ]
         result = _merge_tools(client_tools, server_tools)
