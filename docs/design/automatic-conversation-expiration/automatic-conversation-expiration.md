@@ -37,6 +37,35 @@
     * [Solution S2](#solution-s2)
         * [Pros](#pros-1)
         * [Cons](#cons-1)
+    * [Solution S3](#solution-s3)
+        * [Pros](#pros-2)
+        * [Cons](#cons-2)
+    * [Configuration options](#configuration-options)
+    * [Performance impact](#performance-impact)
+    * [Requirements](#requirements)
+* [Architecture](#architecture)
+    * [Trigger mechanism](#trigger-mechanism)
+    * [Existing storage / data model](#existing-storage--data-model)
+    * [Storage / data model changes](#storage--data-model-changes)
+    * [Alternative designs considered](#alternative-designs-considered)
+* [Acceptance criteria](#acceptance-criteria)
+    * [Configurable idle TTL enforcement (core)](#configurable-idle-ttl-enforcement-core)
+    * [Active session usability preserved](#active-session-usability-preserved-1)
+    * [Predictable compliance behavior for high-security tenants](#predictable-compliance-behavior-for-high-security-tenants-1)
+    * [Automated deletion across multiple persistence layers](#automated-deletion-across-multiple-persistence-layers-1)
+    * [Stale conversation cleanup during low traffic](#stale-conversation-cleanup-during-low-traffic-1)
+    * [Idempotent handling of concurrent activity](#idempotent-handling-of-concurrent-activity-1)
+    * [Tenant-specific retention profiles](#tenant-specific-retention-profiles-1)
+    * [Programmatic manual deletion still supported](#programmatic-manual-deletion-still-supported-1)
+    * [Deletion when users stop mid-session](#deletion-when-users-stop-mid-session-1)
+    * [Bulk/periodic expiration windows](#bulkperiodic-expiration-windows-1)
+    * [Retention policy changes take effect predictably](#retention-policy-changes-take-effect-predictably-1)
+    * [Audit/logging for compliance evidence](#auditlogging-for-compliance-evidence-1)
+* [Unknowns](#unknowns)
+* [References](#references)
+* [JIRA stories](#jira-stories)
+    * [Epics created](#epics-created)
+    * [Stories created](#stories-created)
 * [Changelog](#changelog)
 
 <!-- vim-markdown-toc -->
@@ -180,39 +209,137 @@ the requirements, boundaries, and deletion semantics are finalized.
 
 ## Basic idea
 
-Lightspeed Core uses mechanism based on so called _runners_. Runners implementation are located under `src/runners`. Currently, two runners are implemented:
+Lightspeed Core is built around a mechanism called “runners.” Runners are
+long-running background components responsible for handling auxiliary system
+tasks (for example, scheduled work or continuous services). The implementation
+of each runner lives under `src/runners`.
 
-1. `uvicorn`
-1. `quota_scheduler`
+At the moment, Lightspeed Core includes two runner implementations:
 
-These runners are started from the main package: `lightspeed_stack.py`
+1. `uvicorn` (serves the application/API workload)
+1. `quota_scheduler` (executes quota-related scheduled logic, like prolonging quota etc.)
 
-In order to solve the old conversation cleanup mechanism We can implement a new runner called _conversation_cleaner_ that will run in it's own thread and that will need to be configured. This runner will perform the cleanup.
+Both of these runners are started by the main entrypoint module,
+`src/lightspeed_stack.py`, which acts as a very primitive orchestrator for
+bringing up the background processes.
+
+To address limitations of the existing conversation cleanup approach, we can
+introduce a new runner named `conversation_cleaner`. This runner would run
+continuously (in its own thread or worker context) and be responsible for
+enforcing the updated conversation retention rules, such as automatically
+removing stale conversation data once it exceeds the configured idle TTL.
+
+The `conversation_cleaner` runner should be implemented under `src/runners` and
+integrated into the startup sequence in `lightspeed_stack.py`. Because cleanup
+behavior may vary by deployment and must be controllable for different
+environments, the runner will be configurable—both in terms of whether it is
+enabled and in terms of its cleanup configuration (e.g., TTL/idle thresholds,
+cleanup frequency, and any batch/limit parameters).
 
 ## Conversation cleaner variants
 
+The new proposed runner `conversation_cleaner` can be implemented using several
+different methodologies, each representing an alternative solution pattern for
+how the runner schedules work, selects candidates, and performs cleanup. These
+options differ mainly in how they handle workload selection (batch sweeps vs
+queue-driven processing), and concurrency/safety (single-instance simplicity vs
+multi-instance coordination). The following sections describe these solutions
+and how the runner could be structured for each approach.
+
 ## Solution S1
 
-Runner will regularly perform the following operations in a loop:
+Runner performs operations in a regular loop (periodic runner)
+The runner repeatedly executes a fixed set of operations inside an infinite loop (or until shutdown is requested).
 
-1. select all conversations older than given duration from database tables
+1. select all conversations older than given duration from database tables, sorted by timestamp of last update
 1. call the cleaning deletion code, one conversation by one
 
 ### Pros
+
+1. No complicated transactions are needed
+1. If only one conversation is deleted (instead of batch delete) this operation won't interfere with other DB operations
+1. One (or more) deletion failures can be skipped
+
 ### Cons
+
+1. More DB operations might cause (theoretical) problems with DB throughput
 
 ## Solution S2
 
-Runner will regularly perform the following operations in a loop:
+Runner performs operations in a regular loop (periodic runner)
+The runner repeatedly executes a fixed set of operations inside an infinite loop (or until shutdown is requested).
 
 1. select and delete all conversations older than given duration from database tables
 
 ### Pros
+
+1. One transaction is easier to develop
+
 ### Cons
+
+1. DB will be slower for other operations in "cleanup" time
+
+## Solution S3
+
+Two runners are needed: one for identify older conversations, second to cleanup
+such conversations. Runners will communicate via message queue. This queue won't
+have to be persisted - it will be recreated after LCore restart.
+
+### Pros
+
+1. Cleanest implementation
+1. Responsibilities are segregated
+
+### Cons
+
+1. A bit more complicated overall architecture
 
 ## Configuration options
 
+| Field                       | Type    | Description                                                                                                                                                                  |
+|-----------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| minimal_retention_time      | string  | minimal retention time for conversations, specified in human-readable form                                                                                                   |
+| period                      | integer | old conversation cleanup scheduler period specified in seconds                                                                                                               |
+| database_reconnection_count | integer | Database reconnection count on startup. When database with conversations is not available on startup, the service tries to reconnect N times with specified delay.           |
+| database_reconnection_delay | integer | Database reconnection delay specified in seconds. When database with conversations is not available on startup, the service tries to reconnect N times with specified delay. |
+
+"2 days 5 hours"
+
 ## Performance impact
+
+The older conversation cleanup mechanism introduced via this new feature
+request may negatively impact overall system performance, because it likely
+triggers a larger number of database operations (for example, scanning for
+expired conversations and issuing deletes/updates more frequently or at
+inopportune times). This can increase query load, contention, and I/O
+utilization, which may reduce throughput or raise latency for regular request
+traffic.
+
+To minimize this performance impact, the persistence layer should be optimized
+with proper indexes that support the cleanup queries end-to-end. In particular,
+database indexes should be added to efficiently identify conversations that are
+eligible for deletion (e.g., by tenant/account scope and by idle/last-activity
+timestamp, and—where applicable—by status flags indicating “pending cleanup”).
+With the right indexes in place, the cleanup workload can avoid full table
+scans and reduce the number of rows the system needs to examine and touch.
+
+Additionally, the new cleanup runner should run in a separated execution
+context (a dedicated async I/O thread/worker) so it does not block or compete
+with latency-sensitive operations such as request handling and interactive
+conversation flows. This separation helps ensure that cleanup work is scheduled
+and executed in a controlled manner, with appropriate batching and backoff,
+rather than interfering with the main application’s event loop.
+
+We expect the performance degradation introduced by enabling and running the
+new cleanup mechanism to be limited to no more than a 1% drop under typical
+production load.
+
+Finally, performance testing is required to validate that the change meets the
+expected impact target. We should run controlled load tests and/or canary
+benchmarks with the cleanup runner enabled, compare key metrics (p95/p99
+latency, error rates, throughput, DB CPU/IO, and lock wait times) against a
+baseline without the new mechanism, and ensure the overall performance drop
+does not exceed 1% under representative production-like workloads.
 
 ## Requirements
 
@@ -429,9 +556,22 @@ CREATE TABLE conversations (
 
 ## Stories created
 
-| Epic       | Story      | Description                                                                        | Link                                           |
-|------------|------------|------------------------------------------------------------------------------------|------------------------------------------------|
-| LCORE-0000 | LCORE-0000 |                                                                                    | https://redhat.atlassian.net/browse/LCORE-0000 |
+| Epic       | Story      | Description                                                                          | Link                                           |
+|------------|------------|--------------------------------------------------------------------------------------|------------------------------------------------|
+| LCORE-2870 | LCORE-2884 | Document current runners responsibilities and propose target module breakdown        | https://redhat.atlassian.net/browse/LCORE-2884 |
+| LCORE-2870 | LCORE-2885 | Extract shared utilities and define internal interfaces                              | https://redhat.atlassian.net/browse/LCORE-2885 |
+| LCORE-2870 | LCORE-2886 | Move core runner logic into separate modules (when the current module is not enough) | https://redhat.atlassian.net/browse/LCORE-2886 |
+| LCORE-2870 | LCORE-2887 | Fix regressions, improve tests, and address refactor‑introduced tech debt.           | https://redhat.atlassian.net/browse/LCORE-2887 |
+| LCORE-2870 | LCORE-2888 | Final review, documentation update, and sign‑off on acceptance criteria.             | https://redhat.atlassian.net/browse/LCORE-2888 |
+| LCORE-2867 | LCORE-2889 | Update tests for configurable expiration behavior                                    | https://redhat.atlassian.net/browse/LCORE-2889 |
+| LCORE-2867 | LCORE-2890 | Document the new conversation inactivity timeout configuration and behavior          | https://redhat.atlassian.net/browse/LCORE-2890 |
+| LCORE-2867 | LCORE-2891 | Add instance-level conversation inactivity timeout configuration                     | https://redhat.atlassian.net/browse/LCORE-2891 |
+| LCORE-2867 | LCORE-2892 | Expose the configured conversation expiration timeout via API                        | https://redhat.atlassian.net/browse/LCORE-2892 |
+| LCORE-2867 | LCORE-2893 | Expose remaining conversation time via API                                           | https://redhat.atlassian.net/browse/LCORE-2893 |
+| LCORE-2868 | LCORE-2894 | Document automatic conversation expiration behavior and user-facing semantics        | https://redhat.atlassian.net/browse/LCORE-2894 |
+| LCORE-2868 | LCORE-2895 | Add tests for automatic conversation expiration behavior                             | https://redhat.atlassian.net/browse/LCORE-2895 |
+| LCORE-2868 | LCORE-2896 | Ensure conversation deletion is propagated across all persistence layers             | https://redhat.atlassian.net/browse/LCORE-2896 |
+| LCORE-2868 | LCORE-2897 | Implement automatic expiration detection and cleanup for idle conversations          | https://redhat.atlassian.net/browse/LCORE-2897 |
 
 
 # Changelog
