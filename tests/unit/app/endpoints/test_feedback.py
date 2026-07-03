@@ -7,7 +7,7 @@ import json
 import threading
 from collections.abc import Generator
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, status
@@ -401,7 +401,7 @@ def test_update_feedback_status_concurrent(mocker: MockerFixture) -> None:
     auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
     thread_args = [(0, False), (1, True), (2, False)]
     results: list[Any] = [None] * len(thread_args)
-    errors: list[Exception | None] = [None] * len(thread_args)
+    errors: list[Optional[Exception]] = [None] * len(thread_args)
     barrier = threading.Barrier(len(thread_args) + 1)
 
     def worker(index: int, desired_status: bool) -> None:

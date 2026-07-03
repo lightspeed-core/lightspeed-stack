@@ -44,7 +44,7 @@ def reset_tls_prow_state() -> None:
     clear_llama_config_backup()
 
 
-def is_tls_feature_file(feature_filename: str | None) -> bool:
+def is_tls_feature_file(feature_filename: Optional[str]) -> bool:
     """Return True for split TLS feature files (``tls-ca.feature``, etc.)."""
     if not feature_filename:
         return False
@@ -52,7 +52,7 @@ def is_tls_feature_file(feature_filename: str | None) -> bool:
     return basename.startswith("tls-") and basename.endswith(".feature")
 
 
-def prepare_tls_feature_entry_on_prow(feature_filename: str | None = None) -> None:
+def prepare_tls_feature_entry_on_prow(feature_filename: Optional[str] = None) -> None:
     """Baseline cluster state at the start of each tls-*.feature file.
 
     Mock TLS stays up for the whole tls suite (tls-ca → tls-mtls → tls-tlsv13).

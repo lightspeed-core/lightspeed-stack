@@ -176,8 +176,8 @@ def create_agent_run_result(  # pylint: disable=too-many-arguments,too-many-posi
     response_id: str = "response-123",
     input_tokens: int = 10,
     output_tokens: int = 5,
-    model_response: ModelResponse | None = None,
-    new_messages: list[ModelMessage] | None = None,
+    model_response: Optional[ModelResponse] = None,
+    new_messages: Optional[list[ModelMessage]] = None,
 ) -> AgentRunResult[str]:
     """Create a mock AgentRunResult wired for retrieve_agent_response.
 
