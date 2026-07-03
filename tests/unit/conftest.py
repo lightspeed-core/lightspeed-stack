@@ -27,7 +27,7 @@ type AgentFixtures = Generator[
 
 
 @pytest.fixture(autouse=True)
-def reset_logging_state():
+def reset_logging_state() -> Generator[None, None, None]:
     """Reset logging state before and after each test.
 
     Module-level calls to setup_logging() (such as from importing lightspeed_stack)
