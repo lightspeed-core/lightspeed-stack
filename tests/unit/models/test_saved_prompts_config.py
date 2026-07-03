@@ -99,13 +99,17 @@ class TestSavedPromptsConfigurationUpperBoundValidation:
     def test_max_display_name_length_exceeds_upper_bound(self) -> None:
         """Value above DB column limit raises ValidationError."""
         with pytest.raises(ValidationError, match="max_display_name_length"):
-            overloaded_value = constants.SAVED_PROMPTS_MAX_DISPLAY_NAME_LENGTH_UPPER_BOUND + 1
+            overloaded_value = (
+                constants.SAVED_PROMPTS_MAX_DISPLAY_NAME_LENGTH_UPPER_BOUND + 1
+            )
             SavedPromptsConfiguration(max_display_name_length=overloaded_value)
 
     def test_max_content_length_exceeds_upper_bound(self) -> None:
         """Value above upper bound raises ValidationError."""
         with pytest.raises(ValidationError, match="max_content_length"):
-            overloaded_value = constants.SAVED_PROMPTS_MAX_CONTENT_LENGTH_UPPER_BOUND + 1
+            overloaded_value = (
+                constants.SAVED_PROMPTS_MAX_CONTENT_LENGTH_UPPER_BOUND + 1
+            )
             SavedPromptsConfiguration(max_content_length=overloaded_value)
 
 
