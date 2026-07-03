@@ -34,6 +34,12 @@ _DEFAULT_APPROVALS_DUMP: dict[str, int] = {
     "approval_retention_days": 30,
 }
 
+_DEFAULT_SAVED_PROMPTS_DUMP: dict[str, int] = {
+    "max_prompts_per_user": constants.SAVED_PROMPTS_DEFAULT_MAX_PER_USER,
+    "max_display_name_length": constants.SAVED_PROMPTS_DEFAULT_MAX_DISPLAY_NAME_LENGTH,
+    "max_content_length": constants.SAVED_PROMPTS_DEFAULT_MAX_CONTENT_LENGTH,
+}
+
 _MCP_SERVER_DUMP_DEFAULTS: dict[str, Any] = {
     "authorization_headers": {},
     "headers": [],
@@ -223,6 +229,7 @@ def test_dump_configuration_minimal_cfg(tmp_path: Path) -> None:
                 "enabled": False,
                 "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
             },
+            "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
         }
 
@@ -445,6 +452,7 @@ def test_dump_configuration_valid_values(tmp_path: Path) -> None:
                 "enabled": False,
                 "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
             },
+            "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
         }
 
@@ -818,6 +826,7 @@ def test_dump_configuration_with_quota_limiters(tmp_path: Path) -> None:
                 "enabled": False,
                 "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
             },
+            "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
         }
 
@@ -1075,6 +1084,7 @@ def test_dump_configuration_with_quota_limiters_different_values(
                 "enabled": False,
                 "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
             },
+            "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
         }
 
@@ -1312,6 +1322,7 @@ def test_dump_configuration_byok(tmp_path: Path) -> None:
                 "enabled": False,
                 "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
             },
+            "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
         }
 
@@ -1529,6 +1540,7 @@ def test_dump_configuration_pg_namespace(tmp_path: Path) -> None:
                 "enabled": False,
                 "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
             },
+            "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
         }
 
@@ -1906,6 +1918,7 @@ def test_dump_configuration_allow_degraded_mode(tmp_path: Path) -> None:
                 "enabled": False,
                 "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
             },
+            "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
         }
 
@@ -2129,6 +2142,7 @@ def test_dump_configuration_max_retries_settings(tmp_path: Path) -> None:
                 "enabled": False,
                 "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
             },
+            "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
         }
 
@@ -2352,6 +2366,7 @@ def test_dump_configuration_retry_count_settings(tmp_path: Path) -> None:
                 "enabled": False,
                 "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
             },
+            "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
         }
 
@@ -2582,5 +2597,6 @@ def test_dump_configuration_specific_compaction_values(tmp_path: Path) -> None:
                 "enabled": False,
                 "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
             },
+            "saved_prompts": _DEFAULT_SAVED_PROMPTS_DUMP,
             "skills": None,
         }
