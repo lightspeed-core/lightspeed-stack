@@ -2369,7 +2369,7 @@ class RedactionRule(ConfigurationBase):
         title="Replacement",
         description="Replacement string for matched text",
     )
-    case_sensitive: bool | None = Field(
+    case_sensitive: Optional[bool] = Field(
         None,
         title="Case sensitive",
         description=(
