@@ -5,7 +5,7 @@
 
 import asyncio
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 import pytest
 from llama_stack_api.openai_responses import OpenAIResponseMessage
@@ -41,7 +41,7 @@ def _params(input_text: str = "new question") -> ResponsesApiParams:
     )
 
 
-def _inference(window: int | None) -> InferenceConfiguration:
+def _inference(window: Optional[int]) -> InferenceConfiguration:
     windows = {MODEL: window} if window is not None else {}
     return InferenceConfiguration(context_windows=windows)
 

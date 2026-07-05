@@ -1,6 +1,6 @@
 """Unit tests for authentication/trusted_proxy module."""
 
-from typing import cast
+from typing import Optional, cast
 
 import pytest
 from fastapi import HTTPException, Request
@@ -14,7 +14,7 @@ from models.config import TrustedProxyConfiguration, TrustedProxyServiceAccount
 
 def _make_config(
     user_header: str = "X-Forwarded-User",
-    allowed_service_accounts: list[TrustedProxyServiceAccount] | None = None,
+    allowed_service_accounts: Optional[list[TrustedProxyServiceAccount]] = None,
 ) -> TrustedProxyConfiguration:
     """Create a TrustedProxyConfiguration for testing."""
     return TrustedProxyConfiguration(

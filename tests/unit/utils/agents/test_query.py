@@ -1,7 +1,7 @@
 """Unit tests for utils.agents.query module."""
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException
@@ -48,9 +48,9 @@ def make_agent_run_result_fixture(mocker: MockerFixture) -> Callable[..., Any]:
         response_id: str = "response-123",
         input_tokens: int = 10,
         output_tokens: int = 5,
-        finish_reason: FinishReason | None = "stop",
-        model_response: ModelResponse | None = None,
-        new_messages: list[Any] | None = None,
+        finish_reason: Optional[FinishReason] = "stop",
+        model_response: Optional[ModelResponse] = None,
+        new_messages: Optional[list[Any]] = None,
     ) -> Any:
         if model_response is None:
             model_response = ModelResponse(
@@ -80,7 +80,7 @@ def make_responses_params_fixture() -> Callable[..., ResponsesApiParams]:
         *,
         model: str = "provider1/model1",
         input_text: ResponseInput = "What is OpenShift?",
-        conversation: str | None = "conv_123",
+        conversation: Optional[str] = "conv_123",
     ) -> ResponsesApiParams:
         return ResponsesApiParams.model_validate(
             {
