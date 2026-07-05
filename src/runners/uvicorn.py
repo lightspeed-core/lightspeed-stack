@@ -1,6 +1,7 @@
 """Uvicorn runner."""
 
 import logging
+from typing import Optional
 
 import uvicorn
 
@@ -12,7 +13,7 @@ logger = get_logger(__name__)
 
 def start_uvicorn(
     configuration: ServiceConfiguration,
-    log_config: dict | None = None,
+    log_config: Optional[dict] = None,
 ) -> None:
     """Start the Uvicorn server using the provided service configuration.
 
@@ -22,7 +23,7 @@ def start_uvicorn(
             port, workers, and `tls_config` (including `tls_key_path`,
             `tls_certificate_path`, and `tls_key_password`). TLS fields may be None
             and will be forwarded to uvicorn.run as provided.
-        log_config (dict | None): Logging configuration dictionary passed to
+        log_config (Optional[dict]): Logging configuration dictionary passed to
             uvicorn.run. When None, defaults to the output of setup_logging().
     """
     log_level = resolve_log_level()

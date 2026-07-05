@@ -19,7 +19,7 @@ from __future__ import annotations as _annotations
 from collections import defaultdict
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from openai import AsyncStream
 from openai.types import responses
@@ -184,9 +184,9 @@ class LlamaStackResponsesModel(OpenAIResponsesModel):
     async def request(  # pylint: disable=unused-argument
         self,
         messages: list[ModelMessage],
-        model_settings: ModelSettings | None,
+        model_settings: Optional[ModelSettings],
         model_request_parameters: ModelRequestParameters,
-        run_context: RunContext[Any] | None = None,
+        run_context: Optional[RunContext[Any]] = None,
     ) -> Any:
         """Non-streaming request with Llama Stack conversation continuation fix.
 
@@ -204,8 +204,8 @@ class LlamaStackResponsesModel(OpenAIResponsesModel):
     def _prepare_conversation_continuation(
         self,
         messages: list[ModelMessage],
-        model_settings: ModelSettings | None,
-    ) -> tuple[list[ModelMessage], ModelSettings | None]:
+        model_settings: Optional[ModelSettings],
+    ) -> tuple[list[ModelMessage], Optional[ModelSettings]]:
         """Trim messages and disable previous_response_id for conversation continuations.
 
         Llama Stack rejects requests with both ``previous_response_id`` and
@@ -246,9 +246,9 @@ class LlamaStackResponsesModel(OpenAIResponsesModel):
     async def request_stream(  # pylint: disable=unused-argument
         self,
         messages: list[ModelMessage],
-        model_settings: ModelSettings | None,
+        model_settings: Optional[ModelSettings],
         model_request_parameters: ModelRequestParameters,
-        run_context: RunContext[Any] | None = None,
+        run_context: Optional[RunContext[Any]] = None,
     ) -> AsyncIterator[StreamedResponse]:
         """Request a streaming response with Llama Stack compatibility fixes.
 
