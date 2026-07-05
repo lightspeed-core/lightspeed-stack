@@ -5,7 +5,7 @@
 import asyncio
 import json
 from collections.abc import AsyncIterator, Callable
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException
@@ -87,7 +87,7 @@ def make_responses_params_fixture() -> Callable[..., ResponsesApiParams]:
         *,
         model: str = "provider1/model1",
         input_text: str = "What is OpenShift?",
-        conversation: str | None = TEST_CONVERSATION_ID,
+        conversation: Optional[str] = TEST_CONVERSATION_ID,
         omit_conversation: bool = False,
     ) -> ResponsesApiParams:
         return ResponsesApiParams.model_validate(
@@ -137,9 +137,9 @@ def make_generator_context_fixture(
         request_id: str = "223e4567-e89b-12d3-a456-426614174000",
         user_id: str = "user_123",
         query: str = "What is OpenShift?",
-        media_type: str | None = MEDIA_TYPE_JSON,
+        media_type: Optional[str] = MEDIA_TYPE_JSON,
         generate_topic_summary: bool = False,
-        conversation_id_in_request: str | None = TEST_CONVERSATION_ID,
+        conversation_id_in_request: Optional[str] = TEST_CONVERSATION_ID,
         moderation_result: (
             ShieldModerationPassed | ShieldModerationBlocked | None
         ) = None,
@@ -177,8 +177,8 @@ def make_agent_run_result_fixture(mocker: MockerFixture) -> Callable[..., Any]:
         response_id: str = "response-123",
         input_tokens: int = 10,
         output_tokens: int = 5,
-        finish_reason: FinishReason | None = "stop",
-        provider_details: dict[str, Any] | None = None,
+        finish_reason: Optional[FinishReason] = "stop",
+        provider_details: Optional[dict[str, Any]] = None,
     ) -> Any:
         model_response = ModelResponse(
             parts=[TextPart(content=content)],
