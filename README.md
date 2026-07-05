@@ -888,21 +888,40 @@ Usage: make <OPTIONS> ... <TARGETS>
 
 Available targets are:
 
-run                               Run the service locally
+run-stack                         Run lightspeed-stack directly, without building dependent service/s
+run                               Run the service locally with dependent services
+build-llama-stack-image           Build llama-stack container image
+stop-llama-stack-container        Gracefully stop llama-stack container
+remove-llama-stack-container      Remove llama-stack container (saves logs first)
+start-llama-stack-container       Start llama-stack container
+wait-for-llama-stack-health       Wait for llama-stack container to be healthy
+clean-llama-stack                 Remove container and image
+run-llama-stack                   Start Llama Stack with enriched config (for local service mode)
 test-unit                         Run the unit tests
 test-integration                  Run integration tests tests
 test-e2e                          Run end to end tests for the service
-test-e2e-local                    Run end to end tests for the service
+test-e2e-local                    Run end to end tests for the service (no script wrapper)
+test-e2e-tagged                   Run e2e tests with E2E_BEHAVE_TAG_EXPR (default: all @e2e_group_*)
+test-e2e-tagged-local             Same as test-e2e-tagged without script wrapper
 benchmarks                        Run benchmarks
-check-types                       Checks type hints in sources
 check-types-src                   Check type hints in sources only
 check-types-tests                 Check type hints in tests only
+check-types                       Checks type hints in sources and tests
 security-check                    Check the project for security issues
 format                            Format the code into unified format
-schema                            Generate OpenAPI schema file
+schema                            Generate OpenAPI schema file stored in docs subdirectory
 openapi-doc                       Generate OpenAPI documentation
 generate-documentation            Generate documentation
 doc                               Generate documentation for developers
+docs/models                       Generate documentation about models
+docs/models/requests.puml         Generate PlantUML class diagram for requests data models
+docs/models/responses.puml        Generate PlantUML class diagram for responses data models
+docs/models/common.puml           Generate PlantUML class diagram for common data models
+docs/models/database.puml         Generate PlantUML class diagram for database data models
+docs/models/requests.svg          Generate an SVG with requests data models
+docs/models/responses.svg         Generate an SVG with responses data models
+docs/models/common.svg            Generate an SVG with common data models
+docs/models/database.svg          Generate a SVG with database data models
 docs/config.puml                  Generate PlantUML class diagram for configuration
 docs/config.png                   Generate an image with configuration graph
 docs/config.svg                   Generate an SVG with configuration graph
@@ -912,11 +931,13 @@ pylint                            Check source code using Pylint static code ana
 pyright                           Check source code using Pyright static type checker
 docstyle                          Check the docstring style using Docstyle checker
 ruff                              Check source code using Ruff linter
+lint-openapi                      Lint docs/openapi.json (Spectral OAS ruleset; fail on error)
 verify                            Run all linters
 distribution-archives             Generate distribution archives to be uploaded into Python registry
 upload-distribution-archives      Upload distribution archives into Python registry
 konflux-requirements              Generate hermetic requirements.*.txt file for konflux build
 konflux-rpm-lock                  Generate rpm.lock.yaml file for konflux build
+konflux-artifacts-lock            Regenerate artifacts.lock.yaml file for konflux build
 help                              Show this help screen
 ```
 
