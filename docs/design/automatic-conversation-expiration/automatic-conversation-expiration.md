@@ -41,12 +41,25 @@
         * [Pros](#pros-2)
         * [Cons](#cons-2)
     * [Configuration options](#configuration-options)
+        * [Conclusion](#conclusion)
+    * [Audit log](#audit-log)
+        * [Requirements for audit log](#requirements-for-audit-log)
+        * [Security reviews](#security-reviews)
+        * [Operational troubleshooting](#operational-troubleshooting)
+        * [Accountability and governance](#accountability-and-governance)
+        * [Correctness](#correctness)
     * [Performance impact](#performance-impact)
     * [Requirements](#requirements)
 * [Architecture](#architecture)
     * [Trigger mechanism](#trigger-mechanism)
     * [Existing storage / data model](#existing-storage--data-model)
+        * [Table `user_conversation`](#table-user_conversation)
+        * [Table `user_turn`](#table-user_turn)
+        * [Table `cache`](#table-cache)
+        * [Table `conversation_summaries`](#table-conversation_summaries)
+        * [Table `conversations`](#table-conversations)
     * [Storage / data model changes](#storage--data-model-changes)
+    * [Audit log table](#audit-log-table)
     * [Alternative designs considered](#alternative-designs-considered)
 * [Acceptance criteria](#acceptance-criteria)
     * [Configurable idle TTL enforcement (core)](#configurable-idle-ttl-enforcement-core)
@@ -111,7 +124,7 @@ Several use cases have been identified:
 
 ### Configurable idle TTL enforcement
 
-- An admin sets an idle timeout (e.g., 30 minutes) for a tenant.
+- An administrator sets an idle timeout (e.g., 30 minutes) for a tenant.
 - When a conversation is inactive longer than the TTL, the system automatically deletes it from every configured persistence layer.
 
 ### Active session usability preserved
@@ -303,7 +316,73 @@ have to be persisted - it will be recreated after LCore restart.
 | database_reconnection_count | integer | Database reconnection count on startup. When database with conversations is not available on startup, the service tries to reconnect N times with specified delay.           |
 | database_reconnection_delay | integer | Database reconnection delay specified in seconds. When database with conversations is not available on startup, the service tries to reconnect N times with specified delay. |
 
-"2 days 5 hours"
+The `minimal_retention_time` is written in a human readable format, for example:
+
+```
+2 days 5 hours
+600 minutes
+```
+
+etc.
+
+### Conclusion
+
+In conclusion, the runner-based approach was selected because it is consistent
+with the system’s current background job architecture, can be implemented using
+the existing schema with limited or no disruptive changes, and provides
+predictable, policy-aligned deletion behavior. This minimizes integration risk
+and avoids shifting cleanup work into the critical request path, while still
+allowing performance safeguards through indexing and controlled execution.
+
+## Audit log
+
+### Requirements for audit log
+
+Audit logging is needed for conversation deletion because deleting
+user-generated conversational data is a high-impact, policy-driven operation
+that must be transparent, traceable, and verifiable.
+
+### Security reviews
+
+First, audit logs provide evidence for compliance and security reviews. When
+deletion is triggered automatically (for example by an idle TTL/retention
+policy), the audit entry records that the system enforced the configured
+policy, including when the deletion happened, which conversation was affected,
+and the reason code (e.g., “idle TTL expired” vs “manual deletion”). This
+enables auditors to confirm that stale data is not retained longer than
+intended.
+
+### Operational troubleshooting
+
+Second, audit logs support operational troubleshooting. Conversation deletion
+may touch multiple persistence layers (primary storage, caches, indexes,
+derived artifacts). If a later inconsistency occurs—such as a conversation
+still appearing in a UI, search results, or a downstream index—audit records
+help identify the exact cleanup run, the deletion path taken, and the decision
+timing. This makes it far easier to diagnose whether the issue is due to missed
+propagation, temporary failures, or a race condition.
+
+### Accountability and governance
+
+Third, audit logs improve accountability and governance. Manual REST deletions
+should be attributable to a caller or request context, while automatic
+deletions should be attributable to the lifecycle/cleanup subsystem and its
+configuration state. Recording both types of events provides a complete
+narrative of “what happened” and “what triggered it,” which is important for
+incident response and for change control when retention settings are modified.
+
+### Correctness
+
+Fourth, audit logs help ensure correctness in edge cases. TTL-based cleanup can
+be affected by near-boundary timing, concurrent activity, retries, and partial
+failures. Having a durable audit trail makes it possible to confirm that the
+system applied idle semantics correctly (e.g., did not delete a conversation
+that received new activity just before TTL expiry) and that retries did not
+accidentally reprocess or resurrect data.
+
+Overall, audit logging turns deletion from a silent background action into an
+observable, reviewable workflow—critical for both meeting retention
+expectations and maintaining confidence in the system’s behavior over time.
 
 ## Performance impact
 
@@ -343,27 +422,61 @@ does not exceed 1% under representative production-like workloads.
 
 ## Requirements
 
+Different part of source code need to be updated:
+
+1. New runner need to be added
+1. Existing database schema need to be altered
+1. New table for audit log need to be added
+
 # Architecture
 
 ## Trigger mechanism
 
+The runner will trigger the conversation deletion subroutines in a timely
+manner, driven by a configurable `period` option. That period defines how often
+the runner wakes up to evaluate which conversations are eligible for cleanup
+(for example, based on idle time exceeding the configured TTL), and then
+initiates the appropriate deletion workflow.
+
+When the configured period elapses, the runner executes its selection logic,
+processes eligible conversations (typically in controlled batches), and calls
+the underlying deletion subroutines for each candidate. After completing the
+current cycle, the runner waits until the next scheduled period before
+repeating the process. This ensures deletion is performed predictably according
+to configuration, while avoiding unnecessary database load from overly frequent
+scans.
+
+A very similar mechanism is already implemented in the quota handler. The quota
+handler runs as a background component that periodically wakes up based on
+configuration, evaluates what work is due (for example, quota items or
+scheduled quota updates), and then executes the corresponding operations in a
+loop. This includes controlled batching to limit load, and it relies on the
+same overall runner lifecycle pattern used elsewhere in the system (start,
+periodic execution, and graceful shutdown).
+
+Because the quota handler already solves the problem of “run scheduled work
+reliably without impacting request latency,” the conversation cleanup runner
+can reuse the same implementation approach: a configurable schedule/period, a
+loop-driven execution model, and consistent error handling and backoff
+behavior.
+
 ## Existing storage / data model
 
-```sql
-CREATE TABLE user_conversation (
-            id VARCHAR NOT NULL, 
-            user_id VARCHAR NOT NULL, 
-            last_used_model VARCHAR NOT NULL, 
-            last_used_provider VARCHAR NOT NULL, 
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, 
-            last_message_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, 
-            last_response_id VARCHAR, 
-            message_count INTEGER NOT NULL, 
-            topic_summary VARCHAR NOT NULL, 
-            PRIMARY KEY (id)
-);
-CREATE INDEX ix_user_conversation_user_id ON user_conversation (user_id);
-```
+The existing database schema affected by this feature request is described in
+this section. It covers the tables and columns that are currently used to store
+conversation records and track conversation metadata (such as tenant/account
+ownership and timestamps).
+
+This includes any existing structures that the new conversation deletion runner
+will query against to determine which conversations have exceeded the
+configured idle TTL, as well as the structures that will be updated during
+cleanup (for example, status flags, deletion markers, or timestamp fields used
+to control “last used” semantics). It also highlights how the current schema
+supports (or limits) efficient cleanup operations, including which indexes
+exist today and which access patterns may require additional indexing to avoid
+performance regression.
+
+### Table `user_conversation`
 
 ```sql
 CREATE TABLE user_conversation (
@@ -380,6 +493,10 @@ CREATE TABLE user_conversation (
 );
 CREATE INDEX ix_user_conversation_user_id ON user_conversation (user_id);
 ```
+
+This table contains timestamp stored in a column named `last_message_at` that can be used by cleaner.
+
+### Table `user_turn`
 
 ```sql
 CREATE TABLE user_turn (
@@ -395,6 +512,10 @@ CREATE TABLE user_turn (
 );
 CREATE INDEX ix_user_turn_response_id ON user_turn (response_id);
 ```
+
+This table contains timestamp stored in a column named `completed_at` that can be used by cleaner.
+
+### Table `cache`
 
 ```sql
 CREATE TABLE cache (
@@ -418,6 +539,11 @@ CREATE INDEX timestamps
         ;
 ```
 
+This table contains timestamp stored in a column named `completed_at` that can be used by cleaner.
+Additionally we can access this table via compound key `user_id`+`conversation_id`.
+
+### Table `conversation_summaries`
+
 ```sql
 CREATE TABLE conversation_summaries (
             user_id                 text NOT NULL,
@@ -431,6 +557,11 @@ CREATE TABLE conversation_summaries (
         );
 ```
 
+This table contains timestamp stored in a column named `created_at` that can be used by cleaner.
+Additionally we can access this table via compound key `user_id`+`conversation_id`.
+
+### Table `conversations`
+
 ```sql
 CREATE TABLE conversations (
             user_id                text NOT NULL,
@@ -441,9 +572,81 @@ CREATE TABLE conversations (
         );
 ```
 
+This table contains timestamp stored in a column named `last_message_timestamp` that can be used by cleaner.
+We can access this table via compound key `user_id`+`conversation_id`.
+
 ## Storage / data model changes
 
+The existing database schema is sufficient for implementing the requested
+behavior. The current tables already contain the key fields needed to determine
+conversation eligibility for deletion (such as tenant/account ownership and
+conversation activity timestamps), and they already support the queries
+required by the cleanup workflow without requiring disruptive structural
+changes.
+
+In addition, the schema provides a place to record or infer cleanup state
+(e.g., whether a conversation is still active, pending cleanup, or already
+removed). As a result, the runner can select expired conversations efficiently
+and apply the deletion subroutines using the existing persistence structures.
+
+Where needed for performance, the feature can rely on creating or adjusting
+database indexes to optimize the cleanup access patterns. This allows the
+system to avoid full scans and to keep the runtime cost predictable while
+implementing TTL/idle-based deletion using the schema that already exists.
+
+
+## Audit log table
+
+The new table needs to be created (on the fly) for storing audit log information.
+Schema of this table can be following:
+
+```sql
+CREATE TABLE audit_log_conversation_deletion (
+            id                     serial NOT NULL,
+            deletion_time          DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+            user_id                text NOT NULL,
+            conversation_id        text NOT NULL,
+            deletion_source        text NOT NULL,
+            requested_by           text NOT NULL,
+            status                 text NOT NULL,
+            error_code             int,
+            error_message          text,
+            PRIMARY KEY(user_id, conversation_id)
+        );
+```
+
+Deletion source can identify Who/what triggered the deletion:
+
+1. automatic_cleaner
+1. manual_rest_call
+1. admin_action
+
+
 ## Alternative designs considered
+
+No alternate design was considered because the proposed solution aligns with
+the system’s existing architecture and operational model, and it directly meets
+the stated retention requirement with minimal disruption.
+
+In particular, the platform already uses the runner pattern for periodic
+background work (e.g., the quota handler). Implementing conversation cleanup as
+another runner follows the same control flow, configuration approach, and
+lifecycle management, which reduces integration risk and avoids introducing a
+new scheduling/execution paradigm.
+
+Additionally, the existing database schema is sufficient to implement idle
+TTL-based deletion without requiring major structural changes. This further
+lowers the cost and complexity of the implementation and avoids risky data
+migrations or re-modeling.
+
+Finally, alternative designs (such as handling cleanup through request-path
+logic, external batch jobs, or implementing a different scheduling mechanism)
+would either increase runtime overhead on the critical request path or
+introduce operational complexity and harder-to-prove retention guarantees. The
+runner-based async execution model provides predictable timing, controllable
+load (via batching/period configuration), and clear observability—meeting the
+high-security customer expectations with the least change to the current
+system.
 
 # Acceptance criteria
 
@@ -578,8 +781,9 @@ CREATE TABLE conversations (
 
 TODO: Record significant changes after initial creation.
 
-| Date       | Change              | Reason          |
-|------------|---------------------|-----------------|
-| 2026-06-29 | Initial version     | feature request |
-| 2026-07-01 | Problem description | initial spike   |
+| Date       | Change                      | Reason          |
+|------------|-----------------------------|-----------------|
+| 2026-06-29 | Initial version             | feature request |
+| 2026-07-01 | Problem description         | initial spike   |
+| 2026-07-06 | Database schema description | initial spike   |
 
