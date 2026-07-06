@@ -896,6 +896,20 @@
             },
             "title": "High-level inference providers",
             "type": "array"
+          },
+          "max_infer_iters": {
+            "type": "integer",
+            "nullable": true,
+            "default": 10,
+            "description": "Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.",
+            "title": "Default max inference iterations"
+          },
+          "max_tool_calls": {
+            "type": "integer",
+            "nullable": true,
+            "default": 30,
+            "description": "Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.",
+            "title": "Default max tool calls"
           }
         },
         "title": "InferenceConfiguration",
