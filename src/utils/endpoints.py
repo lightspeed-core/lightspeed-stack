@@ -19,7 +19,7 @@ from models.api.responses.error import (
 from models.common.responses.responses_conversation_context import (
     ResponsesConversationContext,
 )
-from models.common.turn_summary import ReferencedDocument, TurnSummary
+from models.common.turn_summary import RAGChunk, ReferencedDocument, TurnSummary
 from models.database.conversations import UserConversation, UserTurn
 from utils.responses import create_new_conversation
 from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
@@ -476,7 +476,7 @@ def _add_additional_metadata_docs(
 
 
 def _process_rag_chunks_for_documents(
-    rag_chunks: list,
+    rag_chunks: list[RAGChunk],
     metadata_map: Optional[dict[str, Any]] = None,
 ) -> list[tuple[Optional[AnyUrl], str]]:
     """
@@ -532,7 +532,7 @@ def _process_rag_chunks_for_documents(
 
 
 def create_referenced_documents(
-    rag_chunks: list,
+    rag_chunks: list[RAGChunk],
     metadata_map: Optional[dict[str, Any]] = None,
     return_dict_format: bool = False,
 ) -> list[ReferencedDocument] | list[dict[str, Optional[str]]]:
@@ -545,9 +545,9 @@ def create_referenced_documents(
 
     Parameters:
     ----------
-        rag_chunks: List of RAG chunks with source information
-        metadata_map: Optional mapping containing metadata about referenced documents
-        return_dict_format: If True, returns list of dicts; if False, returns list of
+    - rag_chunks: List of RAG chunks with source information
+    - metadata_map: Optional mapping containing metadata about referenced documents
+    - return_dict_format: If True, returns list of dicts; if False, returns list of
             ReferencedDocument objects
 
     Returns:
@@ -601,7 +601,7 @@ def create_referenced_documents_with_metadata(
 
 
 def create_referenced_documents_from_chunks(
-    rag_chunks: list,
+    rag_chunks: list[RAGChunk],
 ) -> list[ReferencedDocument]:
     """
     Create referenced documents from RAG chunks for query endpoint.

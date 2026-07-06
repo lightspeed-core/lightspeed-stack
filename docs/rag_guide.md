@@ -63,6 +63,14 @@ Download a local embedding model such as `sentence-transformers/all-mpnet-base-v
 
 ## Configure BYOK Knowledge Sources
 
+> [!WARNING]
+> **Deprecated in 0.7.0**: The top-level `byok_rag`, `rag`, `okp`, and `reranker` sections
+> are deprecated. In 0.7.0, all RAG-related configuration is unified under a single `rag`
+> section: stores move to `rag.byok.stores` (with `backend` instead of `rag_type`),
+> retrieval strategies move to `rag.retrieval.inline`/`rag.retrieval.tool`, OKP moves to
+> `rag.okp`, and the reranker moves to `rag.retrieval.inline.reranker`.
+> See the [v0.7.0 Migration Guide](migrations/v0.7.0.md) for full details and examples.
+
 BYOK knowledge sources are configured in the `byok_rag` section of `lightspeed-stack.yaml`. The required configuration is automatically generated at startup when using `make run`, `make run-stack`, `docker-compose`, or library mode — no manual enrichment is needed.
 
 ### FAISS example
@@ -88,10 +96,6 @@ See the full working [config example](../examples/lightspeed-stack-byok-okp-rag.
 
 This example shows how to configure a remote PostgreSQL database with the [pgvector](https://github.com/pgvector/pgvector) extension for storing embeddings.
 
-> [!NOTE]
-> pgvector is not yet supported via `byok_rag` in `lightspeed-stack.yaml` (see [LCORE-2437](https://redhat.atlassian.net/browse/LCORE-2437)).
-> It must be configured directly in the Llama Stack configuration file.
-
 > You will need to install PostgreSQL with a matching version to pgvector, then log in with `psql` and enable the extension with:
 > ```sql
 > CREATE EXTENSION IF NOT EXISTS vector;
@@ -107,33 +111,22 @@ Each pgvector-backed table follows this schema:
 > The `vector_store_id` (e.g. `rhdocs`) is used to point to the table named `vector_store_rhdocs` in the specified database, which stores the vector embeddings.
 
 ```yaml
-providers:
-  [...]
-  vector_io:
-  - provider_id: pgvector-example
-    provider_type: remote::pgvector
-    config:
-      host: localhost
-      port: 5432
-      db: pgvector_example # PostgreSQL database (psql -d pgvector_example)
-      user: lightspeed # PostgreSQL user
-      password: password123
-      kvstore:
-        type: sqlite
-        db_path: .llama/distributions/pgvector/pgvector_registry.db
-vector_stores:
-- embedding_dimension: 768
-  embedding_model: sentence-transformers/all-mpnet-base-v2
-  provider_id: pgvector-example
-  # A unique ID that becomes the PostgreSQL table name, prefixed with 'vector_store_'.
-  # e.g., 'rhdocs' will create the table 'vector_store_rhdocs'.
-  # If the table was already created, this value must match the ID used at creation.
-  vector_store_id: rhdocs
+byok_rag:
+  - rag_id: pgvector-example
+    rag_type: remote::pgvector
+    embedding_model: sentence-transformers/all-mpnet-base-v2
+    embedding_dimension: 768
+    vector_db_id: rhdocs  # becomes PostgreSQL table 'vector_store_rhdocs'
+    host: ${env.POSTGRES_HOST}
+    port: ${env.POSTGRES_PORT}
+    db: ${env.POSTGRES_DATABASE}
+    user: ${env.POSTGRES_USER}
+    password: ${env.POSTGRES_PASSWORD}
 ```
 
 > [!NOTE]
-> For pgvector, the PostgreSQL connection details (host, port, database, user, password) are configured
-> in the provider configuration. Use environment variables for credentials.
+> Connection fields (`host`, `port`, `db`, `user`, `password`) default to `${env.POSTGRES_*}`
+> environment variable references when omitted. Use environment variables for credentials.
 
 ---
 
@@ -311,6 +304,12 @@ Example:
 
 
 **Chunk volume:**
+
+> [!WARNING]
+> **Deprecated in 0.7.0**: The chunk limit constants below are replaced by configurable
+> fields in `lightspeed-stack.yaml` (`rag.byok.max_chunks`, `rag.okp.max_chunks`,
+> `rag.retrieval.inline.max_chunks`, `rag.retrieval.tool.max_chunks`).
+> See the [v0.7.0 Migration Guide](migrations/v0.7.0.md) for details.
 
 OKP and BYOK scores are not directly comparable (different scoring systems), so
 `score_multiplier` (a BYOK-only concept) does not apply to OKP results. To control

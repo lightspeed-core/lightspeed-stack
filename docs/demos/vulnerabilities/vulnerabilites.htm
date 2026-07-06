@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Vulnerabilities in LCORE + RAG content repositories</title>
+        <meta name="Author" content="Pavel Tisnovsky">
+        <meta name="Generator" content="vim">
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+        <link rel="stylesheet" href="stylesheet.css" />
+    </head>
+    <body>
+        <h1>Vulnerabilities in LCORE + RAG content repositories</h1>
+
+        <p>&bdquo;Do You Control Your Dependencies Or Are They Controlling You?&ldquo;</p>
+
+        <h2>Direct and transitive dependencies</h2>
+
+        <pre>
+        $ uv tree | wc -l
+
+        Resolved 294 packages in 1ms
+        606
+        </pre>
+
+        <h2>Current state</h2>
+
+        <table border="0">
+            <tr><th>LCORE</th><th>RAG Content</th></tr>
+            <tr><td><img src="lcore_state.svg"></td><td><img src="rag_content_state.svg"></td></tr>
+        </table>
+
+        <h2>CVE severities</h2>
+
+        <table border="0">
+            <tr><th>LCORE</th><th>RAG Content</th></tr>
+            <tr><td><img src="lcore_severity.svg"></td><td><img src="rag_content_severity.svg"></td></tr>
+        </table>
+
+        <h2>Days to resolve CVE</h2>
+
+        <table border="0">
+            <tr><th>LCORE</th><th>RAG Content</th></tr>
+            <tr><td>avg: 10 days</td><td>avg: 19.5 days</td></tr>
+            <tr><td><img src="lcore_days.svg"></td><td><img src="rag_content_days.svg"></td></tr>
+        </table>
+
+        <h2>Packages with most CVEs</h2>
+
+        <p>Red color: Llama Stack dependencies</p>
+
+        <table border="0">
+            <tr><th>LCORE</th><th>RAG Content</th></tr>
+            <tr><td><img src="lcore_packages.svg"></td><td><img src="rag_content_packages.svg"></td></tr>
+        </table>
+
+        <h2>New CVEs frequencies over time</h2>
+
+        <table border="0">
+            <tr><th>LCORE</th><th>RAG Content</th></tr>
+            <tr><td><img src="lcore_timeline.svg"></td><td><img src="rag_content_timeline.svg"></td></tr>
+        </table>
+
+    </body>
+</html>
+

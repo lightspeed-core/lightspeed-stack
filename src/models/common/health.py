@@ -7,13 +7,32 @@ from pydantic import BaseModel, Field
 
 
 class HealthStatus(str, Enum):
-    """Health status enum for provider health checks."""
+    """Health status enum for provider and service health checks.
 
+    This enum serves two purposes:
+
+    1. Provider-level health (returned by Llama Stack providers):
+       - OK: Provider is healthy and operational
+       - ERROR: Provider is unhealthy or failed health check
+       - NOT_IMPLEMENTED: Provider does not implement health checks
+       - UNKNOWN: Fallback when provider status cannot be determined
+
+    2. Service-level health (overall LCORE status):
+       - HEALTHY: All systems operational, LLS connected, all providers healthy
+       - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)
+       - UNHEALTHY: Service connected but one or more providers are unhealthy
+    """
+
+    # Provider-level statuses (from Llama Stack)
     OK = "ok"
-    ERROR = "Error"
+    ERROR = "error"
     NOT_IMPLEMENTED = "not_implemented"
-    HEALTHY = "healthy"
     UNKNOWN = "unknown"
+
+    # Service-level statuses (LCORE overall health)
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    UNHEALTHY = "unhealthy"
 
 
 class ProviderHealthStatus(BaseModel):
@@ -35,5 +54,5 @@ class ProviderHealthStatus(BaseModel):
     message: Optional[str] = Field(
         None,
         description="Optional message about the health status",
-        examples=["All systems operational", "Llama Stack is unavailable"],
+        examples=["All systems operational", "Provider is unavailable"],
     )

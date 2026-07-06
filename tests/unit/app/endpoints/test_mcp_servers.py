@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from fastapi import HTTPException
-from llama_stack_client import APIConnectionError
+from fastapi import HTTPException, status
+from llama_stack_client import APIConnectionError, NotFoundError
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
@@ -388,6 +388,64 @@ async def test_delete_mcp_server_llama_stack_failure(
             request=mocker.Mock(), name="to-delete-fail", auth=MOCK_AUTH
         )
     assert exc_info.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_delete_mcp_server_toolgroup_not_found_is_idempotent(
+    mocker: MockerFixture,
+    mock_configuration: Configuration,
+) -> None:
+    """Deleting a dynamic server succeeds when Llama Stack toolgroup is already gone."""
+    app_config = _make_app_config(mocker, mock_configuration)
+    client = _mock_client(mocker)
+    client.toolgroups.register.return_value = None
+    client.toolgroups.unregister.side_effect = NotFoundError(
+        message="Toolgroup not found",
+        response=mocker.Mock(request=None),
+        body=None,
+    )
+
+    body = MCPServerRegistrationRequest(
+        name="orphan-server",
+        url="http://localhost:7777/mcp",
+        provider_id="MCP provider ID",
+    )
+    await mcp_servers.register_mcp_server_handler(
+        request=mocker.Mock(), body=body, auth=MOCK_AUTH
+    )
+    assert app_config.is_dynamic_mcp_server("orphan-server")
+
+    result = await mcp_servers.delete_mcp_server_handler(
+        request=mocker.Mock(), name="orphan-server", auth=MOCK_AUTH
+    )
+
+    assert isinstance(result, MCPServerDeleteResponse)
+    assert result.name == "orphan-server"
+    assert result.deleted is True
+    assert not app_config.is_dynamic_mcp_server("orphan-server")
+    assert not any(s.name == "orphan-server" for s in app_config.mcp_servers)
+
+
+@pytest.mark.asyncio
+async def test_list_mcp_servers_configuration_not_loaded(
+    mocker: MockerFixture,
+) -> None:
+    """Test listing MCP servers returns 500 when configuration is not loaded."""
+    mock_config = AppConfig()
+    mock_config._configuration = None  # pylint: disable=protected-access
+    mocker.patch("app.endpoints.mcp_servers.configuration", mock_config)
+    mocker.patch("app.endpoints.mcp_servers.authorize", lambda _: lambda func: func)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await mcp_servers.list_mcp_servers_handler(
+            request=mocker.Mock(), auth=MOCK_AUTH
+        )
+
+    assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    raw_detail = exc_info.value.detail
+    assert isinstance(raw_detail, dict)
+    detail: dict[str, Any] = raw_detail
+    assert detail["response"] == "Configuration is not loaded"
 
 
 def test_mcp_server_registration_request_validation() -> None:

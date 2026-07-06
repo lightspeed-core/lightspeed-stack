@@ -24,6 +24,9 @@ Manage authentication flow for FastAPI endpoints with no-op auth and provided us
 ## [rh_identity.py](rh_identity.py)
 Red Hat Identity header authentication for FastAPI endpoints.
 
+## [trusted_proxy.py](trusted_proxy.py)
+Trusted-proxy authentication module for requests forwarded by a K8s proxy.
+
 ## [utils.py](utils.py)
 Authentication utility functions.
 

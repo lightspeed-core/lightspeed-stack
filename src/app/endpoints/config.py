@@ -51,6 +51,14 @@ async def config_endpoint_handler(
     - request: The incoming HTTP request.
     - auth: Authentication tuple from the auth dependency.
 
+    ### Raises:
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
+
     ### Returns:
     - ConfigurationResponse: The loaded service configuration response.
     """

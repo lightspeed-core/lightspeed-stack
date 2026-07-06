@@ -23,9 +23,11 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from log import get_logger
 from metrics import recording
+from metrics.utils import setup_model_metrics
 from models.api.responses.error import InternalServerErrorResponse
 from sentry import initialize_sentry
 from utils.common import register_mcp_servers_async
+from utils.degraded_mode import DegradedModeTracker
 from utils.llama_stack_version import check_llama_stack_version
 
 logger = get_logger(__name__)
@@ -81,15 +83,19 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     await AsyncLlamaStackClientHolder().load(llama_stack_config)
     client: AsyncLlamaStackClient = AsyncLlamaStackClientHolder().get_client()
     logger.debug("Llama Stack client initialized, trying to connect to Llama Stack")
-    # check if the Llama Stack version is supported by the service
+    # Check connectivity to Llama Stack and set degraded mode if unavailable
+    degraded_tracker = DegradedModeTracker()
     try:
         llama_stack_version = await check_llama_stack_version(
             client, llama_stack_config.max_retries, llama_stack_config.retry_delay
         )
         if llama_stack_version is None:
             logger.error("Cannot retrieve Llama Stack version, check connection")
+            if llama_stack_config.allow_degraded_mode:
+                degraded_tracker.set_degraded("Llama Stack connection check failed")
         else:
             logger.debug("Llama Stack version: %s", llama_stack_version)
+            degraded_tracker.set_healthy()
     except APIConnectionError as e:
         # if degraded mode is allowed, simply ignore the exception
         llama_stack_url = llama_stack_config.url
@@ -103,6 +109,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         )
         if llama_stack_config.allow_degraded_mode:
             logger.info("Entering degraded mode: LCORE running w/o Llama Stack")
+            degraded_tracker.set_degraded(f"Failed to connect to Llama Stack: {e!s}")
         else:
             raise
 
@@ -113,6 +120,14 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         AzureEntraIDManager().set_base_url(azure_base_url)
     logger.info("Registering MCP servers")
     await register_mcp_servers_async(logger, configuration.configuration)
+
+    # Set up model metrics if in healthy mode
+    if not degraded_tracker.is_degraded():
+        try:
+            await setup_model_metrics()
+        except APIConnectionError as e:
+            logger.warning("Failed to set up model metrics: %s", e, exc_info=True)
+
     logger.info("App startup complete")
 
     initialize_database()

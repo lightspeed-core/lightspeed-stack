@@ -99,6 +99,10 @@ class TestGetAuthorizationResolvers:
                 constants.AUTH_MOD_NOOP_WITH_TOKEN,
                 (NoopRolesResolver, NoopAccessResolver),
             ),
+            (
+                constants.AUTH_MOD_TRUSTED_PROXY,
+                (NoopRolesResolver, NoopAccessResolver),
+            ),
         ],
     )
     def test_noop_auth_modules(
@@ -179,6 +183,27 @@ class TestGetAuthorizationResolvers:
 
         roles_resolver, access_resolver = get_authorization_resolvers()
         assert isinstance(roles_resolver, JwtRolesResolver)
+        assert isinstance(access_resolver, GenericAccessResolver)
+
+    def test_trusted_proxy_with_access_rules(
+        self,
+        mocker: MockerFixture,
+        mock_configuration: MockType,
+        sample_access_rule: AccessRule,
+    ) -> None:
+        """Test trusted-proxy with access rules returns GenericAccessResolver."""
+        get_authorization_resolvers.cache_clear()
+
+        mock_configuration.authentication_configuration.module = (
+            constants.AUTH_MOD_TRUSTED_PROXY
+        )
+        mock_configuration.authorization_configuration.access_rules = [
+            sample_access_rule
+        ]
+        mocker.patch("authorization.middleware.configuration", mock_configuration)
+
+        roles_resolver, access_resolver = get_authorization_resolvers()
+        assert isinstance(roles_resolver, NoopRolesResolver)
         assert isinstance(access_resolver, GenericAccessResolver)
 
     def test_unknown_auth_module(

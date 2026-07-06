@@ -80,7 +80,8 @@ dependencies = [
     # Used for token estimation before LLM calls (LCORE-1569 / conversation compaction)
     "tiktoken>=0.8.0",
     # Used for Pydantic AI
-    "pydantic-ai>=1.99.0"
+    "pydantic-ai>=1.99.0",
+    "pydantic-ai-skills>=0.11.0",
 ]
 
 
@@ -125,6 +126,7 @@ dev = [
     "pytest-cov>=5.0.0",
     "pytest-mock>=3.14.0",
     "pytest-asyncio>=1.0.0",
+    "pytest-order>=1.2.0",
     "pyright>=1.1.401",
     "pylint>=3.3.7",
     "pydocstyle>=6.3.0",
@@ -168,7 +170,7 @@ llslibdev = [
     "faiss-cpu>=1.11.0",
     "chardet>=5.2.0",
     "psycopg2-binary>=2.9.10",
-    "pypdf>=6.9.2",
+    "pypdf>=6.10.2",
     # API scoring: inline::basic
     "requests>=2.33.0",
     # API datasetio: inline::localfs
@@ -184,7 +186,7 @@ llslibdev = [
     # API tool_runtime: remote::model-context-protocol
     "mcp>=1.23.0",
     # API post_training: inline::huggingface
-    "torch==2.9.0",
+    "torch==2.9.1",
     "trl>=0.18.2",
     "peft>=0.15.2",
     # API inference: remote::vertexai
@@ -204,6 +206,7 @@ llslibdev = [
     "pydantic>=2.10.6",
     "protobuf>=6.33.5",
     "filelock>=3.20.3",
+    "uv-build==0.11.8",
 ]
 
 build = [
@@ -218,6 +221,10 @@ pythonpath = [
 ]
 addopts = [
     "--import-mode=importlib",
+]
+markers = [
+    "destructive: marks tests as destructive (deselect with '-m \"not destructive\"')",
+    "order: controls test execution order (requires pytest-order plugin)",
 ]
 
 [tool.pylint.main]

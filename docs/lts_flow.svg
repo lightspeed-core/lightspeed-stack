@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="1200" height="1600" viewBox="0 0 1200 1600" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <style>
+    .box { fill:#ffffff; stroke:#2b6cb0; stroke-width:2; rx:8; ry:8; }
+    .small { font: 12px/1.2 "Segoe UI", Roboto, Arial; fill:#0b2239; }
+    .title { font: bold 14px/1.2 "Segoe UI", Roboto, Arial; fill:#08315a; }
+    .line { stroke:#2b6cb0; stroke-width:2; fill:none; }
+    .arrow { stroke:#2b6cb0; stroke-width:2; fill:none; marker-end:url(#arrowhead); }
+    .lane { fill:#f1f5f9; stroke:none; }
+    .section-title { font: bold 13px/1.2 "Segoe UI", Roboto, Arial; fill:#08315a; }
+    .note { font: italic 11px/1.1 "Segoe UI", Roboto, Arial; fill:#234e76; }
+  </style>
+
+  <defs>
+    <marker id="arrowhead" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="strokeWidth" markerWidth="10" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2b6cb0" />
+    </marker>
+  </defs>
+
+  <!-- Header -->
+  <rect x="40" y="20" width="1120" height="56" rx="10" ry="10" fill="#08315a"/>
+  <text x="80" y="58" class="section-title" fill="#ffffff">LTS Process Flow — Request intake → Triage → Patch dev → Release → Communication</text>
+
+  <!-- Swimlanes -->
+  <rect x="40" y="100" width="340" height="1320" class="lane"/>
+  <rect x="405" y="100" width="340" height="1320" class="lane"/>
+  <rect x="770" y="100" width="340" height="1320" class="lane"/>
+  <text x="60" y="128" class="section-title">Requesting / Ticketing</text>
+  <text x="430" y="128" class="section-title">Engineering / QA</text>
+  <text x="795" y="128" class="section-title">Release / Communications / Ops</text>
+
+  <!-- Intake -->
+  <g transform="translate(80,170)">
+    <rect class="box" width="240" height="90"/>
+    <text x="12" y="28" class="title">Intake</text>
+    <text x="12" y="46" class="small">Owner: Requester / Intake Module</text>
+    <text x="12" y="64" class="small">Output: standardized ticket (metadata)</text>
+  </g>
+
+  <!-- Arrow Intake -> Triage -->
+  <path class="arrow" d="M320 215 L410 215" />
+
+  <!-- Triage -->
+  <g transform="translate(410,170)">
+    <rect class="box" width="240" height="110"/>
+    <text x="12" y="28" class="title">Triage</text>
+    <text x="12" y="46" class="small">Owner: Triage Engineer</text>
+    <text x="12" y="64" class="small">Decide: severity, SLA, affected versions</text>
+    <text x="12" y="82" class="small">Output: triage decision, risk score</text>
+  </g>
+
+  <!-- Arrow Triage -> Planning -->
+  <path class="arrow" d="M650 225 L770 225" />
+
+  <!-- Planning and Approval -->
+  <g transform="translate(770,170)">
+    <rect class="box" width="240" height="110"/>
+    <text x="12" y="28" class="title">Planning and Approval</text>
+    <text x="12" y="46" class="small">Owner: Maintainer / Leads</text>
+    <text x="12" y="64" class="small">Output: backport plan, approvers, branches</text>
+    <text x="12" y="82" class="small">Policy: security flag, emergency fast-track</text>
+  </g>
+
+  <!-- Arrow Planning -> Development -->
+  <path class="line" d="M880 280 L880 420" />
+  <path class="arrow" d="M880 420 L660 420" />
+
+  <!-- Development (in Engineering lane) -->
+  <g transform="translate(420,360)">
+    <rect class="box" width="240" height="110"/>
+    <text x="12" y="28" class="title">Development</text>
+    <text x="12" y="46" class="small">Owner: Developer / Code Reviewer</text>
+    <text x="12" y="64" class="small">Branch: lts/vX.Y/issue-#</text>
+    <text x="12" y="82" class="small">Output: patch branch, CI runs</text>
+  </g>
+
+  <!-- Arrow Development -> Testing -->
+  <path class="arrow" d="M540 470 L540 540" />
+
+  <!-- Testing and Validation -->
+  <g transform="translate(420,540)">
+    <rect class="box" width="240" height="120"/>
+    <text x="12" y="28" class="title">Testing and Validation</text>
+    <text x="12" y="48" class="small">Owner: QA (+Security if needed)</text>
+    <text x="12" y="66" class="small">Tests: unit, integration, regression, upgrade</text>
+    <text x="12" y="84" class="small">Output: signed-off PR, test reports</text>
+  </g>
+
+  <!-- Arrow Testing -> Release Staging -->
+  <path class="arrow" d="M660 640 L770 640" />
+
+  <!-- Release Staging -->
+  <g transform="translate(770,620)">
+    <rect class="box" width="240" height="110"/>
+    <text x="12" y="28" class="title">Release Staging</text>
+    <text x="12" y="46" class="small">Owner: Release Manager / CI Owner</text>
+    <text x="12" y="64" class="small">Output: artifacts, checksums, RC</text>
+    <text x="12" y="82" class="small">Includes: SBOM, smoke tests, signing</text>
+  </g>
+
+  <!-- Arrow Staging -> Release -->
+  <path class="arrow" d="M890 730 L890 800" />
+
+  <!-- Release & Deployment -->
+  <g transform="translate(770,800)">
+    <rect class="box" width="240" height="120"/>
+    <text x="12" y="28" class="title">Release and Deployment</text>
+    <text x="12" y="48" class="small">Owner: Release Manager / Ops</text>
+    <text x="12" y="66" class="small">Channels: PyPI/container/OS packages</text>
+    <text x="12" y="84" class="small">Controls: staged rollout, rollback plan</text>
+  </g>
+
+  <!-- Arrow Release -> Communication -->
+  <path class="arrow" d="M770 860 L360 860" />
+
+  <!-- Communication & Documentation (left of Release) -->
+  <g transform="translate(120,800)">
+    <rect class="box" width="240" height="120"/>
+    <text x="12" y="28" class="title">Communication and Docs</text>
+    <text x="12" y="48" class="small">Owner: Communications Lead + Maintainer</text>
+    <text x="12" y="66" class="small">Outputs: release notes, upgrade guidance</text>
+    <text x="12" y="84" class="small">Channels: mailing lists, status page</text>
+  </g>
+
+  <!-- Arrow Comm -> Post-release -->
+  <path class="arrow" d="M240 920 L240 1020" />
+
+  <!-- Post-release & Metrics -->
+  <g transform="translate(120,1020)">
+    <rect class="box" width="240" height="120"/>
+    <text x="12" y="28" class="title">Post-release and Metrics</text>
+    <text x="12" y="48" class="small">Owner: SRE / Engineering Leadership</text>
+    <text x="12" y="66" class="small">Outputs: verification report, postmortem</text>
+    <text x="12" y="84" class="small">Metrics: time-to-triage, rollback rate</text>
+  </g>
+
+  <!-- Arrows showing optional back-merge to main -->
+  <path class="arrow" d="M420 420 L200 420" />
+  <text x="250" y="404" class="note">Optional: back-merge fix to main</text>
+
+  <!-- Legend / Notes -->
+  <rect x="40" y="1160" width="1120" height="220" rx="8" ry="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="60" y="1186" class="section-title">Legend and Quick Rules</text>
+  <text x="60" y="1208" class="small">• Branch naming: lts/vX.Y/issue-#</text>
+  <text x="60" y="1226" class="small">• Policy: patch-only for LTS (no breaking changes) unless emergency-approved</text>
+  <text x="60" y="1244" class="small">• Must log approvals and timestamps on ticket</text>
+  <text x="60" y="1262" class="small">• Security-sensitive items require Security sign-off before release</text>
+  <text x="60" y="1280" class="small">• CI gates: lint, unit, integration, regression, security scan, artifact signing</text>
+  <text x="60" y="1298" class="small">• SLA examples: triage within 24h (critical 4h); plan within 3 business days</text>
+
+  <!-- Footer -->
+  <text x="60" y="1438" class="small">Use this diagram as a printable quick-reference — add links to runbooks, ticket templates, and CI pipelines in your docs.</text>
+</svg>

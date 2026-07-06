@@ -1,0 +1,100 @@
+meta:
+  format: 3
+  version: 7.14.0
+  timestamp: '2026-05-18T16:57:39.462108'
+  branch_coverage: false
+  show_contexts: false
+files:
+  src/utils/conversations.py:
+    executed_lines:
+      - 3
+      - 92
+    summary:
+      covered_lines: 92
+      num_statements: 174
+      percent_covered: 52.87356321839081
+      percent_covered_display: '53'
+      missing_lines: 82
+      excluded_lines: 0
+      percent_statements_covered: 52.87356321839081
+      percent_statements_covered_display: '53'
+    missing_lines:
+      - 70
+      - 74
+    excluded_lines: []
+    functions:
+      _extract_text_from_content:
+        executed_lines:
+          - 67
+          - 68
+        summary:
+          covered_lines: 2
+          num_statements: 21
+          percent_covered: 9.523809523809524
+          percent_covered_display: '10'
+          missing_lines: 19
+          excluded_lines: 0
+          percent_statements_covered: 9.523809523809524
+          percent_statements_covered_display: '10'
+        missing_lines:
+          - 87
+          - 89
+        excluded_lines: []
+        start_line: 58
+      _parse_message_item:
+        executed_lines:
+          - 101
+          - 102
+          - 103
+        summary:
+          covered_lines: 3
+          num_statements: 3
+          percent_covered: 100
+          percent_covered_display: '100'
+          missing_lines: 0
+          excluded_lines: 0
+          percent_statements_covered: 100
+          percent_statements_covered_display: '100'
+        missing_lines: []
+        excluded_lines: []
+        start_line: 92
+      build_conversation_turns_from_items:
+        executed_lines:
+          - 450
+        summary:
+          covered_lines: 12
+          num_statements: 12
+          percent_covered: 100
+          percent_covered_display: '100'
+          missing_lines: 0
+          excluded_lines: 0
+          percent_statements_covered: 100
+          percent_statements_covered_display: '100'
+        missing_lines: []
+        excluded_lines: []
+        start_line: 402
+      '':
+        executed_lines:
+          - 3
+          - 496
+        summary:
+          covered_lines: 35
+          num_statements: 35
+          percent_covered: 100
+          percent_covered_display: '100'
+          missing_lines: 0
+          excluded_lines: 0
+          percent_statements_covered: 100
+          percent_statements_covered_display: '100'
+        missing_lines: []
+        excluded_lines: []
+        start_line: 1
+totals:
+  covered_lines: 5175
+  num_statements: 10097
+  percent_covered: 51.252847380410024
+  percent_covered_display: '51'
+  missing_lines: 4922
+  excluded_lines: 0
+  percent_statements_covered: 51.252847380410024
+  percent_statements_covered_display: '51'

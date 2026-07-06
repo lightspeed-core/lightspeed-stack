@@ -28,7 +28,7 @@
                     "root"
                 ],
                 "summary": "Root Endpoint Handler",
-                "description": "Handle GET requests to the root (\"/\") endpoint and returns the static HTML index page.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Returns:\n- HTMLResponse: The HTML content of the index page, including a heading,\n  embedded image with the service icon, and links to the API documentation\n  via Swagger UI and ReDoc.",
+                "description": "Handle GET requests to the root (\"/\") endpoint and returns the static HTML index page.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n\n### Returns:\n- HTMLResponse: The HTML content of the index page, including a heading,\n  embedded image with the service icon, and links to the API documentation\n  via Swagger UI and ReDoc.",
                 "operationId": "root_endpoint_handler__get",
                 "responses": {
                     "200": {
@@ -172,7 +172,7 @@
                     "info"
                 ],
                 "summary": "Info Endpoint Handler",
-                "description": "Handle request to the /info endpoint.\n\nProcess GET requests to the /info endpoint, returning the\nservice name, version and Llama-stack version.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 500 and a detail object\n  containing `response` and `cause` when unable to connect to\n  Llama Stack. It can also return status 401 or 403 for\n  unauthorized access.\n\n### Returns:\n- InfoResponse: An object containing the service's name and version.",
+                "description": "Handle request to the /info endpoint.\n\nProcess GET requests to the /info endpoint, returning the\nservice name, version and Llama-stack version.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- InfoResponse: An object containing the service's name and version.",
                 "operationId": "info_endpoint_handler_v1_info_get",
                 "responses": {
                     "200": {
@@ -323,7 +323,7 @@
                     "models"
                 ],
                 "summary": "Models Endpoint Handler",
-                "description": "Handle requests to the /models endpoint.\n\nProcess GET requests to the /models endpoint, returning a list of available\nmodels from the Llama Stack service. It is possible to specify \"model_type\"\nquery parameter that is used as a filter. For example, if model type is set\nto \"llm\", only LLM models will be returned:\n\n    curl http://localhost:8080/v1/models?model_type=llm\n\nThe \"model_type\" query parameter is optional. When not specified, all models\nwill be returned.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- model_type: Optional filter to return only models matching this type.\n\n### Raises:\n- HTTPException: If unable to connect to the Llama Stack server or if\n  model retrieval fails for any reason.\n\n### Returns:\n- ModelsResponse: An object containing the list of available models.",
+                "description": "Handle requests to the /models endpoint.\n\nProcess GET requests to the /models endpoint, returning a list of available\nmodels from the Llama Stack service. It is possible to specify \"model_type\"\nquery parameter that is used as a filter. For example, if model type is set\nto \"llm\", only LLM models will be returned:\n\n    curl http://localhost:8080/v1/models?model_type=llm\n\nThe \"model_type\" query parameter is optional. When not specified, all models\nwill be returned.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- model_type: Optional filter to return only models matching this type.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 422 if model_type parameter is\n  improper.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ModelsResponse: An object containing the list of available models.",
                 "operationId": "models_endpoint_handler_v1_models_get",
                 "parameters": [
                     {
@@ -536,7 +536,7 @@
                     "tools"
                 ],
                 "summary": "Tools Endpoint Handler",
-                "description": "Handle requests to the /tools endpoint.\n\nProcess GET requests to the /tools endpoint, returning a consolidated list of\navailable tools from all configured MCP servers.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- mcp_headers: Headers that should be passed to MCP servers.\n### Raises:\n- HTTPException: If unable to connect to the Llama Stack server or if tool\n  retrieval fails for any reason.\n\n### Returns:\n- ToolsResponse: An object containing the consolidated list of available\n  tools with metadata including tool name, description, parameters, and\n  server source.",
+                "description": "Handle requests to the /tools endpoint.\n\nProcess GET requests to the /tools endpoint, returning a consolidated list of\navailable tools from all configured MCP servers.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- mcp_headers: Headers that should be passed to MCP servers.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 422 if mcp_headers parameter is\n  improper.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ToolsResponse: An object containing the consolidated list of available\n  tools with metadata including tool name, description, parameters, and\n  server source.",
                 "operationId": "tools_endpoint_handler_v1_tools_get",
                 "responses": {
                     "200": {
@@ -1500,7 +1500,7 @@
                     "shields"
                 ],
                 "summary": "Shields Endpoint Handler",
-                "description": "Handle requests to the /shields endpoint.\n\nProcess GET requests to the /shields endpoint, returning a list of available\nshields from the Llama Stack service.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Returns:\n- ShieldsResponse: An object containing the list of available shields.\n\n### Raises:\n- HTTPException: If unable to connect to the Llama Stack server or if\n  shield retrieval fails for any reason.",
+                "description": "Handle requests to the /shields endpoint.\n\nProcess GET requests to the /shields endpoint, returning a list of available\nshields from the Llama Stack service.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ShieldsResponse: An object containing the list of available shields.",
                 "operationId": "shields_endpoint_handler_v1_shields_get",
                 "responses": {
                     "200": {
@@ -1677,7 +1677,7 @@
                     "providers"
                 ],
                 "summary": "Providers Endpoint Handler",
-                "description": "List all available providers grouped by API type.\n\n### Parameters:\n- request: The incoming HTTP request.\n- auth: Authentication tuple from the auth dependency.\n\n### Returns:\n- ProvidersListResponse: Mapping from API type to list of providers.\n\n### Raises:\n- HTTPException:\n- 401: Authentication failed\n- 403: Authorization failed\n- 500: Lightspeed Stack configuration not loaded\n- 503: Unable to connect to Llama Stack",
+                "description": "List all available providers grouped by API type.\n\n### Parameters:\n- request: The incoming HTTP request.\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ProvidersListResponse: Mapping from API type to list of providers.",
                 "operationId": "providers_endpoint_handler_v1_providers_get",
                 "responses": {
                     "200": {
@@ -1863,7 +1863,7 @@
                     "providers"
                 ],
                 "summary": "Get Provider Endpoint Handler",
-                "description": "Retrieve a single provider identified by its unique ID.\n\n### Parameters:\n- request: The incoming HTTP request.\n- provider_id: Provider identification string\n- auth: Authentication tuple from the auth dependency.\n\n### Returns:\n- ProviderResponse: Provider details.\n\n### Raises:\n- HTTPException:\n- 401: Authentication failed\n- 403: Authorization failed\n- 404: Provider not found\n- 500: Lightspeed Stack configuration not loaded\n- 503: Unable to connect to Llama Stack",
+                "description": "Retrieve a single provider identified by its unique ID.\n\n### Parameters:\n- request: The incoming HTTP request.\n- provider_id: Provider identification string\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 if provider is not found.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ProviderResponse: Provider details.",
                 "operationId": "get_provider_endpoint_handler_v1_providers__provider_id__get",
                 "parameters": [
                     {
@@ -2082,7 +2082,7 @@
                     "prompts"
                 ],
                 "summary": "List Prompts Handler",
-                "description": "Handle requests to the GET /prompts endpoint.\n\nProcess GET requests that list all stored prompt templates from the Llama\nStack service. For example:\n\n    curl http://localhost:8080/v1/prompts\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: If configuration is not loaded, if unable to connect to\n  Llama Stack, or if the prompts API returns an error response.\n\n### Returns:\n- PromptsListResponse: An object containing the list of prompts.",
+                "description": "Handle requests to the GET /prompts endpoint.\n\nProcess GET requests that list all stored prompt templates from the Llama\nStack service. For example:\n\n    curl http://localhost:8080/v1/prompts\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- PromptsListResponse: An object containing the list of prompts.",
                 "operationId": "list_prompts_handler_v1_prompts_get",
                 "responses": {
                     "200": {
@@ -2267,7 +2267,7 @@
                     "prompts"
                 ],
                 "summary": "Create Prompt Handler",
-                "description": "Handle requests to the POST /prompts endpoint.\n\nProcess requests to create a stored prompt template in Llama Stack. The\nbody must include the prompt text and may include template variable names.\nFor example:\n\n    curl -X POST http://localhost:8080/v1/prompts \\\\\n      -H 'Content-Type: application/json' \\\\\n      -d '{\"prompt\": \"Hello {{name}}\", \"variables\": [\"name\"]}'\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- body: Prompt creation parameters.\n\n### Raises:\n- HTTPException: If configuration is not loaded, if unable to connect to\n  Llama Stack, or if the prompts API returns an error response.\n\n### Returns:\n- PromptResourceResponse: The created prompt as returned by Llama Stack.",
+                "description": "Handle requests to the POST /prompts endpoint.\n\nProcess requests to create a stored prompt template in Llama Stack. The\nbody must include the prompt text and may include template variable names.\nFor example:\n\n    curl -X POST http://localhost:8080/v1/prompts \\\\\n      -H 'Content-Type: application/json' \\\\\n      -d '{\"prompt\": \"Hello {{name}}\", \"variables\": [\"name\"]}'\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- body: Prompt creation parameters.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 422 if the request body is improper.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- PromptResourceResponse: The created prompt as returned by Llama Stack.",
                 "operationId": "create_prompt_handler_v1_prompts_post",
                 "requestBody": {
                     "content": {
@@ -2470,7 +2470,7 @@
                     "prompts"
                 ],
                 "summary": "Get Prompt Handler",
-                "description": "Handle requests to the GET /prompts/{prompt_id} endpoint.\n\nProcess GET requests to retrieve a single prompt by identifier. The\n``version`` query parameter is optional; when omitted, the latest version is\nreturned. For example:\n\n    curl http://localhost:8080/v1/prompts/pmpt_abc123?version=1\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: The Llama Stack prompt identifier.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- version: Optional version number (latest when omitted).\n\n### Raises:\n- HTTPException: If configuration is not loaded, if the prompt is not\n  found, if unable to connect to Llama Stack, or if the prompts API returns\n  an error response.\n\n### Returns:\n- PromptResourceResponse: The requested prompt object.",
+                "description": "Handle requests to the GET /prompts/{prompt_id} endpoint.\n\nProcess GET requests to retrieve a single prompt by identifier. The\n``version`` query parameter is optional; when omitted, the latest version is\nreturned. For example:\n\n    curl http://localhost:8080/v1/prompts/pmpt_abc123?version=1\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: The Llama Stack prompt identifier.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- version: Optional version number (latest when omitted).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 if prompt is not found.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- PromptResourceResponse: The requested prompt object.",
                 "operationId": "get_prompt_handler_v1_prompts__prompt_id__get",
                 "parameters": [
                     {
@@ -2728,7 +2728,7 @@
                     "prompts"
                 ],
                 "summary": "Update Prompt Handler",
-                "description": "Handle requests to the PUT /prompts/{prompt_id} endpoint.\n\nProcess requests to update a stored prompt; Llama Stack increments the\nversion. The body includes the new text, the current version being\nreplaced, and optional fields such as ``set_as_default`` and ``variables``.\nFor example:\n\n    curl -X PUT http://localhost:8080/v1/prompts/pmpt_abc123 \\\\\n      -H 'Content-Type: application/json' \\\\\n      -d '{\"prompt\": \"Hi\", \"version\": 1, \"set_as_default\": true}'\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: The Llama Stack prompt identifier.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- body: Prompt update parameters.\n\n### Raises:\n- HTTPException: If configuration is not loaded, if the prompt is not\n  found, if unable to connect to Llama Stack, or if the prompts API returns\n  an error response.\n\n### Returns:\n- PromptResourceResponse: The updated prompt object returned by Llama Stack.",
+                "description": "Handle requests to the PUT /prompts/{prompt_id} endpoint.\n\nProcess requests to update a stored prompt; Llama Stack increments the\nversion. The body includes the new text, the current version being\nreplaced, and optional fields such as ``set_as_default`` and ``variables``.\nFor example:\n\n    curl -X PUT http://localhost:8080/v1/prompts/pmpt_abc123 \\\\\n      -H 'Content-Type: application/json' \\\\\n      -d '{\"prompt\": \"Hi\", \"version\": 1, \"set_as_default\": true}'\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: The Llama Stack prompt identifier.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n- body: Prompt update parameters.\n\n### Raises:\n- HTTPException: with status 400 when request format is not valid.\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 if prompt is not found.\n- HTTPException: with status 422 if request payload is corrupted.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- PromptResourceResponse: The updated prompt object returned by Llama Stack.",
                 "operationId": "update_prompt_handler_v1_prompts__prompt_id__put",
                 "parameters": [
                     {
@@ -2980,7 +2980,7 @@
                     "prompts"
                 ],
                 "summary": "Delete Prompt Handler",
-                "description": "Handle requests to the DELETE /prompts/{prompt_id} endpoint.\n\nProcess requests to delete a stored prompt in Llama Stack. The response\nalways uses HTTP 200 with a JSON body indicating whether the deletion\nsucceeded (same pattern as deleting a conversation in ``/v2``). For example:\n\n    curl -X DELETE http://localhost:8080/v1/prompts/pmpt_abc123\n\nWhen the prompt does not exist, the response still returns 200 with\n``deleted`` set to false in the body.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: The Llama Stack prompt identifier.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: If configuration is not loaded, if unable to connect to\n  Llama Stack, or if the prompts API returns an error response.\n\n### Returns:\n- PromptDeleteResponse: An object describing whether the prompt was\n  deleted and a human-readable message.",
+                "description": "Handle requests to the DELETE /prompts/{prompt_id} endpoint.\n\nProcess requests to delete a stored prompt in Llama Stack. The response\nalways uses HTTP 200 with a JSON body indicating whether the deletion\nsucceeded (same pattern as deleting a conversation in ``/v2``). For example:\n\n    curl -X DELETE http://localhost:8080/v1/prompts/pmpt_abc123\n\nWhen the prompt does not exist, the response still returns 200 with\n``deleted`` set to false in the body.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- prompt_id: The Llama Stack prompt identifier.\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 422 if request payload is corrupted.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- PromptDeleteResponse: An object describing whether the prompt was\n  deleted and a human-readable message.",
                 "operationId": "delete_prompt_handler_v1_prompts__prompt_id__delete",
                 "parameters": [
                     {
@@ -3211,7 +3211,7 @@
                     "rags"
                 ],
                 "summary": "Rags Endpoint Handler",
-                "description": "List all available RAGs.\n\nReturns:\n    RAGListResponse: List of RAG identifiers.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "List all available RAGs.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- RAGListResponse: List of RAG identifiers.",
                 "operationId": "rags_endpoint_handler_v1_rags_get",
                 "responses": {
                     "200": {
@@ -3384,7 +3384,7 @@
                     "rags"
                 ],
                 "summary": "Get Rag Endpoint Handler",
-                "description": "Retrieve a single RAG identified by its unique ID.\n\nAccepts both user-facing rag_id (from LCORE config) and llama-stack\nvector_store_id. If a rag_id from config is provided, it is resolved\nto the underlying vector_store_id for the llama-stack lookup.\n\nReturns:\n    RAGInfoResponse: A single RAG's details.\n\nRaises:\n    HTTPException:\n        - 401: Authentication failed\n        - 403: Authorization failed\n        - 404: RAG with the given ID not found\n        - 500: Lightspeed Stack configuration not loaded\n        - 503: Unable to connect to Llama Stack",
+                "description": "Retrieve a single RAG identified by its unique ID.\n\nAccepts both user-facing rag_id (from LCORE config) and llama-stack\nvector_store_id. If a rag_id from config is provided, it is resolved\nto the underlying vector_store_id for the llama-stack lookup.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- rag_id: rag_id or llama-stack vector_store_id\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 404 if rag_id is not found.\n- HTTPException: with status 422 for incorrect request payload.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- RAGInfoResponse: A single RAG's details.",
                 "operationId": "get_rag_endpoint_handler_v1_rags__rag_id__get",
                 "parameters": [
                     {
@@ -6710,7 +6710,7 @@
                     "config"
                 ],
                 "summary": "Config Endpoint Handler",
-                "description": "Handle requests to the /config endpoint.\n\nProcess GET requests to the /config endpoint and returns the\ncurrent service configuration.\n\nEnsures the application configuration is loaded before returning it.\n\n### Parameters:\n- request: The incoming HTTP request.\n- auth: Authentication tuple from the auth dependency.\n\n### Returns:\n- ConfigurationResponse: The loaded service configuration response.",
+                "description": "Handle requests to the /config endpoint.\n\nProcess GET requests to the /config endpoint and returns the\ncurrent service configuration.\n\nEnsures the application configuration is loaded before returning it.\n\n### Parameters:\n- request: The incoming HTTP request.\n- auth: Authentication tuple from the auth dependency.\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- ConfigurationResponse: The loaded service configuration response.",
                 "operationId": "config_endpoint_handler_v1_config_get",
                 "responses": {
                     "200": {
@@ -9964,7 +9964,7 @@
                     "health"
                 ],
                 "summary": "Readiness Probe Get Method",
-                "description": "Handle the readiness probe endpoint, returning service readiness.\n\nIf any provider reports an error status, responds with HTTP 503\nand details of unhealthy providers; otherwise, indicates the\nservice is ready.\n\n### Parameters:\n- response: The outgoing HTTP response (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Returns:\n- ReadinessResponse: Object with `ready` indicating overall readiness,\n  `reason` explaining the outcome, and `providers` containing the list of\n  unhealthy ProviderHealthStatus entries (empty when ready).",
+                "description": "Handle the readiness probe endpoint, returning service readiness and health status.\n\nReturns comprehensive health information including overall service status,\nprovider health, and functional impacts. The service is considered \"ready\" even\nin degraded mode (returns 200), but reports reduced functionality.\n\n### Parameters:\n- response: The outgoing HTTP response (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 503 when service is unhealthy (providers down,\n  models unavailable) and degraded mode is not enabled.\n\n### Returns:\n- ReadinessResponse: Object with comprehensive health status including:\n  - ready: True if service can handle requests (even in degraded mode)\n  - reason: Description of service state\n  - overall_status: healthy, degraded, or unhealthy\n  - impacts: Functional limitations when degraded/unhealthy\n  - providers: List of unhealthy providers",
                 "operationId": "readiness_probe_get_method_readiness_get",
                 "responses": {
                     "200": {
@@ -9975,9 +9975,10 @@
                                     "$ref": "#/components/schemas/ReadinessResponse"
                                 },
                                 "example": {
+                                    "overall_status": "healthy",
                                     "providers": [],
                                     "ready": true,
-                                    "reason": "Service is ready"
+                                    "reason": "All providers are healthy"
                                 }
                             }
                         }
@@ -10115,7 +10116,7 @@
                     "health"
                 ],
                 "summary": "Liveness Probe Get Method",
-                "description": "Return the liveness status of the service.\n\n### Parameters:\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Returns:\n- LivenessResponse: Indicates that the service is alive.",
+                "description": "Return the liveness status of the service.\n\n### Parameters:\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- LivenessResponse: Indicates that the service is alive.",
                 "operationId": "liveness_probe_get_method_liveness_get",
                 "responses": {
                     "200": {
@@ -10399,7 +10400,7 @@
                     "metrics"
                 ],
                 "summary": "Metrics Endpoint Handler",
-                "description": "Handle request to the /metrics endpoint.\n\nProcess GET requests to the /metrics endpoint, returning the\nlatest Prometheus metrics in form of a plain text.\n\nInitializes model metrics on the first request if not already\nset up, then responds with the current metrics snapshot in\nPrometheus format.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Returns:\n- PlainTextResponse: Response body containing the Prometheus metrics text\n  and the Prometheus content type.",
+                "description": "Handle request to the /metrics endpoint.\n\nProcess GET requests to the /metrics endpoint, returning the\nlatest Prometheus metrics in plain text Prometheus format.\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Returns:\n- PlainTextResponse: Response body containing the Prometheus metrics text\n  and the Prometheus content type.",
                 "operationId": "metrics_endpoint_handler_metrics_get",
                 "responses": {
                     "200": {
@@ -10573,7 +10574,7 @@
                     "a2a"
                 ],
                 "summary": "Get Agent Card",
-                "description": "Serve the A2A Agent Card at the well-known location.\n\nThis endpoint provides the agent card that describes Lightspeed's\ncapabilities according to the A2A protocol specification.\n\nReturns:\n    AgentCard: The agent card describing this agent's capabilities.",
+                "description": "Serve the A2A Agent Card at the well-known location.\n\nThis endpoint provides the agent card that describes Lightspeed's\ncapabilities according to the A2A protocol specification.\n\n### Parameters:\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- AgentCard: The agent card describing this agent's capabilities.",
                 "operationId": "get_agent_card__well_known_agent_card_json_get",
                 "responses": {
                     "200": {
@@ -10595,7 +10596,7 @@
                     "a2a"
                 ],
                 "summary": "Get Agent Card",
-                "description": "Serve the A2A Agent Card at the well-known location.\n\nThis endpoint provides the agent card that describes Lightspeed's\ncapabilities according to the A2A protocol specification.\n\nReturns:\n    AgentCard: The agent card describing this agent's capabilities.",
+                "description": "Serve the A2A Agent Card at the well-known location.\n\nThis endpoint provides the agent card that describes Lightspeed's\ncapabilities according to the A2A protocol specification.\n\n### Parameters:\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to Llama Stack.\n\n### Returns:\n- AgentCard: The agent card describing this agent's capabilities.",
                 "operationId": "get_agent_card__well_known_agent_json_get",
                 "responses": {
                     "200": {
@@ -10687,7 +10688,7 @@
                     "a2a"
                 ],
                 "summary": "A2A Health Check",
-                "description": "Health check endpoint for A2A service.\n\nReturns:\n    Dict with health status information.",
+                "description": "Health check endpoint for A2A service.\n\n### Parameters:\n- None\n\n### Raises:\n- None\n\n### Returns:\n- Dict with health status information.",
                 "operationId": "a2a_health_check_a2a_health_get",
                 "responses": {
                     "200": {
@@ -11613,6 +11614,16 @@
                                 "type": "null"
                             }
                         ]
+                    },
+                    "trusted_proxy_config": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/TrustedProxyConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "additionalProperties": false,
@@ -11818,7 +11829,7 @@
                         "type": "string",
                         "minLength": 1,
                         "title": "RAG type",
-                        "description": "Type of RAG database.",
+                        "description": "Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').",
                         "default": "inline::faiss"
                     },
                     "embedding_model": {
@@ -11842,9 +11853,16 @@
                         "description": "Vector database identification."
                     },
                     "db_path": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "DB path",
-                        "description": "Path to RAG database."
+                        "description": "Path to RAG database. Required for inline::faiss."
                     },
                     "score_multiplier": {
                         "type": "number",
@@ -11852,14 +11870,75 @@
                         "title": "Score multiplier",
                         "description": "Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them.",
                         "default": 1.0
+                    },
+                    "host": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL host",
+                        "description": "PostgreSQL host for remote::pgvector. Defaults to ${env.POSTGRES_HOST} when rag_type is remote::pgvector."
+                    },
+                    "port": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL port",
+                        "description": "PostgreSQL port for remote::pgvector. Defaults to ${env.POSTGRES_PORT} when rag_type is remote::pgvector."
+                    },
+                    "db": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL database",
+                        "description": "PostgreSQL database name for remote::pgvector. Defaults to ${env.POSTGRES_DATABASE} when rag_type is remote::pgvector."
+                    },
+                    "user": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL user",
+                        "description": "PostgreSQL user for remote::pgvector. Defaults to ${env.POSTGRES_USER} when rag_type is remote::pgvector."
+                    },
+                    "password": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL password",
+                        "description": "PostgreSQL password for remote::pgvector. Defaults to ${env.POSTGRES_PASSWORD} when rag_type is remote::pgvector."
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "rag_id",
-                    "vector_db_id",
-                    "db_path"
+                    "vector_db_id"
                 ],
                 "title": "ByokRag",
                 "description": "BYOK (Bring Your Own Knowledge) RAG configuration."
@@ -13407,6 +13486,20 @@
                 "type": "object",
                 "title": "HTTPValidationError"
             },
+            "HealthStatus": {
+                "type": "string",
+                "enum": [
+                    "ok",
+                    "error",
+                    "not_implemented",
+                    "unknown",
+                    "healthy",
+                    "degraded",
+                    "unhealthy"
+                ],
+                "title": "HealthStatus",
+                "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by Llama Stack providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)\n   - UNHEALTHY: Service connected but one or more providers are unhealthy"
+            },
             "ImplicitOAuthFlow": {
                 "properties": {
                     "authorizationUrl": {
@@ -13513,6 +13606,42 @@
                         "type": "object",
                         "title": "Per-model context window sizes (tokens)",
                         "description": "Map of fully-qualified model identifier (e.g., \"openai/gpt-4o-mini\") to context window size in tokens. Used by the conversation compaction trigger to decide when older turns must be summarized before the input exceeds the window. Models absent from this map have no registered window \u2014 callers fall back to their own default or skip the token-based trigger."
+                    },
+                    "providers": {
+                        "items": {
+                            "$ref": "#/components/schemas/UnifiedInferenceProvider"
+                        },
+                        "type": "array",
+                        "title": "High-level inference providers",
+                        "description": "Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into Llama Stack provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list."
+                    },
+                    "max_infer_iters": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "exclusiveMinimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default max inference iterations",
+                        "description": "Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.",
+                        "default": 10
+                    },
+                    "max_tool_calls": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "exclusiveMinimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default max tool calls",
+                        "description": "Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.",
+                        "default": 30
                     }
                 },
                 "additionalProperties": false,
@@ -13975,6 +14104,18 @@
                         "title": "Allow degraded mode",
                         "description": "If enabled, Lightspeed Core can be started even when Llama Stack is not accessible (valid for server mode only)",
                         "default": false
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/UnifiedLlamaStackConfig"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Unified Llama Stack configuration",
+                        "description": "Backend-specific knobs for unified mode, where LCORE synthesizes the Llama Stack run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required."
                     }
                 },
                 "additionalProperties": false,
@@ -16810,7 +16951,7 @@
                         "description": "Optional message about the health status",
                         "examples": [
                             "All systems operational",
-                            "Llama Stack is unavailable"
+                            "Provider is unavailable"
                         ]
                     }
                 },
@@ -17788,7 +17929,7 @@
                     "ready": {
                         "type": "boolean",
                         "title": "Ready",
-                        "description": "Flag indicating if service is ready",
+                        "description": "Flag indicating if service is ready to handle requests",
                         "examples": [
                             true,
                             false
@@ -17797,9 +17938,40 @@
                     "reason": {
                         "type": "string",
                         "title": "Reason",
-                        "description": "The reason for the readiness",
+                        "description": "The reason for the readiness status",
                         "examples": [
                             "Service is ready"
+                        ]
+                    },
+                    "overall_status": {
+                        "$ref": "#/components/schemas/HealthStatus",
+                        "description": "Overall service health status",
+                        "examples": [
+                            "healthy",
+                            "degraded",
+                            "unhealthy"
+                        ]
+                    },
+                    "impacts": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Impacts",
+                        "description": "List of functional impacts when service is degraded or unhealthy",
+                        "examples": [
+                            [
+                                "LLM inference unavailable",
+                                "RAG functionality unavailable",
+                                "Agent tools unavailable"
+                            ]
                         ]
                     },
                     "providers": {
@@ -17808,7 +17980,7 @@
                         },
                         "type": "array",
                         "title": "Providers",
-                        "description": "List of unhealthy providers in case of readiness failure.",
+                        "description": "List of unhealthy providers (empty when all healthy)",
                         "examples": []
                     }
                 },
@@ -17816,15 +17988,28 @@
                 "required": [
                     "ready",
                     "reason",
+                    "overall_status",
                     "providers"
                 ],
                 "title": "ReadinessResponse",
-                "description": "Model representing response to a readiness request.\n\nAttributes:\n    ready: If service is ready.\n    reason: The reason for the readiness.\n    providers: List of unhealthy providers in case of readiness failure.",
+                "description": "Model representing response to a readiness request.\n\nAttributes:\n    ready: If service is ready to handle requests.\n    reason: The reason for the readiness status.\n    overall_status: Overall service health status (healthy/degraded/unhealthy).\n    impacts: Optional list of functional impacts when degraded or unhealthy.\n    providers: List of unhealthy providers (empty when all healthy).",
                 "examples": [
                     {
+                        "overall_status": "healthy",
                         "providers": [],
                         "ready": true,
-                        "reason": "Service is ready"
+                        "reason": "All providers are healthy"
+                    },
+                    {
+                        "impacts": [
+                            "LLM inference unavailable",
+                            "RAG functionality unavailable",
+                            "Agent tools unavailable"
+                        ],
+                        "overall_status": "degraded",
+                        "providers": [],
+                        "ready": true,
+                        "reason": "Service running in degraded mode"
                     }
                 ]
             },
@@ -19757,6 +19942,57 @@
                     }
                 ]
             },
+            "TrustedProxyConfiguration": {
+                "properties": {
+                    "user_header": {
+                        "type": "string",
+                        "title": "User identity header",
+                        "description": "HTTP header containing the forwarded user identity.",
+                        "default": "X-Forwarded-User"
+                    },
+                    "allowed_service_accounts": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/TrustedProxyServiceAccount"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Allowed service accounts",
+                        "description": "Optional allowlist of Kubernetes ServiceAccount identities permitted to act as trusted proxies. When set to null/omitted, any ServiceAccount with a valid token is accepted. When set to a non-empty list, only the listed ServiceAccounts are allowed. An empty list behaves the same as null (no restriction)."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "TrustedProxyConfiguration",
+                "description": "Configuration for trusted-proxy auth module."
+            },
+            "TrustedProxyServiceAccount": {
+                "properties": {
+                    "namespace": {
+                        "type": "string",
+                        "title": "Namespace",
+                        "description": "Kubernetes namespace of the ServiceAccount."
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the Kubernetes ServiceAccount."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "namespace",
+                    "name"
+                ],
+                "title": "TrustedProxyServiceAccount",
+                "description": "A Kubernetes ServiceAccount identity for trusted-proxy allowlist."
+            },
             "UnauthorizedResponse": {
                 "properties": {
                     "status_code": {
@@ -19841,6 +20077,102 @@
                         "label": "mcp oauth"
                     }
                 ]
+            },
+            "UnifiedInferenceProvider": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "openai",
+                            "ollama",
+                            "vllm",
+                            "sentence_transformers",
+                            "azure",
+                            "vertexai",
+                            "watsonx",
+                            "vllm_rhaiis",
+                            "vllm_rhel_ai"
+                        ],
+                        "title": "Provider type",
+                        "description": "Canonical, backend-agnostic provider identifier mapped to a Llama Stack provider_type by the synthesizer."
+                    },
+                    "api_key_env": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "API key environment variable",
+                        "description": "Name of the environment variable holding the provider API key. Emitted as a ${env.<name>} reference so the secret is never written to disk in resolved form."
+                    },
+                    "allowed_models": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Allowed models",
+                        "description": "Optional allow-list of model identifiers for this provider."
+                    },
+                    "extra": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Extra provider config",
+                        "description": "Additional provider-config keys merged verbatim into the synthesized provider's config block."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "type"
+                ],
+                "title": "UnifiedInferenceProvider",
+                "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw Llama Stack provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into a Llama\nStack `providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block \u2014 an escape hatch for\n        provider-specific knobs not modeled here."
+            },
+            "UnifiedLlamaStackConfig": {
+                "properties": {
+                    "baseline": {
+                        "type": "string",
+                        "enum": [
+                            "default",
+                            "empty"
+                        ],
+                        "title": "Baseline selector",
+                        "description": "Synthesis starting point: 'default' uses LCORE's built-in baseline, 'empty' starts from {}. Ignored when 'profile' is set.",
+                        "default": "default"
+                    },
+                    "profile": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Profile path",
+                        "description": "Path to a run.yaml-shaped baseline file. Relative paths resolve against the directory of the loaded lightspeed-stack.yaml."
+                    },
+                    "native_override": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Native override",
+                        "description": "Raw Llama Stack schema deep-merged last (maps merge recursively; lists and scalars replace)."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "UnifiedLlamaStackConfig",
+                "description": "Backend-specific knobs for unified-mode Llama Stack synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the Llama-Stack-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml); \"empty\" begins from\n        an empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw Llama Stack schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express."
             },
             "UnprocessableEntityResponse": {
                 "properties": {

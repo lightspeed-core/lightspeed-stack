@@ -167,6 +167,8 @@ spec:
               echo "========== End parameters =========="
     - name: lightspeed-stack-integration-tests
       description: Task to run integration tests from lightspeed-stack repository
+      # Full Behave suite (proxy + tls) can exceed 2h; needs PipelineRun timeouts >= this value.
+      timeout: 3h
       params:
         - name: SNAPSHOT
           value: $(params.SNAPSHOT)

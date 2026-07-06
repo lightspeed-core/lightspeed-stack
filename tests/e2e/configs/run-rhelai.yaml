@@ -22,15 +22,15 @@ providers:
   - provider_id: vllm
     provider_type: remote::vllm
     config:
-      url: http://${env.RHEL_AI_URL}:${env.RHEL_AI_PORT}/v1/
-      api_token: ${env.RHEL_AI_API_KEY}
+      base_url: ${env.VLLM_URL}/v1/
+      api_token: ${env.VLLM_API_KEY:=}
       tls_verify: false
       max_tokens: 2048
   - provider_id: openai
     provider_type: remote::openai
     config:
       api_key: ${env.OPENAI_API_KEY}
-      allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"]
+      allowed_models: ["gpt-4o-mini"]
   - config: {}
     provider_id: sentence-transformers
     provider_type: inline::sentence-transformers
@@ -132,10 +132,10 @@ storage:
       backend: kv_default
 registered_resources:
   models:
-  - model_id: ${env.RHEL_AI_MODEL}
-    provider_id: vllm
+  - model_id: ${env.VLLM_MODEL}
     model_type: llm
-    provider_model_id: ${env.RHEL_AI_MODEL}
+    provider_id: vllm
+    provider_model_id: ${env.VLLM_MODEL}
   - model_id: all-mpnet-base-v2
     model_type: embedding
     provider_id: sentence-transformers

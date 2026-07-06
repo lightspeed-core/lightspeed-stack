@@ -1,10 +1,7 @@
 """Streaming query handler using Responses API."""
 
-# pylint: disable=too-many-lines
-
 import asyncio
 import datetime
-import json
 from collections.abc import AsyncIterator
 from typing import Annotated, Any, Optional, cast
 
@@ -39,6 +36,7 @@ from llama_stack_client import (
     APIStatusError as LLSApiStatusError,
 )
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
+from typing_extensions import deprecated
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -48,7 +46,6 @@ from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import (
     ENDPOINT_PATH_STREAMING_QUERY,
-    INTERRUPTED_RESPONSE_MESSAGE,
     LLM_TOKEN_EVENT,
     LLM_TOOL_CALL_EVENT,
     LLM_TOOL_RESULT_EVENT,
@@ -56,14 +53,12 @@ from constants import (
     MEDIA_TYPE_EVENT_STREAM,
     MEDIA_TYPE_JSON,
     MEDIA_TYPE_TEXT,
-    TOPIC_SUMMARY_INTERRUPT_TIMEOUT_SECONDS,
 )
 from log import get_logger
 from metrics import recording
 from models.api.requests import QueryRequest
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
 from models.api.responses.error import (
-    AbstractErrorResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
@@ -76,8 +71,21 @@ from models.api.responses.error import (
 from models.api.responses.successful import StreamingQueryResponse
 from models.common.responses.contexts import ResponseGeneratorContext
 from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.turn_summary import ReferencedDocument, TurnSummary
+from models.common.responses.types import ResponseInput
+from models.common.turn_summary import TurnSummary
 from models.config import Action
+from utils.agents.streaming import (
+    generate_agent_response,
+    retrieve_agent_response_generator,
+)
+from utils.conversation_compaction import (
+    CompactionResult,
+    CompactionStartedEvent,
+    apply_compaction,
+    configured_conversation_cache,
+    needs_compaction_path,
+    store_compacted_turn,
+)
 from utils.conversations import append_turn_items_to_conversation
 from utils.endpoints import (
     check_configuration_loaded,
@@ -92,7 +100,6 @@ from utils.query import (
     is_context_length_error,
     prepare_input,
     store_query_results,
-    update_conversation_topic_summary,
     validate_attachments_metadata,
     validate_model_provider_override,
 )
@@ -110,13 +117,26 @@ from utils.responses import (
     prepare_responses_params,
 )
 from utils.shields import (
-    append_turn_to_conversation,
     run_shield_moderation,
     validate_shield_ids_override,
 )
-from utils.stream_interrupts import get_stream_interrupt_registry
+from utils.stream_interrupts import (
+    build_interrupted_response,
+    deregister_stream,
+    persist_interrupted_turn,
+    register_interrupt_callback,
+)
+from utils.streaming_sse import (
+    http_exception_stream_event,
+    shield_violation_generator,
+    stream_compaction_event,
+    stream_end_event,
+    stream_event,
+    stream_http_error_event,
+    stream_interrupted_event,
+    stream_start_event,
+)
 from utils.suid import get_suid, normalize_conversation_id
-from utils.token_counter import TokenCounter
 from utils.vector_search import build_rag_context
 
 logger = get_logger(__name__)
@@ -287,10 +307,38 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
     )
     recording.record_llm_call(provider_id, model_id, endpoint_path)
 
-    generator, turn_summary = await retrieve_response_generator(
+    response_media_type = (
+        MEDIA_TYPE_TEXT
+        if query_request.media_type == MEDIA_TYPE_TEXT
+        else MEDIA_TYPE_EVENT_STREAM
+    )
+
+    # Only conversations that actually compact (already have a summary marker,
+    # or would trigger one now) take the compaction-aware path, where the
+    # response is created inside the SSE stream so the progress event can be
+    # flushed before the summarization LLM call. Every other request keeps the
+    # unchanged path: the response stream is created here, so create-time errors
+    # surface as HTTP responses exactly as before.
+    if await needs_compaction_path(
+        context.client,
+        responses_params,
+        configuration.inference,
+        configuration.compaction,
+    ):
+        return StreamingResponse(
+            generate_response_with_compaction(
+                context=context,
+                responses_params=responses_params,
+                endpoint_path=endpoint_path,
+            ),
+            media_type=response_media_type,
+        )
+
+    generator, turn_summary = await retrieve_agent_response_generator(
         responses_params=responses_params,
         context=context,
         endpoint_path=endpoint_path,
+        no_tools=bool(query_request.no_tools),
     )
 
     # Combine inline RAG results (BYOK + Solr) with tool-based results
@@ -299,23 +347,22 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
             inline_rag_context.referenced_documents + turn_summary.referenced_documents
         )
 
-    response_media_type = (
-        MEDIA_TYPE_TEXT
-        if query_request.media_type == MEDIA_TYPE_TEXT
-        else MEDIA_TYPE_EVENT_STREAM
-    )
-
     return StreamingResponse(
-        generate_response(
+        generate_agent_response(
             generator=generator,
             context=context,
             responses_params=responses_params,
             turn_summary=turn_summary,
+            background_topic_summary_tasks=_background_topic_summary_tasks,
         ),
         media_type=response_media_type,
     )
 
 
+@deprecated(
+    "Deprecated in favor of utils.agents.streaming.retrieve_agent_response_generator.",
+    stacklevel=2,
+)
 async def retrieve_response_generator(
     responses_params: ResponsesApiParams,
     context: ResponseGeneratorContext,
@@ -341,12 +388,17 @@ async def retrieve_response_generator(
         if context.moderation_result.decision == "blocked":
             turn_summary.llm_response = context.moderation_result.message
             turn_summary.id = context.moderation_result.moderation_id
-            await append_turn_items_to_conversation(
-                context.client,
-                responses_params.conversation,
-                responses_params.input,
-                [context.moderation_result.refusal_response],
-            )
+            turn_summary.output_items = [context.moderation_result.refusal_response]
+            # In compacted mode the conversation parameter was omitted, so the
+            # refusal turn (with the original input) is persisted by
+            # generate_response; storing it here too would duplicate it.
+            if not responses_params.omit_conversation:
+                await append_turn_items_to_conversation(
+                    context.client,
+                    responses_params.conversation,
+                    responses_params.input,
+                    [context.moderation_result.refusal_response],
+                )
             media_type = context.query_request.media_type or MEDIA_TYPE_JSON
             return (
                 shield_violation_generator(
@@ -387,43 +439,6 @@ async def retrieve_response_generator(
         raise HTTPException(**error_response.model_dump()) from e
 
 
-async def _background_update_topic_summary(
-    context: ResponseGeneratorContext,
-    model: str,
-) -> None:
-    """Generate topic summary and update DB/cache in the background.
-
-    Runs as a fire-and-forget task after an interrupted turn is persisted.
-    All errors are caught and logged.
-    """
-    try:
-        topic_summary = await asyncio.wait_for(
-            get_topic_summary(
-                context.query_request.query,
-                context.client,
-                model,
-            ),
-            timeout=TOPIC_SUMMARY_INTERRUPT_TIMEOUT_SECONDS,
-        )
-        if topic_summary:
-            update_conversation_topic_summary(
-                context.conversation_id,
-                topic_summary,
-                user_id=context.user_id,
-                skip_userid_check=context.skip_userid_check,
-            )
-    except asyncio.TimeoutError:
-        logger.warning(
-            "Topic summary timed out for interrupted turn, request %s",
-            context.request_id,
-        )
-    except Exception:  # pylint: disable=broad-except
-        logger.exception(
-            "Failed to generate topic summary for interrupted turn, request %s",
-            context.request_id,
-        )
-
-
 async def shutdown_background_topic_summary_tasks() -> None:
     """Cancel and await outstanding background topic summary tasks on shutdown.
 
@@ -442,132 +457,113 @@ async def shutdown_background_topic_summary_tasks() -> None:
     await asyncio.gather(*tasks, return_exceptions=True)
 
 
-async def _persist_interrupted_turn(
+async def generate_response_with_compaction(
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
-    turn_summary: TurnSummary,
-) -> None:
-    """Persist the user query and an interrupted response into the conversation.
+    endpoint_path: str,
+) -> AsyncIterator[str]:
+    """Stream a response for a conversation that requires compaction.
 
-    Called when a streaming request is cancelled so the exchange is not lost.
-    Persists immediately with topic_summary=None so the conversation exists
-    when the client fetches. Topic summary is generated in a background task
-    and updated when ready.
+    Used only when :func:`needs_compaction_path` is true. Compaction and the
+    response creation happen inside the SSE stream so the ``compaction`` event
+    is flushed to the client *before* the summarization LLM call (R12). Errors
+    raised while compacting or creating the response are surfaced as SSE error
+    events (the stream has already started, so an HTTP status is no longer
+    possible).
 
-    Parameters:
-    ----------
+    Args:
         context: The response generator context.
-        responses_params: The Responses API parameters.
-        turn_summary: TurnSummary with llm_response already set to the
-            interrupted message.
+        responses_params: The base Responses API parameters.
+        endpoint_path: API endpoint path used for metric labeling.
+
+    Yields:
+        SSE-formatted strings.
     """
+    media_type = context.query_request.media_type or MEDIA_TYPE_JSON
+    yield stream_start_event(
+        conversation_id=context.conversation_id,
+        request_id=context.request_id,
+    )
+
+    compacted_original_input: Optional[ResponseInput] = None
     try:
-        await append_turn_to_conversation(
+        async for item in apply_compaction(
             context.client,
-            responses_params.conversation,
-            cast(str, responses_params.input),
-            INTERRUPTED_RESPONSE_MESSAGE,
-        )
-    except Exception:  # pylint: disable=broad-except
-        logger.exception(
-            "Failed to append interrupted turn to conversation for request %s",
-            context.request_id,
-        )
-
-    try:
-        completed_at = datetime.datetime.now(datetime.UTC).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        )
-        store_query_results(
+            responses_params,
+            configuration.inference,
+            configuration.compaction,
+            emit_events=True,
+            cache=configured_conversation_cache(),
             user_id=context.user_id,
-            conversation_id=context.conversation_id,
-            model=responses_params.model,
-            completed_at=completed_at,
-            started_at=context.started_at,
-            summary=turn_summary,
-            query=context.query_request.query,
-            skip_userid_check=context.skip_userid_check,
-            topic_summary=None,
-        )
-
-        if (
-            not context.query_request.conversation_id
-            and context.query_request.generate_topic_summary
+            skip_user_id_check=context.skip_userid_check,
         ):
-            task = asyncio.create_task(
-                _background_update_topic_summary(
-                    context=context,
-                    model=responses_params.model,
-                )
-            )
-            _background_topic_summary_tasks.append(task)
-            task.add_done_callback(_background_topic_summary_tasks.remove)
-    except Exception:  # pylint: disable=broad-except
-        logger.exception(
-            "Failed to store interrupted query results for request %s",
-            context.request_id,
+            if isinstance(item, CompactionStartedEvent):
+                yield stream_compaction_event(context.conversation_id)
+            elif isinstance(item, CompactionResult):
+                responses_params = item.params
+                compacted_original_input = item.original_input
+
+        generator, turn_summary = await retrieve_agent_response_generator(
+            responses_params=responses_params,
+            context=context,
+            endpoint_path=endpoint_path,
+        )
+    except HTTPException as e:
+        yield http_exception_stream_event(e)
+        return
+    except RuntimeError as e:  # library mode wraps 413 into runtime error
+        error_response = (
+            PromptTooLongResponse(model=responses_params.model)
+            if is_context_length_error(str(e))
+            else InternalServerErrorResponse.generic()
+        )
+        yield stream_http_error_event(error_response, media_type)
+        return
+    except APIConnectionError as e:
+        yield stream_http_error_event(
+            ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e)),
+            media_type,
+        )
+        return
+    except (LLSApiStatusError, OpenAIAPIStatusError) as e:
+        yield stream_http_error_event(
+            handle_known_apistatus_errors(e, responses_params.model), media_type
+        )
+        return
+
+    # Combine inline RAG results (BYOK + Solr) with tool-based results
+    if context.moderation_result.decision == "passed":
+        turn_summary.referenced_documents = deduplicate_referenced_documents(
+            context.inline_rag_context.referenced_documents
+            + turn_summary.referenced_documents
         )
 
-
-def _register_interrupt_callback(
-    context: ResponseGeneratorContext,
-    responses_params: ResponsesApiParams,
-    turn_summary: TurnSummary,
-) -> list[bool]:
-    """Build an interrupt callback and register the stream for cancellation.
-
-    The callback is invoked by ``cancel_stream`` when the client
-    interrupts, so persistence runs regardless of where the
-    ``CancelledError`` is raised in the ASGI stack.
-
-    A mutable one-element list is used as a shared guard so the
-    callback and the in-generator ``CancelledError`` handler never
-    both persist the same turn.
-
-    Parameters:
-    ----------
-        context: The response generator context.
-        responses_params: The Responses API parameters.
-        turn_summary: TurnSummary populated during streaming.
-
-    Returns:
-    -------
-        A mutable list ``[False]`` used as a persist-done guard; the
-        caller should check ``guard[0]`` before persisting and set
-        it to ``True`` afterwards.
-    """
-    guard: list[bool] = [False]
-
-    async def _on_interrupt() -> None:
-        if guard[0]:
-            return
-        guard[0] = True
-        turn_summary.llm_response = INTERRUPTED_RESPONSE_MESSAGE
-        await _persist_interrupted_turn(context, responses_params, turn_summary)
-
-    current_task = asyncio.current_task()
-    if current_task is not None:
-        get_stream_interrupt_registry().register_stream(
-            request_id=context.request_id,
-            user_id=context.user_id,
-            task=current_task,
-            on_interrupt=_on_interrupt,
-        )
-    else:
-        logger.warning(
-            "No current asyncio task for request %s; "
-            "stream interruption will not be available",
-            context.request_id,
-        )
-
-    return guard
+    # The start event was already emitted above; delegate the rest (re-yield,
+    # finalization, compacted-turn storage) to the shared generator.
+    async for event in generate_agent_response(
+        generator,
+        context,
+        responses_params,
+        turn_summary,
+        background_topic_summary_tasks=_background_topic_summary_tasks,
+        emit_start=False,
+        original_input=compacted_original_input,
+    ):
+        yield event
 
 
-async def generate_response(
+@deprecated(
+    "Deprecated in favor of utils.agents.streaming.generate_agent_response.",
+    stacklevel=2,
+)
+async def generate_response(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
     generator: AsyncIterator[str],
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
     turn_summary: TurnSummary,
+    emit_start: bool = True,
+    compacted: bool = False,
+    original_input: Optional[ResponseInput] = None,
 ) -> AsyncIterator[str]:
     """Wrap a generator with cleanup logic.
 
@@ -582,20 +578,34 @@ async def generate_response(
         context: The response generator context
         responses_params: The Responses API parameters
         turn_summary: TurnSummary populated during streaming
+        emit_start: Whether to emit the SSE start event. False when the caller
+            (the compaction-aware wrapper) has already emitted it.
+        compacted: Whether the conversation is in compacted mode. When True the
+            conversation parameter was not sent to Llama Stack, so the completed
+            turn is appended to the conversation here rather than being stored
+            automatically.
+        original_input: In compacted mode, the original user input before the
+            explicit-input rewrite. Used to persist the completed turn with its
+            structured input (preserving attachments); ``None`` otherwise.
 
     Yields:
         SSE-formatted strings from the wrapped generator
     """
-    persist_guard = _register_interrupt_callback(
-        context, responses_params, turn_summary
+    persist_guard = register_interrupt_callback(
+        context,
+        responses_params,
+        turn_summary,
+        _background_topic_summary_tasks,
+        original_input,
     )
 
     stream_completed = False
     try:
-        yield stream_start_event(
-            conversation_id=context.conversation_id,
-            request_id=context.request_id,
-        )
+        if emit_start:
+            yield stream_start_event(
+                conversation_id=context.conversation_id,
+                request_id=context.request_id,
+            )
 
         # Re-yield all events from the generator
         async for event in generator:
@@ -625,13 +635,25 @@ async def generate_response(
         current_task = asyncio.current_task()
         if current_task is not None:
             current_task.uncancel()
+        full_text, suffix = build_interrupted_response(turn_summary.partial_tokens)
         if not persist_guard[0]:
             persist_guard[0] = True
-            turn_summary.llm_response = INTERRUPTED_RESPONSE_MESSAGE
-            await _persist_interrupted_turn(context, responses_params, turn_summary)
+            turn_summary.llm_response = full_text
+            await persist_interrupted_turn(
+                context,
+                responses_params,
+                turn_summary,
+                _background_topic_summary_tasks,
+                original_input,
+            )
+        yield stream_event(
+            {"id": turn_summary.next_chunk_id, "token": suffix},
+            LLM_TOKEN_EVENT,
+            context.query_request.media_type or MEDIA_TYPE_JSON,
+        )
         yield stream_interrupted_event(context.request_id)
     finally:
-        get_stream_interrupt_registry().deregister_stream(context.request_id)
+        deregister_stream(context.request_id)
 
     if not stream_completed:
         return
@@ -683,6 +705,27 @@ async def generate_response(
     )
     completed_at = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    # In compacted mode the conversation parameter was not sent, so Llama Stack
+    # did not persist this turn. Append it ourselves to keep the recent-turn
+    # buffer and audit history intact for the next request.
+    if compacted:
+        try:
+            await store_compacted_turn(
+                context.client,
+                responses_params.conversation,
+                (
+                    original_input
+                    if original_input is not None
+                    else context.query_request.query
+                ),
+                turn_summary.output_items,
+            )
+        except Exception:  # pylint: disable=broad-except
+            logger.exception(
+                "Failed to append compacted turn to conversation for request %s",
+                context.request_id,
+            )
+
     # Store query results (transcript, conversation details, cache)
     logger.info("Storing query results")
     store_query_results(
@@ -699,6 +742,10 @@ async def generate_response(
     )
 
 
+@deprecated(
+    "Deprecated in favor of utils.agents.streaming.agent_response_generator.",
+    stacklevel=2,
+)
 async def response_generator(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
     turn_response: AsyncIterator[OpenAIResponseObjectStream],
     context: ResponseGeneratorContext,
@@ -737,15 +784,17 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
 
         # Content part started - emit an empty token to kick off UI streaming
         if event_type == "response.content_part.added":
+            event_id = chunk_id
+            chunk_id += 1
+            turn_summary.next_chunk_id = chunk_id
             yield stream_event(
                 {
-                    "id": chunk_id,
+                    "id": event_id,
                     "token": "",
                 },
                 LLM_TOKEN_EVENT,
                 media_type,
             )
-            chunk_id += 1
 
         # Store MCP call item info for later lookup when arguments.done event occurs
         elif event_type == "response.output_item.added":
@@ -761,15 +810,18 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
         elif event_type == "response.output_text.delta":
             delta_chunk = cast(TextDeltaChunk, chunk)
             text_parts.append(delta_chunk.delta)
+            turn_summary.partial_tokens.append(delta_chunk.delta)
+            event_id = chunk_id
+            chunk_id += 1
+            turn_summary.next_chunk_id = chunk_id
             yield stream_event(
                 {
-                    "id": chunk_id,
+                    "id": event_id,
                     "token": delta_chunk.delta,
                 },
                 LLM_TOKEN_EVENT,
                 media_type,
             )
-            chunk_id += 1
 
         # Final text of the output (capture, but emit at response.completed)
         elif event_type == "response.output_text.done":
@@ -845,15 +897,21 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
                 getattr(chunk, "response"),  # noqa: B009
             )
             turn_summary.llm_response = turn_summary.llm_response or "".join(text_parts)
+            # Capture structured output items for compacted-mode turn storage
+            # (LCORE-1572), so the persisted turn keeps non-text output items
+            # rather than being flattened to the response text.
+            turn_summary.output_items = list(latest_response_object.output or [])
+            event_id = chunk_id
+            chunk_id += 1
+            turn_summary.next_chunk_id = chunk_id
             yield stream_event(
                 {
-                    "id": chunk_id,
+                    "id": event_id,
                     "token": turn_summary.llm_response,
                 },
                 LLM_TURN_COMPLETE_EVENT,
                 media_type,
             )
-            chunk_id += 1
 
         # Incomplete or failed response - emit error
         elif event_type in ("response.incomplete", "response.failed"):
@@ -861,6 +919,9 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
                 OpenAIResponseObject,
                 getattr(chunk, "response"),  # noqa: B009
             )
+            # Capture any partial output items so a compacted-mode turn is not
+            # persisted with empty output on these terminals (LCORE-1572).
+            turn_summary.output_items = list(latest_response_object.output or [])
             error_message = (
                 latest_response_object.error.message
                 if latest_response_object.error
@@ -902,209 +963,3 @@ async def response_generator(  # pylint: disable=too-many-branches,too-many-stat
         rag_id_mapping=context.rag_id_mapping,
     )
     turn_summary.rag_chunks = context.inline_rag_context.rag_chunks + tool_rag_chunks
-
-
-def stream_http_error_event(
-    error: AbstractErrorResponse, media_type: Optional[str] = MEDIA_TYPE_JSON
-) -> str:
-    """
-    Create an SSE-formatted error response for generic LLM or API errors.
-
-    Args:
-        error: An AbstractErrorResponse instance representing the error.
-        media_type: The media type for the response format. Defaults to MEDIA_TYPE_JSON if None.
-
-    Returns:
-        str: A Server-Sent Events (SSE) formatted error message containing
-            the serialized error details.
-    """
-    logger.error("Error while obtaining answer for user question")
-    media_type = media_type or MEDIA_TYPE_JSON
-    if media_type == MEDIA_TYPE_TEXT:
-        return f"Status: {error.status_code} - {error.detail.response} - {error.detail.cause}"
-
-    return format_stream_data(
-        {
-            "event": "error",
-            "data": {
-                "status_code": error.status_code,
-                "response": error.detail.response,
-                "cause": error.detail.cause,
-            },
-        }
-    )
-
-
-def format_stream_data(d: dict) -> str:
-    """
-    Create a response generator function for Responses API streaming.
-
-    Parameters:
-    ----------
-        d (dict): The data to be formatted as an SSE event.
-
-    Returns:
-    -------
-        str: The formatted SSE data string.
-    """
-    data = json.dumps(d)
-    return f"data: {data}\n\n"
-
-
-def stream_start_event(conversation_id: str, request_id: str) -> str:
-    """Format an SSE start event for a streaming response.
-
-    The payload contains both the conversation ID and the request ID
-    so the client can correlate the stream with a conversation and
-    use the request ID to issue an interrupt if needed.
-
-    Parameters:
-    ----------
-        conversation_id (str): Unique identifier for the conversation.
-        request_id (str): Unique SUID for this streaming request,
-            returned to the client for interrupt support.
-
-    Returns:
-    -------
-        str: SSE-formatted string representing the start event.
-    """
-    return format_stream_data(
-        {
-            "event": "start",
-            "data": {
-                "conversation_id": conversation_id,
-                "request_id": request_id,
-            },
-        }
-    )
-
-
-def stream_interrupted_event(request_id: str) -> str:
-    """Format an SSE event indicating the stream was interrupted.
-
-    Emitted to the client just before the generator closes so the
-    frontend can distinguish an intentional user-initiated interruption
-    from an unexpected connection drop.
-
-    Parameters:
-    ----------
-        request_id (str): Unique identifier for the interrupted request.
-
-    Returns:
-    -------
-        str: SSE-formatted string representing the interrupted event.
-    """
-    return format_stream_data(
-        {
-            "event": "interrupted",
-            "data": {
-                "request_id": request_id,
-            },
-        }
-    )
-
-
-def stream_end_event(
-    token_usage: TokenCounter,
-    available_quotas: dict[str, int],
-    referenced_documents: list[ReferencedDocument],
-    media_type: str = MEDIA_TYPE_JSON,
-) -> str:
-    """
-    Yield the end of the data stream.
-
-    Format and return the end event for a streaming response,
-    including referenced document metadata and token usage information.
-
-    Parameters:
-    ----------
-        token_usage (TokenCounter): Token usage information.
-        available_quotas (dict[str, int]): Available quotas for the user.
-        referenced_documents (list[ReferencedDocument]): List of referenced documents.
-        media_type (str): The media type for the response format.
-
-    Returns:
-    -------
-        str: A Server-Sent Events (SSE) formatted string
-        representing the end of the data stream.
-    """
-    if media_type == MEDIA_TYPE_TEXT:
-        ref_docs_string = "\n".join(
-            f"{doc.doc_title}: {doc.doc_url}"
-            for doc in referenced_documents
-            if doc.doc_url and doc.doc_title
-        )
-        return f"\n\n---\n\n{ref_docs_string}" if ref_docs_string else ""
-
-    referenced_docs_dict = [doc.model_dump(mode="json") for doc in referenced_documents]
-
-    return format_stream_data(
-        {
-            "event": "end",
-            "data": {
-                "referenced_documents": referenced_docs_dict,
-                "truncated": None,
-                "input_tokens": token_usage.input_tokens,
-                "output_tokens": token_usage.output_tokens,
-            },
-            "available_quotas": available_quotas,
-        }
-    )
-
-
-def stream_event(data: dict, event_type: str, media_type: str) -> str:
-    """Build an item to yield based on media type.
-
-    Args:
-        data: Dictionary containing the event data
-        event_type: Type of event (token, tool call, etc.)
-        media_type: The media type for the response format
-
-    Returns:
-        SSE-formatted string representing the event
-    """
-    if media_type == MEDIA_TYPE_TEXT:
-        if event_type == LLM_TOKEN_EVENT:
-            return data.get("token", "")
-        if event_type == LLM_TOOL_CALL_EVENT:
-            return f"[Tool Call: {data.get('function_name', 'unknown')}]\n"
-        if event_type == LLM_TOOL_RESULT_EVENT:
-            return "[Tool Result]\n"
-        if event_type == LLM_TURN_COMPLETE_EVENT:
-            return ""
-        return ""
-
-    return format_stream_data(
-        {
-            "event": event_type,
-            "data": data,
-        }
-    )
-
-
-async def shield_violation_generator(
-    violation_message: str,
-    media_type: str = MEDIA_TYPE_TEXT,
-) -> AsyncIterator[str]:
-    """
-    Create an SSE stream for shield violation responses.
-
-    Yields start, token, and end events immediately for shield violations.
-    This function creates a minimal streaming response without going through
-    the Llama Stack response format.
-
-    Args:
-        violation_message: The violation message to display.
-        media_type: The media type for the response format.
-
-    Yields:
-        str: SSE-formatted strings for start, token, and end events.
-    """
-    yield stream_event(
-        {
-            "id": 0,
-            "token": violation_message,
-        },
-        LLM_TOKEN_EVENT,
-        media_type,
-    )

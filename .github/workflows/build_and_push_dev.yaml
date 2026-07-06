@@ -26,6 +26,9 @@ jobs:
           sudo apt install -y buildah qemu-user-static
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Fetch submodules (required for lightspeed-providers)
+          submodules: 'recursive'
       - name: Create dev image tag
         run: |
           echo "DEV_TAG=dev-$(date +%Y%m%d)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV

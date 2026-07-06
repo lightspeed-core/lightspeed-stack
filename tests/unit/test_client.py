@@ -80,8 +80,18 @@ async def test_get_async_llama_stack_remote_client() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_async_llama_stack_wrong_configuration() -> None:
-    """Test if configuration is checked before Llama Stack is initialized."""
+async def test_get_async_llama_stack_wrong_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A library config with no legacy path routes to synthesis.
+
+    With neither a legacy library_client_config_path nor a config block, the
+    client treats the config as unified and attempts synthesis. Without the
+    config-path env var pointing at the source lightspeed-stack.yaml, synthesis
+    cannot proceed and raises a clear error. (The "library mode needs a run
+    source" guarantee itself lives on the root Configuration validator.)
+    """
+    monkeypatch.delenv("LIGHTSPEED_STACK_CONFIG_PATH", raising=False)
     cfg = LlamaStackConfiguration(
         url=None,
         api_key=None,
@@ -92,7 +102,7 @@ async def test_get_async_llama_stack_wrong_configuration() -> None:
     cfg.library_client_config_path = None
     with pytest.raises(
         ValueError,
-        match="Configuration problem: library_client_config_path is not set",
+        match="Cannot synthesize Llama Stack config",
     ):
         client = AsyncLlamaStackClientHolder()
         await client.load(cfg)

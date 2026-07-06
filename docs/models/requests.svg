@@ -1,0 +1,298 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" height="1377px" preserveAspectRatio="none" style="width:2053px;height:1377px;background:#FFFFFF;" version="1.1" viewBox="0 0 2053 1377" width="2053px" zoomAndPan="magnify">
+  <defs/>
+  <g>
+    <!--class src.models.api.requests.conversations.ConversationUpdateRequest-->
+    <g id="elem_src.models.api.requests.conversations.ConversationUpdateRequest">
+      <rect codeLine="2" fill="#F1F1F1" height="86.1358" id="src.models.api.requests.conversations.ConversationUpdateRequest" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="220.8873" x="11.81" y="92.8"/>
+      <ellipse cx="26.81" cy="108.8" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M26.9194,104.3312 Q25.9975,104.3312 25.2631,104.6437 Q24.5444,104.9562 24.0444,105.55 Q23.5444,106.1281 23.2631,107.0031 Q22.9975,107.8781 22.9975,108.9719 Q22.9975,110.4094 23.435,111.4562 Q23.8881,112.5031 24.7319,113.05 Q25.5913,113.5969 26.9038,113.5969 Q27.685,113.5969 28.3725,113.4719 Q29.0756,113.3312 30.0756,113.0187 L30.0756,114.8937 Q29.2163,115.2219 28.4506,115.3469 Q27.7006,115.4719 26.685,115.4719 Q24.7631,115.4719 23.4506,114.675 Q22.1538,113.8625 21.4975,112.3937 Q20.8413,110.9094 20.8413,108.9406 Q20.8413,107.5187 21.2319,106.3469 Q21.6381,105.1594 22.4194,104.2844 Q23.2006,103.4094 24.3413,102.9406 Q25.4819,102.4562 26.9506,102.4562 Q27.9038,102.4562 28.7944,102.6594 Q29.7006,102.8469 30.6381,103.3156 L29.81,105.0969 Q29.0288,104.7219 28.3725,104.5344 Q27.7163,104.3312 26.9194,104.3312 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="188.8873" x="40.81" y="114.232">ConversationUpdateRequest</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="12.81" x2="231.6973" y1="124.8" y2="124.8"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="17.81" y="143.7659">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="195.5793" x="17.81" y="162.8339">topic_summary : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="12.81" x2="231.6973" y1="170.9358" y2="170.9358"/>
+    </g>
+    <!--class src.models.api.requests.feedback.FeedbackRequest-->
+    <g id="elem_src.models.api.requests.feedback.FeedbackRequest">
+      <rect codeLine="6" fill="#F1F1F1" height="257.7471" id="src.models.api.requests.feedback.FeedbackRequest" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="641.5078" x="267.5" y="7"/>
+      <ellipse cx="526.0791" cy="23" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M526.1885,18.5313 Q525.2666,18.5313 524.5323,18.8438 Q523.8135,19.1563 523.3135,19.75 Q522.8135,20.3281 522.5323,21.2031 Q522.2666,22.0781 522.2666,23.1719 Q522.2666,24.6094 522.7041,25.6563 Q523.1573,26.7031 524.001,27.25 Q524.8604,27.7969 526.1729,27.7969 Q526.9541,27.7969 527.6416,27.6719 Q528.3448,27.5313 529.3448,27.2188 L529.3448,29.0938 Q528.4854,29.4219 527.7198,29.5469 Q526.9698,29.6719 525.9541,29.6719 Q524.0323,29.6719 522.7198,28.875 Q521.4229,28.0625 520.7666,26.5938 Q520.1104,25.1094 520.1104,23.1406 Q520.1104,21.7188 520.501,20.5469 Q520.9073,19.3594 521.6885,18.4844 Q522.4698,17.6094 523.6104,17.1406 Q524.751,16.6563 526.2198,16.6563 Q527.1729,16.6563 528.0635,16.8594 Q528.9698,17.0469 529.9073,17.5156 L529.0791,19.2969 Q528.2979,18.9219 527.6416,18.7344 Q526.9854,18.5313 526.1885,18.5313 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="115.8495" x="546.5791" y="28.432">FeedbackRequest</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="268.5" x2="908.0078" y1="39" y2="39"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="295.8189" x="273.5" y="57.9659">categories : Optional[list[FeedbackCategory]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="198.0013" x="273.5" y="77.0339">conversation_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="181.8313" x="273.5" y="96.1018">llm_response : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="273.5" y="115.1697">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="160.9714" x="273.5" y="134.2376">sentiment : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="189.7133" x="273.5" y="153.3055">user_feedback : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="187.4873" x="273.5" y="172.3734">user_question : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="268.5" x2="908.0078" y1="180.4754" y2="180.4754"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="220.6811" x="273.5" y="199.4414">check_feedback_provided() -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="347.6606" x="273.5" y="218.5093">check_sentiment(value: Optional[int]) -&gt; Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="179.0033" x="273.5" y="237.5772">check_uuid(value: str) -&gt; str</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="629.5078" x="273.5" y="256.6451">validate_categories(value: Optional[list[FeedbackCategory]]) -&gt; Optional[list[FeedbackCategory]]</text>
+    </g>
+    <!--class src.models.api.requests.feedback.FeedbackStatusUpdateRequest-->
+    <g id="elem_src.models.api.requests.feedback.FeedbackStatusUpdateRequest">
+      <rect codeLine="19" fill="#F1F1F1" height="105.2038" id="src.models.api.requests.feedback.FeedbackStatusUpdateRequest" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="237.1132" x="943.7" y="83.27"/>
+      <ellipse cx="958.7" cy="99.27" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M958.8094,94.8012 Q957.8875,94.8012 957.1531,95.1137 Q956.4344,95.4262 955.9344,96.02 Q955.4344,96.5981 955.1531,97.4731 Q954.8875,98.3481 954.8875,99.4419 Q954.8875,100.8794 955.325,101.9262 Q955.7781,102.9731 956.6219,103.52 Q957.4813,104.0669 958.7938,104.0669 Q959.575,104.0669 960.2625,103.9419 Q960.9656,103.8012 961.9656,103.4887 L961.9656,105.3637 Q961.1063,105.6919 960.3406,105.8169 Q959.5906,105.9419 958.575,105.9419 Q956.6531,105.9419 955.3406,105.145 Q954.0438,104.3325 953.3875,102.8637 Q952.7313,101.3794 952.7313,99.4106 Q952.7313,97.9887 953.1219,96.8169 Q953.5281,95.6294 954.3094,94.7544 Q955.0906,93.8794 956.2313,93.4106 Q957.3719,92.9262 958.8406,92.9262 Q959.7938,92.9262 960.6844,93.1294 Q961.5906,93.3169 962.5281,93.7856 L961.7,95.5669 Q960.9188,95.1919 960.2625,95.0044 Q959.6063,94.8012 958.8094,94.8012 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="205.1132" x="972.7" y="104.702">FeedbackStatusUpdateRequest</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="944.7" x2="1179.8132" y1="115.27" y2="115.27"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="949.7" y="134.2359">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="146.2295" x="949.7" y="153.3039">status : Optional[bool]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="944.7" x2="1179.8132" y1="161.4058" y2="161.4058"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="120.2595" x="949.7" y="180.3718">get_value() -&gt; bool</text>
+    </g>
+    <!--class src.models.api.requests.mcp_servers.MCPServerRegistrationRequest-->
+    <g id="elem_src.models.api.requests.mcp_servers.MCPServerRegistrationRequest">
+      <rect codeLine="24" fill="#F1F1F1" height="219.6113" id="src.models.api.requests.mcp_servers.MCPServerRegistrationRequest" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="613.1719" x="1215.67" y="26.07"/>
+      <ellipse cx="1415.1553" cy="42.07" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1415.2647,37.6012 Q1414.3428,37.6012 1413.6085,37.9137 Q1412.8897,38.2262 1412.3897,38.82 Q1411.8897,39.3981 1411.6085,40.2731 Q1411.3428,41.1481 1411.3428,42.2419 Q1411.3428,43.6794 1411.7803,44.7262 Q1412.2335,45.7731 1413.0772,46.32 Q1413.9366,46.8669 1415.2491,46.8669 Q1416.0303,46.8669 1416.7178,46.7419 Q1417.421,46.6012 1418.421,46.2887 L1418.421,48.1637 Q1417.5616,48.4919 1416.796,48.6169 Q1416.046,48.7419 1415.0303,48.7419 Q1413.1085,48.7419 1411.796,47.945 Q1410.4991,47.1325 1409.8428,45.6637 Q1409.1866,44.1794 1409.1866,42.2106 Q1409.1866,40.7887 1409.5772,39.6169 Q1409.9835,38.4294 1410.7647,37.5544 Q1411.546,36.6794 1412.6866,36.2106 Q1413.8272,35.7262 1415.296,35.7262 Q1416.2491,35.7262 1417.1397,35.9294 Q1418.046,36.1169 1418.9835,36.5856 L1418.1553,38.3669 Q1417.3741,37.9919 1416.7178,37.8044 Q1416.0616,37.6012 1415.2647,37.6012 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="205.7012" x="1435.6553" y="47.502">MCPServerRegistrationRequest</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1216.67" x2="1827.8419" y1="58.07" y2="58.07"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="300.6349" x="1221.67" y="77.0359">authorization_headers : Optional[dict[str, str]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="176.1754" x="1221.67" y="96.1039">headers : Optional[list[str]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1221.67" y="115.1718">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.0755" x="1221.67" y="134.2397">name : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="168.8954" x="1221.67" y="153.3076">provider_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="146.1875" x="1221.67" y="172.3755">timeout : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="112.6296" x="1221.67" y="191.4434">url : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1216.67" x2="1827.8419" y1="199.5454" y2="199.5454"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="601.1719" x="1221.67" y="218.5114">validate_authorization_header_values(value: Optional[dict[str, str]]) -&gt; Optional[dict[str, str]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="181.6633" x="1221.67" y="237.5793">validate_url(value: str) -&gt; str</text>
+    </g>
+    <!--class src.models.api.requests.catalog.ModelFilter-->
+    <g id="elem_src.models.api.requests.catalog.ModelFilter">
+      <rect codeLine="35" fill="#F1F1F1" height="86.1358" id="src.models.api.requests.catalog.ModelFilter" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="183.1774" x="1863.67" y="92.8"/>
+      <ellipse cx="1913.7548" cy="108.8" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1913.8642,104.3312 Q1912.9423,104.3312 1912.2079,104.6437 Q1911.4892,104.9562 1910.9892,105.55 Q1910.4892,106.1281 1910.2079,107.0031 Q1909.9423,107.8781 1909.9423,108.9719 Q1909.9423,110.4094 1910.3798,111.4562 Q1910.8329,112.5031 1911.6767,113.05 Q1912.5361,113.5969 1913.8486,113.5969 Q1914.6298,113.5969 1915.3173,113.4719 Q1916.0204,113.3312 1917.0204,113.0187 L1917.0204,114.8937 Q1916.1611,115.2219 1915.3954,115.3469 Q1914.6454,115.4719 1913.6298,115.4719 Q1911.7079,115.4719 1910.3954,114.675 Q1909.0986,113.8625 1908.4423,112.3937 Q1907.7861,110.9094 1907.7861,108.9406 Q1907.7861,107.5187 1908.1767,106.3469 Q1908.5829,105.1594 1909.3642,104.2844 Q1910.1454,103.4094 1911.2861,102.9406 Q1912.4267,102.4562 1913.8954,102.4562 Q1914.8486,102.4562 1915.7392,102.6594 Q1916.6454,102.8469 1917.5829,103.3156 L1916.7548,105.0969 Q1915.9736,104.7219 1915.3173,104.5344 Q1914.6611,104.3312 1913.8642,104.3312 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="74.5077" x="1934.2548" y="114.232">ModelFilter</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1864.67" x2="2045.8474" y1="124.8" y2="124.8"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1869.67" y="143.7659">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="171.1774" x="1869.67" y="162.8339">model_type : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1864.67" x2="2045.8474" y1="170.9358" y2="170.9358"/>
+    </g>
+    <!--class src.models.api.requests.prompts.PromptCreateRequest-->
+    <g id="elem_src.models.api.requests.prompts.PromptCreateRequest">
+      <rect codeLine="39" fill="#F1F1F1" height="105.2038" id="src.models.api.requests.prompts.PromptCreateRequest" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="193.8174" x="25.35" y="563.09"/>
+      <ellipse cx="47.3205" cy="579.09" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M47.4298,574.6212 Q46.508,574.6212 45.7736,574.9337 Q45.0548,575.2462 44.5548,575.84 Q44.0548,576.4181 43.7736,577.2931 Q43.508,578.1681 43.508,579.2619 Q43.508,580.6994 43.9455,581.7462 Q44.3986,582.7931 45.2423,583.34 Q46.1017,583.8869 47.4142,583.8869 Q48.1955,583.8869 48.883,583.7619 Q49.5861,583.6212 50.5861,583.3087 L50.5861,585.1837 Q49.7267,585.5119 48.9611,585.6369 Q48.2111,585.7619 47.1955,585.7619 Q45.2736,585.7619 43.9611,584.965 Q42.6642,584.1525 42.008,582.6837 Q41.3517,581.1994 41.3517,579.2306 Q41.3517,577.8087 41.7423,576.6369 Q42.1486,575.4494 42.9298,574.5744 Q43.7111,573.6994 44.8517,573.2306 Q45.9923,572.7462 47.4611,572.7462 Q48.4142,572.7462 49.3048,572.9494 Q50.2111,573.1369 51.1486,573.6056 L50.3205,575.3869 Q49.5392,575.0119 48.883,574.8244 Q48.2267,574.6212 47.4298,574.6212 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="146.3275" x="62.8694" y="584.522">PromptCreateRequest</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="26.35" x2="218.1674" y1="595.09" y2="595.09"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="31.35" y="614.0559">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="144.1995" x="31.35" y="633.1239">prompt : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="181.8174" x="31.35" y="652.1918">variables : Optional[list[str]]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="26.35" x2="218.1674" y1="660.2938" y2="660.2938"/>
+    </g>
+    <!--class src.models.api.requests.prompts.PromptUpdateRequest-->
+    <g id="elem_src.models.api.requests.prompts.PromptUpdateRequest">
+      <rect codeLine="44" fill="#F1F1F1" height="143.3396" id="src.models.api.requests.prompts.PromptUpdateRequest" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="211.3453" x="254.58" y="544.03"/>
+      <ellipse cx="282.2204" cy="560.03" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M282.3298,555.5613 Q281.4079,555.5613 280.6735,555.8738 Q279.9548,556.1863 279.4548,556.78 Q278.9548,557.3581 278.6735,558.2331 Q278.4079,559.1081 278.4079,560.2019 Q278.4079,561.6394 278.8454,562.6863 Q279.2985,563.7331 280.1423,564.28 Q281.0017,564.8269 282.3142,564.8269 Q283.0954,564.8269 283.7829,564.7019 Q284.486,564.5613 285.486,564.2488 L285.486,566.1238 Q284.6267,566.4519 283.861,566.5769 Q283.111,566.7019 282.0954,566.7019 Q280.1735,566.7019 278.861,565.905 Q277.5642,565.0925 276.9079,563.6238 Q276.2517,562.1394 276.2517,560.1706 Q276.2517,558.7488 276.6423,557.5769 Q277.0485,556.3894 277.8298,555.5144 Q278.611,554.6394 279.7517,554.1706 Q280.8923,553.6863 282.361,553.6863 Q283.3142,553.6863 284.2048,553.8894 Q285.111,554.0769 286.0485,554.5456 L285.2204,556.3269 Q284.4392,555.9519 283.7829,555.7644 Q283.1267,555.5613 282.3298,555.5613 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="151.2554" x="299.0294" y="565.462">PromptUpdateRequest</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="255.58" x2="464.9253" y1="576.03" y2="576.03"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="260.58" y="594.9959">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="144.1995" x="260.58" y="614.0639">prompt : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="199.3453" x="260.58" y="633.1318">set_as_default : Optional[bool]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="181.8174" x="260.58" y="652.1997">variables : Optional[list[str]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="142.5895" x="260.58" y="671.2676">version : Optional[int]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="255.58" x2="464.9253" y1="679.3696" y2="679.3696"/>
+    </g>
+    <!--class src.models.api.requests.query.QueryRequest-->
+    <g id="elem_src.models.api.requests.query.QueryRequest">
+      <rect codeLine="51" fill="#F1F1F1" height="353.0867" id="src.models.api.requests.query.QueryRequest" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="323.0228" x="500.74" y="439.15"/>
+      <ellipse cx="611.0386" cy="455.15" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M611.1479,450.6813 Q610.2261,450.6813 609.4917,450.9938 Q608.7729,451.3063 608.2729,451.9 Q607.7729,452.4781 607.4917,453.3531 Q607.2261,454.2281 607.2261,455.3219 Q607.2261,456.7594 607.6636,457.8063 Q608.1167,458.8531 608.9604,459.4 Q609.8198,459.9469 611.1323,459.9469 Q611.9136,459.9469 612.6011,459.8219 Q613.3042,459.6813 614.3042,459.3688 L614.3042,461.2438 Q613.4448,461.5719 612.6792,461.6969 Q611.9292,461.8219 610.9136,461.8219 Q608.9917,461.8219 607.6792,461.025 Q606.3823,460.2125 605.7261,458.7438 Q605.0698,457.2594 605.0698,455.2906 Q605.0698,453.8688 605.4604,452.6969 Q605.8667,451.5094 606.6479,450.6344 Q607.4292,449.7594 608.5698,449.2906 Q609.7104,448.8063 611.1792,448.8063 Q612.1323,448.8063 613.0229,449.0094 Q613.9292,449.1969 614.8667,449.6656 L614.0386,451.4469 Q613.2573,451.0719 612.6011,450.8844 Q611.9448,450.6813 611.1479,450.6813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="93.9256" x="631.5386" y="460.582">QueryRequest</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="501.74" x2="822.7628" y1="471.15" y2="471.15"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="264.795" x="506.74" y="490.1159">attachments : Optional[list[Attachment]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="198.0013" x="506.74" y="509.1839">conversation_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="273.055" x="506.74" y="528.2518">generate_topic_summary : Optional[bool]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="170.5614" x="506.74" y="547.3197">media_type : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="136.2615" x="506.74" y="566.3876">model : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="506.74" y="585.4555">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="161.8534" x="506.74" y="604.5234">no_tools : Optional[bool]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="150.4575" x="506.74" y="623.5914">provider : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.6635" x="506.74" y="642.6593">query : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="187.0113" x="506.74" y="661.7272">shield_ids : Optional[list[str]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="267.595" x="506.74" y="680.7951">solr : Optional[SolrVectorSearchRequest]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="197.0073" x="506.74" y="699.863">system_prompt : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="229.0812" x="506.74" y="718.9309">vector_store_ids : Optional[list[str]]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="501.74" x2="822.7628" y1="727.0329" y2="727.0329"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="311.0228" x="506.74" y="745.9989">check_uuid(value: Optional[str]) -&gt; Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="186.0033" x="506.74" y="765.0668">validate_media_type() -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="245.125" x="506.74" y="784.1347">validate_provider_and_model() -&gt; Self</text>
+    </g>
+    <!--class src.models.api.requests.responses_openai.ResponsesRequest-->
+    <g id="elem_src.models.api.requests.responses_openai.ResponsesRequest">
+      <rect codeLine="69" fill="#F1F1F1" height="581.9017" id="src.models.api.requests.responses_openai.ResponsesRequest" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="516.4741" x="859.02" y="324.75"/>
+      <ellipse cx="1051.0713" cy="340.75" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1051.1806,336.2813 Q1050.2588,336.2813 1049.5244,336.5938 Q1048.8056,336.9063 1048.3056,337.5 Q1047.8056,338.0781 1047.5244,338.9531 Q1047.2588,339.8281 1047.2588,340.9219 Q1047.2588,342.3594 1047.6963,343.4063 Q1048.1494,344.4531 1048.9931,345 Q1049.8525,345.5469 1051.165,345.5469 Q1051.9463,345.5469 1052.6338,345.4219 Q1053.3369,345.2813 1054.3369,344.9688 L1054.3369,346.8438 Q1053.4775,347.1719 1052.7119,347.2969 Q1051.9619,347.4219 1050.9463,347.4219 Q1049.0244,347.4219 1047.7119,346.625 Q1046.415,345.8125 1045.7588,344.3438 Q1045.1025,342.8594 1045.1025,340.8906 Q1045.1025,339.4688 1045.4931,338.2969 Q1045.8994,337.1094 1046.6806,336.2344 Q1047.4619,335.3594 1048.6025,334.8906 Q1049.7431,334.4063 1051.2119,334.4063 Q1052.165,334.4063 1053.0556,334.6094 Q1053.9619,334.7969 1054.8994,335.2656 L1054.0713,337.0469 Q1053.29,336.6719 1052.6338,336.4844 Q1051.9775,336.2813 1051.1806,336.2813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8715" x="1071.5713" y="346.182">ResponsesRequest</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="860.02" x2="1374.4941" y1="356.75" y2="356.75"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="179.5633" x="865.02" y="375.7159">conversation : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="273.055" x="865.02" y="394.7839">generate_topic_summary : Optional[bool]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="271.557" x="865.02" y="413.8518">include : Optional[list[IncludeParameter]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="34.5799" x="865.02" y="432.9197">input</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="172.2554" x="865.02" y="451.9876">instructions : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="194.9493" x="865.02" y="471.0555">max_infer_iters : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="223.8872" x="865.02" y="490.1234">max_output_tokens : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="189.2513" x="865.02" y="509.1914">max_tool_calls : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="215.9912" x="865.02" y="528.2593">metadata : Optional[dict[str, str]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="136.2615" x="865.02" y="547.3272">model : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="865.02" y="566.3951">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="221.5772" x="865.02" y="585.463">parallel_tool_calls : Optional[bool]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="236.7951" x="865.02" y="604.5309">previous_response_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="176.1334" x="865.02" y="623.5989">prompt : Optional[Prompt]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="212.4352" x="865.02" y="642.6668">reasoning : Optional[Reasoning]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="199.8073" x="865.02" y="661.7347">safety_identifier : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="187.0113" x="865.02" y="680.8026">shield_ids : Optional[list[str]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="267.595" x="865.02" y="699.8705">solr : Optional[SolrVectorSearchRequest]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="74.1017" x="865.02" y="718.9384">store : bool</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="86.5757" x="865.02" y="738.0064">stream : bool</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="190.4133" x="865.02" y="757.0743">temperature : Optional[float]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="130.5915" x="865.02" y="776.1422">text : Optional[Text]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="223.4671" x="865.02" y="795.2101">tool_choice : Optional[ToolChoice]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="201.5993" x="865.02" y="814.278">tools : Optional[list[InputTool]]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="860.02" x2="1374.4941" y1="822.38" y2="822.38"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="423.7084" x="865.02" y="841.3459">check_previous_response_id(value: Optional[str]) -&gt; Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="309.0768" x="865.02" y="860.4139">check_suid(value: Optional[str]) -&gt; Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="248.555" x="865.02" y="879.4818">validate_body_size(values: Any) -&gt; Any</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="504.4741" x="865.02" y="898.5497">validate_conversation_and_previous_response_id_mutually_exclusive() -&gt; Self</text>
+    </g>
+    <!--class src.models.api.requests.rlsapi.RlsapiV1Attachment-->
+    <g id="elem_src.models.api.requests.rlsapi.RlsapiV1Attachment">
+      <rect codeLine="99" fill="#F1F1F1" height="86.1358" id="src.models.api.requests.rlsapi.RlsapiV1Attachment" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="172.9714" x="1410.77" y="572.63"/>
+      <ellipse cx="1429.5905" cy="588.63" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1429.6998,584.1613 Q1428.778,584.1613 1428.0436,584.4738 Q1427.3248,584.7863 1426.8248,585.38 Q1426.3248,585.9581 1426.0436,586.8331 Q1425.778,587.7081 1425.778,588.8019 Q1425.778,590.2394 1426.2155,591.2863 Q1426.6686,592.3331 1427.5123,592.88 Q1428.3717,593.4269 1429.6842,593.4269 Q1430.4655,593.4269 1431.153,593.3019 Q1431.8561,593.1613 1432.8561,592.8488 L1432.8561,594.7238 Q1431.9967,595.0519 1431.2311,595.1769 Q1430.4811,595.3019 1429.4655,595.3019 Q1427.5436,595.3019 1426.2311,594.505 Q1424.9342,593.6925 1424.278,592.2238 Q1423.6217,590.7394 1423.6217,588.7706 Q1423.6217,587.3488 1424.0123,586.1769 Q1424.4186,584.9894 1425.1998,584.1144 Q1425.9811,583.2394 1427.1217,582.7706 Q1428.2623,582.2863 1429.7311,582.2863 Q1430.6842,582.2863 1431.5748,582.4894 Q1432.4811,582.6769 1433.4186,583.1456 L1432.5905,584.9269 Q1431.8092,584.5519 1431.153,584.3644 Q1430.4967,584.1613 1429.6998,584.1613 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.4815" x="1444.4395" y="594.062">RlsapiV1Attachment</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1411.77" x2="1582.7414" y1="604.63" y2="604.63"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="151.7874" x="1416.77" y="623.5959">contents : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="160.9714" x="1416.77" y="642.6639">mimetype : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1411.77" x2="1582.7414" y1="650.7658" y2="650.7658"/>
+    </g>
+    <!--class src.models.api.requests.rlsapi.RlsapiV1CLA-->
+    <g id="elem_src.models.api.requests.rlsapi.RlsapiV1CLA">
+      <rect codeLine="103" fill="#F1F1F1" height="86.1358" id="src.models.api.requests.rlsapi.RlsapiV1CLA" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="154.8135" x="44.85" y="1004.78"/>
+      <ellipse cx="78.8282" cy="1020.78" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M78.9376,1016.3113 Q78.0157,1016.3113 77.2813,1016.6238 Q76.5626,1016.9363 76.0626,1017.53 Q75.5626,1018.1081 75.2813,1018.9831 Q75.0157,1019.8581 75.0157,1020.9519 Q75.0157,1022.3894 75.4532,1023.4363 Q75.9063,1024.4831 76.7501,1025.03 Q77.6095,1025.5769 78.922,1025.5769 Q79.7032,1025.5769 80.3907,1025.4519 Q81.0938,1025.3113 82.0938,1024.9988 L82.0938,1026.8738 Q81.2345,1027.2019 80.4688,1027.3269 Q79.7188,1027.4519 78.7032,1027.4519 Q76.7813,1027.4519 75.4688,1026.655 Q74.172,1025.8425 73.5157,1024.3738 Q72.8595,1022.8894 72.8595,1020.9206 Q72.8595,1019.4988 73.2501,1018.3269 Q73.6563,1017.1394 74.4376,1016.2644 Q75.2188,1015.3894 76.3595,1014.9206 Q77.5001,1014.4363 78.9688,1014.4363 Q79.922,1014.4363 80.8126,1014.6394 Q81.7188,1014.8269 82.6563,1015.2956 L81.8282,1017.0769 Q81.047,1016.7019 80.3907,1016.5144 Q79.7345,1016.3113 78.9376,1016.3113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="80.6397" x="97.0456" y="1026.212">RlsapiV1CLA</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="45.85" x2="198.6635" y1="1036.78" y2="1036.78"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="131.8795" x="50.85" y="1055.7459">nevra : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="142.8135" x="50.85" y="1074.8139">version : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="45.85" x2="198.6635" y1="1082.9158" y2="1082.9158"/>
+    </g>
+    <!--class src.models.api.requests.rlsapi.RlsapiV1Context-->
+    <g id="elem_src.models.api.requests.rlsapi.RlsapiV1Context">
+      <rect codeLine="107" fill="#F1F1F1" height="143.3396" id="src.models.api.requests.rlsapi.RlsapiV1Context" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="304.1089" x="234.2" y="976.18"/>
+      <ellipse cx="328.5596" cy="992.18" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M328.669,987.7113 Q327.7471,987.7113 327.0128,988.0238 Q326.294,988.3363 325.794,988.93 Q325.294,989.5081 325.0128,990.3831 Q324.7471,991.2581 324.7471,992.3519 Q324.7471,993.7894 325.1846,994.8363 Q325.6378,995.8831 326.4815,996.43 Q327.3409,996.9769 328.6534,996.9769 Q329.4346,996.9769 330.1221,996.8519 Q330.8253,996.7113 331.8253,996.3988 L331.8253,998.2738 Q330.9659,998.6019 330.2003,998.7269 Q329.4503,998.8519 328.4346,998.8519 Q326.5128,998.8519 325.2003,998.055 Q323.9034,997.2425 323.2471,995.7738 Q322.5909,994.2894 322.5909,992.3206 Q322.5909,990.8988 322.9815,989.7269 Q323.3878,988.5394 324.169,987.6644 Q324.9503,986.7894 326.0909,986.3206 Q327.2315,985.8363 328.7003,985.8363 Q329.6534,985.8363 330.544,986.0394 Q331.4503,986.2269 332.3878,986.6956 L331.5596,988.4769 Q330.7784,988.1019 330.1221,987.9144 Q329.4659,987.7113 328.669,987.7113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="106.8896" x="349.0596" y="997.612">RlsapiV1Context</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="235.2" x2="537.3089" y1="1008.18" y2="1008.18"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="292.1089" x="240.2" y="1027.1459">attachments : Optional[RlsapiV1Attachment]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="175.8673" x="240.2" y="1046.2139">cla : Optional[RlsapiV1CLA]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="127.2175" x="240.2" y="1065.2818">stdin : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="278.9489" x="240.2" y="1084.3497">systeminfo : Optional[RlsapiV1SystemInfo]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="246.3851" x="240.2" y="1103.4176">terminal : Optional[RlsapiV1Terminal]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="235.2" x2="537.3089" y1="1111.5196" y2="1111.5196"/>
+    </g>
+    <!--class src.models.api.requests.rlsapi.RlsapiV1InferRequest-->
+    <g id="elem_src.models.api.requests.rlsapi.RlsapiV1InferRequest">
+      <rect codeLine="114" fill="#F1F1F1" height="162.4075" id="src.models.api.requests.rlsapi.RlsapiV1InferRequest" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="245.1831" x="573.66" y="966.65"/>
+      <ellipse cx="621.5398" cy="982.65" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M621.6492,978.1813 Q620.7273,978.1813 619.993,978.4938 Q619.2742,978.8063 618.7742,979.4 Q618.2742,979.9781 617.993,980.8531 Q617.7273,981.7281 617.7273,982.8219 Q617.7273,984.2594 618.1648,985.3063 Q618.618,986.3531 619.4617,986.9 Q620.3211,987.4469 621.6336,987.4469 Q622.4148,987.4469 623.1023,987.3219 Q623.8055,987.1813 624.8055,986.8688 L624.8055,988.7438 Q623.9461,989.0719 623.1805,989.1969 Q622.4305,989.3219 621.4148,989.3219 Q619.493,989.3219 618.1805,988.525 Q616.8836,987.7125 616.2273,986.2438 Q615.5711,984.7594 615.5711,982.7906 Q615.5711,981.3688 615.9617,980.1969 Q616.368,979.0094 617.1492,978.1344 Q617.9305,977.2594 619.0711,976.7906 Q620.2117,976.3063 621.6805,976.3063 Q622.6336,976.3063 623.5242,976.5094 Q624.4305,976.6969 625.368,977.1656 L624.5398,978.9469 Q623.7586,978.5719 623.1023,978.3844 Q622.4461,978.1813 621.6492,978.1813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="140.9234" x="642.0398" y="988.082">RlsapiV1InferRequest</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="574.66" x2="817.8431" y1="998.65" y2="998.65"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="233.1831" x="579.66" y="1017.6159">context : Optional[RlsapiV1Context]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="223.4392" x="579.66" y="1036.6839">include_metadata : Optional[bool]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="152.2354" x="579.66" y="1055.7518">question : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="161.0694" x="579.66" y="1074.8197">skip_rag : Optional[bool]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="574.66" x2="817.8431" y1="1082.9217" y2="1082.9217"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="158.5354" x="579.66" y="1101.8876">get_input_source() -&gt; str</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="221.2691" x="579.66" y="1120.9555">validate_question(value: str) -&gt; str</text>
+    </g>
+    <!--class src.models.api.requests.rlsapi.RlsapiV1SystemInfo-->
+    <g id="elem_src.models.api.requests.rlsapi.RlsapiV1SystemInfo">
+      <rect codeLine="122" fill="#F1F1F1" height="143.3396" id="src.models.api.requests.rlsapi.RlsapiV1SystemInfo" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="171.6134" x="853.45" y="976.18"/>
+      <ellipse cx="872.8816" cy="992.18" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M872.9909,987.7113 Q872.0691,987.7113 871.3347,988.0238 Q870.6159,988.3363 870.1159,988.93 Q869.6159,989.5081 869.3347,990.3831 Q869.0691,991.2581 869.0691,992.3519 Q869.0691,993.7894 869.5066,994.8363 Q869.9597,995.8831 870.8034,996.43 Q871.6628,996.9769 872.9753,996.9769 Q873.7566,996.9769 874.4441,996.8519 Q875.1472,996.7113 876.1472,996.3988 L876.1472,998.2738 Q875.2878,998.6019 874.5222,998.7269 Q873.7722,998.8519 872.7566,998.8519 Q870.8347,998.8519 869.5222,998.055 Q868.2253,997.2425 867.5691,995.7738 Q866.9128,994.2894 866.9128,992.3206 Q866.9128,990.8988 867.3034,989.7269 Q867.7097,988.5394 868.4909,987.6644 Q869.2722,986.7894 870.4128,986.3206 Q871.5534,985.8363 873.0222,985.8363 Q873.9753,985.8363 874.8659,986.0394 Q875.7722,986.2269 876.7097,986.6956 L875.8816,988.4769 Q875.1003,988.1019 874.4441,987.9144 Q873.7878,987.7113 872.9909,987.7113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="129.7655" x="887.8664" y="997.612">RlsapiV1SystemInfo</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="854.45" x2="1024.0634" y1="1008.18" y2="1008.18"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.5916" x="859.45" y="1027.1459">arch : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="859.45" y="1046.2139">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="109.7596" x="859.45" y="1065.2818">os : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="159.6134" x="859.45" y="1084.3497">system_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="142.8135" x="859.45" y="1103.4176">version : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="854.45" x2="1024.0634" y1="1111.5196" y2="1111.5196"/>
+    </g>
+    <!--class src.models.api.requests.rlsapi.RlsapiV1Terminal-->
+    <g id="elem_src.models.api.requests.rlsapi.RlsapiV1Terminal">
+      <rect codeLine="129" fill="#F1F1F1" height="67.0679" id="src.models.api.requests.rlsapi.RlsapiV1Terminal" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="151.0755" x="1059.72" y="1014.32"/>
+      <ellipse cx="1077.0978" cy="1030.32" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1077.2072,1025.8513 Q1076.2853,1025.8513 1075.5509,1026.1638 Q1074.8322,1026.4763 1074.3322,1027.07 Q1073.8322,1027.6481 1073.5509,1028.5231 Q1073.2853,1029.3981 1073.2853,1030.4919 Q1073.2853,1031.9294 1073.7228,1032.9763 Q1074.1759,1034.0231 1075.0197,1034.57 Q1075.879,1035.1169 1077.1915,1035.1169 Q1077.9728,1035.1169 1078.6603,1034.9919 Q1079.3634,1034.8513 1080.3634,1034.5388 L1080.3634,1036.4138 Q1079.504,1036.7419 1078.7384,1036.8669 Q1077.9884,1036.9919 1076.9728,1036.9919 Q1075.0509,1036.9919 1073.7384,1036.195 Q1072.4415,1035.3825 1071.7853,1033.9138 Q1071.129,1032.4294 1071.129,1030.4606 Q1071.129,1029.0388 1071.5197,1027.8669 Q1071.9259,1026.6794 1072.7072,1025.8044 Q1073.4884,1024.9294 1074.629,1024.4606 Q1075.7697,1023.9762 1077.2384,1023.9762 Q1078.1915,1023.9762 1079.0822,1024.1794 Q1079.9884,1024.3669 1080.9259,1024.8356 L1080.0978,1026.6169 Q1079.3165,1026.2419 1078.6603,1026.0544 Q1078.004,1025.8513 1077.2072,1025.8513 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="113.7915" x="1091.6262" y="1035.752">RlsapiV1Terminal</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1060.72" x2="1209.7955" y1="1046.32" y2="1046.32"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="139.0755" x="1065.72" y="1065.2859">output : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1060.72" x2="1209.7955" y1="1073.3879" y2="1073.3879"/>
+    </g>
+    <!--class src.models.api.requests.query.StreamingInterruptRequest-->
+    <g id="elem_src.models.api.requests.query.StreamingInterruptRequest">
+      <rect codeLine="132" fill="#F1F1F1" height="105.2038" id="src.models.api.requests.query.StreamingInterruptRequest" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="230.5111" x="7" y="1227.19"/>
+      <ellipse cx="29.4366" cy="1243.19" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M29.546,1238.7213 Q28.6241,1238.7213 27.8897,1239.0338 Q27.171,1239.3463 26.671,1239.94 Q26.171,1240.5181 25.8897,1241.3931 Q25.6241,1242.2681 25.6241,1243.3619 Q25.6241,1244.7994 26.0616,1245.8463 Q26.5147,1246.8931 27.3585,1247.44 Q28.2179,1247.9869 29.5304,1247.9869 Q30.3116,1247.9869 30.9991,1247.8619 Q31.7022,1247.7213 32.7022,1247.4088 L32.7022,1249.2838 Q31.8429,1249.6119 31.0772,1249.7369 Q30.3272,1249.8619 29.3116,1249.8619 Q27.3897,1249.8619 26.0772,1249.065 Q24.7804,1248.2525 24.1241,1246.7838 Q23.4679,1245.2994 23.4679,1243.3306 Q23.4679,1241.9088 23.8585,1240.7369 Q24.2647,1239.5494 25.046,1238.6744 Q25.8272,1237.7994 26.9679,1237.3306 Q28.1085,1236.8463 29.5772,1236.8463 Q30.5304,1236.8463 31.421,1237.0494 Q32.3272,1237.2369 33.2647,1237.7056 L32.4366,1239.4869 Q31.6554,1239.1119 30.9991,1238.9244 Q30.3429,1238.7213 29.546,1238.7213 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="181.9853" x="45.0892" y="1248.622">StreamingInterruptRequest</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="8" x2="236.5111" y1="1259.19" y2="1259.19"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="13" y="1278.1559">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="163.6174" x="13" y="1297.2239">request_id : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="8" x2="236.5111" y1="1305.3258" y2="1305.3258"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="218.5111" x="13" y="1324.2918">check_request_id(value: str) -&gt; str</text>
+    </g>
+    <!--class src.models.api.requests.vector_stores.VectorStoreCreateRequest-->
+    <g id="elem_src.models.api.requests.vector_stores.VectorStoreCreateRequest">
+      <rect codeLine="137" fill="#F1F1F1" height="181.4754" id="src.models.api.requests.vector_stores.VectorStoreCreateRequest" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="293.2589" x="272.63" y="1189.05"/>
+      <ellipse cx="327.9788" cy="1205.05" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M328.0882,1200.5813 Q327.1663,1200.5813 326.4319,1200.8938 Q325.7132,1201.2063 325.2132,1201.8 Q324.7132,1202.3781 324.4319,1203.2531 Q324.1663,1204.1281 324.1663,1205.2219 Q324.1663,1206.6594 324.6038,1207.7063 Q325.0569,1208.7531 325.9007,1209.3 Q326.76,1209.8469 328.0725,1209.8469 Q328.8538,1209.8469 329.5413,1209.7219 Q330.2444,1209.5813 331.2444,1209.2688 L331.2444,1211.1438 Q330.385,1211.4719 329.6194,1211.5969 Q328.8694,1211.7219 327.8538,1211.7219 Q325.9319,1211.7219 324.6194,1210.925 Q323.3225,1210.1125 322.6663,1208.6438 Q322.01,1207.1594 322.01,1205.1906 Q322.01,1203.7688 322.4007,1202.5969 Q322.8069,1201.4094 323.5882,1200.5344 Q324.3694,1199.6594 325.51,1199.1906 Q326.6507,1198.7063 328.1194,1198.7063 Q329.0725,1198.7063 329.9632,1198.9094 Q330.8694,1199.0969 331.8069,1199.5656 L330.9788,1201.3469 Q330.1975,1200.9719 329.5413,1200.7844 Q328.885,1200.5813 328.0882,1200.5813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="174.0613" x="348.4788" y="1210.482">VectorStoreCreateRequest</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="273.63" x2="564.8889" y1="1221.05" y2="1221.05"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="281.2589" x="278.63" y="1240.0159">chunking_strategy : Optional[dict[str, Any]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="245.4611" x="278.63" y="1259.0839">embedding_dimension : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="218.0632" x="278.63" y="1278.1518">embedding_model : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="223.1872" x="278.63" y="1297.2197">metadata : Optional[dict[str, Any]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="278.63" y="1316.2876">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.0755" x="278.63" y="1335.3555">name : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="168.8954" x="278.63" y="1354.4234">provider_id : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="273.63" x2="564.8889" y1="1362.5254" y2="1362.5254"/>
+    </g>
+    <!--class src.models.api.requests.vector_stores.VectorStoreFileCreateRequest-->
+    <g id="elem_src.models.api.requests.vector_stores.VectorStoreFileCreateRequest">
+      <rect codeLine="146" fill="#F1F1F1" height="143.3396" id="src.models.api.requests.vector_stores.VectorStoreFileCreateRequest" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="666.1058" x="601.2" y="1208.12"/>
+      <ellipse cx="831.7793" cy="1224.12" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M831.8887,1219.6513 Q830.9668,1219.6513 830.2324,1219.9638 Q829.5137,1220.2763 829.0137,1220.87 Q828.5137,1221.4481 828.2324,1222.3231 Q827.9668,1223.1981 827.9668,1224.2919 Q827.9668,1225.7294 828.4043,1226.7763 Q828.8574,1227.8231 829.7012,1228.37 Q830.5605,1228.9169 831.873,1228.9169 Q832.6543,1228.9169 833.3418,1228.7919 Q834.0449,1228.6513 835.0449,1228.3388 L835.0449,1230.2138 Q834.1855,1230.5419 833.4199,1230.6669 Q832.6699,1230.7919 831.6543,1230.7919 Q829.7324,1230.7919 828.4199,1229.995 Q827.123,1229.1825 826.4668,1227.7138 Q825.8105,1226.2294 825.8105,1224.2606 Q825.8105,1222.8388 826.2012,1221.6669 Q826.6074,1220.4794 827.3887,1219.6044 Q828.1699,1218.7294 829.3105,1218.2606 Q830.4512,1217.7763 831.9199,1217.7763 Q832.873,1217.7763 833.7637,1217.9794 Q834.6699,1218.1669 835.6074,1218.6356 L834.7793,1220.4169 Q833.998,1220.0419 833.3418,1219.8544 Q832.6855,1219.6513 831.8887,1219.6513 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="196.4473" x="852.2793" y="1229.552">VectorStoreFileCreateRequest</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="602.2" x2="1266.3058" y1="1240.12" y2="1240.12"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="305.9549" x="607.2" y="1259.0859">attributes : Optional[dict[str, str | float | bool]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="281.2589" x="607.2" y="1278.1539">chunking_strategy : Optional[dict[str, Any]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.9575" x="607.2" y="1297.2218">file_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="607.2" y="1316.2897">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="602.2" x2="1266.3058" y1="1324.3917" y2="1324.3917"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="654.1058" x="607.2" y="1343.3576">validate_attributes(value: Optional[dict[str, str | float | bool]]) -&gt; Optional[dict[str, str | float | bool]]</text>
+    </g>
+    <!--class src.models.api.requests.vector_stores.VectorStoreUpdateRequest-->
+    <g id="elem_src.models.api.requests.vector_stores.VectorStoreUpdateRequest">
+      <rect codeLine="153" fill="#F1F1F1" height="143.3396" id="src.models.api.requests.vector_stores.VectorStoreUpdateRequest" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="235.1872" x="1302.66" y="1208.12"/>
+      <ellipse cx="1328.549" cy="1224.12" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1328.6584,1219.6513 Q1327.7365,1219.6513 1327.0022,1219.9638 Q1326.2834,1220.2763 1325.7834,1220.87 Q1325.2834,1221.4481 1325.0022,1222.3231 Q1324.7365,1223.1981 1324.7365,1224.2919 Q1324.7365,1225.7294 1325.174,1226.7763 Q1325.6272,1227.8231 1326.4709,1228.37 Q1327.3303,1228.9169 1328.6428,1228.9169 Q1329.424,1228.9169 1330.1115,1228.7919 Q1330.8147,1228.6513 1331.8147,1228.3388 L1331.8147,1230.2138 Q1330.9553,1230.5419 1330.1897,1230.6669 Q1329.4397,1230.7919 1328.424,1230.7919 Q1326.5022,1230.7919 1325.1897,1229.995 Q1323.8928,1229.1825 1323.2365,1227.7138 Q1322.5803,1226.2294 1322.5803,1224.2606 Q1322.5803,1222.8388 1322.9709,1221.6669 Q1323.3772,1220.4794 1324.1584,1219.6044 Q1324.9397,1218.7294 1326.0803,1218.2606 Q1327.2209,1217.7763 1328.6897,1217.7763 Q1329.6428,1217.7763 1330.5334,1217.9794 Q1331.4397,1218.1669 1332.3772,1218.6356 L1331.549,1220.4169 Q1330.7678,1220.0419 1330.1115,1219.8544 Q1329.4553,1219.6513 1328.6584,1219.6513 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="178.9893" x="1344.9688" y="1229.552">VectorStoreUpdateRequest</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1303.66" x2="1536.8472" y1="1240.12" y2="1240.12"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="161.3914" x="1308.66" y="1259.0859">expires_at : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="223.1872" x="1308.66" y="1278.1539">metadata : Optional[dict[str, Any]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1308.66" y="1297.2218">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.0755" x="1308.66" y="1316.2897">name : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1303.66" x2="1536.8472" y1="1324.3917" y2="1324.3917"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="212.1271" x="1308.66" y="1343.3576">check_at_least_one_field() -&gt; Self</text>
+    </g>
+    <!--SRC=[hLXBZzis4Bxlhn1oIe5MGAuv55WO2B10YsxNsro21K5B8vjOIbJuCEoq_UyTadfhfCh9NcoO_6OuC_pcGHkmISLBC3NFO0yrrzmgdLIgWhjCScEITpjLdK4RReMg_gfpRk49lZemzbt2JM9qbfOg1sbINejKnosJPWCfaoxgIFw-Iv8Wpr2Y4CVaOvABpEAgLRN8c75boVKLb_-elJINNupLBtV_jkPz0iWFF7lTObJHODE9KB0YGwkEIWimmyEaCFPB2zz5oFNbnUC7FZ6HponC4YbBfZ6q604Wjcct3LHMbFWnb12LzHBEW6Qj4uJ6i1yymcLYFpj1zjefOBLMPv53_lwdv9TVapt8eiDqLhm_S-bWOah0JusBWiw9l9N1KmCIlt4V5uM_UTO7UgPy8ThZyvQkP4Q9lUNMcUsSdT63KB12M1FGmx0Vb98-D4UmBBWQ8-sNUsj_tptkGIELdk28dkb0g2tcbbcDz-GbJRgc99ZCdJrXpBz5kfw0voWsjDKxuNdoix-kG70254BVxjDHyDM4e5x3DKrdYkUQSYJbjIJm7PSejsAev-IQU3WcrTpzxWmqWM9qVu4-3f-4jA3NIoAtNAfZEi2li2cksciDoxNlKQkojZiD6mbU1xn92RaLIw8KUGjQy8E49OfCxDoUY6Cxj-RVefq6quyRbaF1dRHKWlwV9uZ0J9WKrS3GpiS_7UZh5kU-Uc0wXCS4jPPd9rzovqRSTtiREyyHAj2UkujDjFMyX5nmccPDd3TthahXSKgI5R1DVq9PY0TrQoS1CaV_bY_5A3dIkCVVdo732MOFN6Ud9hu1UZKMIhRCvI3637x0wfdpDZTIDQugqtBLHtlKSxlzhahoAcSXoWDSHxMdPgOmM-ZM3Y26gHegBjAfT1n-1fJw8Jw9AfCkXrdu7kBw8mwO9M3bUudWsjdmZUUuBCoA5DtuXOcgyCt3JXfIqoKy0li7QaCBNw5QmdX-ulmX9Ga0o_4M-7fNl2qd_40jfI_avCbzUi1PA6UwSP5EwpbxOuNqUrZCZQf4THnkFxMB8GLu0VQAclriLmWo6TyuwNms8JOCFFud6bdslp4XQqyhfqTyAQJYGTp2PUJiC_uEwo6M9oMoaTmpBk_2QWio10sH8nuuo6Kg-DjpkvcNlwyU75H-PKPyWoXhFYRtrJM8uFTePXwMV5ySAADPwQn3YbqPN33RZ3W3MJwamGhn-KFVLTOBI82dSwcsSDXfpsep0eUwzVcbrRdxxVuM4n0UpgxWh3bPosUzUk5SR_pb9lSRaRMMFOzKu8da50XzYPcI2whmnhQ5nKzHmlkm-u2xCLqq8hcaaC_D7X641rzPDtMISII6SZqLnXaxYTgWGJ2gshRbSEK9Qrv5pJG_BZspGajXHZcTDUIVl3vRtQiZ_Jp0jqIcbueqmQAukM4eiyW2kYTi9djBWLiyQMM27x71BX-q3-KTcyq3NhRMhhRRn-55sPLvlr51XoMMvHwoUjrD-_BTQljZQZWncdH9HSoCawjUqJaMNkPmlD8Z1jRyq9QWF42UUtpk_uCXtnr3rE98iZhGjAUzsJEU2YS-SzyYf3CrRVtLuk0iBF-HaVoJX742lmzzrx_fDWeyc-OO7Rd-ludElFM_8cOshlmpCVU7Ylhsb_PYnEUFRhZK0a7erispytTHBMOmjqpY46kPge0LVZWTZZJ_0G00]-->
+  </g>
+</svg>

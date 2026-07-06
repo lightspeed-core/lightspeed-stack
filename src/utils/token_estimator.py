@@ -77,29 +77,21 @@ def estimate_tokens(text: str, encoding_name: str = DEFAULT_ENCODING_NAME) -> in
 
 
 def extract_message_text(message: Any) -> str:
-    """Pull the textual content out of a chat-message-shaped value.
+    """Pull the textual content out of a typed Llama Stack message item.
 
-    Accepts the duck-typed Llama Stack conversation-item shape
-    (``.type == "message"`` with ``.role`` and ``.content`` attributes)
-    and the OpenAI-style ``{"role", "content"}`` dictionary.
-
-    ``content`` can be a plain string, a list of content-part objects
-    each with a ``.text`` attribute, or a list of dicts each with a
-    ``"text"`` key. Anything unrecognized is coerced via ``str(...)``.
+    Expects the conversation-item shape (``.type == "message"`` with
+    ``.role`` and ``.content`` attributes). ``content`` may be a plain
+    string or a list of typed content-part objects each carrying ``.text``.
+    Anything unrecognized is coerced via ``str(...)``.
 
     Parameters:
-        message: Chat-message-shaped value.
+        message: A Llama Stack message item.
 
     Returns:
         The textual content joined by spaces, or the empty string when
         no text can be located.
     """
-    content: Any
-    if isinstance(message, dict):
-        content = message.get("content")
-    else:
-        content = getattr(message, "content", None)
-
+    content = getattr(message, "content", None)
     if content is None:
         return ""
     if isinstance(content, str):
@@ -107,26 +99,19 @@ def extract_message_text(message: Any) -> str:
     if isinstance(content, list):
         parts: list[str] = []
         for part in content:
-            if hasattr(part, "text"):
-                text = getattr(part, "text", None)
-                if text:
-                    parts.append(text)
-            elif isinstance(part, dict) and "text" in part:
-                text = part["text"]
-                if text:
-                    parts.append(text)
+            text = getattr(part, "text", None)
+            if text:
+                parts.append(text)
         return " ".join(parts)
     return str(content)
 
 
 def is_message_item(value: Any) -> bool:
-    """Return True when *value* looks like a chat message.
+    """Return True when *value* is a typed Llama Stack message item.
 
-    Either an OpenAI-style dict with a ``"role"`` key, or a Llama Stack
-    conversation-item object whose ``.type`` attribute is ``"message"``.
+    Checks the conversation-item discriminator: an item whose ``.type``
+    attribute equals ``"message"``.
     """
-    if isinstance(value, dict):
-        return "role" in value
     return getattr(value, "type", None) == "message"
 
 
@@ -140,13 +125,10 @@ def estimate_conversation_tokens(
     Sums tokens across the optional system prompt and every message in
     *messages*. Non-message items in the list (tool calls, function
     results, etc.) are ignored — only items recognized by
-    ``is_message_item`` contribute. Both Llama Stack conversation-item
-    objects and plain ``{"role", "content"}`` dicts are accepted in the
-    same list.
+    ``is_message_item`` contribute.
 
     Parameters:
-        messages: Chat history. Each element may be a Llama Stack
-            conversation item or a plain dict.
+        messages: Chat history of typed Llama Stack conversation items.
         system_prompt: Optional system prompt prepended to the
             estimate.
         encoding_name: Name of the tiktoken encoding to use.

@@ -105,22 +105,29 @@ Before implementing BYOK, ensure you have:
 - **LLM Provider**: OpenAI, vLLM, or other supported inference provider
 
 ### Knowledge Sources
-- **Directly supported**: Markdown (.md) and plain text (.txt) files
-- **Requires conversion**: PDFs, AsciiDoc, HTML, and other formats must be converted to markdown or TXT
-- Documentation, manuals, FAQs, knowledge bases (after format conversion)
+- **Directly supported**: Markdown (`.md`), plain text (`.txt`), PDF (`.pdf`), and HTML (`.html`/`.htm`) files. PDF and HTML are converted to Markdown automatically by [`rag-content`](https://github.com/lightspeed-core/rag-content) (via docling) — no manual pre-conversion step is needed. See the rag-content README's [Supported Input Formats](https://github.com/lightspeed-core/rag-content#supported-input-formats) section.
+- **Requires conversion**: AsciiDoc and other formats must be converted to Markdown or plain text first.
+- Documentation, manuals, FAQs, knowledge bases
 
 ---
 
 ## Configuration Guide
 
+> [!WARNING]
+> **Deprecated in 0.7.0**: The top-level `byok_rag`, `rag`, `okp`, and `reranker` sections
+> are deprecated. In 0.7.0, all RAG-related configuration is unified under a single `rag`
+> section: BYOK stores move to `rag.byok.stores` (with `backend` instead of `rag_type`),
+> retrieval strategies move to `rag.retrieval.inline`/`rag.retrieval.tool`, OKP moves to
+> `rag.okp`, and the reranker moves to `rag.retrieval.inline.reranker`.
+> See the [v0.7.0 Migration Guide](migrations/v0.7.0.md) for full details and examples.
+
 ### Step 1: Prepare Your Knowledge Sources
 
 1. **Collect your documents**: Gather all knowledge sources you want to include
-2. **Convert formats**: Convert non-supported formats to markdown (.md) or plain text (.txt)
-   - **PDF conversion**: Use tools like [docling](https://github.com/DS4SD/docling) to convert PDFs to markdown
-   - **Adoc conversion**: Use [custom scripts](https://github.com/openshift/lightspeed-rag-content/blob/main/scripts/asciidoctor-text/convert-it-all.py) to convert AsciiDoc to plain text
-3. **Organize content**: Structure your converted documents for optimal indexing
-4. **Format validation**: Ensure all documents are in supported formats (.md or .txt)
+2. **Markdown, text, PDF, and HTML ingest directly**: Place `.md`, `.txt`, `.pdf`, and `.html` files in your input directory and pass them to `rag-content` with the matching document type (`-t pdf` or `-t html`). `rag-content` converts PDF and HTML to Markdown for you via docling — no manual pre-conversion step is required.
+   - **PDF note**: Scanned / image-only PDFs are out of scope (OCR is disabled); they index as empty and `rag-content` logs a warning naming the file. Run such PDFs through a separate OCR step first.
+   - **AsciiDoc and other formats**: Convert to Markdown or plain text first — e.g. use [custom scripts](https://github.com/openshift/lightspeed-rag-content/blob/main/scripts/asciidoctor-text/convert-it-all.py) for AsciiDoc.
+3. **Organize content**: Structure your documents for optimal indexing
 
 ### Step 2: Create Vector Database
 
@@ -150,7 +157,7 @@ class CustomMetadataProcessor(MetadataProcessor):
 **Important Notes:**
 - Supported formats: 
   - Faiss Vector-IO
-- The same embedding model must be used for both creation and querying
+- **The embedding model (and its dimension) used to *build* the vector store must exactly match the one configured for querying** in the `byok_rag` section (see Step 3). A mismatch does not raise an error — it silently returns no or irrelevant results, because the query vector and the stored vectors are then incomparable. The default is `sentence-transformers/all-mpnet-base-v2` (dimension `768`).
 
 ### Step 3: Configure Embedding Model
 
@@ -189,17 +196,32 @@ byok_rag:
     score_multiplier: 1.0                               # Weight for Inline RAG result ranking (default: 1.0)
 ```
 
-**`byok_rag` field reference:**
+**Common fields (all providers):**
 
 | Field                 | Required | Default                                   | Description                                                                               |
 |-----------------------|----------|-------------------------------------------|-------------------------------------------------------------------------------------------|
 | `rag_id`              | Yes      | —                                         | Unique identifier for the knowledge source                                                |
-| `rag_type`            | No       | `inline::faiss`                           | Vector store provider type                                                                |
+| `rag_type`            | No       | `inline::faiss`                           | Vector store provider type (`inline::faiss` or `remote::pgvector`)                        |
 | `embedding_model`     | No       | `sentence-transformers/all-mpnet-base-v2` | Embedding model identifier or path                                                        |
 | `embedding_dimension` | No       | `768`                                     | Embedding vector dimensionality                                                           |
 | `vector_db_id`        | Yes      | —                                         | Vector store ID generated by rag-content (e.g. `vs_8c94967b-81cc-4028-a294-9cfac6fd9ae2`) |
-| `db_path`             | Yes      | —                                         | Path to the vector database file                                                          |
 | `score_multiplier`    | No       | `1.0`                                     | Weight for Inline RAG ranking (values > 1.0 boost; < 1.0 reduce)                          |
+
+**FAISS fields** (`rag_type: inline::faiss`):
+
+| Field     | Required | Default | Description                      |
+|-----------|----------|---------|----------------------------------|
+| `db_path` | Yes      | —       | Path to the vector database file |
+
+**pgvector fields** (`rag_type: remote::pgvector`):
+
+| Field      | Required | Default                  | Description         |
+|------------|----------|--------------------------|---------------------|
+| `host`     | No       | `${env.POSTGRES_HOST}`   | PostgreSQL host     |
+| `port`     | No       | `${env.POSTGRES_PORT}`   | PostgreSQL port     |
+| `db`       | No       | `${env.POSTGRES_DATABASE}` | PostgreSQL database |
+| `user`     | No       | `${env.POSTGRES_USER}`   | PostgreSQL user     |
+| `password` | No       | `${env.POSTGRES_PASSWORD}` | PostgreSQL password |
 
 **Multiple knowledge sources:**
 
@@ -283,27 +305,26 @@ byok_rag:
 ### 2. pgvector (PostgreSQL)
 - **Type**: PostgreSQL with pgvector extension
 - **Best for**: Large-scale deployments, shared knowledge bases
-- **Configuration**: `remote::pgvector`
+- **Configuration**: `rag_type: remote::pgvector`
 - **Requirements**: PostgreSQL with pgvector extension
 
-> [!NOTE]
-> pgvector is not yet supported via `byok_rag` in `lightspeed-stack.yaml` (see [LCORE-2437](https://redhat.atlassian.net/browse/LCORE-2437)).
-> It must be configured directly in the Llama Stack configuration file.
-
 ```yaml
-vector_io:
-- provider_id: pgvector-knowledge
-  provider_type: remote::pgvector
-  config:
-    host: localhost
-    port: 5432
-    db: knowledge_db
-    user: lightspeed_user
+byok_rag:
+  - rag_id: pgvector-knowledge
+    rag_type: remote::pgvector
+    embedding_model: sentence-transformers/all-mpnet-base-v2
+    embedding_dimension: 768
+    vector_db_id: rhdocs
+    host: ${env.POSTGRES_HOST}
+    port: ${env.POSTGRES_PORT}
+    db: ${env.POSTGRES_DATABASE}
+    user: ${env.POSTGRES_USER}
     password: ${env.POSTGRES_PASSWORD}
-    kvstore:
-      type: sqlite
-      db_path: .llama/distributions/pgvector/registry.db
 ```
+
+> [!NOTE]
+> Connection fields (`host`, `port`, `db`, `user`, `password`) default to
+> `${env.POSTGRES_*}` environment variable references when omitted.
 
 **pgvector Table Schema:**
 - `id` (text): UUID identifier of the chunk
@@ -342,13 +363,7 @@ rag:
 
 ### Example 2: Multiple Knowledge Sources with pgvector
 
-A configuration combining a local FAISS store (via `byok_rag`) with a remote pgvector store (configured directly in the Llama Stack configuration file):
-
-> [!NOTE]
-> pgvector is not yet supported via `byok_rag` in `lightspeed-stack.yaml` (see [LCORE-2437](https://redhat.atlassian.net/browse/LCORE-2437)).
-> The pgvector provider must be configured directly in the Llama Stack configuration file.
-
-**`lightspeed-stack.yaml`** — FAISS store and RAG strategy:
+A configuration combining a local FAISS store with a remote pgvector store:
 
 ```yaml
 name: Lightspeed Core Service (LCS)
@@ -365,34 +380,29 @@ byok_rag:
     vector_db_id: vs_e9d8c7b6-43af-4b2d-8e1f-0a9b8c7d6e5f
     db_path: /data/vector_dbs/local/faiss_store.db
     score_multiplier: 1.0
+  - rag_id: enterprise-kb
+    rag_type: remote::pgvector
+    embedding_model: sentence-transformers/all-mpnet-base-v2
+    embedding_dimension: 768
+    vector_db_id: enterprise_docs
+    host: ${env.POSTGRES_HOST}
+    port: ${env.POSTGRES_PORT}
+    db: ${env.POSTGRES_DATABASE}
+    user: ${env.POSTGRES_USER}
+    password: ${env.POSTGRES_PASSWORD}
 
 rag:
   inline:
     - local-docs
+    - enterprise-kb
   tool:
     - local-docs
-```
-
-**Llama Stack configuration file** — pgvector provider:
-
-```yaml
-vector_io:
-- provider_id: enterprise-kb
-  provider_type: remote::pgvector
-  config:
-    host: localhost
-    port: 5432
-    db: knowledge_db
-    user: lightspeed_user
-    password: ${env.POSTGRES_PASSWORD}
-    kvstore:
-      type: sqlite
-      db_path: .llama/distributions/pgvector/registry.db
+    - enterprise-kb
 ```
 
 > [!NOTE]
 > For pgvector, ensure your PostgreSQL credentials are available via environment variables
-> (e.g., `POSTGRES_PASSWORD`).
+> (e.g., `POSTGRES_HOST`, `POSTGRES_PASSWORD`).
 
 > [!TIP]
 > A complete working example combining BYOK and OKP is available at

@@ -10,6 +10,7 @@ from authentication import (
     noop,
     noop_with_token,
     rh_identity,
+    trusted_proxy,
 )
 from authentication.interface import AuthInterface
 from configuration import LogicError, configuration
@@ -18,7 +19,7 @@ from log import get_logger
 logger = get_logger(__name__)
 
 
-def get_auth_dependency(
+def get_auth_dependency(  # pylint: disable=too-many-return-statements
     virtual_path: str = constants.DEFAULT_VIRTUAL_PATH,
 ) -> AuthInterface:
     """Select the configured authentication dependency interface.
@@ -80,6 +81,11 @@ def get_auth_dependency(
         case constants.AUTH_MOD_APIKEY_TOKEN:
             return api_key_token.APIKeyTokenAuthDependency(
                 config=configuration.authentication_configuration.api_key_configuration,
+                virtual_path=virtual_path,
+            )
+        case constants.AUTH_MOD_TRUSTED_PROXY:
+            return trusted_proxy.TrustedProxyAuthDependency(
+                config=configuration.authentication_configuration.trusted_proxy_configuration,
                 virtual_path=virtual_path,
             )
         case _:

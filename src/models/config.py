@@ -31,6 +31,7 @@ import constants
 from log import get_logger
 from utils import checks
 from utils.mcp_auth_headers import resolve_authorization_headers
+from utils.types import CompiledPatterns
 
 logger = get_logger(__name__)
 
@@ -653,6 +654,111 @@ class ModelContextProtocolServer(ConfigurationBase):
         return self
 
 
+class UnifiedInferenceProvider(ConfigurationBase):
+    """A high-level inference provider entry for unified-mode synthesis.
+
+    Operators describe inference providers at this high level (backend-agnostic
+    vocabulary) instead of authoring raw Llama Stack provider blocks. The
+    synthesizer (`apply_high_level_inference`) expands each entry into a Llama
+    Stack `providers.inference` entry, mapping `type` to a `provider_type` and
+    emitting `${env.<VAR>}` references for secrets (never literal values).
+
+    Attributes:
+        type: Canonical provider identifier. Vendor-neutral so it survives a
+            future backend change; each backend-specific synthesizer maps it to
+            its own provider vocabulary.
+        api_key_env: Name of the environment variable holding the provider API
+            key. Emitted verbatim as `${env.<name>}` so the secret never lands
+            on disk resolved.
+        allowed_models: Optional allow-list of model identifiers passed through
+            to the synthesized provider config.
+        extra: Additional provider-config keys merged verbatim into the
+            synthesized provider's `config` block — an escape hatch for
+            provider-specific knobs not modeled here.
+    """
+
+    type: Literal[
+        "openai",
+        "ollama",
+        "vllm",
+        "sentence_transformers",
+        "azure",
+        "vertexai",
+        "watsonx",
+        "vllm_rhaiis",
+        "vllm_rhel_ai",
+    ] = Field(
+        ...,
+        title="Provider type",
+        description="Canonical, backend-agnostic provider identifier mapped to a "
+        "Llama Stack provider_type by the synthesizer.",
+    )
+
+    api_key_env: Optional[str] = Field(
+        None,
+        title="API key environment variable",
+        description="Name of the environment variable holding the provider API "
+        "key. Emitted as a ${env.<name>} reference so the secret is never "
+        "written to disk in resolved form.",
+    )
+
+    allowed_models: Optional[list[str]] = Field(
+        None,
+        title="Allowed models",
+        description="Optional allow-list of model identifiers for this provider.",
+    )
+
+    extra: dict[str, object] = Field(
+        default_factory=dict,
+        title="Extra provider config",
+        description="Additional provider-config keys merged verbatim into the "
+        "synthesized provider's config block.",
+    )
+
+
+class UnifiedLlamaStackConfig(ConfigurationBase):
+    """Backend-specific knobs for unified-mode Llama Stack synthesis.
+
+    Per Decision S5 of the design spike, backend-agnostic high-level sections
+    (inference, ...) live at the configuration root, not here. This block holds
+    only the Llama-Stack-specific synthesis controls: which baseline to start
+    from, an optional profile file, and a raw native_override escape hatch.
+
+    Attributes:
+        baseline: Synthesis starting point. "default" begins from LCORE's
+            built-in baseline (src/data/default_run.yaml); "empty" begins from
+            an empty dict (used by the migration tool for an exact round-trip).
+            Ignored when `profile` is set.
+        profile: Optional path to a user-authored run.yaml-shaped file used as
+            the synthesis baseline. Relative paths resolve against the directory
+            of the loaded lightspeed-stack.yaml.
+        native_override: Raw Llama Stack schema deep-merged last (maps merge
+            recursively, lists and scalars replace). The escape hatch for
+            anything the high-level sections do not express.
+    """
+
+    baseline: Literal["default", "empty"] = Field(
+        "default",
+        title="Baseline selector",
+        description="Synthesis starting point: 'default' uses LCORE's built-in "
+        "baseline, 'empty' starts from {}. Ignored when 'profile' is set.",
+    )
+
+    profile: Optional[str] = Field(
+        None,
+        title="Profile path",
+        description="Path to a run.yaml-shaped baseline file. Relative paths "
+        "resolve against the directory of the loaded lightspeed-stack.yaml.",
+    )
+
+    native_override: dict[str, object] = Field(
+        default_factory=dict,
+        title="Native override",
+        description="Raw Llama Stack schema deep-merged last (maps merge "
+        "recursively; lists and scalars replace).",
+    )
+
+
 class LlamaStackConfiguration(ConfigurationBase):
     """Llama stack configuration.
 
@@ -726,25 +832,44 @@ class LlamaStackConfiguration(ConfigurationBase):
         "is not accessible (valid for server mode only)",
     )
 
+    config: Optional["UnifiedLlamaStackConfig"] = Field(
+        None,
+        title="Unified Llama Stack configuration",
+        description="Backend-specific knobs for unified mode, where LCORE "
+        "synthesizes the Llama Stack run.yaml instead of reading an external "
+        "file. Holds the baseline selector, an optional profile path, and a "
+        "raw native_override escape hatch. Backend-agnostic high-level "
+        "sections (e.g. inference.providers) live at the configuration root, "
+        "not here. Mutually exclusive with library_client_config_path; that "
+        "cross-field check lives on the root Configuration model. When set in "
+        "library mode, library_client_config_path is not required.",
+    )
+
     @model_validator(mode="after")
     def check_llama_stack_model(self) -> Self:
         """
         Validate the Llama Stack configuration and enforce mode-specific requirements.
 
         If no URL is provided, requires explicit library-client mode selection.
-        When library-client mode is enabled, requires a non-empty
-        `library_client_config_path` that points to a regular, readable YAML
-        file (checked via checks.file_check). Also normalizes a None
+        When a legacy `library_client_config_path` is given (and no unified
+        `config` block), it must point to a regular, readable YAML file
+        (checked via checks.file_check). Also normalizes a None
         `use_as_library_client` to False.
+
+        This validator does NOT require a run-configuration source in library
+        mode: a config may instead be driven by the root-level
+        `inference.providers` (which this nested model cannot see). The
+        requirement that library mode have *some* run source — and the mutual
+        exclusion between unified synthesis inputs and the legacy path — is
+        therefore enforced on the root Configuration model
+        (`check_unified_vs_legacy`).
 
         Returns:
             Self: The validated LlamaStackConfiguration instance.
 
         Raises:
-            ValueError: If the configuration is invalid, e.g. no
-            URL and library-client mode is unspecified or
-            disabled, or library-client mode is enabled but
-            `library_client_config_path` is not provided.
+            ValueError: If no URL is provided and library-client mode is
+            unspecified or disabled.
         """
         if self.url is None:
             # when URL is not set, it is supposed that Llama Stack should be run in library mode
@@ -763,20 +888,17 @@ class LlamaStackConfiguration(ConfigurationBase):
             self.use_as_library_client = False
 
         if self.use_as_library_client:
-            # when use_as_library_client is set to true, Llama Stack will be run in library mode
-            # it means that:
-            # - Llama Stack URL should not be set, and
-            # - library_client_config_path attribute must be set and must point to
-            #   a regular readable YAML file
-            if self.library_client_config_path is None:
-                # pylint: disable=line-too-long
-                raise ValueError(
-                    "Llama stack library client mode is enabled but a configuration file path is not specified"
+            # In library mode Llama Stack runs embedded. A legacy
+            # library_client_config_path (with no unified config block) must
+            # point to a regular readable YAML file. A unified config — driven
+            # by a config block here or by inference.providers at the root —
+            # needs no external file; whether *some* run source exists is
+            # checked on the root Configuration model.
+            if self.library_client_config_path is not None and self.config is None:
+                checks.file_check(
+                    Path(self.library_client_config_path),
+                    "Llama Stack configuration file",
                 )
-            # the configuration file must exists and be regular readable file
-            checks.file_check(
-                Path(self.library_client_config_path), "Llama Stack configuration file"
-            )
         return self
 
 
@@ -1265,6 +1387,40 @@ class APIKeyTokenConfiguration(ConfigurationBase):
     )
 
 
+class TrustedProxyServiceAccount(ConfigurationBase):
+    """A Kubernetes ServiceAccount identity for trusted-proxy allowlist."""
+
+    namespace: str = Field(
+        ...,
+        title="Namespace",
+        description="Kubernetes namespace of the ServiceAccount.",
+    )
+    name: str = Field(
+        ...,
+        title="Name",
+        description="Name of the Kubernetes ServiceAccount.",
+    )
+
+
+class TrustedProxyConfiguration(ConfigurationBase):
+    """Configuration for trusted-proxy auth module."""
+
+    user_header: str = Field(
+        "X-Forwarded-User",
+        title="User identity header",
+        description="HTTP header containing the forwarded user identity.",
+    )
+    allowed_service_accounts: Optional[list[TrustedProxyServiceAccount]] = Field(
+        None,
+        title="Allowed service accounts",
+        description="Optional allowlist of Kubernetes ServiceAccount identities "
+        "permitted to act as trusted proxies. "
+        "When set to null/omitted, any ServiceAccount with a valid token is accepted. "
+        "When set to a non-empty list, only the listed ServiceAccounts are allowed. "
+        "An empty list behaves the same as null (no restriction).",
+    )
+
+
 class AuthenticationConfiguration(ConfigurationBase):
     """Authentication configuration."""
 
@@ -1287,6 +1443,7 @@ class AuthenticationConfiguration(ConfigurationBase):
     jwk_config: Optional[JwkConfiguration] = None
     api_key_config: Optional[APIKeyTokenConfiguration] = None
     rh_identity_config: Optional[RHIdentityConfiguration] = None
+    trusted_proxy_config: Optional[TrustedProxyConfiguration] = None
 
     @model_validator(mode="after")
     def check_authentication_model(self) -> Self:
@@ -1333,6 +1490,13 @@ class AuthenticationConfiguration(ConfigurationBase):
             if self.api_key_config.api_key.get_secret_value() is None:
                 raise ValueError(
                     "api_key parameter must be specified when using API_KEY token authentication"
+                )
+
+        if self.module == constants.AUTH_MOD_TRUSTED_PROXY:
+            if self.trusted_proxy_config is None:
+                raise ValueError(
+                    "Trusted proxy configuration must be specified "
+                    "when using trusted-proxy authentication"
                 )
 
         return self
@@ -1387,6 +1551,26 @@ class AuthenticationConfiguration(ConfigurationBase):
         if self.api_key_config is None:
             raise ValueError("API Key configuration should not be None")
         return self.api_key_config
+
+    @property
+    def trusted_proxy_configuration(self) -> TrustedProxyConfiguration:
+        """Return trusted-proxy configuration if the module is trusted-proxy.
+
+        Returns:
+            TrustedProxyConfiguration: The configured trusted-proxy settings.
+
+        Raises:
+            ValueError: If the active authentication module is not trusted-proxy.
+            ValueError: If the trusted-proxy configuration is missing.
+        """
+        if self.module != constants.AUTH_MOD_TRUSTED_PROXY:
+            raise ValueError(
+                "Trusted proxy configuration is only available "
+                "for trusted-proxy authentication module"
+            )
+        if self.trusted_proxy_config is None:
+            raise ValueError("Trusted proxy configuration should not be None")
+        return self.trusted_proxy_config
 
 
 @dataclass
@@ -1532,6 +1716,38 @@ class InferenceConfiguration(ConfigurationBase):
         "must be summarized before the input exceeds the window. Models "
         "absent from this map have no registered window — callers fall "
         "back to their own default or skip the token-based trigger.",
+    )
+
+    providers: list[UnifiedInferenceProvider] = Field(
+        default_factory=list,
+        title="High-level inference providers",
+        description="Unified-mode synthesis input (Decision S5): a high-level, "
+        "backend-agnostic list of inference providers the synthesizer expands "
+        "into Llama Stack provider entries. Lives at the configuration root so "
+        "it survives a future backend change. A non-empty list signals unified "
+        "mode. Empty (the default) leaves legacy/remote modes unaffected. The "
+        "sibling default_model / default_provider keep their query-time routing "
+        "meaning and are independent of this list.",
+    )
+
+    max_infer_iters: Optional[PositiveInt] = Field(
+        default=10,
+        title="Default max inference iterations",
+        description="Server-side default for the maximum number of inference "
+        "iterations a model can perform in a single request. Prevents small "
+        "models from looping indefinitely on tool calls. "
+        "Per-request values take precedence over this default. "
+        "Set to None to disable the limit.",
+    )
+
+    max_tool_calls: Optional[PositiveInt] = Field(
+        default=30,
+        title="Default max tool calls",
+        description="Server-side default for the maximum number of tool calls "
+        "allowed in a single response. Prevents small models from exhausting "
+        "the context window with repeated tool calls. "
+        "Per-request values take precedence over this default. "
+        "Set to None to disable the limit.",
     )
 
     @model_validator(mode="after")
@@ -1776,7 +1992,7 @@ class ByokRag(ConfigurationBase):
         constants.DEFAULT_RAG_TYPE,
         min_length=1,
         title="RAG type",
-        description="Type of RAG database.",
+        description="Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').",
     )
 
     embedding_model: str = Field(
@@ -1799,10 +2015,10 @@ class ByokRag(ConfigurationBase):
         description="Vector database identification.",
     )
 
-    db_path: str = Field(
-        ...,
+    db_path: Optional[str] = Field(
+        default=None,
         title="DB path",
-        description="Path to RAG database.",
+        description="Path to RAG database. Required for inline::faiss.",
     )
 
     score_multiplier: float = Field(
@@ -1813,6 +2029,60 @@ class ByokRag(ConfigurationBase):
         "Used to weight results when querying multiple knowledge sources. "
         "Values > 1 boost this store's results; values < 1 reduce them.",
     )
+
+    host: Optional[str] = Field(
+        default=None,
+        title="PostgreSQL host",
+        description="PostgreSQL host for remote::pgvector. "
+        "Defaults to ${env.POSTGRES_HOST} when rag_type is remote::pgvector.",
+    )
+
+    port: Optional[str] = Field(
+        default=None,
+        title="PostgreSQL port",
+        description="PostgreSQL port for remote::pgvector. "
+        "Defaults to ${env.POSTGRES_PORT} when rag_type is remote::pgvector.",
+    )
+
+    db: Optional[str] = Field(
+        default=None,
+        title="PostgreSQL database",
+        description="PostgreSQL database name for remote::pgvector. "
+        "Defaults to ${env.POSTGRES_DATABASE} when rag_type is remote::pgvector.",
+    )
+
+    user: Optional[str] = Field(
+        default=None,
+        title="PostgreSQL user",
+        description="PostgreSQL user for remote::pgvector. "
+        "Defaults to ${env.POSTGRES_USER} when rag_type is remote::pgvector.",
+    )
+
+    password: Optional[SecretStr] = Field(
+        default=None,
+        title="PostgreSQL password",
+        description="PostgreSQL password for remote::pgvector. "
+        "Defaults to ${env.POSTGRES_PASSWORD} when rag_type is remote::pgvector.",
+    )
+
+    @model_validator(mode="after")
+    def validate_rag_type_fields(self) -> Self:
+        """Validate and populate fields based on rag_type."""
+        if self.rag_type == "inline::faiss":
+            if not self.db_path:
+                raise ValueError("db_path is required when rag_type is 'inline::faiss'")
+        elif self.rag_type == "remote::pgvector":
+            pgvector_defaults: dict[str, str | SecretStr] = {
+                "host": "${env.POSTGRES_HOST}",
+                "port": "${env.POSTGRES_PORT}",
+                "db": "${env.POSTGRES_DATABASE}",
+                "user": "${env.POSTGRES_USER}",
+                "password": SecretStr("${env.POSTGRES_PASSWORD}"),
+            }
+            for field_name, default_value in pgvector_defaults.items():
+                if getattr(self, field_name) is None:
+                    object.__setattr__(self, field_name, default_value)
+        return self
 
 
 class QuotaLimiterConfiguration(ConfigurationBase):
@@ -2060,6 +2330,120 @@ class SkillsConfiguration(ConfigurationBase):
     )
 
 
+class QuestionValidityConfig(ConfigurationBase):
+    """Configuration for the question validity guardrail."""
+
+    model_id: str = Field(
+        ..., title="Model id", description="The model_id to use for the guard"
+    )
+    model_prompt: str = Field(
+        default=constants.DEFAULT_MODEL_PROMPT,
+        title="Model prompt",
+        description="The default prompt sent to the LLM used to validate the Users' question.",
+    )
+    invalid_question_response: str = Field(
+        default=constants.DEFAULT_INVALID_QUESTION_RESPONSE,
+        title="Invalid question response",
+        description="The default response when the Users' question is determined to be invalid.",
+    )
+
+
+class RedactionRule(ConfigurationBase):
+    """A single regex-based redaction rule.
+
+    Attributes:
+        pattern: Raw regex pattern string to match sensitive data.
+        replacement: Text to substitute for each match.
+        case_sensitive: Per-rule override for case sensitivity.
+            When None, the global ``RedactionConfig.case_sensitive``
+            flag applies.
+    """
+
+    pattern: str = Field(
+        ...,
+        title="Pattern",
+        description="Regex pattern to match sensitive data",
+    )
+    replacement: str = Field(
+        ...,
+        title="Replacement",
+        description="Replacement string for matched text",
+    )
+    case_sensitive: Optional[bool] = Field(
+        None,
+        title="Case sensitive",
+        description=(
+            "Per-rule case sensitivity override. "
+            "When None, the global config flag applies."
+        ),
+    )
+
+
+class RedactionConfig(ConfigurationBase):
+    """Configuration for PII redaction with regex-based rules.
+
+    Rules are validated and compiled at construction time. Invalid
+    regex patterns raise a ``ValueError`` immediately.
+
+    Attributes:
+        rules: Ordered list of redaction rules applied sequentially.
+        case_sensitive: When False, patterns are compiled with
+            ``re.IGNORECASE``. Defaults to False.
+    """
+
+    rules: list[RedactionRule] = Field(
+        default_factory=list,
+        title="Redaction rules",
+        description="Ordered list of PII redaction rules",
+    )
+    case_sensitive: bool = Field(
+        False,
+        title="Case sensitive",
+        description=("When False, patterns are compiled with re.IGNORECASE"),
+    )
+
+    _compiled_patterns: CompiledPatterns = PrivateAttr(
+        default_factory=list,
+    )
+
+    @model_validator(mode="after")
+    def compile_patterns(self) -> Self:
+        """Compile regex patterns and reject invalid ones.
+
+        Per-rule ``case_sensitive`` overrides the global flag when set.
+
+        Raises:
+            ValueError: If any rule contains an invalid regex pattern.
+
+        Returns:
+            The validated configuration instance.
+        """
+        global_case_sensitive = self.case_sensitive
+        compiled: CompiledPatterns = []
+        for rule in self.rules:
+            effective = (
+                rule.case_sensitive
+                if rule.case_sensitive is not None
+                else global_case_sensitive
+            )
+            flags = 0 if effective else re.IGNORECASE
+            try:
+                pattern = re.compile(rule.pattern, flags)
+            except re.error as e:
+                raise ValueError(f"Invalid regex pattern: {rule.pattern}: {e}") from e
+            compiled.append((pattern, rule.replacement))
+        self._compiled_patterns = compiled
+        return self
+
+    @property
+    def compiled_patterns(self) -> CompiledPatterns:
+        """Pre-compiled (regex, replacement) pairs.
+
+        Returns a shallow copy to prevent mutation of internal state.
+        """
+        return list(self._compiled_patterns)
+
+
 class Configuration(ConfigurationBase):
     """Global service configuration."""
 
@@ -2254,7 +2638,7 @@ class Configuration(ConfigurationBase):
         Returns:
             Self: The model instance after validation.
         """
-        # Get authentication module value (pyright: ignore attribute access on Field)
+        # Get authentication module value
         auth_module = getattr(self.authentication, "module", None)
 
         # Filter out misconfigured MCP servers
@@ -2375,6 +2759,57 @@ class Configuration(ConfigurationBase):
             )
             self.reranker.enabled = True
 
+        return self
+
+    @model_validator(mode="after")
+    def check_unified_vs_legacy(self) -> Self:
+        """Reconcile unified synthesis inputs, legacy mode, and library-mode needs.
+
+        Unified-mode *synthesis inputs* span the configuration root: a non-empty
+        top-level ``inference.providers`` (Decision S5) and/or a
+        ``llama_stack.config`` block. The legacy path is
+        ``llama_stack.library_client_config_path`` pointing at an external
+        run.yaml. Both checks live here on the root model rather than on
+        ``LlamaStackConfiguration`` (which cannot see ``inference.providers``):
+
+        - A synthesis input and the legacy path are mutually exclusive — a
+          single file must pick one shape.
+        - Library mode needs *some* run source — a synthesis input or the
+          legacy path. ``inference.providers`` alone is sufficient; no
+          ``llama_stack.config`` block is required.
+
+        Returns:
+            Self: The validated configuration instance.
+
+        Raises:
+            ValueError: If a synthesis input and the legacy
+                ``library_client_config_path`` are set together, or if library
+                mode has no run source at all.
+        """
+        # pylint: disable=no-member
+        synthesis_input = (
+            bool(self.inference.providers) or self.llama_stack.config is not None
+        )
+        legacy_input = self.llama_stack.library_client_config_path is not None
+        if synthesis_input and legacy_input:
+            raise ValueError(
+                "Llama Stack configuration is ambiguous: unified synthesis "
+                "inputs (a non-empty inference.providers or a llama_stack.config "
+                "block) are mutually exclusive with the legacy "
+                "llama_stack.library_client_config_path. Use one or the other. "
+                "To convert a legacy two-file setup to unified mode, run "
+                "`lightspeed-stack --migrate-config`."
+            )
+        if (
+            self.llama_stack.use_as_library_client
+            and not synthesis_input
+            and not legacy_input
+        ):
+            raise ValueError(
+                "Llama Stack library mode requires a run-configuration source: "
+                "set a non-empty inference.providers, a llama_stack.config "
+                "block, or library_client_config_path."
+            )
         return self
 
     def dump(self, filename: str | Path = "configuration.json") -> None:

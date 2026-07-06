@@ -117,11 +117,11 @@ async def test_health_readiness_provider_statuses(
 
     # Verify providers
     assert result[0].provider_id == "unhealthy-provider-1"
-    assert result[0].status == "Error"
+    assert result[0].status == "error"
     assert result[0].message == "Database connection failed"
 
     assert result[1].provider_id == "unhealthy-provider-2"
-    assert result[1].status == "Error"
+    assert result[1].status == "error"
     assert result[1].message == "Service unavailable"
 
     assert result[2].provider_id == "healthy-provider"

@@ -72,7 +72,6 @@ start-llama-stack-container: build-llama-stack-image ## Start llama-stack contai
 		-v $(PWD)/scripts/llama-stack-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z \
 		-v $(PWD)/src/llama_stack_configuration.py:/opt/app-root/llama_stack_configuration.py:ro,z \
 		-e OPENAI_API_KEY \
-		-e EXTERNAL_PROVIDERS_DIR=$${EXTERNAL_PROVIDERS_DIR:-/opt/app-root/external_providers} \
 		-e BRAVE_SEARCH_API_KEY \
 		-e TAVILY_SEARCH_API_KEY \
 		-e E2E_OPENAI_MODEL=$${E2E_OPENAI_MODEL:-gpt-4o-mini} \
@@ -191,6 +190,52 @@ generate-documentation:	## Generate documentation
 
 doc:	## Generate documentation for developers
 	scripts/gen_doc.py
+
+docs/models:	docs/models/requests.puml docs/models/responses.puml docs/models/database.puml docs/models/common.puml	## Generate documentation about models
+
+docs/models/requests.puml: ## Generate PlantUML class diagram for requests data models
+	uv run pyreverse src/models/api/requests/ --output puml --output-directory=docs/models/
+	mv docs/models/classes.puml docs/models/requests.puml
+
+docs/models/responses.puml: ## Generate PlantUML class diagram for responses data models
+	uv run pyreverse src/models/api/responses/ --output puml --output-directory=docs/models/
+	mv docs/models/classes.puml docs/models/responses.puml
+
+docs/models/common.puml: ## Generate PlantUML class diagram for common data models
+	uv run pyreverse src/models/common/ --output puml --output-directory=docs/models/
+	mv docs/models/classes.puml docs/models/common.puml
+
+docs/models/database.puml: ## Generate PlantUML class diagram for database data models
+	uv run pyreverse src/models/database/ --output puml --output-directory=docs/models/
+	mv docs/models/classes.puml docs/models/database.puml
+
+docs/models/requests.svg:	docs/models/requests.puml	## Generate an SVG with requests data models
+	pushd docs/models && \
+	java -jar ${PATH_TO_PLANTUML}/plantuml.jar requests.puml -tsvg && \
+	xmllint --format classes.svg > requests.svg && \
+	rm -f classes.svg && \
+	popd
+
+docs/models/responses.svg:	docs/models/responses.puml	## Generate an SVG with responses data models
+	pushd docs/models && \
+	java -jar ${PATH_TO_PLANTUML}/plantuml.jar responses.puml -tsvg && \
+	xmllint --format classes.svg > responses.svg && \
+	rm -f classes.svg && \
+	popd
+
+docs/models/common.svg:	docs/models/common.puml	## Generate an SVG with common data models
+	pushd docs/models && \
+	java -jar ${PATH_TO_PLANTUML}/plantuml.jar common.puml -tsvg && \
+	xmllint --format classes.svg > common.svg && \
+	rm -f classes.svg && \
+	popd
+
+docs/models/database.svg:	docs/models/database.puml	## Generate a SVG with database data models
+	pushd docs/models && \
+	java -jar ${PATH_TO_PLANTUML}/plantuml.jar database.puml -tsvg && \
+	xmllint --format classes.svg > database.svg && \
+	rm -f classes.svg && \
+	popd
 
 docs/config.puml:	src/models/config.py ## Generate PlantUML class diagram for configuration
 	uv run pyreverse src/models/config.py --output puml --output-directory=docs/

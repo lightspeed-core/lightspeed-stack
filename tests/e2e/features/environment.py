@@ -26,6 +26,11 @@ from tests.e2e.features.steps.health import (
     reset_llama_stack_disrupt_once_tracking,
     reset_llama_stack_was_running,
 )
+from tests.e2e.features.steps.tls import (
+    is_tls_feature_file,
+    prepare_tls_feature_entry_on_prow,
+    reset_tls_prow_state,
+)
 from tests.e2e.utils.llama_stack_utils import register_shield
 from tests.e2e.utils.prow_utils import (
     restart_pod,
@@ -196,10 +201,10 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     resetting per-scenario Lightspeed override tracking and skip-restart flags.
 
     Skips the scenario if it has the `skip` tag, if it has the `local` tag
-    while the test run is not in local mode, or if it has
-    `skip-in-library-mode` when running in library mode. Scenario-specific
-    Lightspeed YAML is applied in the feature files (``The service uses the
-    ... configuration`` steps).
+    while the test run is not in local mode, if it has `skip-in-library-mode`
+    when running in library mode, or if it has `skip-in-server-mode` when running
+    in server mode. Scenario-specific Lightspeed YAML is applied in the feature
+    files (``The service uses the ... configuration`` steps).
     """
     if "skip" in scenario.effective_tags:
         scenario.skip("Marked with @skip")
@@ -211,6 +216,17 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     # Skip scenarios that require separate llama-stack container in library mode
     if context.is_library_mode and "skip-in-library-mode" in scenario.effective_tags:
         scenario.skip("Skipped in library mode (no separate llama-stack container)")
+        return
+
+    # Skip scenarios that rely on a non-default BYOK store. Only library mode
+    # re-enriches the (in-process) llama-stack with the active config's byok_rag
+    # on restart; in server mode the external llama-stack keeps its startup
+    # config, so a feature-specific store would not be loaded.
+    if not context.is_library_mode and "skip-in-server-mode" in scenario.effective_tags:
+        scenario.skip(
+            "Skipped in server mode (feature-specific BYOK store is not loaded "
+            "into the external llama-stack)"
+        )
         return
 
     # Skip scenarios that depend on services not deployed in Prow/OpenShift
@@ -237,24 +253,26 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
             delattr(context, _attr)
 
 
-def _dump_pod_logs_on_failure(scenario: Scenario, namespace: str) -> None:
-    """Dump llama-stack and lightspeed-stack pod logs when a scenario fails in Prow."""
+def _dump_pod_logs_on_failure(
+    context: Context, scenario: Scenario, namespace: str
+) -> None:
+    """Dump container logs when a scenario fails in Prow."""
     if scenario.status != "failed":
         return
-    for pod in ("llama-stack-service", "lightspeed-stack-service"):
-        print(f"--- {pod} logs (scenario failed: {scenario.name}) ---")
+    pods: tuple[str, ...] = ("llama-stack-service", "lightspeed-stack-service")
+    feature = getattr(context, "feature", None)
+    feat_file = getattr(feature, "filename", "") or "" if feature else ""
+    if is_tls_feature_file(feat_file):
+        pods = (*pods, "e2e-mock-tls-inference")
+    print(f"--- scenario failed: {scenario.name!r} — pod logs ---", flush=True)
+    for pod in pods:
         try:
-            r = subprocess.run(
-                ["oc", "logs", pod, "-n", namespace, "--tail=100"],
-                capture_output=True,
-                text=True,
-                timeout=15,
-                check=False,
-            )
-            print(r.stdout or r.stderr or "(no output)")
+            result = run_e2e_ops("dump-pod-logs", [pod, "150"], timeout=90)
+            print(result.stdout, end="")
+            if result.stderr:
+                print(result.stderr, end="")
         except subprocess.TimeoutExpired:
-            print("(timed out fetching logs)")
-        print(f"--- end {pod} logs ---")
+            print(f"(timed out fetching logs for {pod})")
 
 
 def after_scenario(context: Context, scenario: Scenario) -> None:
@@ -288,7 +306,7 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
     """
     if is_prow_environment():
         _dump_pod_logs_on_failure(
-            scenario, os.environ.get("NAMESPACE", "e2e-rhoai-dsc")
+            context, scenario, os.environ.get("NAMESPACE", "e2e-rhoai-dsc")
         )
 
     if getattr(context, "scenario_lightspeed_override_active", False):
@@ -451,6 +469,9 @@ def before_feature(context: Context, feature: Feature) -> None:
     context.active_lightspeed_stack_config_basename = None
     # One real Llama disruption per feature (module-level flag; survives context resets)
     reset_llama_stack_disrupt_once_tracking()
+    if feature.filename and is_tls_feature_file(feature.filename):
+        reset_tls_prow_state()
+        prepare_tls_feature_entry_on_prow(feature.filename)
 
     try:
         max_flaky = int(os.getenv("E2E_FLAKY_MAX_ATTEMPTS", _E2E_FLAKY_MAX_ATTEMPTS))
@@ -520,5 +541,6 @@ def after_feature(context: Context, feature: Feature) -> None:
 
 
 # Behave captures hook stdout by default; output is only shown in some failure paths.
-# Disable capture so feature timing lines always appear on the real console/CI log.
+# Disable capture so feature timing and failure diagnostics appear in the main CI log.
 after_feature.capture = False  # type: ignore[attr-defined]
+after_scenario.capture = False  # type: ignore[attr-defined]

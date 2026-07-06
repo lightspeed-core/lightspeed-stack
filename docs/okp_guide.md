@@ -18,11 +18,10 @@ configuration, see the [RAG Configuration Guide](rag_guide.md).
 * [Introduction](#introduction)
 * [Prerequisites](#prerequisites)
 * [Step 1: Launch OKP](#step-1-launch-okp)
-* [Step 2: Setup llamastack config environment variables](`#step-2-setup-llamastack-config-environment-variables`)
-* [Step 3: Install Lightspeed Stack Dependencies](#step-3-install-lightspeed-stack-dependencies)
-* [Step 4: Configure Lightspeed Stack](#step-4-configure-lightspeed-stack)
-* [Step 5: Launch Lightspeed Stack](#step-5-launch-lightspeed-stack)
-* [Step 6: Verify the Stack](#step-6-verify-the-stack)
+* [Step 2: Install Dependencies and Set Environment Variables](#step-2-install-dependencies-and-set-environment-variables)
+* [Step 3: Configure Lightspeed Stack](#step-3-configure-lightspeed-stack)
+* [Step 4: Launch Lightspeed Stack](#step-4-launch-lightspeed-stack)
+* [Step 5: Verify the Stack](#step-5-verify-the-stack)
 
 ---
 
@@ -32,15 +31,18 @@ OKP (Offline Knowledge Portal) provides a Solr-backed RAG source that
 Lightspeed Stack can use for both **Inline RAG** (context injected before the
 LLM request) and **Tool RAG** (context retrieved on demand via the
 `file_search` tool). This guide walks through deploying the OKP container,
-enriching your Llama Stack config from Lightspeed Stack settings, and
+configuring Lightspeed Stack for OKP, and
 validating that queries return referenced chunks.
 
 ---
 
 ## Prerequisites
 
-* [lightspeed-stack repository](https://github.com/lightspeed-core/lightspeed-stack) cloned
-* [lightspeed-providers repository](https://github.com/lightspeed-core/lightspeed-providers) cloned
+* [lightspeed-stack repository](https://github.com/lightspeed-core/lightspeed-stack) cloned **with submodules**:
+  ```bash
+  git clone --recursive https://github.com/lightspeed-core/lightspeed-stack.git
+  ```
+  If you already cloned without `--recursive`, run: `git submodule update --init`
 * [Podman](https://podman.io/) (or Docker) to run the OKP image
 * [uv](https://docs.astral.sh/uv/) for Python dependency management
 * An OpenAI API key (for inference when using OpenAI in your run config)
@@ -48,9 +50,6 @@ validating that queries return referenced chunks.
 ---
 
 ## Step 1: Launch OKP
-
-> **Warning:** The image referenced below is a **prototype**. The official OKP
-> RAG image is expected in **late March / early April** of 2026.
 
 Start the OKP RAG service with Podman:
 
@@ -69,51 +68,36 @@ podman run --rm -d -p 8081:8080 registry.redhat.io/offline-knowledge-portal/rhok
 
   Or visit: **http://localhost:8081**
 
-> **Note:** Lightspeed stack will automatically enrich the llamastack
-> configuration to add the necessary providers/resources for referencing OKP.
-> This assumes your OKP instance is running on localhost:8081.  If you need a
-> different OKP url, you can set the SOLR_URL environment variable with the
-> correct url prior to launching Lightspeed stack and that value will be used
-> instead.
+> **Note:** The default OKP URL is configured via the `RH_SERVER_OKP` environment variable
+> (see Step 2). You can override this by setting a different value for
+> `RH_SERVER_OKP`, or by changing the `okp.rhokp_url` field in
+> `lightspeed-stack.yaml`.
 ---
 
-## Step 2: Setup llamastack config environment variables
+## Step 2: Install Dependencies and Set Environment Variables
 
-Set the required environment variables. The external providers path must point
-to the `external_providers` content inside the
-[lightspeed-providers](https://github.com/lightspeed-core/lightspeed-providers/tree/main/lightspeed_stack_providers/)
-repository:
-
-```bash
-export EXTERNAL_PROVIDERS_DIR=../lightspeed-providers/resources/external_providers
-export OPENAI_API_KEY=<your-openai-api-key>
-export RH_SERVER_OKP=http://localhost:8081
-```
-
-Adjust `EXTERNAL_PROVIDERS_DIR` if your lightspeed-providers repo is in a
-different location relative to your lightspeed-stack directory.
-
----
-
-## Step 3: Install Lightspeed Stack Dependencies
-
-Then install dependencies and custom providers:
+Install dependencies:
 
 ```bash
 uv sync --group dev --group llslibdev
-uv pip install -e ../lightspeed-providers # Path to lightspeed-providers repo
 ```
 
-* **`uv sync`**: Installs project and dev/llslibdev groups so that the app and tooling run correctly.
-* **`uv pip install -e ../lightspeed-providers`**: Installs the lightspeed stack providers from the local clone of the repository.  Adjust the directory path as needed.
+Set required environment variables:
 
-> **Note:** Running `uv sync` will remove the lightspeed-providers dependency
-> installed by the `uv pip install` command, so you will need to rerun the `uv
-> pip install` command if you rerun `uv sync`.
+```bash
+export OPENAI_API_KEY=<your-openai-api-key>
+
+# Set OKP URL env var, using special hostname for container-to-host networking
+# when running locally
+# Podman:
+export RH_SERVER_OKP=http://host.containers.internal:8081
+# Docker:
+# export RH_SERVER_OKP=http://host.docker.internal:8081
+```
 
 ---
 
-## Step 4: Configure Lightspeed Stack
+## Step 3: Configure Lightspeed Stack
 
 ### Enable OKP in Lightspeed Stack
 
@@ -153,7 +137,7 @@ If you want to filter the docs to a specific product, you can include a static q
 ```yaml
 okp:
   offline: true
-  chunk_filter_query: "product:*openshift*"
+  chunk_filter_query: "product:*openshift* AND product_version:4.21"
 ```
 
 When you launch Lightspeed stack it will augment the Llamastack run.yaml with
@@ -233,7 +217,7 @@ curl -sX POST http://localhost:8080/v1/query \
           "type": "and",
           "filters": [
             {"type": "eq", "key": "product", "value": "openshift_container_platform"},
-            {"type": "eq", "key": "version", "value": "4.21"}
+            {"type": "eq", "key": "product_version", "value": "4.21"}
           ]
         }
       }
@@ -276,25 +260,9 @@ curl -sX POST http://localhost:8080/v1/query \
 - **String escaping:** Special Solr characters in filter values are automatically escaped
 - **Works with all search modes:** Filters apply to `semantic`, `hybrid`, and `lexical` search modes
 
-### Configure Lightspeed Stack for library mode
-
-For the simplest local development, configure `lightspeed-stack.yaml` to
-consume Llama Stack in library mode:
-
-```yaml
-llama_stack:
-  ...
-  use_as_library_client: true
-  library_client_config_path: run.yaml
-  # Comment these lines out if present
-  # url: http://lama-stack:87321
-  # api_key: xyzzy
-  ...
-```
-
 ---
 
-## Step 5: Launch Lightspeed Stack
+## Step 4: Launch Lightspeed Stack
 
 Then launch Lightspeed Stack using your Lightspeed Stack
 config(`lightspeed-stack.yaml`) which references the provided default
@@ -314,7 +282,7 @@ INFO     2026-03-17 11:20:31,349 uvicorn.error:224 uncategorized: Uvicorn runnin
 
 ---
 
-## Step 6: Verify the Stack
+## Step 5: Verify the Stack
 
 Confirm that the full stack (Lightspeed Stack + Llama Stack + OKP) is working
 by sending a query and checking that the response includes referenced chunks

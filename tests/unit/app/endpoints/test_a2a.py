@@ -802,6 +802,73 @@ class TestA2AAgentExecutor:
         assert "Unable to connect to Llama Stack backend service" in str(error_message)
 
     @pytest.mark.asyncio
+    async def test_process_task_streaming_applies_compaction(
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test _process_task_streaming runs conversation compaction before the call."""
+        executor = A2AAgentExecutor(auth_token="test-token")
+
+        mock_message = mocker.MagicMock()
+        mock_message.role = "user"
+        mock_message.parts = [Part(root=TextPart(text="Hello"))]
+        mock_message.metadata = {}
+
+        context = mocker.MagicMock(spec=RequestContext)
+        context.task_id = "task-123"
+        context.context_id = "ctx-456"
+        context.message = mock_message
+        context.get_user_input.return_value = "Hello"
+
+        event_queue = mocker.AsyncMock(spec=EventQueue)
+        task_updater = mocker.MagicMock()
+        task_updater.update_status = mocker.AsyncMock()
+        task_updater.event_queue = event_queue
+
+        mock_context_store = mocker.AsyncMock()
+        mock_context_store.get.return_value = None
+        mocker.patch(
+            "app.endpoints.a2a._get_context_store", return_value=mock_context_store
+        )
+
+        async def _empty_stream() -> Any:
+            """Yield no stream events."""
+            return
+            yield  # pragma: no cover  (makes this an async generator)
+
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(return_value=[mocker.MagicMock()])
+        mock_client.responses.create = mocker.AsyncMock(return_value=_empty_stream())
+        mocker.patch(
+            "app.endpoints.a2a.AsyncLlamaStackClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        mock_params = mocker.Mock()
+        mock_params.model = "test-model"
+        mock_params.conversation = "conv_x"
+        mock_params.model_dump.return_value = {"input": "Hello", "model": "test-model"}
+        mocker.patch(
+            "app.endpoints.a2a.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_params),
+        )
+
+        compaction_result = mocker.Mock()
+        compaction_result.params = mock_params
+        compaction_result.summarized = False
+        compaction_result.original_input = None
+        apply = mocker.patch(
+            "app.endpoints.a2a.apply_compaction_blocking",
+            new=mocker.AsyncMock(return_value=compaction_result),
+        )
+
+        await executor._process_task_streaming(  # pylint: disable=protected-access
+            context, task_updater, context.task_id, context.context_id
+        )
+
+        apply.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_cancel_raises_not_implemented(self, mocker: MockerFixture) -> None:
         """Test that cancel raises NotImplementedError."""
         executor = A2AAgentExecutor(auth_token="test-token")

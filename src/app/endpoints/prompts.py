@@ -118,8 +118,13 @@ async def create_prompt_handler(
     - body: Prompt creation parameters.
 
     ### Raises:
-    - HTTPException: If configuration is not loaded, if unable to connect to
-      Llama Stack, or if the prompts API returns an error response.
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 422 if the request body is improper.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - PromptResourceResponse: The created prompt as returned by Llama Stack.
@@ -163,8 +168,12 @@ async def list_prompts_handler(
     - auth: Authentication tuple from the auth dependency (used by middleware).
 
     ### Raises:
-    - HTTPException: If configuration is not loaded, if unable to connect to
-      Llama Stack, or if the prompts API returns an error response.
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - PromptsListResponse: An object containing the list of prompts.
@@ -213,9 +222,13 @@ async def get_prompt_handler(
     - version: Optional version number (latest when omitted).
 
     ### Raises:
-    - HTTPException: If configuration is not loaded, if the prompt is not
-      found, if unable to connect to Llama Stack, or if the prompts API returns
-      an error response.
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 404 if prompt is not found.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - PromptResourceResponse: The requested prompt object.
@@ -278,9 +291,15 @@ async def update_prompt_handler(
     - body: Prompt update parameters.
 
     ### Raises:
-    - HTTPException: If configuration is not loaded, if the prompt is not
-      found, if unable to connect to Llama Stack, or if the prompts API returns
-      an error response.
+    - HTTPException: with status 400 when request format is not valid.
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 404 if prompt is not found.
+    - HTTPException: with status 422 if request payload is corrupted.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - PromptResourceResponse: The updated prompt object returned by Llama Stack.
@@ -339,8 +358,13 @@ async def delete_prompt_handler(
     - auth: Authentication tuple from the auth dependency (used by middleware).
 
     ### Raises:
-    - HTTPException: If configuration is not loaded, if unable to connect to
-      Llama Stack, or if the prompts API returns an error response.
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 422 if request payload is corrupted.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - PromptDeleteResponse: An object describing whether the prompt was

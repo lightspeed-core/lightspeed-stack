@@ -54,12 +54,16 @@ async def shields_endpoint_handler(
     - request: The incoming HTTP request (used by middleware).
     - auth: Authentication tuple from the auth dependency (used by middleware).
 
+    ### Raises:
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
+
     ### Returns:
     - ShieldsResponse: An object containing the list of available shields.
-
-    ### Raises:
-    - HTTPException: If unable to connect to the Llama Stack server or if
-      shield retrieval fails for any reason.
     """
     # Used only by the middleware
     _ = auth

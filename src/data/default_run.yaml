@@ -1,0 +1,131 @@
+# Built-in default Llama Stack baseline for unified-mode synthesis.
+#
+# This file is the starting point when a unified `lightspeed-stack.yaml`
+# selects `llama_stack.config.baseline: default` (the default) and does not
+# point at a `profile:`. The synthesizer (src/llama_stack_configuration.py)
+# layers enrichment, high-level `inference.providers`, and `native_override`
+# on top of this baseline to produce the final run.yaml handed to Llama Stack.
+#
+# It is intentionally thinner than the repo-root run.yaml: it carries only the
+# APIs and providers needed to boot a minimal, queryable stack (inference,
+# safety, vector_io, agents, tool_runtime, files) plus the storage backends
+# those providers reference. Operators extend it via high-level sections or
+# `native_override`.
+#
+# NOTE: `external_providers_dir` carries a default (`:=~/.llama/providers.d`)
+# so the baseline resolves even when EXTERNAL_PROVIDERS_DIR is unset — see the
+# PoC finding in docs/design/llama-stack-config-merge/llama-stack-config-merge-spike.md.
+version: 2
+
+apis:
+- agents
+- files
+- inference
+- safety
+- tool_runtime
+- vector_io
+
+image_name: starter
+external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR:=~/.llama/providers.d}
+
+providers:
+  inference:
+  - provider_id: openai
+    provider_type: remote::openai
+    config:
+      api_key: ${env.OPENAI_API_KEY}
+      allowed_models: ["${env.E2E_OPENAI_MODEL:=gpt-4o-mini}"]
+  - provider_id: sentence-transformers
+    provider_type: inline::sentence-transformers
+  files:
+  - config:
+      metadata_store:
+        table_name: files_metadata
+        backend: sql_default
+      storage_dir: ${env.SQLITE_STORE_DIR:=~/.llama/storage/files}
+    provider_id: meta-reference-files
+    provider_type: inline::localfs
+  safety:
+  - config:
+      excluded_categories: []
+    provider_id: llama-guard
+    provider_type: inline::llama-guard
+  tool_runtime:
+  - config: {}
+    provider_id: rag-runtime
+    provider_type: inline::rag-runtime
+  vector_io:
+  - config:
+      persistence:
+        namespace: vector_io::faiss
+        backend: kv_default
+    provider_id: faiss
+    provider_type: inline::faiss
+  agents:
+  - config:
+      persistence:
+        agent_state:
+          namespace: agents_state
+          backend: kv_default
+        responses:
+          table_name: agents_responses
+          backend: sql_default
+    provider_id: meta-reference
+    provider_type: inline::meta-reference
+
+storage:
+  backends:
+    kv_default:
+      type: kv_sqlite
+      db_path: ${env.KV_STORE_PATH:=~/.llama/storage/rag/kv_store.db}
+    sql_default:
+      type: sql_sqlite
+      db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
+  stores:
+    metadata:
+      namespace: registry
+      backend: kv_default
+    inference:
+      table_name: inference_store
+      backend: sql_default
+      max_write_queue_size: 10000
+      num_writers: 4
+    conversations:
+      table_name: openai_conversations
+      backend: sql_default
+    prompts:
+      namespace: prompts
+      backend: kv_default
+
+registered_resources:
+  models: []
+  shields:
+  # NOTE: this is a minimal placeholder shield for the zero-dependency default
+  # baseline (it mirrors the repo's root run.yaml). provider_shield_id points at
+  # a chat model, NOT a real Llama Guard checkpoint, so it does not perform real
+  # safety gating. A real guard model (e.g. meta-llama/Llama-Guard-3-8B) is
+  # configured per deployment via the high-level schema or native_override, and
+  # real shield gating is exercised by the e2e suite — deliberately not pinned
+  # here so the default baseline boots with only an OPENAI_API_KEY.
+  - shield_id: llama-guard
+    provider_id: llama-guard
+    provider_shield_id: openai/gpt-4o-mini
+  vector_stores: []
+  tool_groups:
+  - toolgroup_id: builtin::rag
+    provider_id: rag-runtime
+
+# REQUIRED for file_search tool calls to work. Without it, llama-stack's
+# rag-runtime silently fails all file_search operations with no error logged.
+vector_stores:
+  # LCORE-1498: Disables Llama Stack RAG annotation generation that causes
+  # unwanted citation/file markers in model output.
+  annotation_prompt_params:
+    enable_annotations: false
+  default_provider_id: faiss
+  default_embedding_model:
+    provider_id: sentence-transformers
+    model_id: nomic-ai/nomic-embed-text-v1.5
+
+safety:
+  default_shield_id: llama-guard

@@ -113,6 +113,7 @@ Authentication configuration.
 | jwk_config             |         |                                                      |
 | api_key_config         |         |                                                      |
 | rh_identity_config     |         |                                                      |
+| trusted_proxy_config   |         |                                                      |
 
 
 ## AuthorizationConfiguration
@@ -146,15 +147,20 @@ Microsoft Entra ID authentication attributes for Azure.
 BYOK (Bring Your Own Knowledge) RAG configuration.
 
 
-| Field               | Type    | Description                                                                                                                                                                                     |
-|---------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| rag_id              | string  | Unique RAG ID                                                                                                                                                                                   |
-| rag_type            | string  | Type of RAG database.                                                                                                                                                                           |
-| embedding_model     | string  | Embedding model identification                                                                                                                                                                  |
-| embedding_dimension | integer | Dimensionality of embedding vectors.                                                                                                                                                            |
-| vector_db_id        | string  | Vector database identification.                                                                                                                                                                 |
-| db_path             | string  | Path to RAG database.                                                                                                                                                                           |
-| score_multiplier    | number  | Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them.  |
+| Field               | Type    | Description                                                                                                                                                                                        |
+|---------------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| rag_id              | string  | Unique RAG ID                                                                                                                                                                                      |
+| rag_type            | string  | Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').                                                                                                                                   |
+| embedding_model     | string  | Embedding model identification                                                                                                                                                                     |
+| embedding_dimension | integer | Dimensionality of embedding vectors.                                                                                                                                                               |
+| vector_db_id        | string  | Vector database identification.                                                                                                                                                                    |
+| db_path             | string  | Path to RAG database. Required for inline::faiss.                                                                                                                                                  |
+| score_multiplier    | number  | Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values &lt;; 1 reduce them. |
+| host                | string  | PostgreSQL host for remote::pgvector. Defaults to ${env.POSTGRES_HOST} when rag_type is remote::pgvector.                                                                                          |
+| port                | string  | PostgreSQL port for remote::pgvector. Defaults to ${env.POSTGRES_PORT} when rag_type is remote::pgvector.                                                                                          |
+| db                  | string  | PostgreSQL database name for remote::pgvector. Defaults to ${env.POSTGRES_DATABASE} when rag_type is remote::pgvector.                                                                             |
+| user                | string  | PostgreSQL user for remote::pgvector. Defaults to ${env.POSTGRES_USER} when rag_type is remote::pgvector.                                                                                          |
+| password            | string  | PostgreSQL password for remote::pgvector. Defaults to ${env.POSTGRES_PASSWORD} when rag_type is remote::pgvector.                                                                                  |
 
 
 ## CORSConfiguration
@@ -326,11 +332,14 @@ In-memory cache configuration.
 Inference configuration.
 
 
-| Field            | Type   | Description                                                                                                                                                                                                                                                                                                                                                           |
-|------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| default_model    | string | Identification of default model used when no other model is specified.                                                                                                                                                                                                                                                                                                |
-| default_provider | string | Identification of default provider used when no other model is specified.                                                                                                                                                                                                                                                                                             |
-| context_windows  | object | Map of fully-qualified model identifier (e.g., "openai/gpt-4o-mini") to context window size in tokens. Used by the conversation compaction trigger to decide when older turns must be summarized before the input exceeds the window. Models absent from this map have no registered window — callers fall back to their own default or skip the token-based trigger. |
+| Field            | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+|------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| default_model    | string  | Identification of default model used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                                    |
+| default_provider | string  | Identification of default provider used when no other model is specified.                                                                                                                                                                                                                                                                                                                                                                                                 |
+| context_windows  | object  | Map of fully-qualified model identifier (e.g., "openai/gpt-4o-mini") to context window size in tokens. Used by the conversation compaction trigger to decide when older turns must be summarized before the input exceeds the window. Models absent from this map have no registered window — callers fall back to their own default or skip the token-based trigger.                                                                                            |
+| providers        | array   | Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into Llama Stack provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list. |
+| max_infer_iters  | integer | Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                                       |
+| max_tool_calls   | integer | Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.                                                                                                                                                                                                  |
 
 
 ## JsonPathOperator
@@ -422,16 +431,17 @@ Useful resources:
   - [Build AI Applications with Llama Stack](https://llamastack.github.io/)
 
 
-| Field                      | Type    | Description                                                                                                                                                                                                                                                                                 |
-|----------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| url                        | string  | URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.                                                                                                                                                                                          |
-| api_key                    | string  | API key to access Llama Stack service                                                                                                                                                                                                                                                       |
-| use_as_library_client      | boolean | When set to true Llama Stack will be used in library mode, not in server mode (default)                                                                                                                                                                                                     |
-| library_client_config_path | string  | Path to configuration file used when Llama Stack is run in library mode                                                                                                                                                                                                                     |
-| timeout                    | integer | Timeout in seconds for requests to Llama Stack service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.                                                                                                                                                         |
-| max_retries                | integer | Maximum number of connection attempts before giving up. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod). |
-| retry_delay                | integer | Delay in seconds between retry attempts. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod).                |
-| allow_degraded_mode        | boolean | If enabled, Lightspeed Core can be started even when Llama Stack is not accessible (valid for server mode only)                                                                                                                                                                             |
+| Field                      | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+|----------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| url                        | string  | URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| api_key                    | string  | API key to access Llama Stack service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| use_as_library_client      | boolean | When set to true Llama Stack will be used in library mode, not in server mode (default)                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| library_client_config_path | string  | Path to configuration file used when Llama Stack is run in library mode                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| timeout                    | integer | Timeout in seconds for requests to Llama Stack service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.                                                                                                                                                                                                                                                                                                                                                                                             |
+| max_retries                | integer | Maximum number of connection attempts before giving up. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod).                                                                                                                                                                                                                                     |
+| retry_delay                | integer | Delay in seconds between retry attempts. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod).                                                                                                                                                                                                                                                    |
+| allow_degraded_mode        | boolean | If enabled, Lightspeed Core can be started even when Llama Stack is not accessible (valid for server mode only)                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| config                     |         | Backend-specific knobs for unified mode, where LCORE synthesizes the Llama Stack run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required. |
 
 
 ## ModelContextProtocolServer
@@ -743,6 +753,93 @@ Useful resources:
 | tls_certificate_path | string | SSL/TLS certificate file path for HTTPS support.                         |
 | tls_key_path         | string | SSL/TLS private key file path for HTTPS support.                         |
 | tls_key_password     | string | Path to file containing the password to decrypt the SSL/TLS private key. |
+
+
+## TrustedProxyConfiguration
+
+
+Configuration for trusted-proxy auth module.
+
+
+| Field                    | Type   | Description                                                                                                                                                                                                                                                                                                      |
+|--------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| user_header              | string | HTTP header containing the forwarded user identity.                                                                                                                                                                                                                                                              |
+| allowed_service_accounts | array  | Optional allowlist of Kubernetes ServiceAccount identities permitted to act as trusted proxies. When set to null/omitted, any ServiceAccount with a valid token is accepted. When set to a non-empty list, only the listed ServiceAccounts are allowed. An empty list behaves the same as null (no restriction). |
+
+
+## TrustedProxyServiceAccount
+
+
+A Kubernetes ServiceAccount identity for trusted-proxy allowlist.
+
+
+| Field     | Type   | Description                                 |
+|-----------|--------|---------------------------------------------|
+| namespace | string | Kubernetes namespace of the ServiceAccount. |
+| name      | string | Name of the Kubernetes ServiceAccount.      |
+
+
+## UnifiedInferenceProvider
+
+
+A high-level inference provider entry for unified-mode synthesis.
+
+Operators describe inference providers at this high level (backend-agnostic
+vocabulary) instead of authoring raw Llama Stack provider blocks. The
+synthesizer (`apply_high_level_inference`) expands each entry into a Llama
+Stack `providers.inference` entry, mapping `type` to a `provider_type` and
+emitting `${env.<VAR>}` references for secrets (never literal values).
+
+Attributes:
+    type: Canonical provider identifier. Vendor-neutral so it survives a
+        future backend change; each backend-specific synthesizer maps it to
+        its own provider vocabulary.
+    api_key_env: Name of the environment variable holding the provider API
+        key. Emitted verbatim as `${env.<name>}` so the secret never lands
+        on disk resolved.
+    allowed_models: Optional allow-list of model identifiers passed through
+        to the synthesized provider config.
+    extra: Additional provider-config keys merged verbatim into the
+        synthesized provider's `config` block — an escape hatch for
+        provider-specific knobs not modeled here.
+
+
+| Field          | Type   | Description                                                                                                                                                  |
+|----------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| type           | string | Canonical, backend-agnostic provider identifier mapped to a Llama Stack provider_type by the synthesizer.                                                    |
+| api_key_env    | string | Name of the environment variable holding the provider API key. Emitted as a ${env.<name>} reference so the secret is never written to disk in resolved form. |
+| allowed_models | array  | Optional allow-list of model identifiers for this provider.                                                                                                  |
+| extra          | object | Additional provider-config keys merged verbatim into the synthesized provider's config block.                                                                |
+
+
+## UnifiedLlamaStackConfig
+
+
+Backend-specific knobs for unified-mode Llama Stack synthesis.
+
+Per Decision S5 of the design spike, backend-agnostic high-level sections
+(inference, ...) live at the configuration root, not here. This block holds
+only the Llama-Stack-specific synthesis controls: which baseline to start
+from, an optional profile file, and a raw native_override escape hatch.
+
+Attributes:
+    baseline: Synthesis starting point. "default" begins from LCORE's
+        built-in baseline (src/data/default_run.yaml); "empty" begins from
+        an empty dict (used by the migration tool for an exact round-trip).
+        Ignored when `profile` is set.
+    profile: Optional path to a user-authored run.yaml-shaped file used as
+        the synthesis baseline. Relative paths resolve against the directory
+        of the loaded lightspeed-stack.yaml.
+    native_override: Raw Llama Stack schema deep-merged last (maps merge
+        recursively, lists and scalars replace). The escape hatch for
+        anything the high-level sections do not express.
+
+
+| Field           | Type   | Description                                                                                                                |
+|-----------------|--------|----------------------------------------------------------------------------------------------------------------------------|
+| baseline        | string | Synthesis starting point: 'default' uses LCORE's built-in baseline, 'empty' starts from {}. Ignored when 'profile' is set. |
+| profile         | string | Path to a run.yaml-shaped baseline file. Relative paths resolve against the directory of the loaded lightspeed-stack.yaml. |
+| native_override | object | Raw Llama Stack schema deep-merged last (maps merge recursively; lists and scalars replace).                               |
 
 
 ## UserDataCollection

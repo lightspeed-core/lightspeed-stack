@@ -33,14 +33,16 @@ class TestAuthorizedResponse:
         """
         with pytest.raises(ValidationError):
             # missing all parameters
-            _ = AuthorizedResponse()  # pyright: ignore
+            _ = AuthorizedResponse()  # pyright: ignore[reportCallIssue]
 
         with pytest.raises(ValidationError):
             # missing user_id parameter
-            _ = AuthorizedResponse(username="testuser")  # pyright: ignore
+            _ = AuthorizedResponse(
+                username="testuser"
+            )  # pyright: ignore[reportCallIssue]
 
         with pytest.raises(ValidationError):
             # missing username parameter
             _ = AuthorizedResponse(
                 user_id="123e4567-e89b-12d3-a456-426614174000"
-            )  # pyright: ignore
+            )  # pyright: ignore[reportCallIssue]

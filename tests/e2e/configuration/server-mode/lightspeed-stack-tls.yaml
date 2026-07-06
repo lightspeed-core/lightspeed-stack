@@ -8,7 +8,7 @@ service:
   access_log: true
 llama_stack:
   use_as_library_client: false
-  url: http://llama-stack:8321
+  url: http://${env.E2E_LLAMA_HOSTNAME}:8321
   api_key: xyzzy
 user_data_collection:
   feedback_enabled: true

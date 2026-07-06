@@ -2,7 +2,7 @@
 
 from __future__ import annotations as _annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import httpx
 from openai import AsyncOpenAI
@@ -44,17 +44,17 @@ class LlamaStackProvider(Provider[AsyncOpenAI]):
         return self._client
 
     @staticmethod
-    def model_profile(model_name: str) -> ModelProfile | None:
+    def model_profile(model_name: str) -> Optional[ModelProfile]:
         """Return the model profile for the named model, if available."""
         return openai_model_profile(model_name)
 
     def __init__(
         self,
         *,
-        base_url: str | None = None,
-        api_key: str | None = None,
-        library_client: AsyncLlamaStackAsLibraryClient | None = None,
-        http_client: httpx.AsyncClient | None = None,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        library_client: Optional[AsyncLlamaStackAsLibraryClient] = None,
+        http_client: Optional[httpx.AsyncClient] = None,
     ) -> None:
         """Create a new Llama Stack provider.
 

@@ -269,7 +269,7 @@ stabilizes the codebase for final testing, bug fixes, and release-specific
 tasks without blocking ongoing feature development on main/develop. Those
 branches will have the following naming schema:
 
-```
+```text
 release/MAJOR.MINOR.PATCH
 ```
 
@@ -287,7 +287,7 @@ release/MAJOR.MINOR.PATCH
   develop or main) and merged back into both main (or master) and develop (or
   the integration branch) after release.
 
-* Typical tasks on the branch: final bugfixes, documentation, version bump,
+* Typical tasks on the branch: final bug fixes, documentation, version bump,
   packaging, and deployment scripts.
 
 * Naming: Use clear names like release/1.4.0 or release-2026-03-30.
@@ -308,11 +308,11 @@ changes in a release using a three-part number: MAJOR.MINOR.PATCH.
 
 * Format: MAJOR.MINOR.PATCH (e.g., 2.5.1).
 
-* Increment MAJOR when you make incompatible API changes.
+* Increment MAJOR for incompatible API changes.
 
-* Increment MINOR when you add functionality in a backwards-compatible manner.
+* Increment MINOR when you add backwards-compatible features.
 
-* Increment PATCH when you make backwards-compatible bug fixes.
+* Increment PATCH for backwards-compatible bug fixes.
 
 * Pre-release identifiers: append a hyphen and identifiers for unstable
   releases (e.g., 1.0.0-alpha.1).
@@ -342,8 +342,8 @@ changes in a release using a three-part number: MAJOR.MINOR.PATCH.
 | feature/*     | new features                  |
 | hotfix/*      | urgent production fixes       |
 
-NOTE: the actual proposal covers just release branches, not feature nor hotfix
-ones.
+NOTE: the actual proposal covers release branches only; feature and hotfix
+branch naming conventions are not covered here.
 
 
 

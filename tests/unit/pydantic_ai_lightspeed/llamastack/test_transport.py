@@ -3,6 +3,7 @@
 # pylint: disable=protected-access
 
 import json
+from collections.abc import AsyncGenerator
 from typing import Any
 
 import httpx
@@ -45,7 +46,7 @@ class TestAsyncByteStream:
     async def test_iterates_chunks(self) -> None:
         """Test that _AsyncByteStream yields all chunks from the wrapped generator."""
 
-        async def gen():
+        async def gen() -> AsyncGenerator[bytes, None]:
             yield b"chunk1"
             yield b"chunk2"
             yield b"chunk3"
@@ -59,7 +60,7 @@ class TestAsyncByteStream:
     async def test_empty_generator(self) -> None:
         """Test that _AsyncByteStream handles an empty generator gracefully."""
 
-        async def gen():
+        async def gen() -> AsyncGenerator[bytes, None]:
             return
             yield  # pragma: no cover
 
@@ -134,7 +135,7 @@ class TestHandleAsyncRequest:
             content=json.dumps(body).encode("utf-8"),
         )
 
-        async def mock_stream_result():
+        async def mock_stream_result() -> AsyncGenerator[dict[str, int], None]:
             yield {"chunk": 1}
             yield {"chunk": 2}
 
@@ -317,7 +318,7 @@ class TestHandleStreaming:  # pylint: disable=too-few-public-methods
     ) -> None:
         """Test that streaming responses produce SSE-formatted byte chunks."""
 
-        async def mock_stream():
+        async def mock_stream() -> AsyncGenerator[dict[str, str], None]:
             yield {"delta": "hello"}
             yield {"delta": "world"}
 

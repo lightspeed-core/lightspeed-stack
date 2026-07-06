@@ -24,6 +24,9 @@ Unit tests for functions defined in authentication/noop_with_token.py
 ## [test_rh_identity.py](test_rh_identity.py)
 Unit tests for Red Hat Identity authentication module.
 
+## [test_trusted_proxy.py](test_trusted_proxy.py)
+Unit tests for authentication/trusted_proxy module.
+
 ## [test_utils.py](test_utils.py)
 Unit tests for functions defined in authentication/utils.py
 

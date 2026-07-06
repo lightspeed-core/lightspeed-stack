@@ -30,6 +30,12 @@ spec:
               optional: true
         - name: KV_RAG_PATH
           value: "/app-root/src/.llama/storage/rag/kv_store.db"
+        - name: VLLM_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: vllm-model-secret
+              key: key
+              optional: true
       image: ${LIGHTSPEED_STACK_IMAGE}
       ports:
         - containerPort: 8080

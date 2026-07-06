@@ -123,12 +123,9 @@ class TestIsMessage:
         """A tool-call-shaped object is not a message."""
         assert is_message_item(_ToolCallItem()) is False
 
-    def test_openai_dict_with_role(self) -> None:
-        """An OpenAI-style dict with a 'role' key is a message."""
-        assert is_message_item({"role": "user", "content": "hi"}) is True
-
-    def test_dict_without_role(self) -> None:
-        """A dict without a 'role' key is not a message."""
+    def test_dict_is_not_a_message(self) -> None:
+        """Plain dicts are not treated as message items; only typed models are."""
+        assert is_message_item({"role": "user", "content": "hi"}) is False
         assert is_message_item({"content": "hi"}) is False
 
 
@@ -144,20 +141,11 @@ class TestExtractMessageText:
         """Plain string content is returned as-is."""
         assert extract_message_text(_MessageItem("user", "hello")) == "hello"
 
-    def test_openai_dict_string_content(self) -> None:
-        """OpenAI-style dict with string content is supported."""
-        assert extract_message_text({"role": "user", "content": "hi"}) == "hi"
-
     def test_list_content_with_text_attr(self) -> None:
         """A list of content parts with .text attribute is joined."""
         item: Any = _MessageItem("user", "placeholder")
         item.content = [_TextPart("first"), _TextPart("second")]
         assert extract_message_text(item) == "first second"
-
-    def test_list_content_with_text_dict(self) -> None:
-        """A list of content dicts each with a 'text' key is joined."""
-        item = {"role": "user", "content": [{"text": "alpha"}, {"text": "beta"}]}
-        assert extract_message_text(item) == "alpha beta"
 
     def test_none_content(self) -> None:
         """None content yields an empty string."""
@@ -202,29 +190,13 @@ class TestEstimateConversationTokens:
         total = estimate_conversation_tokens(messages)
         assert total == estimate_tokens("hello world") + estimate_tokens("hi")
 
-    def test_accepts_openai_dict_shape(self) -> None:
-        """OpenAI-style dicts are counted equivalently to Llama Stack items."""
-        dicts = [
+    def test_dicts_are_not_counted(self) -> None:
+        """Plain dicts in the list contribute zero (only typed models count)."""
+        dicts: list[Any] = [
             {"role": "user", "content": "hello world"},
             {"role": "assistant", "content": "hi"},
         ]
-        items: list[Any] = [
-            _MessageItem("user", "hello world"),
-            _MessageItem("assistant", "hi"),
-        ]
-        assert estimate_conversation_tokens(dicts) == estimate_conversation_tokens(
-            items
-        )
-
-    def test_accepts_mixed_shapes(self) -> None:
-        """A mixed list of dicts and Llama Stack items is supported."""
-        mixed: list[Any] = [
-            _MessageItem("user", "hello world"),
-            {"role": "assistant", "content": "hi"},
-        ]
-        assert estimate_conversation_tokens(mixed) == estimate_tokens(
-            "hello world"
-        ) + estimate_tokens("hi")
+        assert estimate_conversation_tokens(dicts) == 0
 
     def test_skips_non_message_items(self) -> None:
         """Tool-call-shaped items in the list are ignored."""

@@ -4,6 +4,7 @@ import pytest
 from fastapi import Request
 from pytest_mock import MockerFixture
 
+import metrics  # noqa: F401 pylint: disable=unused-import
 from app.endpoints.metrics import metrics_endpoint_handler
 from authentication.interface import AuthTuple
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
@@ -14,10 +15,6 @@ async def test_metrics_endpoint(mocker: MockerFixture) -> None:
     """Test the metrics endpoint handler."""
     mock_authorization_resolvers(mocker)
 
-    mock_setup_metrics = mocker.patch(
-        "app.endpoints.metrics.setup_model_metrics",
-        new=mocker.AsyncMock(return_value=None),
-    )
     request = Request(
         scope={
             "type": "http",
@@ -34,8 +31,6 @@ async def test_metrics_endpoint(mocker: MockerFixture) -> None:
 
     response_body = response.body.decode()  # type: ignore
 
-    # Assert metrics were set up
-    mock_setup_metrics.assert_called_once()
     # Check if the response contains Prometheus metrics format
     assert "# TYPE ls_rest_api_calls_total counter" in response_body
     assert "# TYPE ls_response_duration_seconds histogram" in response_body
@@ -45,3 +40,4 @@ async def test_metrics_endpoint(mocker: MockerFixture) -> None:
     assert "# TYPE ls_llm_validation_errors_total counter" in response_body
     assert "# TYPE ls_llm_token_sent_total counter" in response_body
     assert "# TYPE ls_llm_token_received_total counter" in response_body
+    assert "# TYPE ls_started_in_degraded_mode gauge" in response_body

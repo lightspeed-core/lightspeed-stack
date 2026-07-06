@@ -157,3 +157,18 @@ def record_llm_inference_duration(
         ).observe(duration)
     except (AttributeError, TypeError, ValueError):
         logger.warning("Failed to update LLM inference duration metric", exc_info=True)
+
+
+def set_started_in_degraded_mode(is_degraded: bool) -> None:
+    """Set the startup degraded mode gauge.
+
+    This metric tracks whether the service started in degraded mode.
+    It is set once at startup and does not change at runtime.
+
+    Args:
+        is_degraded: True if service started in degraded mode, False if healthy.
+    """
+    try:
+        metrics.started_in_degraded_mode.set(1 if is_degraded else 0)
+    except (AttributeError, TypeError, ValueError):
+        logger.warning("Failed to update started_in_degraded_mode gauge", exc_info=True)

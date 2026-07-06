@@ -1,0 +1,3 @@
+[submodule "providers"]
+	path = providers
+	url = https://github.com/lightspeed-core/lightspeed-providers.git

@@ -7,7 +7,6 @@
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client import APIConnectionError
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
@@ -25,7 +24,10 @@ from models.database.conversations import UserConversation
 from tests.integration.conftest import (
     TEST_CONVERSATION_ID,
     TEST_NON_EXISTENT_ID,
-    create_mock_llm_response,
+    create_file_search_agent_run_result,
+    create_mcp_list_tools_agent_run_result,
+    create_multi_tool_agent_run_result,
+    set_query_agent_run,
 )
 
 # File-specific test constants
@@ -44,6 +46,7 @@ EXISTING_CONV_ID = "22222222-2222-2222-2222-222222222222"
 async def test_query_v2_endpoint_successful_response(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
@@ -59,11 +62,13 @@ async def test_query_v2_endpoint_successful_response(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
     """
     _ = test_config
     _ = mock_llama_stack_client
+    _ = mock_query_agent
 
     query_request = QueryRequest(
         query="What is Ansible?",
@@ -90,6 +95,7 @@ async def test_query_v2_endpoint_successful_response(
 async def test_query_v2_endpoint_handles_connection_error(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     mocker: MockerFixture,
@@ -105,6 +111,7 @@ async def test_query_v2_endpoint_handles_connection_error(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
@@ -114,10 +121,10 @@ async def test_query_v2_endpoint_handles_connection_error(
         None
     """
     _ = test_config
+    _ = mock_llama_stack_client
+    _ = mock_query_agent
 
-    mock_llama_stack_client.responses.create.side_effect = APIConnectionError(
-        request=mocker.Mock()
-    )
+    mock_query_agent.run.side_effect = APIConnectionError(request=mocker.Mock())
 
     query_request = QueryRequest(query="What is Ansible?")
 
@@ -161,6 +168,7 @@ async def test_query_v2_endpoint_returns_401_for_mcp_oauth(
     test_case: dict,
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     mocker: MockerFixture,
@@ -180,12 +188,14 @@ async def test_query_v2_endpoint_returns_401_for_mcp_oauth(
             expect_www_authenticate)
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
     """
     _ = test_config
     _ = mock_llama_stack_client
+    _ = mock_query_agent
 
     www_authenticate = test_case["www_authenticate"]
     expect_www_authenticate = test_case["expect_www_authenticate"]
@@ -229,6 +239,7 @@ async def test_query_v2_endpoint_returns_401_for_mcp_oauth(
 async def test_query_v2_endpoint_empty_query(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
@@ -243,6 +254,7 @@ async def test_query_v2_endpoint_empty_query(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
 
@@ -252,6 +264,7 @@ async def test_query_v2_endpoint_empty_query(
     """
     _ = test_config
     _ = mock_llama_stack_client
+    _ = mock_query_agent
 
     query_request = QueryRequest(query="")
 
@@ -359,6 +372,7 @@ async def test_query_v2_endpoint_attachment_handling(
     test_case: dict,
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
@@ -378,11 +392,13 @@ async def test_query_v2_endpoint_attachment_handling(
             expected_status, expected_error)
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
     """
     _ = test_config
     _ = mock_llama_stack_client
+    _ = mock_query_agent
 
     attachments = test_case["attachments"]
     expected_status = test_case["expected_status"]
@@ -432,6 +448,7 @@ async def test_query_v2_endpoint_attachment_handling(
 async def test_query_v2_endpoint_with_tool_calls(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     mocker: MockerFixture,
@@ -447,56 +464,33 @@ async def test_query_v2_endpoint_with_tool_calls(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
     """
     _ = test_config
+    _ = mock_llama_stack_client
+    _ = mock_query_agent
 
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
-    mock_response.id = "response-789"
-
-    mock_tool_output = mocker.MagicMock()
-    mock_tool_output.type = "file_search_call"
-    mock_tool_output.id = "call-1"
-    mock_tool_output.queries = ["What is Ansible"]
-    mock_tool_output.status = "completed"
-    mock_result = mocker.MagicMock()
-    mock_result.file_id = "doc-1"
-    mock_result.filename = "ansible-docs.txt"
-    mock_result.score = 0.95
-    mock_result.text = "Ansible is an open-source automation tool..."
-    mock_result.attributes = {
-        "doc_url": "https://example.com/ansible-docs.txt",
-        "link": "https://example.com/ansible-docs.txt",
-    }
-    mock_result.model_dump = mocker.Mock(
-        return_value={
-            "file_id": "doc-1",
-            "filename": "ansible-docs.txt",
-            "score": 0.95,
-            "text": "Ansible is an open-source automation tool...",
-            "attributes": {
-                "doc_url": "https://example.com/ansible-docs.txt",
-                "link": "https://example.com/ansible-docs.txt",
-            },
-        }
+    tool_run_result = create_file_search_agent_run_result(
+        mocker,
+        content="Based on the documentation, Ansible is...",
+        response_id="response-789",
+        queries=["What is Ansible"],
+        results=[
+            {
+                "text": "Ansible is an open-source automation tool...",
+                "score": 0.95,
+                "attributes": {
+                    "doc_url": "https://example.com/ansible-docs.txt",
+                    "title": "ansible-docs.txt",
+                    "document_id": "doc-1",
+                },
+            }
+        ],
     )
-    mock_tool_output.results = [mock_result]
-
-    mock_message_output = mocker.MagicMock()
-    mock_message_output.type = "message"
-    mock_message_output.role = "assistant"
-    mock_message_output.content = "Based on the documentation, Ansible is..."
-
-    mock_response.output = [mock_tool_output, mock_message_output]
-    mock_response.stop_reason = "end_turn"
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 10
-    mock_usage.output_tokens = 5
-    mock_response.usage = mock_usage
-
-    mock_llama_stack_client.responses.create.return_value = mock_response
+    mock_query_agent.run.return_value = tool_run_result
 
     query_request = QueryRequest(query="What is Ansible?")
 
@@ -516,6 +510,7 @@ async def test_query_v2_endpoint_with_tool_calls(
 async def test_query_v2_endpoint_with_mcp_list_tools(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     mocker: MockerFixture,
@@ -531,44 +526,32 @@ async def test_query_v2_endpoint_with_mcp_list_tools(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
     """
     _ = test_config
+    _ = mock_llama_stack_client
+    _ = mock_query_agent
 
-    mock_response = mocker.MagicMock()
-    mock_response.id = "response-mcplist"
-
-    mock_tool1 = mocker.MagicMock()
-    mock_tool1.name = "list_pods"
-    mock_tool1.description = "List Kubernetes pods"
-    mock_tool1.input_schema = {"type": "object", "properties": {}}
-
-    mock_tool2 = mocker.MagicMock()
-    mock_tool2.name = "get_deployment"
-    mock_tool2.description = "Get Kubernetes deployment"
-    mock_tool2.input_schema = {"type": "object", "properties": {}}
-
-    mock_mcp_list = mocker.MagicMock()
-    mock_mcp_list.type = "mcp_list_tools"
-    mock_mcp_list.id = "mcplist-101"
-    mock_mcp_list.server_label = "kubernetes-server"
-    mock_mcp_list.tools = [mock_tool1, mock_tool2]
-
-    mock_message = mocker.MagicMock()
-    mock_message.type = "message"
-    mock_message.role = "assistant"
-    mock_message.content = "Available tools: list_pods, get_deployment"
-
-    mock_response.output = [mock_mcp_list, mock_message]
-    mock_response.tool_calls = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 15
-    mock_usage.output_tokens = 20
-    mock_response.usage = mock_usage
-
-    mock_llama_stack_client.responses.create.return_value = mock_response
+    mcp_run_result = create_mcp_list_tools_agent_run_result(
+        mocker,
+        content="Available tools: list_pods, get_deployment",
+        tools=[
+            {
+                "name": "list_pods",
+                "description": "List Kubernetes pods",
+                "input_schema": {"type": "object", "properties": {}},
+            },
+            {
+                "name": "get_deployment",
+                "description": "Get Kubernetes deployment",
+                "input_schema": {"type": "object", "properties": {}},
+            },
+        ],
+    )
+    mock_query_agent.run.return_value = mcp_run_result
 
     query_request = QueryRequest(query="What tools are available?")
 
@@ -588,6 +571,7 @@ async def test_query_v2_endpoint_with_mcp_list_tools(
 async def test_query_v2_endpoint_with_multiple_tool_types(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     mocker: MockerFixture,
@@ -603,43 +587,16 @@ async def test_query_v2_endpoint_with_multiple_tool_types(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
     """
     _ = test_config
+    _ = mock_llama_stack_client
+    _ = mock_query_agent
 
-    mock_response = mocker.MagicMock()
-    mock_response.id = "response-multi"
-
-    mock_file_search = mocker.MagicMock()
-    mock_file_search.type = "file_search_call"
-    mock_file_search.id = "search-1"
-    mock_file_search.queries = ["Kubernetes deployment"]
-    mock_file_search.status = "completed"
-    mock_file_search.results = []
-
-    mock_function = mocker.MagicMock()
-    mock_function.type = "function_call"
-    mock_function.id = "func-2"
-    mock_function.call_id = "func-2"
-    mock_function.name = "calculate"
-    mock_function.arguments = '{"operation": "sum"}'
-    mock_function.status = "completed"
-
-    mock_message = mocker.MagicMock()
-    mock_message.type = "message"
-    mock_message.role = "assistant"
-    mock_message.content = "Based on documentation and calculations..."
-
-    mock_response.output = [mock_file_search, mock_function, mock_message]
-    mock_response.tool_calls = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 40
-    mock_usage.output_tokens = 60
-    mock_response.usage = mock_usage
-
-    mock_llama_stack_client.responses.create.return_value = mock_response
+    mock_query_agent.run.return_value = create_multi_tool_agent_run_result(mocker)
 
     query_request = QueryRequest(query="Search docs and calculate deployment replicas")
 
@@ -662,6 +619,7 @@ async def test_query_v2_endpoint_with_multiple_tool_types(
 async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -679,6 +637,7 @@ async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -711,15 +670,16 @@ async def test_query_v2_endpoint_bypasses_tools_when_no_tools_true(
     assert response.conversation_id is not None
     assert response.response is not None
 
-    # Verify NO tools were passed to Llama Stack (despite vector stores being available)
-    call_kwargs = mock_llama_stack_client.responses.create.call_args.kwargs
-    assert call_kwargs.get("tools") is None
+    # Verify NO tools were passed to the agent (despite vector stores being available)
+    responses_params = mock_query_agent.build_agent_mock.call_args[0][1]
+    assert responses_params.tools is None
 
 
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_uses_tools_when_available(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -737,6 +697,7 @@ async def test_query_v2_endpoint_uses_tools_when_available(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -770,11 +731,11 @@ async def test_query_v2_endpoint_uses_tools_when_available(
     assert response.conversation_id is not None
     assert response.response is not None
 
-    # Verify tools were passed to Llama Stack (real tool preparation logic ran)
-    call_kwargs = mock_llama_stack_client.responses.create.call_args_list[0].kwargs
-    assert call_kwargs.get("tools") is not None
-    assert len(call_kwargs["tools"]) > 0
-    assert any(tool.get("type") == "file_search" for tool in call_kwargs["tools"])
+    # Verify tools were passed to the agent (real tool preparation logic ran)
+    responses_params = mock_query_agent.build_agent_mock.call_args[0][1]
+    assert responses_params.tools is not None
+    assert len(responses_params.tools) > 0
+    assert any(tool.type == "file_search" for tool in responses_params.tools)
 
 
 # ==========================================
@@ -786,6 +747,7 @@ async def test_query_v2_endpoint_uses_tools_when_available(
 async def test_query_v2_endpoint_persists_conversation_to_database(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -801,12 +763,14 @@ async def test_query_v2_endpoint_persists_conversation_to_database(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
     """
     _ = test_config
     _ = mock_llama_stack_client
+    _ = mock_query_agent
 
     query_request = QueryRequest(query="What is Ansible?")
 
@@ -837,6 +801,7 @@ async def test_query_v2_endpoint_persists_conversation_to_database(
 async def test_query_v2_endpoint_updates_existing_conversation(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -854,11 +819,14 @@ async def test_query_v2_endpoint_updates_existing_conversation(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
     """
     _ = test_config
+    _ = mock_llama_stack_client
+    _ = mock_query_agent
 
     # Create an existing conversation in the database
     user_id, _, _, _ = test_auth
@@ -876,16 +844,14 @@ async def test_query_v2_endpoint_updates_existing_conversation(
     original_topic = existing_conversation.topic_summary
     original_count = existing_conversation.message_count
 
-    # Create a proper mock response with all required attributes
-    mock_response = create_mock_llm_response(
+    set_query_agent_run(
+        mock_query_agent,
         mocker,
         content="",
+        response_id=EXISTING_CONV_ID,
         input_tokens=10,
         output_tokens=5,
     )
-    mock_response.id = EXISTING_CONV_ID
-    mock_response.output = []  # Override to empty for this test
-    mock_llama_stack_client.responses.create.return_value = mock_response
 
     query_request = QueryRequest(query="Tell me more", conversation_id=EXISTING_CONV_ID)
 
@@ -910,6 +876,7 @@ async def test_query_v2_endpoint_updates_existing_conversation(
 async def test_query_v2_endpoint_conversation_ownership_validation(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -925,12 +892,14 @@ async def test_query_v2_endpoint_conversation_ownership_validation(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
     """
     _ = test_config
     _ = mock_llama_stack_client
+    _ = mock_query_agent
 
     # Create conversation owned by the authenticated user in database
     user_id, _, _, _ = test_auth
@@ -963,6 +932,7 @@ async def test_query_v2_endpoint_conversation_ownership_validation(
 async def test_query_v2_endpoint_creates_valid_cache_entry(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -982,6 +952,7 @@ async def test_query_v2_endpoint_creates_valid_cache_entry(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -993,6 +964,7 @@ async def test_query_v2_endpoint_creates_valid_cache_entry(
     """
     _ = test_config
     _ = mock_llama_stack_client
+    _ = mock_query_agent
     _ = patch_db_session
 
     cache_spy = mocker.spy(utils.query, "store_conversation_into_cache")
@@ -1030,6 +1002,7 @@ async def test_query_v2_endpoint_creates_valid_cache_entry(
 async def test_query_v2_endpoint_conversation_not_found_returns_404(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -1046,12 +1019,14 @@ async def test_query_v2_endpoint_conversation_not_found_returns_404(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
     """
     _ = test_config
     _ = mock_llama_stack_client
+    _ = mock_query_agent
 
     query_request = QueryRequest(
         query="What is Ansible?", conversation_id=TEST_NON_EXISTENT_ID
@@ -1082,6 +1057,7 @@ async def test_query_v2_endpoint_conversation_not_found_returns_404(
 async def test_query_v2_endpoint_with_shield_violation(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -1103,24 +1079,24 @@ async def test_query_v2_endpoint_with_shield_violation(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture (only for Llama Stack response)
     """
     _ = test_config
+    _ = mock_llama_stack_client
+    _ = mock_query_agent
 
-    # Configure Llama Stack mock to return response with violation
-    mock_response = create_mock_llm_response(
+    set_query_agent_run(
+        mock_query_agent,
         mocker,
         content="I cannot respond to this request",
-        refusal="Content violates safety policy",
+        response_id="response-violation",
         input_tokens=10,
         output_tokens=5,
     )
-    mock_response.id = "response-violation"
-
-    mock_llama_stack_client.responses.create.return_value = mock_response
 
     query_request = QueryRequest(query="Inappropriate query")
 
@@ -1144,6 +1120,7 @@ async def test_query_v2_endpoint_with_shield_violation(
 async def test_query_v2_endpoint_without_shields(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -1160,6 +1137,7 @@ async def test_query_v2_endpoint_without_shields(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -1182,19 +1160,17 @@ async def test_query_v2_endpoint_without_shields(
     assert response.conversation_id is not None
     assert response.response is not None
 
-    # Verify extra_body was not included (or guardrails is empty)
-    call_kwargs = mock_llama_stack_client.responses.create.call_args.kwargs
-    if "extra_body" in call_kwargs:
-        assert (
-            "guardrails" not in call_kwargs["extra_body"]
-            or not call_kwargs["extra_body"]["guardrails"]
-        )
+    # Verify responses params passed to the agent do not include guardrails
+    responses_params = mock_query_agent.build_agent_mock.call_args[0][1]
+    dumped_params = responses_params.model_dump(exclude_none=True)
+    assert "guardrails" not in dumped_params
 
 
 @pytest.mark.asyncio
 async def test_query_v2_endpoint_handles_empty_llm_response(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     mocker: MockerFixture,
@@ -1211,23 +1187,23 @@ async def test_query_v2_endpoint_handles_empty_llm_response(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
     """
     _ = test_config
+    _ = mock_llama_stack_client
+    _ = mock_query_agent
 
-    # Create a response with truly empty output array (no assistant messages)
-    mock_response = create_mock_llm_response(
+    set_query_agent_run(
+        mock_query_agent,
         mocker,
         content="",
+        response_id="response-empty",
         input_tokens=10,
         output_tokens=0,
     )
-    mock_response.id = "response-empty"
-    mock_response.output = []  # Override to test truly empty response
-
-    mock_llama_stack_client.responses.create.return_value = mock_response
 
     query_request = QueryRequest(query="What is Ansible?")
 
@@ -1251,6 +1227,7 @@ async def test_query_v2_endpoint_handles_empty_llm_response(
 async def test_query_v2_endpoint_quota_integration(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -1268,24 +1245,25 @@ async def test_query_v2_endpoint_quota_integration(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture (only for spying on quota functions)
     """
     _ = test_config
+    _ = mock_llama_stack_client
+    _ = mock_query_agent
     _ = patch_db_session
 
-    mock_response = create_mock_llm_response(
+    set_query_agent_run(
+        mock_query_agent,
         mocker,
         content="",
+        response_id="response-quota",
         input_tokens=100,
         output_tokens=50,
     )
-    mock_response.id = "response-quota"
-    mock_response.output = []  # Override to empty for this test
-
-    mock_llama_stack_client.responses.create.return_value = mock_response
 
     mock_consume = mocker.spy(app.endpoints.query, "consume_query_tokens")
     _ = mocker.spy(app.endpoints.query, "get_available_quotas")
@@ -1318,6 +1296,7 @@ async def test_query_v2_endpoint_quota_integration(
 async def test_query_v2_endpoint_rejects_query_when_quota_exceeded(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -1335,6 +1314,7 @@ async def test_query_v2_endpoint_rejects_query_when_quota_exceeded(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
@@ -1346,6 +1326,7 @@ async def test_query_v2_endpoint_rejects_query_when_quota_exceeded(
     """
     _ = test_config
     _ = mock_llama_stack_client
+    _ = mock_query_agent
 
     # Mock check_tokens_available to simulate quota exceeded
     mocker.patch(
@@ -1384,6 +1365,7 @@ async def test_query_v2_endpoint_rejects_query_when_quota_exceeded(
 async def test_query_v2_endpoint_transcript_behavior(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -1401,13 +1383,14 @@ async def test_query_v2_endpoint_transcript_behavior(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
         mocker: pytest-mock fixture
     """
     _ = mock_llama_stack_client
-
+    _ = mock_query_agent
     # Mock store_transcript to prevent file creation
     mocker.patch("utils.query.store_transcript")
 
@@ -1476,6 +1459,7 @@ async def test_query_v2_endpoint_transcript_behavior(
 async def test_query_v2_endpoint_uses_conversation_history_model(
     test_config: AppConfig,
     mock_llama_stack_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     patch_db_session: Session,
@@ -1493,11 +1477,14 @@ async def test_query_v2_endpoint_uses_conversation_history_model(
     ----------
         test_config: Test configuration
         mock_llama_stack_client: Mocked Llama Stack client
+        mock_query_agent: Mocked Pydantic AI agent for build_agent/agent.run
         test_request: FastAPI request
         test_auth: noop authentication tuple
         patch_db_session: Test database session
     """
     _ = test_config
+    _ = mock_llama_stack_client
+    _ = mock_query_agent
 
     user_id, _, _, _ = test_auth
 
@@ -1513,15 +1500,14 @@ async def test_query_v2_endpoint_uses_conversation_history_model(
     patch_db_session.add(existing_conv)
     patch_db_session.commit()
 
-    mock_response = create_mock_llm_response(
+    set_query_agent_run(
+        mock_query_agent,
         mocker,
         content="",
+        response_id=EXISTING_CONV_ID,
         input_tokens=10,
         output_tokens=5,
     )
-    mock_response.id = EXISTING_CONV_ID
-    mock_response.output = []  # Override to empty for this test
-    mock_llama_stack_client.responses.create.return_value = mock_response
 
     query_request = QueryRequest(query="Tell me more", conversation_id=EXISTING_CONV_ID)
 

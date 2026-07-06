@@ -79,7 +79,7 @@ def get_authorization_resolvers() -> tuple[RolesResolver, AccessResolver]:
                 GenericAccessResolver(authorization_cfg.access_rules),
             )
 
-        case constants.AUTH_MOD_RH_IDENTITY:
+        case constants.AUTH_MOD_RH_IDENTITY | constants.AUTH_MOD_TRUSTED_PROXY:
             # rh-identity uses access rules for authorization, but doesn't extract
             # roles from the identity header - all authenticated users get the "*" role
             if len(authorization_cfg.access_rules) == 0:

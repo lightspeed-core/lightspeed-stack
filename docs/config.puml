@@ -1,88 +1,119 @@
 @startuml classes
 set namespaceSeparator none
 class "A2AStateConfiguration" as src.models.config.A2AStateConfiguration {
-  config : Optional[SQLiteDatabaseConfiguration | PostgreSQLDatabaseConfiguration]
+  config
   postgres : Optional[PostgreSQLDatabaseConfiguration]
   sqlite : Optional[SQLiteDatabaseConfiguration]
-  storage_type : Literal['memory', 'sqlite', 'postgres']
+  storage_type
   check_a2a_state_configuration() -> Self
 }
 class "APIKeyTokenConfiguration" as src.models.config.APIKeyTokenConfiguration {
-  api_key : Optional[SecretStr]
+  api_key : SecretStr
 }
 class "AccessRule" as src.models.config.AccessRule {
-  actions : Optional[list[Action]]
-  role : Optional[str]
+  actions : list[Action]
+  role : str
 }
 class "Action" as src.models.config.Action {
   name
 }
+class "ApprovalFilter" as src.models.config.ApprovalFilter {
+  always : list[str]
+  never : list[str]
+  validate_no_overlap() -> Self
+}
+class "ApprovalsConfiguration" as src.models.config.ApprovalsConfiguration {
+  approval_retention_days
+  approval_timeout_seconds
+}
 class "AuthenticationConfiguration" as src.models.config.AuthenticationConfiguration {
   api_key_config : Optional[APIKeyTokenConfiguration]
-  api_key_configuration : APIKeyTokenConfiguration
+  api_key_configuration
   jwk_config : Optional[JwkConfiguration]
-  jwk_configuration : JwkConfiguration
+  jwk_configuration
   k8s_ca_cert_path : Optional[FilePath]
   k8s_cluster_api : Optional[AnyHttpUrl]
   module : str
   rh_identity_config : Optional[RHIdentityConfiguration]
-  rh_identity_configuration : RHIdentityConfiguration
-  skip_for_health_probes : Optional[bool]
+  rh_identity_configuration
+  skip_for_health_probes : bool
+  skip_for_metrics : bool
   skip_tls_verification : bool
+  trusted_proxy_config : Optional[TrustedProxyConfiguration]
+  trusted_proxy_configuration
   check_authentication_model() -> Self
 }
 class "AuthorizationConfiguration" as src.models.config.AuthorizationConfiguration {
-  access_rules : Optional[list[AccessRule]]
+  access_rules : list[AccessRule]
 }
 class "AzureEntraIdConfiguration" as src.models.config.AzureEntraIdConfiguration {
   client_id : SecretStr
   client_secret : SecretStr
-  scope : Optional[str]
+  scope : str
   tenant_id : SecretStr
 }
 class "ByokRag" as src.models.config.ByokRag {
+  db : Optional[str]
   db_path : Optional[str]
-  embedding_dimension : Optional[PositiveInt]
-  embedding_model : Optional[str]
-  rag_id : Optional[str]
-  rag_type : Optional[str]
-  score_multiplier : Optional[float]
-  vector_db_id : Optional[str]
+  embedding_dimension
+  embedding_model : str
+  host : Optional[str]
+  password : Optional[SecretStr]
+  port : Optional[str]
+  rag_id : str
+  rag_type : str
+  score_multiplier : float
+  user : Optional[str]
+  vector_db_id : str
+  validate_rag_type_fields() -> Self
 }
 class "CORSConfiguration" as src.models.config.CORSConfiguration {
-  allow_credentials : Optional[bool]
-  allow_headers : Optional[list[str]]
-  allow_methods : Optional[list[str]]
-  allow_origins : Optional[list[str]]
+  allow_credentials : bool
+  allow_headers : list[str]
+  allow_methods : list[str]
+  allow_origins : list[str]
   check_cors_configuration() -> Self
 }
+class "CompactionConfiguration" as src.models.config.CompactionConfiguration {
+  buffer_max_ratio : float
+  buffer_turns
+  enabled : bool
+  threshold_ratio : float
+  token_floor
+}
 class "Configuration" as src.models.config.Configuration {
-  a2a_state : Optional[A2AStateConfiguration]
-  authentication : Optional[AuthenticationConfiguration]
+  a2a_state
+  approvals
+  authentication
   authorization : Optional[AuthorizationConfiguration]
   azure_entra_id : Optional[AzureEntraIdConfiguration]
-  byok_rag : Optional[list[ByokRag]]
-  conversation_cache : Optional[ConversationHistoryConfiguration]
+  byok_rag : list[ByokRag]
+  compaction
+  conversation_cache
   customization : Optional[Customization]
-  database : Optional[DatabaseConfiguration]
-  deployment_environment : Optional[str]
-  inference : Optional[InferenceConfiguration]
-  llama_stack : Optional[LlamaStackConfiguration]
-  mcp_servers : Optional[list[ModelContextProtocolServer]]
-  name : Optional[str]
-  okp : Optional[OkpConfiguration]
-  quota_handlers : Optional[QuotaHandlersConfiguration]
-  rag : Optional[RagConfiguration]
-  rlsapi_v1 : Optional[RlsapiV1Configuration]
-  service : Optional[ServiceConfiguration]
+  database
+  deployment_environment : str
+  inference
+  llama_stack
+  mcp_servers : list[ModelContextProtocolServer]
+  name : str
+  okp
+  quota_handlers
+  rag
+  reranker
+  rlsapi_v1
+  service
+  skills : Optional[SkillsConfiguration]
   splunk : Optional[SplunkConfiguration]
-  user_data_collection : Optional[UserDataCollection]
+  user_data_collection
+  check_unified_vs_legacy() -> Self
   dump(filename: str | Path) -> None
   validate_mcp_auth_headers() -> Self
+  validate_reranker_auto_enable() -> Self
   validate_rlsapi_v1_quota_configuration() -> Self
 }
 class "ConfigurationBase" as src.models.config.ConfigurationBase {
-  model_config : ConfigDict
+  model_config
 }
 class "ConversationHistoryConfiguration" as src.models.config.ConversationHistoryConfiguration {
   memory : Optional[InMemoryCacheConfig]
@@ -92,8 +123,8 @@ class "ConversationHistoryConfiguration" as src.models.config.ConversationHistor
   check_cache_configuration() -> Self
 }
 class "CustomProfile" as src.models.config.CustomProfile {
-  path : Optional[str]
-  prompts : Optional[dict[str, str]]
+  path : str
+  prompts : dict[str, str]
   get_prompts() -> dict[str, str]
 }
 class "Customization" as src.models.config.Customization {
@@ -108,135 +139,150 @@ class "Customization" as src.models.config.Customization {
   check_customization_model() -> Self
 }
 class "DatabaseConfiguration" as src.models.config.DatabaseConfiguration {
-  config : SQLiteDatabaseConfiguration | PostgreSQLDatabaseConfiguration
-  db_type : Literal['sqlite', 'postgres']
+  config
+  db_type
   postgres : Optional[PostgreSQLDatabaseConfiguration]
   sqlite : Optional[SQLiteDatabaseConfiguration]
   check_database_configuration() -> Self
 }
 class "InMemoryCacheConfig" as src.models.config.InMemoryCacheConfig {
-  max_entries : Optional[PositiveInt]
+  max_entries
 }
 class "InferenceConfiguration" as src.models.config.InferenceConfiguration {
+  context_windows : dict[str, PositiveInt]
   default_model : Optional[str]
   default_provider : Optional[str]
+  providers : list[UnifiedInferenceProvider]
   check_default_model_and_provider() -> Self
 }
 class "JsonPathOperator" as src.models.config.JsonPathOperator {
   name
 }
 class "JwkConfiguration" as src.models.config.JwkConfiguration {
-  jwt_configuration : Optional[JwtConfiguration]
-  url : Optional[AnyHttpUrl]
+  jwt_configuration
+  url
 }
 class "JwtConfiguration" as src.models.config.JwtConfiguration {
-  role_rules : Optional[list[JwtRoleRule]]
-  user_id_claim : Optional[str]
-  username_claim : Optional[str]
+  role_rules : list[JwtRoleRule]
+  user_id_claim : str
+  username_claim : str
 }
 class "JwtRoleRule" as src.models.config.JwtRoleRule {
-  compiled_regex : Optional[Pattern[str]]
-  jsonpath : Optional[str]
-  negate : Optional[bool]
-  operator : Optional[JsonPathOperator]
-  roles : Optional[list[str]]
-  value : Optional[Any]
+  compiled_regex
+  jsonpath : str
+  negate : bool
+  operator
+  roles : list[str]
+  value : Any
   check_jsonpath() -> Self
   check_regex_pattern() -> Self
   check_roles() -> Self
 }
 class "LlamaStackConfiguration" as src.models.config.LlamaStackConfiguration {
+  allow_degraded_mode : Optional[bool]
   api_key : Optional[SecretStr]
+  config : Optional['UnifiedLlamaStackConfig']
   library_client_config_path : Optional[str]
-  timeout : Optional[PositiveInt]
+  max_retries
+  retry_delay
+  timeout
   url : Optional[AnyHttpUrl]
   use_as_library_client : Optional[bool]
   check_llama_stack_model() -> Self
 }
 class "ModelContextProtocolServer" as src.models.config.ModelContextProtocolServer {
-  authorization_headers : Optional[dict[str, str]]
-  headers : Optional[list[str]]
-  name : Optional[str]
-  provider_id : Optional[str]
-  resolved_authorization_headers : dict[str, str]
+  authorization_headers : dict[str, str]
+  headers : list[str]
+  name : str
+  provider_id : str
+  require_approval : Literal['always', 'never'] | ApprovalFilter
+  resolved_authorization_headers
   timeout : Optional[PositiveInt]
-  url : Optional[str]
+  url : str
   resolve_auth_headers() -> Self
   validate_headers(value: list[str]) -> list[str]
 }
 class "OkpConfiguration" as src.models.config.OkpConfiguration {
   chunk_filter_query : Optional[str]
-  offline : Optional[bool]
+  offline : bool
   rhokp_url : Optional[AnyHttpUrl]
 }
 class "PostgreSQLDatabaseConfiguration" as src.models.config.PostgreSQLDatabaseConfiguration {
   ca_cert_path : Optional[FilePath]
-  db : Optional[str]
-  gss_encmode : Optional[str]
-  host : Optional[str]
+  db : str
+  gss_encmode : Literal['disable', 'prefer', 'require']
+  host : str
   namespace : Optional[str]
-  password : Optional[SecretStr]
-  port : Optional[PositiveInt]
-  ssl_mode : Optional[str]
-  user : Optional[str]
+  password : SecretStr
+  port
+  ssl_mode : Literal['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full']
+  user : str
   check_postgres_configuration() -> Self
 }
 class "QuotaHandlersConfiguration" as src.models.config.QuotaHandlersConfiguration {
-  enable_token_history : Optional[bool]
-  limiters : Optional[list[QuotaLimiterConfiguration]]
+  enable_token_history : bool
+  limiters : list[QuotaLimiterConfiguration]
   postgres : Optional[PostgreSQLDatabaseConfiguration]
-  scheduler : Optional[QuotaSchedulerConfiguration]
+  scheduler
   sqlite : Optional[SQLiteDatabaseConfiguration]
 }
 class "QuotaLimiterConfiguration" as src.models.config.QuotaLimiterConfiguration {
-  initial_quota : Optional[NonNegativeInt]
-  name : Optional[str]
-  period : Optional[str]
-  quota_increase : Optional[NonNegativeInt]
-  type : Optional[Literal['user_limiter', 'cluster_limiter']]
+  initial_quota
+  name : str
+  period : str
+  quota_increase
+  type : Literal['user_limiter', 'cluster_limiter']
 }
 class "QuotaSchedulerConfiguration" as src.models.config.QuotaSchedulerConfiguration {
-  database_reconnection_count : Optional[PositiveInt]
-  database_reconnection_delay : Optional[PositiveInt]
-  period : Optional[PositiveInt]
+  database_reconnection_count
+  database_reconnection_delay
+  period
 }
 class "RHIdentityConfiguration" as src.models.config.RHIdentityConfiguration {
-  max_header_size : Optional[PositiveInt]
+  max_header_size
   required_entitlements : Optional[list[str]]
 }
 class "RagConfiguration" as src.models.config.RagConfiguration {
-  inline : Optional[list[str]]
-  tool : Optional[list[str]]
+  inline : list[str]
+  tool : list[str]
+}
+class "RerankerConfiguration" as src.models.config.RerankerConfiguration {
+  enabled : bool
+  model : str
+  mark_as_explicitly_configured() -> Self
 }
 class "RlsapiV1Configuration" as src.models.config.RlsapiV1Configuration {
-  allow_verbose_infer : Optional[bool]
+  allow_verbose_infer : bool
   quota_subject : Optional[Literal['user_id', 'org_id', 'system_id']]
 }
 class "SQLiteDatabaseConfiguration" as src.models.config.SQLiteDatabaseConfiguration {
-  db_path : Optional[str]
+  db_path : str
 }
 class "ServiceConfiguration" as src.models.config.ServiceConfiguration {
-  access_log : Optional[bool]
-  auth_enabled : Optional[bool]
+  access_log : bool
+  auth_enabled : bool
   base_url : Optional[str]
-  color_log : Optional[bool]
-  cors : Optional[CORSConfiguration]
-  host : Optional[str]
-  port : Optional[PositiveInt]
-  root_path : Optional[str]
-  tls_config : Optional[TLSConfiguration]
-  workers : Optional[PositiveInt]
+  color_log : bool
+  cors
+  host : str
+  port
+  root_path : str
+  tls_config
+  workers
   check_service_configuration() -> Self
   validate_root_path(value: str) -> str
 }
+class "SkillsConfiguration" as src.models.config.SkillsConfiguration {
+  paths : list[Path]
+}
 class "SplunkConfiguration" as src.models.config.SplunkConfiguration {
-  enabled : Optional[bool]
+  enabled : bool
   index : Optional[str]
-  source : Optional[str]
-  timeout : Optional[PositiveInt]
+  source : str
+  timeout
   token_path : Optional[FilePath]
   url : Optional[str]
-  verify_ssl : Optional[bool]
+  verify_ssl : bool
   check_splunk_configuration() -> Self
 }
 class "TLSConfiguration" as src.models.config.TLSConfiguration {
@@ -245,21 +291,43 @@ class "TLSConfiguration" as src.models.config.TLSConfiguration {
   tls_key_path : Optional[FilePath]
   check_tls_configuration() -> Self
 }
+class "TrustedProxyConfiguration" as src.models.config.TrustedProxyConfiguration {
+  allowed_service_accounts : Optional[list[TrustedProxyServiceAccount]]
+  user_header : str
+}
+class "TrustedProxyServiceAccount" as src.models.config.TrustedProxyServiceAccount {
+  name : str
+  namespace : str
+}
+class "UnifiedInferenceProvider" as src.models.config.UnifiedInferenceProvider {
+  allowed_models : Optional[list[str]]
+  api_key_env : Optional[str]
+  extra : dict[str, object]
+  type : Literal['openai', 'sentence_transformers', 'azure', 'vertexai', 'watsonx', 'vllm_rhaiis', 'vllm_rhel_ai']
+}
+class "UnifiedLlamaStackConfig" as src.models.config.UnifiedLlamaStackConfig {
+  baseline : Literal['default', 'empty']
+  native_override : dict[str, object]
+  profile : Optional[str]
+}
 class "UserDataCollection" as src.models.config.UserDataCollection {
-  feedback_enabled : Optional[bool]
+  feedback_enabled : bool
   feedback_storage : Optional[str]
-  transcripts_enabled : Optional[bool]
+  transcripts_enabled : bool
   transcripts_storage : Optional[str]
   check_storage_location_is_set_when_needed() -> Self
 }
 src.models.config.A2AStateConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.APIKeyTokenConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.AccessRule --|> src.models.config.ConfigurationBase
+src.models.config.ApprovalFilter --|> src.models.config.ConfigurationBase
+src.models.config.ApprovalsConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.AuthenticationConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.AuthorizationConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.AzureEntraIdConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.ByokRag --|> src.models.config.ConfigurationBase
 src.models.config.CORSConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.CompactionConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.Configuration --|> src.models.config.ConfigurationBase
 src.models.config.ConversationHistoryConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.Customization --|> src.models.config.ConfigurationBase
@@ -278,12 +346,38 @@ src.models.config.QuotaLimiterConfiguration --|> src.models.config.Configuration
 src.models.config.QuotaSchedulerConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.RHIdentityConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.RagConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.RerankerConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.RlsapiV1Configuration --|> src.models.config.ConfigurationBase
 src.models.config.SQLiteDatabaseConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.ServiceConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.SkillsConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.SplunkConfiguration --|> src.models.config.ConfigurationBase
 src.models.config.TLSConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.TrustedProxyConfiguration --|> src.models.config.ConfigurationBase
+src.models.config.TrustedProxyServiceAccount --|> src.models.config.ConfigurationBase
+src.models.config.UnifiedInferenceProvider --|> src.models.config.ConfigurationBase
+src.models.config.UnifiedLlamaStackConfig --|> src.models.config.ConfigurationBase
 src.models.config.UserDataCollection --|> src.models.config.ConfigurationBase
+src.models.config.A2AStateConfiguration --* src.models.config.Configuration : a2a_state
+src.models.config.ApprovalsConfiguration --* src.models.config.Configuration : approvals
+src.models.config.AuthenticationConfiguration --* src.models.config.Configuration : authentication
+src.models.config.CORSConfiguration --* src.models.config.ServiceConfiguration : cors
+src.models.config.CompactionConfiguration --* src.models.config.Configuration : compaction
+src.models.config.ConversationHistoryConfiguration --* src.models.config.Configuration : conversation_cache
 src.models.config.CustomProfile --* src.models.config.Customization : custom_profile
+src.models.config.DatabaseConfiguration --* src.models.config.Configuration : database
+src.models.config.InferenceConfiguration --* src.models.config.Configuration : inference
+src.models.config.JsonPathOperator --* src.models.config.JwtRoleRule : operator
+src.models.config.JwtConfiguration --* src.models.config.JwkConfiguration : jwt_configuration
+src.models.config.LlamaStackConfiguration --* src.models.config.Configuration : llama_stack
+src.models.config.OkpConfiguration --* src.models.config.Configuration : okp
+src.models.config.QuotaHandlersConfiguration --* src.models.config.Configuration : quota_handlers
+src.models.config.QuotaSchedulerConfiguration --* src.models.config.QuotaHandlersConfiguration : scheduler
+src.models.config.RagConfiguration --* src.models.config.Configuration : rag
+src.models.config.RerankerConfiguration --* src.models.config.Configuration : reranker
+src.models.config.RlsapiV1Configuration --* src.models.config.Configuration : rlsapi_v1
 src.models.config.SQLiteDatabaseConfiguration --* src.models.config.DatabaseConfiguration : sqlite
+src.models.config.ServiceConfiguration --* src.models.config.Configuration : service
+src.models.config.TLSConfiguration --* src.models.config.ServiceConfiguration : tls_config
+src.models.config.UserDataCollection --* src.models.config.Configuration : user_data_collection
 @enduml

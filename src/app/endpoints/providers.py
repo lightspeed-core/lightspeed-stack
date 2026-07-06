@@ -67,15 +67,16 @@ async def providers_endpoint_handler(
     - request: The incoming HTTP request.
     - auth: Authentication tuple from the auth dependency.
 
+    ### Raises:
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
+
     ### Returns:
     - ProvidersListResponse: Mapping from API type to list of providers.
-
-    ### Raises:
-    - HTTPException:
-    - 401: Authentication failed
-    - 403: Authorization failed
-    - 500: Lightspeed Stack configuration not loaded
-    - 503: Unable to connect to Llama Stack
     """
     # Used only by the middleware
     _ = auth
@@ -135,16 +136,17 @@ async def get_provider_endpoint_handler(
     - provider_id: Provider identification string
     - auth: Authentication tuple from the auth dependency.
 
+    ### Raises:
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 404 if provider is not found.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
+
     ### Returns:
     - ProviderResponse: Provider details.
-
-    ### Raises:
-    - HTTPException:
-    - 401: Authentication failed
-    - 403: Authorization failed
-    - 404: Provider not found
-    - 500: Lightspeed Stack configuration not loaded
-    - 503: Unable to connect to Llama Stack
     """
     # Used only by the middleware
     _ = auth

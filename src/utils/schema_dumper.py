@@ -12,15 +12,23 @@ from models.config import Configuration
 def recursive_update(
     original: dict[str, Any],
 ) -> dict[str, Any]:
-    """Recursively update the schema to be 100% OpenAPI-compatible.
+    """Transform a JSON Schema-like dictionary into an OpenAPI-compatible schema.
+
+    Recursively walks the input mapping and applies compatibility fixes:
+    - converts patterns like `anyOf: [{ "type": X }, { "type": "null" }]` into
+      a single `"type": X` with `"nullable": True` (optional types)
+    - rewrites `"exclusiveMinimum"` to `"minimum"`
+    - otherwise preserves entries
 
     Parameters:
     ----------
-        original (dict): The original schema dictionary to transform.
+        original (dict[str, Any]): Input schema dictionary that is produced by
+        Pydantic.
 
     Returns:
     -------
-        dict: A new dictionary with OpenAPI-compatible transformations applied.
+        dict[str, Any]: A new schema dictionary with all OpenAPI-compatible
+        transformations applied.
     """
     new: dict[str, Any] = {}
     for key, value in original.items():

@@ -1,0 +1,45 @@
+name: Lightspeed Core Service (LCS)
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+llama_stack:
+  use_as_library_client: true
+  library_client_config_path: run.yaml
+user_data_collection:
+  feedback_enabled: true
+  feedback_storage: "/tmp/data/feedback"
+  transcripts_enabled: true
+  transcripts_storage: "/tmp/data/transcripts"
+
+conversation_cache:
+  type: "sqlite"
+  sqlite:
+    db_path: "/tmp/data/conversation-cache.db"
+
+authentication:
+  module: "noop"
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
+
+# BYOK store built from a PDF by rag-content's `pdf` module (LCORE-2091).
+# The vector_db_id is hardcoded to the id baked into the committed fixture
+# store (tests/e2e/rag/pdf_kv_store.db) so this feature is self-contained and
+# needs no externally-provisioned vector-store id. See tests/e2e/rag/README.md
+# for how the fixture was produced.
+byok_rag:
+  - rag_id: pdf-field-notes
+    rag_type: inline::faiss
+    embedding_model: sentence-transformers/all-mpnet-base-v2
+    embedding_dimension: 768
+    vector_db_id: vs_4a27375c-b8da-4134-96fc-b8198d111015
+    db_path: ${env.PDF_KV_RAG_PATH:=~/.llama/storage/rag/pdf_kv_store.db}
+    score_multiplier: 1.0
+
+rag:
+  inline:
+    - pdf-field-notes

@@ -1,6 +1,6 @@
 """Integration tests for the /streaming_query endpoint (using Responses API)."""
 
-from collections.abc import AsyncIterator, Generator
+from collections.abc import Generator
 from typing import Any
 
 import pytest
@@ -19,13 +19,15 @@ from models.common.query import Attachment
 @pytest.fixture(name="mock_streaming_llama_stack_client")
 def mock_llama_stack_streaming_fixture(
     mocker: MockerFixture,
+    mock_streaming_query_agent: AsyncMockType,
 ) -> Generator[Any, None, None]:
     """Mock only the Llama Stack client (holder + client).
 
     Configures the client so the real handler runs: models, vector_stores,
-    conversations, shields, vector_io, and responses.create returning a minimal
-    stream. No other code paths are patched.
+    conversations, shields, vector_io, and responses.create for topic summary.
+    Agent inference is mocked separately via ``mock_streaming_query_agent``.
     """
+    _ = mock_streaming_query_agent
     mock_holder_class = mocker.patch(
         "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
     )
@@ -56,15 +58,7 @@ def mock_llama_stack_streaming_fixture(
     mock_vector_io_response.scores = []
     mock_client.vector_io.query = mocker.AsyncMock(return_value=mock_vector_io_response)
 
-    async def _mock_stream() -> AsyncIterator[Any]:
-        chunk = mocker.MagicMock()
-        chunk.type = "response.output_text.done"
-        chunk.text = "test"
-        yield chunk
-
-    async def _responses_create(**kwargs: Any) -> Any:
-        if kwargs.get("stream", True):
-            return _mock_stream()
+    async def _responses_create(**_kwargs: Any) -> Any:
         mock_resp = mocker.MagicMock()
         mock_resp.output = [mocker.MagicMock(content="topic summary")]
         return mock_resp
@@ -153,6 +147,7 @@ async def test_streaming_query_v2_endpoint_attachment_handling(  # pylint: disab
     test_case: dict,
     test_config: AppConfig,
     mock_streaming_llama_stack_client: AsyncMockType,
+    mock_streaming_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
@@ -170,11 +165,13 @@ async def test_streaming_query_v2_endpoint_attachment_handling(  # pylint: disab
             expected_status, expected_error)
         test_config: Test configuration
         mock_streaming_llama_stack_client: Mocked Llama Stack client
+        mock_streaming_query_agent: Mocked Pydantic AI agent for build_agent
         test_request: FastAPI request
         test_auth: noop authentication tuple
     """
     _ = test_config
     _ = mock_streaming_llama_stack_client
+    _ = mock_streaming_query_agent
 
     attachments = test_case["attachments"]
     expected_status = test_case["expected_status"]
@@ -254,6 +251,7 @@ async def test_streaming_query_endpoint_returns_401_for_mcp_oauth(  # pylint: di
     test_case: dict,
     test_config: AppConfig,
     mock_streaming_llama_stack_client: Any,
+    mock_streaming_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     mocker: MockerFixture,
@@ -272,12 +270,14 @@ async def test_streaming_query_endpoint_returns_401_for_mcp_oauth(  # pylint: di
             expect_www_authenticate)
         test_config: Test configuration
         mock_streaming_llama_stack_client: Mocked Llama Stack client
+        mock_streaming_query_agent: Mocked Pydantic AI agent for build_agent
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
     """
     _ = test_config
     _ = mock_streaming_llama_stack_client
+    _ = mock_streaming_query_agent
 
     www_authenticate = test_case["www_authenticate"]
     expect_www_authenticate = test_case["expect_www_authenticate"]

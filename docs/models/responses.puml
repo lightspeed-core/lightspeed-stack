@@ -1,0 +1,342 @@
+@startuml classes
+set namespaceSeparator none
+class "AbstractDeleteResponse" as src.models.api.responses.successful.bases.AbstractDeleteResponse {
+  deleted : Optional[bool]
+  resource_name : ClassVar[str]
+  openapi_response() -> dict[str, Any]
+  response() -> str
+}
+class "AbstractErrorResponse" as src.models.api.responses.error.bases.AbstractErrorResponse {
+  detail : Optional[DetailModel]
+  status_code : Optional[int]
+  get_description() -> str
+  openapi_response(examples: Optional[list[str]]) -> dict[str, Any]
+}
+class "AbstractSuccessfulResponse" as src.models.api.responses.successful.bases.AbstractSuccessfulResponse {
+  openapi_response() -> dict[str, Any]
+}
+class "AuthorizedResponse" as src.models.api.responses.successful.probes.AuthorizedResponse {
+  model_config : dict
+  skip_userid_check : Optional[bool]
+  user_id : Optional[str]
+  username : Optional[str]
+}
+class "BadRequestResponse" as src.models.api.responses.error.bad_request.BadRequestResponse {
+  description : ClassVar[str]
+  model_config : dict
+}
+class "ConfigurationResponse" as src.models.api.responses.successful.configuration.ConfigurationResponse {
+  configuration : Configuration
+  model_config : ConfigDict
+}
+class "ConflictResponse" as src.models.api.responses.error.conflict.ConflictResponse {
+  description : ClassVar[str]
+  model_config : dict
+  file_search() -> Self
+  mcp_tool(server_label: str) -> Self
+}
+class "ConversationDeleteResponse" as src.models.api.responses.successful.conversations.ConversationDeleteResponse {
+  conversation_id : Optional[str]
+  model_config : dict
+  resource_name : ClassVar[str]
+  success() -> bool
+}
+class "ConversationResponse" as src.models.api.responses.successful.conversations.ConversationResponse {
+  chat_history : Optional[list[ConversationTurn]]
+  conversation_id : Optional[str]
+  model_config : dict
+}
+class "ConversationUpdateResponse" as src.models.api.responses.successful.conversations.ConversationUpdateResponse {
+  conversation_id : Optional[str]
+  message : Optional[str]
+  model_config : dict
+  success : Optional[bool]
+}
+class "ConversationsListResponse" as src.models.api.responses.successful.conversations.ConversationsListResponse {
+  conversations : list[ConversationDetails]
+  model_config : dict
+}
+class "ConversationsListResponseV2" as src.models.api.responses.successful.conversations.ConversationsListResponseV2 {
+  conversations : list[ConversationData]
+  model_config : dict
+}
+class "DetailModel" as src.models.api.responses.error.bases.DetailModel {
+  cause : Optional[str]
+  response : Optional[str]
+}
+class "FeedbackResponse" as src.models.api.responses.successful.feedback.FeedbackResponse {
+  model_config : dict
+  response : Optional[str]
+}
+class "FeedbackStatusUpdateResponse" as src.models.api.responses.successful.feedback.FeedbackStatusUpdateResponse {
+  model_config : dict
+  status : dict[str, Any]
+}
+class "FileResponse" as src.models.api.responses.successful.vector_stores.FileResponse {
+  bytes : Optional[int]
+  created_at : Optional[int]
+  filename : Optional[str]
+  id : Optional[str]
+  model_config : dict
+  object : Optional[str]
+  purpose : Optional[str]
+}
+class "FileTooLargeResponse" as src.models.api.responses.error.content_too_large.FileTooLargeResponse {
+  description : ClassVar[str]
+  model_config : dict
+  exceeds_local_limit() -> Self
+  from_backend_rejection() -> Self
+}
+class "ForbiddenResponse" as src.models.api.responses.error.forbidden.ForbiddenResponse {
+  description : ClassVar[str]
+  model_config : dict
+  conversation(action: str, resource_id: str, user_id: str) -> Self
+  endpoint(user_id: str) -> Self
+  feedback_disabled() -> Self
+  mcp_server_static_config(server_name: str) -> Self
+  model_override() -> Self
+}
+class "InfoResponse" as src.models.api.responses.successful.probes.InfoResponse {
+  llama_stack_version : Optional[str]
+  model_config : dict
+  name : Optional[str]
+  service_version : Optional[str]
+}
+class "InternalServerErrorResponse" as src.models.api.responses.error.internal.InternalServerErrorResponse {
+  description : ClassVar[str]
+  model_config : dict
+  cache_unavailable() -> Self
+  configuration_not_loaded() -> Self
+  database_error() -> Self
+  feedback_path_invalid(path: str) -> Self
+  generic() -> Self
+  mcp_server_registration_failed() -> Self
+  query_failed(cause: str) -> Self
+}
+class "LivenessResponse" as src.models.api.responses.successful.probes.LivenessResponse {
+  alive : Optional[bool]
+  model_config : dict
+}
+class "MCPClientAuthOptionsResponse" as src.models.api.responses.successful.mcp_servers.MCPClientAuthOptionsResponse {
+  model_config : dict
+  servers : Optional[list[MCPServerAuthInfo]]
+}
+class "MCPServerDeleteResponse" as src.models.api.responses.successful.mcp_servers.MCPServerDeleteResponse {
+  model_config : dict
+  name : Optional[str]
+  resource_name : ClassVar[str]
+}
+class "MCPServerListResponse" as src.models.api.responses.successful.mcp_servers.MCPServerListResponse {
+  model_config : dict
+  servers : Optional[list[MCPServerInfo]]
+}
+class "MCPServerRegistrationResponse" as src.models.api.responses.successful.mcp_servers.MCPServerRegistrationResponse {
+  message : Optional[str]
+  model_config : dict
+  name : Optional[str]
+  provider_id : Optional[str]
+  url : Optional[str]
+}
+class "ModelsResponse" as src.models.api.responses.successful.catalog.ModelsResponse {
+  model_config : dict
+  models : Optional[list[dict[str, Any]]]
+}
+class "NotFoundResponse" as src.models.api.responses.error.not_found.NotFoundResponse {
+  description : ClassVar[str]
+  model_config : dict
+}
+class "PromptDeleteResponse" as src.models.api.responses.successful.prompts.PromptDeleteResponse {
+  model_config : dict
+  prompt_id : Optional[str]
+  resource_name : ClassVar[str]
+}
+class "PromptResourceResponse" as src.models.api.responses.successful.prompts.PromptResourceResponse {
+  is_default : Optional[bool]
+  model_config : dict
+  prompt : Optional[str]
+  prompt_id : Optional[str]
+  variables : Optional[list[str]]
+  version : Optional[int]
+}
+class "PromptTooLongResponse" as src.models.api.responses.error.content_too_large.PromptTooLongResponse {
+  description : ClassVar[str]
+  model_config : dict
+}
+class "PromptsListResponse" as src.models.api.responses.successful.prompts.PromptsListResponse {
+  data : Optional[list[PromptResourceResponse]]
+  model_config : dict
+}
+class "ProviderResponse" as src.models.api.responses.successful.catalog.ProviderResponse {
+  api : Optional[str]
+  config : Optional[dict[str, Any]]
+  health : Optional[dict[str, Any]]
+  model_config : dict
+  provider_id : Optional[str]
+  provider_type : Optional[str]
+}
+class "ProvidersListResponse" as src.models.api.responses.successful.catalog.ProvidersListResponse {
+  model_config : dict
+  providers : Optional[dict[str, list[dict[str, Any]]]]
+}
+class "QueryResponse" as src.models.api.responses.successful.query.QueryResponse {
+  available_quotas : Optional[dict[str, int]]
+  conversation_id : Optional[str]
+  input_tokens : Optional[int]
+  model_config : dict
+  output_tokens : Optional[int]
+  rag_chunks : Optional[list[RAGChunk]]
+  referenced_documents : Optional[list[ReferencedDocument]]
+  response : Optional[str]
+  tool_calls : Optional[list[ToolCallSummary]]
+  tool_results : Optional[list[ToolResultSummary]]
+  truncated : Optional[bool]
+}
+class "QuotaExceededResponse" as src.models.api.responses.error.too_many_requests.QuotaExceededResponse {
+  description : ClassVar[str]
+  model_config : dict
+  from_exception(exc: QuotaExceedError) -> Self
+  model(model_name: str) -> Self
+}
+class "RAGInfoResponse" as src.models.api.responses.successful.catalog.RAGInfoResponse {
+  created_at : Optional[int]
+  expires_at : Optional[int]
+  id : Optional[str]
+  last_active_at : Optional[int]
+  model_config : dict
+  name : Optional[str]
+  object : Optional[str]
+  status : Optional[str]
+  usage_bytes : Optional[int]
+}
+class "RAGListResponse" as src.models.api.responses.successful.catalog.RAGListResponse {
+  model_config : dict
+  rags : Optional[list[str]]
+}
+class "ReadinessResponse" as src.models.api.responses.successful.probes.ReadinessResponse {
+  model_config : dict
+  providers : Optional[list[ProviderHealthStatus]]
+  ready : Optional[bool]
+  reason : Optional[str]
+}
+class "ResponsesResponse" as src.models.api.responses.successful.responses_openai.ResponsesResponse {
+  available_quotas : dict[str, int]
+  completed_at : Optional[int]
+  conversation : Optional[str]
+  created_at : int
+  error : Optional[Error]
+  id : str
+  instructions : Optional[str]
+  max_output_tokens : Optional[int]
+  max_tool_calls : Optional[int]
+  metadata : Optional[dict[str, str]]
+  model : str
+  model_config : dict
+  object : Literal['response']
+  output : list[Output]
+  output_text : str
+  parallel_tool_calls : bool
+  previous_response_id : Optional[str]
+  prompt : Optional[Prompt]
+  reasoning : Optional[Reasoning]
+  safety_identifier : Optional[str]
+  status : str
+  store : Optional[bool]
+  temperature : Optional[float]
+  text : Optional[Text]
+  tool_choice : Optional[ToolChoice]
+  tools : Optional[list[OutputTool]]
+  top_p : Optional[float]
+  truncation : Optional[str]
+  usage : Optional[Usage]
+  openapi_response() -> dict[str, Any]
+}
+class "RlsapiV1InferData" as src.models.api.responses.successful.rlsapi.RlsapiV1InferData {
+  input_tokens : Optional[int]
+  output_tokens : Optional[int]
+  rag_chunks : Optional[list[RAGChunk]]
+  referenced_documents : Optional[list[ReferencedDocument]]
+  request_id : Optional[str]
+  text : Optional[str]
+  tool_calls : Optional[list[ToolCallSummary]]
+  tool_results : Optional[list[ToolResultSummary]]
+}
+class "RlsapiV1InferResponse" as src.models.api.responses.successful.rlsapi.RlsapiV1InferResponse {
+  data : Optional[RlsapiV1InferData]
+  model_config : dict
+}
+class "ServiceUnavailableResponse" as src.models.api.responses.error.service_unavailable.ServiceUnavailableResponse {
+  description : ClassVar[str]
+  model_config : dict
+}
+class "ShieldsResponse" as src.models.api.responses.successful.catalog.ShieldsResponse {
+  model_config : dict
+  shields : Optional[list[dict[str, Any]]]
+}
+class "StatusResponse" as src.models.api.responses.successful.probes.StatusResponse {
+  functionality : Optional[str]
+  model_config : dict
+  status : Optional[dict[str, Any]]
+}
+class "StreamingInterruptResponse" as src.models.api.responses.successful.query.StreamingInterruptResponse {
+  interrupted : Optional[bool]
+  message : Optional[str]
+  model_config : dict
+  request_id : Optional[str]
+}
+class "StreamingQueryResponse" as src.models.api.responses.successful.query.StreamingQueryResponse {
+  model_config : dict
+  openapi_response() -> dict[str, Any]
+}
+class "ToolsResponse" as src.models.api.responses.successful.catalog.ToolsResponse {
+  model_config : dict
+  tools : Optional[list[dict[str, Any]]]
+}
+class "UnauthorizedResponse" as src.models.api.responses.error.unauthorized.UnauthorizedResponse {
+  description : ClassVar[str]
+  model_config : dict
+}
+class "UnprocessableEntityResponse" as src.models.api.responses.error.unprocessable_entity.UnprocessableEntityResponse {
+  description : ClassVar[str]
+  model_config : dict
+}
+class "VectorStoreDeleteResponse" as src.models.api.responses.successful.vector_stores.VectorStoreDeleteResponse {
+  model_config : dict
+  resource_name : ClassVar[str]
+  vector_store_id : Optional[str]
+}
+class "VectorStoreFileDeleteResponse" as src.models.api.responses.successful.vector_stores.VectorStoreFileDeleteResponse {
+  file_id : Optional[str]
+  model_config : dict
+  resource_name : ClassVar[str]
+}
+class "VectorStoreFileResponse" as src.models.api.responses.successful.vector_stores.VectorStoreFileResponse {
+  attributes : Optional[dict[str, str | float | bool]]
+  id : Optional[str]
+  last_error : Optional[str]
+  model_config : dict
+  object : Optional[str]
+  status : Optional[str]
+  vector_store_id : Optional[str]
+}
+class "VectorStoreFilesListResponse" as src.models.api.responses.successful.vector_stores.VectorStoreFilesListResponse {
+  data : Optional[list[VectorStoreFileResponse]]
+  model_config : dict
+  object : Optional[str]
+}
+class "VectorStoreResponse" as src.models.api.responses.successful.vector_stores.VectorStoreResponse {
+  created_at : Optional[int]
+  expires_at : Optional[int]
+  id : Optional[str]
+  last_active_at : Optional[int]
+  metadata : Optional[dict[str, Any]]
+  model_config : dict
+  name : Optional[str]
+  status : Optional[str]
+  usage_bytes : Optional[int]
+}
+class "VectorStoresListResponse" as src.models.api.responses.successful.vector_stores.VectorStoresListResponse {
+  data : Optional[list[VectorStoreResponse]]
+  model_config : dict
+  object : Optional[str]
+}
+@enduml

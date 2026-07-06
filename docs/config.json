@@ -246,6 +246,17 @@
               }
             ],
             "default": null
+          },
+          "trusted_proxy_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrustedProxyConfiguration"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "title": "AuthenticationConfiguration",
@@ -316,7 +327,7 @@
           },
           "rag_type": {
             "default": "inline::faiss",
-            "description": "Type of RAG database.",
+            "description": "Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').",
             "minLength": 1,
             "title": "RAG type",
             "type": "string"
@@ -342,9 +353,11 @@
             "type": "string"
           },
           "db_path": {
-            "description": "Path to RAG database.",
-            "title": "DB path",
-            "type": "string"
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "Path to RAG database. Required for inline::faiss.",
+            "title": "DB path"
           },
           "score_multiplier": {
             "default": 1.0,
@@ -352,12 +365,46 @@
             "minimum": 0,
             "title": "Score multiplier",
             "type": "number"
+          },
+          "host": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "PostgreSQL host for remote::pgvector. Defaults to ${env.POSTGRES_HOST} when rag_type is remote::pgvector.",
+            "title": "PostgreSQL host"
+          },
+          "port": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "PostgreSQL port for remote::pgvector. Defaults to ${env.POSTGRES_PORT} when rag_type is remote::pgvector.",
+            "title": "PostgreSQL port"
+          },
+          "db": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "PostgreSQL database name for remote::pgvector. Defaults to ${env.POSTGRES_DATABASE} when rag_type is remote::pgvector.",
+            "title": "PostgreSQL database"
+          },
+          "user": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "PostgreSQL user for remote::pgvector. Defaults to ${env.POSTGRES_USER} when rag_type is remote::pgvector.",
+            "title": "PostgreSQL user"
+          },
+          "password": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "PostgreSQL password for remote::pgvector. Defaults to ${env.POSTGRES_PASSWORD} when rag_type is remote::pgvector.",
+            "title": "PostgreSQL password"
           }
         },
         "required": [
           "rag_id",
-          "vector_db_id",
-          "db_path"
+          "vector_db_id"
         ],
         "title": "ByokRag",
         "type": "object"
@@ -841,6 +888,28 @@
             "description": "Map of fully-qualified model identifier (e.g., \"openai/gpt-4o-mini\") to context window size in tokens. Used by the conversation compaction trigger to decide when older turns must be summarized before the input exceeds the window. Models absent from this map have no registered window — callers fall back to their own default or skip the token-based trigger.",
             "title": "Per-model context window sizes (tokens)",
             "type": "object"
+          },
+          "providers": {
+            "description": "Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into Llama Stack provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list.",
+            "items": {
+              "$ref": "#/components/schemas/UnifiedInferenceProvider"
+            },
+            "title": "High-level inference providers",
+            "type": "array"
+          },
+          "max_infer_iters": {
+            "type": "integer",
+            "nullable": true,
+            "default": 10,
+            "description": "Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.",
+            "title": "Default max inference iterations"
+          },
+          "max_tool_calls": {
+            "type": "integer",
+            "nullable": true,
+            "default": 30,
+            "description": "Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.",
+            "title": "Default max tool calls"
           }
         },
         "title": "InferenceConfiguration",
@@ -1009,6 +1078,19 @@
             "default": false,
             "description": "If enabled, Lightspeed Core can be started even when Llama Stack is not accessible (valid for server mode only)",
             "title": "Allow degraded mode"
+          },
+          "config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UnifiedLlamaStackConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Backend-specific knobs for unified mode, where LCORE synthesizes the Llama Stack run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required.",
+            "title": "Unified Llama Stack configuration"
           }
         },
         "title": "LlamaStackConfiguration",
@@ -1590,6 +1672,127 @@
           }
         },
         "title": "TLSConfiguration",
+        "type": "object"
+      },
+      "TrustedProxyConfiguration": {
+        "additionalProperties": false,
+        "description": "Configuration for trusted-proxy auth module.",
+        "properties": {
+          "user_header": {
+            "default": "X-Forwarded-User",
+            "description": "HTTP header containing the forwarded user identity.",
+            "title": "User identity header",
+            "type": "string"
+          },
+          "allowed_service_accounts": {
+            "type": "array",
+            "nullable": true,
+            "default": null,
+            "description": "Optional allowlist of Kubernetes ServiceAccount identities permitted to act as trusted proxies. When set to null/omitted, any ServiceAccount with a valid token is accepted. When set to a non-empty list, only the listed ServiceAccounts are allowed. An empty list behaves the same as null (no restriction).",
+            "title": "Allowed service accounts"
+          }
+        },
+        "title": "TrustedProxyConfiguration",
+        "type": "object"
+      },
+      "TrustedProxyServiceAccount": {
+        "additionalProperties": false,
+        "description": "A Kubernetes ServiceAccount identity for trusted-proxy allowlist.",
+        "properties": {
+          "namespace": {
+            "description": "Kubernetes namespace of the ServiceAccount.",
+            "title": "Namespace",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name of the Kubernetes ServiceAccount.",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "namespace",
+          "name"
+        ],
+        "title": "TrustedProxyServiceAccount",
+        "type": "object"
+      },
+      "UnifiedInferenceProvider": {
+        "additionalProperties": false,
+        "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw Llama Stack provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into a Llama\nStack `providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block — an escape hatch for\n        provider-specific knobs not modeled here.",
+        "properties": {
+          "type": {
+            "description": "Canonical, backend-agnostic provider identifier mapped to a Llama Stack provider_type by the synthesizer.",
+            "enum": [
+              "openai",
+              "ollama",
+              "vllm",
+              "sentence_transformers",
+              "azure",
+              "vertexai",
+              "watsonx",
+              "vllm_rhaiis",
+              "vllm_rhel_ai"
+            ],
+            "title": "Provider type",
+            "type": "string"
+          },
+          "api_key_env": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "Name of the environment variable holding the provider API key. Emitted as a ${env.<name>} reference so the secret is never written to disk in resolved form.",
+            "title": "API key environment variable"
+          },
+          "allowed_models": {
+            "type": "array",
+            "nullable": true,
+            "default": null,
+            "description": "Optional allow-list of model identifiers for this provider.",
+            "title": "Allowed models"
+          },
+          "extra": {
+            "additionalProperties": true,
+            "description": "Additional provider-config keys merged verbatim into the synthesized provider's config block.",
+            "title": "Extra provider config",
+            "type": "object"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "UnifiedInferenceProvider",
+        "type": "object"
+      },
+      "UnifiedLlamaStackConfig": {
+        "additionalProperties": false,
+        "description": "Backend-specific knobs for unified-mode Llama Stack synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the Llama-Stack-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml); \"empty\" begins from\n        an empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw Llama Stack schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express.",
+        "properties": {
+          "baseline": {
+            "default": "default",
+            "description": "Synthesis starting point: 'default' uses LCORE's built-in baseline, 'empty' starts from {}. Ignored when 'profile' is set.",
+            "enum": [
+              "default",
+              "empty"
+            ],
+            "title": "Baseline selector",
+            "type": "string"
+          },
+          "profile": {
+            "type": "string",
+            "nullable": true,
+            "default": null,
+            "description": "Path to a run.yaml-shaped baseline file. Relative paths resolve against the directory of the loaded lightspeed-stack.yaml.",
+            "title": "Profile path"
+          },
+          "native_override": {
+            "additionalProperties": true,
+            "description": "Raw Llama Stack schema deep-merged last (maps merge recursively; lists and scalars replace).",
+            "title": "Native override",
+            "type": "object"
+          }
+        },
+        "title": "UnifiedLlamaStackConfig",
         "type": "object"
       },
       "UserDataCollection": {

@@ -1,11 +1,14 @@
 """Successful probe-related API responses (info, readiness, liveness, status, auth)."""
 
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import Field
 
 from models.api.responses.successful.bases import AbstractSuccessfulResponse
-from models.common.health import ProviderHealthStatus
+from models.common.health import (
+    HealthStatus,
+    ProviderHealthStatus,
+)
 
 
 class InfoResponse(AbstractSuccessfulResponse):
@@ -50,26 +53,46 @@ class ReadinessResponse(AbstractSuccessfulResponse):
     """Model representing response to a readiness request.
 
     Attributes:
-        ready: If service is ready.
-        reason: The reason for the readiness.
-        providers: List of unhealthy providers in case of readiness failure.
+        ready: If service is ready to handle requests.
+        reason: The reason for the readiness status.
+        overall_status: Overall service health status (healthy/degraded/unhealthy).
+        impacts: Optional list of functional impacts when degraded or unhealthy.
+        providers: List of unhealthy providers (empty when all healthy).
     """
 
     ready: bool = Field(
         ...,
-        description="Flag indicating if service is ready",
+        description="Flag indicating if service is ready to handle requests",
         examples=[True, False],
     )
 
     reason: str = Field(
         ...,
-        description="The reason for the readiness",
+        description="The reason for the readiness status",
         examples=["Service is ready"],
+    )
+
+    overall_status: HealthStatus = Field(
+        ...,
+        description="Overall service health status",
+        examples=["healthy", "degraded", "unhealthy"],
+    )
+
+    impacts: Optional[list[str]] = Field(
+        None,
+        description="List of functional impacts when service is degraded or unhealthy",
+        examples=[
+            [
+                "LLM inference unavailable",
+                "RAG functionality unavailable",
+                "Agent tools unavailable",
+            ]
+        ],
     )
 
     providers: list[ProviderHealthStatus] = Field(
         ...,
-        description="List of unhealthy providers in case of readiness failure.",
+        description="List of unhealthy providers (empty when all healthy)",
         examples=[],
     )
 
@@ -79,9 +102,22 @@ class ReadinessResponse(AbstractSuccessfulResponse):
             "examples": [
                 {
                     "ready": True,
-                    "reason": "Service is ready",
+                    "reason": "All providers are healthy",
+                    "overall_status": "healthy",
+                    "impacts": None,
                     "providers": [],
-                }
+                },
+                {
+                    "ready": True,
+                    "reason": "Service running in degraded mode",
+                    "overall_status": "degraded",
+                    "impacts": [
+                        "LLM inference unavailable",
+                        "RAG functionality unavailable",
+                        "Agent tools unavailable",
+                    ],
+                    "providers": [],
+                },
             ]
         }
     }

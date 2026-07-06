@@ -62,15 +62,20 @@ async def rags_endpoint_handler(
     """
     List all available RAGs.
 
-    Returns:
-        RAGListResponse: List of RAG identifiers.
+    ### Parameters:
+    - request: The incoming HTTP request (used by middleware).
+    - auth: Authentication tuple from the auth dependency (used by middleware).
 
-    Raises:
-        HTTPException:
-            - 401: Authentication failed
-            - 403: Authorization failed
-            - 500: Lightspeed Stack configuration not loaded
-            - 503: Unable to connect to Llama Stack
+    ### Raises:
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
+
+    ### Returns:
+    - RAGListResponse: List of RAG identifiers.
     """
     # Used only by the middleware
     _ = auth
@@ -142,16 +147,23 @@ async def get_rag_endpoint_handler(
     vector_store_id. If a rag_id from config is provided, it is resolved
     to the underlying vector_store_id for the llama-stack lookup.
 
-    Returns:
-        RAGInfoResponse: A single RAG's details.
+    ### Parameters:
+    - request: The incoming HTTP request (used by middleware).
+    - rag_id: rag_id or llama-stack vector_store_id
+    - auth: Authentication tuple from the auth dependency (used by middleware).
 
-    Raises:
-        HTTPException:
-            - 401: Authentication failed
-            - 403: Authorization failed
-            - 404: RAG with the given ID not found
-            - 500: Lightspeed Stack configuration not loaded
-            - 503: Unable to connect to Llama Stack
+    ### Raises:
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 404 if rag_id is not found.
+    - HTTPException: with status 422 for incorrect request payload.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
+
+    ### Returns:
+    - RAGInfoResponse: A single RAG's details.
     """
     # Used only by the middleware
     _ = auth

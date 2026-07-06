@@ -20,7 +20,9 @@ from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaSta
 from pytest_mock import MockerFixture
 
 from app.endpoints.responses import (
+    _append_previous_response_turn,
     _is_server_mcp_output_item,
+    _persist_blocked_response_turn,
     _sanitize_response_dict,
     _should_filter_mcp_chunk,
     handle_non_streaming_response,
@@ -2783,3 +2785,85 @@ async def test_response_generator_records_failure_when_stream_iteration_raises(
     call_args = mock_record.call_args
     assert call_args.args[2] == "failure"
     assert call_args.kwargs.get("record_failure") is True
+
+
+@pytest.mark.asyncio
+async def test_append_previous_response_turn_compacted(mocker: MockerFixture) -> None:
+    """In compacted mode the turn is stored against the original input.
+
+    When compaction rewrote the request, the conversation parameter was dropped
+    so Llama Stack did not store the turn. _append_previous_response_turn must
+    append it using the original user input (carried on the context), not the
+    rewritten explicit input on api_params.
+    """
+    append = mocker.patch(
+        "app.endpoints.responses.append_turn_items_to_conversation",
+        new=mocker.AsyncMock(),
+    )
+    api_params = mocker.Mock(
+        store=True,
+        conversation="conv_x",
+        previous_response_id=None,
+        input=["rewritten explicit input"],
+    )
+    context = mocker.Mock(
+        client=mocker.AsyncMock(),
+        compacted_original_input="the original query",
+    )
+
+    await _append_previous_response_turn(api_params, context, ["out"])
+
+    append.assert_awaited_once_with(
+        context.client, "conv_x", "the original query", ["out"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_append_previous_response_turn_not_stored_when_store_false(
+    mocker: MockerFixture,
+) -> None:
+    """No append happens when store is disabled, even in compacted mode."""
+    append = mocker.patch(
+        "app.endpoints.responses.append_turn_items_to_conversation",
+        new=mocker.AsyncMock(),
+    )
+    api_params = mocker.Mock(
+        store=False, conversation="conv_x", previous_response_id=None
+    )
+    context = mocker.Mock(client=mocker.AsyncMock(), compacted_original_input="q")
+
+    await _append_previous_response_turn(api_params, context, ["out"])
+
+    append.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_persist_blocked_response_turn_compacted(mocker: MockerFixture) -> None:
+    """A shield-blocked compacted turn is stored against the original input.
+
+    In compacted mode the conversation parameter was dropped and api_params.input
+    is the explicit-input rewrite, so the blocked refusal turn must be persisted
+    against the original user input carried on the context (LCORE-1572).
+    """
+    append = mocker.patch(
+        "app.endpoints.responses.append_turn_items_to_conversation",
+        new=mocker.AsyncMock(),
+    )
+    refusal = mocker.Mock()
+    api_params = mocker.Mock(
+        store=True, conversation="conv_x", input=["rewritten explicit input"]
+    )
+    context = mocker.Mock(
+        client=mocker.AsyncMock(),
+        compacted_original_input="the original query",
+        moderation_result=mocker.Mock(refusal_response=refusal),
+    )
+
+    await _persist_blocked_response_turn(api_params, context)
+
+    append.assert_awaited_once_with(
+        client=context.client,
+        conversation_id="conv_x",
+        user_input="the original query",
+        llm_output=[refusal],
+    )

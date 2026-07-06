@@ -1,29 +1,23 @@
 """Utility functions for metrics handling."""
 
-from fastapi import HTTPException
-from llama_stack_client import APIConnectionError, APIStatusError
-
 import metrics
 from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from log import get_logger
-from models.api.responses.error import ServiceUnavailableResponse
-from utils.common import run_once_async
 from utils.endpoints import check_configuration_loaded
 
 logger = get_logger(__name__)
 
 
-@run_once_async
 async def setup_model_metrics() -> None:
-    """Perform setup of all metrics related to LLM model and provider."""
+    """Perform setup of all metrics related to LLM model and provider.
+
+    Should be called during startup when service is in healthy mode.
+    Skipped in degraded mode to avoid blocking on unavailable llama-stack.
+    """
     logger.info("Setting up model metrics")
     check_configuration_loaded(configuration)
-    try:
-        model_list = await AsyncLlamaStackClientHolder().get_client().models.list()
-    except (APIConnectionError, APIStatusError) as e:
-        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
+    model_list = await AsyncLlamaStackClientHolder().get_client().models.list()
 
     models = [
         model

@@ -1,0 +1,25 @@
+@startuml classes
+set namespaceSeparator none
+class "Base" as src.models.database.base.Base {
+}
+class "UserConversation" as src.models.database.conversations.UserConversation {
+  created_at : Mapped[datetime]
+  id : Mapped[str]
+  last_message_at : Mapped[datetime]
+  last_response_id : Mapped[str]
+  last_used_model : Mapped[str]
+  last_used_provider : Mapped[str]
+  message_count : Mapped[int]
+  topic_summary : Mapped[str]
+  user_id : Mapped[str]
+}
+class "UserTurn" as src.models.database.conversations.UserTurn {
+  completed_at : Mapped[datetime]
+  conversation_id : Mapped[str]
+  model : Mapped[str]
+  provider : Mapped[str]
+  response_id : Mapped[str]
+  started_at : Mapped[datetime]
+  turn_number : Mapped[int]
+}
+@enduml

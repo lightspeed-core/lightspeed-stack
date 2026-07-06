@@ -311,7 +311,6 @@ See [OKP Guide](okp_guide.md) for detailed setup instructions.
 
 #### Other Configuration
 
-- `EXTERNAL_PROVIDERS_DIR`: Path to external providers directory (default: `/opt/app-root/external_providers`)
 - `E2E_OPENAI_MODEL`: OpenAI model for E2E tests (default: `gpt-4o-mini`)
 - `LLAMA_STACK_LOGGING`: Enable debug logging in llama-stack
 - `FAISS_VECTOR_STORE_ID`: FAISS vector store identifier
@@ -596,6 +595,67 @@ curl -fsSL https://get.docker.com | sh
    sudo firewall-cmd --permanent --add-port=8321/tcp
    sudo firewall-cmd --reload
    ```
+
+#### 7. Credential File Permission Errors (VertexAI, GCP)
+
+**Symptoms:**
+```
+PermissionError: [Errno 13] Permission denied: '/tmp/vertex-credentials.json'
+google.auth._default.load_credentials_from_file() failed to open credentials file
+```
+
+**Cause:**
+The llama-stack container runs as UID 1001 (non-root user for security). When you mount a credentials file with restrictive permissions (`600`), the container user cannot read it:
+
+- **Host file:** Owned by your user (e.g., UID 1000) with permissions `600` (owner-only)
+- **Container process:** Runs as UID 1001 (different user)
+- **Result:** Permission denied - UID 1001 cannot read a file owned by UID 1000 with `600` permissions
+
+**Solutions:**
+
+**Option 1: Use 644 permissions** (Works on all platforms)
+```bash
+chmod 644 /path/to/vertex-credentials.json
+```
+
+Allows container user (UID 1001) to read the file as "others" while keeping write access restricted to owner.
+
+**Security note:** File becomes world-readable on the host. Acceptable for development environments where access to the filesystem is already restricted to your user account.
+
+**Option 2: Use ACLs** (Linux only - more secure)
+
+ACLs (Access Control Lists) allow you to grant read access to UID 1001 specifically without making the file world-readable. **Note:** This only works on Linux systems, not macOS.
+
+**Install ACL tools (Linux):**
+```bash
+# RHEL/Fedora/CentOS
+sudo dnf install acl
+
+# Ubuntu/Debian
+sudo apt-get install acl
+```
+
+**Grant read access to UID 1001 (Linux only):**
+```bash
+setfacl -m u:1001:r /path/to/vertex-credentials.json
+
+# Verify
+getfacl /path/to/vertex-credentials.json
+# Output shows: user:1001:r--
+```
+
+This grants read-only access to UID 1001 (container user) without changing base permissions or making the file world-readable.
+
+**macOS note:** macOS uses BSD ACLs and cannot assign numeric UID-based ACLs to non-existent host users. If you are testing locally on macOS, you must temporarily use `chmod 644` to allow the container access, but **be aware that this makes the credentials file world-readable on your host machine.** Alternately, ensure your local user matches the container's execution environment.
+
+**Why this happens:**
+This is expected container behavior. The container runs as a non-root user (UID 1001) for security - see `USER 1001` in `deploy/llama-stack/test.containerfile`. Files with `600` permissions are only accessible to their owner, and the container's UID differs from your host UID.
+
+**Production recommendation:**
+For production deployments, avoid mounting credential files entirely. Instead use:
+- Kubernetes secrets with workload identity
+- Cloud provider IAM roles (GCP Workload Identity, AWS IRSA, Azure Managed Identity)
+- Secret management systems (Vault, AWS Secrets Manager)
 
 ### Debug Logs
 

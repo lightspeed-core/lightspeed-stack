@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
+import constants
 from authorization.azure_token_manager import AzureEntraIDManager
 from configuration import configuration
 from llama_stack_configuration import (
@@ -17,8 +18,9 @@ from llama_stack_configuration import (
     enrich_azure_entra_id_inference,
     enrich_byok_rag,
     enrich_solr,
+    synthesize_to_file,
 )
-from log import get_logger
+from log import get_logger, setup_logging
 from models.api.responses.error import ServiceUnavailableResponse
 from models.config import LlamaStackConfiguration
 from utils.types import Singleton
@@ -50,21 +52,64 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
     async def _load_library_client(self, config: LlamaStackConfiguration) -> None:
         """Initialize client in library mode.
 
-        Stores the final config path for use in reload.
+        Forks on configuration shape: legacy mode (a library_client_config_path
+        with no unified config block) enriches the operator-supplied run.yaml;
+        every other library-mode shape is unified and synthesizes a fresh
+        run.yaml. The root Configuration validator guarantees a run source
+        exists and that the legacy path never coexists with unified inputs, so
+        "has a legacy path and no config block" is a sufficient legacy signal
+        here — a unified config driven only by the root-level
+        inference.providers (with no config block) correctly falls through to
+        synthesis. Stores the final config path for use in reload.
         """
-        if config.library_client_config_path is None:
-            raise ValueError(
-                "Configuration problem: library_client_config_path is not set"
-            )
         logger.info("Using Llama stack as library client")
 
-        self._config_path = self._enrich_library_config(
-            config.library_client_config_path
-        )
+        if config.library_client_config_path is not None and config.config is None:
+            self._config_path = self._enrich_library_config(
+                config.library_client_config_path
+            )
+        else:
+            self._config_path = self._synthesize_library_config()
 
         client = AsyncLlamaStackAsLibraryClient(self._config_path)
         await client.initialize()
         self._lsc = client
+
+        # Re-apply logging configuration after ogx's setup_logging() is called.
+        # This ensures the desired logging configuration is applied when
+        # using AsyncLlamaStackAsLibraryClient.
+        setup_logging()
+
+    def _synthesize_library_config(self) -> str:
+        """Synthesize a unified-mode run.yaml and return its on-disk path.
+
+        Reads the operator's lightspeed-stack.yaml (the same file the workers
+        loaded, located via LIGHTSPEED_STACK_CONFIG_PATH) as a raw dict so the
+        synthesizer sees exactly what the operator wrote, then writes the
+        synthesized run.yaml to the persistent path (overwritten each boot,
+        mode 0600). The path can be overridden via the
+        LIGHTSPEED_STACK_SYNTHESIZED_CONFIG_PATH env var
+        (set from --synthesized-config-output).
+        """
+        config_file = os.environ.get(constants.CONFIG_PATH_ENV_VAR)
+        if not config_file:
+            raise ValueError(
+                f"Cannot synthesize Llama Stack config: {constants.CONFIG_PATH_ENV_VAR} "
+                "is not set"
+            )
+
+        with open(config_file, "r", encoding="utf-8") as f:
+            lcs_config = yaml.safe_load(f)
+
+        output_path = os.environ.get(
+            constants.SYNTHESIZED_CONFIG_PATH_ENV_VAR,
+            constants.DEFAULT_SYNTHESIZED_CONFIG_PATH,
+        )
+        config_file_dir = os.path.dirname(os.path.abspath(config_file))
+
+        synthesize_to_file(lcs_config, output_path, config_file_dir)
+        logger.info("Using synthesized Llama Stack config at %s", output_path)
+        return output_path
 
     def _load_service_client(self, config: LlamaStackConfiguration) -> None:
         """Initialize client in service mode (remote HTTP)."""
@@ -151,6 +196,11 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
             )
             raise HTTPException(**error_response.model_dump()) from e
         self._lsc = client
+        # Re-apply logging configuration after ogx's setup_logging() is called.
+        # This ensures the desired logging configuration is applied when
+        # using AsyncLlamaStackAsLibraryClient.
+        setup_logging()
+
         return client
 
     async def check_model_available(self, model_id: str) -> tuple[bool, str]:
@@ -247,6 +297,11 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
             )
             await client.initialize()
             self._lsc = client
+            # Re-apply logging configuration after ogx's setup_logging() is called.
+            # This ensures the desired logging configuration is applied when
+            # using AsyncLlamaStackAsLibraryClient.
+            setup_logging()
+
             return client
 
         # Service client mode

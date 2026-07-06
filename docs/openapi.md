@@ -1,13 +1,403 @@
-# Lightspeed Core Service (LCS) service - OpenAPI
+# Lightspeed Core Stack (LCS) service - OpenAPI
 
-Lightspeed Core Service (LCS) service API specification.
+Lightspeed Core Stack (LCS) service API specification.
+
+
+<!-- vim-markdown-toc GFM -->
+
+* [🛠️ APIs](#apis)
+    * [List of REST API endpoints](#list-of-rest-api-endpoints)
+    * [GET `/`](#get-)
+        * [Parameters:](#parameters)
+        * [Returns:](#returns)
+        * [✅ Responses](#-responses)
+    * [GET `/v1/info`](#get-v1info)
+        * [Parameters:](#parameters-1)
+        * [Raises:](#raises)
+        * [Returns:](#returns-1)
+        * [✅ Responses](#-responses-1)
+    * [GET `/v1/models`](#get-v1models)
+        * [Parameters:](#parameters-2)
+        * [Raises:](#raises-1)
+        * [Returns:](#returns-2)
+        * [🔗 Parameters](#-parameters)
+        * [✅ Responses](#-responses-2)
+    * [GET `/v1/tools`](#get-v1tools)
+        * [Parameters:](#parameters-3)
+        * [Raises:](#raises-2)
+        * [Returns:](#returns-3)
+        * [✅ Responses](#-responses-3)
+    * [GET `/v1/mcp-auth/client-options`](#get-v1mcp-authclient-options)
+        * [Parameters:](#parameters-4)
+        * [Returns:](#returns-4)
+        * [✅ Responses](#-responses-4)
+    * [GET `/v1/mcp-servers`](#get-v1mcp-servers)
+        * [Parameters:](#parameters-5)
+        * [Raises:](#raises-3)
+        * [Returns:](#returns-5)
+        * [✅ Responses](#-responses-5)
+    * [POST `/v1/mcp-servers`](#post-v1mcp-servers)
+        * [Parameters:](#parameters-6)
+        * [Raises:](#raises-4)
+        * [Returns:](#returns-6)
+        * [📦 Request Body](#-request-body)
+        * [✅ Responses](#-responses-6)
+    * [DELETE `/v1/mcp-servers/{name}`](#delete-v1mcp-serversname)
+        * [Parameters:](#parameters-7)
+        * [Raises:](#raises-5)
+        * [Returns:](#returns-7)
+        * [🔗 Parameters](#-parameters-1)
+        * [✅ Responses](#-responses-7)
+    * [GET `/v1/shields`](#get-v1shields)
+        * [Parameters:](#parameters-8)
+        * [Returns:](#returns-8)
+        * [Raises:](#raises-6)
+        * [✅ Responses](#-responses-8)
+    * [GET `/v1/providers`](#get-v1providers)
+        * [Parameters:](#parameters-9)
+        * [Returns:](#returns-9)
+        * [Raises:](#raises-7)
+        * [✅ Responses](#-responses-9)
+    * [GET `/v1/providers/{provider_id}`](#get-v1providersprovider_id)
+        * [Parameters:](#parameters-10)
+        * [Returns:](#returns-10)
+        * [Raises:](#raises-8)
+        * [🔗 Parameters](#-parameters-2)
+        * [✅ Responses](#-responses-10)
+    * [GET `/v1/prompts`](#get-v1prompts)
+        * [Parameters:](#parameters-11)
+        * [Raises:](#raises-9)
+        * [Returns:](#returns-11)
+        * [✅ Responses](#-responses-11)
+    * [POST `/v1/prompts`](#post-v1prompts)
+        * [Parameters:](#parameters-12)
+        * [Raises:](#raises-10)
+        * [Returns:](#returns-12)
+        * [📦 Request Body](#-request-body-1)
+        * [✅ Responses](#-responses-12)
+    * [GET `/v1/prompts/{prompt_id}`](#get-v1promptsprompt_id)
+        * [Parameters:](#parameters-13)
+        * [Raises:](#raises-11)
+        * [Returns:](#returns-13)
+        * [🔗 Parameters](#-parameters-3)
+        * [✅ Responses](#-responses-13)
+    * [PUT `/v1/prompts/{prompt_id}`](#put-v1promptsprompt_id)
+        * [Parameters:](#parameters-14)
+        * [Raises:](#raises-12)
+        * [Returns:](#returns-14)
+        * [🔗 Parameters](#-parameters-4)
+        * [📦 Request Body](#-request-body-2)
+        * [✅ Responses](#-responses-14)
+    * [DELETE `/v1/prompts/{prompt_id}`](#delete-v1promptsprompt_id)
+        * [Parameters:](#parameters-15)
+        * [Raises:](#raises-13)
+        * [Returns:](#returns-15)
+        * [🔗 Parameters](#-parameters-5)
+        * [✅ Responses](#-responses-15)
+    * [GET `/v1/rags`](#get-v1rags)
+        * [✅ Responses](#-responses-16)
+    * [GET `/v1/rags/{rag_id}`](#get-v1ragsrag_id)
+        * [🔗 Parameters](#-parameters-6)
+        * [✅ Responses](#-responses-17)
+    * [POST `/v1/query`](#post-v1query)
+        * [Parameters:](#parameters-16)
+        * [Returns:](#returns-16)
+        * [Raises:](#raises-14)
+        * [📦 Request Body](#-request-body-3)
+        * [✅ Responses](#-responses-18)
+    * [POST `/v1/streaming_query`](#post-v1streaming_query)
+        * [Parameters:](#parameters-17)
+        * [Returns:](#returns-17)
+        * [Raises:](#raises-15)
+        * [📦 Request Body](#-request-body-4)
+        * [✅ Responses](#-responses-19)
+    * [POST `/v1/streaming_query/interrupt`](#post-v1streaming_queryinterrupt)
+        * [Parameters:](#parameters-18)
+        * [Returns:](#returns-18)
+        * [Raises:](#raises-16)
+        * [📦 Request Body](#-request-body-5)
+        * [✅ Responses](#-responses-20)
+    * [GET `/v1/config`](#get-v1config)
+        * [Parameters:](#parameters-19)
+        * [Returns:](#returns-19)
+        * [✅ Responses](#-responses-21)
+    * [POST `/v1/feedback`](#post-v1feedback)
+        * [Parameters:](#parameters-20)
+        * [Returns:](#returns-20)
+        * [Raises:](#raises-17)
+        * [📦 Request Body](#-request-body-6)
+        * [✅ Responses](#-responses-22)
+    * [GET `/v1/feedback/status`](#get-v1feedbackstatus)
+        * [Parameters:](#parameters-21)
+        * [Returns:](#returns-21)
+        * [✅ Responses](#-responses-23)
+    * [PUT `/v1/feedback/status`](#put-v1feedbackstatus)
+        * [Parameters:](#parameters-22)
+        * [Returns:](#returns-22)
+        * [📦 Request Body](#-request-body-7)
+        * [✅ Responses](#-responses-24)
+    * [GET `/v1/conversations`](#get-v1conversations)
+        * [✅ Responses](#-responses-25)
+    * [GET `/v1/conversations/{conversation_id}`](#get-v1conversationsconversation_id)
+        * [🔗 Parameters](#-parameters-7)
+        * [✅ Responses](#-responses-26)
+    * [DELETE `/v1/conversations/{conversation_id}`](#delete-v1conversationsconversation_id)
+        * [🔗 Parameters](#-parameters-8)
+        * [✅ Responses](#-responses-27)
+    * [PUT `/v1/conversations/{conversation_id}`](#put-v1conversationsconversation_id)
+        * [🔗 Parameters](#-parameters-9)
+        * [📦 Request Body](#-request-body-8)
+        * [✅ Responses](#-responses-28)
+    * [GET `/v2/conversations`](#get-v2conversations)
+        * [✅ Responses](#-responses-29)
+    * [GET `/v2/conversations/{conversation_id}`](#get-v2conversationsconversation_id)
+        * [🔗 Parameters](#-parameters-10)
+        * [✅ Responses](#-responses-30)
+    * [DELETE `/v2/conversations/{conversation_id}`](#delete-v2conversationsconversation_id)
+        * [🔗 Parameters](#-parameters-11)
+        * [✅ Responses](#-responses-31)
+    * [PUT `/v2/conversations/{conversation_id}`](#put-v2conversationsconversation_id)
+        * [🔗 Parameters](#-parameters-12)
+        * [📦 Request Body](#-request-body-9)
+        * [✅ Responses](#-responses-32)
+    * [POST `/v1/responses`](#post-v1responses)
+        * [📦 Request Body](#-request-body-10)
+        * [✅ Responses](#-responses-33)
+    * [POST `/v1/infer`](#post-v1infer)
+        * [📦 Request Body](#-request-body-11)
+        * [✅ Responses](#-responses-34)
+    * [GET `/readiness`](#get-readiness)
+        * [Parameters:](#parameters-23)
+        * [Returns:](#returns-23)
+        * [✅ Responses](#-responses-35)
+    * [GET `/liveness`](#get-liveness)
+        * [Parameters:](#parameters-24)
+        * [Returns:](#returns-24)
+        * [✅ Responses](#-responses-36)
+    * [POST `/authorized`](#post-authorized)
+        * [Parameters:](#parameters-25)
+        * [Returns:](#returns-25)
+        * [✅ Responses](#-responses-37)
+    * [GET `/metrics`](#get-metrics)
+        * [Parameters:](#parameters-26)
+        * [Returns:](#returns-26)
+        * [✅ Responses](#-responses-38)
+    * [GET `/.well-known/agent-card.json`](#get-well-knownagent-cardjson)
+        * [✅ Responses](#-responses-39)
+    * [GET `/.well-known/agent.json`](#get-well-knownagentjson)
+        * [✅ Responses](#-responses-40)
+    * [GET `/a2a`](#get-a2a)
+        * [✅ Responses](#-responses-41)
+    * [POST `/a2a`](#post-a2a)
+        * [✅ Responses](#-responses-42)
+    * [GET `/a2a/health`](#get-a2ahealth)
+        * [✅ Responses](#-responses-43)
+* [📋 Components](#-components)
+    * [A2AStateConfiguration](#a2astateconfiguration)
+    * [APIKeySecurityScheme](#apikeysecurityscheme)
+    * [APIKeyTokenConfiguration](#apikeytokenconfiguration)
+    * [AccessRule](#accessrule)
+    * [Action](#action)
+    * [AgentCapabilities](#agentcapabilities)
+    * [AgentCard](#agentcard)
+    * [AgentCardSignature](#agentcardsignature)
+    * [AgentExtension](#agentextension)
+    * [AgentInterface](#agentinterface)
+    * [AgentProvider](#agentprovider)
+    * [AgentSkill](#agentskill)
+    * [AllowedToolsFilter](#allowedtoolsfilter)
+    * [ApprovalFilter](#approvalfilter)
+    * [ApprovalFilter-Output](#approvalfilter-output)
+    * [ApprovalsConfiguration](#approvalsconfiguration)
+    * [Attachment](#attachment)
+    * [AuthenticationConfiguration](#authenticationconfiguration)
+    * [AuthorizationCodeOAuthFlow](#authorizationcodeoauthflow)
+    * [AuthorizationConfiguration](#authorizationconfiguration)
+    * [AuthorizedResponse](#authorizedresponse)
+    * [AzureEntraIdConfiguration](#azureentraidconfiguration)
+    * [BadRequestResponse](#badrequestresponse)
+    * [Body_create_file_v1_files_post](#body_create_file_v1_files_post)
+    * [ByokRag](#byokrag)
+    * [CORSConfiguration](#corsconfiguration)
+    * [ClientCredentialsOAuthFlow](#clientcredentialsoauthflow)
+    * [CompactionConfiguration](#compactionconfiguration)
+    * [Configuration](#configuration)
+    * [ConfigurationResponse](#configurationresponse)
+    * [ConflictResponse](#conflictresponse)
+    * [ConversationData](#conversationdata)
+    * [ConversationDeleteResponse](#conversationdeleteresponse)
+    * [ConversationDetails](#conversationdetails)
+    * [ConversationHistoryConfiguration](#conversationhistoryconfiguration)
+    * [ConversationResponse](#conversationresponse)
+    * [ConversationTurn](#conversationturn)
+    * [ConversationUpdateRequest](#conversationupdaterequest)
+    * [ConversationUpdateResponse](#conversationupdateresponse)
+    * [ConversationsListResponse](#conversationslistresponse)
+    * [ConversationsListResponseV2](#conversationslistresponsev2)
+    * [CustomProfile](#customprofile)
+    * [Customization](#customization)
+    * [DatabaseConfiguration](#databaseconfiguration)
+    * [DetailModel](#detailmodel)
+    * [FeedbackCategory](#feedbackcategory)
+    * [FeedbackRequest](#feedbackrequest)
+    * [FeedbackResponse](#feedbackresponse)
+    * [FeedbackStatusUpdateRequest](#feedbackstatusupdaterequest)
+    * [FeedbackStatusUpdateResponse](#feedbackstatusupdateresponse)
+    * [FileResponse](#fileresponse)
+    * [FileTooLargeResponse](#filetoolargeresponse)
+    * [ForbiddenResponse](#forbiddenresponse)
+    * [HTTPAuthSecurityScheme](#httpauthsecurityscheme)
+    * [HTTPValidationError](#httpvalidationerror)
+    * [ImplicitOAuthFlow](#implicitoauthflow)
+    * [In](#in)
+    * [InMemoryCacheConfig](#inmemorycacheconfig)
+    * [IncludeParameter](#includeparameter)
+    * [InferenceConfiguration](#inferenceconfiguration)
+    * [InfoResponse](#inforesponse)
+    * [InternalServerErrorResponse](#internalservererrorresponse)
+    * [JsonPathOperator](#jsonpathoperator)
+    * [JwkConfiguration](#jwkconfiguration)
+    * [JwtConfiguration](#jwtconfiguration)
+    * [JwtRoleRule](#jwtrolerule)
+    * [LivenessResponse](#livenessresponse)
+    * [LlamaStackConfiguration](#llamastackconfiguration)
+    * [MCPClientAuthOptionsResponse](#mcpclientauthoptionsresponse)
+    * [MCPListToolsTool](#mcplisttoolstool)
+    * [MCPServerAuthInfo](#mcpserverauthinfo)
+    * [MCPServerDeleteResponse](#mcpserverdeleteresponse)
+    * [MCPServerInfo](#mcpserverinfo)
+    * [MCPServerListResponse](#mcpserverlistresponse)
+    * [MCPServerRegistrationRequest](#mcpserverregistrationrequest)
+    * [MCPServerRegistrationResponse](#mcpserverregistrationresponse)
+    * [Message](#message)
+    * [ModelContextProtocolServer](#modelcontextprotocolserver)
+    * [ModelsResponse](#modelsresponse)
+    * [MutualTLSSecurityScheme](#mutualtlssecurityscheme)
+    * [NotFoundResponse](#notfoundresponse)
+    * [OAuth2SecurityScheme](#oauth2securityscheme)
+    * [OAuthFlows](#oauthflows)
+    * [OkpConfiguration](#okpconfiguration)
+    * [OpenAIResponseAnnotationCitation](#openairesponseannotationcitation)
+    * [OpenAIResponseAnnotationContainerFileCitation](#openairesponseannotationcontainerfilecitation)
+    * [OpenAIResponseAnnotationFileCitation](#openairesponseannotationfilecitation)
+    * [OpenAIResponseAnnotationFilePath](#openairesponseannotationfilepath)
+    * [OpenAIResponseContentPartRefusal](#openairesponsecontentpartrefusal)
+    * [OpenAIResponseError](#openairesponseerror)
+    * [OpenAIResponseInputFunctionToolCallOutput](#openairesponseinputfunctiontoolcalloutput)
+    * [OpenAIResponseInputMessageContentFile](#openairesponseinputmessagecontentfile)
+    * [OpenAIResponseInputMessageContentImage](#openairesponseinputmessagecontentimage)
+    * [OpenAIResponseInputMessageContentText](#openairesponseinputmessagecontenttext)
+    * [OpenAIResponseInputToolChoiceAllowedTools](#openairesponseinputtoolchoiceallowedtools)
+    * [OpenAIResponseInputToolChoiceCustomTool](#openairesponseinputtoolchoicecustomtool)
+    * [OpenAIResponseInputToolChoiceFileSearch](#openairesponseinputtoolchoicefilesearch)
+    * [OpenAIResponseInputToolChoiceFunctionTool](#openairesponseinputtoolchoicefunctiontool)
+    * [OpenAIResponseInputToolChoiceMCPTool](#openairesponseinputtoolchoicemcptool)
+    * [OpenAIResponseInputToolChoiceMode](#openairesponseinputtoolchoicemode)
+    * [OpenAIResponseInputToolChoiceWebSearch](#openairesponseinputtoolchoicewebsearch)
+    * [OpenAIResponseInputToolFileSearch](#openairesponseinputtoolfilesearch)
+    * [OpenAIResponseInputToolFunction](#openairesponseinputtoolfunction)
+    * [OpenAIResponseInputToolMCP](#openairesponseinputtoolmcp)
+    * [OpenAIResponseInputToolWebSearch](#openairesponseinputtoolwebsearch)
+    * [OpenAIResponseMCPApprovalRequest](#openairesponsemcpapprovalrequest)
+    * [OpenAIResponseMCPApprovalResponse](#openairesponsemcpapprovalresponse)
+    * [OpenAIResponseMessage-Input](#openairesponsemessage-input)
+    * [OpenAIResponseMessage-Output](#openairesponsemessage-output)
+    * [OpenAIResponseOutputMessageContentOutputText-Input](#openairesponseoutputmessagecontentoutputtext-input)
+    * [OpenAIResponseOutputMessageContentOutputText-Output](#openairesponseoutputmessagecontentoutputtext-output)
+    * [OpenAIResponseOutputMessageFileSearchToolCall](#openairesponseoutputmessagefilesearchtoolcall)
+    * [OpenAIResponseOutputMessageFileSearchToolCallResults](#openairesponseoutputmessagefilesearchtoolcallresults)
+    * [OpenAIResponseOutputMessageFunctionToolCall](#openairesponseoutputmessagefunctiontoolcall)
+    * [OpenAIResponseOutputMessageMCPCall](#openairesponseoutputmessagemcpcall)
+    * [OpenAIResponseOutputMessageMCPListTools](#openairesponseoutputmessagemcplisttools)
+    * [OpenAIResponseOutputMessageWebSearchToolCall](#openairesponseoutputmessagewebsearchtoolcall)
+    * [OpenAIResponsePrompt](#openairesponseprompt)
+    * [OpenAIResponseReasoning](#openairesponsereasoning)
+    * [OpenAIResponseText](#openairesponsetext)
+    * [OpenAIResponseTextFormat](#openairesponsetextformat)
+    * [OpenAIResponseToolMCP](#openairesponsetoolmcp)
+    * [OpenAIResponseUsage](#openairesponseusage)
+    * [OpenAIResponseUsageInputTokensDetails](#openairesponseusageinputtokensdetails)
+    * [OpenAIResponseUsageOutputTokensDetails](#openairesponseusageoutputtokensdetails)
+    * [OpenAITokenLogProb](#openaitokenlogprob)
+    * [OpenAITopLogProb](#openaitoplogprob)
+    * [OpenIdConnectSecurityScheme](#openidconnectsecurityscheme)
+    * [PasswordOAuthFlow](#passwordoauthflow)
+    * [PostgreSQLDatabaseConfiguration](#postgresqldatabaseconfiguration)
+    * [PromptCreateRequest](#promptcreaterequest)
+    * [PromptDeleteResponse](#promptdeleteresponse)
+    * [PromptResourceResponse](#promptresourceresponse)
+    * [PromptTooLongResponse](#prompttoolongresponse)
+    * [PromptUpdateRequest](#promptupdaterequest)
+    * [PromptsListResponse](#promptslistresponse)
+    * [ProviderHealthStatus](#providerhealthstatus)
+    * [ProviderResponse](#providerresponse)
+    * [ProvidersListResponse](#providerslistresponse)
+    * [QueryRequest](#queryrequest)
+    * [QueryResponse](#queryresponse)
+    * [QuotaExceededResponse](#quotaexceededresponse)
+    * [QuotaHandlersConfiguration](#quotahandlersconfiguration)
+    * [QuotaLimiterConfiguration](#quotalimiterconfiguration)
+    * [QuotaSchedulerConfiguration](#quotaschedulerconfiguration)
+    * [RAGChunk](#ragchunk)
+    * [RAGInfoResponse](#raginforesponse)
+    * [RAGListResponse](#raglistresponse)
+    * [RHIdentityConfiguration](#rhidentityconfiguration)
+    * [RagConfiguration](#ragconfiguration)
+    * [ReadinessResponse](#readinessresponse)
+    * [ReferencedDocument](#referenceddocument)
+    * [RerankerConfiguration](#rerankerconfiguration)
+    * [ResponseInput](#responseinput)
+    * [ResponseItem](#responseitem)
+    * [ResponsesRequest](#responsesrequest)
+    * [ResponsesResponse](#responsesresponse)
+    * [RlsapiV1Attachment](#rlsapiv1attachment)
+    * [RlsapiV1CLA](#rlsapiv1cla)
+    * [RlsapiV1Configuration](#rlsapiv1configuration)
+    * [RlsapiV1Context](#rlsapiv1context)
+    * [RlsapiV1InferData](#rlsapiv1inferdata)
+    * [RlsapiV1InferRequest](#rlsapiv1inferrequest)
+    * [RlsapiV1InferResponse](#rlsapiv1inferresponse)
+    * [RlsapiV1SystemInfo](#rlsapiv1systeminfo)
+    * [RlsapiV1Terminal](#rlsapiv1terminal)
+    * [SQLiteDatabaseConfiguration](#sqlitedatabaseconfiguration)
+    * [SearchRankingOptions](#searchrankingoptions)
+    * [SecurityScheme](#securityscheme)
+    * [ServiceConfiguration](#serviceconfiguration)
+    * [ServiceUnavailableResponse](#serviceunavailableresponse)
+    * [ShieldsResponse](#shieldsresponse)
+    * [SkillsConfiguration](#skillsconfiguration)
+    * [SolrVectorSearchRequest](#solrvectorsearchrequest)
+    * [SplunkConfiguration](#splunkconfiguration)
+    * [StatusResponse](#statusresponse)
+    * [StreamingInterruptRequest](#streaminginterruptrequest)
+    * [StreamingInterruptResponse](#streaminginterruptresponse)
+    * [TLSConfiguration](#tlsconfiguration)
+    * [ToolCallSummary](#toolcallsummary)
+    * [ToolResultSummary](#toolresultsummary)
+    * [ToolsResponse](#toolsresponse)
+    * [UnauthorizedResponse](#unauthorizedresponse)
+    * [UnprocessableEntityResponse](#unprocessableentityresponse)
+    * [UserDataCollection](#userdatacollection)
+    * [ValidationError](#validationerror)
+    * [VectorStoreCreateRequest](#vectorstorecreaterequest)
+    * [VectorStoreDeleteResponse](#vectorstoredeleteresponse)
+    * [VectorStoreFileCreateRequest](#vectorstorefilecreaterequest)
+    * [VectorStoreFileDeleteResponse](#vectorstorefiledeleteresponse)
+    * [VectorStoreFileResponse](#vectorstorefileresponse)
+    * [VectorStoreFilesListResponse](#vectorstorefileslistresponse)
+    * [VectorStoreResponse](#vectorstoreresponse)
+    * [VectorStoreUpdateRequest](#vectorstoreupdaterequest)
+    * [VectorStoresListResponse](#vectorstoreslistresponse)
+
+<!-- vim-markdown-toc -->
+
 
 ## 🌍 Base URL
 
 
 | URL | Description |
 |-----|-------------|
-| http://localhost:8080/ | Locally running service |
+| http://localhost:8080 | Locally running service |
 
 
 # 🛠️ APIs
@@ -82,6 +472,10 @@ Handle GET requests to the root ("/") endpoint and returns the static HTML index
 - request: The incoming HTTP request (used by middleware).
 - auth: Authentication tuple from the auth dependency (used by middleware).
 
+### Raises:
+- HTTPException: with status 401 for unauthorized access.
+- HTTPException: with status 403 if permission is denied.
+
 ### Returns:
 - HTMLResponse: The HTML content of the index page, including a heading,
   embedded image with the service icon, and links to the API documentation
@@ -99,6 +493,11 @@ Handle GET requests to the root ("/") endpoint and returns the static HTML index
 | 401         | Unauthorized        | [UnauthorizedResponse](#unauthorizedresponse) |
 | 403         | Permission denied   | [ForbiddenResponse](#forbiddenresponse)       |
 
+Examples
+
+
+
+
 
 ```json
 {
@@ -109,6 +508,9 @@ Handle GET requests to the root ("/") endpoint and returns the static HTML index
 }
 ```
 
+
+
+
 ```json
 {
   "detail": {
@@ -118,11 +520,99 @@ Handle GET requests to the root ("/") endpoint and returns the static HTML index
 }
 ```
 
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Token has expired",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Invalid token signature",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Token signed by unknown key",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Token missing claim: user_id",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Invalid or expired Kubernetes token",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Authentication key server returned invalid data",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
 ```json
 {
   "detail": {
     "cause": "User 6789 is not authorized to access this endpoint.",
     "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+    "response": "Unable to connect to Kubernetes API"
   }
 }
 ```
@@ -141,10 +631,10 @@ service name, version and Llama-stack version.
 - auth: Authentication tuple from the auth dependency (used by middleware).
 
 ### Raises:
-- HTTPException: with status 500 and a detail object
-  containing `response` and `cause` when unable to connect to
-  Llama Stack. It can also return status 401 or 403 for
-  unauthorized access.
+- HTTPException: with status 401 for unauthorized access.
+- HTTPException: with status 403 if permission is denied.
+- HTTPException: with status 503 and a detail object containing `response`
+  and `cause` when unable to connect to Llama Stack.
 
 ### Returns:
 - InfoResponse: An object containing the service's name and version.
@@ -164,6 +654,10 @@ service name, version and Llama-stack version.
 
 Examples
 
+
+
+
+
 ```json
 {
   "detail": {
@@ -172,6 +666,9 @@ Examples
   }
 }
 ```
+
+
+
 
 ```json
 {
@@ -182,6 +679,9 @@ Examples
 }
 ```
 
+
+
+
 ```json
 {
   "detail": {
@@ -190,6 +690,9 @@ Examples
   }
 }
 ```
+
+
+
 
 ```json
 {
@@ -200,6 +703,9 @@ Examples
 }
 ```
 
+
+
+
 ```json
 {
   "detail": {
@@ -208,6 +714,9 @@ Examples
   }
 }
 ```
+
+
+
 
 ```json
 {
@@ -218,6 +727,9 @@ Examples
 }
 ```
 
+
+
+
 ```json
 {
   "detail": {
@@ -226,6 +738,9 @@ Examples
   }
 }
 ```
+
+
+
 
 ```json
 {
@@ -254,6 +769,18 @@ Examples
 }
 ```
 
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+    "response": "Unable to connect to Kubernetes API"
+  }
+}
+```
+
 ## GET `/v1/models`
 
 > **Models Endpoint Handler**
@@ -276,8 +803,14 @@ will be returned.
 - model_type: Optional filter to return only models matching this type.
 
 ### Raises:
-- HTTPException: If unable to connect to the Llama Stack server or if
-  model retrieval fails for any reason.
+- HTTPException: with status 401 for unauthorized access.
+- HTTPException: with status 403 if permission is denied.
+- HTTPException: with status 422 if model_type parameter is
+  improper.
+- HTTPException: with status 500 and a detail object containing `response`
+  and `cause` when service configuration is wrong or incomplete.
+- HTTPException: with status 503 and a detail object containing `response`
+  and `cause` when unable to connect to Llama Stack.
 
 ### Returns:
 - ModelsResponse: An object containing the list of available models.
@@ -304,6 +837,10 @@ will be returned.
 
 Examples
 
+
+
+
+
 ```json
 {
   "detail": {
@@ -313,6 +850,9 @@ Examples
 }
 ```
 
+
+
+
 ```json
 {
   "detail": {
@@ -321,6 +861,81 @@ Examples
   }
 }
 ```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Token has expired",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Invalid token signature",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Token signed by unknown key",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Token missing claim: user_id",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Invalid or expired Kubernetes token",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Authentication key server returned invalid data",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
 
 ```json
 {
@@ -349,6 +964,18 @@ Examples
 }
 ```
 
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+    "response": "Unable to connect to Kubernetes API"
+  }
+}
+```
+
 ## GET `/v1/tools`
 
 > **Tools Endpoint Handler**
@@ -362,9 +989,16 @@ available tools from all configured MCP servers.
 - request: The incoming HTTP request (used by middleware).
 - auth: Authentication tuple from the auth dependency (used by middleware).
 - mcp_headers: Headers that should be passed to MCP servers.
+
 ### Raises:
-- HTTPException: If unable to connect to the Llama Stack server or if tool
-  retrieval fails for any reason.
+- HTTPException: with status 401 for unauthorized access.
+- HTTPException: with status 403 if permission is denied.
+- HTTPException: with status 422 if mcp_headers parameter is
+  improper.
+- HTTPException: with status 500 and a detail object containing `response`
+  and `cause` when service configuration is wrong or incomplete.
+- HTTPException: with status 503 and a detail object containing `response`
+  and `cause` when unable to connect to Llama Stack.
 
 ### Returns:
 - ToolsResponse: An object containing the consolidated list of available
@@ -387,6 +1021,10 @@ available tools from all configured MCP servers.
 
 Examples
 
+
+
+
+
 ```json
 {
   "detail": {
@@ -395,6 +1033,9 @@ Examples
   }
 }
 ```
+
+
+
 
 ```json
 {
@@ -405,30 +1046,50 @@ Examples
 }
 ```
 
+
+
+
 ```json
 {
   "detail": {
-    "cause": "User 6789 is not authorized to access this endpoint.",
-    "response": "User does not have permission to access this endpoint"
+    "cause": "Token has expired",
+    "response": "Missing or invalid credentials provided by client"
   }
 }
 ```
 
 
-```json
-{
-  "detail": {
-    "cause": "Lightspeed Stack configuration has not been initialized.",
-    "response": "Configuration is not loaded"
-  }
-}
-```
+
 
 ```json
 {
   "detail": {
-    "cause": "Connection error while trying to reach backend service.",
-    "response": "Unable to connect to Llama Stack"
+    "cause": "Invalid token signature",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Token signed by unknown key",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Token missing claim: user_id",
+    "response": "Missing or invalid credentials provided by client"
   }
 }
 ```
@@ -470,6 +1131,10 @@ authenticate with using their own tokens.
 
 Examples
 
+
+
+
+
 ```json
 {
   "detail": {
@@ -491,6 +1156,8 @@ Examples
 }
 ```
 
+
+
 ```json
 {
   "detail": {
@@ -499,6 +1166,9 @@ Examples
   }
 }
 ```
+
+
+
 
 ```json
 {
@@ -509,6 +1179,73 @@ Examples
 }
 ```
 
+
+
+```json
+{
+  "detail": {
+    "cause": "User 6789 is not authorized to access this endpoint.",
+    "response": "User does not have permission to access this endpoint"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Lightspeed Stack configuration has not been initialized.",
+    "response": "Configuration is not loaded"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Token signed by unknown key",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Token missing claim: user_id",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+```json
+{
+  "detail": {
+    "cause": "Invalid or expired Kubernetes token",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
+
+
+
+
+```json
+{
+  "detail": {
+    "cause": "Authentication key server returned invalid data",
+    "response": "Missing or invalid credentials provided by client"
+  }
+}
+```
 
 ## GET `/v1/mcp-servers`
 
@@ -541,6 +1278,7 @@ registered (via API) MCP servers.
 | 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
 | 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
 | 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
 
 Examples
 
@@ -840,12 +1578,16 @@ shields from the Llama Stack service.
 - request: The incoming HTTP request (used by middleware).
 - auth: Authentication tuple from the auth dependency (used by middleware).
 
+### Raises:
+- HTTPException: with status 401 for unauthorized access.
+- HTTPException: with status 403 if permission is denied.
+- HTTPException: with status 500 and a detail object containing `response`
+  and `cause` when service configuration is wrong or incomplete.
+- HTTPException: with status 503 and a detail object containing `response`
+  and `cause` when unable to connect to Llama Stack.
+
 ### Returns:
 - ShieldsResponse: An object containing the list of available shields.
-
-### Raises:
-- HTTPException: If unable to connect to the Llama Stack server or if
-  shield retrieval fails for any reason.
 
 
 
@@ -935,15 +1677,17 @@ List all available providers grouped by API type.
 - request: The incoming HTTP request.
 - auth: Authentication tuple from the auth dependency.
 
+### Raises:
+- HTTPException: with status 401 for unauthorized access.
+- HTTPException: with status 403 if permission is denied.
+- HTTPException: with status 500 and a detail object containing `response`
+  and `cause` when service configuration is wrong or incomplete.
+- HTTPException: with status 503 and a detail object containing `response`
+  and `cause` when unable to connect to Llama Stack.
+
 ### Returns:
 - ProvidersListResponse: Mapping from API type to list of providers.
 
-### Raises:
-- HTTPException:
-- 401: Authentication failed
-- 403: Authorization failed
-- 500: Lightspeed Stack configuration not loaded
-- 503: Unable to connect to Llama Stack
 
 
 
@@ -1375,9 +2119,13 @@ returned. For example:
 - version: Optional version number (latest when omitted).
 
 ### Raises:
-- HTTPException: If configuration is not loaded, if the prompt is not
-  found, if unable to connect to Llama Stack, or if the prompts API returns
-  an error response.
+- HTTPException: with status 401 for unauthorized access.
+- HTTPException: with status 403 if permission is denied.
+- HTTPException: with status 404 if prompt is not found.
+- HTTPException: with status 500 and a detail object containing `response`
+  and `cause` when service configuration is wrong or incomplete.
+- HTTPException: with status 503 and a detail object containing `response`
+  and `cause` when unable to connect to Llama Stack.
 
 ### Returns:
 - PromptResourceResponse: The requested prompt object.
@@ -1394,15 +2142,16 @@ returned. For example:
 
 ### ✅ Responses
 
-| Status Code | Description           | Component                                                   |
-|-------------|-----------------------|-------------------------------------------------------------|
-| 200         | Successful response   | [PromptResourceResponse](#promptresourceresponse)           |
-| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
-| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
-| 404         | Resource not found    | [NotFoundResponse](#notfoundresponse)                       |
-| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
-| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
-| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                 |
+| Status Code | Description            | Component                                                   |
+|-------------|------------------------|-------------------------------------------------------------|
+| 200         | Successful response    | [PromptResourceResponse](#promptresourceresponse)           |
+| 400         | Invalid request format | [BadRequestResponse](#badrequestresponse)                   |
+| 401         | Unauthorized           | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied      | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found     | [NotFoundResponse](#notfoundresponse)                       |
+| 500         | Internal server error  | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable    | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error       | [HTTPValidationError](#httpvalidationerror)                 |
 
 
 
@@ -1535,15 +2284,16 @@ For example:
 
 ### ✅ Responses
 
-| Status Code | Description           | Component                                                   |
-|-------------|-----------------------|-------------------------------------------------------------|
-| 200         | Successful response   | [PromptResourceResponse](#promptresourceresponse)           |
-| 401         | Unauthorized          | [UnauthorizedResponse](#unauthorizedresponse)               |
-| 403         | Permission denied     | [ForbiddenResponse](#forbiddenresponse)                     |
-| 404         | Resource not found    | [NotFoundResponse](#notfoundresponse)                       |
-| 500         | Internal server error | [InternalServerErrorResponse](#internalservererrorresponse) |
-| 503         | Service unavailable   | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
-| 422         | Validation Error      | [HTTPValidationError](#httpvalidationerror)                 |
+| Status Code | Description            | Component                                                   |
+|-------------|------------------------|-------------------------------------------------------------|
+| 200         | Successful response    | [PromptResourceResponse](#promptresourceresponse)           |
+| 400         | Invalid request format | [BadRequestResponse](#badrequestresponse)                   |
+| 401         | Unauthorized           | [UnauthorizedResponse](#unauthorizedresponse)               |
+| 403         | Permission denied      | [ForbiddenResponse](#forbiddenresponse)                     |
+| 404         | Resource not found     | [NotFoundResponse](#notfoundresponse)                       |
+| 500         | Internal server error  | [InternalServerErrorResponse](#internalservererrorresponse) |
+| 503         | Service unavailable    | [ServiceUnavailableResponse](#serviceunavailableresponse)   |
+| 422         | Validation Error       | [HTTPValidationError](#httpvalidationerror)                 |
 
 Examples
 
@@ -1766,15 +2516,20 @@ Examples
 
 List all available RAGs.
 
-Returns:
-    RAGListResponse: List of RAG identifiers.
+### Parameters:
+- request: The incoming HTTP request (used by middleware).
+- auth: Authentication tuple from the auth dependency (used by middleware).
 
-Raises:
-    HTTPException:
-        - 401: Authentication failed
-        - 403: Authorization failed
-        - 500: Lightspeed Stack configuration not loaded
-        - 503: Unable to connect to Llama Stack
+### Raises:
+- HTTPException: with status 401 for unauthorized access.
+- HTTPException: with status 403 if permission is denied.
+- HTTPException: with status 500 and a detail object containing `response`
+  and `cause` when service configuration is wrong or incomplete.
+- HTTPException: with status 503 and a detail object containing `response`
+  and `cause` when unable to connect to Llama Stack.
+
+### Returns:
+    - RAGListResponse: List of RAG identifiers.
 
 
 
@@ -1861,16 +2616,23 @@ Accepts both user-facing rag_id (from LCORE config) and llama-stack
 vector_store_id. If a rag_id from config is provided, it is resolved
 to the underlying vector_store_id for the llama-stack lookup.
 
-Returns:
-    RAGInfoResponse: A single RAG's details.
+### Parameters:
+- request: The incoming HTTP request (used by middleware).
+- rag_id: rag_id or llama-stack vector_store_id
+- auth: Authentication tuple from the auth dependency (used by middleware).
 
-Raises:
-    HTTPException:
-        - 401: Authentication failed
-        - 403: Authorization failed
-        - 404: RAG with the given ID not found
-        - 500: Lightspeed Stack configuration not loaded
-        - 503: Unable to connect to Llama Stack
+### Raises:
+- HTTPException: with status 401 for unauthorized access.
+- HTTPException: with status 403 if permission is denied.
+- HTTPException: with status 404 if rag_id is not found.
+- HTTPException: with status 422 for incorrect request payload.
+- HTTPException: with status 500 and a detail object containing `response`
+  and `cause` when service configuration is wrong or incomplete.
+- HTTPException: with status 503 and a detail object containing `response`
+  and `cause` when unable to connect to Llama Stack.
+
+### Returns:
+- RAGInfoResponse: A single RAG's details.
 
 
 
@@ -2616,6 +3378,14 @@ Ensures the application configuration is loaded before returning it.
 ### Parameters:
 - request: The incoming HTTP request.
 - auth: Authentication tuple from the auth dependency.
+
+### Raises:
+- HTTPException: with status 401 for unauthorized access.
+- HTTPException: with status 403 if permission is denied.
+- HTTPException: with status 500 and a detail object containing `response`
+  and `cause` when service configuration is wrong or incomplete.
+- HTTPException: with status 503 and a detail object containing `response`
+  and `cause` when unable to connect to Llama Stack.
 
 ### Returns:
 - ConfigurationResponse: The loaded service configuration response.
@@ -4382,6 +5152,14 @@ service is ready.
 - response: The outgoing HTTP response (used by middleware).
 - auth: Authentication tuple from the auth dependency (used by middleware).
 
+### Raises:
+- HTTPException: with status 401 for unauthorized access.
+- HTTPException: with status 403 if permission is denied.
+- HTTPException: with status 500 and a detail object containing `response`
+  and `cause` when service configuration is wrong or incomplete.
+- HTTPException: with status 503 and a detail object containing `response`
+  and `cause` when unable to connect to Llama Stack.
+
 ### Returns:
 - ReadinessResponse: Object with `ready` indicating overall readiness,
   `reason` explaining the outcome, and `providers` containing the list of
@@ -4461,6 +5239,14 @@ Return the liveness status of the service.
 
 ### Parameters:
 - auth: Authentication tuple from the auth dependency (used by middleware).
+
+### Raises:
+- HTTPException: with status 401 for unauthorized access.
+- HTTPException: with status 403 if permission is denied.
+- HTTPException: with status 500 and a detail object containing `response`
+  and `cause` when service configuration is wrong or incomplete.
+- HTTPException: with status 503 and a detail object containing `response`
+  and `cause` when unable to connect to Llama Stack.
 
 ### Returns:
 - LivenessResponse: Indicates that the service is alive.
@@ -4682,8 +5468,17 @@ Serve the A2A Agent Card at the well-known location.
 This endpoint provides the agent card that describes Lightspeed's
 capabilities according to the A2A protocol specification.
 
-Returns:
-    AgentCard: The agent card describing this agent's capabilities.
+### Parameters:
+- auth: Authentication tuple from the auth dependency (used by middleware).
+
+### Raises:
+- HTTPException: with status 500 and a detail object containing `response`
+  and `cause` when service configuration is wrong or incomplete.
+- HTTPException: with status 503 and a detail object containing `response`
+  and `cause` when unable to connect to Llama Stack.
+
+### Returns:
+- AgentCard: The agent card describing this agent's capabilities.
 
 
 
@@ -4704,8 +5499,17 @@ Serve the A2A Agent Card at the well-known location.
 This endpoint provides the agent card that describes Lightspeed's
 capabilities according to the A2A protocol specification.
 
-Returns:
-    AgentCard: The agent card describing this agent's capabilities.
+### Parameters:
+- auth: Authentication tuple from the auth dependency (used by middleware).
+
+### Raises:
+- HTTPException: with status 500 and a detail object containing `response`
+  and `cause` when service configuration is wrong or incomplete.
+- HTTPException: with status 503 and a detail object containing `response`
+  and `cause` when unable to connect to Llama Stack.
+
+### Returns:
+- AgentCard: The agent card describing this agent's capabilities.
 
 
 
@@ -4789,8 +5593,14 @@ Returns:
 
 Health check endpoint for A2A service.
 
-Returns:
-    Dict with health status information.
+### Parameters:
+- None
+
+### Raises:
+- None
+
+### Returns:
+- Dict with health status information.
 
 
 
@@ -5021,10 +5831,44 @@ Filter configuration for MCP tool approval requirements.
 | never |  |  |
 
 
+## ApprovalFilter-Output
+
+
+Granular approval control for specific MCP tools.
+
+Attributes:
+    always: Tool names that always require human approval before execution.
+    never: Tool names that never require approval (pre-approved).
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| always | array | List of tool names that always require human approval |
+| never | array | List of tool names that never require approval |
+
+
+## ApprovalsConfiguration
+
+
+Configuration for human-in-the-loop approvals.
+
+Attributes:
+    approval_timeout_seconds: How long approval requests remain pending
+        before expiring.
+    approval_retention_days: How long to retain decided approvals for audit
+        purposes before cleanup.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| approval_timeout_seconds | integer | Seconds before pending approval requests expire |
+| approval_retention_days | integer | Days to retain decided approvals before cleanup |
+
+
 ## Attachment
 
 
-Model representing an attachment that can be send from the UI as part of query.
+Model representing an attachment that can be sent from the UI as part of query.
 
 A list of attachments can be an optional part of 'query' request.
 
@@ -5060,11 +5904,13 @@ Authentication configuration.
 | module | string |  |
 | skip_tls_verification | boolean |  |
 | skip_for_health_probes | boolean | Skip authorization for readiness and liveness probes |
+| skip_for_metrics | boolean | Skip authorization for the /metrics endpoint |
 | k8s_cluster_api |  |  |
 | k8s_ca_cert_path |  |  |
 | jwk_config |  |  |
 | api_key_config |  |  |
 | rh_identity_config |  |  |
+| trusted_proxy_config |  |  |
 
 
 ## AuthorizationCodeOAuthFlow
@@ -5160,6 +6006,11 @@ BYOK (Bring Your Own Knowledge) RAG configuration.
 | vector_db_id | string | Vector database identification. |
 | db_path | string | Path to RAG database. |
 | score_multiplier | number | Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them. |
+| host |  | PostgreSQL host for remote::pgvector. Defaults to ${env.POSTGRES_HOST} when rag_type is remote::pgvector. |
+| port |  | PostgreSQL port for remote::pgvector. Defaults to ${env.POSTGRES_PORT} when rag_type is remote::pgvector. |
+| db |  | PostgreSQL database name for remote::pgvector. Defaults to ${env.POSTGRES_DATABASE} when rag_type is remote::pgvector. |
+| user |  | PostgreSQL user for remote::pgvector. Defaults to ${env.POSTGRES_USER} when rag_type is remote::pgvector. |
+| password |  | PostgreSQL password for remote::pgvector. Defaults to ${env.POSTGRES_PASSWORD} when rag_type is remote::pgvector. |
 
 
 ## CORSConfiguration
@@ -5199,6 +6050,44 @@ Defines configuration details for the OAuth 2.0 Client Credentials flow.
 | tokenUrl | string |  |
 
 
+## CompactionConfiguration
+
+
+Configuration for conversation history compaction.
+
+Compaction summarizes older conversation turns when their estimated
+token count approaches the context window limit, keeping the
+conversation usable instead of failing with HTTP 413. The
+configuration here controls when compaction triggers and how much
+recent context is preserved verbatim.
+
+Attributes:
+    enabled: Master switch. When False, compaction never triggers
+        and other fields are inert.
+    threshold_ratio: Trigger compaction when estimated input tokens
+        exceed this fraction of the model's context window
+        (clamped to 0.0..1.0).
+    token_floor: Minimum estimated token count before compaction
+        can trigger, regardless of threshold_ratio. Prevents
+        triggering on very small context windows.
+    buffer_turns: Initial number of recent turns to keep verbatim.
+        The runtime applies a degrading guard — if these turns
+        exceed the available budget, it reduces buffer_turns by
+        one repeatedly until the budget fits, down to zero.
+    buffer_max_ratio: Hard cap on the fraction of the context
+        window the buffer zone may occupy, regardless of
+        buffer_turns.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| enabled | boolean | When true, older conversation turns are summarized when estimated tokens approach the context window limit. |
+| threshold_ratio | number | Trigger compaction when estimated tokens exceed this fraction of the model's context window (0.0-1.0). |
+| token_floor | integer | Minimum token count before compaction can trigger. Prevents triggering on very small context windows. |
+| buffer_turns | integer | Number of recent turns to keep verbatim. |
+| buffer_max_ratio | number | Maximum fraction of context window the buffer zone can occupy, regardless of buffer_turns. |
+
+
 ## Configuration
 
 
@@ -5218,6 +6107,8 @@ Global service configuration.
 | customization |  | It is possible to customize Lightspeed Core Stack via this section. System prompt can be customized and also different parts of the service can be replaced by custom Python modules. |
 | inference |  | One LLM provider and one its model might be selected as default ones. When no provider+model pair is specified in REST API calls (query endpoints), the default provider and model are used. |
 | conversation_cache |  |  |
+| compaction |  | Controls when conversation history is summarized to keep the model's input below the context window limit. Disabled by default — when disabled, requests that exceed the window continue to surface as HTTP 413. |
+| approvals |  | Settings for human-in-the-loop approval of MCP tool invocations |
 | byok_rag | array | BYOK RAG configuration. This configuration can be used to reconfigure Llama Stack through its run.yaml configuration file |
 | a2a_state |  | Configuration for A2A protocol persistent state storage. |
 | quota_handlers |  | Quota handlers configuration |
@@ -5227,12 +6118,17 @@ Global service configuration.
 | deployment_environment | string | Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events. |
 | rag |  | Configuration for all RAG strategies (inline and tool-based). |
 | okp |  | OKP provider settings. Only used when 'okp' is listed in rag.inline or rag.tool. |
+| reranker |  | Configuration for neural reranking of RAG chunks using cross-encoder. |
+| skills |  | Agent skills configuration. Specifies paths to skill directories. |
 
 
 ## ConfigurationResponse
 
 
 Success response model for the config endpoint.
+
+Attributes:
+    configuration: Parsed application configuration returned to the client.
 
 
 | Field | Type | Description |
@@ -5283,6 +6179,7 @@ Attributes:
 
 | Field | Type | Description |
 |-------|------|-------------|
+| deleted | boolean | Whether the deletion was successful. |
 | conversation_id | string | The conversation ID (UUID) that was deleted. |
 | success | boolean | Whether the deletion was successful. |
 | response | string | A message about the deletion result. |
@@ -5391,13 +6288,6 @@ Model representing a request to update a conversation topic summary.
 Attributes:
     topic_summary: The new topic summary for the conversation.
 
-Example:
-    ```python
-    update_request = ConversationUpdateRequest(
-        topic_summary="Discussion about machine learning algorithms"
-    )
-    ```
-
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -5413,15 +6303,6 @@ Attributes:
     conversation_id: The conversation ID (UUID) that was updated.
     success: Whether the update was successful.
     message: A message about the update result.
-
-Example:
-    ```python
-    update_response = ConversationUpdateResponse(
-        conversation_id="123e4567-e89b-12d3-a456-426614174000",
-        success=True,
-        message="Topic summary updated successfully",
-    )
-    ```
 
 
 | Field | Type | Description |
@@ -5538,18 +6419,6 @@ Attributes:
     user_feedback: The optional user feedback.
     categories: The optional list of feedback categories (multi-select for negative feedback).
 
-Example:
-    ```python
-    feedback_request = FeedbackRequest(
-        conversation_id="12345678-abcd-0000-0123-456789abcdef",
-        user_question="what are you doing?",
-        user_feedback="This response is not helpful",
-        llm_response="I don't know",
-        sentiment=-1,
-        categories=[FeedbackCategory.INCORRECT, FeedbackCategory.INCOMPLETE]
-    )
-    ```
-
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -5569,11 +6438,6 @@ Model representing a response to a feedback request.
 Attributes:
     response: The response of the feedback request.
 
-Example:
-    ```python
-    feedback_response = FeedbackResponse(response="feedback received")
-    ```
-
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -5588,13 +6452,6 @@ Model representing a feedback status update request.
 Attributes:
     status: Value of the desired feedback enabled state.
 
-Example:
-    ```python
-    feedback_request = FeedbackRequest(
-        status=false
-    )
-    ```
-
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -5608,18 +6465,6 @@ Model representing a response to a feedback status update request.
 
 Attributes:
     status: The previous and current status of the service and who updated it.
-
-Example:
-    ```python
-    status_response = StatusResponse(
-        status={
-            "previous_status": true,
-            "updated_status": false,
-            "updated_by": "user/test",
-            "timestamp": "2023-03-15 12:34:56"
-        },
-    )
-    ```
 
 
 | Field | Type | Description |
@@ -5746,6 +6591,7 @@ Inference configuration.
 |-------|------|-------------|
 | default_model |  | Identification of default model used when no other model is specified. |
 | default_provider |  | Identification of default provider used when no other model is specified. |
+| context_windows | object | Map of fully-qualified model identifier (e.g., "openai/gpt-4o-mini") to context window size in tokens. Used by the conversation compaction trigger to decide when older turns must be summarized before the input exceeds the window. Models absent from this map have no registered window — callers fall back to their own default or skip the token-based trigger. |
 
 
 ## InfoResponse
@@ -5758,21 +6604,30 @@ Attributes:
     service_version: Service version.
     llama_stack_version: Llama Stack version.
 
-Example:
-    ```python
-    info_response = InfoResponse(
-        name="Lightspeed Stack",
-        service_version="1.0.0",
-        llama_stack_version="0.2.22",
-    )
-    ```
-
 
 | Field | Type | Description |
 |-------|------|-------------|
 | name | string | Service name |
 | service_version | string | Service version |
 | llama_stack_version | string | Llama Stack version |
+
+
+## InputToolMCP
+
+
+MCP input tool with authorization included when serializing request bodies.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| type | string |  |
+| server_label | string |  |
+| connector_id |  |  |
+| server_url |  |  |
+| headers |  |  |
+| authorization |  |  |
+| require_approval |  |  |
+| allowed_tools |  |  |
 
 
 ## InternalServerErrorResponse
@@ -5867,11 +6722,6 @@ Model representing a response to a liveness request.
 Attributes:
     alive: If app is alive.
 
-Example:
-    ```python
-    liveness_response = LivenessResponse(alive=True)
-    ```
-
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -5902,12 +6752,18 @@ Useful resources:
 | use_as_library_client |  | When set to true Llama Stack will be used in library mode, not in server mode (default) |
 | library_client_config_path |  | Path to configuration file used when Llama Stack is run in library mode |
 | timeout | integer | Timeout in seconds for requests to Llama Stack service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries. |
+| max_retries | integer | Maximum number of connection attempts before giving up. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod). |
+| retry_delay | integer | Delay in seconds between retry attempts. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod). |
+| allow_degraded_mode |  | If enabled, Lightspeed Core can be started even when Llama Stack is not accessible (valid for server mode only) |
 
 
 ## MCPClientAuthOptionsResponse
 
 
 Response containing MCP servers that accept client-provided authorization.
+
+Attributes:
+    servers: MCP servers that declare client authentication headers.
 
 
 | Field | Type | Description |
@@ -5947,13 +6803,19 @@ Information about MCP server client authentication options.
 ## MCPServerDeleteResponse
 
 
-Response for a successful MCP server deletion.
+Response indicating the outcome of an MCP server delete operation.
+
+Attributes:
+    name: Name of the MCP server targeted for deletion.
+    deleted: Whether the server was successfully deleted (True) or not found (False).
+    response: Description of the result, e.g. "MCP server deleted successfully".
 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| name | string | Deleted MCP server name |
-| message | string | Status message |
+| deleted | boolean | Whether the deletion was successful. |
+| name | string | MCP server name that was passed to delete. |
+| response | string | Human-readable outcome of the delete operation. |
 
 
 ## MCPServerInfo
@@ -5981,6 +6843,9 @@ Attributes:
 
 Response listing all registered MCP servers.
 
+Attributes:
+    servers: All registered MCP servers (static and dynamic).
+
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -5999,14 +6864,6 @@ Attributes:
     authorization_headers: Optional headers to send to the MCP server.
     headers: Optional list of HTTP header names to forward from incoming requests.
     timeout: Optional request timeout in seconds.
-
-Example:
-    ```python
-    request = MCPServerRegistrationRequest(
-        name="my-tools",
-        url="http://localhost:8888/mcp",
-    )
-    ```
 
 
 | Field | Type | Description |
@@ -7103,11 +7960,7 @@ Attributes:
     media_type: The optional media type for response format (application/json or text/plain).
     vector_store_ids: The optional list of specific vector store IDs to query for RAG.
     shield_ids: The optional list of safety shield IDs to apply.
-
-Example:
-    ```python
-    query_request = QueryRequest(query="Tell me about Kubernetes")
-    ```
+    solr: Optional Solr inline RAG options (mode, filters) or legacy filter-only dict.
 
 
 | Field | Type | Description |
@@ -7325,21 +8178,6 @@ Attributes:
     ready: If service is ready.
     reason: The reason for the readiness.
     providers: List of unhealthy providers in case of readiness failure.
-
-Example:
-    ```python
-    readiness_response = ReadinessResponse(
-        ready=False,
-        reason="Service is not ready",
-        providers=[
-            ProviderHealthStatus(
-                provider_id="ollama",
-                status="unhealthy",
-                message="Server is unavailable"
-            )
-        ]
-    )
-    ```
 
 
 | Field | Type | Description |
@@ -7906,14 +8744,6 @@ Attributes:
     functionality: The functionality of the service.
     status: The status of the service.
 
-Example:
-    ```python
-    status_response = StatusResponse(
-        functionality="feedback",
-        status={"enabled": True},
-    )
-    ```
-
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -7944,15 +8774,6 @@ Attributes:
     request_id: The streaming request ID targeted by the interrupt call.
     interrupted: Whether an in-progress stream was interrupted.
     message: Human-readable interruption status message.
-
-Example:
-    ```python
-    response = StreamingInterruptResponse(
-        request_id="123e4567-e89b-12d3-a456-426614174000",
-        interrupted=True,
-        message="Streaming request interrupted",
-    )
-    ```
 
 
 | Field | Type | Description |
@@ -8025,6 +8846,30 @@ Model representing a response to tools request.
 | Field | Type | Description |
 |-------|------|-------------|
 | tools | array | List of tools available from all configured MCP servers and built-in toolgroups |
+
+
+## TrustedProxyConfiguration
+
+
+Configuration for trusted-proxy auth module.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| user_header | string | HTTP header containing the forwarded user identity. |
+| allowed_service_accounts |  | Optional allowlist of Kubernetes ServiceAccount identities permitted to act as trusted proxies. When set to null/omitted, any ServiceAccount with a valid token is accepted. When set to a non-empty list, only the listed ServiceAccounts are allowed. An empty list behaves the same as null (no restriction). |
+
+
+## TrustedProxyServiceAccount
+
+
+A Kubernetes ServiceAccount identity for trusted-proxy allowlist.
+
+
+| Field | Type | Description |
+|-------|------|-------------|
+| namespace | string | Kubernetes namespace of the ServiceAccount. |
+| name | string | Name of the Kubernetes ServiceAccount. |
 
 
 ## UnauthorizedResponse

@@ -311,3 +311,58 @@ Feature: feedback endpoint API tests
                     }
         }
         """
+
+  Scenario: Check if sequential feedback status toggling maintains consistency
+    When The feedback is enabled
+     Then The status code of the response is 200
+    When The feedback is disabled
+     Then The status code of the response is 200
+    When The feedback is enabled
+     Then The status code of the response is 200
+    When I retreive the current feedback status
+     Then The status code of the response is 200
+     And The body of the response is the following
+        """
+        {
+            "functionality": "feedback",
+            "status": {
+                        "enabled": true
+                        }
+        }
+        """
+
+  Scenario: Check if submitting duplicate feedback succeeds
+    And A new conversation is initialized
+    And The feedback is enabled
+     When I submit the following feedback for the conversation created before
+        """
+        {
+            "llm_response": "bar",
+            "sentiment": -1,
+            "user_feedback": "Not satisfied",
+            "user_question": "Sample Question"
+        }
+        """
+     Then The status code of the response is 200
+     And The body of the response is the following
+        """
+        {
+            "response": "feedback received"
+        }
+        """
+     When I submit the following feedback for the conversation created before
+        """
+        {
+            "llm_response": "bar",
+            "sentiment": -1,
+            "user_feedback": "Not satisfied",
+            "user_question": "Sample Question"
+        }
+        """
+     Then The status code of the response is 200
+     And The body of the response is the following
+        """
+        {
+            "response": "feedback received"
+        }
+        """

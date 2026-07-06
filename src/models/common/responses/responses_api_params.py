@@ -121,17 +121,27 @@ class ResponsesApiParams(BaseModel):
         default=None,
         description="Extra HTTP headers to send with the request (e.g. x-llamastack-provider-data)",
     )
+    omit_conversation: bool = Field(
+        default=False,
+        exclude=True,
+        description="When True, the conversation parameter is dropped from the "
+        "request body while remaining on the object for identity. Set by "
+        "conversation compaction (LCORE-1572): once a conversation is "
+        "compacted, lightspeed-stack supplies explicit input and must not let "
+        "Llama Stack reload the full history via the conversation parameter.",
+    )
 
     def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Serialize to a request body dict.
 
-        Omits conversation when previous_response_id is set.
+        Omits conversation when previous_response_id is set or when
+        omit_conversation is True (compacted mode).
 
         Returns:
             Serializable dict for the Responses API request body.
         """
         result = super().model_dump(*args, **kwargs)
-        if self.previous_response_id:
+        if self.previous_response_id or self.omit_conversation:
             result.pop("conversation", None)
         return result
 

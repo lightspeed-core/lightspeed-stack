@@ -1,0 +1,371 @@
+"""Unit tests for unified-mode Llama Stack configuration synthesis (LCORE-2336).
+
+Covers the synthesizer pipeline and its helpers in
+``src/llama_stack_configuration.py``: baseline loading, deep-merge semantics,
+high-level inference expansion, the full synthesis pipeline, and the
+write-to-file step (persistent path, mode 0600).
+"""
+
+import os
+import stat
+from pathlib import Path
+from typing import Any, get_args
+
+import pytest
+import yaml
+
+from llama_stack_configuration import (
+    PROVIDER_TYPE_MAP,
+    apply_high_level_inference,
+    deep_merge_list_replace,
+    load_default_baseline,
+    synthesize_configuration,
+    synthesize_to_file,
+)
+from models.config import UnifiedInferenceProvider
+
+# ---------------------------------------------------------------------------
+# load_default_baseline
+# ---------------------------------------------------------------------------
+
+
+def test_load_default_baseline_returns_usable_dict() -> None:
+    """The shipped baseline parses and carries the keys synthesis relies on."""
+    baseline = load_default_baseline()
+    assert isinstance(baseline, dict)
+    assert "providers" in baseline
+    assert "inference" in baseline["providers"]
+    # The PoC gotcha: external_providers_dir must carry a default so the
+    # baseline resolves when EXTERNAL_PROVIDERS_DIR is unset.
+    assert ":=" in baseline["external_providers_dir"]
+
+
+# ---------------------------------------------------------------------------
+# deep_merge_list_replace
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "base,overlay,expected",
+    [
+        # scalars replace
+        ({"a": 1}, {"a": 2}, {"a": 2}),
+        # maps merge recursively, untouched keys preserved
+        (
+            {"safety": {"default_shield_id": "llama-guard", "x": 1}},
+            {"safety": {"x": 2}},
+            {"safety": {"default_shield_id": "llama-guard", "x": 2}},
+        ),
+        # lists replace wholesale (no append)
+        (
+            {"safety": {"excluded_categories": ["violence", "sexual"]}},
+            {"safety": {"excluded_categories": ["spam"]}},
+            {"safety": {"excluded_categories": ["spam"]}},
+        ),
+        # new keys are added
+        ({"a": 1}, {"b": 2}, {"a": 1, "b": 2}),
+        # type mismatch (map replaced by scalar) — overlay wins
+        ({"a": {"nested": 1}}, {"a": 5}, {"a": 5}),
+        # type mismatch (scalar replaced by map) — overlay wins
+        ({"a": 5}, {"a": {"nested": 1}}, {"a": {"nested": 1}}),
+    ],
+)
+def test_deep_merge_list_replace_semantics(
+    base: dict[str, Any], overlay: dict[str, Any], expected: dict[str, Any]
+) -> None:
+    """Maps merge recursively; lists and scalars replace (Decision T2 / R5)."""
+    assert deep_merge_list_replace(base, overlay) == expected
+
+
+def test_deep_merge_list_replace_does_not_mutate_inputs() -> None:
+    """The merge returns a new structure and leaves its arguments untouched."""
+    base = {"safety": {"excluded_categories": ["a"]}}
+    overlay = {"safety": {"excluded_categories": ["b"]}}
+    result = deep_merge_list_replace(base, overlay)
+    assert base == {"safety": {"excluded_categories": ["a"]}}
+    assert overlay == {"safety": {"excluded_categories": ["b"]}}
+    # mutating the result must not leak back into base
+    result["safety"]["excluded_categories"].append("c")
+    assert base["safety"]["excluded_categories"] == ["a"]
+
+
+# ---------------------------------------------------------------------------
+# apply_high_level_inference
+# ---------------------------------------------------------------------------
+
+
+def test_apply_high_level_inference_maps_type_and_emits_env_ref() -> None:
+    """A remote provider maps to its provider_type with an ${env} api_key (R6)."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {
+                "type": "openai",
+                "api_key_env": "OPENAI_API_KEY",
+                "allowed_models": ["gpt-4o-mini"],
+                "extra": {},
+            }
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    entry = ls_config["providers"]["inference"][0]
+    assert entry["provider_id"] == "openai"
+    assert entry["provider_type"] == "remote::openai"
+    assert entry["config"]["api_key"] == "${env.OPENAI_API_KEY}"
+    assert entry["config"]["allowed_models"] == ["gpt-4o-mini"]
+
+
+def test_apply_high_level_inference_hyphenates_provider_id() -> None:
+    """sentence_transformers emits the hyphenated id the ecosystem expects."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {"providers": [{"type": "sentence_transformers"}]}
+    apply_high_level_inference(ls_config, inference)
+    entry = ls_config["providers"]["inference"][0]
+    assert entry["provider_id"] == "sentence-transformers"
+    assert entry["provider_type"] == "inline::sentence-transformers"
+    # no api_key / allowed_models -> no config block emitted
+    assert "config" not in entry
+
+
+def test_apply_high_level_inference_replaces_existing_provider_id() -> None:
+    """A high-level provider replaces a baseline entry with the same id."""
+    ls_config: dict[str, Any] = {
+        "providers": {
+            "inference": [
+                {
+                    "provider_id": "openai",
+                    "provider_type": "remote::openai",
+                    "config": {"api_key": "stale"},
+                },
+                {"provider_id": "other", "provider_type": "remote::vllm"},
+            ]
+        }
+    }
+    inference = {"providers": [{"type": "openai", "api_key_env": "NEW_KEY"}]}
+    apply_high_level_inference(ls_config, inference)
+    ids = [p["provider_id"] for p in ls_config["providers"]["inference"]]
+    assert ids == ["openai", "other"]  # replaced in place, not duplicated
+    openai = ls_config["providers"]["inference"][0]
+    assert openai["config"]["api_key"] == "${env.NEW_KEY}"
+
+
+def test_apply_high_level_inference_merges_extra() -> None:
+    """The extra mapping is merged verbatim into the provider config block."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {"type": "vllm_rhaiis", "extra": {"url": "http://x", "tls_verify": False}}
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    entry = ls_config["providers"]["inference"][0]
+    assert entry["provider_id"] == "vllm-rhaiis"
+    assert entry["provider_type"] == "remote::vllm"
+    assert entry["config"] == {"url": "http://x", "tls_verify": False}
+
+
+def test_apply_high_level_inference_emits_api_token_for_vllm() -> None:
+    """vLLM providers emit api_token from api_key_env, not api_key."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {"type": "vllm", "api_key_env": "VLLM_API_KEY"},
+            {"type": "vllm_rhaiis", "api_key_env": "VLLM_API_KEY"},
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    vllm = ls_config["providers"]["inference"][0]
+    vllm_rhaiis = ls_config["providers"]["inference"][1]
+    assert vllm["provider_id"] == "vllm"
+    assert vllm["provider_type"] == "remote::vllm"
+    assert vllm["config"]["api_token"] == "${env.VLLM_API_KEY}"
+    assert "api_key" not in vllm["config"]
+    assert vllm_rhaiis["provider_id"] == "vllm-rhaiis"
+    assert vllm_rhaiis["config"]["api_token"] == "${env.VLLM_API_KEY}"
+    assert "api_key" not in vllm_rhaiis["config"]
+
+
+def test_apply_high_level_inference_maps_ollama() -> None:
+    """ollama maps to remote::ollama with extra config merged."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {"type": "ollama", "extra": {"base_url": "http://localhost:11434"}}
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    entry = ls_config["providers"]["inference"][0]
+    assert entry["provider_id"] == "ollama"
+    assert entry["provider_type"] == "remote::ollama"
+    assert entry["config"]["base_url"] == "http://localhost:11434"
+
+
+def test_apply_high_level_inference_maps_vllm() -> None:
+    """vllm maps to remote::vllm with extra config merged."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {
+                "type": "vllm",
+                "api_key_env": "VLLM_API_KEY",
+                "extra": {"base_url": "${env.VLLM_URL:=}"},
+            }
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    entry = ls_config["providers"]["inference"][0]
+    assert entry["provider_id"] == "vllm"
+    assert entry["provider_type"] == "remote::vllm"
+    assert entry["config"]["api_token"] == "${env.VLLM_API_KEY}"
+    assert entry["config"]["base_url"] == "${env.VLLM_URL:=}"
+
+
+def test_apply_high_level_inference_extra_cannot_override_api_key_env() -> None:
+    """api_key_env always wins over a conflicting key in extra."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {
+                "type": "vllm",
+                "api_key_env": "VLLM_API_KEY",
+                "extra": {"api_token": "hardcoded"},
+            }
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    entry = ls_config["providers"]["inference"][0]
+    assert entry["config"]["api_token"] == "${env.VLLM_API_KEY}"
+
+
+def test_unified_inference_provider_accepts_ollama_and_vllm() -> None:
+    """Pydantic model accepts the new ollama and vllm Literal values."""
+    ollama = UnifiedInferenceProvider(type="ollama")
+    assert ollama.type == "ollama"
+    vllm = UnifiedInferenceProvider(type="vllm")
+    assert vllm.type == "vllm"
+
+
+def test_apply_high_level_inference_empty_is_noop() -> None:
+    """No providers -> the inference list is left as-is."""
+    ls_config: dict[str, Any] = {"providers": {"inference": [{"provider_id": "x"}]}}
+    apply_high_level_inference(ls_config, {"providers": []})
+    assert ls_config["providers"]["inference"] == [{"provider_id": "x"}]
+
+
+def test_provider_type_map_covers_every_literal_value() -> None:
+    """Every UnifiedInferenceProvider.type value has a PROVIDER_TYPE_MAP entry."""
+    literal_values = set(
+        get_args(
+            UnifiedInferenceProvider.model_fields[  # pylint: disable=unsubscriptable-object
+                "type"
+            ].annotation
+        )
+    )
+    assert literal_values == set(PROVIDER_TYPE_MAP)
+
+
+# ---------------------------------------------------------------------------
+# synthesize_configuration
+# ---------------------------------------------------------------------------
+
+
+def test_synthesize_from_empty_baseline_only_native_override() -> None:
+    """baseline: empty starts from {} so native_override is the whole output."""
+    lcs = {
+        "llama_stack": {
+            "config": {
+                "baseline": "empty",
+                "native_override": {"version": 2, "apis": ["inference"]},
+            }
+        }
+    }
+    result = synthesize_configuration(lcs)
+    assert result == {"version": 2, "apis": ["inference"]}
+
+
+def test_synthesize_from_default_baseline_applies_inference_and_override() -> None:
+    """Default baseline + high-level inference + native_override compose (R1/R5)."""
+    lcs = {
+        "llama_stack": {
+            "config": {
+                "baseline": "default",
+                "native_override": {"safety": {"default_shield_id": "custom"}},
+            }
+        },
+        "inference": {
+            "providers": [{"type": "openai", "api_key_env": "OPENAI_API_KEY"}]
+        },
+    }
+    result = synthesize_configuration(lcs)
+    # high-level inference landed (env ref, never a literal secret)
+    openai = next(
+        p for p in result["providers"]["inference"] if p["provider_id"] == "openai"
+    )
+    assert openai["config"]["api_key"] == "${env.OPENAI_API_KEY}"
+    # native_override deep-merged last
+    assert result["safety"]["default_shield_id"] == "custom"
+
+
+def test_synthesize_loads_profile_relative_to_config_dir(tmp_path: Path) -> None:
+    """A relative profile: resolves against the config file's directory (R8)."""
+    profile = {"version": 2, "apis": ["inference"], "marker": "from-profile"}
+    (tmp_path / "my-profile.yaml").write_text(yaml.dump(profile), encoding="utf-8")
+    lcs = {"llama_stack": {"config": {"profile": "my-profile.yaml"}}}
+    result = synthesize_configuration(lcs, config_file_dir=str(tmp_path))
+    assert result["marker"] == "from-profile"
+
+
+def test_synthesize_uses_provided_default_baseline() -> None:
+    """An explicit default_baseline arg is used without touching the shipped one."""
+    lcs: dict[str, Any] = {"llama_stack": {"config": {"baseline": "default"}}}
+    result = synthesize_configuration(lcs, default_baseline={"marker": "injected"})
+    assert result["marker"] == "injected"
+
+
+def test_synthesize_enriches_byok_rag_like_legacy() -> None:
+    """BYOK RAG enrichment runs during synthesis for legacy parity (R7)."""
+    lcs = {
+        "llama_stack": {"config": {"baseline": "empty"}},
+        "byok_rag": [
+            {
+                "rag_id": "kb1",
+                "vector_db_id": "kb1",
+                "embedding_model": "nomic-ai/nomic-embed-text-v1.5",
+                "embedding_dimension": 768,
+            }
+        ],
+    }
+    result = synthesize_configuration(lcs)
+    # enrichment created the storage backends + vector_io provider section
+    assert "storage" in result
+    assert "vector_io" in result.get("providers", {})
+
+
+# ---------------------------------------------------------------------------
+# synthesize_to_file
+# ---------------------------------------------------------------------------
+
+
+def test_synthesize_to_file_writes_mode_0600(tmp_path: Path) -> None:
+    """The synthesized file is written owner-only (R10) and round-trips."""
+    out = tmp_path / "nested" / "run.yaml"
+    lcs = {
+        "llama_stack": {"config": {"baseline": "empty", "native_override": {"v": 2}}}
+    }
+    synthesize_to_file(lcs, str(out), str(tmp_path))
+    assert out.exists()
+    assert stat.S_IMODE(os.stat(out).st_mode) == 0o600
+    assert yaml.safe_load(out.read_text(encoding="utf-8")) == {"v": 2}
+
+
+def test_synthesize_to_file_tightens_perms_on_overwrite(tmp_path: Path) -> None:
+    """A pre-existing world-readable file is re-chmodded to 0600 on each boot."""
+    out = tmp_path / "run.yaml"
+    out.write_text("stale", encoding="utf-8")
+    os.chmod(out, 0o644)
+    lcs = {
+        "llama_stack": {"config": {"baseline": "empty", "native_override": {"v": 3}}}
+    }
+    synthesize_to_file(lcs, str(out), str(tmp_path))
+    assert stat.S_IMODE(os.stat(out).st_mode) == 0o600
+    assert yaml.safe_load(out.read_text(encoding="utf-8")) == {"v": 3}

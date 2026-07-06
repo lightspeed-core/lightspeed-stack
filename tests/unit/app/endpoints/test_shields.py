@@ -38,8 +38,8 @@ async def test_shields_endpoint_handler_configuration_not_loaded(
 
     with pytest.raises(HTTPException) as e:
         await shields_endpoint_handler(request=request, auth=auth)
-        assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert e.value.detail["response"] == "Configuration is not loaded"  # type: ignore
+    assert e.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert e.value.detail["response"] == "Configuration is not loaded"  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -235,7 +235,8 @@ async def test_shields_endpoint_handler_unable_to_retrieve_shields_list(
     auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
 
     response = await shields_endpoint_handler(request=request, auth=auth)
-    assert response is not None
+    assert isinstance(response, ShieldsResponse)
+    assert response.shields == []
 
 
 @pytest.mark.asyncio
@@ -249,8 +250,8 @@ async def test_shields_endpoint_llama_stack_connection_error(
 
     Simulates the Llama Stack client raising an APIConnectionError and asserts
     that calling the endpoint raises an HTTPException with status 503, a detail
-    response of "Service unavailable", and a detail cause that contains "Unable
-    to connect to Llama Stack".
+    response of "Unable to connect to Llama Stack", and a detail cause that
+    contains "Connection error".
     """
     mock_authorization_resolvers(mocker)
 
@@ -290,6 +291,8 @@ async def test_shields_endpoint_llama_stack_connection_error(
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
 
+    mocker.patch("app.endpoints.shields.configuration", cfg)
+
     request = Request(
         scope={
             "type": "http",
@@ -302,9 +305,9 @@ async def test_shields_endpoint_llama_stack_connection_error(
 
     with pytest.raises(HTTPException) as e:
         await shields_endpoint_handler(request=request, auth=auth)
-        assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert e.value.detail["response"] == "Service unavailable"  # type: ignore
-        assert "Unable to connect to Llama Stack" in e.value.detail["cause"]  # type: ignore
+    assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert e.value.detail["response"] == "Unable to connect to Llama Stack"  # type: ignore
+    assert "Connection error" in e.value.detail["cause"]  # type: ignore
 
 
 @pytest.mark.asyncio
@@ -382,3 +385,114 @@ async def test_shields_endpoint_handler_success_with_shields_data(
     assert len(response.shields) == 2
     assert response.shields[0]["identifier"] == "lightspeed_question_validity-shield"
     assert response.shields[1]["identifier"] == "content_filter-shield"
+
+
+@pytest.mark.asyncio
+async def test_shields_endpoint_handler_unexpected_exception(
+    mocker: MockerFixture,
+) -> None:
+    """Test the shields endpoint when an unexpected exception is raised."""
+    mock_authorization_resolvers(mocker)
+
+    config_dict: dict[str, Any] = {
+        "name": "foo",
+        "service": {
+            "host": "localhost",
+            "port": 8080,
+            "auth_enabled": False,
+            "workers": 1,
+            "color_log": True,
+            "access_log": True,
+        },
+        "llama_stack": {
+            "api_key": "xyzzy",
+            "url": "http://x.y.com:1234",
+            "use_as_library_client": False,
+        },
+        "user_data_collection": {
+            "feedback_enabled": False,
+        },
+        "customization": None,
+        "authorization": {"access_rules": []},
+        "authentication": {"module": "noop"},
+    }
+    cfg = AppConfig()
+    cfg.init_from_dict(config_dict)
+
+    mock_client = mocker.AsyncMock()
+    mock_client.shields.list.side_effect = RuntimeError("unexpected failure")
+    mock_client_holder = mocker.patch(
+        "app.endpoints.shields.AsyncLlamaStackClientHolder"
+    )
+    mock_client_holder.return_value.get_client.return_value = mock_client
+
+    request = Request(
+        scope={
+            "type": "http",
+            "headers": [(b"authorization", b"Bearer invalid-token")],
+        }
+    )
+
+    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
+
+    with pytest.raises(RuntimeError, match="unexpected failure"):
+        await shields_endpoint_handler(request=request, auth=auth)
+
+
+@pytest.mark.asyncio
+async def test_shields_endpoint_handler_malformed_shield_objects(
+    mocker: MockerFixture,
+) -> None:
+    """Test the shields endpoint handles shields that may have missing fields."""
+    mock_authorization_resolvers(mocker)
+
+    config_dict: dict[str, Any] = {
+        "name": "foo",
+        "service": {
+            "host": "localhost",
+            "port": 8080,
+            "auth_enabled": False,
+            "workers": 1,
+            "color_log": True,
+            "access_log": True,
+        },
+        "llama_stack": {
+            "api_key": "xyzzy",
+            "url": "http://x.y.com:1234",
+            "use_as_library_client": False,
+        },
+        "user_data_collection": {
+            "feedback_enabled": False,
+        },
+        "customization": None,
+        "authorization": {"access_rules": []},
+        "authentication": {"module": "noop"},
+    }
+    cfg = AppConfig()
+    cfg.init_from_dict(config_dict)
+
+    mock_shield_minimal = {
+        "identifier": "minimal-shield",
+    }
+
+    mock_client = mocker.AsyncMock()
+    mock_client.shields.list.return_value = [mock_shield_minimal]
+    mock_client_holder = mocker.patch(
+        "app.endpoints.shields.AsyncLlamaStackClientHolder"
+    )
+    mock_client_holder.return_value.get_client.return_value = mock_client
+
+    request = Request(
+        scope={
+            "type": "http",
+            "headers": [(b"authorization", b"Bearer invalid-token")],
+        }
+    )
+
+    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
+
+    response = await shields_endpoint_handler(request=request, auth=auth)
+
+    assert isinstance(response, ShieldsResponse)
+    assert len(response.shields) == 1
+    assert response.shields[0]["identifier"] == "minimal-shield"

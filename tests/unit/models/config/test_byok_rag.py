@@ -199,3 +199,71 @@ def test_byok_rag_configuration_score_multiplier_must_be_positive() -> None:
             db_path="tests/configuration/rag.txt",
             score_multiplier=0.0,
         )
+
+
+def test_byok_rag_faiss_requires_db_path() -> None:
+    """Test that inline::faiss requires db_path."""
+    with pytest.raises(ValidationError, match="db_path is required"):
+        _ = ByokRag(
+            rag_id="rag_id",
+            rag_type="inline::faiss",
+            vector_db_id="vector_db_id",
+        )
+
+
+def test_byok_rag_pgvector_defaults() -> None:
+    """Test pgvector auto-populates connection fields with env var defaults."""
+    store = ByokRag(
+        rag_id="pg_store",
+        rag_type="remote::pgvector",
+        vector_db_id="vs_pg",
+    )
+    assert store.rag_type == "remote::pgvector"
+    assert store.host == "${env.POSTGRES_HOST}"
+    assert store.port == "${env.POSTGRES_PORT}"
+    assert store.db == "${env.POSTGRES_DATABASE}"
+    assert store.user == "${env.POSTGRES_USER}"
+    password = store.password.get_secret_value()  # pylint: disable=no-member
+    assert password == "${env.POSTGRES_PASSWORD}"
+    assert store.db_path is None
+
+
+def test_byok_rag_pgvector_custom_connection_fields() -> None:
+    """Test pgvector accepts custom connection field values."""
+    store = ByokRag(
+        rag_id="pg_store",
+        rag_type="remote::pgvector",
+        vector_db_id="vs_pg",
+        host="db.example.com",
+        port="5433",
+        db="my_knowledge",
+        user="admin",
+        password="secret",
+    )
+    assert store.host == "db.example.com"
+    assert store.port == "5433"
+    assert store.db == "my_knowledge"
+    assert store.user == "admin"
+    assert store.password.get_secret_value() == "secret"  # pylint: disable=no-member
+
+
+def test_byok_rag_pgvector_partial_overrides() -> None:
+    """Test pgvector fills only missing connection fields with defaults."""
+    store = ByokRag(
+        rag_id="pg_store",
+        rag_type="remote::pgvector",
+        vector_db_id="vs_pg",
+        host="custom-host",
+    )
+    assert store.host == "custom-host"
+    assert store.port == "${env.POSTGRES_PORT}"
+
+
+def test_byok_rag_pgvector_does_not_require_db_path() -> None:
+    """Test pgvector does not require db_path."""
+    store = ByokRag(
+        rag_id="pg_store",
+        rag_type="remote::pgvector",
+        vector_db_id="vs_pg",
+    )
+    assert store.db_path is None

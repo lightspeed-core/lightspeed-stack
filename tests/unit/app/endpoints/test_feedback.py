@@ -2,7 +2,12 @@
 
 """Unit tests for the /feedback REST API endpoint."""
 
-from typing import Any
+import asyncio
+import json
+import threading
+from collections.abc import Generator
+from pathlib import Path
+from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, status
@@ -23,6 +28,21 @@ from models.config import UserDataCollection
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 MOCK_AUTH = ("mock_user_id", "mock_username", False, "mock_token")
+
+
+@pytest.fixture(autouse=True)
+def _reset_feedback_config() -> Generator[None]:
+    """Save and restore feedback configuration so tests don't leak state."""
+    if configuration._configuration is None:
+        yield
+        return
+    original_enabled = configuration.user_data_collection_configuration.feedback_enabled
+    original_storage = configuration.user_data_collection_configuration.feedback_storage
+    yield
+    configuration.user_data_collection_configuration.feedback_enabled = original_enabled
+    configuration.user_data_collection_configuration.feedback_storage = original_storage
+
+
 VALID_BASE = {
     "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
     "user_question": "What is Kubernetes?",
@@ -80,6 +100,34 @@ async def test_assert_feedback_enabled(mocker: MockerFixture) -> None:
 
     # Should not raise an exception
     await assert_feedback_enabled(mocker.Mock())
+
+
+@pytest.mark.asyncio
+async def test_assert_feedback_enabled_disabled_full_config_chain(
+    mocker: MockerFixture,
+) -> None:
+    """Test the full config-to-exception chain when feedback is disabled.
+
+    Unlike test_assert_feedback_enabled_disabled (which mocks is_feedback_enabled),
+    this test sets up real UserDataCollection config and verifies the complete path:
+    configuration -> is_feedback_enabled() -> assert_feedback_enabled() -> HTTPException.
+    """
+    mock_config = AppConfig()
+    mock_config._configuration = mocker.Mock()
+    mock_config._configuration.user_data_collection = UserDataCollection(
+        feedback_enabled=False,
+        feedback_storage=None,
+        transcripts_enabled=False,
+        transcripts_storage=None,
+    )
+    mocker.patch("app.endpoints.feedback.configuration", mock_config)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await assert_feedback_enabled(mocker.Mock())
+
+    assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
+    assert exc_info.value.detail["response"] == "Storing feedback is disabled"  # type: ignore
+    assert exc_info.value.detail["cause"] == "Storing feedback is disabled."  # type: ignore
 
 
 @pytest.mark.parametrize(
@@ -263,9 +311,48 @@ def test_store_feedback_on_io_error(
     assert "Failed to store feedback at directory" in detail["cause"]  # type: ignore
 
 
+def test_store_feedback_real_filesystem(tmp_path: Path, mocker: MockerFixture) -> None:
+    """Test that store_feedback writes valid JSON to the real filesystem.
+
+    Unlike test_store_feedback (which mocks builtins.open, Path, and json.dump),
+    this test exercises real filesystem I/O via tmp_path to verify actual file
+    creation and valid JSON content.
+    """
+    configuration.user_data_collection_configuration.feedback_storage = str(tmp_path)
+
+    fake_uuid = "test-feedback-uuid"
+    mocker.patch("app.endpoints.feedback.get_suid", return_value=fake_uuid)
+
+    feedback_data = {
+        "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
+        "user_question": "What is Kubernetes?",
+        "llm_response": "Kubernetes is a container orchestration platform.",
+        "sentiment": 1,
+    }
+
+    store_feedback("test_user_id", feedback_data)
+
+    feedback_file = tmp_path / f"{fake_uuid}.json"
+    assert feedback_file.exists(), f"Expected file {feedback_file} to exist"
+
+    with open(feedback_file, encoding="utf-8") as f:
+        stored_data = json.load(f)
+
+    assert stored_data["user_id"] == "test_user_id"
+    assert "timestamp" in stored_data
+    assert stored_data["conversation_id"] == "12345678-abcd-0000-0123-456789abcdef"
+    assert stored_data["user_question"] == "What is Kubernetes?"
+    assert (
+        stored_data["llm_response"]
+        == "Kubernetes is a container orchestration platform."
+    )
+    assert stored_data["sentiment"] == 1
+
+
 @pytest.mark.asyncio
 async def test_update_feedback_status_different(mocker: MockerFixture) -> None:
     """Test that update_feedback_status returns the correct status with an update."""
+    mock_authorization_resolvers(mocker)
     configuration.user_data_collection_configuration.feedback_enabled = True
 
     # Authorization tuple required by URL endpoint handler
@@ -287,6 +374,7 @@ async def test_update_feedback_status_different(mocker: MockerFixture) -> None:
 @pytest.mark.asyncio
 async def test_update_feedback_status_no_change(mocker: MockerFixture) -> None:
     """Test that update_feedback_status returns the correct status with no update."""
+    mock_authorization_resolvers(mocker)
     configuration.user_data_collection_configuration.feedback_enabled = True
 
     # Authorization tuple required by URL endpoint handler
@@ -303,6 +391,41 @@ async def test_update_feedback_status_no_change(mocker: MockerFixture) -> None:
         "updated_by": "test_user_id",
         "timestamp": mocker.ANY,
     }
+
+
+def test_update_feedback_status_concurrent(mocker: MockerFixture) -> None:
+    """Test that concurrent calls to update_feedback_status do not raise errors."""
+    mock_authorization_resolvers(mocker)
+    configuration.user_data_collection_configuration.feedback_enabled = True
+
+    auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
+    thread_args = [(0, False), (1, True), (2, False)]
+    results: list[Any] = [None] * len(thread_args)
+    errors: list[Optional[Exception]] = [None] * len(thread_args)
+    barrier = threading.Barrier(len(thread_args) + 1)
+
+    def worker(index: int, desired_status: bool) -> None:
+        """Thread worker that calls update_feedback_status."""
+        req = FeedbackStatusUpdateRequest(status=desired_status)
+        try:
+            barrier.wait()
+            results[index] = asyncio.run(update_feedback_status(req, auth=auth))
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            errors[index] = exc
+
+    threads = [threading.Thread(target=worker, args=args) for args in thread_args]
+    for t in threads:
+        t.start()
+    barrier.wait()
+    for t in threads:
+        t.join()
+
+    for i, err in enumerate(errors):
+        assert err is None, f"Thread {i} raised: {err}"
+    for i, result in enumerate(results):
+        assert result is not None, f"Thread {i} returned None"
+        assert "previous_status" in result.status
+        assert "updated_status" in result.status
 
 
 @pytest.mark.parametrize(

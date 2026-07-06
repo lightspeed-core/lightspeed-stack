@@ -1,12 +1,31 @@
 """Unit tests for LlamaStackConfiguration model."""
 
+import copy
+from typing import Any
+
 import pytest
+import yaml
 from pydantic import AnyHttpUrl, ValidationError
 from pytest_subtests import SubTests
 
 import constants
-from models.config import LlamaStackConfiguration
+from models.config import (
+    Configuration,
+    LlamaStackConfiguration,
+    UnifiedLlamaStackConfig,
+)
 from utils.checks import InvalidConfigurationError
+
+# A complete, valid lightspeed-stack.yaml used as the base for root-model
+# (Configuration) validation tests; individual tests override its llama_stack
+# and inference sections to exercise unified-vs-legacy mode detection.
+_BASE_CONFIG_PATH = "tests/configuration/lightspeed-stack.yaml"
+
+
+def _base_config_dict() -> dict[str, Any]:
+    """Load the base lightspeed-stack.yaml fixture as a fresh dict."""
+    with open(_BASE_CONFIG_PATH, "r", encoding="utf-8") as file:
+        return copy.deepcopy(yaml.safe_load(file))
 
 
 def test_llama_stack_configuration_constructor(subtests: SubTests) -> None:
@@ -110,22 +129,21 @@ def test_llama_stack_wrong_configuration_constructor_library_mode_off() -> None:
         )  # pyright: ignore[reportCallIssue]
 
 
-def test_llama_stack_wrong_configuration_no_config_file() -> None:
-    """Test the LlamaStackConfiguration constructor.
+def test_llama_stack_library_mode_without_source_is_allowed_on_nested_model() -> None:
+    """The nested model no longer requires a run source in library mode.
 
-    Verify that enabling library-client mode without providing a configuration
-    file path raises a ValueError.
-
-    Asserts that constructing LlamaStackConfiguration with
-    use_as_library_client=True and no library_client_config_path raises a
-    ValueError whose message is "Llama stack library client mode is enabled but
-    a configuration file path is not specified".
+    A library-mode config may be driven by the root-level inference.providers,
+    which this nested model cannot see, so the "needs a run source" check moved
+    to the root Configuration model (see
+    test_root_rejects_library_mode_without_run_source). Constructing the nested
+    model alone with neither a path nor a config block must therefore succeed.
     """
-    m = "Llama stack library client mode is enabled but a configuration file path is not specified"
-    with pytest.raises(ValueError, match=m):
-        LlamaStackConfiguration(
-            use_as_library_client=True
-        )  # pyright: ignore[reportCallIssue]
+    cfg = LlamaStackConfiguration(
+        use_as_library_client=True
+    )  # pyright: ignore[reportCallIssue]
+    assert cfg.use_as_library_client is True
+    assert cfg.library_client_config_path is None
+    assert cfg.config is None
 
 
 def test_llama_stack_configuration_valid_http_url() -> None:
@@ -192,3 +210,104 @@ def test_llama_stack_configuration_wrong_retry_delay_value(subtests: SubTests) -
                 url="https://llama-stack.example.com:8321",
                 retry_delay=-1,
             )  # pyright: ignore[reportCallIssue]
+
+
+# ---------------------------------------------------------------------------
+# Unified-mode schema (LCORE-2336)
+# ---------------------------------------------------------------------------
+
+
+def test_library_mode_with_unified_config_no_path_is_valid() -> None:
+    """Library mode driven by llama_stack.config needs no library_client_config_path."""
+    cfg = LlamaStackConfiguration(
+        use_as_library_client=True,
+        config=UnifiedLlamaStackConfig(),
+    )  # pyright: ignore[reportCallIssue]
+    assert cfg.config is not None
+    assert cfg.library_client_config_path is None
+
+
+def test_unified_config_rejects_unknown_fields() -> None:
+    """UnifiedLlamaStackConfig forbids extra keys (extra='forbid', R9)."""
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        UnifiedLlamaStackConfig(bogus=True)  # pyright: ignore[reportCallIssue]
+
+
+def test_root_rejects_config_and_legacy_path_together() -> None:
+    """A llama_stack.config block and a legacy path in one file fail at load (R3)."""
+    config_dict = _base_config_dict()
+    config_dict["llama_stack"] = {
+        "use_as_library_client": True,
+        "library_client_config_path": "tests/configuration/run.yaml",
+        "config": {"baseline": "default"},
+    }
+    with pytest.raises(ValidationError, match="--migrate-config"):
+        Configuration(**config_dict)
+
+
+def test_root_rejects_inference_providers_and_legacy_path_together() -> None:
+    """Top-level inference.providers plus a legacy path fail at load (R3)."""
+    config_dict = _base_config_dict()
+    config_dict["llama_stack"] = {
+        "use_as_library_client": True,
+        "library_client_config_path": "tests/configuration/run.yaml",
+    }
+    config_dict["inference"] = {
+        "providers": [{"type": "openai", "api_key_env": "OPENAI_API_KEY"}]
+    }
+    with pytest.raises(ValidationError, match="mutually exclusive"):
+        Configuration(**config_dict)
+
+
+def test_root_accepts_unified_library_config() -> None:
+    """A unified library-mode config (no legacy path) loads cleanly (R1)."""
+    config_dict = _base_config_dict()
+    config_dict["llama_stack"] = {
+        "use_as_library_client": True,
+        "config": {"baseline": "default"},
+    }
+    config_dict["inference"] = {
+        "providers": [{"type": "openai", "api_key_env": "OPENAI_API_KEY"}]
+    }
+    cfg = Configuration(**config_dict)
+    # pylint: disable=no-member
+    assert cfg.llama_stack.config is not None
+    assert cfg.inference.providers[0].type == "openai"
+
+
+def test_root_accepts_inference_providers_only_no_config_block() -> None:
+    """Library mode driven by inference.providers alone is valid (UX: no config:{}).
+
+    The minimal unified library config needs no llama_stack.config block — a
+    non-empty top-level inference.providers is a sufficient synthesis input.
+    """
+    config_dict = _base_config_dict()
+    config_dict["llama_stack"] = {"use_as_library_client": True}
+    config_dict["inference"] = {
+        "providers": [{"type": "openai", "api_key_env": "OPENAI_API_KEY"}]
+    }
+    cfg = Configuration(**config_dict)
+    # pylint: disable=no-member
+    assert cfg.llama_stack.config is None
+    assert cfg.inference.providers[0].type == "openai"
+
+
+def test_root_rejects_library_mode_without_run_source() -> None:
+    """Library mode with no synthesis input and no legacy path fails at load."""
+    config_dict = _base_config_dict()
+    config_dict["llama_stack"] = {"use_as_library_client": True}
+    config_dict["inference"] = {"providers": []}
+    with pytest.raises(ValidationError, match="requires a run-configuration source"):
+        Configuration(**config_dict)
+
+
+def test_root_accepts_remote_url_with_unified_config() -> None:
+    """url + unified config (server mode) is allowed — url is orthogonal (R11)."""
+    config_dict = _base_config_dict()
+    config_dict["llama_stack"] = {
+        "use_as_library_client": False,
+        "url": "http://localhost:8321",
+        "config": {"baseline": "default"},
+    }
+    cfg = Configuration(**config_dict)
+    assert cfg.llama_stack.config is not None  # pylint: disable=no-member

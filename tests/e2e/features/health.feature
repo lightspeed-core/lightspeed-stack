@@ -20,12 +20,14 @@ Feature: REST API tests
           {
               "ready": "bool",
               "reason": "str",
+              "overall_status": "str",
+              "impacts": "list[str] | None",
               "providers": "list[str]"
           }
           """
       And The body of the response is the following
           """
-          {"ready": true, "reason": "All providers are healthy", "providers": []}
+          {"ready": true, "reason": "All providers are healthy", "overall_status": "healthy", "impacts": null, "providers": []}
           """
 
 

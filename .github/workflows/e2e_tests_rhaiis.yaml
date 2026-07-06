@@ -51,6 +51,9 @@ jobs:
           # Don’t keep credentials when running untrusted PR code under PR_TARGET.
           persist-credentials: ${{ github.event_name != 'pull_request_target' }}
 
+          # Fetch submodules (required for lightspeed-providers)
+          submodules: 'recursive'
+
       - name: Verify actual git checkout result
         run: |
           echo "=== Git Status After Checkout ==="
@@ -128,6 +131,20 @@ jobs:
           echo "Response body:"
           echo "$BODY"
           [ "$HTTP_CODE" = "200" ]
+
+      - name: Cache HuggingFace embedding model
+        uses: actions/cache@v4
+        with:
+          path: /tmp/hf-cache
+          key: hf-sentence-transformers-all-mpnet-base-v2
+
+      - name: Pre-download HuggingFace embedding model
+        env:
+          HF_HOME: /tmp/hf-cache
+        run: |
+          pip install -q sentence-transformers
+          python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-mpnet-base-v2')"
+          echo "HF_CACHE_PATH=/tmp/hf-cache" >> $GITHUB_ENV
 
       - name: Docker Login for quay access
         if: matrix.mode == 'server'

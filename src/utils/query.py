@@ -574,10 +574,9 @@ def handle_known_apistatus_errors(
     Returns:
         AbstractErrorResponse: The error response model.
     """
-    if error.status_code == 400:
-        error_message = getattr(error, "message", str(error))
-        if is_context_length_error(error_message):
-            return PromptTooLongResponse(model=model_id)
-    elif error.status_code == 429:
+    error_message = getattr(error, "message", str(error))
+    if is_context_length_error(error_message):
+        return PromptTooLongResponse(model=model_id)
+    if error.status_code == 429:
         return QuotaExceededResponse.model(model_id)
     return InternalServerErrorResponse.generic()

@@ -18,6 +18,9 @@ Unit tests for utils/compaction — partitioning, prompt, summarization.
 ## [test_connection_decorator.py](test_connection_decorator.py)
 Unit tests for the connection decorator.
 
+## [test_conversation_compaction.py](test_conversation_compaction.py)
+Unit tests for runtime conversation compaction (LCORE-1572).
+
 ## [test_conversations.py](test_conversations.py)
 Unit tests for conversation utility functions.
 
@@ -26,6 +29,9 @@ Unit tests for endpoints utility functions.
 
 ## [test_llama_stack_version.py](test_llama_stack_version.py)
 Unit tests for utility function to check Llama Stack version.
+
+## [test_markdown_repair.py](test_markdown_repair.py)
+Unit tests for markdown repair utilities.
 
 ## [test_mcp_auth_headers.py](test_mcp_auth_headers.py)
 Unit tests for MCP authorization headers utilities.
@@ -36,6 +42,9 @@ Unit tests for MCP headers utility functions.
 ## [test_prompts.py](test_prompts.py)
 Unit tests for prompts utility functions.
 
+## [test_pydantic_ai.py](test_pydantic_ai.py)
+Unit tests for utils/pydantic_ai module.
+
 ## [test_query.py](test_query.py)
 Unit tests for utils/query.py functions.
 
@@ -45,8 +54,17 @@ Unit tests for utils/responses.py functions.
 ## [test_rh_identity.py](test_rh_identity.py)
 Unit tests for utils/rh_identity module.
 
+## [test_schema_dumper.py](test_schema_dumper.py)
+Unit tests for utils/schema_dumper module.
+
 ## [test_shields.py](test_shields.py)
 Unit tests for utils/shields.py functions.
+
+## [test_stream_interrupts.py](test_stream_interrupts.py)
+Unit tests for stream interrupt registry and persistence utilities.
+
+## [test_streaming_sse.py](test_streaming_sse.py)
+Unit tests for utils/streaming_sse.py.
 
 ## [test_suid.py](test_suid.py)
 Unit tests for functions defined in utils.suid module.

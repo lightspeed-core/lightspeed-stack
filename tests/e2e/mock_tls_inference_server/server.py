@@ -13,6 +13,7 @@ Certificates are generated on-the-fly using trustme at server startup.
 
 import datetime
 import json
+import os
 import ssl
 import threading
 import time
@@ -28,6 +29,25 @@ MODEL_ID = "mock-tls-model"
 TLS_PORT = 8443
 MTLS_PORT = 8444
 HOSTNAME_MISMATCH_PORT = 8445
+
+_DEFAULT_SERVER_CERT_DNS_NAMES: tuple[str, ...] = (
+    "mock-tls-inference",
+    "localhost",
+    "127.0.0.1",
+)
+
+
+def _server_cert_dns_names() -> tuple[str, ...]:
+    """Return DNS identities for the main server certificate.
+
+    Reads comma-separated ``TLS_CERT_DNS_NAMES`` (set in Konflux/Prow manifest).
+    Falls back to Docker Compose defaults when unset.
+    """
+    raw = os.environ.get("TLS_CERT_DNS_NAMES", "").strip()
+    if not raw:
+        return _DEFAULT_SERVER_CERT_DNS_NAMES
+    names = tuple(name.strip() for name in raw.split(",") if name.strip())
+    return names or _DEFAULT_SERVER_CERT_DNS_NAMES
 
 
 class OpenAIHandler(BaseHTTPRequestHandler):
@@ -75,10 +95,49 @@ class OpenAIHandler(BaseHTTPRequestHandler):
             request_data = {}
 
         model = request_data.get("model", MODEL_ID)
+        completion_id = "chatcmpl-tls-test-001"
+        response_text = "Hello from the TLS mock inference server."
+
+        # Llama Stack calls remote chat completions with stream=True and reads
+        # assistant text from delta.content chunks.
+        if request_data.get("stream"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            content_chunk = {
+                "id": completion_id,
+                "object": "chat.completion.chunk",
+                "created": 1700000000,
+                "model": model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"role": "assistant", "content": response_text},
+                        "finish_reason": None,
+                    }
+                ],
+            }
+            self.wfile.write(f"data: {json.dumps(content_chunk)}\n\n".encode())
+            finish_chunk = {
+                "id": completion_id,
+                "object": "chat.completion.chunk",
+                "created": 1700000000,
+                "model": model,
+                "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+                "usage": {
+                    "prompt_tokens": 8,
+                    "completion_tokens": 9,
+                    "total_tokens": 17,
+                },
+            }
+            self.wfile.write(f"data: {json.dumps(finish_chunk)}\n\n".encode())
+            self.wfile.write(b"data: [DONE]\n\n")
+            return
 
         self._send_json(
             {
-                "id": "chatcmpl-tls-test-001",
+                "id": completion_id,
                 "object": "chat.completion",
                 "created": 1700000000,
                 "model": model,
@@ -87,7 +146,7 @@ class OpenAIHandler(BaseHTTPRequestHandler):
                         "index": 0,
                         "message": {
                             "role": "assistant",
-                            "content": "Hello from the TLS mock inference server.",
+                            "content": response_text,
                         },
                         "finish_reason": "stop",
                     }
@@ -221,8 +280,9 @@ def main() -> None:
 
     # Generate CA and certificates
     ca = trustme.CA()
-    # Server cert with SANs for Docker service name and localhost
-    server_cert = ca.issue_cert("mock-tls-inference", "localhost", "127.0.0.1")
+    server_dns_names = _server_cert_dns_names()
+    print(f"  Server cert DNS names: {', '.join(server_dns_names)}")
+    server_cert = ca.issue_cert(*server_dns_names)
     # Client cert for mTLS testing (use a simple hostname without spaces)
     client_cert = ca.issue_cert("tls-e2e-test-client")
 

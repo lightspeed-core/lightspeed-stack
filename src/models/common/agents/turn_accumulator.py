@@ -1,7 +1,7 @@
 """Mutable per-turn state for agent response processing."""
 
 from dataclasses import dataclass, field
-from typing import Final
+from typing import Final, Optional
 
 from pydantic_ai import AgentRunResult
 
@@ -29,7 +29,7 @@ class AgentTurnAccumulator:  # pylint: disable=too-many-instance-attributes
     vector_store_ids: Final[list[str]]
     rag_id_mapping: Final[dict[str, str]]
     turn_summary: TurnSummary
-    run_result: AgentRunResult[str] | None = None
+    run_result: Optional[AgentRunResult[str]] = None
     chunk_id: int = 0
     text_parts: list[str] = field(default_factory=list)
     tool_round: int = 1

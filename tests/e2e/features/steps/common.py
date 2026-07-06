@@ -79,7 +79,7 @@ def set_lightspeed_stack_config_directory(context: Context, directory: str) -> N
     context.lightspeed_stack_config_directory = directory.strip().rstrip("/")
 
 
-@given("The service uses the {config_name} configuration")  # type: ignore
+@given("The service uses the {config_name} configuration")  # type: ignore[reportCallIssue]
 def configure_service(context: Context, config_name: str) -> None:
     """Switch to the given configuration when the basename differs from the last apply.
 

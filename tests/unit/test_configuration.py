@@ -12,7 +12,11 @@ from pydantic import ValidationError
 import constants
 from cache.in_memory_cache import InMemoryCache
 from cache.sqlite_cache import SQLiteCache
-from configuration import AppConfig, LogicError
+from configuration import (
+    AppConfig,
+    LogicError,
+    replace_env_vars_preserving_native_override,
+)
 from models.config import CustomProfile, ModelContextProtocolServer
 from utils.checks import InvalidConfigurationError
 
@@ -2010,7 +2014,7 @@ wrong_configurations = [
                 "embedding_dimension": 619,
                 "vector_db_id": "Learn computer positive nor yet notice.",
                 "db_path": "Sort rule soldier relationship. Wife front kid cit",
-                "score_multiplier": 310.63,
+                "score_multiplier": 319.63,
             },
             {
                 "rag_id": "Question to front often.",
@@ -3640,6 +3644,241 @@ wrong_configurations = [
             "chunk_filter_query": "Maybe assume region thus.",
         },
     },
+    {
+        "name": "Mary Strong",
+        "service": {
+            "host": "Air customer red.",
+            "port": 590,
+            "base_url": None,
+            "auth_enabled": True,
+            "workers": 389,
+            "color_log": True,
+            "access_log": False,
+            "tls_config": {
+                "tls_certificate_path": None,
+                "tls_key_path": "/",
+                "tls_key_password": None,
+            },
+            "root_path": "Close him reach political two while throw.",
+            "cors": {
+                "allow_origins": [
+                    "Everybody now each clearly my hold receive.",
+                    "Nature past high middle.",
+                    "What have police activity.",
+                ],
+                "allow_credentials": False,
+                "allow_methods": [
+                    "Assume apply traditional. Himself radio for build.",
+                    "Resource almost I difference long spend.",
+                    "Goal world positive long.",
+                ],
+                "allow_headers": [
+                    "Paper save of others between we.",
+                    "Look until clear up look.",
+                    "Out paper pick race.",
+                ],
+            },
+        },
+        "llama_stack": {
+            "url": "https://carroll.com/",
+            "api_key": "/",
+            "use_as_library_client": None,
+            "library_client_config_path": None,
+            "timeout": 683,
+            "max_retries": 624,
+            "retry_delay": 497,
+            "allow_degraded_mode": None,
+        },
+        "user_data_collection": {
+            "feedback_enabled": False,
+            "feedback_storage": None,
+            "transcripts_enabled": True,
+            "transcripts_storage": "Air commercial.",
+        },
+        "database": {
+            "sqlite": {"db_path": "Goal majority summer environmental thing sell visi"},
+            "postgres": {
+                "host": "Pretty become instead.",
+                "port": 679,
+                "db": "Black hear again blood.",
+                "user": "Administration represent compare official contain.",
+                "password": "VSP#VO*jt)13",
+                "namespace": "By mind industry box memory. See step window bar P",
+                "ssl_mode": "disable",
+                "gss_encmode": "prefer",
+                "ca_cert_path": "/",
+            },
+        },
+        "mcp_servers": [
+            {
+                "name": "Christopher Davis",
+                "provider_id": "Able tonight pretty author try finally. Act operat",
+                "url": "http://www.alvarez.com/",
+                "authorization_headers": {
+                    "he": "TV board give town.",
+                    "contain": "Away carry role by. Style majority case.",
+                    "data": "North attack every than.",
+                },
+                "headers": [
+                    "Child expect put.",
+                    "Better cultural indeed True hear.",
+                    "Including those choose.",
+                ],
+                "require_approval": "always",
+                "timeout": "10",
+            },
+            {
+                "name": "Isaac Fry",
+                "provider_id": "Voice account car gun wear.",
+                "url": "http://torres.com/",
+                "authorization_headers": {
+                    "tax": "Dog father outside according onto.",
+                    "system": "Ground while both else break. You believe ask visi",
+                },
+                "headers": [
+                    "Shake water be.",
+                    "Fine whether pass can question identify.",
+                    "Area realize pay son also loss.",
+                ],
+                "require_approval": "always",
+                "timeout": None,
+            },
+        ],
+        "authentication": {
+            "module": "Commercial important.",
+            "skip_tls_verification": True,
+            "skip_for_health_probes": True,
+            "skip_for_metrics": True,
+            "k8s_cluster_api": "/",
+            "k8s_ca_cert_path": None,
+            "jwk_config": None,
+            "api_key_config": None,
+            "rh_identity_config": {
+                "required_entitlements": [
+                    "Interview magazine summer start smile beyond.",
+                    "Reflect reduce cause various.",
+                    "Imagine not cold change.",
+                ],
+                "max_header_size": 47,
+            },
+        },
+        "authorization": None,
+        "customization": None,
+        "inference": {
+            "default_model": None,
+            "default_provider": None,
+            "context_windows": {
+                "we": "10",
+                "when": "20",
+            },
+        },
+        "conversation_cache": {
+            "type": None,
+            "memory": {"max_entries": 5},
+            "sqlite": {"db_path": "Argue total again party."},
+            "postgres": {
+                "host": "Like bad land difference force hope. Fine movie if",
+                "port": 515,
+                "db": "Keep shoulder reason more can you street. Fly spen",
+                "user": "Structure feel sea last task human.",
+                "password": "P@F*6PwbB2HI",
+                "namespace": None,
+                "ssl_mode": "allow",
+                "gss_encmode": "disable",
+                "ca_cert_path": "/",
+            },
+        },
+        "compaction": {
+            "enabled": True,
+            "threshold_ratio": 933.66,
+            "token_floor": 998,
+            "buffer_turns": 998,
+            "buffer_max_ratio": 743.59,
+        },
+        "approvals": {"approval_timeout_seconds": 898, "approval_retention_days": 414},
+        "byok_rag": [
+            {
+                "rag_id": "Moment program career provide discuss suddenly.",
+                "rag_type": "Would total admit out behind country.",
+                "embedding_model": "Over decide simple girl so animal never near.",
+                "embedding_dimension": 556,
+                "vector_db_id": "Ground cut current civil better.",
+                "db_path": "Local major deep go necessary.",
+                "score_multiplier": 405.6,
+            },
+            {
+                "rag_id": "The charge there break call information.",
+                "rag_type": "Money for but give but amount. Buy community your ",
+                "embedding_model": "President performance activity doctor.",
+                "embedding_dimension": 571,
+                "vector_db_id": "Station past election mouth.",
+                "db_path": "But song owner use. Special deal against crime pus",
+                "score_multiplier": 481.85,
+            },
+        ],
+        "a2a_state": {
+            "sqlite": {"db_path": "Theory that enough party child."},
+            "postgres": {
+                "host": "Never enjoy present letter.",
+                "port": 106,
+                "db": "Item control one than store word. Word social issu",
+                "user": "Question body building believe.",
+                "password": "@ist@dmIfs7G",
+                "namespace": "Run fall family best whose.",
+                "ssl_mode": "allow",
+                "gss_encmode": "require",
+                "ca_cert_path": None,
+            },
+        },
+        "quota_handlers": {
+            "sqlite": {"db_path": "Word push guess mind."},
+            "postgres": None,
+            "limiters": [
+                {
+                    "type": "user_limiter",
+                    "name": "Sarah Lyons",
+                    "initial_quota": 291,
+                    "quota_increase": 630,
+                    "period": "Not power manage trial task south within.",
+                },
+                {
+                    "type": "cluster_limiter",
+                    "name": "Rachel Jackson",
+                    "initial_quota": 134,
+                    "quota_increase": 978,
+                    "period": "Ready concern everybody skin present natural.",
+                },
+            ],
+            "scheduler": {
+                "period": 623,
+                "database_reconnection_count": 172,
+                "database_reconnection_delay": 267,
+            },
+            "enable_token_history": True,
+        },
+        "azure_entra_id": {
+            "tenant_id": "tenant",
+            "client_id": "client",
+            "client_secret": "secret",
+            "scope": "High ability soon of still worry nice.",
+        },
+        "rlsapi_v1": {"allow_verbose_infer": True, "quota_subject": None},
+        "splunk": None,
+        "deployment_environment": "Father hit rise.",
+        "rag": {
+            "inline": ["Raise explain traditional boy world medical."],
+            "tool": ["North prepare recognize.", "Cold including arm tough pull."],
+        },
+        "okp": {"rhokp_url": None, "offline": True, "chunk_filter_query": None},
+        "reranker": {"enabled": True, "model": "Team serious benefit traditional."},
+        "skills": {
+            "paths": [
+                "/",
+                "/foo",
+                "/bar",
+            ]
+        },
+    },
 ]
 
 
@@ -3651,3 +3890,52 @@ def test_init_from_dict_fake_data(config_dict: dict[str, Any]) -> None:
         # dictionary
         cfg = AppConfig()
         cfg.init_from_dict(config_dict)
+
+
+def test_native_override_env_refs_not_resolved(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """${env.*} inside native_override is kept as a reference, not resolved.
+
+    Everything else in the config still resolves. This keeps LCORE from
+    eagerly resolving (and then logging at startup) secrets that belong to
+    Llama Stack's own raw schema.
+    """
+    monkeypatch.setenv("LCORE_TEST_SECRET", "supersecret")
+    monkeypatch.setenv("LCORE_TEST_MODEL", "gpt-4o-mini")
+    config_dict = {
+        "inference": {"default_model": "${env.LCORE_TEST_MODEL}"},
+        "llama_stack": {
+            "config": {
+                "baseline": "empty",
+                "native_override": {
+                    "providers": {
+                        "inference": [
+                            {"config": {"api_key": "${env.LCORE_TEST_SECRET}"}}
+                        ]
+                    }
+                },
+            }
+        },
+    }
+
+    resolved = replace_env_vars_preserving_native_override(config_dict)
+
+    # native_override keeps the reference verbatim — the secret never resolved
+    override_api_key = resolved["llama_stack"]["config"]["native_override"][
+        "providers"
+    ]["inference"][0]["config"]["api_key"]
+    assert override_api_key == "${env.LCORE_TEST_SECRET}"
+    assert "supersecret" not in str(resolved["llama_stack"])
+    # everything outside native_override still resolves
+    assert resolved["inference"]["default_model"] == "gpt-4o-mini"
+
+
+def test_replace_env_vars_without_native_override_resolves_all(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With no native_override, the helper resolves env refs like the plain call."""
+    monkeypatch.setenv("LCORE_TEST_MODEL", "gpt-4o-mini")
+    config_dict = {"inference": {"default_model": "${env.LCORE_TEST_MODEL}"}}
+    resolved = replace_env_vars_preserving_native_override(config_dict)
+    assert resolved["inference"]["default_model"] == "gpt-4o-mini"

@@ -5,7 +5,6 @@ from the RHEL Lightspeed Command Line Assistant (CLA).
 """
 
 import functools
-import re
 import time
 from datetime import UTC, datetime
 from typing import Annotated, Any, Optional, cast
@@ -84,9 +83,6 @@ _INFER_HANDLED_EXCEPTIONS = (
     OpenAIAPIStatusError,
 )
 
-_PRIVATE_ERROR_BLOCK_PATTERN = re.compile(r"\bPRIVATE\b[^\r\n,;)]*", re.IGNORECASE)
-_SECRET_KEY_PATTERN = re.compile(r"\bsk-[A-Za-z0-9][A-Za-z0-9_-]*")
-
 
 infer_responses: dict[int | str, dict[str, Any]] = {
     200: RlsapiV1InferResponse.openapi_response(),
@@ -103,23 +99,6 @@ infer_responses: dict[int | str, dict[str, Any]] = {
 }
 
 
-def _redact_sensitive_error_text(error_text: str) -> str:
-    """Redact sensitive substrings from backend error text before telemetry.
-
-    Backend exceptions can include provider request snippets or credentials in
-    their string representation.  Splunk events need enough context to explain
-    the failure, but they must not contain private prompt blocks or API keys.
-
-    Args:
-        error_text: Raw exception string returned by ``str(error)``.
-
-    Returns:
-        Error text with known sensitive substrings replaced by placeholders.
-    """
-    redacted_text = _PRIVATE_ERROR_BLOCK_PATTERN.sub("PRIVATE [REDACTED]", error_text)
-    return _SECRET_KEY_PATTERN.sub("sk-[REDACTED]", redacted_text)
-
-
 def _build_instructions(systeminfo: RlsapiV1SystemInfo) -> str:
     """Build LLM instructions by rendering the system prompt as a Jinja2 template.
 
@@ -133,9 +112,15 @@ def _build_instructions(systeminfo: RlsapiV1SystemInfo) -> str:
     Returns:
         The rendered instructions string for the LLM.
     """
+    prompt = (
+        configuration.customization.system_prompt
+        if configuration.customization is not None
+        and configuration.customization.system_prompt is not None
+        else constants.DEFAULT_SYSTEM_PROMPT
+    )
     date_today = datetime.now(tz=UTC).strftime("%B %d, %Y")
 
-    return _get_prompt_template().render(
+    return _compile_prompt_template(prompt).render(
         date=date_today,
         os=systeminfo.os or "",
         version=systeminfo.version or "",
@@ -143,7 +128,7 @@ def _build_instructions(systeminfo: RlsapiV1SystemInfo) -> str:
     )
 
 
-@functools.lru_cache(maxsize=8)
+@functools.lru_cache(maxsize=1)
 def _compile_prompt_template(prompt: str) -> jinja2.Template:
     """Compile a Jinja2 template string inside a SandboxedEnvironment.
 
@@ -166,25 +151,6 @@ def _compile_prompt_template(prompt: str) -> jinja2.Template:
         raise TemplateRenderError(
             f"System prompt contains invalid Jinja2 syntax: {exc}"
         ) from exc
-
-
-def _get_prompt_template() -> jinja2.Template:
-    """Resolve the system prompt from configuration and return the compiled template.
-
-    Delegates to the cached ``_compile_prompt_template`` so that identical
-    prompt text is compiled only once, while configuration changes are
-    picked up automatically.
-
-    Returns:
-        The compiled Jinja2 Template ready for rendering.
-    """
-    prompt = (
-        configuration.customization.system_prompt
-        if configuration.customization is not None
-        and configuration.customization.system_prompt is not None
-        else constants.DEFAULT_SYSTEM_PROMPT
-    )
-    return _compile_prompt_template(prompt)
 
 
 async def _get_default_model_id() -> str:
@@ -273,38 +239,6 @@ async def _resolve_validated_model_id() -> str:
     return model_id
 
 
-async def retrieve_simple_response(
-    question: str,
-    instructions: str,
-    tools: Optional[list[Any]] = None,
-    model_id: Optional[str] = None,
-    endpoint_path: str = ENDPOINT_PATH_INFER,
-) -> str:
-    """Retrieve a simple response from the LLM for a stateless query.
-
-    Uses the Responses API for simple stateless inference, consistent with
-    other endpoints (query, streaming_query).
-
-    Args:
-        question: The combined user input (question + context).
-        instructions: System instructions for the LLM.
-        tools: Optional list of MCP tool definitions for the LLM.
-        model_id: Fully qualified model identifier in provider/model format.
-            When omitted, the configured default model is used.
-
-    Returns:
-        The LLM-generated response text.
-
-    Raises:
-        APIConnectionError: If the Llama Stack service is unreachable.
-        HTTPException: 503 if no default model is configured.
-    """
-    resolved_model_id = model_id or await _get_default_model_id()
-    response = await _call_llm(question, instructions, tools, resolved_model_id)
-    extract_token_usage(response.usage, resolved_model_id, endpoint_path)
-    return extract_text_from_response_items(response.output)
-
-
 async def _call_llm(
     question: str,
     instructions: str,
@@ -358,18 +292,6 @@ async def _call_llm(
     return cast(OpenAIResponseObject, response)
 
 
-def _get_cla_version(request: Request) -> str:
-    """Extract CLA version from User-Agent header."""
-    return request.headers.get("User-Agent", "")
-
-
-def _get_configured_default_model_name() -> str:
-    """Get configured default model name for telemetry payloads."""
-    if configuration.inference is None:
-        return ""
-    return configuration.inference.default_model or ""
-
-
 def _queue_splunk_event(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     background_tasks: BackgroundTasks,
     infer_request: RlsapiV1InferRequest,
@@ -401,11 +323,15 @@ def _queue_splunk_event(  # pylint: disable=too-many-arguments,too-many-position
         question=infer_request.question,
         response=response_text,
         inference_time=inference_time,
-        model=_get_configured_default_model_name(),
+        model=(
+            (configuration.inference.default_model or "")
+            if configuration.inference is not None
+            else ""
+        ),
         org_id=org_id,
         system_id=system_id,
         request_id=request_id,
-        cla_version=_get_cla_version(request),
+        cla_version=request.headers.get("User-Agent", ""),
         system_os=systeminfo.os,
         system_version=systeminfo.version,
         system_arch=systeminfo.arch,
@@ -526,24 +452,6 @@ def _record_inference_failure(  # pylint: disable=too-many-arguments,too-many-po
         inference_time,
     )
     return inference_time
-
-
-def _is_verbose_enabled(infer_request: RlsapiV1InferRequest) -> bool:
-    """Check whether verbose metadata should be included in the response.
-
-    Verbose mode requires dual opt-in: the server configuration must allow it
-    via ``allow_verbose_infer``, and the client must request it via the
-    ``include_metadata`` field.
-
-    Args:
-        infer_request: The inference request to check.
-
-    Returns:
-        True if both server config and client request enable verbose mode.
-    """
-    return (
-        configuration.rlsapi_v1.allow_verbose_infer and infer_request.include_metadata
-    )
 
 
 def _resolve_quota_subject(request: Request, auth: AuthTuple) -> Optional[str]:
@@ -805,7 +713,9 @@ async def infer_endpoint(  # pylint: disable=R0914,R0915
     )
 
     start_time = time.monotonic()
-    verbose_enabled = _is_verbose_enabled(infer_request)
+    verbose_enabled = (
+        configuration.rlsapi_v1.allow_verbose_infer and infer_request.include_metadata
+    )
     logger.info(
         "Starting LLM call for rlsapi v1 request %s with verbose metadata enabled: %s",
         request_id,

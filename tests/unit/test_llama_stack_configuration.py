@@ -7,6 +7,7 @@ import pytest
 import yaml
 
 from llama_stack_configuration import (
+    _build_vector_io_config,
     construct_models_section,
     construct_storage_backends_section,
     construct_vector_io_providers_section,
@@ -317,6 +318,112 @@ def test_construct_vector_io_providers_section_collapses_existing_duplicates() -
     assert output[0]["provider_id"] == "byok_rag1"
 
 
+def test_construct_vector_io_providers_section_pgvector() -> None:
+    """Test generates correct pgvector provider config."""
+    ls_config: dict[str, Any] = {"providers": {}}
+    byok_rag = [
+        {
+            "rag_id": "pg1",
+            "vector_db_id": "vs_pg",
+            "rag_type": "remote::pgvector",
+            "host": "${env.POSTGRES_HOST}",
+            "port": "${env.POSTGRES_PORT}",
+            "db": "${env.POSTGRES_DATABASE}",
+            "user": "${env.POSTGRES_USER}",
+            "password": "${env.POSTGRES_PASSWORD}",
+        },
+    ]
+    output = construct_vector_io_providers_section(ls_config, byok_rag)
+    assert len(output) == 1
+    provider = output[0]
+    assert provider["provider_id"] == "byok_pg1"
+    assert provider["provider_type"] == "remote::pgvector"
+    assert provider["config"]["persistence"]["namespace"] == "vector_io::pgvector"
+    assert provider["config"]["persistence"]["backend"] == "kv_default"
+    assert provider["config"]["host"] == "${env.POSTGRES_HOST}"
+    assert provider["config"]["db"] == "${env.POSTGRES_DATABASE}"
+
+
+def test_construct_vector_io_providers_section_mixed() -> None:
+    """Test mixed faiss and pgvector entries generate correct configs."""
+    ls_config: dict[str, Any] = {"providers": {}}
+    byok_rag = [
+        {"rag_id": "f1", "vector_db_id": "vs_f", "rag_type": "inline::faiss"},
+        {
+            "rag_id": "pg1",
+            "vector_db_id": "vs_pg",
+            "rag_type": "remote::pgvector",
+            "host": "localhost",
+            "port": "5432",
+            "db": "mydb",
+            "user": "user",
+            "password": "pass",
+        },
+    ]
+    output = construct_vector_io_providers_section(ls_config, byok_rag)
+    assert len(output) == 2
+    faiss_p = next(p for p in output if p["provider_id"] == "byok_f1")
+    assert faiss_p["provider_type"] == "inline::faiss"
+    assert faiss_p["config"]["persistence"]["backend"] == "byok_f1_storage"
+    pg_p = next(p for p in output if p["provider_id"] == "byok_pg1")
+    assert pg_p["provider_type"] == "remote::pgvector"
+    assert pg_p["config"]["persistence"]["backend"] == "kv_default"
+    assert pg_p["config"]["host"] == "localhost"
+
+
+def test_construct_storage_backends_section_skips_pgvector() -> None:
+    """Test pgvector entries are skipped (they use kv_default)."""
+    ls_config: dict[str, Any] = {}
+    byok_rag = [
+        {"rag_id": "pg1", "vector_db_id": "vs_pg", "rag_type": "remote::pgvector"}
+    ]
+    output = construct_storage_backends_section(ls_config, byok_rag)
+    assert len(output) == 0
+
+
+def test_construct_storage_backends_section_mixed_faiss_pgvector() -> None:
+    """Test only faiss entries get storage backends, pgvector is skipped."""
+    ls_config: dict[str, Any] = {}
+    byok_rag = [
+        {"rag_id": "f1", "vector_db_id": "vs_f", "db_path": "/tmp/f.db"},
+        {"rag_id": "pg1", "vector_db_id": "vs_pg", "rag_type": "remote::pgvector"},
+    ]
+    output = construct_storage_backends_section(ls_config, byok_rag)
+    assert len(output) == 1
+    assert "byok_f1_storage" in output
+    assert "byok_pg1_storage" not in output
+
+
+def test_enrich_byok_rag_pgvector_end_to_end() -> None:
+    """Test enrich_byok_rag with a pgvector store entry."""
+    ls_config: dict[str, Any] = {}
+    byok_rag = [
+        {
+            "rag_id": "pg1",
+            "vector_db_id": "vs_pg",
+            "rag_type": "remote::pgvector",
+            "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+            "embedding_dimension": 768,
+            "host": "${env.POSTGRES_HOST}",
+            "port": "${env.POSTGRES_PORT}",
+            "db": "${env.POSTGRES_DATABASE}",
+            "user": "${env.POSTGRES_USER}",
+            "password": "${env.POSTGRES_PASSWORD}",
+        },
+    ]
+    enrich_byok_rag(ls_config, byok_rag)
+    assert "byok_pg1_storage" not in ls_config.get("storage", {}).get("backends", {})
+    providers = ls_config["providers"]["vector_io"]
+    pg_p = next(p for p in providers if p["provider_id"] == "byok_pg1")
+    assert pg_p["provider_type"] == "remote::pgvector"
+    assert pg_p["config"]["persistence"]["backend"] == "kv_default"
+    assert pg_p["config"]["host"] == "${env.POSTGRES_HOST}"
+    store_ids = [
+        s["vector_store_id"] for s in ls_config["registered_resources"]["vector_stores"]
+    ]
+    assert "vs_pg" in store_ids
+
+
 def test_enrich_byok_rag_skipped_still_dedupes_vector_io() -> None:
     """When BYOK is off, existing duplicate vector_io entries are still collapsed."""
     dup = {
@@ -609,6 +716,44 @@ def test_generate_configuration_with_byok(tmp_path: Path) -> None:
     assert "byok_rag1_embedding" in model_ids
 
 
+def test_generate_configuration_with_pgvector(tmp_path: Path) -> None:
+    """Test generate_configuration adds pgvector BYOK entries."""
+    config = {
+        "byok_rag": [
+            {
+                "rag_id": "pg1",
+                "vector_db_id": "vs_pg",
+                "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+                "embedding_dimension": 768,
+                "rag_type": "remote::pgvector",
+                "host": "localhost",
+                "port": "5432",
+                "db": "knowledge_db",
+                "user": "admin",
+                "password": "secret",
+            },
+        ],
+    }
+    outfile = tmp_path / "output.yaml"
+    generate_configuration("tests/configuration/run.yaml", str(outfile), config)
+    with open(outfile, encoding="utf-8") as f:
+        result = yaml.safe_load(f)
+    store_ids = [
+        s["vector_store_id"] for s in result["registered_resources"]["vector_stores"]
+    ]
+    assert "vs_pg" in store_ids
+    backends = result.get("storage", {}).get("backends", {})
+    assert "byok_pg1_storage" not in backends
+    pg_provider = next(
+        p
+        for p in result["providers"]["vector_io"]
+        if p.get("provider_id") == "byok_pg1"
+    )
+    assert pg_provider["provider_type"] == "remote::pgvector"
+    assert pg_provider["config"]["host"] == "localhost"
+    assert pg_provider["config"]["persistence"]["backend"] == "kv_default"
+
+
 # =============================================================================
 # Test enrich_solr
 # =============================================================================
@@ -734,3 +879,14 @@ def test_enrich_solr_user_chunk_filter_query_is_conjoined() -> None:
     assert provider["config"]["chunk_window_config"]["chunk_filter_query"] == (
         "is_chunk:true AND product:ansible"
     )
+
+
+# =============================================================================
+# Test _build_vector_io_config
+# =============================================================================
+
+
+def test_build_vector_io_config_rejects_unsupported_rag_type() -> None:
+    """Test that an unsupported rag_type raises ValueError."""
+    with pytest.raises(ValueError, match="Unsupported rag_type 'remote::chromadb'"):
+        _build_vector_io_config("remote::chromadb", "some_backend", {})

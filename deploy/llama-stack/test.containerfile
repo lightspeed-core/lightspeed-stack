@@ -16,13 +16,15 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 WORKDIR /opt/app-root
 COPY pyproject.toml uv.lock LICENSE README.md ./
 COPY src ./src
+COPY providers ./providers
 
 # Install dependencies using uv sync
 RUN uv sync --locked --no-install-project --group llslibdev
 
 # Add virtual environment to PATH for llama command
+# Add providers to PYTHONPATH so lightspeed_stack_providers modules can be imported
 ENV PATH="/opt/app-root/.venv/bin:$PATH" \
-    PYTHONPATH="/opt/app-root/src"
+    PYTHONPATH="/opt/app-root/src:/opt/app-root/providers"
 
 # Set HOME directory so llama-stack uses /opt/app-root/src/.llama
 ENV HOME="/opt/app-root/src"

@@ -1,0 +1,731 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" height="2025px" preserveAspectRatio="none" style="width:2647px;height:2025px;background:#FFFFFF;" version="1.1" viewBox="0 0 2647 2025" width="2647px" zoomAndPan="magnify">
+  <defs/>
+  <g>
+    <!--class src.models.api.responses.successful.bases.AbstractDeleteResponse-->
+    <g id="elem_src.models.api.responses.successful.bases.AbstractDeleteResponse">
+      <rect codeLine="2" fill="#F1F1F1" height="124.2717" id="src.models.api.responses.successful.bases.AbstractDeleteResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="243.7131" x="45.56" y="7"/>
+      <ellipse cx="83.4064" cy="23" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M83.5158,18.5313 Q82.5939,18.5313 81.8595,18.8438 Q81.1408,19.1563 80.6408,19.75 Q80.1408,20.3281 79.8595,21.2031 Q79.5939,22.0781 79.5939,23.1719 Q79.5939,24.6094 80.0314,25.6563 Q80.4845,26.7031 81.3283,27.25 Q82.1876,27.7969 83.5001,27.7969 Q84.2814,27.7969 84.9689,27.6719 Q85.672,27.5313 86.672,27.2188 L86.672,29.0938 Q85.8126,29.4219 85.047,29.5469 Q84.297,29.6719 83.2814,29.6719 Q81.3595,29.6719 80.047,28.875 Q78.7501,28.0625 78.0939,26.5938 Q77.4376,25.1094 77.4376,23.1406 Q77.4376,21.7188 77.8283,20.5469 Q78.2345,19.3594 79.0158,18.4844 Q79.797,17.6094 80.9376,17.1406 Q82.0783,16.6563 83.547,16.6563 Q84.5001,16.6563 85.3908,16.8594 Q86.297,17.0469 87.2345,17.5156 L86.4064,19.2969 Q85.6251,18.9219 84.9689,18.7344 Q84.3126,18.5313 83.5158,18.5313 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="160.9434" x="102.4834" y="28.432">AbstractDeleteResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="46.56" x2="288.2731" y1="39" y2="39"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="155.7774" x="51.56" y="57.9659">deleted : Optional[bool]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="195.1593" x="51.56" y="77.0339">resource_name : ClassVar[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="46.56" x2="288.2731" y1="85.1358" y2="85.1358"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="231.7131" x="51.56" y="104.1018">openapi_response() -&gt; dict[str, Any]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="106.4556" x="51.56" y="123.1697">response() -&gt; str</text>
+    </g>
+    <!--class src.models.api.responses.error.bases.AbstractErrorResponse-->
+    <g id="elem_src.models.api.responses.error.bases.AbstractErrorResponse">
+      <rect codeLine="8" fill="#F1F1F1" height="124.2717" id="src.models.api.responses.error.bases.AbstractErrorResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="425.9225" x="324.46" y="7"/>
+      <ellipse cx="457.1865" cy="23" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M457.2959,18.5313 Q456.374,18.5313 455.6397,18.8438 Q454.9209,19.1563 454.4209,19.75 Q453.9209,20.3281 453.6397,21.2031 Q453.374,22.0781 453.374,23.1719 Q453.374,24.6094 453.8115,25.6563 Q454.2647,26.7031 455.1084,27.25 Q455.9678,27.7969 457.2803,27.7969 Q458.0615,27.7969 458.749,27.6719 Q459.4522,27.5313 460.4522,27.2188 L460.4522,29.0938 Q459.5928,29.4219 458.8272,29.5469 Q458.0772,29.6719 457.0615,29.6719 Q455.1397,29.6719 453.8272,28.875 Q452.5303,28.0625 451.874,26.5938 Q451.2178,25.1094 451.2178,23.1406 Q451.2178,21.7188 451.6084,20.5469 Q452.0147,19.3594 452.7959,18.4844 Q453.5772,17.6094 454.7178,17.1406 Q455.8584,16.6563 457.3272,16.6563 Q458.2803,16.6563 459.1709,16.8594 Q460.0772,17.0469 461.0147,17.5156 L460.1865,19.2969 Q459.4053,18.9219 458.749,18.7344 Q458.0928,18.5313 457.2959,18.5313 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="151.9695" x="477.6865" y="28.432">AbstractErrorResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="325.46" x2="749.3825" y1="39" y2="39"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="193.2133" x="330.46" y="57.9659">detail : Optional[DetailModel]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="172.2974" x="330.46" y="77.0339">status_code : Optional[int]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="325.46" x2="749.3825" y1="85.1358" y2="85.1358"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="147.2374" x="330.46" y="104.1018">get_description() -&gt; str</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="413.9225" x="330.46" y="123.1697">openapi_response(examples: Optional[list[str]]) -&gt; dict[str, Any]</text>
+    </g>
+    <!--class src.models.api.responses.successful.bases.AbstractSuccessfulResponse-->
+    <g id="elem_src.models.api.responses.successful.bases.AbstractSuccessfulResponse">
+      <rect codeLine="14" fill="#F1F1F1" height="67.0679" id="src.models.api.responses.successful.bases.AbstractSuccessfulResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="243.7131" x="785.56" y="35.61"/>
+      <ellipse cx="811.89" cy="51.61" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M811.9994,47.1413 Q811.0775,47.1413 810.3431,47.4538 Q809.6244,47.7663 809.1244,48.36 Q808.6244,48.9381 808.3431,49.8131 Q808.0775,50.6881 808.0775,51.7819 Q808.0775,53.2194 808.515,54.2663 Q808.9681,55.3131 809.8119,55.86 Q810.6713,56.4069 811.9838,56.4069 Q812.765,56.4069 813.4525,56.2819 Q814.1556,56.1413 815.1556,55.8288 L815.1556,57.7038 Q814.2963,58.0319 813.5306,58.1569 Q812.7806,58.2819 811.765,58.2819 Q809.8431,58.2819 808.5306,57.485 Q807.2338,56.6725 806.5775,55.2038 Q805.9213,53.7194 805.9213,51.7506 Q805.9213,50.3288 806.3119,49.1569 Q806.7181,47.9694 807.4994,47.0944 Q808.2806,46.2194 809.4213,45.7506 Q810.5619,45.2663 812.0306,45.2663 Q812.9838,45.2663 813.8744,45.4694 Q814.7806,45.6569 815.7181,46.1256 L814.89,47.9069 Q814.1088,47.5319 813.4525,47.3444 Q812.7963,47.1413 811.9994,47.1413 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="186.5353" x="828.4078" y="57.042">AbstractSuccessfulResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="786.56" x2="1028.2731" y1="67.61" y2="67.61"/>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="786.56" x2="1028.2731" y1="75.61" y2="75.61"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="231.7131" x="791.56" y="94.5759">openapi_response() -&gt; dict[str, Any]</text>
+    </g>
+    <!--class src.models.api.responses.successful.probes.AuthorizedResponse-->
+    <g id="elem_src.models.api.responses.successful.probes.AuthorizedResponse">
+      <rect codeLine="17" fill="#F1F1F1" height="124.2717" id="src.models.api.responses.successful.probes.AuthorizedResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="235.7611" x="1064.54" y="7"/>
+      <ellipse cx="1110.2218" cy="23" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1110.3312,18.5313 Q1109.4093,18.5313 1108.675,18.8438 Q1107.9562,19.1563 1107.4562,19.75 Q1106.9562,20.3281 1106.675,21.2031 Q1106.4093,22.0781 1106.4093,23.1719 Q1106.4093,24.6094 1106.8468,25.6563 Q1107.3,26.7031 1108.1437,27.25 Q1109.0031,27.7969 1110.3156,27.7969 Q1111.0968,27.7969 1111.7843,27.6719 Q1112.4875,27.5313 1113.4875,27.2188 L1113.4875,29.0938 Q1112.6281,29.4219 1111.8625,29.5469 Q1111.1125,29.6719 1110.0968,29.6719 Q1108.175,29.6719 1106.8625,28.875 Q1105.5656,28.0625 1104.9093,26.5938 Q1104.2531,25.1094 1104.2531,23.1406 Q1104.2531,21.7188 1104.6437,20.5469 Q1105.05,19.3594 1105.8312,18.4844 Q1106.6125,17.6094 1107.7531,17.1406 Q1108.8937,16.6563 1110.3625,16.6563 Q1111.3156,16.6563 1112.2062,16.8594 Q1113.1125,17.0469 1114.05,17.5156 L1113.2218,19.2969 Q1112.4406,18.9219 1111.7843,18.7344 Q1111.1281,18.5313 1110.3312,18.5313 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="135.8975" x="1130.7218" y="28.432">AuthorizedResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1065.54" x2="1299.3011" y1="39" y2="39"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1070.54" y="57.9659">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="223.7611" x="1070.54" y="77.0339">skip_userid_check : Optional[bool]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="142.0575" x="1070.54" y="96.1018">user_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="161.1114" x="1070.54" y="115.1697">username : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1065.54" x2="1299.3011" y1="123.2717" y2="123.2717"/>
+    </g>
+    <!--class src.models.api.responses.error.bad_request.BadRequestResponse-->
+    <g id="elem_src.models.api.responses.error.bad_request.BadRequestResponse">
+      <rect codeLine="23" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.error.bad_request.BadRequestResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="179.2714" x="1335.78" y="26.07"/>
+      <ellipse cx="1352.8239" cy="42.07" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1352.9333,37.6013 Q1352.0114,37.6013 1351.277,37.9138 Q1350.5583,38.2263 1350.0583,38.82 Q1349.5583,39.3981 1349.277,40.2731 Q1349.0114,41.1481 1349.0114,42.2419 Q1349.0114,43.6794 1349.4489,44.7263 Q1349.902,45.7731 1350.7458,46.32 Q1351.6051,46.8669 1352.9176,46.8669 Q1353.6989,46.8669 1354.3864,46.7419 Q1355.0895,46.6013 1356.0895,46.2888 L1356.0895,48.1638 Q1355.2301,48.4919 1354.4645,48.6169 Q1353.7145,48.7419 1352.6989,48.7419 Q1350.777,48.7419 1349.4645,47.945 Q1348.1676,47.1325 1347.5114,45.6638 Q1346.8551,44.1794 1346.8551,42.2106 Q1346.8551,40.7888 1347.2458,39.6169 Q1347.652,38.4294 1348.4333,37.5544 Q1349.2145,36.6794 1350.3551,36.2106 Q1351.4958,35.7263 1352.9645,35.7263 Q1353.9176,35.7263 1354.8083,35.9294 Q1355.7145,36.1169 1356.652,36.5856 L1355.8239,38.3669 Q1355.0426,37.9919 1354.3864,37.8044 Q1353.7301,37.6013 1352.9333,37.6013 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="142.7294" x="1367.2781" y="47.502">BadRequestResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1336.78" x2="1514.0514" y1="58.07" y2="58.07"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="167.2714" x="1341.78" y="77.0359">description : ClassVar[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1341.78" y="96.1039">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1336.78" x2="1514.0514" y1="104.2058" y2="104.2058"/>
+    </g>
+    <!--class src.models.api.responses.successful.configuration.ConfigurationResponse-->
+    <g id="elem_src.models.api.responses.successful.configuration.ConfigurationResponse">
+      <rect codeLine="27" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.configuration.ConfigurationResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="203.0713" x="1549.88" y="26.07"/>
+      <ellipse cx="1572.2347" cy="42.07" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1572.3441,37.6013 Q1571.4222,37.6013 1570.6879,37.9138 Q1569.9691,38.2263 1569.4691,38.82 Q1568.9691,39.3981 1568.6879,40.2731 Q1568.4222,41.1481 1568.4222,42.2419 Q1568.4222,43.6794 1568.8597,44.7263 Q1569.3129,45.7731 1570.1566,46.32 Q1571.016,46.8669 1572.3285,46.8669 Q1573.1097,46.8669 1573.7972,46.7419 Q1574.5004,46.6013 1575.5004,46.2888 L1575.5004,48.1638 Q1574.641,48.4919 1573.8754,48.6169 Q1573.1254,48.7419 1572.1097,48.7419 Q1570.1879,48.7419 1568.8754,47.945 Q1567.5785,47.1325 1566.9222,45.6638 Q1566.266,44.1794 1566.266,42.2106 Q1566.266,40.7888 1566.6566,39.6169 Q1567.0629,38.4294 1567.8441,37.5544 Q1568.6254,36.6794 1569.766,36.2106 Q1570.9066,35.7263 1572.3754,35.7263 Q1573.3285,35.7263 1574.2191,35.9294 Q1575.1254,36.1169 1576.0629,36.5856 L1575.2347,38.3669 Q1574.4535,37.9919 1573.7972,37.8044 Q1573.141,37.6013 1572.3441,37.6013 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="154.7274" x="1587.8691" y="47.502">ConfigurationResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1550.88" x2="1751.9513" y1="58.07" y2="58.07"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="191.0713" x="1555.88" y="77.0359">configuration : Configuration</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="168.4193" x="1555.88" y="96.1039">model_config : ConfigDict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1550.88" x2="1751.9513" y1="104.2058" y2="104.2058"/>
+    </g>
+    <!--class src.models.api.responses.error.conflict.ConflictResponse-->
+    <g id="elem_src.models.api.responses.error.conflict.ConflictResponse">
+      <rect codeLine="31" fill="#F1F1F1" height="124.2717" id="src.models.api.responses.error.conflict.ConflictResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="228.3552" x="1788.24" y="7"/>
+      <ellipse cx="1841.4538" cy="23" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1841.5632,18.5313 Q1840.6413,18.5313 1839.9069,18.8438 Q1839.1882,19.1563 1838.6882,19.75 Q1838.1882,20.3281 1837.9069,21.2031 Q1837.6413,22.0781 1837.6413,23.1719 Q1837.6413,24.6094 1838.0788,25.6563 Q1838.5319,26.7031 1839.3757,27.25 Q1840.2351,27.7969 1841.5476,27.7969 Q1842.3288,27.7969 1843.0163,27.6719 Q1843.7194,27.5313 1844.7194,27.2188 L1844.7194,29.0938 Q1843.8601,29.4219 1843.0944,29.5469 Q1842.3444,29.6719 1841.3288,29.6719 Q1839.4069,29.6719 1838.0944,28.875 Q1836.7976,28.0625 1836.1413,26.5938 Q1835.4851,25.1094 1835.4851,23.1406 Q1835.4851,21.7188 1835.8757,20.5469 Q1836.2819,19.3594 1837.0632,18.4844 Q1837.8444,17.6094 1838.9851,17.1406 Q1840.1257,16.6563 1841.5944,16.6563 Q1842.5476,16.6563 1843.4382,16.8594 Q1844.3444,17.0469 1845.2819,17.5156 L1844.4538,19.2969 Q1843.6726,18.9219 1843.0163,18.7344 Q1842.3601,18.5313 1841.5632,18.5313 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="113.4276" x="1861.9538" y="28.432">ConflictResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1789.24" x2="2015.5952" y1="39" y2="39"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="167.2714" x="1794.24" y="57.9659">description : ClassVar[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1794.24" y="77.0339">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1789.24" x2="2015.5952" y1="85.1358" y2="85.1358"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="121.9675" x="1794.24" y="104.1018">file_search() -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="216.3552" x="1794.24" y="123.1697">mcp_tool(server_label: str) -&gt; Self</text>
+    </g>
+    <!--class src.models.api.responses.successful.conversations.ConversationDeleteResponse-->
+    <g id="elem_src.models.api.responses.successful.conversations.ConversationDeleteResponse">
+      <rect codeLine="37" fill="#F1F1F1" height="124.2717" id="src.models.api.responses.successful.conversations.ConversationDeleteResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="225.3252" x="2051.76" y="7"/>
+      <ellipse cx="2066.76" cy="23" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M2066.8694,18.5313 Q2065.9475,18.5313 2065.2131,18.8438 Q2064.4944,19.1563 2063.9944,19.75 Q2063.4944,20.3281 2063.2131,21.2031 Q2062.9475,22.0781 2062.9475,23.1719 Q2062.9475,24.6094 2063.385,25.6563 Q2063.8381,26.7031 2064.6819,27.25 Q2065.5413,27.7969 2066.8538,27.7969 Q2067.635,27.7969 2068.3225,27.6719 Q2069.0256,27.5313 2070.0256,27.2188 L2070.0256,29.0938 Q2069.1663,29.4219 2068.4006,29.5469 Q2067.6506,29.6719 2066.635,29.6719 Q2064.7131,29.6719 2063.4006,28.875 Q2062.1038,28.0625 2061.4475,26.5938 Q2060.7913,25.1094 2060.7913,23.1406 Q2060.7913,21.7188 2061.1819,20.5469 Q2061.5881,19.3594 2062.3694,18.4844 Q2063.1506,17.6094 2064.2913,17.1406 Q2065.4319,16.6563 2066.9006,16.6563 Q2067.8538,16.6563 2068.7444,16.8594 Q2069.6506,17.0469 2070.5881,17.5156 L2069.76,19.2969 Q2068.9788,18.9219 2068.3225,18.7344 Q2067.6663,18.5313 2066.8694,18.5313 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="193.3252" x="2080.76" y="28.432">ConversationDeleteResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="2052.76" x2="2276.0852" y1="39" y2="39"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="198.0013" x="2057.76" y="57.9659">conversation_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="2057.76" y="77.0339">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="195.1593" x="2057.76" y="96.1018">resource_name : ClassVar[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="2052.76" x2="2276.0852" y1="104.2038" y2="104.2038"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="107.4636" x="2057.76" y="123.1697">success() -&gt; bool</text>
+    </g>
+    <!--class src.models.api.responses.successful.conversations.ConversationResponse-->
+    <g id="elem_src.models.api.responses.successful.conversations.ConversationResponse">
+      <rect codeLine="43" fill="#F1F1F1" height="105.2038" id="src.models.api.responses.successful.conversations.ConversationResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="315.1269" x="9.86" y="229.41"/>
+      <ellipse cx="87.7977" cy="245.41" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M87.9071,240.9413 Q86.9852,240.9413 86.2509,241.2538 Q85.5321,241.5663 85.0321,242.16 Q84.5321,242.7381 84.2509,243.6131 Q83.9852,244.4881 83.9852,245.5819 Q83.9852,247.0194 84.4227,248.0663 Q84.8759,249.1131 85.7196,249.66 Q86.579,250.2069 87.8915,250.2069 Q88.6727,250.2069 89.3602,250.0819 Q90.0634,249.9413 91.0634,249.6288 L91.0634,251.5038 Q90.204,251.8319 89.4384,251.9569 Q88.6884,252.0819 87.6727,252.0819 Q85.7509,252.0819 84.4384,251.285 Q83.1415,250.4725 82.4852,249.0038 Q81.829,247.5194 81.829,245.5506 Q81.829,244.1288 82.2196,242.9569 Q82.6259,241.7694 83.4071,240.8944 Q84.1884,240.0194 85.329,239.5506 Q86.4696,239.0663 87.9384,239.0663 Q88.8915,239.0663 89.7821,239.2694 Q90.6884,239.4569 91.6259,239.9256 L90.7977,241.7069 Q90.0165,241.3319 89.3602,241.1444 Q88.704,240.9413 87.9071,240.9413 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="150.7514" x="108.2977" y="250.842">ConversationResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="10.86" x2="323.9869" y1="261.41" y2="261.41"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="303.1269" x="15.86" y="280.3759">chat_history : Optional[list[ConversationTurn]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="198.0013" x="15.86" y="299.4439">conversation_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="15.86" y="318.5118">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="10.86" x2="323.9869" y1="326.6138" y2="326.6138"/>
+    </g>
+    <!--class src.models.api.responses.successful.conversations.ConversationUpdateResponse-->
+    <g id="elem_src.models.api.responses.successful.conversations.ConversationUpdateResponse">
+      <rect codeLine="48" fill="#F1F1F1" height="124.2717" id="src.models.api.responses.successful.conversations.ConversationUpdateResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="231.0092" x="359.91" y="219.88"/>
+      <ellipse cx="374.91" cy="235.88" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M375.0194,231.4113 Q374.0975,231.4113 373.3631,231.7238 Q372.6444,232.0363 372.1444,232.63 Q371.6444,233.2081 371.3631,234.0831 Q371.0975,234.9581 371.0975,236.0519 Q371.0975,237.4894 371.535,238.5363 Q371.9881,239.5831 372.8319,240.13 Q373.6913,240.6769 375.0038,240.6769 Q375.785,240.6769 376.4725,240.5519 Q377.1756,240.4113 378.1756,240.0988 L378.1756,241.9738 Q377.3163,242.3019 376.5506,242.4269 Q375.8006,242.5519 374.785,242.5519 Q372.8631,242.5519 371.5506,241.755 Q370.2538,240.9425 369.5975,239.4738 Q368.9413,237.9894 368.9413,236.0206 Q368.9413,234.5988 369.3319,233.4269 Q369.7381,232.2394 370.5194,231.3644 Q371.3006,230.4894 372.4413,230.0206 Q373.5819,229.5363 375.0506,229.5363 Q376.0038,229.5363 376.8944,229.7394 Q377.8006,229.9269 378.7381,230.3956 L377.91,232.1769 Q377.1288,231.8019 376.4725,231.6144 Q375.8163,231.4113 375.0194,231.4113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="199.0092" x="388.91" y="241.312">ConversationUpdateResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="360.91" x2="589.9192" y1="251.88" y2="251.88"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="198.0013" x="365.91" y="270.8459">conversation_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="153.3414" x="365.91" y="289.9139">message : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="365.91" y="308.9818">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="156.3094" x="365.91" y="328.0497">success : Optional[bool]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="360.91" x2="589.9192" y1="336.1517" y2="336.1517"/>
+    </g>
+    <!--class src.models.api.responses.successful.conversations.ConversationsListResponse-->
+    <g id="elem_src.models.api.responses.successful.conversations.ConversationsListResponse">
+      <rect codeLine="54" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.conversations.ConversationsListResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="274.975" x="625.93" y="238.95"/>
+      <ellipse cx="669.1944" cy="254.95" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M669.3037,250.4813 Q668.3819,250.4813 667.6475,250.7938 Q666.9287,251.1063 666.4287,251.7 Q665.9287,252.2781 665.6475,253.1531 Q665.3819,254.0281 665.3819,255.1219 Q665.3819,256.5594 665.8194,257.6063 Q666.2725,258.6531 667.1162,259.2 Q667.9756,259.7469 669.2881,259.7469 Q670.0694,259.7469 670.7569,259.6219 Q671.46,259.4813 672.46,259.1688 L672.46,261.0438 Q671.6006,261.3719 670.835,261.4969 Q670.085,261.6219 669.0694,261.6219 Q667.1475,261.6219 665.835,260.825 Q664.5381,260.0125 663.8819,258.5438 Q663.2256,257.0594 663.2256,255.0906 Q663.2256,253.6688 663.6162,252.4969 Q664.0225,251.3094 664.8037,250.4344 Q665.585,249.5594 666.7256,249.0906 Q667.8662,248.6063 669.335,248.6063 Q670.2881,248.6063 671.1787,248.8094 Q672.085,248.9969 673.0225,249.4656 L672.1944,251.2469 Q671.4131,250.8719 670.7569,250.6844 Q670.1006,250.4813 669.3037,250.4813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="180.1653" x="689.4753" y="260.382">ConversationsListResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="626.93" x2="899.905" y1="270.95" y2="270.95"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="262.975" x="631.93" y="289.9159">conversations : list[ConversationDetails]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="631.93" y="308.9839">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="626.93" x2="899.905" y1="317.0858" y2="317.0858"/>
+    </g>
+    <!--class src.models.api.responses.successful.conversations.ConversationsListResponseV2-->
+    <g id="elem_src.models.api.responses.successful.conversations.ConversationsListResponseV2">
+      <rect codeLine="58" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.conversations.ConversationsListResponseV2" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="261.0031" x="935.92" y="238.95"/>
+      <ellipse cx="965.5134" cy="254.95" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M965.6228,250.4813 Q964.7009,250.4813 963.9665,250.7938 Q963.2478,251.1063 962.7478,251.7 Q962.2478,252.2781 961.9665,253.1531 Q961.7009,254.0281 961.7009,255.1219 Q961.7009,256.5594 962.1384,257.6063 Q962.5915,258.6531 963.4353,259.2 Q964.2947,259.7469 965.6072,259.7469 Q966.3884,259.7469 967.0759,259.6219 Q967.779,259.4813 968.779,259.1688 L968.779,261.0438 Q967.9197,261.3719 967.154,261.4969 Q966.404,261.6219 965.3884,261.6219 Q963.4665,261.6219 962.154,260.825 Q960.8572,260.0125 960.2009,258.5438 Q959.5447,257.0594 959.5447,255.0906 Q959.5447,253.6688 959.9353,252.4969 Q960.3415,251.3094 961.1228,250.4344 Q961.904,249.5594 963.0447,249.0906 Q964.1853,248.6063 965.654,248.6063 Q966.6072,248.6063 967.4978,248.8094 Q968.404,248.9969 969.3415,249.4656 L968.5134,251.2469 Q967.7322,250.8719 967.0759,250.6844 Q966.4197,250.4813 965.6228,250.4813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="196.5732" x="982.7564" y="260.382">ConversationsListResponseV2</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="936.92" x2="1195.9231" y1="270.95" y2="270.95"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="249.0031" x="941.92" y="289.9159">conversations : list[ConversationData]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="941.92" y="308.9839">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="936.92" x2="1195.9231" y1="317.0858" y2="317.0858"/>
+    </g>
+    <!--class src.models.api.responses.error.bases.DetailModel-->
+    <g id="elem_src.models.api.responses.error.bases.DetailModel">
+      <rect codeLine="62" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.error.bases.DetailModel" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="167.3014" x="1231.77" y="238.95"/>
+      <ellipse cx="1271.8655" cy="254.95" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1271.9749,250.4813 Q1271.053,250.4813 1270.3186,250.7938 Q1269.5999,251.1063 1269.0999,251.7 Q1268.5999,252.2781 1268.3186,253.1531 Q1268.053,254.0281 1268.053,255.1219 Q1268.053,256.5594 1268.4905,257.6063 Q1268.9436,258.6531 1269.7874,259.2 Q1270.6467,259.7469 1271.9592,259.7469 Q1272.7405,259.7469 1273.428,259.6219 Q1274.1311,259.4813 1275.1311,259.1688 L1275.1311,261.0438 Q1274.2717,261.3719 1273.5061,261.4969 Q1272.7561,261.6219 1271.7405,261.6219 Q1269.8186,261.6219 1268.5061,260.825 Q1267.2092,260.0125 1266.553,258.5438 Q1265.8967,257.0594 1265.8967,255.0906 Q1265.8967,253.6688 1266.2874,252.4969 Q1266.6936,251.3094 1267.4749,250.4344 Q1268.2561,249.5594 1269.3967,249.0906 Q1270.5374,248.6063 1272.0061,248.6063 Q1272.9592,248.6063 1273.8499,248.8094 Q1274.7561,248.9969 1275.6936,249.4656 L1274.8655,251.2469 Q1274.0842,250.8719 1273.428,250.6844 Q1272.7717,250.4813 1271.9749,250.4813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="79.5337" x="1291.4423" y="260.382">DetailModel</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1232.77" x2="1398.0714" y1="270.95" y2="270.95"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.4115" x="1237.77" y="289.9159">cause : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="155.3014" x="1237.77" y="308.9839">response : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1232.77" x2="1398.0714" y1="317.0858" y2="317.0858"/>
+    </g>
+    <!--class src.models.api.responses.successful.feedback.FeedbackResponse-->
+    <g id="elem_src.models.api.responses.successful.feedback.FeedbackResponse">
+      <rect codeLine="66" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.feedback.FeedbackResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="167.3014" x="1433.77" y="238.95"/>
+      <ellipse cx="1452.9685" cy="254.95" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1453.0778,250.4813 Q1452.156,250.4813 1451.4216,250.7938 Q1450.7028,251.1063 1450.2028,251.7 Q1449.7028,252.2781 1449.4216,253.1531 Q1449.156,254.0281 1449.156,255.1219 Q1449.156,256.5594 1449.5935,257.6063 Q1450.0466,258.6531 1450.8903,259.2 Q1451.7497,259.7469 1453.0622,259.7469 Q1453.8435,259.7469 1454.531,259.6219 Q1455.2341,259.4813 1456.2341,259.1688 L1456.2341,261.0438 Q1455.3747,261.3719 1454.6091,261.4969 Q1453.8591,261.6219 1452.8435,261.6219 Q1450.9216,261.6219 1449.6091,260.825 Q1448.3122,260.0125 1447.656,258.5438 Q1446.9997,257.0594 1446.9997,255.0906 Q1446.9997,253.6688 1447.3903,252.4969 Q1447.7966,251.3094 1448.5778,250.4344 Q1449.3591,249.5594 1450.4997,249.0906 Q1451.6403,248.6063 1453.1091,248.6063 Q1454.0622,248.6063 1454.9528,248.8094 Q1455.8591,248.9969 1456.7966,249.4656 L1455.9685,251.2469 Q1455.1872,250.8719 1454.531,250.6844 Q1453.8747,250.4813 1453.0778,250.4813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="125.9715" x="1467.9015" y="260.382">FeedbackResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1434.77" x2="1600.0714" y1="270.95" y2="270.95"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1439.77" y="289.9159">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="155.3014" x="1439.77" y="308.9839">response : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1434.77" x2="1600.0714" y1="317.0858" y2="317.0858"/>
+    </g>
+    <!--class src.models.api.responses.successful.feedback.FeedbackStatusUpdateResponse-->
+    <g id="elem_src.models.api.responses.successful.feedback.FeedbackStatusUpdateResponse">
+      <rect codeLine="70" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.feedback.FeedbackStatusUpdateResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="247.2352" x="1635.8" y="238.95"/>
+      <ellipse cx="1650.8" cy="254.95" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1650.9094,250.4813 Q1649.9875,250.4813 1649.2531,250.7938 Q1648.5344,251.1063 1648.0344,251.7 Q1647.5344,252.2781 1647.2531,253.1531 Q1646.9875,254.0281 1646.9875,255.1219 Q1646.9875,256.5594 1647.425,257.6063 Q1647.8781,258.6531 1648.7219,259.2 Q1649.5813,259.7469 1650.8938,259.7469 Q1651.675,259.7469 1652.3625,259.6219 Q1653.0656,259.4813 1654.0656,259.1688 L1654.0656,261.0438 Q1653.2063,261.3719 1652.4406,261.4969 Q1651.6906,261.6219 1650.675,261.6219 Q1648.7531,261.6219 1647.4406,260.825 Q1646.1438,260.0125 1645.4875,258.5438 Q1644.8313,257.0594 1644.8313,255.0906 Q1644.8313,253.6688 1645.2219,252.4969 Q1645.6281,251.3094 1646.4094,250.4344 Q1647.1906,249.5594 1648.3313,249.0906 Q1649.4719,248.6063 1650.9406,248.6063 Q1651.8938,248.6063 1652.7844,248.8094 Q1653.6906,248.9969 1654.6281,249.4656 L1653.8,251.2469 Q1653.0188,250.8719 1652.3625,250.6844 Q1651.7063,250.4813 1650.9094,250.4813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="215.2352" x="1664.8" y="260.382">FeedbackStatusUpdateResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1636.8" x2="1882.0352" y1="270.95" y2="270.95"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1641.8" y="289.9159">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="133.9375" x="1641.8" y="308.9839">status : dict[str, Any]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1636.8" x2="1882.0352" y1="317.0858" y2="317.0858"/>
+    </g>
+    <!--class src.models.api.responses.successful.vector_stores.FileResponse-->
+    <g id="elem_src.models.api.responses.successful.vector_stores.FileResponse">
+      <rect codeLine="74" fill="#F1F1F1" height="181.4754" id="src.models.api.responses.successful.vector_stores.FileResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="175.2954" x="1917.77" y="191.28"/>
+      <ellipse cx="1958.5396" cy="207.28" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1958.649,202.8112 Q1957.7271,202.8112 1956.9927,203.1237 Q1956.274,203.4362 1955.774,204.03 Q1955.274,204.6081 1954.9927,205.4831 Q1954.7271,206.3581 1954.7271,207.4519 Q1954.7271,208.8894 1955.1646,209.9362 Q1955.6177,210.9831 1956.4615,211.53 Q1957.3208,212.0769 1958.6333,212.0769 Q1959.4146,212.0769 1960.1021,211.9519 Q1960.8052,211.8112 1961.8052,211.4987 L1961.8052,213.3737 Q1960.9458,213.7019 1960.1802,213.8269 Q1959.4302,213.9519 1958.4146,213.9519 Q1956.4927,213.9519 1955.1802,213.155 Q1953.8833,212.3425 1953.2271,210.8737 Q1952.5708,209.3894 1952.5708,207.4206 Q1952.5708,205.9987 1952.9615,204.8269 Q1953.3677,203.6394 1954.149,202.7644 Q1954.9302,201.8894 1956.0708,201.4206 Q1957.2115,200.9362 1958.6802,200.9362 Q1959.6333,200.9362 1960.524,201.1394 Q1961.4302,201.3269 1962.3677,201.7956 L1961.5396,203.5769 Q1960.7583,203.2019 1960.1021,203.0144 Q1959.4458,202.8112 1958.649,202.8112 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="86.0297" x="1978.2662" y="212.712">FileResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1918.77" x2="2092.0654" y1="223.28" y2="223.28"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="129.7655" x="1923.77" y="242.2459">bytes : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="163.2954" x="1923.77" y="261.3139">created_at : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="152.0114" x="1923.77" y="280.3818">filename : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="106.8056" x="1923.77" y="299.4497">id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1923.77" y="318.5176">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="134.9455" x="1923.77" y="337.5855">object : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="149.3095" x="1923.77" y="356.6534">purpose : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1918.77" x2="2092.0654" y1="364.7554" y2="364.7554"/>
+    </g>
+    <!--class src.models.api.responses.error.content_too_large.FileTooLargeResponse-->
+    <g id="elem_src.models.api.responses.error.content_too_large.FileTooLargeResponse">
+      <rect codeLine="83" fill="#F1F1F1" height="124.2717" id="src.models.api.responses.error.content_too_large.FileTooLargeResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="222.3072" x="56.27" y="480.42"/>
+      <ellipse cx="90.2041" cy="496.42" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M90.3135,491.9513 Q89.3916,491.9513 88.6572,492.2638 Q87.9385,492.5763 87.4385,493.17 Q86.9385,493.7481 86.6572,494.6231 Q86.3916,495.4981 86.3916,496.5919 Q86.3916,498.0294 86.8291,499.0763 Q87.2822,500.1231 88.126,500.67 Q88.9853,501.2169 90.2978,501.2169 Q91.0791,501.2169 91.7666,501.0919 Q92.4697,500.9513 93.4697,500.6388 L93.4697,502.5138 Q92.6103,502.8419 91.8447,502.9669 Q91.0947,503.0919 90.0791,503.0919 Q88.1572,503.0919 86.8447,502.295 Q85.5478,501.4825 84.8916,500.0138 Q84.2353,498.5294 84.2353,496.5606 Q84.2353,495.1388 84.626,493.9669 Q85.0322,492.7794 85.8135,491.9044 Q86.5947,491.0294 87.7353,490.5606 Q88.876,490.0763 90.3447,490.0763 Q91.2978,490.0763 92.1885,490.2794 Q93.0947,490.4669 94.0322,490.9356 L93.2041,492.7169 Q92.4228,492.3419 91.7666,492.1544 Q91.1103,491.9513 90.3135,491.9513 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="148.2314" x="108.4117" y="501.852">FileTooLargeResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="57.27" x2="277.5772" y1="512.42" y2="512.42"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="167.2714" x="62.27" y="531.3859">description : ClassVar[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="62.27" y="550.4539">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="57.27" x2="277.5772" y1="558.5558" y2="558.5558"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="177.0153" x="62.27" y="577.5218">exceeds_local_limit() -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="210.3072" x="62.27" y="596.5897">from_backend_rejection() -&gt; Self</text>
+    </g>
+    <!--class src.models.api.responses.error.forbidden.ForbiddenResponse-->
+    <g id="elem_src.models.api.responses.error.forbidden.ForbiddenResponse">
+      <rect codeLine="89" fill="#F1F1F1" height="181.4754" id="src.models.api.responses.error.forbidden.ForbiddenResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="402.9485" x="313.95" y="451.82"/>
+      <ellipse cx="445.5985" cy="467.82" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M445.7079,463.3513 Q444.786,463.3513 444.0516,463.6638 Q443.3329,463.9763 442.8329,464.57 Q442.3329,465.1481 442.0516,466.0231 Q441.786,466.8981 441.786,467.9919 Q441.786,469.4294 442.2235,470.4763 Q442.6766,471.5231 443.5204,472.07 Q444.3798,472.6169 445.6923,472.6169 Q446.4735,472.6169 447.161,472.4919 Q447.8641,472.3513 448.8641,472.0388 L448.8641,473.9138 Q448.0048,474.2419 447.2391,474.3669 Q446.4891,474.4919 445.4735,474.4919 Q443.5516,474.4919 442.2391,473.695 Q440.9423,472.8825 440.286,471.4138 Q439.6298,469.9294 439.6298,467.9606 Q439.6298,466.5388 440.0204,465.3669 Q440.4266,464.1794 441.2079,463.3044 Q441.9891,462.4294 443.1298,461.9606 Q444.2704,461.4763 445.7391,461.4763 Q446.6923,461.4763 447.5829,461.6794 Q448.4891,461.8669 449.4266,462.3356 L448.5985,464.1169 Q447.8173,463.7419 447.161,463.5544 Q446.5048,463.3513 445.7079,463.3513 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="131.1515" x="466.0985" y="473.252">ForbiddenResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="314.95" x2="715.8985" y1="483.82" y2="483.82"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="167.2714" x="319.95" y="502.7859">description : ClassVar[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="319.95" y="521.8539">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="314.95" x2="715.8985" y1="529.9558" y2="529.9558"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="390.9485" x="319.95" y="548.9218">conversation(action: str, resource_id: str, user_id: str) -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="184.1693" x="319.95" y="567.9897">endpoint(user_id: str) -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="173.8093" x="319.95" y="587.0576">feedback_disabled() -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="326.1427" x="319.95" y="606.1255">mcp_server_static_config(server_name: str) -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="155.2594" x="319.95" y="625.1934">model_override() -&gt; Self</text>
+    </g>
+    <!--class src.models.api.responses.successful.probes.InfoResponse-->
+    <g id="elem_src.models.api.responses.successful.probes.InfoResponse">
+      <rect codeLine="98" fill="#F1F1F1" height="124.2717" id="src.models.api.responses.successful.probes.InfoResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="237.0772" x="751.88" y="480.42"/>
+      <ellipse cx="821.0048" cy="496.42" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M821.1141,491.9513 Q820.1923,491.9513 819.4579,492.2638 Q818.7391,492.5763 818.2391,493.17 Q817.7391,493.7481 817.4579,494.6231 Q817.1923,495.4981 817.1923,496.5919 Q817.1923,498.0294 817.6298,499.0763 Q818.0829,500.1231 818.9266,500.67 Q819.786,501.2169 821.0985,501.2169 Q821.8798,501.2169 822.5673,501.0919 Q823.2704,500.9513 824.2704,500.6388 L824.2704,502.5138 Q823.411,502.8419 822.6454,502.9669 Q821.8954,503.0919 820.8798,503.0919 Q818.9579,503.0919 817.6454,502.295 Q816.3485,501.4825 815.6923,500.0138 Q815.036,498.5294 815.036,496.5606 Q815.036,495.1388 815.4266,493.9669 Q815.8329,492.7794 816.6141,491.9044 Q817.3954,491.0294 818.536,490.5606 Q819.6766,490.0763 821.1454,490.0763 Q822.0985,490.0763 822.9891,490.2794 Q823.8954,490.4669 824.8329,490.9356 L824.0048,492.7169 Q823.2235,492.3419 822.5673,492.1544 Q821.911,491.9513 821.1141,491.9513 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="90.3277" x="841.5048" y="501.852">InfoResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="752.88" x2="987.9572" y1="512.42" y2="512.42"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="225.0772" x="757.88" y="531.3859">llama_stack_version : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="757.88" y="550.4539">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.0755" x="757.88" y="569.5218">name : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="194.7533" x="757.88" y="588.5897">service_version : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="752.88" x2="987.9572" y1="596.6917" y2="596.6917"/>
+    </g>
+    <!--class src.models.api.responses.error.internal.InternalServerErrorResponse-->
+    <g id="elem_src.models.api.responses.error.internal.InternalServerErrorResponse">
+      <rect codeLine="104" fill="#F1F1F1" height="219.6113" id="src.models.api.responses.error.internal.InternalServerErrorResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="265.931" x="1024.45" y="432.75"/>
+      <ellipse cx="1058.4786" cy="448.75" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1058.588,444.2813 Q1057.6661,444.2813 1056.9317,444.5938 Q1056.213,444.9063 1055.713,445.5 Q1055.213,446.0781 1054.9317,446.9531 Q1054.6661,447.8281 1054.6661,448.9219 Q1054.6661,450.3594 1055.1036,451.4063 Q1055.5567,452.4531 1056.4005,453 Q1057.2598,453.5469 1058.5723,453.5469 Q1059.3536,453.5469 1060.0411,453.4219 Q1060.7442,453.2813 1061.7442,452.9688 L1061.7442,454.8438 Q1060.8848,455.1719 1060.1192,455.2969 Q1059.3692,455.4219 1058.3536,455.4219 Q1056.4317,455.4219 1055.1192,454.625 Q1053.8223,453.8125 1053.1661,452.3438 Q1052.5098,450.8594 1052.5098,448.8906 Q1052.5098,447.4688 1052.9005,446.2969 Q1053.3067,445.1094 1054.088,444.2344 Q1054.8692,443.3594 1056.0098,442.8906 Q1057.1505,442.4063 1058.6192,442.4063 Q1059.5723,442.4063 1060.463,442.6094 Q1061.3692,442.7969 1062.3067,443.2656 L1061.4786,445.0469 Q1060.6973,444.6719 1060.0411,444.4844 Q1059.3848,444.2813 1058.588,444.2813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="191.6453" x="1076.7072" y="454.182">InternalServerErrorResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1025.45" x2="1289.381" y1="464.75" y2="464.75"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="167.2714" x="1030.45" y="483.7159">description : ClassVar[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1030.45" y="502.7839">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1025.45" x2="1289.381" y1="510.8858" y2="510.8858"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="171.5833" x="1030.45" y="529.8518">cache_unavailable() -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="220.8211" x="1030.45" y="548.9197">configuration_not_loaded() -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="152.5714" x="1030.45" y="567.9876">database_error() -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="252.853" x="1030.45" y="587.0555">feedback_path_invalid(path: str) -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="101.3736" x="1030.45" y="606.1234">generic() -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="253.931" x="1030.45" y="625.1914">mcp_server_registration_failed() -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="195.6632" x="1030.45" y="644.2593">query_failed(cause: str) -&gt; Self</text>
+    </g>
+    <!--class src.models.api.responses.successful.probes.LivenessResponse-->
+    <g id="elem_src.models.api.responses.successful.probes.LivenessResponse">
+      <rect codeLine="115" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.probes.LivenessResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="151.5595" x="1325.64" y="499.49"/>
+      <ellipse cx="1340.64" cy="515.49" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1340.7494,511.0213 Q1339.8275,511.0213 1339.0931,511.3338 Q1338.3744,511.6463 1337.8744,512.24 Q1337.3744,512.8181 1337.0931,513.6931 Q1336.8275,514.5681 1336.8275,515.6619 Q1336.8275,517.0994 1337.265,518.1463 Q1337.7181,519.1931 1338.5619,519.74 Q1339.4213,520.2869 1340.7338,520.2869 Q1341.515,520.2869 1342.2025,520.1619 Q1342.9056,520.0213 1343.9056,519.7088 L1343.9056,521.5838 Q1343.0463,521.9119 1342.2806,522.0369 Q1341.5306,522.1619 1340.515,522.1619 Q1338.5931,522.1619 1337.2806,521.365 Q1335.9838,520.5525 1335.3275,519.0838 Q1334.6713,517.5994 1334.6713,515.6306 Q1334.6713,514.2088 1335.0619,513.0369 Q1335.4681,511.8494 1336.2494,510.9744 Q1337.0306,510.0994 1338.1713,509.6306 Q1339.3119,509.1463 1340.7806,509.1463 Q1341.7338,509.1463 1342.6244,509.3494 Q1343.5306,509.5369 1344.4681,510.0056 L1343.64,511.7869 Q1342.8588,511.4119 1342.2025,511.2244 Q1341.5463,511.0213 1340.7494,511.0213 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="119.5595" x="1354.64" y="520.922">LivenessResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1326.64" x2="1476.1995" y1="531.49" y2="531.49"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="136.2895" x="1331.64" y="550.4559">alive : Optional[bool]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1331.64" y="569.5239">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1326.64" x2="1476.1995" y1="577.6258" y2="577.6258"/>
+    </g>
+    <!--class src.models.api.responses.successful.mcp_servers.MCPClientAuthOptionsResponse-->
+    <g id="elem_src.models.api.responses.successful.mcp_servers.MCPClientAuthOptionsResponse">
+      <rect codeLine="119" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.mcp_servers.MCPClientAuthOptionsResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="295.275" x="1511.78" y="499.49"/>
+      <ellipse cx="1548.6499" cy="515.49" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1548.7593,511.0213 Q1547.8374,511.0213 1547.103,511.3338 Q1546.3843,511.6463 1545.8843,512.24 Q1545.3843,512.8181 1545.103,513.6931 Q1544.8374,514.5681 1544.8374,515.6619 Q1544.8374,517.0994 1545.2749,518.1463 Q1545.728,519.1931 1546.5718,519.74 Q1547.4312,520.2869 1548.7437,520.2869 Q1549.5249,520.2869 1550.2124,520.1619 Q1550.9155,520.0213 1551.9155,519.7088 L1551.9155,521.5838 Q1551.0562,521.9119 1550.2905,522.0369 Q1549.5405,522.1619 1548.5249,522.1619 Q1546.603,522.1619 1545.2905,521.365 Q1543.9937,520.5525 1543.3374,519.0838 Q1542.6812,517.5994 1542.6812,515.6306 Q1542.6812,514.2088 1543.0718,513.0369 Q1543.478,511.8494 1544.2593,510.9744 Q1545.0405,510.0994 1546.1812,509.6306 Q1547.3218,509.1463 1548.7905,509.1463 Q1549.7437,509.1463 1550.6343,509.3494 Q1551.5405,509.5369 1552.478,510.0056 L1551.6499,511.7869 Q1550.8687,511.4119 1550.2124,511.2244 Q1549.5562,511.0213 1548.7593,511.0213 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="214.6752" x="1567.5099" y="520.922">MCPClientAuthOptionsResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1512.78" x2="1806.055" y1="531.49" y2="531.49"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1517.78" y="550.4559">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="283.275" x="1517.78" y="569.5239">servers : Optional[list[MCPServerAuthInfo]]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1512.78" x2="1806.055" y1="577.6258" y2="577.6258"/>
+    </g>
+    <!--class src.models.api.responses.successful.mcp_servers.MCPServerDeleteResponse-->
+    <g id="elem_src.models.api.responses.successful.mcp_servers.MCPServerDeleteResponse">
+      <rect codeLine="123" fill="#F1F1F1" height="105.2038" id="src.models.api.responses.successful.mcp_servers.MCPServerDeleteResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="210.3873" x="1842.23" y="489.95"/>
+      <ellipse cx="1857.23" cy="505.95" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1857.3394,501.4813 Q1856.4175,501.4813 1855.6831,501.7938 Q1854.9644,502.1063 1854.4644,502.7 Q1853.9644,503.2781 1853.6831,504.1531 Q1853.4175,505.0281 1853.4175,506.1219 Q1853.4175,507.5594 1853.855,508.6063 Q1854.3081,509.6531 1855.1519,510.2 Q1856.0113,510.7469 1857.3238,510.7469 Q1858.105,510.7469 1858.7925,510.6219 Q1859.4956,510.4813 1860.4956,510.1688 L1860.4956,512.0438 Q1859.6363,512.3719 1858.8706,512.4969 Q1858.1206,512.6219 1857.105,512.6219 Q1855.1831,512.6219 1853.8706,511.825 Q1852.5738,511.0125 1851.9175,509.5438 Q1851.2613,508.0594 1851.2613,506.0906 Q1851.2613,504.6688 1851.6519,503.4969 Q1852.0581,502.3094 1852.8394,501.4344 Q1853.6206,500.5594 1854.7613,500.0906 Q1855.9019,499.6063 1857.3706,499.6063 Q1858.3238,499.6063 1859.2144,499.8094 Q1860.1206,499.9969 1861.0581,500.4656 L1860.23,502.2469 Q1859.4488,501.8719 1858.7925,501.6844 Q1858.1363,501.4813 1857.3394,501.4813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="178.3873" x="1871.23" y="511.382">MCPServerDeleteResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1843.23" x2="2051.6173" y1="521.95" y2="521.95"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1848.23" y="540.9159">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.0755" x="1848.23" y="559.9839">name : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="195.1593" x="1848.23" y="579.0518">resource_name : ClassVar[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1843.23" x2="2051.6173" y1="587.1538" y2="587.1538"/>
+    </g>
+    <!--class src.models.api.responses.successful.mcp_servers.MCPServerListResponse-->
+    <g id="elem_src.models.api.responses.successful.mcp_servers.MCPServerListResponse">
+      <rect codeLine="128" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.mcp_servers.MCPServerListResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="263.9711" x="2087.43" y="499.49"/>
+      <ellipse cx="2135.9048" cy="515.49" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M2136.0142,511.0213 Q2135.0923,511.0213 2134.358,511.3338 Q2133.6392,511.6463 2133.1392,512.24 Q2132.6392,512.8181 2132.358,513.6931 Q2132.0923,514.5681 2132.0923,515.6619 Q2132.0923,517.0994 2132.5298,518.1463 Q2132.983,519.1931 2133.8267,519.74 Q2134.6861,520.2869 2135.9986,520.2869 Q2136.7798,520.2869 2137.4673,520.1619 Q2138.1705,520.0213 2139.1705,519.7088 L2139.1705,521.5838 Q2138.3111,521.9119 2137.5455,522.0369 Q2136.7955,522.1619 2135.7798,522.1619 Q2133.858,522.1619 2132.5455,521.365 Q2131.2486,520.5525 2130.5923,519.0838 Q2129.9361,517.5994 2129.9361,515.6306 Q2129.9361,514.2088 2130.3267,513.0369 Q2130.733,511.8494 2131.5142,510.9744 Q2132.2955,510.0994 2133.4361,509.6306 Q2134.5767,509.1463 2136.0455,509.1463 Q2136.9986,509.1463 2137.8892,509.3494 Q2138.7955,509.5369 2139.733,510.0056 L2138.9048,511.7869 Q2138.1236,511.4119 2137.4673,511.2244 Q2136.8111,511.0213 2136.0142,511.0213 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="158.5214" x="2156.4048" y="520.922">MCPServerListResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="2088.43" x2="2350.4011" y1="531.49" y2="531.49"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="2093.43" y="550.4559">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="251.9711" x="2093.43" y="569.5239">servers : Optional[list[MCPServerInfo]]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="2088.43" x2="2350.4011" y1="577.6258" y2="577.6258"/>
+    </g>
+    <!--class src.models.api.responses.successful.mcp_servers.MCPServerRegistrationResponse-->
+    <g id="elem_src.models.api.responses.successful.mcp_servers.MCPServerRegistrationResponse">
+      <rect codeLine="132" fill="#F1F1F1" height="143.3396" id="src.models.api.responses.successful.mcp_servers.MCPServerRegistrationResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="247.8232" x="43.51" y="721.9"/>
+      <ellipse cx="58.51" cy="737.9" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M58.6194,733.4313 Q57.6975,733.4313 56.9631,733.7438 Q56.2444,734.0563 55.7444,734.65 Q55.2444,735.2281 54.9631,736.1031 Q54.6975,736.9781 54.6975,738.0719 Q54.6975,739.5094 55.135,740.5563 Q55.5881,741.6031 56.4319,742.15 Q57.2913,742.6969 58.6038,742.6969 Q59.385,742.6969 60.0725,742.5719 Q60.7756,742.4313 61.7756,742.1188 L61.7756,743.9938 Q60.9163,744.3219 60.1506,744.4469 Q59.4006,744.5719 58.385,744.5719 Q56.4631,744.5719 55.1506,743.775 Q53.8538,742.9625 53.1975,741.4938 Q52.5413,740.0094 52.5413,738.0406 Q52.5413,736.6188 52.9319,735.4469 Q53.3381,734.2594 54.1194,733.3844 Q54.9006,732.5094 56.0413,732.0406 Q57.1819,731.5563 58.6506,731.5563 Q59.6038,731.5563 60.4944,731.7594 Q61.4006,731.9469 62.3381,732.4156 L61.51,734.1969 Q60.7288,733.8219 60.0725,733.6344 Q59.4163,733.4313 58.6194,733.4313 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="215.8232" x="72.51" y="743.332">MCPServerRegistrationResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="44.51" x2="290.3332" y1="753.9" y2="753.9"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="153.3414" x="49.51" y="772.8659">message : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="49.51" y="791.9339">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.0755" x="49.51" y="811.0018">name : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="168.8954" x="49.51" y="830.0697">provider_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="112.6296" x="49.51" y="849.1376">url : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="44.51" x2="290.3332" y1="857.2396" y2="857.2396"/>
+    </g>
+    <!--class src.models.api.responses.successful.catalog.ModelsResponse-->
+    <g id="elem_src.models.api.responses.successful.catalog.ModelsResponse">
+      <rect codeLine="139" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.catalog.ModelsResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="248.5011" x="326.17" y="750.5"/>
+      <ellipse cx="390.3528" cy="766.5" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M390.4622,762.0313 Q389.5403,762.0313 388.8059,762.3438 Q388.0872,762.6563 387.5872,763.25 Q387.0872,763.8281 386.8059,764.7031 Q386.5403,765.5781 386.5403,766.6719 Q386.5403,768.1094 386.9778,769.1563 Q387.4309,770.2031 388.2747,770.75 Q389.134,771.2969 390.4465,771.2969 Q391.2278,771.2969 391.9153,771.1719 Q392.6184,771.0313 393.6184,770.7188 L393.6184,772.5938 Q392.759,772.9219 391.9934,773.0469 Q391.2434,773.1719 390.2278,773.1719 Q388.3059,773.1719 386.9934,772.375 Q385.6965,771.5625 385.0403,770.0938 Q384.384,768.6094 384.384,766.6406 Q384.384,765.2188 384.7747,764.0469 Q385.1809,762.8594 385.9622,761.9844 Q386.7434,761.1094 387.884,760.6406 Q389.0247,760.1563 390.4934,760.1563 Q391.4465,760.1563 392.3372,760.3594 Q393.2434,760.5469 394.1809,761.0156 L393.3528,762.7969 Q392.5715,762.4219 391.9153,762.2344 Q391.259,762.0313 390.4622,762.0313 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="111.6356" x="410.8528" y="771.932">ModelsResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="327.17" x2="573.6711" y1="782.5" y2="782.5"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="332.17" y="801.4659">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="236.5011" x="332.17" y="820.5339">models : Optional[list[dict[str, Any]]]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="327.17" x2="573.6711" y1="828.6358" y2="828.6358"/>
+    </g>
+    <!--class src.models.api.responses.error.not_found.NotFoundResponse-->
+    <g id="elem_src.models.api.responses.error.not_found.NotFoundResponse">
+      <rect codeLine="143" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.error.not_found.NotFoundResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="179.2714" x="609.78" y="750.5"/>
+      <ellipse cx="632.7962" cy="766.5" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M632.9056,762.0313 Q631.9837,762.0313 631.2494,762.3438 Q630.5306,762.6563 630.0306,763.25 Q629.5306,763.8281 629.2494,764.7031 Q628.9837,765.5781 628.9837,766.6719 Q628.9837,768.1094 629.4212,769.1563 Q629.8744,770.2031 630.7181,770.75 Q631.5775,771.2969 632.89,771.2969 Q633.6712,771.2969 634.3587,771.1719 Q635.0619,771.0313 636.0619,770.7188 L636.0619,772.5938 Q635.2025,772.9219 634.4369,773.0469 Q633.6869,773.1719 632.6712,773.1719 Q630.7494,773.1719 629.4369,772.375 Q628.14,771.5625 627.4837,770.0938 Q626.8275,768.6094 626.8275,766.6406 Q626.8275,765.2188 627.2181,764.0469 Q627.6244,762.8594 628.4056,761.9844 Q629.1869,761.1094 630.3275,760.6406 Q631.4681,760.1563 632.9369,760.1563 Q633.89,760.1563 634.7806,760.3594 Q635.6869,760.5469 636.6244,761.0156 L635.7962,762.7969 Q635.015,762.4219 634.3587,762.2344 Q633.7025,762.0313 632.9056,762.0313 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="129.4575" x="648.5776" y="771.932">NotFoundResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="610.78" x2="788.0514" y1="782.5" y2="782.5"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="167.2714" x="615.78" y="801.4659">description : ClassVar[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="615.78" y="820.5339">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="610.78" x2="788.0514" y1="828.6358" y2="828.6358"/>
+    </g>
+    <!--class src.models.api.responses.successful.prompts.PromptDeleteResponse-->
+    <g id="elem_src.models.api.responses.successful.prompts.PromptDeleteResponse">
+      <rect codeLine="147" fill="#F1F1F1" height="105.2038" id="src.models.api.responses.successful.prompts.PromptDeleteResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="207.1593" x="823.84" y="740.96"/>
+      <ellipse cx="847.5996" cy="756.96" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M847.709,752.4913 Q846.7871,752.4913 846.0528,752.8038 Q845.334,753.1163 844.834,753.71 Q844.334,754.2881 844.0528,755.1631 Q843.7871,756.0381 843.7871,757.1319 Q843.7871,758.5694 844.2246,759.6163 Q844.6778,760.6631 845.5215,761.21 Q846.3809,761.7569 847.6934,761.7569 Q848.4746,761.7569 849.1621,761.6319 Q849.8653,761.4913 850.8653,761.1788 L850.8653,763.0538 Q850.0059,763.3819 849.2403,763.5069 Q848.4903,763.6319 847.4746,763.6319 Q845.5528,763.6319 844.2403,762.835 Q842.9434,762.0225 842.2871,760.5538 Q841.6309,759.0694 841.6309,757.1006 Q841.6309,755.6788 842.0215,754.5069 Q842.4278,753.3194 843.209,752.4444 Q843.9903,751.5694 845.1309,751.1006 Q846.2715,750.6163 847.7403,750.6163 Q848.6934,750.6163 849.584,750.8194 Q850.4903,751.0069 851.4278,751.4756 L850.5996,753.2569 Q849.8184,752.8819 849.1621,752.6944 Q848.5059,752.4913 847.709,752.4913 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="155.6934" x="863.5462" y="762.392">PromptDeleteResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="824.84" x2="1029.9993" y1="772.96" y2="772.96"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="829.84" y="791.9259">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="162.6374" x="829.84" y="810.9939">prompt_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="195.1593" x="829.84" y="830.0618">resource_name : ClassVar[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="824.84" x2="1029.9993" y1="838.1638" y2="838.1638"/>
+    </g>
+    <!--class src.models.api.responses.successful.prompts.PromptResourceResponse-->
+    <g id="elem_src.models.api.responses.successful.prompts.PromptResourceResponse">
+      <rect codeLine="152" fill="#F1F1F1" height="162.4075" id="src.models.api.responses.successful.prompts.PromptResourceResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="205.9493" x="1066.44" y="712.36"/>
+      <ellipse cx="1081.44" cy="728.36" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1081.5494,723.8913 Q1080.6275,723.8913 1079.8931,724.2038 Q1079.1744,724.5163 1078.6744,725.11 Q1078.1744,725.6881 1077.8931,726.5631 Q1077.6275,727.4381 1077.6275,728.5319 Q1077.6275,729.9694 1078.065,731.0163 Q1078.5181,732.0631 1079.3619,732.61 Q1080.2213,733.1569 1081.5338,733.1569 Q1082.315,733.1569 1083.0025,733.0319 Q1083.7056,732.8913 1084.7056,732.5788 L1084.7056,734.4538 Q1083.8463,734.7819 1083.0806,734.9069 Q1082.3306,735.0319 1081.315,735.0319 Q1079.3931,735.0319 1078.0806,734.235 Q1076.7838,733.4225 1076.1275,731.9538 Q1075.4713,730.4694 1075.4713,728.5006 Q1075.4713,727.0788 1075.8619,725.9069 Q1076.2681,724.7194 1077.0494,723.8444 Q1077.8306,722.9694 1078.9713,722.5006 Q1080.1119,722.0163 1081.5806,722.0163 Q1082.5338,722.0163 1083.4244,722.2194 Q1084.3306,722.4069 1085.2681,722.8756 L1084.44,724.6569 Q1083.6588,724.2819 1083.0025,724.0944 Q1082.3463,723.8913 1081.5494,723.8913 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="173.9493" x="1095.44" y="733.792">PromptResourceResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1067.44" x2="1271.3893" y1="744.36" y2="744.36"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="169.2314" x="1072.44" y="763.3259">is_default : Optional[bool]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1072.44" y="782.3939">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="144.1995" x="1072.44" y="801.4618">prompt : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="162.6374" x="1072.44" y="820.5297">prompt_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="181.8174" x="1072.44" y="839.5976">variables : Optional[list[str]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="142.5895" x="1072.44" y="858.6655">version : Optional[int]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1067.44" x2="1271.3893" y1="866.7675" y2="866.7675"/>
+    </g>
+    <!--class src.models.api.responses.error.content_too_large.PromptTooLongResponse-->
+    <g id="elem_src.models.api.responses.error.content_too_large.PromptTooLongResponse">
+      <rect codeLine="160" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.error.content_too_large.PromptTooLongResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="202.9114" x="1306.96" y="750.5"/>
+      <ellipse cx="1321.96" cy="766.5" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1322.0694,762.0313 Q1321.1475,762.0313 1320.4131,762.3438 Q1319.6944,762.6563 1319.1944,763.25 Q1318.6944,763.8281 1318.4131,764.7031 Q1318.1475,765.5781 1318.1475,766.6719 Q1318.1475,768.1094 1318.585,769.1563 Q1319.0381,770.2031 1319.8819,770.75 Q1320.7413,771.2969 1322.0538,771.2969 Q1322.835,771.2969 1323.5225,771.1719 Q1324.2256,771.0313 1325.2256,770.7188 L1325.2256,772.5938 Q1324.3663,772.9219 1323.6006,773.0469 Q1322.8506,773.1719 1321.835,773.1719 Q1319.9131,773.1719 1318.6006,772.375 Q1317.3038,771.5625 1316.6475,770.0938 Q1315.9913,768.6094 1315.9913,766.6406 Q1315.9913,765.2188 1316.3819,764.0469 Q1316.7881,762.8594 1317.5694,761.9844 Q1318.3506,761.1094 1319.4913,760.6406 Q1320.6319,760.1563 1322.1006,760.1563 Q1323.0538,760.1563 1323.9444,760.3594 Q1324.8506,760.5469 1325.7881,761.0156 L1324.96,762.7969 Q1324.1788,762.4219 1323.5225,762.2344 Q1322.8663,762.0313 1322.0694,762.0313 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="170.9114" x="1335.96" y="771.932">PromptTooLongResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1307.96" x2="1508.8714" y1="782.5" y2="782.5"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="167.2714" x="1312.96" y="801.4659">description : ClassVar[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1312.96" y="820.5339">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1307.96" x2="1508.8714" y1="828.6358" y2="828.6358"/>
+    </g>
+    <!--class src.models.api.responses.successful.prompts.PromptsListResponse-->
+    <g id="elem_src.models.api.responses.successful.prompts.PromptsListResponse">
+      <rect codeLine="164" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.prompts.PromptsListResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="320.5589" x="1545.14" y="750.5"/>
+      <ellipse cx="1629.9027" cy="766.5" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1630.0121,762.0313 Q1629.0902,762.0313 1628.3559,762.3438 Q1627.6371,762.6563 1627.1371,763.25 Q1626.6371,763.8281 1626.3559,764.7031 Q1626.0902,765.5781 1626.0902,766.6719 Q1626.0902,768.1094 1626.5277,769.1563 Q1626.9809,770.2031 1627.8246,770.75 Q1628.684,771.2969 1629.9965,771.2969 Q1630.7777,771.2969 1631.4652,771.1719 Q1632.1684,771.0313 1633.1684,770.7188 L1633.1684,772.5938 Q1632.309,772.9219 1631.5434,773.0469 Q1630.7934,773.1719 1629.7777,773.1719 Q1627.8559,773.1719 1626.5434,772.375 Q1625.2465,771.5625 1624.5902,770.0938 Q1623.934,768.6094 1623.934,766.6406 Q1623.934,765.2188 1624.3246,764.0469 Q1624.7309,762.8594 1625.5121,761.9844 Q1626.2934,761.1094 1627.434,760.6406 Q1628.5746,760.1563 1630.0434,760.1563 Q1630.9965,760.1563 1631.8871,760.3594 Q1632.7934,760.5469 1633.7309,761.0156 L1632.9027,762.7969 Q1632.1215,762.4219 1631.4652,762.2344 Q1630.809,762.0313 1630.0121,762.0313 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="142.5335" x="1650.4027" y="771.932">PromptsListResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1546.14" x2="1864.6989" y1="782.5" y2="782.5"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="308.5589" x="1551.14" y="801.4659">data : Optional[list[PromptResourceResponse]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1551.14" y="820.5339">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1546.14" x2="1864.6989" y1="828.6358" y2="828.6358"/>
+    </g>
+    <!--class src.models.api.responses.successful.catalog.ProviderResponse-->
+    <g id="elem_src.models.api.responses.successful.catalog.ProviderResponse">
+      <rect codeLine="168" fill="#F1F1F1" height="162.4075" id="src.models.api.responses.successful.catalog.ProviderResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="213.6413" x="1900.6" y="712.36"/>
+      <ellipse cx="1943.6187" cy="728.36" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1943.728,723.8913 Q1942.8062,723.8913 1942.0718,724.2038 Q1941.353,724.5163 1940.853,725.11 Q1940.353,725.6881 1940.0718,726.5631 Q1939.8062,727.4381 1939.8062,728.5319 Q1939.8062,729.9694 1940.2437,731.0163 Q1940.6968,732.0631 1941.5405,732.61 Q1942.3999,733.1569 1943.7124,733.1569 Q1944.4937,733.1569 1945.1812,733.0319 Q1945.8843,732.8913 1946.8843,732.5788 L1946.8843,734.4538 Q1946.0249,734.7819 1945.2593,734.9069 Q1944.5093,735.0319 1943.4937,735.0319 Q1941.5718,735.0319 1940.2593,734.235 Q1938.9624,733.4225 1938.3062,731.9538 Q1937.6499,730.4694 1937.6499,728.5006 Q1937.6499,727.0788 1938.0405,725.9069 Q1938.4468,724.7194 1939.228,723.8444 Q1940.0093,722.9694 1941.1499,722.5006 Q1942.2905,722.0163 1943.7593,722.0163 Q1944.7124,722.0163 1945.603,722.2194 Q1946.5093,722.4069 1947.4468,722.8756 L1946.6187,724.6569 Q1945.8374,724.2819 1945.1812,724.0944 Q1944.5249,723.8913 1943.728,723.8913 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="119.3775" x="1963.845" y="733.792">ProviderResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1901.6" x2="2113.2413" y1="744.36" y2="744.36"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="114.6596" x="1906.6" y="763.3259">api : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="200.8013" x="1906.6" y="782.3939">config : Optional[dict[str, Any]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="201.6413" x="1906.6" y="801.4618">health : Optional[dict[str, Any]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1906.6" y="820.5297">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="168.8954" x="1906.6" y="839.5976">provider_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="185.3733" x="1906.6" y="858.6655">provider_type : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1901.6" x2="2113.2413" y1="866.7675" y2="866.7675"/>
+    </g>
+    <!--class src.models.api.responses.successful.catalog.ProvidersListResponse-->
+    <g id="elem_src.models.api.responses.successful.catalog.ProvidersListResponse">
+      <rect codeLine="176" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.catalog.ProvidersListResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="320.8389" x="7" y="1201.72"/>
+      <ellipse cx="88.7737" cy="1217.72" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M88.8831,1213.2513 Q87.9612,1213.2513 87.2269,1213.5638 Q86.5081,1213.8763 86.0081,1214.47 Q85.5081,1215.0481 85.2269,1215.9231 Q84.9612,1216.7981 84.9612,1217.8919 Q84.9612,1219.3294 85.3987,1220.3763 Q85.8519,1221.4231 86.6956,1221.97 Q87.555,1222.5169 88.8675,1222.5169 Q89.6487,1222.5169 90.3362,1222.3919 Q91.0394,1222.2513 92.0394,1221.9388 L92.0394,1223.8138 Q91.18,1224.1419 90.4144,1224.2669 Q89.6644,1224.3919 88.6487,1224.3919 Q86.7269,1224.3919 85.4144,1223.595 Q84.1175,1222.7825 83.4612,1221.3138 Q82.805,1219.8294 82.805,1217.8606 Q82.805,1216.4388 83.1956,1215.2669 Q83.6019,1214.0794 84.3831,1213.2044 Q85.1644,1212.3294 86.305,1211.8606 Q87.4456,1211.3763 88.9144,1211.3763 Q89.8675,1211.3763 90.7581,1211.5794 Q91.6644,1211.7669 92.6019,1212.2356 L91.7737,1214.0169 Q90.9925,1213.6419 90.3362,1213.4544 Q89.68,1213.2513 88.8831,1213.2513 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="148.7914" x="109.2737" y="1223.152">ProvidersListResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="8" x2="326.8389" y1="1233.72" y2="1233.72"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="13" y="1252.6859">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="308.8389" x="13" y="1271.7539">providers : Optional[dict[str, list[dict[str, Any]]]]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="8" x2="326.8389" y1="1279.8558" y2="1279.8558"/>
+    </g>
+    <!--class src.models.api.responses.successful.query.QueryResponse-->
+    <g id="elem_src.models.api.responses.successful.query.QueryResponse">
+      <rect codeLine="180" fill="#F1F1F1" height="257.7471" id="src.models.api.responses.successful.query.QueryResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="412.8744" x="362.98" y="1115.91"/>
+      <ellipse cx="513.1434" cy="1131.91" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M513.2528,1127.4413 Q512.3309,1127.4413 511.5965,1127.7538 Q510.8778,1128.0663 510.3778,1128.66 Q509.8778,1129.2381 509.5965,1130.1131 Q509.3309,1130.9881 509.3309,1132.0819 Q509.3309,1133.5194 509.7684,1134.5663 Q510.2215,1135.6131 511.0653,1136.16 Q511.9247,1136.7069 513.2372,1136.7069 Q514.0184,1136.7069 514.7059,1136.5819 Q515.409,1136.4413 516.409,1136.1288 L516.409,1138.0038 Q515.5497,1138.3319 514.784,1138.4569 Q514.034,1138.5819 513.0184,1138.5819 Q511.0965,1138.5819 509.784,1137.785 Q508.4872,1136.9725 507.8309,1135.5038 Q507.1747,1134.0194 507.1747,1132.0506 Q507.1747,1130.6288 507.5653,1129.4569 Q507.9715,1128.2694 508.7528,1127.3944 Q509.534,1126.5194 510.6747,1126.0506 Q511.8153,1125.5663 513.284,1125.5663 Q514.2372,1125.5663 515.1278,1125.7694 Q516.034,1125.9569 516.9715,1126.4256 L516.1434,1128.2069 Q515.3622,1127.8319 514.7059,1127.6444 Q514.0497,1127.4413 513.2528,1127.4413 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="104.0476" x="533.6434" y="1137.342">QueryResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="363.98" x2="774.8544" y1="1147.91" y2="1147.91"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="262.079" x="368.98" y="1166.8759">available_quotas : Optional[dict[str, int]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="198.0013" x="368.98" y="1185.9439">conversation_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="179.4093" x="368.98" y="1205.0118">input_tokens : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="368.98" y="1224.0797">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="189.3213" x="368.98" y="1243.1476">output_tokens : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="250.683" x="368.98" y="1262.2155">rag_chunks : Optional[list[RAGChunk]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="400.8744" x="368.98" y="1281.2834">referenced_documents : Optional[list[ReferencedDocument]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="155.3014" x="368.98" y="1300.3514">response : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="281.119" x="368.98" y="1319.4193">tool_calls : Optional[list[ToolCallSummary]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="313.7249" x="368.98" y="1338.4872">tool_results : Optional[list[ToolResultSummary]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="170.4774" x="368.98" y="1357.5551">truncated : Optional[bool]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="363.98" x2="774.8544" y1="1365.6571" y2="1365.6571"/>
+    </g>
+    <!--class src.models.api.responses.error.too_many_requests.QuotaExceededResponse-->
+    <g id="elem_src.models.api.responses.error.too_many_requests.QuotaExceededResponse">
+      <rect codeLine="193" fill="#F1F1F1" height="124.2717" id="src.models.api.responses.error.too_many_requests.QuotaExceededResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="317.1848" x="810.83" y="1182.65"/>
+      <ellipse cx="881.4597" cy="1198.65" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M881.5691,1194.1813 Q880.6472,1194.1813 879.9129,1194.4938 Q879.1941,1194.8063 878.6941,1195.4 Q878.1941,1195.9781 877.9129,1196.8531 Q877.6472,1197.7281 877.6472,1198.8219 Q877.6472,1200.2594 878.0847,1201.3063 Q878.5379,1202.3531 879.3816,1202.9 Q880.241,1203.4469 881.5535,1203.4469 Q882.3347,1203.4469 883.0222,1203.3219 Q883.7254,1203.1813 884.7254,1202.8688 L884.7254,1204.7438 Q883.866,1205.0719 883.1004,1205.1969 Q882.3504,1205.3219 881.3347,1205.3219 Q879.4129,1205.3219 878.1004,1204.525 Q876.8035,1203.7125 876.1472,1202.2438 Q875.491,1200.7594 875.491,1198.7906 Q875.491,1197.3688 875.8816,1196.1969 Q876.2879,1195.0094 877.0691,1194.1344 Q877.8504,1193.2594 878.991,1192.7906 Q880.1316,1192.3063 881.6004,1192.3063 Q882.5535,1192.3063 883.4441,1192.5094 Q884.3504,1192.6969 885.2879,1193.1656 L884.4597,1194.9469 Q883.6785,1194.5719 883.0222,1194.3844 Q882.366,1194.1813 881.5691,1194.1813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="167.4254" x="901.9597" y="1204.082">QuotaExceededResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="811.83" x2="1127.0148" y1="1214.65" y2="1214.65"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="167.2714" x="816.83" y="1233.6159">description : ClassVar[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="816.83" y="1252.6839">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="811.83" x2="1127.0148" y1="1260.7858" y2="1260.7858"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="305.1848" x="816.83" y="1279.7518">from_exception(exc: QuotaExceedError) -&gt; Self</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="204.2032" x="816.83" y="1298.8197">model(model_name: str) -&gt; Self</text>
+    </g>
+    <!--class src.models.api.responses.successful.catalog.RAGInfoResponse-->
+    <g id="elem_src.models.api.responses.successful.catalog.RAGInfoResponse">
+      <rect codeLine="199" fill="#F1F1F1" height="219.6113" id="src.models.api.responses.successful.catalog.RAGInfoResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="193.1733" x="1162.83" y="1134.98"/>
+      <ellipse cx="1197.1799" cy="1150.98" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1197.2893,1146.5113 Q1196.3674,1146.5113 1195.633,1146.8238 Q1194.9143,1147.1363 1194.4143,1147.73 Q1193.9143,1148.3081 1193.633,1149.1831 Q1193.3674,1150.0581 1193.3674,1151.1519 Q1193.3674,1152.5894 1193.8049,1153.6363 Q1194.258,1154.6831 1195.1018,1155.23 Q1195.9612,1155.7769 1197.2737,1155.7769 Q1198.0549,1155.7769 1198.7424,1155.6519 Q1199.4455,1155.5113 1200.4455,1155.1988 L1200.4455,1157.0738 Q1199.5862,1157.4019 1198.8205,1157.5269 Q1198.0705,1157.6519 1197.0549,1157.6519 Q1195.133,1157.6519 1193.8205,1156.855 Q1192.5237,1156.0425 1191.8674,1154.5738 Q1191.2112,1153.0894 1191.2112,1151.1206 Q1191.2112,1149.6988 1191.6018,1148.5269 Q1192.008,1147.3394 1192.7893,1146.4644 Q1193.5705,1145.5894 1194.7112,1145.1206 Q1195.8518,1144.6363 1197.3205,1144.6363 Q1198.2737,1144.6363 1199.1643,1144.8394 Q1200.0705,1145.0269 1201.008,1145.4956 L1200.1799,1147.2769 Q1199.3987,1146.9019 1198.7424,1146.7144 Q1198.0862,1146.5113 1197.2893,1146.5113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="118.1735" x="1215.4799" y="1156.412">RAGInfoResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1163.83" x2="1355.0033" y1="1166.98" y2="1166.98"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="163.2954" x="1168.83" y="1185.9459">created_at : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="161.3914" x="1168.83" y="1205.0139">expires_at : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="106.8056" x="1168.83" y="1224.0818">id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="181.1733" x="1168.83" y="1243.1497">last_active_at : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1168.83" y="1262.2176">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.0755" x="1168.83" y="1281.2855">name : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="134.9455" x="1168.83" y="1300.3534">object : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="134.6095" x="1168.83" y="1319.4214">status : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="175.6993" x="1168.83" y="1338.4893">usage_bytes : Optional[int]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1163.83" x2="1355.0033" y1="1346.5913" y2="1346.5913"/>
+    </g>
+    <!--class src.models.api.responses.successful.catalog.RAGListResponse-->
+    <g id="elem_src.models.api.responses.successful.catalog.RAGListResponse">
+      <rect codeLine="210" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.catalog.RAGListResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="163.7315" x="1390.55" y="1201.72"/>
+      <ellipse cx="1413.4403" cy="1217.72" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1413.5496,1213.2513 Q1412.6278,1213.2513 1411.8934,1213.5638 Q1411.1746,1213.8763 1410.6746,1214.47 Q1410.1746,1215.0481 1409.8934,1215.9231 Q1409.6278,1216.7981 1409.6278,1217.8919 Q1409.6278,1219.3294 1410.0653,1220.3763 Q1410.5184,1221.4231 1411.3621,1221.97 Q1412.2215,1222.5169 1413.534,1222.5169 Q1414.3153,1222.5169 1415.0028,1222.3919 Q1415.7059,1222.2513 1416.7059,1221.9388 L1416.7059,1223.8138 Q1415.8465,1224.1419 1415.0809,1224.2669 Q1414.3309,1224.3919 1413.3153,1224.3919 Q1411.3934,1224.3919 1410.0809,1223.595 Q1408.784,1222.7825 1408.1278,1221.3138 Q1407.4715,1219.8294 1407.4715,1217.8606 Q1407.4715,1216.4388 1407.8621,1215.2669 Q1408.2684,1214.0794 1409.0496,1213.2044 Q1409.8309,1212.3294 1410.9715,1211.8606 Q1412.1121,1211.3763 1413.5809,1211.3763 Q1414.534,1211.3763 1415.4246,1211.5794 Q1416.3309,1211.7669 1417.2684,1212.2356 L1416.4403,1214.0169 Q1415.659,1213.6419 1415.0028,1213.4544 Q1414.3465,1213.2513 1413.5496,1213.2513 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="114.1976" x="1429.1937" y="1223.152">RAGListResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1391.55" x2="1553.2815" y1="1233.72" y2="1233.72"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1396.55" y="1252.6859">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="151.7315" x="1396.55" y="1271.7539">rags : Optional[list[str]]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1391.55" x2="1553.2815" y1="1279.8558" y2="1279.8558"/>
+    </g>
+    <!--class src.models.api.responses.successful.probes.ReadinessResponse-->
+    <g id="elem_src.models.api.responses.successful.probes.ReadinessResponse">
+      <rect codeLine="214" fill="#F1F1F1" height="124.2717" id="src.models.api.responses.successful.probes.ReadinessResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="319.9989" x="1589.42" y="1182.65"/>
+      <ellipse cx="1680.0277" cy="1198.65" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1680.1371,1194.1813 Q1679.2152,1194.1813 1678.4808,1194.4938 Q1677.7621,1194.8063 1677.2621,1195.4 Q1676.7621,1195.9781 1676.4808,1196.8531 Q1676.2152,1197.7281 1676.2152,1198.8219 Q1676.2152,1200.2594 1676.6527,1201.3063 Q1677.1058,1202.3531 1677.9496,1202.9 Q1678.809,1203.4469 1680.1215,1203.4469 Q1680.9027,1203.4469 1681.5902,1203.3219 Q1682.2933,1203.1813 1683.2933,1202.8688 L1683.2933,1204.7438 Q1682.434,1205.0719 1681.6683,1205.1969 Q1680.9183,1205.3219 1679.9027,1205.3219 Q1677.9808,1205.3219 1676.6683,1204.525 Q1675.3715,1203.7125 1674.7152,1202.2438 Q1674.059,1200.7594 1674.059,1198.7906 Q1674.059,1197.3688 1674.4496,1196.1969 Q1674.8558,1195.0094 1675.6371,1194.1344 Q1676.4183,1193.2594 1677.559,1192.7906 Q1678.6996,1192.3063 1680.1683,1192.3063 Q1681.1215,1192.3063 1682.0121,1192.5094 Q1682.9183,1192.6969 1683.8558,1193.1656 L1683.0277,1194.9469 Q1682.2465,1194.5719 1681.5902,1194.3844 Q1680.934,1194.1813 1680.1371,1194.1813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="130.2835" x="1700.5277" y="1204.082">ReadinessResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1590.42" x2="1908.4189" y1="1214.65" y2="1214.65"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1595.42" y="1233.6159">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="307.9989" x="1595.42" y="1252.6839">providers : Optional[list[ProviderHealthStatus]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="143.4855" x="1595.42" y="1271.7518">ready : Optional[bool]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="139.9435" x="1595.42" y="1290.8197">reason : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1590.42" x2="1908.4189" y1="1298.9217" y2="1298.9217"/>
+    </g>
+    <!--class src.models.api.responses.successful.responses_openai.ResponsesResponse-->
+    <g id="elem_src.models.api.responses.successful.responses_openai.ResponsesResponse">
+      <rect codeLine="220" fill="#F1F1F1" height="620.0375" id="src.models.api.responses.successful.responses_openai.ResponsesResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="248.7951" x="1944.02" y="934.77"/>
+      <ellipse cx="1997.1708" cy="950.77" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1997.2802,946.3013 Q1996.3583,946.3013 1995.6239,946.6138 Q1994.9052,946.9263 1994.4052,947.52 Q1993.9052,948.0981 1993.6239,948.9731 Q1993.3583,949.8481 1993.3583,950.9419 Q1993.3583,952.3794 1993.7958,953.4263 Q1994.2489,954.4731 1995.0927,955.02 Q1995.9521,955.5669 1997.2646,955.5669 Q1998.0458,955.5669 1998.7333,955.4419 Q1999.4364,955.3013 2000.4364,954.9888 L2000.4364,956.8638 Q1999.5771,957.1919 1998.8114,957.3169 Q1998.0614,957.4419 1997.0458,957.4419 Q1995.1239,957.4419 1993.8114,956.645 Q1992.5146,955.8325 1991.8583,954.3638 Q1991.2021,952.8794 1991.2021,950.9106 Q1991.2021,949.4888 1991.5927,948.3169 Q1991.9989,947.1294 1992.7802,946.2544 Q1993.5614,945.3794 1994.7021,944.9106 Q1995.8427,944.4263 1997.3114,944.4263 Q1998.2646,944.4263 1999.1552,944.6294 Q2000.0614,944.8169 2000.9989,945.2856 L2000.1708,947.0669 Q1999.3896,946.6919 1998.7333,946.5044 Q1998.0771,946.3013 1997.2802,946.3013 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="133.9935" x="2017.6708" y="956.202">ResponsesResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1945.02" x2="2191.8151" y1="966.77" y2="966.77"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="196.0693" x="1950.02" y="985.7359">available_quotas : dict[str, int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="183.4413" x="1950.02" y="1004.8039">completed_at : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="179.5633" x="1950.02" y="1023.8718">conversation : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="97.2856" x="1950.02" y="1042.9397">created_at : int</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="144.3535" x="1950.02" y="1062.0076">error : Optional[Error]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="40.7959" x="1950.02" y="1081.0755">id : str</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="172.2554" x="1950.02" y="1100.1434">instructions : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="223.8872" x="1950.02" y="1119.2114">max_output_tokens : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="189.2513" x="1950.02" y="1138.2793">max_tool_calls : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="215.9912" x="1950.02" y="1157.3472">metadata : Optional[dict[str, str]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="70.2517" x="1950.02" y="1176.4151">model : str</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1950.02" y="1195.483">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="168.7694" x="1950.02" y="1214.5509">object : Literal['response']</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="130.6755" x="1950.02" y="1233.6189">output : list[Output]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="104.6916" x="1950.02" y="1252.6868">output_text : str</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="155.5674" x="1950.02" y="1271.7547">parallel_tool_calls : bool</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="236.7951" x="1950.02" y="1290.8226">previous_response_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="176.1334" x="1950.02" y="1309.8905">prompt : Optional[Prompt]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="212.4352" x="1950.02" y="1328.9584">reasoning : Optional[Reasoning]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="199.8073" x="1950.02" y="1348.0264">safety_identifier : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="68.5998" x="1950.02" y="1367.0943">status : str</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="140.1115" x="1950.02" y="1386.1622">store : Optional[bool]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="190.4133" x="1950.02" y="1405.2301">temperature : Optional[float]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="130.5915" x="1950.02" y="1424.298">text : Optional[Text]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="223.4671" x="1950.02" y="1443.3659">tool_choice : Optional[ToolChoice]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="212.8412" x="1950.02" y="1462.4339">tools : Optional[list[OutputTool]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="143.8075" x="1950.02" y="1481.5018">top_p : Optional[float]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="163.0854" x="1950.02" y="1500.5697">truncation : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="158.0594" x="1950.02" y="1519.6376">usage : Optional[Usage]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1945.02" x2="2191.8151" y1="1527.7396" y2="1527.7396"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="231.7131" x="1950.02" y="1546.7055">openapi_response() -&gt; dict[str, Any]</text>
+    </g>
+    <!--class src.models.api.responses.successful.rlsapi.RlsapiV1InferData-->
+    <g id="elem_src.models.api.responses.successful.rlsapi.RlsapiV1InferData">
+      <rect codeLine="252" fill="#F1F1F1" height="200.5433" id="src.models.api.responses.successful.rlsapi.RlsapiV1InferData" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="412.8744" x="2227.98" y="1144.52"/>
+      <ellipse cx="2370.9754" cy="1160.52" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M2371.0848,1156.0513 Q2370.1629,1156.0513 2369.4286,1156.3638 Q2368.7098,1156.6763 2368.2098,1157.27 Q2367.7098,1157.8481 2367.4286,1158.7231 Q2367.1629,1159.5981 2367.1629,1160.6919 Q2367.1629,1162.1294 2367.6004,1163.1763 Q2368.0536,1164.2231 2368.8973,1164.77 Q2369.7567,1165.3169 2371.0692,1165.3169 Q2371.8504,1165.3169 2372.5379,1165.1919 Q2373.2411,1165.0513 2374.2411,1164.7388 L2374.2411,1166.6138 Q2373.3817,1166.9419 2372.6161,1167.0669 Q2371.8661,1167.1919 2370.8504,1167.1919 Q2368.9286,1167.1919 2367.6161,1166.395 Q2366.3192,1165.5825 2365.6629,1164.1138 Q2365.0067,1162.6294 2365.0067,1160.6606 Q2365.0067,1159.2388 2365.3973,1158.0669 Q2365.8036,1156.8794 2366.5848,1156.0044 Q2367.3661,1155.1294 2368.5067,1154.6606 Q2369.6473,1154.1763 2371.1161,1154.1763 Q2372.0692,1154.1763 2372.9598,1154.3794 Q2373.8661,1154.5669 2374.8036,1155.0356 L2373.9754,1156.8169 Q2373.1942,1156.4419 2372.5379,1156.2544 Q2371.8817,1156.0513 2371.0848,1156.0513 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="118.3835" x="2391.4754" y="1165.952">RlsapiV1InferData</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="2228.98" x2="2639.8544" y1="1176.52" y2="1176.52"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="179.4093" x="2233.98" y="1195.4859">input_tokens : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="189.3213" x="2233.98" y="1214.5539">output_tokens : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="250.683" x="2233.98" y="1233.6218">rag_chunks : Optional[list[RAGChunk]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="400.8744" x="2233.98" y="1252.6897">referenced_documents : Optional[list[ReferencedDocument]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="163.6174" x="2233.98" y="1271.7576">request_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="119.9936" x="2233.98" y="1290.8255">text : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="281.119" x="2233.98" y="1309.8934">tool_calls : Optional[list[ToolCallSummary]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="313.7249" x="2233.98" y="1328.9614">tool_results : Optional[list[ToolResultSummary]]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="2228.98" x2="2639.8544" y1="1337.0633" y2="1337.0633"/>
+    </g>
+    <!--class src.models.api.responses.successful.rlsapi.RlsapiV1InferResponse-->
+    <g id="elem_src.models.api.responses.successful.rlsapi.RlsapiV1InferResponse">
+      <rect codeLine="262" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.rlsapi.RlsapiV1InferResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="236.7972" x="49.02" y="1633.88"/>
+      <ellipse cx="88.2083" cy="1649.88" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M88.3177,1645.4113 Q87.3958,1645.4113 86.6614,1645.7238 Q85.9427,1646.0363 85.4427,1646.63 Q84.9427,1647.2081 84.6614,1648.0831 Q84.3958,1648.9581 84.3958,1650.0519 Q84.3958,1651.4894 84.8333,1652.5363 Q85.2864,1653.5831 86.1302,1654.13 Q86.9895,1654.6769 88.302,1654.6769 Q89.0833,1654.6769 89.7708,1654.5519 Q90.4739,1654.4113 91.4739,1654.0988 L91.4739,1655.9738 Q90.6145,1656.3019 89.8489,1656.4269 Q89.0989,1656.5519 88.0833,1656.5519 Q86.1614,1656.5519 84.8489,1655.755 Q83.552,1654.9425 82.8958,1653.4738 Q82.2395,1651.9894 82.2395,1650.0206 Q82.2395,1648.5988 82.6302,1647.4269 Q83.0364,1646.2394 83.8177,1645.3644 Q84.5989,1644.4894 85.7395,1644.0206 Q86.8802,1643.5363 88.3489,1643.5363 Q89.302,1643.5363 90.1927,1643.7394 Q91.0989,1643.9269 92.0364,1644.3956 L91.2083,1646.1769 Q90.427,1645.8019 89.7708,1645.6144 Q89.1145,1645.4113 88.3177,1645.4113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="151.0454" x="107.5835" y="1655.312">RlsapiV1InferResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="50.02" x2="284.8172" y1="1665.88" y2="1665.88"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="224.7972" x="55.02" y="1684.8459">data : Optional[RlsapiV1InferData]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="55.02" y="1703.9139">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="50.02" x2="284.8172" y1="1712.0158" y2="1712.0158"/>
+    </g>
+    <!--class src.models.api.responses.error.service_unavailable.ServiceUnavailableResponse-->
+    <g id="elem_src.models.api.responses.error.service_unavailable.ServiceUnavailableResponse">
+      <rect codeLine="266" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.error.service_unavailable.ServiceUnavailableResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="219.2493" x="320.79" y="1633.88"/>
+      <ellipse cx="335.79" cy="1649.88" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M335.8994,1645.4113 Q334.9775,1645.4113 334.2431,1645.7238 Q333.5244,1646.0363 333.0244,1646.63 Q332.5244,1647.2081 332.2431,1648.0831 Q331.9775,1648.9581 331.9775,1650.0519 Q331.9775,1651.4894 332.415,1652.5363 Q332.8681,1653.5831 333.7119,1654.13 Q334.5713,1654.6769 335.8838,1654.6769 Q336.665,1654.6769 337.3525,1654.5519 Q338.0556,1654.4113 339.0556,1654.0988 L339.0556,1655.9738 Q338.1963,1656.3019 337.4306,1656.4269 Q336.6806,1656.5519 335.665,1656.5519 Q333.7431,1656.5519 332.4306,1655.755 Q331.1338,1654.9425 330.4775,1653.4738 Q329.8213,1651.9894 329.8213,1650.0206 Q329.8213,1648.5988 330.2119,1647.4269 Q330.6181,1646.2394 331.3994,1645.3644 Q332.1806,1644.4894 333.3213,1644.0206 Q334.4619,1643.5363 335.9306,1643.5363 Q336.8838,1643.5363 337.7744,1643.7394 Q338.6806,1643.9269 339.6181,1644.3956 L338.79,1646.1769 Q338.0088,1645.8019 337.3525,1645.6144 Q336.6963,1645.4113 335.8994,1645.4113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="187.2493" x="349.79" y="1655.312">ServiceUnavailableResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="321.79" x2="539.0393" y1="1665.88" y2="1665.88"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="167.2714" x="326.79" y="1684.8459">description : ClassVar[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="326.79" y="1703.9139">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="321.79" x2="539.0393" y1="1712.0158" y2="1712.0158"/>
+    </g>
+    <!--class src.models.api.responses.successful.catalog.ShieldsResponse-->
+    <g id="elem_src.models.api.responses.successful.catalog.ShieldsResponse">
+      <rect codeLine="270" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.catalog.ShieldsResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="245.9111" x="575.46" y="1633.88"/>
+      <ellipse cx="638.9568" cy="1649.88" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M639.0662,1645.4113 Q638.1443,1645.4113 637.4099,1645.7238 Q636.6912,1646.0363 636.1912,1646.63 Q635.6912,1647.2081 635.4099,1648.0831 Q635.1443,1648.9581 635.1443,1650.0519 Q635.1443,1651.4894 635.5818,1652.5363 Q636.0349,1653.5831 636.8787,1654.13 Q637.738,1654.6769 639.0505,1654.6769 Q639.8318,1654.6769 640.5193,1654.5519 Q641.2224,1654.4113 642.2224,1654.0988 L642.2224,1655.9738 Q641.363,1656.3019 640.5974,1656.4269 Q639.8474,1656.5519 638.8318,1656.5519 Q636.9099,1656.5519 635.5974,1655.755 Q634.3005,1654.9425 633.6443,1653.4738 Q632.988,1651.9894 632.988,1650.0206 Q632.988,1648.5988 633.3787,1647.4269 Q633.7849,1646.2394 634.5662,1645.3644 Q635.3474,1644.4894 636.488,1644.0206 Q637.6287,1643.5363 639.0974,1643.5363 Q640.0505,1643.5363 640.9412,1643.7394 Q641.8474,1643.9269 642.7849,1644.3956 L641.9568,1646.1769 Q641.1755,1645.8019 640.5193,1645.6144 Q639.863,1645.4113 639.0662,1645.4113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="110.4176" x="659.4568" y="1655.312">ShieldsResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="576.46" x2="820.3711" y1="1665.88" y2="1665.88"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="581.46" y="1684.8459">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="233.9111" x="581.46" y="1703.9139">shields : Optional[list[dict[str, Any]]]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="576.46" x2="820.3711" y1="1712.0158" y2="1712.0158"/>
+    </g>
+    <!--class src.models.api.responses.successful.probes.StatusResponse-->
+    <g id="elem_src.models.api.responses.successful.probes.StatusResponse">
+      <rect codeLine="274" fill="#F1F1F1" height="105.2038" id="src.models.api.responses.successful.probes.StatusResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="211.9473" x="856.45" y="1624.34"/>
+      <ellipse cx="905.8488" cy="1640.34" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M905.9582,1635.8713 Q905.0363,1635.8713 904.302,1636.1838 Q903.5832,1636.4963 903.0832,1637.09 Q902.5832,1637.6681 902.302,1638.5431 Q902.0363,1639.4181 902.0363,1640.5119 Q902.0363,1641.9494 902.4738,1642.9963 Q902.927,1644.0431 903.7707,1644.59 Q904.6301,1645.1369 905.9426,1645.1369 Q906.7238,1645.1369 907.4113,1645.0119 Q908.1145,1644.8713 909.1145,1644.5588 L909.1145,1646.4338 Q908.2551,1646.7619 907.4895,1646.8869 Q906.7395,1647.0119 905.7238,1647.0119 Q903.802,1647.0119 902.4895,1646.215 Q901.1926,1645.4025 900.5363,1643.9338 Q899.8801,1642.4494 899.8801,1640.4806 Q899.8801,1639.0588 900.2707,1637.8869 Q900.677,1636.6994 901.4582,1635.8244 Q902.2395,1634.9494 903.3801,1634.4806 Q904.5207,1633.9963 905.9895,1633.9963 Q906.9426,1633.9963 907.8332,1634.1994 Q908.7395,1634.3869 909.677,1634.8556 L908.8488,1636.6369 Q908.0676,1636.2619 907.4113,1636.0744 Q906.7551,1635.8713 905.9582,1635.8713 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="104.6496" x="926.3488" y="1645.772">StatusResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="857.45" x2="1067.3973" y1="1656.34" y2="1656.34"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="176.4833" x="862.45" y="1675.3059">functionality : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="862.45" y="1694.3739">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="199.9473" x="862.45" y="1713.4418">status : Optional[dict[str, Any]]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="857.45" x2="1067.3973" y1="1721.5438" y2="1721.5438"/>
+    </g>
+    <!--class src.models.api.responses.successful.query.StreamingInterruptResponse-->
+    <g id="elem_src.models.api.responses.successful.query.StreamingInterruptResponse">
+      <rect codeLine="279" fill="#F1F1F1" height="124.2717" id="src.models.api.responses.successful.query.StreamingInterruptResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="224.1073" x="1103.37" y="1614.81"/>
+      <ellipse cx="1118.37" cy="1630.81" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1118.4794,1626.3413 Q1117.5575,1626.3413 1116.8231,1626.6538 Q1116.1044,1626.9663 1115.6044,1627.56 Q1115.1044,1628.1381 1114.8231,1629.0131 Q1114.5575,1629.8881 1114.5575,1630.9819 Q1114.5575,1632.4194 1114.995,1633.4663 Q1115.4481,1634.5131 1116.2919,1635.06 Q1117.1513,1635.6069 1118.4638,1635.6069 Q1119.245,1635.6069 1119.9325,1635.4819 Q1120.6356,1635.3413 1121.6356,1635.0288 L1121.6356,1636.9038 Q1120.7763,1637.2319 1120.0106,1637.3569 Q1119.2606,1637.4819 1118.245,1637.4819 Q1116.3231,1637.4819 1115.0106,1636.685 Q1113.7138,1635.8725 1113.0575,1634.4038 Q1112.4013,1632.9194 1112.4013,1630.9506 Q1112.4013,1629.5288 1112.7919,1628.3569 Q1113.1981,1627.1694 1113.9794,1626.2944 Q1114.7606,1625.4194 1115.9013,1624.9506 Q1117.0419,1624.4663 1118.5106,1624.4663 Q1119.4638,1624.4663 1120.3544,1624.6694 Q1121.2606,1624.8569 1122.1981,1625.3256 L1121.37,1627.1069 Q1120.5888,1626.7319 1119.9325,1626.5444 Q1119.2763,1626.3413 1118.4794,1626.3413 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="192.1073" x="1132.37" y="1636.242">StreamingInterruptResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1104.37" x2="1326.4773" y1="1646.81" y2="1646.81"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="181.8033" x="1109.37" y="1665.7759">interrupted : Optional[bool]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="153.3414" x="1109.37" y="1684.8439">message : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1109.37" y="1703.9118">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="163.6174" x="1109.37" y="1722.9797">request_id : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1104.37" x2="1326.4773" y1="1731.0817" y2="1731.0817"/>
+    </g>
+    <!--class src.models.api.responses.successful.query.StreamingQueryResponse-->
+    <g id="elem_src.models.api.responses.successful.query.StreamingQueryResponse">
+      <rect codeLine="285" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.query.StreamingQueryResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="243.7131" x="1362.56" y="1633.88"/>
+      <ellipse cx="1395.3034" cy="1649.88" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1395.4128,1645.4113 Q1394.4909,1645.4113 1393.7565,1645.7238 Q1393.0378,1646.0363 1392.5378,1646.63 Q1392.0378,1647.2081 1391.7565,1648.0831 Q1391.4909,1648.9581 1391.4909,1650.0519 Q1391.4909,1651.4894 1391.9284,1652.5363 Q1392.3815,1653.5831 1393.2253,1654.13 Q1394.0847,1654.6769 1395.3972,1654.6769 Q1396.1784,1654.6769 1396.8659,1654.5519 Q1397.569,1654.4113 1398.569,1654.0988 L1398.569,1655.9738 Q1397.7097,1656.3019 1396.944,1656.4269 Q1396.194,1656.5519 1395.1784,1656.5519 Q1393.2565,1656.5519 1391.944,1655.755 Q1390.6472,1654.9425 1389.9909,1653.4738 Q1389.3347,1651.9894 1389.3347,1650.0206 Q1389.3347,1648.5988 1389.7253,1647.4269 Q1390.1315,1646.2394 1390.9128,1645.3644 Q1391.694,1644.4894 1392.8347,1644.0206 Q1393.9753,1643.5363 1395.444,1643.5363 Q1396.3972,1643.5363 1397.2878,1643.7394 Q1398.194,1643.9269 1399.1315,1644.3956 L1398.3034,1646.1769 Q1397.5222,1645.8019 1396.8659,1645.6144 Q1396.2097,1645.4113 1395.4128,1645.4113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="172.2833" x="1413.2464" y="1655.312">StreamingQueryResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1363.56" x2="1605.2731" y1="1665.88" y2="1665.88"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1368.56" y="1684.8459">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1363.56" x2="1605.2731" y1="1692.9479" y2="1692.9479"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="231.7131" x="1368.56" y="1711.9139">openapi_response() -&gt; dict[str, Any]</text>
+    </g>
+    <!--class src.models.api.responses.successful.catalog.ToolsResponse-->
+    <g id="elem_src.models.api.responses.successful.catalog.ToolsResponse">
+      <rect codeLine="289" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.successful.catalog.ToolsResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="232.4292" x="1641.2" y="1633.88"/>
+      <ellipse cx="1703.8218" cy="1649.88" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1703.9312,1645.4113 Q1703.0093,1645.4113 1702.2749,1645.7238 Q1701.5562,1646.0363 1701.0562,1646.63 Q1700.5562,1647.2081 1700.2749,1648.0831 Q1700.0093,1648.9581 1700.0093,1650.0519 Q1700.0093,1651.4894 1700.4468,1652.5363 Q1700.8999,1653.5831 1701.7437,1654.13 Q1702.603,1654.6769 1703.9155,1654.6769 Q1704.6968,1654.6769 1705.3843,1654.5519 Q1706.0874,1654.4113 1707.0874,1654.0988 L1707.0874,1655.9738 Q1706.228,1656.3019 1705.4624,1656.4269 Q1704.7124,1656.5519 1703.6968,1656.5519 Q1701.7749,1656.5519 1700.4624,1655.755 Q1699.1655,1654.9425 1698.5093,1653.4738 Q1697.853,1651.9894 1697.853,1650.0206 Q1697.853,1648.5988 1698.2437,1647.4269 Q1698.6499,1646.2394 1699.4312,1645.3644 Q1700.2124,1644.4894 1701.353,1644.0206 Q1702.4937,1643.5363 1703.9624,1643.5363 Q1704.9155,1643.5363 1705.8062,1643.7394 Q1706.7124,1643.9269 1707.6499,1644.3956 L1706.8218,1646.1769 Q1706.0405,1645.8019 1705.3843,1645.6144 Q1704.728,1645.4113 1703.9312,1645.4113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="98.6856" x="1724.3218" y="1655.312">ToolsResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1642.2" x2="1872.6292" y1="1665.88" y2="1665.88"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1647.2" y="1684.8459">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="220.4292" x="1647.2" y="1703.9139">tools : Optional[list[dict[str, Any]]]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1642.2" x2="1872.6292" y1="1712.0158" y2="1712.0158"/>
+    </g>
+    <!--class src.models.api.responses.error.unauthorized.UnauthorizedResponse-->
+    <g id="elem_src.models.api.responses.error.unauthorized.UnauthorizedResponse">
+      <rect codeLine="293" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.error.unauthorized.UnauthorizedResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="185.6914" x="1908.57" y="1633.88"/>
+      <ellipse cx="1923.57" cy="1649.88" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1923.6794,1645.4113 Q1922.7575,1645.4113 1922.0231,1645.7238 Q1921.3044,1646.0363 1920.8044,1646.63 Q1920.3044,1647.2081 1920.0231,1648.0831 Q1919.7575,1648.9581 1919.7575,1650.0519 Q1919.7575,1651.4894 1920.195,1652.5363 Q1920.6481,1653.5831 1921.4919,1654.13 Q1922.3513,1654.6769 1923.6638,1654.6769 Q1924.445,1654.6769 1925.1325,1654.5519 Q1925.8356,1654.4113 1926.8356,1654.0988 L1926.8356,1655.9738 Q1925.9763,1656.3019 1925.2106,1656.4269 Q1924.4606,1656.5519 1923.445,1656.5519 Q1921.5231,1656.5519 1920.2106,1655.755 Q1918.9138,1654.9425 1918.2575,1653.4738 Q1917.6013,1651.9894 1917.6013,1650.0206 Q1917.6013,1648.5988 1917.9919,1647.4269 Q1918.3981,1646.2394 1919.1794,1645.3644 Q1919.9606,1644.4894 1921.1013,1644.0206 Q1922.2419,1643.5363 1923.7106,1643.5363 Q1924.6638,1643.5363 1925.5544,1643.7394 Q1926.4606,1643.9269 1927.3981,1644.3956 L1926.57,1646.1769 Q1925.7888,1645.8019 1925.1325,1645.6144 Q1924.4763,1645.4113 1923.6794,1645.4113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="153.6914" x="1937.57" y="1655.312">UnauthorizedResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1909.57" x2="2093.2614" y1="1665.88" y2="1665.88"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="167.2714" x="1914.57" y="1684.8459">description : ClassVar[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1914.57" y="1703.9139">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1909.57" x2="2093.2614" y1="1712.0158" y2="1712.0158"/>
+    </g>
+    <!--class src.models.api.responses.error.unprocessable_entity.UnprocessableEntityResponse-->
+    <g id="elem_src.models.api.responses.error.unprocessable_entity.UnprocessableEntityResponse">
+      <rect codeLine="297" fill="#F1F1F1" height="86.1358" id="src.models.api.responses.error.unprocessable_entity.UnprocessableEntityResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="230.6872" x="52.08" y="1865.82"/>
+      <ellipse cx="67.08" cy="1881.82" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M67.1894,1877.3513 Q66.2675,1877.3513 65.5331,1877.6638 Q64.8144,1877.9763 64.3144,1878.57 Q63.8144,1879.1481 63.5331,1880.0231 Q63.2675,1880.8981 63.2675,1881.9919 Q63.2675,1883.4294 63.705,1884.4763 Q64.1581,1885.5231 65.0019,1886.07 Q65.8613,1886.6169 67.1738,1886.6169 Q67.955,1886.6169 68.6425,1886.4919 Q69.3456,1886.3513 70.3456,1886.0388 L70.3456,1887.9138 Q69.4863,1888.2419 68.7206,1888.3669 Q67.9706,1888.4919 66.955,1888.4919 Q65.0331,1888.4919 63.7206,1887.695 Q62.4238,1886.8825 61.7675,1885.4138 Q61.1113,1883.9294 61.1113,1881.9606 Q61.1113,1880.5388 61.5019,1879.3669 Q61.9081,1878.1794 62.6894,1877.3044 Q63.4706,1876.4294 64.6113,1875.9606 Q65.7519,1875.4763 67.2206,1875.4763 Q68.1738,1875.4763 69.0644,1875.6794 Q69.9706,1875.8669 70.9081,1876.3356 L70.08,1878.1169 Q69.2988,1877.7419 68.6425,1877.5544 Q67.9863,1877.3513 67.1894,1877.3513 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="198.6872" x="81.08" y="1887.252">UnprocessableEntityResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="53.08" x2="281.7672" y1="1897.82" y2="1897.82"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="167.2714" x="58.08" y="1916.7859">description : ClassVar[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="58.08" y="1935.8539">model_config : dict</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="53.08" x2="281.7672" y1="1943.9558" y2="1943.9558"/>
+    </g>
+    <!--class src.models.api.responses.successful.vector_stores.VectorStoreDeleteResponse-->
+    <g id="elem_src.models.api.responses.successful.vector_stores.VectorStoreDeleteResponse">
+      <rect codeLine="301" fill="#F1F1F1" height="105.2038" id="src.models.api.responses.successful.vector_stores.VectorStoreDeleteResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="215.4273" x="317.71" y="1856.28"/>
+      <ellipse cx="332.71" cy="1872.28" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M332.8194,1867.8113 Q331.8975,1867.8113 331.1631,1868.1238 Q330.4444,1868.4363 329.9444,1869.03 Q329.4444,1869.6081 329.1631,1870.4831 Q328.8975,1871.3581 328.8975,1872.4519 Q328.8975,1873.8894 329.335,1874.9363 Q329.7881,1875.9831 330.6319,1876.53 Q331.4913,1877.0769 332.8038,1877.0769 Q333.585,1877.0769 334.2725,1876.9519 Q334.9756,1876.8113 335.9756,1876.4988 L335.9756,1878.3738 Q335.1163,1878.7019 334.3506,1878.8269 Q333.6006,1878.9519 332.585,1878.9519 Q330.6631,1878.9519 329.3506,1878.155 Q328.0538,1877.3425 327.3975,1875.8738 Q326.7413,1874.3894 326.7413,1872.4206 Q326.7413,1870.9988 327.1319,1869.8269 Q327.5381,1868.6394 328.3194,1867.7644 Q329.1006,1866.8894 330.2413,1866.4206 Q331.3819,1865.9363 332.8506,1865.9363 Q333.8038,1865.9363 334.6944,1866.1394 Q335.6006,1866.3269 336.5381,1866.7956 L335.71,1868.5769 Q334.9288,1868.2019 334.2725,1868.0144 Q333.6163,1867.8113 332.8194,1867.8113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="183.4273" x="346.71" y="1877.712">VectorStoreDeleteResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="318.71" x2="532.1373" y1="1888.28" y2="1888.28"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="323.71" y="1907.2459">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="195.1593" x="323.71" y="1926.3139">resource_name : ClassVar[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="194.1793" x="323.71" y="1945.3818">vector_store_id : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="318.71" x2="532.1373" y1="1953.4838" y2="1953.4838"/>
+    </g>
+    <!--class src.models.api.responses.successful.vector_stores.VectorStoreFileDeleteResponse-->
+    <g id="elem_src.models.api.responses.successful.vector_stores.VectorStoreFileDeleteResponse">
+      <rect codeLine="306" fill="#F1F1F1" height="105.2038" id="src.models.api.responses.successful.vector_stores.VectorStoreFileDeleteResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="237.8132" x="568.51" y="1856.28"/>
+      <ellipse cx="583.51" cy="1872.28" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M583.6194,1867.8113 Q582.6975,1867.8113 581.9631,1868.1238 Q581.2444,1868.4363 580.7444,1869.03 Q580.2444,1869.6081 579.9631,1870.4831 Q579.6975,1871.3581 579.6975,1872.4519 Q579.6975,1873.8894 580.135,1874.9363 Q580.5881,1875.9831 581.4319,1876.53 Q582.2913,1877.0769 583.6038,1877.0769 Q584.385,1877.0769 585.0725,1876.9519 Q585.7756,1876.8113 586.7756,1876.4988 L586.7756,1878.3738 Q585.9163,1878.7019 585.1506,1878.8269 Q584.4006,1878.9519 583.385,1878.9519 Q581.4631,1878.9519 580.1506,1878.155 Q578.8538,1877.3425 578.1975,1875.8738 Q577.5413,1874.3894 577.5413,1872.4206 Q577.5413,1870.9988 577.9319,1869.8269 Q578.3381,1868.6394 579.1194,1867.7644 Q579.9006,1866.8894 581.0413,1866.4206 Q582.1819,1865.9363 583.6506,1865.9363 Q584.6038,1865.9363 585.4944,1866.1394 Q586.4006,1866.3269 587.3381,1866.7956 L586.51,1868.5769 Q585.7288,1868.2019 585.0725,1868.0144 Q584.4163,1867.8113 583.6194,1867.8113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="205.8132" x="597.51" y="1877.712">VectorStoreFileDeleteResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="569.51" x2="805.3232" y1="1888.28" y2="1888.28"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.9575" x="574.51" y="1907.2459">file_id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="574.51" y="1926.3139">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="195.1593" x="574.51" y="1945.3818">resource_name : ClassVar[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="569.51" x2="805.3232" y1="1953.4838" y2="1953.4838"/>
+    </g>
+    <!--class src.models.api.responses.successful.vector_stores.VectorStoreFileResponse-->
+    <g id="elem_src.models.api.responses.successful.vector_stores.VectorStoreFileResponse">
+      <rect codeLine="311" fill="#F1F1F1" height="181.4754" id="src.models.api.responses.successful.vector_stores.VectorStoreFileResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="317.9549" x="841.44" y="1818.15"/>
+      <ellipse cx="914.5478" cy="1834.15" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M914.6571,1829.6813 Q913.7353,1829.6813 913.0009,1829.9938 Q912.2821,1830.3063 911.7821,1830.9 Q911.2821,1831.4781 911.0009,1832.3531 Q910.7353,1833.2281 910.7353,1834.3219 Q910.7353,1835.7594 911.1728,1836.8063 Q911.6259,1837.8531 912.4696,1838.4 Q913.329,1838.9469 914.6415,1838.9469 Q915.4228,1838.9469 916.1103,1838.8219 Q916.8134,1838.6813 917.8134,1838.3688 L917.8134,1840.2438 Q916.954,1840.5719 916.1884,1840.6969 Q915.4384,1840.8219 914.4228,1840.8219 Q912.5009,1840.8219 911.1884,1840.025 Q909.8915,1839.2125 909.2353,1837.7438 Q908.579,1836.2594 908.579,1834.2906 Q908.579,1832.8688 908.9696,1831.6969 Q909.3759,1830.5094 910.1571,1829.6344 Q910.9384,1828.7594 912.079,1828.2906 Q913.2196,1827.8063 914.6884,1827.8063 Q915.6415,1827.8063 916.5321,1828.0094 Q917.4384,1828.1969 918.3759,1828.6656 L917.5478,1830.4469 Q916.7665,1830.0719 916.1103,1829.8844 Q915.454,1829.6813 914.6571,1829.6813 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="163.2394" x="935.0478" y="1839.582">VectorStoreFileResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="842.44" x2="1158.3949" y1="1850.15" y2="1850.15"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="305.9549" x="847.44" y="1869.1159">attributes : Optional[dict[str, str | float | bool]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="106.8056" x="847.44" y="1888.1839">id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="157.7374" x="847.44" y="1907.2518">last_error : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="847.44" y="1926.3197">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="134.9455" x="847.44" y="1945.3876">object : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="134.6095" x="847.44" y="1964.4555">status : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="194.1793" x="847.44" y="1983.5234">vector_store_id : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="842.44" x2="1158.3949" y1="1991.6254" y2="1991.6254"/>
+    </g>
+    <!--class src.models.api.responses.successful.vector_stores.VectorStoreFilesListResponse-->
+    <g id="elem_src.models.api.responses.successful.vector_stores.VectorStoreFilesListResponse">
+      <rect codeLine="320" fill="#F1F1F1" height="105.2038" id="src.models.api.responses.successful.vector_stores.VectorStoreFilesListResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="309.8489" x="1194.5" y="1856.28"/>
+      <ellipse cx="1248.8478" cy="1872.28" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1248.9572,1867.8113 Q1248.0353,1867.8113 1247.3009,1868.1238 Q1246.5822,1868.4363 1246.0822,1869.03 Q1245.5822,1869.6081 1245.3009,1870.4831 Q1245.0353,1871.3581 1245.0353,1872.4519 Q1245.0353,1873.8894 1245.4728,1874.9363 Q1245.9259,1875.9831 1246.7697,1876.53 Q1247.6291,1877.0769 1248.9416,1877.0769 Q1249.7228,1877.0769 1250.4103,1876.9519 Q1251.1134,1876.8113 1252.1134,1876.4988 L1252.1134,1878.3738 Q1251.2541,1878.7019 1250.4884,1878.8269 Q1249.7384,1878.9519 1248.7228,1878.9519 Q1246.8009,1878.9519 1245.4884,1878.155 Q1244.1916,1877.3425 1243.5353,1875.8738 Q1242.8791,1874.3894 1242.8791,1872.4206 Q1242.8791,1870.9988 1243.2697,1869.8269 Q1243.6759,1868.6394 1244.4572,1867.7644 Q1245.2384,1866.8894 1246.3791,1866.4206 Q1247.5197,1865.9363 1248.9884,1865.9363 Q1249.9416,1865.9363 1250.8322,1866.1394 Q1251.7384,1866.3269 1252.6759,1866.7956 L1251.8478,1868.5769 Q1251.0666,1868.2019 1250.4103,1868.0144 Q1249.7541,1867.8113 1248.9572,1867.8113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="192.6533" x="1269.3478" y="1877.712">VectorStoreFilesListResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1195.5" x2="1503.3489" y1="1888.28" y2="1888.28"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="297.8489" x="1200.5" y="1907.2459">data : Optional[list[VectorStoreFileResponse]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1200.5" y="1926.3139">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="134.9455" x="1200.5" y="1945.3818">object : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1195.5" x2="1503.3489" y1="1953.4838" y2="1953.4838"/>
+    </g>
+    <!--class src.models.api.responses.successful.vector_stores.VectorStoreResponse-->
+    <g id="elem_src.models.api.responses.successful.vector_stores.VectorStoreResponse">
+      <rect codeLine="325" fill="#F1F1F1" height="219.6113" id="src.models.api.responses.successful.vector_stores.VectorStoreResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="235.1872" x="1539.83" y="1799.08"/>
+      <ellipse cx="1582.8802" cy="1815.08" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1582.9896,1810.6113 Q1582.0677,1810.6113 1581.3333,1810.9238 Q1580.6146,1811.2363 1580.1146,1811.83 Q1579.6146,1812.4081 1579.3333,1813.2831 Q1579.0677,1814.1581 1579.0677,1815.2519 Q1579.0677,1816.6894 1579.5052,1817.7363 Q1579.9583,1818.7831 1580.8021,1819.33 Q1581.6614,1819.8769 1582.9739,1819.8769 Q1583.7552,1819.8769 1584.4427,1819.7519 Q1585.1458,1819.6113 1586.1458,1819.2988 L1586.1458,1821.1738 Q1585.2864,1821.5019 1584.5208,1821.6269 Q1583.7708,1821.7519 1582.7552,1821.7519 Q1580.8333,1821.7519 1579.5208,1820.955 Q1578.2239,1820.1425 1577.5677,1818.6738 Q1576.9114,1817.1894 1576.9114,1815.2206 Q1576.9114,1813.7988 1577.3021,1812.6269 Q1577.7083,1811.4394 1578.4896,1810.5644 Q1579.2708,1809.6894 1580.4114,1809.2206 Q1581.5521,1808.7363 1583.0208,1808.7363 Q1583.9739,1808.7363 1584.8646,1808.9394 Q1585.7708,1809.1269 1586.7083,1809.5956 L1585.8802,1811.3769 Q1585.0989,1811.0019 1584.4427,1810.8144 Q1583.7864,1810.6113 1582.9896,1810.6113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="140.8535" x="1603.1135" y="1820.512">VectorStoreResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1540.83" x2="1774.0172" y1="1831.08" y2="1831.08"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="163.2954" x="1545.83" y="1850.0459">created_at : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="161.3914" x="1545.83" y="1869.1139">expires_at : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="106.8056" x="1545.83" y="1888.1818">id : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="181.1733" x="1545.83" y="1907.2497">last_active_at : Optional[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="223.1872" x="1545.83" y="1926.3176">metadata : Optional[dict[str, Any]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1545.83" y="1945.3855">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="132.0755" x="1545.83" y="1964.4534">name : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="134.6095" x="1545.83" y="1983.5214">status : Optional[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="175.6993" x="1545.83" y="2002.5893">usage_bytes : Optional[int]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1540.83" x2="1774.0172" y1="2010.6913" y2="2010.6913"/>
+    </g>
+    <!--class src.models.api.responses.successful.vector_stores.VectorStoresListResponse-->
+    <g id="elem_src.models.api.responses.successful.vector_stores.VectorStoresListResponse">
+      <rect codeLine="336" fill="#F1F1F1" height="105.2038" id="src.models.api.responses.successful.vector_stores.VectorStoresListResponse" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="287.463" x="1809.69" y="1856.28"/>
+      <ellipse cx="1864.0378" cy="1872.28" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M1864.1472,1867.8113 Q1863.2253,1867.8113 1862.4909,1868.1238 Q1861.7722,1868.4363 1861.2722,1869.03 Q1860.7722,1869.6081 1860.4909,1870.4831 Q1860.2253,1871.3581 1860.2253,1872.4519 Q1860.2253,1873.8894 1860.6628,1874.9363 Q1861.1159,1875.9831 1861.9597,1876.53 Q1862.8191,1877.0769 1864.1316,1877.0769 Q1864.9128,1877.0769 1865.6003,1876.9519 Q1866.3034,1876.8113 1867.3034,1876.4988 L1867.3034,1878.3738 Q1866.4441,1878.7019 1865.6784,1878.8269 Q1864.9284,1878.9519 1863.9128,1878.9519 Q1861.9909,1878.9519 1860.6784,1878.155 Q1859.3816,1877.3425 1858.7253,1875.8738 Q1858.0691,1874.3894 1858.0691,1872.4206 Q1858.0691,1870.9988 1858.4597,1869.8269 Q1858.8659,1868.6394 1859.6472,1867.7644 Q1860.4284,1866.8894 1861.5691,1866.4206 Q1862.7097,1865.9363 1864.1784,1865.9363 Q1865.1316,1865.9363 1866.0222,1866.1394 Q1866.9284,1866.3269 1867.8659,1866.7956 L1867.0378,1868.5769 Q1866.2566,1868.2019 1865.6003,1868.0144 Q1864.9441,1867.8113 1864.1472,1867.8113 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="170.2674" x="1884.5378" y="1877.712">VectorStoresListResponse</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1810.69" x2="2096.153" y1="1888.28" y2="1888.28"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="275.463" x="1815.69" y="1907.2459">data : Optional[list[VectorStoreResponse]]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.8015" x="1815.69" y="1926.3139">model_config : dict</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="134.9455" x="1815.69" y="1945.3818">object : Optional[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="1810.69" x2="2096.153" y1="1953.4838" y2="1953.4838"/>
+    </g>
+    <!--SRC=[pLfBZzis4BxdLmYzP0ka0ffZ3WNItMnRODEaw-nU0aEW9SfcGuiAIHdhFlvxPqX9baIAAyb6szEkHSxecmVdHIcgeuBigIf9IbUq999e8QD25FH5oebIqJTlDqfBakeRogcczx1L58f-4n4LAPd6Uv5Hhc9IibZMQofMLPfIfVAAnnk23_nCeZzVH55c7cNHc-X3gPae2F-y4OAlOGaOYagcD468iE4Q4JqI-HcOuReeQG4lJfeNNtqRVVT3bB5KuuvNqTlYMBFfBCFAYx-7mhsJKiXfib7SEX2hHrvBfGdZNQ5kp9Fto191AKrqfP8KVdTtiKBZwfRg9ACgbSmid91xXAPFP5zogZfSE5D61UkrJoEEzAlMN6UQrsLab379JYTKbTu9oVwWsMmqfHGRXEDmC30CDMYyoDaMT8xlHqDyOMLIAIfPbgGxcdxnUIAk9wpdfBKFuahjdlsbLfuV2S3uMb6bvpbO1leoPB7BeVQnra4yXyCdROlfsZokuBG3yMmrfrtgsClB0EpjGuZTtov4ktpZ0ENmP8xgqfec7X8lr5eKvOpJH54YqvtrtHNbEUvEoqI3Yro14np0GpZPKFu63-ffLrSKsAECy0k3QTfXeU9nXetsssM_x_g5VIxgrdYi8l20-4Mye71ziNP49pi8S48Ues7Cwr9zgcInNYzMX5UeXp8Z5xLRd-5Kkm5RigMJBLeZSGERLqPrnwQ6gaaYzlWv4Y8gntGsLwfPfkczvl7rfO4_lfu8dMZoBEvEBJ2zsEWGMIW4Se_71nhgyOnqIscs8UcNsKREQy9uo26GNwV3MPcIQE4HSw3vk8NA0BEz_kqhIsuX1yn6TQ0fnAa4WnKiT5aOA9kZfifJ_gMI0kei8TgpYCd8Mt54qOmeBpQ_0pRFzhAIfGYQ2zx_IOWx8hTqPbhMjD2OC25H0d7iuxGuHzEd52ol4YvImXFEzaptSdKknJv1nw05LbOeVLjPznFrhP0RbcMqc2DTtX353lbYaRh1veeOlAQuU7NAqIohdzGLwg3u0BKKMId0Swx6DZG79ycO8XjECwV2gOiRF24ihK4s5GyweiFIIYDW7OfgwbFnBqKkbbRtNLgZMix9dY0y40BrPLKyxHYC72IKZe5wnzXr1D5O__ELKSViDfBLv760ptBt8T3F95L13f0tqBGzo_QAywGG6auEoGRcX-19CFia1kwLrszAedS9Amw4i-mAVpZ-iAK5j5Vfc6D9kcNOFneWEM0TW83EHnwR1PFrnahiEtQ0LocrrBM6z4Rr8DU1-fh2O8f_V_tncZE8TzYCMjBvi4vAKd68OIYlMNAdKWPsrjUG7HwfzRe7tYukx5C6k7sy0f17pcIuBt6nBofZlSYT0dQXgaVLVDyv0PU1xEDeeS_i7KQC0GVc0B5zR2WY-NZ8D1Ni_BEGGYZYOXltoGFci0mTQ_JhkwuvVXNwLbH5DYU0OzpCaIWUKfyxela8zKgvTEfQ6c8L-vW4L6R9_3QTUFpi6-_hpMS27x8nq9bACfgJYkkfGRaHpE_7en8VY6IODbqVCgDLtE6M1wP87sW3QrnHRCyhbhsiBkDaoph-lgdSBXzh1qTpVhkkfm0ryMPns1WoiAczP1wxjn3QXK7CW3qxIhZUXVUCkc8WShQh-bW6Uh16ceMpce5ErCG4ru1JVhczuRK3-ZUiusQ3DTLVtAErjckgskHh9JGPmOJ7STeCa1LbXUSD-aDVIpxIHLSwI2N9DabtLV75ZI7tRt-wnfMr3QuvbRH8eUVFH5hjuUXxADfDD_MUTN3U4qKucqwW7VQaGGWa_1fMLjL-JwHrMBCTs45ezHFScxKUYQoAb7Zlxpfs1_kyC-qvdPLSCVZjIN5iBa9Kx6MrVAoF8m6S6zXBDlZlJTHvW-d2dBxsolBoDBwjm63QHGrkSou7z7RQ5ne9qQUI0KV_ejVR0QXESAHme7wgMTNWw32fdQgvrsPGX2R- -LTNZsV5jm5zQ4X9jcDP_eI6aeoTqrqw3EQ6sYQ3cfMVJGQoKyuw3f3iwBz69oeqmsZWp1UiVPYOAruMEwp6GdK_Gfi0ZPVOenxUZT- -bDqz7K22Pm9FRtUhESxjWR2NwQo0lrNQJFETbeWy9S-5UDpZZxFD1gh9i1OwYT-KaaRLBQvdPhPtJ5C9R5us1dYvRfDHSodnmVnQTv8KVTBj2_1B3yxX7JtevZOFdOyUcAXKUs4_MgiCYcfRtPryZXMzCkg-UMX20ycfFW9do6CiPrI6meS5RSReFW_NT5-2GdJLNywv8DgkF_LmVeBVf_ou4opjqPdSQ9uscznZQDMBE-lKMIQb_zqsG_hzjXhsuW_uO3txcubxhc3pu_UGDgZ4AwZfHzXGnWu3ssg5QwB_H_LZIWE_Xmxj_Y-LHNwpp8-k7jC4Eop7YC-sLIixvtuupOZdr6VDbBmpOex7EPxRgwvsZF9i-U1eG1yQvDcTCqP7DWqlBGpwr0PO3a73lfhfu_IBVgVS6dQb7SGGelSGYytDWwnAlR0p6sTKXv3wgVyJlxdZoC1nTqKxf-7qCmaupRo0ZM5ZkIltg0EO_Abht8tXrCxy-Cu6Wgf35_kOd7ls7meuAgW532Zle63GntduEkG9DVHnWEUvS1_DjVyAovM50zp-XmEZ_CBVNGG_u-g-8NYSEY_72_jB2-Joj04GFxcxs5ThOy9SLen-qwErP9jgqE3s2l_ehyYKYV1tqnIIuzswqz0i-xvZj2LVwX3BPf11HKuS9e-eVprRApxHBYVHVpl72NQVuL7rsCSHPmrrEegviEVCzvepFEOV]-->
+  </g>
+</svg>

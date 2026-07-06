@@ -98,8 +98,14 @@ async def models_endpoint_handler(
     - model_type: Optional filter to return only models matching this type.
 
     ### Raises:
-    - HTTPException: If unable to connect to the Llama Stack server or if
-      model retrieval fails for any reason.
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 422 if model_type parameter is
+      improper.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - ModelsResponse: An object containing the list of available models.

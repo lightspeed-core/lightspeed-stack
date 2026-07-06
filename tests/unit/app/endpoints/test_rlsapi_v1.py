@@ -6,7 +6,6 @@
 # pylint: disable=too-many-arguments
 # pylint: disable=too-many-positional-arguments
 
-import io
 import logging
 import re
 from collections.abc import Callable
@@ -20,17 +19,15 @@ from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
 import constants
-from app.endpoints import rlsapi_v1
 from app.endpoints.rlsapi_v1 import (
     AUTH_DISABLED,
     TemplateRenderError,
     _build_instructions,
+    _call_llm,
     _compile_prompt_template,
     _get_default_model_id,
-    _redact_sensitive_error_text,
     _resolve_quota_subject,
     infer_endpoint,
-    retrieve_simple_response,
 )
 from authentication.interface import AuthTuple
 from authentication.rh_identity import RHIdentityData
@@ -244,25 +241,6 @@ def test_build_instructions_no_customization(mocker: MockerFixture) -> None:
     result = _build_instructions(systeminfo)
 
     assert result == constants.DEFAULT_SYSTEM_PROMPT
-
-
-@pytest.mark.parametrize(
-    ("error_text", "expected"),
-    [
-        (
-            "APIStatusError: PRIVATE prompt sk-backend-secret failed",
-            "APIStatusError: PRIVATE [REDACTED]",
-        ),
-        (
-            "provider rejected token sk-proj-secret_key with status 401",
-            "provider rejected token sk-[REDACTED] with status 401",
-        ),
-    ],
-    ids=["private_block", "secret_key"],
-)
-def test_redact_sensitive_error_text(error_text: str, expected: str) -> None:
-    """Test backend error text redaction removes prompt and key secrets."""
-    assert _redact_sensitive_error_text(error_text) == expected
 
 
 # --- Test Jinja2 template rendering ---
@@ -480,40 +458,6 @@ async def test_get_default_model_id_auto_discovery_success(
     assert model_id == "openai/gpt-4o-mini"
 
 
-# --- Test retrieve_simple_response ---
-
-
-@pytest.mark.asyncio
-async def test_retrieve_simple_response_success(
-    mock_configuration: AppConfig, mock_llm_response: None
-) -> None:
-    """Test retrieve_simple_response returns LLM response text."""
-    response = await retrieve_simple_response(
-        "How do I list files?", constants.DEFAULT_SYSTEM_PROMPT
-    )
-    assert response == "This is a test LLM response."
-
-
-@pytest.mark.asyncio
-async def test_retrieve_simple_response_empty_output(
-    mock_configuration: AppConfig, mock_empty_llm_response: None
-) -> None:
-    """Test retrieve_simple_response handles empty LLM output."""
-    response = await retrieve_simple_response(
-        "Test question", constants.DEFAULT_SYSTEM_PROMPT
-    )
-    assert response == ""
-
-
-@pytest.mark.asyncio
-async def test_retrieve_simple_response_api_connection_error(
-    mock_configuration: AppConfig, mock_api_connection_error: None
-) -> None:
-    """Test retrieve_simple_response propagates APIConnectionError."""
-    with pytest.raises(APIConnectionError):
-        await retrieve_simple_response("Test question", constants.DEFAULT_SYSTEM_PROMPT)
-
-
 # --- Test get_rh_identity_context ---
 
 
@@ -687,12 +631,12 @@ async def test_infer_full_context_request(
 
 @pytest.mark.asyncio
 async def test_infer_info_logs_omit_user_supplied_content(
-    mocker: MockerFixture,
     mock_configuration: AppConfig,
     mock_llm_response: None,
     mock_auth_resolvers: None,
     mock_request_factory: Callable[..., Any],
     mock_background_tasks: Any,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test info logs include operational metadata without user content."""
     infer_request = RlsapiV1InferRequest(
@@ -707,26 +651,24 @@ async def test_infer_info_logs_omit_user_supplied_content(
             systeminfo=RlsapiV1SystemInfo(os="RHEL", version="9.3", arch="x86_64"),
         ),
     )
-    log_stream = io.StringIO()
-    log_handler = logging.StreamHandler(log_stream)
-    mocker.patch.object(rlsapi_v1.logger, "handlers", [log_handler])
 
-    await infer_endpoint(
-        infer_request=infer_request,
-        request=mock_request_factory(),
-        background_tasks=mock_background_tasks,
-        auth=MOCK_AUTH,
-    )
+    with caplog.at_level(
+        logging.INFO, logger=f"{constants.DEFAULT_LOGGER_NAME}..app.endpoints.rlsapi_v1"
+    ):
+        await infer_endpoint(
+            infer_request=infer_request,
+            request=mock_request_factory(),
+            background_tasks=mock_background_tasks,
+            auth=MOCK_AUTH,
+        )
 
-    log_handler.flush()
-    logs = log_stream.getvalue()
-    assert "Processing rlsapi v1 /infer request" in logs
-    assert "LLM call completed for rlsapi v1 request" in logs
-    assert "Completed rlsapi v1 /infer request" in logs
-    assert "sk-user-secret" not in logs
-    assert "super-secret" not in logs
-    assert "attachment-secret" not in logs
-    assert "PRIVATE terminal output" not in logs
+    assert "Processing rlsapi v1 /infer request" in caplog.text
+    assert "LLM call completed for rlsapi v1 request" in caplog.text
+    assert "Completed rlsapi v1 /infer request" in caplog.text
+    assert "sk-user-secret" not in caplog.text
+    assert "super-secret" not in caplog.text
+    assert "attachment-secret" not in caplog.text
+    assert "PRIVATE terminal output" not in caplog.text
 
 
 @pytest.mark.asyncio
@@ -784,32 +726,30 @@ async def test_infer_api_connection_error_returns_503(
 
 @pytest.mark.asyncio
 async def test_infer_api_status_error_logs_class_without_private_text(
-    mocker: MockerFixture,
     mock_configuration: AppConfig,
     mock_api_status_error_with_private_text: None,
     mock_auth_resolvers: None,
     mock_request_factory: Callable[..., Any],
     mock_background_tasks: Any,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test API status error logs omit raw exception text."""
-    log_stream = io.StringIO()
-    log_handler = logging.StreamHandler(log_stream)
-    mocker.patch.object(rlsapi_v1.logger, "handlers", [log_handler])
+    with caplog.at_level(
+        logging.ERROR,
+        logger=f"{constants.DEFAULT_LOGGER_NAME}..app.endpoints.rlsapi_v1",
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await infer_endpoint(
+                infer_request=RlsapiV1InferRequest(question="Test question"),
+                request=mock_request_factory(),
+                background_tasks=mock_background_tasks,
+                auth=MOCK_AUTH,
+            )
 
-    with pytest.raises(HTTPException) as exc_info:
-        await infer_endpoint(
-            infer_request=RlsapiV1InferRequest(question="Test question"),
-            request=mock_request_factory(),
-            background_tasks=mock_background_tasks,
-            auth=MOCK_AUTH,
-        )
-
-    log_handler.flush()
-    logs = log_stream.getvalue()
     assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-    assert "APIStatusError" in logs
-    assert "sk-backend-secret" not in logs
-    assert "PRIVATE prompt" not in logs
+    assert "APIStatusError" in caplog.text
+    assert "sk-backend-secret" not in caplog.text
+    assert "PRIVATE prompt" not in caplog.text
 
 
 @pytest.mark.asyncio
@@ -982,8 +922,8 @@ async def test_infer_extract_token_usage_on_failure_depends_on_verbose(
         )
     else:
         mocker.patch(
-            "app.endpoints.rlsapi_v1.retrieve_simple_response",
-            side_effect=RuntimeError("retrieval failed"),
+            "app.endpoints.rlsapi_v1._call_llm",
+            new=mocker.AsyncMock(side_effect=RuntimeError("retrieval failed")),
         )
 
     mock_extract = mocker.patch("app.endpoints.rlsapi_v1.extract_token_usage")
@@ -1384,8 +1324,8 @@ async def test_infer_shield_blocked_skips_llm_call(
         "app.endpoints.rlsapi_v1.run_shield_moderation",
         new=mocker.AsyncMock(return_value=blocked),
     )
-    mock_retrieve = mocker.patch(
-        "app.endpoints.rlsapi_v1.retrieve_simple_response",
+    mock_call_llm = mocker.patch(
+        "app.endpoints.rlsapi_v1._call_llm",
         new=mocker.AsyncMock(),
     )
 
@@ -1398,7 +1338,7 @@ async def test_infer_shield_blocked_skips_llm_call(
         auth=MOCK_AUTH,
     )
 
-    mock_retrieve.assert_not_called()
+    mock_call_llm.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -1568,40 +1508,36 @@ def _setup_responses_mock_with_capture(
     return mock_create
 
 
+@pytest.mark.parametrize(
+    "tools",
+    [
+        pytest.param(
+            [
+                {
+                    "type": "mcp",
+                    "server_label": "test-mcp",
+                    "server_url": "http://localhost:9000/sse",
+                    "require_approval": "never",
+                }
+            ],
+            id="forwards_tools",
+        ),
+        pytest.param(None, id="defaults_to_empty"),
+    ],
+)
 @pytest.mark.asyncio
-async def test_retrieve_simple_response_passes_tools(
-    mocker: MockerFixture, mock_configuration: AppConfig
+async def test_call_llm_forwards_tools(
+    mocker: MockerFixture,
+    mock_configuration: AppConfig,
+    tools: Optional[list[dict[str, Any]]],
 ) -> None:
-    """Test that retrieve_simple_response forwards tools to responses.create()."""
-    mock_create = _setup_responses_mock_with_capture(mocker)
-    tools = [
-        {
-            "type": "mcp",
-            "server_label": "test-mcp",
-            "server_url": "http://localhost:9000/sse",
-            "require_approval": "never",
-        }
-    ]
-
-    await retrieve_simple_response("Test question", "Instructions", tools=tools)
-
-    mock_create.assert_called_once()
-    call_kwargs = mock_create.call_args.kwargs
-    assert call_kwargs["tools"] == tools
-
-
-@pytest.mark.asyncio
-async def test_retrieve_simple_response_defaults_to_empty_tools(
-    mocker: MockerFixture, mock_configuration: AppConfig
-) -> None:
-    """Test that retrieve_simple_response passes empty list when tools is None."""
+    """Test that _call_llm forwards tools to responses.create(), defaulting to []."""
     mock_create = _setup_responses_mock_with_capture(mocker)
 
-    await retrieve_simple_response("Test question", "Instructions")
+    await _call_llm("Test question", "Instructions", tools=tools)
 
     mock_create.assert_called_once()
-    call_kwargs = mock_create.call_args.kwargs
-    assert call_kwargs["tools"] == []
+    assert mock_create.call_args.kwargs["tools"] == (tools or [])
 
 
 @pytest.mark.asyncio

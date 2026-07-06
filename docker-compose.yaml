@@ -24,10 +24,10 @@ services:
       # user (the registry shares this kvstore and must be writable at startup).
       - ./tests/e2e/rag:/opt/app-root/rag-seed:ro,z
       - mock-tls-certs:/certs:ro
+      - ${HF_CACHE_PATH:-./tmp/.hf-cache}:/opt/app-root/src/.cache/huggingface
     environment:
       - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
       - TAVILY_SEARCH_API_KEY=${TAVILY_SEARCH_API_KEY:-}
-      - EXTERNAL_PROVIDERS_DIR=${EXTERNAL_PROVIDERS_DIR:-/opt/app-root/external_providers}
       # OpenAI
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - E2E_OPENAI_MODEL=${E2E_OPENAI_MODEL:-gpt-4o-mini}
@@ -60,6 +60,8 @@ services:
       - LLAMA_STACK_LOGGING=${LLAMA_STACK_LOGGING:-}
       # FAISS test
       - FAISS_VECTOR_STORE_ID=${FAISS_VECTOR_STORE_ID:-}
+      # Prevent HuggingFace Hub update checks (HTTP 429 rate-limiting in CI from parallel jobs).
+      - HF_HUB_OFFLINE=1
       # OKP/Solr RAG
       - RH_SERVER_OKP=${RH_SERVER_OKP:-}
       - SOLR_URL=${SOLR_URL:-}
@@ -88,6 +90,7 @@ services:
       - "8080:8080"
     volumes:
       - ./lightspeed-stack.yaml:/app-root/lightspeed-stack.yaml:z
+      - ./tests/e2e/skills:/app-root/skills:ro,z
       - ./tests/e2e/secrets/mcp-token:/tmp/mcp-token:ro,z
       - ./tests/e2e/secrets/invalid-mcp-token:/tmp/invalid-mcp-token:ro,z
     environment:

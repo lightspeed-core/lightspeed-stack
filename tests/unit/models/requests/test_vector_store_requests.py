@@ -3,7 +3,71 @@
 import pytest
 from pydantic import ValidationError
 
-from models.api.requests import VectorStoreFileCreateRequest, VectorStoreUpdateRequest
+from models.api.requests import (
+    VectorStoreCreateRequest,
+    VectorStoreFileCreateRequest,
+    VectorStoreUpdateRequest,
+)
+
+
+class TestVectorStoreCreateRequest:
+    """Test cases for the VectorStoreCreateRequest model."""
+
+    def test_valid_create_with_name_only(self) -> None:
+        """Test valid create request with only required name field."""
+        request = VectorStoreCreateRequest(name="test_store")
+        assert request.name == "test_store"
+        assert request.embedding_model is None
+        assert request.embedding_dimension is None
+        assert request.provider_id is None
+
+    def test_valid_create_with_all_fields(self) -> None:
+        """Test valid create request with all optional fields."""
+        request = VectorStoreCreateRequest(
+            name="test_store",
+            embedding_model="text-embedding-ada-002",
+            embedding_dimension=1536,
+            provider_id="rhdh-docs",
+            metadata={"user_id": "user123"},
+        )
+        assert request.name == "test_store"
+        assert request.embedding_model == "text-embedding-ada-002"
+        assert request.embedding_dimension == 1536
+        assert request.provider_id == "rhdh-docs"
+        assert request.metadata == {"user_id": "user123"}
+
+    def test_name_required(self) -> None:
+        """Test that name field is required."""
+        with pytest.raises(ValidationError):
+            VectorStoreCreateRequest()  # pyright: ignore[reportCallIssue]
+
+    def test_name_cannot_be_empty(self) -> None:
+        """Test that name cannot be an empty string."""
+        with pytest.raises(ValidationError, match="at least 1 character"):
+            VectorStoreCreateRequest(name="")
+
+    def test_name_max_length_256(self) -> None:
+        """Test that name cannot exceed 256 characters."""
+        with pytest.raises(ValidationError, match="at most 256 characters"):
+            VectorStoreCreateRequest(name="a" * 257)
+
+    def test_name_at_max_length(self) -> None:
+        """Test that name at exactly 256 characters is accepted."""
+        request = VectorStoreCreateRequest(name="a" * 256)
+        assert len(request.name) == 256
+
+    def test_embedding_dimension_must_be_positive(self) -> None:
+        """Test that embedding_dimension must be greater than 0."""
+        with pytest.raises(ValidationError, match="greater than 0"):
+            VectorStoreCreateRequest(name="test_store", embedding_dimension=0)
+
+    def test_extra_fields_forbidden(self) -> None:
+        """Test that extra fields are rejected."""
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            VectorStoreCreateRequest(
+                name="test_store",
+                unknown_field="value",  # pyright: ignore[reportCallIssue]
+            )
 
 
 class TestVectorStoreUpdateRequest:

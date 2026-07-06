@@ -1,0 +1,10 @@
+meta:
+  format: 3
+  version: 7.14.0
+  timestamp: '2026-05-18T16:57:39.462108'
+  branch_coverage: false
+  show_contexts: false
+totals:
+  excluded_lines: 0
+  percent_statements_covered: 51.252847380410024
+  percent_statements_covered_display: '51'

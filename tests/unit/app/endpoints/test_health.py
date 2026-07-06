@@ -14,7 +14,10 @@ from app.endpoints.health import (
 )
 from authentication.interface import AuthTuple
 from models.api.responses.successful import ReadinessResponse
-from models.common import HealthStatus, ProviderHealthStatus
+from models.common import (
+    HealthStatus,
+    ProviderHealthStatus,
+)
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
@@ -24,6 +27,11 @@ async def test_readiness_probe_fails_due_to_unhealthy_providers(
 ) -> None:
     """Test the readiness endpoint handler fails when providers are unhealthy."""
     mock_authorization_resolvers(mocker)
+
+    # Mock DegradedModeTracker to return healthy (not degraded) state
+    mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
+    mock_instance = mock_tracker.return_value
+    mock_instance.is_degraded.return_value = False
 
     # Mock get_providers_health_statuses to return an unhealthy provider
     mock_get_providers_health_statuses = mocker.patch(
@@ -48,6 +56,8 @@ async def test_readiness_probe_fails_due_to_unhealthy_providers(
     assert response.ready is False
     assert "test_provider" in response.reason
     assert "Providers not healthy" in response.reason
+    assert response.overall_status == HealthStatus.UNHEALTHY
+    assert response.impacts is not None
     assert mock_response.status_code == 503
 
 
@@ -57,6 +67,11 @@ async def test_readiness_probe_success_when_all_providers_healthy(
 ) -> None:
     """Test the readiness endpoint handler succeeds when all providers are healthy."""
     mock_authorization_resolvers(mocker)
+
+    # Mock DegradedModeTracker to return healthy (not degraded) state
+    mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
+    mock_instance = mock_tracker.return_value
+    mock_instance.is_degraded.return_value = False
 
     # Mock get_providers_health_statuses to return healthy providers
     mock_get_providers_health_statuses = mocker.patch(
@@ -92,6 +107,8 @@ async def test_readiness_probe_success_when_all_providers_healthy(
     assert isinstance(response, ReadinessResponse)
     assert response.ready is True
     assert response.reason == "All providers are healthy"
+    assert response.overall_status == HealthStatus.HEALTHY
+    assert response.impacts is None
     # Should return empty list since no providers are unhealthy
     assert len(response.providers) == 0
 
@@ -102,6 +119,11 @@ async def test_readiness_probe_fails_when_model_not_available(
 ) -> None:
     """Test readiness returns 503 when providers are healthy but default model is missing."""
     mock_authorization_resolvers(mocker)
+
+    # Mock DegradedModeTracker to return healthy (not degraded) state
+    mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
+    mock_instance = mock_tracker.return_value
+    mock_instance.is_degraded.return_value = False
 
     mock_get_providers = mocker.patch(
         "app.endpoints.health.get_providers_health_statuses"
@@ -130,6 +152,8 @@ async def test_readiness_probe_fails_when_model_not_available(
 
     assert response.ready is False
     assert "not found in model registry" in response.reason
+    assert response.overall_status == HealthStatus.UNHEALTHY
+    assert response.impacts is not None
     assert mock_response.status_code == 503
 
 
@@ -337,3 +361,36 @@ class TestCheckDefaultModelAvailable:
 
         assert available is False
         assert "not found in model registry" in reason
+
+
+class TestReadinessDegradedMode:  # pylint: disable=too-few-public-methods
+    """Test cases for /readiness endpoint with degraded mode."""
+
+    @pytest.mark.asyncio
+    async def test_readiness_degraded_mode(self, mocker: MockerFixture) -> None:
+        """Test /readiness endpoint returns ready=True in degraded mode."""
+        mock_authorization_resolvers(mocker)
+
+        # Mock DegradedModeTracker to return degraded state
+        mock_tracker = mocker.patch("app.endpoints.health.DegradedModeTracker")
+        mock_instance = mock_tracker.return_value
+        mock_instance.is_degraded.return_value = True
+        mock_instance.get_degraded_reason.return_value = (
+            "Failed to connect to Llama Stack: Connection error"
+        )
+
+        mock_response = mocker.Mock()
+        auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
+
+        response = await readiness_probe_get_method(auth=auth, response=mock_response)
+
+        assert response is not None
+        assert isinstance(response, ReadinessResponse)
+        assert response.ready is True  # Service is ready even in degraded mode
+        assert response.reason == "Service running in degraded mode"
+        assert response.overall_status == HealthStatus.DEGRADED
+        assert response.impacts is not None
+        assert "LLM inference unavailable" in response.impacts
+        assert "RAG functionality unavailable" in response.impacts
+        assert "Agent tools unavailable" in response.impacts
+        assert len(response.providers) == 0

@@ -26,8 +26,12 @@ from models.api.responses.successful import (
     LivenessResponse,
     ReadinessResponse,
 )
-from models.common import HealthStatus, ProviderHealthStatus
+from models.common import (
+    HealthStatus,
+    ProviderHealthStatus,
+)
 from models.config import Action
+from utils.degraded_mode import DegradedModeTracker
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["health"])
@@ -117,40 +121,86 @@ async def readiness_probe_get_method(
     response: Response,
 ) -> ReadinessResponse:
     """
-    Handle the readiness probe endpoint, returning service readiness.
+    Handle the readiness probe endpoint, returning service readiness and health status.
 
-    If any provider reports an error status, responds with HTTP 503
-    and details of unhealthy providers; otherwise, indicates the
-    service is ready.
+    Returns comprehensive health information including overall service status,
+    provider health, and functional impacts. The service is considered "ready" even
+    in degraded mode (returns 200), but reports reduced functionality.
 
     ### Parameters:
     - response: The outgoing HTTP response (used by middleware).
     - auth: Authentication tuple from the auth dependency (used by middleware).
 
+    ### Raises:
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 503 when service is unhealthy (providers down,
+      models unavailable) and degraded mode is not enabled.
+
     ### Returns:
-    - ReadinessResponse: Object with `ready` indicating overall readiness,
-      `reason` explaining the outcome, and `providers` containing the list of
-      unhealthy ProviderHealthStatus entries (empty when ready).
+    - ReadinessResponse: Object with comprehensive health status including:
+      - ready: True if service can handle requests (even in degraded mode)
+      - reason: Description of service state
+      - overall_status: healthy, degraded, or unhealthy
+      - impacts: Functional limitations when degraded/unhealthy
+      - providers: List of unhealthy providers
     """
     # Used only for authorization
     _ = auth
 
-    logger.info("Response to /v1/readiness endpoint")
+    logger.info("Response to /readiness endpoint")
 
+    degraded_tracker = DegradedModeTracker()
+    is_degraded = degraded_tracker.is_degraded()
+
+    # Determine overall status
+    if is_degraded:
+        # Service is ready (can serve health checks, metrics, etc.) but degraded
+        impacts = [
+            "LLM inference unavailable",
+            "RAG functionality unavailable",
+            "Agent tools unavailable",
+        ]
+        return ReadinessResponse(
+            ready=True,
+            reason="Service running in degraded mode",
+            overall_status=HealthStatus.DEGRADED,
+            impacts=impacts,
+            providers=[],
+        )
+
+    # Not in degraded mode - check provider health
     provider_statuses = await get_providers_health_statuses()
-
-    # Check if any provider is unhealthy (not counting not_implemented as unhealthy)
     unhealthy_providers = [
         p for p in provider_statuses if p.status == HealthStatus.ERROR.value
     ]
 
     if unhealthy_providers:
-        ready = False
-        unhealthy_provider_names = [p.provider_id for p in unhealthy_providers]
-        reason = f"Providers not healthy: {', '.join(unhealthy_provider_names)}"
+        # Check if this is a connection error (provider_id="unknown")
+        is_connection_error = any(
+            p.provider_id == "unknown" for p in unhealthy_providers
+        )
+
+        if is_connection_error:
+            reason = "Cannot connect to backend service"
+            impacts = [
+                "LLM inference unavailable",
+                "Provider health checks unavailable",
+            ]
+        else:
+            unhealthy_provider_names = [p.provider_id for p in unhealthy_providers]
+            reason = f"Providers not healthy: {', '.join(unhealthy_provider_names)}"
+            impacts = [
+                f"Provider {p.provider_id}: {p.message}" for p in unhealthy_providers
+            ]
+
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return ReadinessResponse(
-            ready=ready, reason=reason, providers=unhealthy_providers
+            ready=False,
+            reason=reason,
+            overall_status=HealthStatus.UNHEALTHY,
+            impacts=impacts,
+            providers=unhealthy_providers if not is_connection_error else [],
         )
 
     # Check that the default model is registered in the model registry
@@ -158,11 +208,20 @@ async def readiness_probe_get_method(
     if not model_available:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return ReadinessResponse(
-            ready=False, reason=model_reason, providers=unhealthy_providers
+            ready=False,
+            reason=model_reason,
+            overall_status=HealthStatus.UNHEALTHY,
+            impacts=["Default model not available in registry"],
+            providers=[],
         )
 
+    # All healthy
     return ReadinessResponse(
-        ready=True, reason="All providers are healthy", providers=unhealthy_providers
+        ready=True,
+        reason="All providers are healthy",
+        overall_status=HealthStatus.HEALTHY,
+        impacts=None,
+        providers=[],
     )
 
 
@@ -176,6 +235,14 @@ async def liveness_probe_get_method(
 
     ### Parameters:
     - auth: Authentication tuple from the auth dependency (used by middleware).
+
+    ### Raises:
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+    - HTTPException: with status 500 and a detail object containing `response`
+      and `cause` when service configuration is wrong or incomplete.
+    - HTTPException: with status 503 and a detail object containing `response`
+      and `cause` when unable to connect to Llama Stack.
 
     ### Returns:
     - LivenessResponse: Indicates that the service is alive.

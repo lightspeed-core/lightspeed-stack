@@ -1,10 +1,10 @@
 """Unit tests for Red Hat Identity authentication module."""
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name,too-many-lines
 
 import base64
 import json
-from typing import Optional
+from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, Request
@@ -16,7 +16,7 @@ from constants import NO_USER_TOKEN
 
 
 @pytest.fixture
-def user_identity_data() -> dict:
+def user_identity_data() -> dict[str, Any]:
     """Fixture providing valid User identity data.
 
     Provide a valid Red Hat identity payload for a User, suitable for unit tests.
@@ -55,7 +55,7 @@ def user_identity_data() -> dict:
 
 
 @pytest.fixture
-def system_identity_data() -> dict:
+def system_identity_data() -> dict[str, Any]:
     """Fixture providing valid System identity data.
 
     Provide a sample System identity payload used by tests.
@@ -84,7 +84,36 @@ def system_identity_data() -> dict:
     }
 
 
-def create_auth_header(identity_data: dict) -> str:
+@pytest.fixture
+def service_account_identity_data() -> dict[str, Any]:
+    """Fixture providing valid ServiceAccount identity data.
+
+    Mirrors the canonical ServiceAccount payload from the identity-schemas repo.
+    The service_account object contains client_id, username, and user_id.
+
+    Returns:
+        dict: A ServiceAccount identity dictionary with identity and entitlements.
+    """
+    return {
+        "identity": {
+            "account_number": "123",
+            "org_id": "321",
+            "type": "ServiceAccount",
+            "auth_type": "jwt-auth",
+            "service_account": {
+                "client_id": "b69eaf9e-e6a6-4f9e-805e-02987daddfbd",
+                "username": "service-account-b69eaf9e-e6a6-4f9e-805e-02987daddfbd",
+                "user_id": "60ce65dc-4b5a-4812-8b65-b48178d92b12",
+            },
+        },
+        "entitlements": {
+            "rhel": {"is_entitled": True, "is_trial": False},
+            "ansible": {"is_entitled": True, "is_trial": False},
+        },
+    }
+
+
+def create_auth_header(identity_data: dict[str, Any]) -> str:
     """Helper to create base64-encoded x-rh-identity header value.
 
     Create a base64-encoded string suitable for use as an x-rh-identity header from identity data.
@@ -131,22 +160,42 @@ def create_request_with_header(
 class TestRHIdentityData:
     """Test suite for RHIdentityData class."""
 
-    def test_user_type_extraction(self, user_identity_data: dict) -> None:
+    def test_user_type_extraction(self, user_identity_data: dict[str, Any]) -> None:
         """Test extraction of User identity fields."""
         rh_identity = RHIdentityData(user_identity_data)
 
         assert rh_identity.get_user_id() == "abc123"
         assert rh_identity.get_username() == "user@redhat.com"
 
-    def test_system_type_extraction(self, system_identity_data: dict) -> None:
+    def test_system_type_extraction(self, system_identity_data: dict[str, Any]) -> None:
         """Test extraction of System identity fields."""
         rh_identity = RHIdentityData(system_identity_data)
 
         assert rh_identity.get_user_id() == "c87dcb4c-8af1-40dd-878e-60c744edddd0"
         assert rh_identity.get_username() == "123"
 
+    def test_service_account_type_extraction(
+        self, service_account_identity_data: dict[str, Any]
+    ) -> None:
+        """Test extraction of ServiceAccount identity fields."""
+        rh_identity = RHIdentityData(service_account_identity_data)
+
+        assert rh_identity.get_user_id() == "b69eaf9e-e6a6-4f9e-805e-02987daddfbd"
+        assert (
+            rh_identity.get_username()
+            == "service-account-b69eaf9e-e6a6-4f9e-805e-02987daddfbd"
+        )
+
+    def test_service_account_system_id_empty(
+        self, service_account_identity_data: dict[str, Any]
+    ) -> None:
+        """Test that get_system_id returns empty string for ServiceAccount type."""
+        rh_identity = RHIdentityData(service_account_identity_data)
+        assert rh_identity.get_system_id() == ""
+
     @pytest.mark.parametrize(
-        "fixture_name", ["user_identity_data", "system_identity_data"]
+        "fixture_name",
+        ["user_identity_data", "system_identity_data", "service_account_identity_data"],
     )
     def test_get_org_id(
         self, fixture_name: str, request: pytest.FixtureRequest
@@ -156,7 +205,7 @@ class TestRHIdentityData:
         rh_identity = RHIdentityData(identity_data)
         assert rh_identity.get_org_id() == "321"
 
-    def test_get_org_id_missing(self, user_identity_data: dict) -> None:
+    def test_get_org_id_missing(self, user_identity_data: dict[str, Any]) -> None:
         """Test org_id returns empty string when not present."""
         identity_data = {
             **user_identity_data,
@@ -176,7 +225,7 @@ class TestRHIdentityData:
         ],
     )
     def test_has_entitlement(
-        self, user_identity_data: dict, service: str, expected: bool
+        self, user_identity_data: dict[str, Any], service: str, expected: bool
     ) -> None:
         """Test has_entitlement returns correct result for various services."""
         rh_identity = RHIdentityData(user_identity_data)
@@ -191,7 +240,7 @@ class TestRHIdentityData:
         ],
     )
     def test_has_entitlements(
-        self, user_identity_data: dict, services: list[str], expected: bool
+        self, user_identity_data: dict[str, Any], services: list[str], expected: bool
     ) -> None:
         """Test has_entitlements returns correct result for service lists."""
         rh_identity = RHIdentityData(user_identity_data)
@@ -218,7 +267,7 @@ class TestRHIdentityData:
     )
     def test_validate_entitlements(
         self,
-        user_identity_data: dict,
+        user_identity_data: dict[str, Any],
         required_entitlements: Optional[list[str]],
         should_raise: bool,
         expected_error: Optional[str],
@@ -303,11 +352,43 @@ class TestRHIdentityData:
                 },
                 "Invalid identity data",
             ),
+            # ServiceAccount without service_account object is rejected.
+            (
+                {
+                    "identity": {
+                        "type": "ServiceAccount",
+                        "org_id": "123",
+                    }
+                },
+                "Invalid identity data",
+            ),
+            # ServiceAccount without client_id is rejected.
+            (
+                {
+                    "identity": {
+                        "type": "ServiceAccount",
+                        "org_id": "123",
+                        "service_account": {"username": "svc"},
+                    }
+                },
+                "Invalid identity data",
+            ),
+            # ServiceAccount without username is rejected.
+            (
+                {
+                    "identity": {
+                        "type": "ServiceAccount",
+                        "org_id": "123",
+                        "service_account": {"client_id": "abc"},
+                    }
+                },
+                "Invalid identity data",
+            ),
         ],
     )
     def test_validation_failures(
         self,
-        missing_field: dict,
+        missing_field: dict[str, Any],
         expected_error: str,
         mocker: MockerFixture,
     ) -> None:
@@ -341,7 +422,7 @@ class TestRHIdentityAuthDependency:
 
     @pytest.mark.asyncio
     async def test_user_authentication_success(
-        self, mocker: MockerFixture, user_identity_data: dict
+        self, mocker: MockerFixture, user_identity_data: dict[str, Any]
     ) -> None:
         """Test successful User authentication."""
         auth_dep = RHIdentityAuthDependency()
@@ -355,7 +436,7 @@ class TestRHIdentityAuthDependency:
 
     @pytest.mark.asyncio
     async def test_system_authentication_success(
-        self, mocker: MockerFixture, system_identity_data: dict
+        self, mocker: MockerFixture, system_identity_data: dict[str, Any]
     ) -> None:
         """Test successful System authentication."""
         auth_dep = RHIdentityAuthDependency()
@@ -370,11 +451,31 @@ class TestRHIdentityAuthDependency:
         assert token == NO_USER_TOKEN
 
     @pytest.mark.asyncio
+    async def test_service_account_authentication_success(
+        self, mocker: MockerFixture, service_account_identity_data: dict[str, Any]
+    ) -> None:
+        """Test successful ServiceAccount authentication."""
+        auth_dep = RHIdentityAuthDependency()
+        header_value = create_auth_header(service_account_identity_data)
+        request = create_request_with_header(mocker, header_value)
+
+        user_id, username, skip_check, token = await auth_dep(request)
+
+        assert user_id == "b69eaf9e-e6a6-4f9e-805e-02987daddfbd"
+        assert username == "service-account-b69eaf9e-e6a6-4f9e-805e-02987daddfbd"
+        assert skip_check is False
+        assert token == NO_USER_TOKEN
+
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "fixture_name,expected_user_id",
         [
             ("user_identity_data", "abc123"),
             ("system_identity_data", "c87dcb4c-8af1-40dd-878e-60c744edddd0"),
+            (
+                "service_account_identity_data",
+                "b69eaf9e-e6a6-4f9e-805e-02987daddfbd",
+            ),
         ],
     )
     async def test_rh_identity_stored_in_request_state(
@@ -457,7 +558,7 @@ class TestRHIdentityAuthDependency:
     async def test_entitlement_validation(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         mocker: MockerFixture,
-        user_identity_data: dict,
+        user_identity_data: dict[str, Any],
         required_entitlements: Optional[list[str]],
         should_raise: bool,
         expected_error: Optional[str],
@@ -480,7 +581,7 @@ class TestRHIdentityAuthDependency:
 
     @pytest.mark.asyncio
     async def test_no_entitlement_data(
-        self, mocker: MockerFixture, user_identity_data: dict
+        self, mocker: MockerFixture, user_identity_data: dict[str, Any]
     ) -> None:
         """Test authentication succeeds when no entitlements are present in identity data."""
         user_identity_data_no_entitlements = user_identity_data.copy()
@@ -655,7 +756,7 @@ class TestRHIdentityHeaderSizeLimit:
 
     @pytest.mark.asyncio
     async def test_header_at_exact_limit_accepted(
-        self, mocker: MockerFixture, user_identity_data: dict
+        self, mocker: MockerFixture, user_identity_data: dict[str, Any]
     ) -> None:
         """Test that a header at exactly the size limit is accepted."""
         header_value = create_auth_header(user_identity_data)
@@ -697,7 +798,7 @@ class TestRHIdentityHeaderSizeLimit:
         assert mock_warning.call_args.args[2] == max_size
 
 
-class TestRHIdentityFieldValidation:
+class TestRHIdentityFieldValidation:  # pylint: disable=too-many-public-methods
     """Test suite for RHIdentityData string field validation."""
 
     @pytest.mark.parametrize(
@@ -714,7 +815,10 @@ class TestRHIdentityFieldValidation:
         ],
     )
     def test_user_non_string_types_rejected(
-        self, user_identity_data: dict, field_path: tuple[str, str], bad_value: object
+        self,
+        user_identity_data: dict[str, Any],
+        field_path: tuple[str, str],
+        bad_value: object,
     ) -> None:
         """Reject non-string values in User identity string fields."""
         user_identity_data["identity"][field_path[0]][field_path[1]] = bad_value
@@ -739,7 +843,7 @@ class TestRHIdentityFieldValidation:
     )
     def test_system_non_string_types_rejected(
         self,
-        system_identity_data: dict,
+        system_identity_data: dict[str, Any],
         field_path: tuple[str, ...],
         bad_value: object,
     ) -> None:
@@ -753,9 +857,35 @@ class TestRHIdentityFieldValidation:
             RHIdentityData(system_identity_data)
         assert exc_info.value.status_code == 400
 
+    @pytest.mark.parametrize(
+        "field_path,bad_value",
+        [
+            (("service_account", "client_id"), None),
+            (("service_account", "client_id"), 12345),
+            (("service_account", "client_id"), True),
+            (("service_account", "client_id"), []),
+            (("service_account", "client_id"), {}),
+            (("service_account", "username"), None),
+            (("service_account", "username"), 12345),
+        ],
+    )
+    def test_service_account_non_string_types_rejected(
+        self,
+        service_account_identity_data: dict[str, Any],
+        field_path: tuple[str, str],
+        bad_value: object,
+    ) -> None:
+        """Reject non-string values in ServiceAccount identity string fields."""
+        service_account_identity_data["identity"][field_path[0]][
+            field_path[1]
+        ] = bad_value
+        with pytest.raises(HTTPException) as exc_info:
+            RHIdentityData(service_account_identity_data)
+        assert exc_info.value.status_code == 400
+
     @pytest.mark.parametrize("bad_value", ["", "   ", "\t", "\n"])
     def test_empty_whitespace_rejected(
-        self, user_identity_data: dict, bad_value: str
+        self, user_identity_data: dict[str, Any], bad_value: str
     ) -> None:
         """Reject empty and whitespace-only strings."""
         user_identity_data["identity"]["user"]["user_id"] = bad_value
@@ -768,7 +898,7 @@ class TestRHIdentityFieldValidation:
         ["user\x00id", "user\nid", "user\rid", "a\x1fb", "a\x7fb"],
     )
     def test_control_characters_rejected(
-        self, user_identity_data: dict, bad_value: str
+        self, user_identity_data: dict[str, Any], bad_value: str
     ) -> None:
         """Reject strings containing control characters."""
         user_identity_data["identity"]["user"]["user_id"] = bad_value
@@ -776,41 +906,47 @@ class TestRHIdentityFieldValidation:
             RHIdentityData(user_identity_data)
         assert exc_info.value.status_code == 400
 
-    def test_oversized_value_rejected(self, user_identity_data: dict) -> None:
+    def test_oversized_value_rejected(self, user_identity_data: dict[str, Any]) -> None:
         """Reject values longer than 256 characters."""
         user_identity_data["identity"]["user"]["user_id"] = "a" * 257
         with pytest.raises(HTTPException) as exc_info:
             RHIdentityData(user_identity_data)
         assert exc_info.value.status_code == 400
 
-    def test_max_length_boundary_accepted(self, user_identity_data: dict) -> None:
+    def test_max_length_boundary_accepted(
+        self, user_identity_data: dict[str, Any]
+    ) -> None:
         """Accept values exactly 256 characters long."""
         user_identity_data["identity"]["user"]["user_id"] = "a" * 256
         RHIdentityData(user_identity_data)
 
-    def test_org_id_missing_accepted(self, user_identity_data: dict) -> None:
+    def test_org_id_missing_accepted(self, user_identity_data: dict[str, Any]) -> None:
         """Allow missing org_id."""
         user_identity_data["identity"].pop("org_id", None)
         RHIdentityData(user_identity_data)
 
-    def test_org_id_empty_accepted(self, user_identity_data: dict) -> None:
+    def test_org_id_empty_accepted(self, user_identity_data: dict[str, Any]) -> None:
         """Allow empty org_id."""
         user_identity_data["identity"]["org_id"] = ""
         RHIdentityData(user_identity_data)
 
-    def test_org_id_non_string_rejected(self, user_identity_data: dict) -> None:
+    def test_org_id_non_string_rejected(
+        self, user_identity_data: dict[str, Any]
+    ) -> None:
         """Reject non-string org_id when provided and non-empty."""
         user_identity_data["identity"]["org_id"] = 12345
         with pytest.raises(HTTPException) as exc_info:
             RHIdentityData(user_identity_data)
         assert exc_info.value.status_code == 400
 
-    def test_org_id_valid_accepted(self, user_identity_data: dict) -> None:
+    def test_org_id_valid_accepted(self, user_identity_data: dict[str, Any]) -> None:
         """Accept valid string org_id."""
         user_identity_data["identity"]["org_id"] = "valid-org-id"
         RHIdentityData(user_identity_data)
 
-    def test_org_id_oversized_rejected(self, user_identity_data: dict) -> None:
+    def test_org_id_oversized_rejected(
+        self, user_identity_data: dict[str, Any]
+    ) -> None:
         """Reject oversized org_id.
 
         Verifies that an identity with an org_id longer than 256 characters is rejected.
@@ -823,24 +959,36 @@ class TestRHIdentityFieldValidation:
             RHIdentityData(user_identity_data)
         assert exc_info.value.status_code == 400
 
-    def test_org_id_control_chars_rejected(self, user_identity_data: dict) -> None:
+    def test_org_id_control_chars_rejected(
+        self, user_identity_data: dict[str, Any]
+    ) -> None:
         """Reject org_id containing control characters."""
         user_identity_data["identity"]["org_id"] = "org\x00id"
         with pytest.raises(HTTPException) as exc_info:
             RHIdentityData(user_identity_data)
         assert exc_info.value.status_code == 400
 
-    def test_valid_user_data_still_passes(self, user_identity_data: dict) -> None:
+    def test_valid_user_data_still_passes(
+        self, user_identity_data: dict[str, Any]
+    ) -> None:
         """Regression: valid User identity data passes validation."""
         RHIdentityData(user_identity_data)
 
-    def test_valid_system_data_still_passes(self, system_identity_data: dict) -> None:
+    def test_valid_system_data_still_passes(
+        self, system_identity_data: dict[str, Any]
+    ) -> None:
         """Regression: valid System identity data passes validation."""
         RHIdentityData(system_identity_data)
 
+    def test_valid_service_account_data_still_passes(
+        self, service_account_identity_data: dict[str, Any]
+    ) -> None:
+        """Regression: valid ServiceAccount identity data passes validation."""
+        RHIdentityData(service_account_identity_data)
+
     @pytest.mark.parametrize("account_number", ["", None])
     def test_system_empty_or_absent_account_number_accepted(
-        self, system_identity_data: dict, account_number: Optional[str]
+        self, system_identity_data: dict[str, Any], account_number: Optional[str]
     ) -> None:
         """Accept System identity with empty or absent account_number.
 
@@ -889,7 +1037,7 @@ class TestRHIdentityFieldValidation:
         assert rh_identity.get_org_id() == "18939564"
 
     def test_system_present_account_number_unchanged(
-        self, system_identity_data: dict
+        self, system_identity_data: dict[str, Any]
     ) -> None:
         """Regression: System with a present, non-empty account_number is unchanged.
 
@@ -901,7 +1049,7 @@ class TestRHIdentityFieldValidation:
 
     @pytest.mark.parametrize("org_id", ["", None])
     def test_system_missing_org_id_rejected(
-        self, system_identity_data: dict, org_id: Optional[str]
+        self, system_identity_data: dict[str, Any], org_id: Optional[str]
     ) -> None:
         """Reject System identity when org_id is empty or absent.
 
@@ -917,7 +1065,9 @@ class TestRHIdentityFieldValidation:
             RHIdentityData(system_identity_data)
         assert exc_info.value.status_code == 400
 
-    def test_system_empty_cn_rejected(self, system_identity_data: dict) -> None:
+    def test_system_empty_cn_rejected(
+        self, system_identity_data: dict[str, Any]
+    ) -> None:
         """Reject System identity when system cn is empty."""
         system_identity_data["identity"]["system"]["cn"] = ""
         with pytest.raises(HTTPException) as exc_info:

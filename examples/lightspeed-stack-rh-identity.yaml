@@ -9,6 +9,7 @@
 # Identity Types Supported:
 #   - User: Console users authenticated via Red Hat SSO
 #   - System: Certificate-authenticated RHEL systems
+#   - ServiceAccount: OAuth service accounts authenticated via JWT
 #
 # Security Note: This module trusts the x-rh-identity header. Only use
 # behind Red Hat's authentication proxy - never expose directly to the internet.

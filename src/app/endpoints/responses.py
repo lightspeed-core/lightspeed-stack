@@ -62,8 +62,13 @@ from models.api.responses.successful import ResponsesResponse
 from models.common.moderation import ShieldModerationBlocked
 from models.common.responses.contexts import ResponsesContext
 from models.common.responses.responses_api_params import ResponsesApiParams
+from models.common.responses.types import ResponseInput
 from models.common.turn_summary import TurnSummary
 from models.config import Action
+from utils.conversation_compaction import (
+    apply_compaction_blocking,
+    configured_conversation_cache,
+)
 from utils.conversations import append_turn_items_to_conversation
 from utils.endpoints import (
     check_configuration_loaded,
@@ -225,10 +230,18 @@ async def _persist_blocked_response_turn(
     """
     if api_params.store:
         moderation_result = cast(ShieldModerationBlocked, context.moderation_result)
+        # In compacted mode the conversation parameter was dropped and
+        # api_params.input is the explicit-input rewrite, so persist the turn
+        # against the original user input instead (LCORE-1572).
+        user_input = (
+            context.compacted_original_input
+            if context.compacted_original_input is not None
+            else api_params.input
+        )
         await append_turn_items_to_conversation(
             client=context.client,
             conversation_id=api_params.conversation,
-            user_input=api_params.input,
+            user_input=user_input,
             llm_output=[moderation_result.refusal_response],
         )
 
@@ -238,14 +251,30 @@ async def _append_previous_response_turn(
     context: ResponsesContext,
     output: Sequence[OpenAIResponseOutput],
 ) -> None:
-    """Append response output when continuing from a previous response id.
+    """Append the completed turn when Llama Stack did not store it automatically.
+
+    Llama Stack stores the turn itself only when the conversation parameter is
+    sent. Two cases bypass that and require an explicit append: continuing from
+    a ``previous_response_id``, and conversation compaction (LCORE-1572), where
+    the conversation parameter is dropped in favor of explicit input. In the
+    compaction case the turn is stored against the original user input (before
+    the explicit-input rewrite), carried on the context.
 
     Args:
         api_params: Responses API parameters containing conversation details.
         context: Request-scoped Responses API context.
         output: Final output items from the Responses API object.
     """
-    if api_params.store and api_params.previous_response_id:
+    if not api_params.store:
+        return
+    if context.compacted_original_input is not None:
+        await append_turn_items_to_conversation(
+            context.client,
+            api_params.conversation,
+            context.compacted_original_input,
+            output,
+        )
+    elif api_params.previous_response_id:
         await append_turn_items_to_conversation(
             context.client,
             api_params.conversation,
@@ -337,7 +366,7 @@ async def responses_endpoint_handler(
     check_configuration_loaded(configuration)
     started_at = datetime.now(UTC)
     rh_identity_context = get_rh_identity_context(request)
-    user_id, _, _, token = auth
+    user_id, _, skip_userid_check, token = auth
 
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
@@ -435,7 +464,38 @@ async def responses_endpoint_handler(
             original_request.input, inline_rag_context.context_text
         )
 
+    if "max_infer_iters" not in original_request.model_fields_set:
+        updated_request.max_infer_iters = configuration.inference.max_infer_iters
+    if "max_tool_calls" not in original_request.model_fields_set:
+        updated_request.max_tool_calls = configuration.inference.max_tool_calls
+
     api_params = ResponsesApiParams.model_validate(updated_request.model_dump())
+
+    # Compact the conversation if it is approaching the context window limit.
+    # /v1/responses is OpenAI-compatible, so compaction is silent (no custom SSE
+    # event): summarization happens before the response is created, and the turn
+    # is appended explicitly afterward (the conversation parameter is dropped).
+    # Only stateful single-conversation requests are eligible.
+    compacted_original_input: Optional[ResponseInput] = None
+    if (
+        configuration.compaction.enabled
+        and api_params.store
+        and api_params.conversation
+        and not api_params.previous_response_id
+    ):
+        compaction = await apply_compaction_blocking(
+            client,
+            api_params,
+            configuration.inference,
+            configuration.compaction,
+            cache=configured_conversation_cache(),
+            user_id=user_id,
+            skip_user_id_check=skip_userid_check,
+        )
+        api_params = compaction.params
+        if compaction.compacted:
+            compacted_original_input = compaction.original_input
+
     context = ResponsesContext(
         client=client,
         auth=auth,
@@ -449,6 +509,7 @@ async def responses_endpoint_handler(
         user_agent=_get_user_agent(request),
         endpoint_path=endpoint_path,
         generate_topic_summary=updated_request.generate_topic_summary,
+        compacted_original_input=compacted_original_input,
     )
     response_handler = (
         handle_streaming_response

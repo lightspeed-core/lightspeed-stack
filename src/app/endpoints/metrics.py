@@ -12,7 +12,6 @@ from prometheus_client import (
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from metrics.utils import setup_model_metrics
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
 from models.api.responses.error import (
     ForbiddenResponse,
@@ -47,11 +46,7 @@ async def metrics_endpoint_handler(
     Handle request to the /metrics endpoint.
 
     Process GET requests to the /metrics endpoint, returning the
-    latest Prometheus metrics in form of a plain text.
-
-    Initializes model metrics on the first request if not already
-    set up, then responds with the current metrics snapshot in
-    Prometheus format.
+    latest Prometheus metrics in plain text Prometheus format.
 
     ### Parameters:
     - request: The incoming HTTP request (used by middleware).
@@ -67,7 +62,4 @@ async def metrics_endpoint_handler(
     # Nothing interesting in the request
     _ = request
 
-    # Setup the model metrics if not already done. This is a one-time setup
-    # and will not be run again on subsequent calls to this endpoint
-    await setup_model_metrics()
     return PlainTextResponse(generate_latest(), media_type=str(CONTENT_TYPE_LATEST))

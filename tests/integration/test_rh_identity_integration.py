@@ -93,6 +93,36 @@ def system_identity_json() -> dict:
     }
 
 
+@pytest.fixture
+def service_account_identity_json() -> dict:
+    """Fixture providing valid ServiceAccount identity JSON.
+
+    Returns:
+        dict: JSON with keys:
+            - "identity": contains "account_number", "org_id", "type" set to
+              "ServiceAccount", "auth_type", and "service_account" with
+              "client_id", "username", and "user_id".
+            - "entitlements": contains "rhel" with "is_entitled" and "is_trial"
+              boolean flags.
+    """
+    return {
+        "identity": {
+            "account_number": "789",
+            "org_id": "987",
+            "type": "ServiceAccount",
+            "auth_type": "jwt-auth",
+            "service_account": {
+                "client_id": "b69eaf9e-e6a6-4f9e-805e-02987daddfbd",
+                "username": "service-account-b69eaf9e-e6a6-4f9e-805e-02987daddfbd",
+                "user_id": "60ce65dc-4b5a-4812-8b65-b48178d92b12",
+            },
+        },
+        "entitlements": {
+            "rhel": {"is_entitled": True, "is_trial": False},
+        },
+    }
+
+
 def encode_identity(identity_json: dict) -> str:
     """Encode identity JSON to base64.
 
@@ -135,6 +165,17 @@ class TestRHIdentityIntegration:
     ) -> None:
         """Test successful request with valid System identity."""
         headers = {"x-rh-identity": encode_identity(system_identity_json)}
+
+        response = client.get("/api/v1/conversations", headers=headers)
+
+        # Should succeed (200) or return empty conversations list
+        assert response.status_code in [200, 404]
+
+    def test_valid_service_account_identity(
+        self, client: TestClient, service_account_identity_json: dict
+    ) -> None:
+        """Test successful request with valid ServiceAccount identity."""
+        headers = {"x-rh-identity": encode_identity(service_account_identity_json)}
 
         response = client.get("/api/v1/conversations", headers=headers)
 

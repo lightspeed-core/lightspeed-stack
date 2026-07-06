@@ -18,6 +18,7 @@ from models.config import (
     AuthenticationConfiguration,
     AuthorizationConfiguration,
     AzureEntraIdConfiguration,
+    CompactionConfiguration,
     Configuration,
     ConversationHistoryConfiguration,
     Customization,
@@ -31,6 +32,7 @@ from models.config import (
     RerankerConfiguration,
     RlsapiV1Configuration,
     ServiceConfiguration,
+    SkillsConfiguration,
     SplunkConfiguration,
     UserDataCollection,
 )
@@ -39,6 +41,47 @@ from quota.quota_limiter_factory import QuotaLimiterFactory
 from quota.token_usage_history import TokenUsageHistory
 
 logger = get_logger(__name__)
+
+
+def replace_env_vars_preserving_native_override(
+    config_dict: dict[Any, Any],
+) -> dict[Any, Any]:
+    """Resolve ${env.*} references in the config, except in native_override.
+
+    LCORE resolves environment-variable references throughout
+    lightspeed-stack.yaml so typed fields receive concrete values. But
+    ``llama_stack.config.native_override`` is raw Llama Stack schema that Llama
+    Stack resolves itself, in memory, at its own startup. Resolving it eagerly
+    here would (a) defeat the ${env.*} pattern LCORE recommends for secrets and
+    (b) pull resolved secrets into the loaded Configuration model, which is
+    logged at startup. So native_override is held aside, the rest of the config
+    is resolved, and the raw (unresolved) native_override is restored verbatim.
+    Synthesis reads native_override from the raw YAML, so this does not change
+    the generated run.yaml.
+
+    Parameters:
+        config_dict: The parsed lightspeed-stack.yaml.
+
+    Returns:
+        dict[Any, Any]: The config with env refs resolved everywhere except
+        inside native_override.
+    """
+    if not isinstance(config_dict, dict):
+        return replace_env_vars(config_dict)
+
+    llama_stack = config_dict.get("llama_stack")
+    ls_config = llama_stack.get("config") if isinstance(llama_stack, dict) else None
+    if not (isinstance(ls_config, dict) and "native_override" in ls_config):
+        return replace_env_vars(config_dict)
+
+    raw_override = ls_config["native_override"]
+    ls_config["native_override"] = {}  # keep secrets out of env resolution
+    resolved = replace_env_vars(config_dict)
+    ls_config["native_override"] = raw_override  # restore source dict if reused
+    resolved_ls = (resolved.get("llama_stack") or {}).get("config")
+    if isinstance(resolved_ls, dict):
+        resolved_ls["native_override"] = raw_override
+    return resolved
 
 
 class LogicError(Exception):
@@ -78,7 +121,7 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         """
         with open(filename, encoding="utf-8") as fin:
             config_dict = yaml.safe_load(fin)
-            config_dict = replace_env_vars(config_dict)
+            config_dict = replace_env_vars_preserving_native_override(config_dict)
             self.init_from_dict(config_dict)
 
     def init_from_dict(self, config_dict: dict[Any, Any]) -> None:
@@ -320,6 +363,21 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         return self._configuration.inference
 
     @property
+    def compaction(self) -> CompactionConfiguration:
+        """Return conversation compaction configuration.
+
+        Returns:
+            CompactionConfiguration: The compaction configuration from the
+            loaded application configuration.
+
+        Raises:
+            LogicError: If the configuration has not been loaded.
+        """
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.compaction
+
+    @property
     def conversation_cache_configuration(self) -> ConversationHistoryConfiguration:
         """Return conversation cache configuration.
 
@@ -487,6 +545,13 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         return self._configuration.reranker
+
+    @property
+    def skills(self) -> Optional[SkillsConfiguration]:
+        """Return agent skills configuration, or None if not provided."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.skills
 
     @property
     def rag_id_mapping(self) -> dict[str, str]:

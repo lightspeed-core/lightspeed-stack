@@ -38,6 +38,28 @@ spec:
         - -c
         - |
           set -e
+          # Fast-path: PVC already has a valid venv from a previous pod creation in this pipeline run.
+          # TLS scenarios delete+recreate this pod up to 16 times; skipping the expensive install
+          # reduces per-restart time from ~6-15 min to ~30-90 s (just RAG seed refresh + chown).
+          if [[ -d /opt/app-root/.venv ]] \
+              && /opt/app-root/.venv/bin/python --version >/dev/null 2>&1 \
+              && [[ -d /opt/app-root/src ]]; then
+            echo "PVC cache hit: app-root already provisioned — skipping full install"
+            mkdir -p /opt/app-root/.e2e-rag-seed /opt/app-root/src/.llama/storage/rag /opt/app-root/src/.llama/storage/files
+            if [[ -f /rag-seed/kv_store.db.gz ]]; then
+              gzip -dc /rag-seed/kv_store.db.gz > /opt/app-root/.e2e-rag-seed/kv_store.db
+              _sz=$(stat -c%s /opt/app-root/.e2e-rag-seed/kv_store.db)
+              if [[ "${_sz}" -lt 1048576 ]]; then
+                echo "FATAL: RAG seed too small (${_sz} bytes); check rag-data ConfigMap"
+                exit 1
+              fi
+              cp -f /opt/app-root/.e2e-rag-seed/kv_store.db /opt/app-root/src/.llama/storage/rag/kv_store.db
+            fi
+            chmod -R 775 /opt/app-root && chown -R 1001:0 /opt/app-root
+            echo "PVC fast-path complete"
+            exit 0
+          fi
+          # Full provisioning (PVC is empty — first pod creation this pipeline run).
           REPO_URL="${REPO_URL:-https://github.com/lightspeed-core/lightspeed-stack.git}"
           REPO_REVISION="${REPO_REVISION:-main}"
           case "$REPO_URL" in git@github.com:*) REPO_URL="https://github.com/${REPO_URL#git@github.com:}"; esac
@@ -121,8 +143,27 @@ spec:
             secretKeyRef:
               name: openai-api-key-secret
               key: key
+              optional: true
         - name: E2E_OPENAI_MODEL
           value: "gpt-4o-mini"
+        - name: VLLM_URL
+          valueFrom:
+            secretKeyRef:
+              name: vllm-url-secret
+              key: key
+              optional: true
+        - name: VLLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: vllm-api-key-secret
+              key: key
+              optional: true
+        - name: VLLM_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: vllm-model-secret
+              key: key
+              optional: true
         - name: FAISS_VECTOR_STORE_ID
           valueFrom:
             secretKeyRef:
@@ -201,9 +242,14 @@ spec:
           mountPath: /tmp/interception-proxy-ca.pem
           subPath: ca.pem
           readOnly: true
+        # tls-*.feature: client/CA PEMs from Secret e2e-mock-tls-certs (optional).
+        - name: mock-tls-certs
+          mountPath: /certs
+          readOnly: true
   volumes:
     - name: app-root
-      emptyDir: {}
+      persistentVolumeClaim:
+        claimName: llama-stack-app-root
     - name: config-cm
       configMap:
         name: llama-stack-config
@@ -216,4 +262,8 @@ spec:
     - name: interception-proxy-ca
       secret:
         secretName: e2e-interception-proxy-ca
+        optional: true
+    - name: mock-tls-certs
+      secret:
+        secretName: e2e-mock-tls-certs
         optional: true

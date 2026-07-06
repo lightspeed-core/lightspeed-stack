@@ -37,6 +37,9 @@ jobs:
           # Don’t keep credentials when running untrusted PR code under PR_TARGET.
           persist-credentials: ${{ github.event_name != 'pull_request_target' }}
 
+          # Fetch submodules (required for lightspeed-providers)
+          submodules: ‘recursive’
+
       - name: Verify actual git checkout result
         run: |
           echo "=== Git Status After Checkout ==="
@@ -114,6 +117,20 @@ jobs:
           echo "=== lightspeed-stack.yaml ==="
           grep -A 3 "llama_stack:" lightspeed-stack.yaml
 
+      - name: Cache HuggingFace embedding model
+        uses: actions/cache@v4
+        with:
+          path: /tmp/hf-cache
+          key: hf-sentence-transformers-all-mpnet-base-v2
+
+      - name: Pre-download HuggingFace embedding model
+        env:
+          HF_HOME: /tmp/hf-cache
+        run: |
+          pip install -q sentence-transformers
+          python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-mpnet-base-v2')"
+          echo "HF_CACHE_PATH=/tmp/hf-cache" >> $GITHUB_ENV
+
       - name: Docker Login for quay access
         if: matrix.mode == 'server'
         env:
@@ -169,7 +186,43 @@ jobs:
       - name: Wait for services
         run: |
           echo "Waiting for services to be healthy..."
-          sleep 20
+          MAX_ATTEMPTS=60
+          SLEEP_INTERVAL=5
+
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Attempt $attempt/$MAX_ATTEMPTS: Checking /readiness..."
+
+            # Check if readiness endpoint responds with 200
+            if curl -f -s http://localhost:8080/readiness > /dev/null 2>&1; then
+              echo "Service is ready!"
+
+              # Verify the response indicates healthy state
+              RESPONSE=$(curl -s http://localhost:8080/readiness)
+              echo "Readiness response: $RESPONSE"
+
+              # Check if service is ready (could be degraded mode)
+              READY=$(echo "$RESPONSE" | grep -o '"ready":\s*true' || echo "")
+              if [ -n "$READY" ]; then
+                echo "Service reports ready=true"
+                exit 0
+              else
+                echo "Service responded but reports ready=false, continuing to wait..."
+              fi
+            else
+              echo "Service not ready yet (attempt $attempt/$MAX_ATTEMPTS)"
+            fi
+
+            sleep $SLEEP_INTERVAL
+          done
+
+          echo "Service did not become ready within $((MAX_ATTEMPTS * SLEEP_INTERVAL)) seconds"
+          echo "Showing service logs..."
+          if [ "${{ matrix.mode }}" == "server" ]; then
+            docker compose logs
+          else
+            docker compose -f docker-compose-library.yaml logs
+          fi
+          exit 1
 
       - name: Quick connectivity test
         run: |

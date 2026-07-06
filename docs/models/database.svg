@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" height="475px" preserveAspectRatio="none" style="width:450px;height:475px;background:#FFFFFF;" version="1.1" viewBox="0 0 450 475" width="450px" zoomAndPan="magnify">
+  <defs/>
+  <g>
+    <!--class src.models.database.base.Base-->
+    <g id="elem_src.models.database.base.Base">
+      <rect codeLine="2" fill="#F1F1F1" height="48" id="src.models.database.base.Base" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="63.5559" x="92.56" y="92.81"/>
+      <ellipse cx="107.56" cy="108.81" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M107.6694,104.3413 Q106.7475,104.3413 106.0131,104.6538 Q105.2944,104.9663 104.7944,105.56 Q104.2944,106.1381 104.0131,107.0131 Q103.7475,107.8881 103.7475,108.9819 Q103.7475,110.4194 104.185,111.4663 Q104.6381,112.5131 105.4819,113.06 Q106.3413,113.6069 107.6538,113.6069 Q108.435,113.6069 109.1225,113.4819 Q109.8256,113.3413 110.8256,113.0288 L110.8256,114.9038 Q109.9663,115.2319 109.2006,115.3569 Q108.4506,115.4819 107.435,115.4819 Q105.5131,115.4819 104.2006,114.685 Q102.9038,113.8725 102.2475,112.4038 Q101.5913,110.9194 101.5913,108.9506 Q101.5913,107.5288 101.9819,106.3569 Q102.3881,105.1694 103.1694,104.2944 Q103.9506,103.4194 105.0913,102.9506 Q106.2319,102.4663 107.7006,102.4663 Q108.6538,102.4663 109.5444,102.6694 Q110.4506,102.8569 111.3881,103.3256 L110.56,105.1069 Q109.7788,104.7319 109.1225,104.5444 Q108.4663,104.3413 107.6694,104.3413 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="31.5559" x="121.56" y="114.242">Base</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="93.56" x2="155.1159" y1="124.81" y2="124.81"/>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="93.56" x2="155.1159" y1="132.81" y2="132.81"/>
+    </g>
+    <!--class src.models.database.conversations.UserConversation-->
+    <g id="elem_src.models.database.conversations.UserConversation">
+      <rect codeLine="4" fill="#F1F1F1" height="219.6113" id="src.models.database.conversations.UserConversation" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="252.9111" x="190.88" y="7"/>
+      <ellipse cx="254.2228" cy="23" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M254.3322,18.5313 Q253.4103,18.5313 252.6759,18.8438 Q251.9572,19.1563 251.4572,19.75 Q250.9572,20.3281 250.6759,21.2031 Q250.4103,22.0781 250.4103,23.1719 Q250.4103,24.6094 250.8478,25.6563 Q251.3009,26.7031 252.1447,27.25 Q253.004,27.7969 254.3165,27.7969 Q255.0978,27.7969 255.7853,27.6719 Q256.4884,27.5313 257.4884,27.2188 L257.4884,29.0938 Q256.629,29.4219 255.8634,29.5469 Q255.1134,29.6719 254.0978,29.6719 Q252.1759,29.6719 250.8634,28.875 Q249.5665,28.0625 248.9103,26.5938 Q248.254,25.1094 248.254,23.1406 Q248.254,21.7188 248.6447,20.5469 Q249.0509,19.3594 249.8322,18.4844 Q250.6134,17.6094 251.754,17.1406 Q252.8947,16.6563 254.3634,16.6563 Q255.3165,16.6563 256.2072,16.8594 Q257.1134,17.0469 258.0509,17.5156 L257.2228,19.2969 Q256.4415,18.9219 255.7853,18.7344 Q255.129,18.5313 254.3322,18.5313 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="117.7256" x="274.7228" y="28.432">UserConversation</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="191.88" x2="442.7911" y1="39" y2="39"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="202.5233" x="196.88" y="57.9659">created_at : Mapped[datetime]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="104.2856" x="196.88" y="77.0339">id : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="240.9111" x="196.88" y="96.1018">last_message_at : Mapped[datetime]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="200.6613" x="196.88" y="115.1697">last_response_id : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="201.2633" x="196.88" y="134.2376">last_used_model : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="215.4592" x="196.88" y="153.3055">last_used_provider : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="194.3613" x="196.88" y="172.3734">message_count : Mapped[int]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="193.0593" x="196.88" y="191.4414">topic_summary : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="139.5375" x="196.88" y="210.5093">user_id : Mapped[str]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="191.88" x2="442.7911" y1="218.6113" y2="218.6113"/>
+    </g>
+    <!--class src.models.database.conversations.UserTurn-->
+    <g id="elem_src.models.database.conversations.UserTurn">
+      <rect codeLine="15" fill="#F1F1F1" height="181.4754" id="src.models.database.conversations.UserTurn" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="234.6692" x="7" y="286.61"/>
+      <ellipse cx="89.3407" cy="302.61" fill="#ADD1B2" rx="11" ry="11" style="stroke:#181818;stroke-width:1.0;"/>
+      <path d="M89.4501,298.1412 Q88.5282,298.1412 87.7938,298.4537 Q87.0751,298.7662 86.5751,299.36 Q86.0751,299.9381 85.7938,300.8131 Q85.5282,301.6881 85.5282,302.7819 Q85.5282,304.2194 85.9657,305.2662 Q86.4188,306.3131 87.2626,306.86 Q88.122,307.4069 89.4345,307.4069 Q90.2157,307.4069 90.9032,307.2819 Q91.6063,307.1412 92.6063,306.8287 L92.6063,308.7037 Q91.747,309.0319 90.9813,309.1569 Q90.2313,309.2819 89.2157,309.2819 Q87.2938,309.2819 85.9813,308.485 Q84.6845,307.6725 84.0282,306.2037 Q83.372,304.7194 83.372,302.7506 Q83.372,301.3287 83.7626,300.1569 Q84.1688,298.9694 84.9501,298.0944 Q85.7313,297.2194 86.872,296.7506 Q88.0126,296.2662 89.4813,296.2662 Q90.4345,296.2662 91.3251,296.4694 Q92.2313,296.6569 93.1688,297.1256 L92.3407,298.9069 Q91.5595,298.5319 90.9032,298.3444 Q90.247,298.1412 89.4501,298.1412 Z " fill="#000000"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="61.4878" x="109.8407" y="308.042">UserTurn</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="8" x2="240.6692" y1="318.61" y2="318.61"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="222.6692" x="13" y="337.5759">completed_at : Mapped[datetime]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="195.4813" x="13" y="356.6439">conversation_id : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="133.7415" x="13" y="375.7118">model : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="147.9375" x="13" y="394.7797">provider : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="171.2194" x="13" y="413.8476">response_id : Mapped[str]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="199.6673" x="13" y="432.9155">started_at : Mapped[datetime]</text>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="178.8773" x="13" y="451.9834">turn_number : Mapped[int]</text>
+      <line style="stroke:#181818;stroke-width:0.5;" x1="8" x2="240.6692" y1="460.0854" y2="460.0854"/>
+    </g>
+    <!--SRC=[bP11JiGm34NtSmfh3j03i8GrAs25KEH9B1IfYIFR6GcXkJjkqOX2fvNOP67___Fzb0mg5jA6aPweeQ2nGELAXpYYAXplKUa8gA0IXyA9HXqI6fvyFipFf83Fm-NgU56I1wvd4aNBN3VTSI7IuQ_D8m6Y41gbW0Pty8YjKNfrFrakzERxd7xcQZADl8G5FqdndJPziqZyRl-PmbPAL_zwRhspRyBdd4XMack7oBqkQkHgqzQuvHYqbuBoiV9wignh_KBytEK_Q2VvDr8kRQGzg4lpBJQtYMnosCEiXh9NnRnrgBsSbhapmSiN]-->
+  </g>
+</svg>

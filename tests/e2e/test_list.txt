@@ -10,6 +10,8 @@ features/conversations.feature
 features/prompts.feature
 features/faiss.feature
 features/inline_rag.feature
+features/byok_pdf.feature
+features/vector_stores.feature
 features/feedback.feature
 features/query.feature
 features/responses.feature
@@ -26,5 +28,13 @@ features/mcp_servers_api.feature
 features/mcp_servers_api_auth.feature
 features/mcp_servers_api_no_config.feature
 features/proxy.feature
-features/tls.feature
+features/tls-ca.feature
+features/tls-mtls.feature
+features/tls-tlsv13.feature
 features/opentelemetry.feature
+features/unified-mode-boot.feature
+features/unified-mode-legacy.feature
+features/unified-mode-validation.feature
+features/unified-mode-migration.feature
+features/unified-mode-synthesis.feature
+features/skills.feature

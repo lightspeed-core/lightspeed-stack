@@ -16,7 +16,7 @@ Constants used in business logic.
 Entry point to the Lightspeed Core Stack REST API service.
 
 ## [llama_stack_configuration.py](llama_stack_configuration.py)
-Llama Stack configuration enrichment.
+Llama Stack configuration enrichment and synthesis.
 
 ## [log.py](log.py)
 Log utilities.

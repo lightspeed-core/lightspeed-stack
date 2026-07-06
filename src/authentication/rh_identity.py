@@ -1,7 +1,8 @@
 """Red Hat Identity header authentication for FastAPI endpoints.
 
-This module provides authentication via the x-rh-identity header, supporting both
-User and System identity types with optional entitlement validation.
+This module provides authentication via the x-rh-identity header, supporting
+User, System, and ServiceAccount identity types with optional entitlement
+validation.
 """
 
 import base64
@@ -36,9 +37,10 @@ def _get_request_id(request: Request) -> str:
 class RHIdentityData:
     """Extracts and validates Red Hat Identity header data.
 
-    Supports two identity types:
+    Supports three identity types:
     - User: Console users with user_id, username, is_org_admin
     - System: Certificate-authenticated RHEL systems with cn as identifier
+    - ServiceAccount: OAuth service accounts with client_id, username, user_id
     """
 
     def __init__(
@@ -82,6 +84,8 @@ class RHIdentityData:
             self._validate_user_fields(identity)
         elif identity_type == "System":
             self._validate_system_fields(identity)
+        elif identity_type == "ServiceAccount":
+            self._validate_service_account_fields(identity)
         else:
             logger.warning("Identity validation failed: unsupported identity type")
             raise HTTPException(status_code=400, detail="Invalid identity data")
@@ -153,6 +157,31 @@ class RHIdentityData:
         if account_number is not None and account_number != "":
             self._validate_string_field("account_number", account_number)
 
+    def _validate_service_account_fields(self, identity: dict) -> None:
+        """Validate required fields for ServiceAccount identity type.
+
+        Args:
+            identity: The identity dict containing service_account data
+
+        Raises:
+            HTTPException: 400 if required ServiceAccount fields are missing or malformed
+        """
+        if "service_account" not in identity:
+            logger.warning(
+                "Identity validation failed: missing 'service_account' field "
+                "for ServiceAccount type"
+            )
+            raise HTTPException(status_code=400, detail="Invalid identity data")
+        service_account = identity["service_account"]
+        for field in ("client_id", "username"):
+            if field not in service_account:
+                logger.warning(
+                    "Identity validation failed: missing '%s' in service_account data",
+                    field,
+                )
+                raise HTTPException(status_code=400, detail="Invalid identity data")
+            self._validate_string_field(field, service_account[field])
+
     def _validate_string_field(
         self, field_name: str, value: Any, max_length: int = 256
     ) -> None:
@@ -194,7 +223,7 @@ class RHIdentityData:
             raise HTTPException(status_code=400, detail="Invalid identity data")
 
     def _get_identity_type(self) -> str:
-        """Get the identity type (User or System).
+        """Get the identity type (User, System, or ServiceAccount).
 
         Returns:
             Identity type string
@@ -205,12 +234,16 @@ class RHIdentityData:
         """Extract user ID based on identity type.
 
         Returns:
-            User ID (user.user_id for User type, system.cn for System type)
+            User ID (user.user_id for User type, system.cn for System type,
+            service_account.client_id for ServiceAccount type)
         """
         identity = self.identity_data["identity"]
+        identity_type = self._get_identity_type()
 
-        if self._get_identity_type() == "User":
+        if identity_type == "User":
             return identity["user"]["user_id"]
+        if identity_type == "ServiceAccount":
+            return identity["service_account"]["client_id"]
         return identity["system"]["cn"]
 
     def get_username(self) -> str:
@@ -222,13 +255,18 @@ class RHIdentityData:
         a stable non-empty identifier in that case.
 
         Returns:
-            Username (user.username for User type; account_number or system.cn
-            for System type)
+            Username (user.username for User type;
+            service_account.username for ServiceAccount type;
+            account_number or system.cn for System type)
         """
         identity = self.identity_data["identity"]
+        identity_type = self._get_identity_type()
 
-        if self._get_identity_type() == "User":
+        if identity_type == "User":
             return identity["user"]["username"]
+
+        if identity_type == "ServiceAccount":
+            return identity["service_account"]["username"]
 
         account_number = identity.get("account_number")
         if account_number:
@@ -302,7 +340,8 @@ class RHIdentityAuthDependency(AuthInterface):  # pylint: disable=too-few-public
     """Red Hat Identity header authentication dependency for FastAPI.
 
     Authenticates requests using the x-rh-identity header with base64-encoded JSON.
-    Supports both User and System identity types with optional entitlement validation.
+    Supports User, System, and ServiceAccount identity types with optional
+    entitlement validation.
     """
 
     def __init__(

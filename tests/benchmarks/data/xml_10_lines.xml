@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites name="pytest tests">
+  <testsuite name="pytest" errors="0" failures="0" skipped="1" tests="2550" time="36.936" timestamp="2026-05-31T18:56:11.947715+02:00" hostname="ptisnovs-thinkpadt14gen3.brq.csb">
+    <testcase classname="tests.unit.utils.test_vector_search.TestGetCrossEncoder" name="test_handles_import_error" time="11.055"/>
+    <testcase classname="tests.unit.utils.test_vector_search.TestApplyByokRerankBoost" name="test_sorting_by_boosted_scores" time="0.001"/>
+    <testcase classname="tests.unit.utils.test_vector_search.TestApplyByokRerankBoost" name="test_default_boost_factor" time="0.001"/>
+    <testcase classname="tests.unit.utils.test_vector_search.TestApplyByokRerankBoost" name="test_none_scores_handled" time="0.001"/>
+    <testcase classname="tests.unit.utils.test_vector_search.TestApplyByokRerankBoost" name="test_preserves_chunk_attributes" time="0.049"/>
+  </testsuite>
+</testsuites>

@@ -801,6 +801,10 @@ async def root_endpoint_handler(
     - request: The incoming HTTP request (used by middleware).
     - auth: Authentication tuple from the auth dependency (used by middleware).
 
+    ### Raises:
+    - HTTPException: with status 401 for unauthorized access.
+    - HTTPException: with status 403 if permission is denied.
+
     ### Returns:
     - HTMLResponse: The HTML content of the index page, including a heading,
       embedded image with the service icon, and links to the API documentation

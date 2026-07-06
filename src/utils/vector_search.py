@@ -667,11 +667,8 @@ async def build_rag_context(  # pylint: disable=too-many-locals,too-many-branche
         byok_chunks_task, solr_chunks_task
     )
 
-    # Merge: combine and sort by score
+    # Merge chunks
     merged = byok_chunks + solr_chunks
-    merged.sort(
-        key=lambda c: c.score if c.score is not None else float("-inf"), reverse=True
-    )
 
     # Rerank full pool with cross-encoder if enabled; then take top_k
     if configuration.reranker.enabled:

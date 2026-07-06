@@ -381,6 +381,11 @@ retain decided approvals for audit purposes before cleanup.</p>
           <td/>
           <td/>
         </tr>
+        <tr class="even">
+          <td>trusted_proxy_config</td>
+          <td/>
+          <td/>
+        </tr>
       </tbody>
     </table>
     <h2 id="authorizationconfiguration">AuthorizationConfiguration</h2>
@@ -464,7 +469,8 @@ using a different Azure service.</td>
         <tr class="even">
           <td>rag_type</td>
           <td>string</td>
-          <td>Type of RAG database.</td>
+          <td>Type of RAG database (e.g.&#xA0;&#x2018;inline::faiss&#x2019;,
+&#x2018;remote::pgvector&#x2019;).</td>
         </tr>
         <tr class="odd">
           <td>embedding_model</td>
@@ -484,7 +490,7 @@ using a different Azure service.</td>
         <tr class="even">
           <td>db_path</td>
           <td>string</td>
-          <td>Path to RAG database.</td>
+          <td>Path to RAG database. Required for inline::faiss.</td>
         </tr>
         <tr class="odd">
           <td>score_multiplier</td>
@@ -492,6 +498,36 @@ using a different Azure service.</td>
           <td>Multiplier applied to relevance scores from this vector store. Used
 to weight results when querying multiple knowledge sources. Values &gt;
 1 boost this store&#x2019;s results; values &lt; 1 reduce them.</td>
+        </tr>
+        <tr class="even">
+          <td>host</td>
+          <td>string</td>
+          <td>PostgreSQL host for remote::pgvector. Defaults to
+${env.POSTGRES_HOST} when rag_type is remote::pgvector.</td>
+        </tr>
+        <tr class="odd">
+          <td>port</td>
+          <td>string</td>
+          <td>PostgreSQL port for remote::pgvector. Defaults to
+${env.POSTGRES_PORT} when rag_type is remote::pgvector.</td>
+        </tr>
+        <tr class="even">
+          <td>db</td>
+          <td>string</td>
+          <td>PostgreSQL database name for remote::pgvector. Defaults to
+${env.POSTGRES_DATABASE} when rag_type is remote::pgvector.</td>
+        </tr>
+        <tr class="odd">
+          <td>user</td>
+          <td>string</td>
+          <td>PostgreSQL user for remote::pgvector. Defaults to
+${env.POSTGRES_USER} when rag_type is remote::pgvector.</td>
+        </tr>
+        <tr class="even">
+          <td>password</td>
+          <td>string</td>
+          <td>PostgreSQL password for remote::pgvector. Defaults to
+${env.POSTGRES_PASSWORD} when rag_type is remote::pgvector.</td>
         </tr>
       </tbody>
     </table>
@@ -987,6 +1023,33 @@ exceeds the window. Models absent from this map have no registered
 window &#x2014; callers fall back to their own default or skip the token-based
 trigger.</td>
         </tr>
+        <tr class="even">
+          <td>providers</td>
+          <td>array</td>
+          <td>Unified-mode synthesis input (Decision S5): a high-level,
+backend-agnostic list of inference providers the synthesizer expands
+into Llama Stack provider entries. Lives at the configuration root so it
+survives a future backend change. A non-empty list signals unified mode.
+Empty (the default) leaves legacy/remote modes unaffected. The sibling
+default_model / default_provider keep their query-time routing meaning
+and are independent of this list.</td>
+        </tr>
+        <tr class="odd">
+          <td>max_infer_iters</td>
+          <td>integer</td>
+          <td>Server-side default for the maximum number of inference iterations a
+model can perform in a single request. Prevents small models from
+looping indefinitely on tool calls. Per-request values take precedence
+over this default. Set to None to disable the limit.</td>
+        </tr>
+        <tr class="even">
+          <td>max_tool_calls</td>
+          <td>integer</td>
+          <td>Server-side default for the maximum number of tool calls allowed in
+a single response. Prevents small models from exhausting the context
+window with repeated tool calls. Per-request values take precedence over
+this default. Set to None to disable the limit.</td>
+        </tr>
       </tbody>
     </table>
     <h2 id="jsonpathoperator">JsonPathOperator</h2>
@@ -1216,6 +1279,18 @@ starting up (e.g., when running as a sidecar in the same pod).</td>
           <td>boolean</td>
           <td>If enabled, Lightspeed Core can be started even when Llama Stack is
 not accessible (valid for server mode only)</td>
+        </tr>
+        <tr class="odd">
+          <td>config</td>
+          <td/>
+          <td>Backend-specific knobs for unified mode, where LCORE synthesizes the
+Llama Stack run.yaml instead of reading an external file. Holds the
+baseline selector, an optional profile path, and a raw native_override
+escape hatch. Backend-agnostic high-level sections
+(e.g.&#xA0;inference.providers) live at the configuration root, not here.
+Mutually exclusive with library_client_config_path; that cross-field
+check lives on the root Configuration model. When set in library mode,
+library_client_config_path is not required.</td>
         </tr>
       </tbody>
     </table>
@@ -1960,6 +2035,172 @@ is TLS</a>
           <td>string</td>
           <td>Path to file containing the password to decrypt the SSL/TLS private
 key.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="trustedproxyconfiguration">TrustedProxyConfiguration</h2>
+    <p>Configuration for trusted-proxy auth module.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>user_header</td>
+          <td>string</td>
+          <td>HTTP header containing the forwarded user identity.</td>
+        </tr>
+        <tr class="even">
+          <td>allowed_service_accounts</td>
+          <td>array</td>
+          <td>Optional allowlist of Kubernetes ServiceAccount identities permitted
+to act as trusted proxies. When set to null/omitted, any ServiceAccount
+with a valid token is accepted. When set to a non-empty list, only the
+listed ServiceAccounts are allowed. An empty list behaves the same as
+null (no restriction).</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="trustedproxyserviceaccount">TrustedProxyServiceAccount</h2>
+    <p>A Kubernetes ServiceAccount identity for trusted-proxy allowlist.</p>
+    <table>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>namespace</td>
+          <td>string</td>
+          <td>Kubernetes namespace of the ServiceAccount.</td>
+        </tr>
+        <tr class="even">
+          <td>name</td>
+          <td>string</td>
+          <td>Name of the Kubernetes ServiceAccount.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="unifiedinferenceprovider">UnifiedInferenceProvider</h2>
+    <p>A high-level inference provider entry for unified-mode synthesis.</p>
+    <p>Operators describe inference providers at this high level
+(backend-agnostic vocabulary) instead of authoring raw Llama Stack
+provider blocks. The synthesizer
+(<code>apply_high_level_inference</code>) expands each entry into a
+Llama Stack <code>providers.inference</code> entry, mapping
+<code>type</code> to a <code>provider_type</code> and emitting
+<code>${env.&lt;VAR&gt;}</code> references for secrets (never literal
+values).</p>
+    <p>Attributes: type: Canonical provider identifier. Vendor-neutral so it
+survives a future backend change; each backend-specific synthesizer maps
+it to its own provider vocabulary. api_key_env: Name of the environment
+variable holding the provider API key. Emitted verbatim as
+<code>${env.&lt;name&gt;}</code> so the secret never lands on disk
+resolved. allowed_models: Optional allow-list of model identifiers
+passed through to the synthesized provider config. extra: Additional
+provider-config keys merged verbatim into the synthesized provider&#x2019;s
+<code>config</code> block &#x2014; an escape hatch for provider-specific knobs
+not modeled here.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>type</td>
+          <td>string</td>
+          <td>Canonical, backend-agnostic provider identifier mapped to a Llama
+Stack provider_type by the synthesizer.</td>
+        </tr>
+        <tr class="even">
+          <td>api_key_env</td>
+          <td>string</td>
+          <td>Name of the environment variable holding the provider API key.
+Emitted as a ${env.name} reference so the secret is never written to
+disk in resolved form.</td>
+        </tr>
+        <tr class="odd">
+          <td>allowed_models</td>
+          <td>array</td>
+          <td>Optional allow-list of model identifiers for this provider.</td>
+        </tr>
+        <tr class="even">
+          <td>extra</td>
+          <td>object</td>
+          <td>Additional provider-config keys merged verbatim into the synthesized
+provider&#x2019;s config block.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2 id="unifiedllamastackconfig">UnifiedLlamaStackConfig</h2>
+    <p>Backend-specific knobs for unified-mode Llama Stack synthesis.</p>
+    <p>Per Decision S5 of the design spike, backend-agnostic high-level
+sections (inference, &#x2026;) live at the configuration root, not here. This
+block holds only the Llama-Stack-specific synthesis controls: which
+baseline to start from, an optional profile file, and a raw
+native_override escape hatch.</p>
+    <p>Attributes: baseline: Synthesis starting point. &#x201C;default&#x201D; begins from
+LCORE&#x2019;s built-in baseline (src/data/default_run.yaml); &#x201C;empty&#x201D; begins
+from an empty dict (used by the migration tool for an exact round-trip).
+Ignored when <code>profile</code> is set. profile: Optional path to a
+user-authored run.yaml-shaped file used as the synthesis baseline.
+Relative paths resolve against the directory of the loaded
+lightspeed-stack.yaml. native_override: Raw Llama Stack schema
+deep-merged last (maps merge recursively, lists and scalars replace).
+The escape hatch for anything the high-level sections do not
+express.</p>
+    <table>
+      <colgroup>
+        <col style="width: 26%"/>
+        <col style="width: 23%"/>
+        <col style="width: 50%"/>
+      </colgroup>
+      <thead>
+        <tr class="header">
+          <th>Field</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="odd">
+          <td>baseline</td>
+          <td>string</td>
+          <td>Synthesis starting point: &#x2018;default&#x2019; uses LCORE&#x2019;s built-in baseline,
+&#x2018;empty&#x2019; starts from {}. Ignored when &#x2018;profile&#x2019; is set.</td>
+        </tr>
+        <tr class="even">
+          <td>profile</td>
+          <td>string</td>
+          <td>Path to a run.yaml-shaped baseline file. Relative paths resolve
+against the directory of the loaded lightspeed-stack.yaml.</td>
+        </tr>
+        <tr class="odd">
+          <td>native_override</td>
+          <td>object</td>
+          <td>Raw Llama Stack schema deep-merged last (maps merge recursively;
+lists and scalars replace).</td>
         </tr>
       </tbody>
     </table>

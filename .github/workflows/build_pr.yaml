@@ -24,6 +24,9 @@ jobs:
           sudo apt install -y buildah qemu-user-static
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Fetch submodules (required for lightspeed-providers)
+          submodules: 'recursive'
       - name: Build image with Buildah
         id: build_image
         uses: redhat-actions/buildah-build@v2

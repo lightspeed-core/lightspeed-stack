@@ -6,6 +6,8 @@ from typing import Any
 import pytest
 from pytest_mock import MockerFixture
 
+from version import __version__
+
 
 @pytest.fixture(name="mock_request_factory")
 def mock_request_factory_fixture(mocker: MockerFixture) -> Callable[..., Any]:
@@ -17,7 +19,7 @@ def mock_request_factory_fixture(mocker: MockerFixture) -> Callable[..., Any]:
 
     def _create(rh_identity: Any = None) -> Any:
         mock_request = mocker.Mock()
-        mock_request.headers = {"User-Agent": "CLA/0.6.0rc2"}
+        mock_request.headers = {"User-Agent": f"CLA/{__version__}"}
 
         if rh_identity is not None:
             mock_request.state = mocker.Mock()

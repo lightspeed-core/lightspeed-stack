@@ -9,7 +9,7 @@ validates the `x-rh-identity` header provided by Red Hat's authentication proxy.
 The `rh-identity` module:
 1. Extracts the `x-rh-identity` header from incoming requests
 2. Base64 decodes and parses the JSON payload
-3. Validates the identity structure based on type (User or System)
+3. Validates the identity structure based on type (User, System, or ServiceAccount)
 4. Optionally validates service entitlements
 5. Extracts user identity for downstream use
 
@@ -62,7 +62,7 @@ entitlement validation entirely.
 
 ## Identity Types
 
-The `x-rh-identity` header supports two identity types, each with different
+The `x-rh-identity` header supports three identity types, each with different
 structure and use cases.
 
 ### User Identity
@@ -163,15 +163,50 @@ A developer-subscription System identity omits the account number:
 | `cn` | string | Certificate Common Name (system UUID) |
 | `cert_type` | string | Certificate type (usually "system") |
 
+### ServiceAccount Identity
+
+OAuth service accounts authenticated via JWT. Used when automated services or
+integrations access APIs using client credentials.
+
+**Identity extraction:**
+- `user_id`: From `identity.service_account.client_id`
+- `username`: From `identity.service_account.username`
+
+**Header structure:**
+```json
+{
+  "identity": {
+    "account_number": "123456",
+    "org_id": "654321",
+    "type": "ServiceAccount",
+    "auth_type": "jwt-auth",
+    "service_account": {
+      "client_id": "b69eaf9e-e6a6-4f9e-805e-02987daddfbd",
+      "username": "service-account-b69eaf9e-e6a6-4f9e-805e-02987daddfbd"
+    }
+  },
+  "entitlements": {
+    "rhel": {"is_entitled": true, "is_trial": false}
+  }
+}
+```
+
+**Available ServiceAccount fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `client_id` | string | OAuth client identifier (used as user_id) |
+| `username` | string | Service account username |
+
 ## Common Identity Fields
 
-Both identity types share these top-level fields:
+All identity types share these top-level fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `account_number` | string | Red Hat account number (optional for System identities; may be empty for developer subscriptions) |
 | `org_id` | string | Organization ID (required for System identities) |
-| `type` | string | Identity type: "User" or "System" |
+| `type` | string | Identity type: "User", "System", or "ServiceAccount" |
 
 ## Entitlements
 
@@ -214,8 +249,8 @@ async def my_endpoint(request: Request):
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `get_user_id()` | `str` | User ID or system CN |
-| `get_username()` | `str` | Username or account number |
+| `get_user_id()` | `str` | User ID, system CN, or service account client_id |
+| `get_username()` | `str` | Username, account number, or service account username |
 | `get_org_id()` | `str` | Organization ID |
 | `has_entitlement(service)` | `bool` | Check single entitlement |
 | `has_entitlements(services)` | `bool` | Check ALL entitlements in list |
@@ -277,6 +312,34 @@ curl http://localhost:8080/v1/query \
   -d '{"query": "Hello"}'
 ```
 
+### ServiceAccount Identity Example
+
+```bash
+# ServiceAccount identity
+IDENTITY='{
+  "identity": {
+    "account_number": "123456",
+    "org_id": "654321",
+    "type": "ServiceAccount",
+    "auth_type": "jwt-auth",
+    "service_account": {
+      "client_id": "b69eaf9e-e6a6-4f9e-805e-02987daddfbd",
+      "username": "service-account-b69eaf9e-e6a6-4f9e-805e-02987daddfbd"
+    }
+  },
+  "entitlements": {
+    "rhel": {"is_entitled": true, "is_trial": false}
+  }
+}'
+
+HEADER=$(echo -n "$IDENTITY" | base64)
+
+curl http://localhost:8080/v1/query \
+  -H "Content-Type: application/json" \
+  -H "x-rh-identity: $HEADER" \
+  -d '{"query": "Hello"}'
+```
+
 ## Error Responses
 
 | Status | Condition | Response |
@@ -292,6 +355,9 @@ curl http://localhost:8080/v1/query \
 | 400 | Missing `system` for System type | `{"detail": "Missing 'system' field for System type"}` |
 | 400 | Missing `cn` in system | `{"detail": "Missing 'cn' in system data"}` |
 | 400 | Missing `org_id` for System | `{"detail": "Missing 'org_id' for System type"}` |
+| 400 | Missing `service_account` for ServiceAccount type | `{"detail": "Invalid identity data"}` |
+| 400 | Missing `client_id` in service_account | `{"detail": "Invalid identity data"}` |
+| 400 | Missing `username` in service_account | `{"detail": "Invalid identity data"}` |
 | 400 | Unsupported identity type | `{"detail": "Unsupported identity type: X"}` |
 | 403 | Missing required entitlements | `{"detail": "Missing required entitlement: rhel"}` |
 

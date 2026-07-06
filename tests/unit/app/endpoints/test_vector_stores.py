@@ -1181,3 +1181,103 @@ async def test_delete_vector_store_file_not_found(mocker: MockerFixture) -> None
     )
     assert response.deleted is False
     assert response.file_id == "file_999"
+
+
+@pytest.mark.asyncio
+async def test_get_vector_store_connection_error(mocker: MockerFixture) -> None:
+    """Test get vector store with connection error."""
+    mock_authorization_resolvers(mocker)
+
+    config_dict = get_test_config()
+    cfg = AppConfig()
+    cfg.init_from_dict(config_dict)
+
+    mock_client = mocker.AsyncMock()
+    mock_client.vector_stores.retrieve.side_effect = APIConnectionError(
+        request=None  # type: ignore
+    )
+    mock_lsc = mocker.patch(
+        "app.endpoints.vector_stores.AsyncLlamaStackClientHolder.get_client"
+    )
+    mock_lsc.return_value = mock_client
+    mocker.patch("app.endpoints.vector_stores.configuration", cfg)
+
+    request = get_test_request()
+    auth = get_test_auth()
+
+    with pytest.raises(HTTPException) as e:
+        await get_vector_store(request=request, vector_store_id="vs_123", auth=auth)
+    assert e.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+
+
+@pytest.mark.asyncio
+async def test_create_file_adds_txt_extension_when_missing(
+    mocker: MockerFixture,
+) -> None:
+    """Test that create_file appends .txt when filename has no extension."""
+    mock_authorization_resolvers(mocker)
+
+    config_dict = get_test_config()
+    cfg = AppConfig()
+    cfg.init_from_dict(config_dict)
+
+    mock_client = mocker.AsyncMock()
+    mock_client.files.create.return_value = File("file_123", "uploaded_file.txt", 12)
+    mock_lsc = mocker.patch(
+        "app.endpoints.vector_stores.AsyncLlamaStackClientHolder.get_client"
+    )
+    mock_lsc.return_value = mock_client
+    mocker.patch("app.endpoints.vector_stores.configuration", cfg)
+
+    request = get_test_request()
+    auth = get_test_auth()
+
+    mock_file = mocker.AsyncMock()
+    mock_file.filename = "uploaded_file"
+    mock_file.size = 12
+    mock_file.read.return_value = b"test content"
+
+    response = await create_file(request=request, auth=auth, file=mock_file)
+    assert response is not None
+    assert response.filename == "uploaded_file.txt"
+
+    file_arg = mock_client.files.create.call_args.kwargs["file"]
+    assert file_arg.name == "uploaded_file.txt"
+
+
+@pytest.mark.asyncio
+async def test_create_file_non_size_bad_request_returns_400(
+    mocker: MockerFixture,
+) -> None:
+    """Test create file with non-size BadRequestError returns 400."""
+    mock_authorization_resolvers(mocker)
+
+    config_dict = get_test_config()
+    cfg = AppConfig()
+    cfg.init_from_dict(config_dict)
+
+    mock_client = mocker.AsyncMock()
+    mock_response = mocker.Mock()
+    mock_response.request = mocker.Mock()
+    mock_client.files.create.side_effect = BadRequestError(
+        message="Invalid file format", response=mock_response, body=None
+    )
+    mock_lsc = mocker.patch(
+        "app.endpoints.vector_stores.AsyncLlamaStackClientHolder.get_client"
+    )
+    mock_lsc.return_value = mock_client
+    mocker.patch("app.endpoints.vector_stores.configuration", cfg)
+
+    request = get_test_request()
+    auth = get_test_auth()
+
+    mock_file = mocker.AsyncMock()
+    mock_file.filename = "test.txt"
+    mock_file.size = 12
+    mock_file.read.return_value = b"test content"
+
+    with pytest.raises(HTTPException) as e:
+        await create_file(request=request, auth=auth, file=mock_file)
+
+    assert e.value.status_code == status.HTTP_400_BAD_REQUEST
+    assert e.value.detail["response"] == "Invalid file upload"  # type: ignore

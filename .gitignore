@@ -195,6 +195,9 @@ requirements.*.backup
 # Local run files
 local-run.yaml
 
+# Synthesized Llama Stack run.yaml written by unified library mode (LCORE-2336)
+.generated/
+
 # Sisyphus planning files
 .sisyphus/
 # Per-developer feature design overrides (see docs/contributing/feature-design.config)

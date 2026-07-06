@@ -45,7 +45,7 @@ def _create_mock_request(mocker: MockerFixture) -> Any:
     mock_request = mocker.Mock()
     # Use spec=[] to create a Mock with no attributes, simulating absent rh_identity_data
     mock_request.state = mocker.Mock(spec=[])
-    mock_request.headers = {"User-Agent": "CLA/0.6.0rc2"}
+    mock_request.headers = {"User-Agent": f"CLA/{__version__}"}
     return mock_request
 
 

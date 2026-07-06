@@ -5,6 +5,32 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 ![Logo](https://lightspeed-core.github.io/lightspeed-stack/logo.jpg)
 
+<!-- vim-markdown-toc GFM -->
+
+* [Overview](#overview)
+* [Installation and configuration](#installation-and-configuration)
+* [Status of Lightspeed Core Stack versions](#status-of-lightspeed-core-stack-versions)
+* [Info for developers](#info-for-developers)
+* [API](#api)
+* [RAG and BYOK](#rag-and-byok)
+* [Other features](#other-features)
+* [Models](#models)
+* [Design documents](#design-documents)
+    * [Agent skills](#agent-skills)
+    * [Automatic conversation expiration](#automatic-conversation-expiration)
+    * [BYOK PDF support](#byok-pdf-support)
+    * [Conversation compaction](#conversation-compaction)
+    * [Supporting backport changes for releases](#supporting-backport-changes-for-releases)
+    * [Human-in-the-loop (HIL)](#human-in-the-loop-hil)
+    * [Llama Stack config merge (unified `lightspeed-stack.yaml`)](#llama-stack-config-merge-unified-lightspeed-stackyaml)
+    * [Low overhead deployment for server mode](#low-overhead-deployment-for-server-mode)
+    * [OpenTelemetry tracing in Lightspeed Core](#opentelemetry-tracing-in-lightspeed-core)
+* [Testing](#testing)
+* [Releasing](#releasing)
+* [Demos](#demos)
+
+<!-- vim-markdown-toc -->
+
 ## Overview
 
 [Architecture](https://lightspeed-core.github.io/lightspeed-stack/ARCHITECTURE.html)
@@ -18,6 +44,8 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 ## Installation and configuration
 
 [Deployment Guide](https://lightspeed-core.github.io/lightspeed-stack/deployment_guide.html)
+
+[Container Orchestration Guide](https://lightspeed-core.github.io/lightspeed-stack/container_orchestration.html)
 
 [Linux](https://lightspeed-core.github.io/lightspeed-stack/installation_linux.html)
 
@@ -61,11 +89,70 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [Database structure](https://lightspeed-core.github.io/lightspeed-stack/DB/index.html)
 
+[Agent skills](https://lightspeed-core.github.io/lightspeed-stack/skills_guide.html)
+
+## Models
+
+[Common](https://lightspeed-core.github.io/lightspeed-stack/models/common.html)
+
+[Database](https://lightspeed-core.github.io/lightspeed-stack/models/database.html)
+
+[Requests](https://lightspeed-core.github.io/lightspeed-stack/models/requests.html)
+
+[Successful responses](https://lightspeed-core.github.io/lightspeed-stack/models/responses_succ.html)
+
+[Error responses](https://lightspeed-core.github.io/lightspeed-stack/models/responses_errors.html)
+
+[Compaction](https://lightspeed-core.github.io/lightspeed-stack/models/compaction.html)
+
+
 ## Design documents
 
-[Conversation compaction](https://lightspeed-core.github.io/lightspeed-stack/design/conversation-compaction/conversation-compaction.html)
+### Agent skills
 
-[Supporting backport changes for releases](https://lightspeed-core.github.io/lightspeed-stack/design/supporting-backport-changes-for-releases/supporting-backport-changes-for-releases.html)
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/agent-skills/agent-skills-spike.html)
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/agent-skills/agent-skills.html)
+
+### Automatic conversation expiration
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/automatic-conversation-expiration/automatic-conversation-expiration.html)
+
+### BYOK PDF support
+
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/byok-pdf/byok-pdf-spike.html)
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/byok-pdf/byok-pdf.html)
+
+### Conversation compaction
+
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/conversation-compaction/conversation-compaction-spike.html)
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/conversation-compaction/conversation-compaction.html)
+
+### Supporting backport changes for releases
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/supporting-backport-changes-for-releases/supporting-backport-changes-for-releases.html)
+
+### Human-in-the-loop (HIL)
+
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/human-in-the-loop/human-in-the-loop-spike.html)
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/human-in-the-loop/human-in-the-loop.html)
+
+### Llama Stack config merge (unified `lightspeed-stack.yaml`)
+
+[Spike](https://lightspeed-core.github.io/lightspeed-stack/design/llama-stack-config-merge/llama-stack-config-merge-spike.html)
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/llama-stack-config-merge/llama-stack-config-merge.html)
+
+### Low overhead deployment for server mode
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/low-overhead-deployment-for-server-mode/low-overhead-deployment-for-server-mode.html)
+
+### OpenTelemetry tracing in Lightspeed Core
+
+[Design](https://lightspeed-core.github.io/lightspeed-stack/design/observability-opentelemetry/observability-opentelemetry.html)
 
 ## Testing
 
@@ -77,7 +164,11 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 ## Releasing
 
+[Branching](https://lightspeed-core.github.io/lightspeed-stack/branching.html)
+
 [Releasing](https://lightspeed-core.github.io/lightspeed-stack/releasing.html)
+
+[LTS provess overview](https://lightspeed-core.github.io/lightspeed-stack/lts_flow.html)
 
 ## Demos
 

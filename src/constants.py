@@ -9,10 +9,23 @@ from typing import Final, Literal
 MINIMAL_SUPPORTED_LLAMA_STACK_VERSION: Final[str] = "0.2.17"
 MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION: Final[str] = "0.6.0"
 
+# Path to the lightspeed-stack.yaml, exported so uvicorn workers (separate
+# processes) can reload the configuration that the parent process selected.
+CONFIG_PATH_ENV_VAR: Final[str] = "LIGHTSPEED_STACK_CONFIG_PATH"
+
+# Environment variable through which the parent process passes the operator's
+# --synthesized-config-output override down to the uvicorn workers that perform
+# unified-mode library synthesis. Unset means use DEFAULT_SYNTHESIZED_CONFIG_PATH.
+SYNTHESIZED_CONFIG_PATH_ENV_VAR: Final[str] = "LIGHTSPEED_STACK_SYNTHESIZED_CONFIG_PATH"
+
+# Default persistent path for the synthesized Llama Stack run.yaml in unified
+# library mode. Overwritten on each boot and written with mode 0600 (R10).
+DEFAULT_SYNTHESIZED_CONFIG_PATH: Final[str] = "./.generated/run.yaml"
+
 UNABLE_TO_PROCESS_RESPONSE: Final[str] = "Unable to process this request"
 
 # Response stored in the conversation when the user interrupts a streaming request
-INTERRUPTED_RESPONSE_MESSAGE: Final[str] = "You interrupted this request."
+INTERRUPTED_RESPONSE_MESSAGE: Final[str] = "Response stopped by the user."
 
 # Max seconds to wait for topic summary in background task after interrupt persist.
 TOPIC_SUMMARY_INTERRUPT_TIMEOUT_SECONDS: Final[float] = 30.0
@@ -119,6 +132,7 @@ AUTH_MOD_NOOP_WITH_TOKEN: Final[str] = "noop-with-token"
 AUTH_MOD_APIKEY_TOKEN: Final[str] = "api-key-token"
 AUTH_MOD_JWK_TOKEN: Final[str] = "jwk-token"
 AUTH_MOD_RH_IDENTITY: Final[str] = "rh-identity"
+AUTH_MOD_TRUSTED_PROXY: Final[str] = "trusted-proxy"
 # Supported authentication modules
 SUPPORTED_AUTHENTICATION_MODULES: Final[frozenset[str]] = frozenset(
     {
@@ -128,6 +142,7 @@ SUPPORTED_AUTHENTICATION_MODULES: Final[frozenset[str]] = frozenset(
         AUTH_MOD_JWK_TOKEN,
         AUTH_MOD_APIKEY_TOKEN,
         AUTH_MOD_RH_IDENTITY,
+        AUTH_MOD_TRUSTED_PROXY,
     }
 )
 DEFAULT_AUTHENTICATION_MODULE: Final[str] = AUTH_MOD_NOOP
@@ -233,10 +248,11 @@ OKP_RAG_ID: Final[str] = "okp"
 # Environment variable name for configurable log level
 LIGHTSPEED_STACK_LOG_LEVEL_ENV_VAR: Final[str] = "LIGHTSPEED_STACK_LOG_LEVEL"
 # Default log level when environment variable is not set
+DEFAULT_LOGGER_NAME: Final[str] = "lightspeed_stack"
 DEFAULT_LOG_LEVEL: Final[str] = "INFO"
 # Default log format for plain-text logging in non-TTY environments
 DEFAULT_LOG_FORMAT: Final[str] = (
-    "%(asctime)s %(levelname)-8s %(name)s:%(lineno)d %(message)s"
+    "%(asctime)s.%(msecs)03d %(levelprefix)s %(message)s  [%(name)s:%(lineno)d]"
 )
 # Environment variable to force StreamHandler instead of RichHandler
 # Set to any non-empty value to disable RichHandler
@@ -247,6 +263,46 @@ LIGHTSPEED_STACK_DISABLE_RICH_HANDLER_ENV_VAR: Final[str] = (
 DEFAULT_VIOLATION_MESSAGE: Final[str] = (
     "I cannot process this request due to policy restrictions."
 )
+
+# The Default model prompt and the default invalid question response for QuestionValidityConfig
+DEFAULT_MODEL_PROMPT: Final[str] = """
+Instructions:
+- You are a question classifying tool
+- You are an expert in kubernetes and openshift
+- Your job is to determine where or a user's question is related to kubernetes and/or openshift technologies and to provide a one-word response.
+- If a question appears to be related to kubernetes or openshift technologies, answer with the word ${allowed}, otherwise answer with the word ${rejected}.
+- Do not explain your answer, just provide the one-word response. Do not give any other response.
+- If the given question is an empty string, answer with the word ${rejected}
+
+
+Example Question:
+Why is the sky blue?
+Example Response:
+${rejected}
+
+Example Question:
+Why is the grass green?
+Example Response:
+${rejected}
+
+Example Question:
+Why is sand yellow?
+Example Response:
+${rejected}
+
+Example Question:
+Can you help configure my cluster to automatically scale?
+Example Response:
+${allowed}
+
+Question:
+${message}
+Response:
+"""
+DEFAULT_INVALID_QUESTION_RESPONSE: Final[str] = """
+Hi, I'm the OpenShift Lightspeed assistant, I can help you with questions about OpenShift, 
+please ask me a question related to OpenShift.
+"""
 
 # Placeholder slug used in responses when the server substituted its own
 # system prompt for the client's instructions.  Avoids leaking the actual

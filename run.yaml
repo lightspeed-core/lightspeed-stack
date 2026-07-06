@@ -15,7 +15,7 @@ apis:
 benchmarks: []
 datasets: []
 image_name: starter
-external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR}
+external_providers_dir: /opt/app-root/providers/resources/external_providers
 
 providers:
   inference:

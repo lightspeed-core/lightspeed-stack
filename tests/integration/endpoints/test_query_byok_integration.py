@@ -7,7 +7,6 @@ from typing import Any
 
 import pytest
 from fastapi import Request
-from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client.types import VersionInfo
 from pytest_mock import AsyncMockType, MockerFixture
 
@@ -17,6 +16,11 @@ from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.api.requests import QueryRequest
 from models.api.responses.successful import QueryResponse
+from tests.integration.conftest import (
+    create_agent_run_result,
+    create_file_search_agent_run_result,
+    create_mock_llm_response,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -87,8 +91,9 @@ def _make_vector_io_response(
 def _build_base_mock_client(mocker: MockerFixture) -> Any:
     """Build a base mock Llama Stack client with common stubs.
 
-    Configures models, shields, conversations, version, and a default
-    responses.create return value.
+    Configures models, shields, conversations, version, and responses.create
+    for topic summary generation. Agent inference is mocked separately via
+    ``mock_query_agent``.
     """
     mock_client = mocker.AsyncMock()
 
@@ -112,24 +117,12 @@ def _build_base_mock_client(mocker: MockerFixture) -> Any:
     # Version
     mock_client.inspect.version.return_value = VersionInfo(version="0.4.3")
 
-    # Default response
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
-    mock_response.id = "response-byok"
-    mock_output_item = mocker.MagicMock()
-    mock_output_item.type = "message"
-    mock_output_item.role = "assistant"
-    mock_output_item.content = (
-        "Based on the documentation, OpenShift is a Kubernetes distribution."
+    mock_client.responses.create.return_value = create_mock_llm_response(
+        mocker,
+        content="OpenShift overview",
+        input_tokens=10,
+        output_tokens=5,
     )
-    mock_output_item.refusal = None
-    mock_response.output = [mock_output_item]
-    mock_response.stop_reason = "end_turn"
-    mock_response.tool_calls = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 50
-    mock_usage.output_tokens = 20
-    mock_response.usage = mock_usage
-    mock_client.responses.create.return_value = mock_response
 
     return mock_client
 
@@ -142,12 +135,21 @@ def _build_base_mock_client(mocker: MockerFixture) -> Any:
 @pytest.fixture(name="mock_byok_client")
 def mock_byok_client_fixture(
     mocker: MockerFixture,
+    mock_query_agent: AsyncMockType,
 ) -> Generator[Any, None, None]:
     """Mock Llama Stack client with BYOK inline RAG configured.
 
     Configures vector_io.query to return BYOK RAG chunks and sets
     vector_stores.list to empty (no tool-based vector stores).
     """
+    mock_query_agent.run.return_value = create_agent_run_result(
+        mocker,
+        content=("Based on the documentation, OpenShift is a Kubernetes distribution."),
+        response_id="response-byok",
+        input_tokens=50,
+        output_tokens=20,
+    )
+
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
     mock_client = _build_base_mock_client(mocker)
 
@@ -168,11 +170,12 @@ def mock_byok_client_fixture(
 @pytest.fixture(name="mock_byok_tool_rag_client")
 def mock_byok_tool_rag_client_fixture(
     mocker: MockerFixture,
+    mock_query_agent: AsyncMockType,
 ) -> Generator[Any, None, None]:
     """Mock Llama Stack client with BYOK tool RAG (file_search) configured.
 
-    Configures vector_stores.list with a BYOK store and responses.create
-    to return a file_search_call output item alongside the assistant message.
+    Configures vector_stores.list with a BYOK store and agent.run to return
+    a file_search tool result alongside the assistant message.
     """
     mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
     mock_client = _build_base_mock_client(mocker)
@@ -190,54 +193,26 @@ def mock_byok_tool_rag_client_fixture(
     mock_list_result.data = [mock_vector_store]
     mock_client.vector_stores.list.return_value = mock_list_result
 
-    # Response with file_search tool call
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
-    mock_response.id = "response-tool-rag"
-
-    mock_tool_output = mocker.MagicMock()
-    mock_tool_output.type = "file_search_call"
-    mock_tool_output.id = "call-fs-1"
-    mock_tool_output.queries = ["What is OpenShift?"]
-    mock_tool_output.status = "completed"
-
-    mock_result = mocker.MagicMock()
-    mock_result.file_id = "doc-ocp-1"
-    mock_result.filename = "openshift-docs.txt"
-    mock_result.score = 0.92
-    mock_result.text = "OpenShift is a Kubernetes distribution by Red Hat."
-    mock_result.attributes = {
-        "doc_url": "https://docs.redhat.com/ocp/overview",
-        "link": "https://docs.redhat.com/ocp/overview",
-    }
-    mock_result.model_dump = mocker.Mock(
-        return_value={
-            "file_id": "doc-ocp-1",
-            "filename": "openshift-docs.txt",
-            "score": 0.92,
-            "text": "OpenShift is a Kubernetes distribution by Red Hat.",
-            "attributes": {
-                "doc_url": "https://docs.redhat.com/ocp/overview",
-            },
-        }
+    tool_run_result = create_file_search_agent_run_result(
+        mocker,
+        content=("Based on the documentation, OpenShift is a Kubernetes distribution."),
+        response_id="response-tool-rag",
+        queries=["What is OpenShift?"],
+        results=[
+            {
+                "text": "OpenShift is a Kubernetes distribution by Red Hat.",
+                "score": 0.92,
+                "attributes": {
+                    "doc_url": "https://docs.redhat.com/ocp/overview",
+                    "title": "openshift-docs.txt",
+                    "document_id": "doc-ocp-1",
+                },
+            }
+        ],
+        input_tokens=60,
+        output_tokens=25,
     )
-    mock_tool_output.results = [mock_result]
-
-    mock_message = mocker.MagicMock()
-    mock_message.type = "message"
-    mock_message.role = "assistant"
-    mock_message.content = (
-        "Based on the documentation, OpenShift is a Kubernetes distribution."
-    )
-    mock_message.refusal = None
-
-    mock_response.output = [mock_tool_output, mock_message]
-    mock_response.stop_reason = "end_turn"
-    mock_response.tool_calls = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 60
-    mock_usage.output_tokens = 25
-    mock_response.usage = mock_usage
-    mock_client.responses.create.return_value = mock_response
+    mock_query_agent.run.return_value = tool_run_result
 
     mock_holder_class.return_value.get_client.return_value = mock_client
     yield mock_client
@@ -310,6 +285,7 @@ def byok_tool_config_fixture(
 async def test_query_byok_inline_rag_injects_context(
     byok_config: AppConfig,
     mock_byok_client: AsyncMockType,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
@@ -317,7 +293,7 @@ async def test_query_byok_inline_rag_injects_context(
 
     Verifies:
     - vector_io.query is called for BYOK inline RAG
-    - RAG context is injected into the responses.create input
+    - RAG context is injected into the agent prompt
     - Response includes RAG chunks from inline sources
     """
     _ = byok_config
@@ -353,13 +329,10 @@ async def test_query_byok_inline_rag_injects_context(
     call_kwargs = mock_byok_client.vector_io.query.call_args.kwargs
     assert call_kwargs["query"] == "What is OpenShift?"
 
-    # Verify RAG context was injected into responses.create input
-    # Use call_args_list[0] — the first call is the main query;
-    # a second call may follow for topic summary generation.
-    create_kwargs = mock_byok_client.responses.create.call_args_list[0].kwargs
-    input_text = create_kwargs["input"]
-    assert "file_search found" in input_text
-    assert "OpenShift is a Kubernetes distribution" in input_text
+    # Verify RAG context was injected into the agent prompt
+    prompt = mock_query_agent.run.call_args.args[0]
+    assert "file_search found" in prompt
+    assert "OpenShift is a Kubernetes distribution" in prompt
 
     # Verify RAG chunks are included in the response
     assert response.rag_chunks is not None
@@ -428,6 +401,7 @@ async def test_query_byok_inline_rag_returns_referenced_documents(
 @pytest.mark.asyncio
 async def test_query_byok_inline_rag_with_request_vector_store_ids(
     test_config: AppConfig,
+    mock_query_agent: AsyncMockType,
     mocker: MockerFixture,
     test_request: Request,
     test_auth: AuthTuple,
@@ -441,6 +415,7 @@ async def test_query_byok_inline_rag_with_request_vector_store_ids(
     Verifies:
     - vector_io.query is NOT called (source-b is not in rag.inline)
     """
+    _ = mock_query_agent
     entry_a = mocker.MagicMock()
     entry_a.rag_id = "source-a"
     entry_a.vector_db_id = "vs-source-a"
@@ -497,6 +472,7 @@ async def test_query_byok_inline_rag_with_request_vector_store_ids(
 @pytest.mark.asyncio
 async def test_query_byok_request_vector_store_ids_filters_configured_stores(
     test_config: AppConfig,
+    mock_query_agent: AsyncMockType,
     mocker: MockerFixture,
     test_request: Request,
     test_auth: AuthTuple,
@@ -511,6 +487,7 @@ async def test_query_byok_request_vector_store_ids_filters_configured_stores(
     - vs-source-b is NOT queried despite being in rag.inline
     - Returned chunks only reference source-a
     """
+    _ = mock_query_agent
     entry_a = mocker.MagicMock()
     entry_a.rag_id = "source-a"
     entry_a.vector_db_id = "vs-source-a"
@@ -768,6 +745,7 @@ async def test_query_byok_tool_rag_referenced_documents(
 async def test_query_byok_combined_inline_and_tool_rag(  # pylint: disable=too-many-locals,too-many-statements
     test_config: AppConfig,
     mocker: MockerFixture,
+    mock_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
@@ -802,47 +780,27 @@ async def test_query_byok_combined_inline_and_tool_rag(  # pylint: disable=too-m
     mock_list_result.data = [mock_vector_store]
     mock_client.vector_stores.list.return_value = mock_list_result
 
-    # Response includes file_search_call (tool RAG result)
-    mock_response = mocker.MagicMock(spec=OpenAIResponseObject)
-    mock_response.id = "response-combined"
-
-    mock_tool_output = mocker.MagicMock()
-    mock_tool_output.type = "file_search_call"
-    mock_tool_output.id = "call-fs-combined"
-    mock_tool_output.queries = ["What is OpenShift?"]
-    mock_tool_output.status = "completed"
-
-    mock_result = mocker.MagicMock()
-    mock_result.file_id = "doc-tool-1"
-    mock_result.filename = "tool-doc.txt"
-    mock_result.score = 0.90
-    mock_result.text = "Tool-based RAG result about OpenShift."
-    mock_result.attributes = {"doc_url": "https://example.com/tool-doc"}
-    mock_result.model_dump = mocker.Mock(
-        return_value={
-            "file_id": "doc-tool-1",
-            "filename": "tool-doc.txt",
-            "score": 0.90,
-            "text": "Tool-based RAG result about OpenShift.",
-            "attributes": {"doc_url": "https://example.com/tool-doc"},
-        }
+    # Agent run includes file_search tool RAG result
+    combined_run_result = create_file_search_agent_run_result(
+        mocker,
+        content="Combined answer from inline and tool RAG.",
+        response_id="response-combined",
+        queries=["What is OpenShift?"],
+        results=[
+            {
+                "text": "Tool-based RAG result about OpenShift.",
+                "score": 0.90,
+                "attributes": {
+                    "doc_url": "https://example.com/tool-doc",
+                    "title": "tool-doc.txt",
+                    "document_id": "doc-tool-1",
+                },
+            }
+        ],
+        input_tokens=80,
+        output_tokens=30,
     )
-    mock_tool_output.results = [mock_result]
-
-    mock_message = mocker.MagicMock()
-    mock_message.type = "message"
-    mock_message.role = "assistant"
-    mock_message.content = "Combined answer from inline and tool RAG."
-    mock_message.refusal = None
-
-    mock_response.output = [mock_tool_output, mock_message]
-    mock_response.stop_reason = "end_turn"
-    mock_response.tool_calls = []
-    mock_usage = mocker.MagicMock()
-    mock_usage.input_tokens = 80
-    mock_usage.output_tokens = 30
-    mock_response.usage = mock_usage
-    mock_client.responses.create.return_value = mock_response
+    mock_query_agent.run.return_value = combined_run_result
 
     mock_holder_class.return_value.get_client.return_value = mock_client
 
@@ -885,6 +843,7 @@ async def test_query_byok_combined_inline_and_tool_rag(  # pylint: disable=too-m
 @pytest.mark.asyncio
 async def test_query_byok_inline_rag_only_configured_rag_id_is_queried(
     test_config: AppConfig,
+    mock_query_agent: AsyncMockType,
     mocker: MockerFixture,
     test_request: Request,
     test_auth: AuthTuple,
@@ -901,6 +860,7 @@ async def test_query_byok_inline_rag_only_configured_rag_id_is_queried(
     - Returned chunks only reference source-a
     - source-b chunks are absent
     """
+    _ = mock_query_agent
     entry_a = mocker.MagicMock()
     entry_a.rag_id = "source-a"
     entry_a.vector_db_id = "vs-source-a"
@@ -970,6 +930,7 @@ async def test_query_byok_inline_rag_only_configured_rag_id_is_queried(
 @pytest.mark.asyncio
 async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: disable=too-many-locals
     test_config: AppConfig,
+    mock_query_agent: AsyncMockType,
     mocker: MockerFixture,
     test_request: Request,
     test_auth: AuthTuple,
@@ -985,6 +946,7 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
     - The chunk with the higher weighted score appears first
     - score_multiplier correctly influences ranking
     """
+    _ = mock_query_agent
     entry_a = mocker.MagicMock()
     entry_a.rag_id = "source-a"
     entry_a.vector_db_id = "vs-source-a"
@@ -1073,6 +1035,7 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
 @pytest.mark.asyncio
 async def test_query_rag_content_limit_caps_retrieved_results(  # pylint: disable=too-many-locals
     test_config: AppConfig,
+    mock_query_agent: AsyncMockType,
     mocker: MockerFixture,
     test_request: Request,
     test_auth: AuthTuple,
@@ -1087,6 +1050,7 @@ async def test_query_rag_content_limit_caps_retrieved_results(  # pylint: disabl
     - Number of RAG chunks does not exceed INLINE_RAG_MAX_CHUNKS
     - Returned chunks are the top-scoring ones
     """
+    _ = mock_query_agent
     entry = mocker.MagicMock()
     entry.rag_id = "big-source"
     entry.vector_db_id = "vs-big-source"
@@ -1163,6 +1127,7 @@ async def test_query_rag_content_limit_caps_retrieved_results(  # pylint: disabl
 @pytest.mark.asyncio
 async def test_query_rag_content_limit_caps_across_multiple_sources(  # pylint: disable=too-many-locals
     test_config: AppConfig,
+    mock_query_agent: AsyncMockType,
     mocker: MockerFixture,
     test_request: Request,
     test_auth: AuthTuple,
@@ -1177,6 +1142,7 @@ async def test_query_rag_content_limit_caps_across_multiple_sources(  # pylint: 
     - Total chunks across sources are capped at INLINE_RAG_MAX_CHUNKS
     - Top-scoring chunks from both sources are included
     """
+    _ = mock_query_agent
     entry_a = mocker.MagicMock()
     entry_a.rag_id = "source-a"
     entry_a.vector_db_id = "vs-source-a"
@@ -1271,6 +1237,7 @@ async def test_query_rag_content_limit_caps_across_multiple_sources(  # pylint: 
 @pytest.mark.asyncio
 async def test_query_rag_content_limit_caps_inline_rag(  # pylint: disable=too-many-locals
     test_config: AppConfig,
+    mock_query_agent: AsyncMockType,
     mocker: MockerFixture,
     test_request: Request,
     test_auth: AuthTuple,
@@ -1284,6 +1251,7 @@ async def test_query_rag_content_limit_caps_inline_rag(  # pylint: disable=too-m
     - Number of inline RAG chunks equals the lowered INLINE_RAG_MAX_CHUNKS
     - Returned chunks are the top-scoring ones
     """
+    _ = mock_query_agent
     mocker.patch("utils.vector_search.constants.INLINE_RAG_MAX_CHUNKS", 3)
 
     entry = mocker.MagicMock()

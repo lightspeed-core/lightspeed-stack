@@ -4,6 +4,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from observability.formats.rlsapi import InferenceEventData, build_inference_event
+from version import __version__
 
 
 @pytest.fixture(name="sample_event_data")
@@ -17,7 +18,7 @@ def sample_event_data_fixture() -> InferenceEventData:
         org_id="12345678",
         system_id="abc-def-123",
         request_id="req_xyz789",
-        cla_version="CLA/0.6.0rc2",
+        cla_version=f"CLA/{__version__}",
         system_os="RHEL",
         system_version="9.3",
         system_arch="x86_64",
@@ -40,7 +41,7 @@ def test_builds_event_with_all_fields(
     assert event["org_id"] == "12345678"
     assert event["system_id"] == "abc-def-123"
     assert event["request_id"] == "req_xyz789"
-    assert event["cla_version"] == "CLA/0.6.0rc2"
+    assert event["cla_version"] == f"CLA/{__version__}"
     assert event["system_os"] == "RHEL"
     assert event["system_version"] == "9.3"
     assert event["system_arch"] == "x86_64"

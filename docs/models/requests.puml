@@ -1,0 +1,161 @@
+@startuml classes
+set namespaceSeparator none
+class "ConversationUpdateRequest" as src.models.api.requests.conversations.ConversationUpdateRequest {
+  model_config : dict
+  topic_summary : Optional[str]
+}
+class "FeedbackRequest" as src.models.api.requests.feedback.FeedbackRequest {
+  categories : Optional[list[FeedbackCategory]]
+  conversation_id : Optional[str]
+  llm_response : Optional[str]
+  model_config : dict
+  sentiment : Optional[int]
+  user_feedback : Optional[str]
+  user_question : Optional[str]
+  check_feedback_provided() -> Self
+  check_sentiment(value: Optional[int]) -> Optional[int]
+  check_uuid(value: str) -> str
+  validate_categories(value: Optional[list[FeedbackCategory]]) -> Optional[list[FeedbackCategory]]
+}
+class "FeedbackStatusUpdateRequest" as src.models.api.requests.feedback.FeedbackStatusUpdateRequest {
+  model_config : dict
+  status : Optional[bool]
+  get_value() -> bool
+}
+class "MCPServerRegistrationRequest" as src.models.api.requests.mcp_servers.MCPServerRegistrationRequest {
+  authorization_headers : Optional[dict[str, str]]
+  headers : Optional[list[str]]
+  model_config : dict
+  name : Optional[str]
+  provider_id : Optional[str]
+  timeout : Optional[int]
+  url : Optional[str]
+  validate_authorization_header_values(value: Optional[dict[str, str]]) -> Optional[dict[str, str]]
+  validate_url(value: str) -> str
+}
+class "ModelFilter" as src.models.api.requests.catalog.ModelFilter {
+  model_config : dict
+  model_type : Optional[str]
+}
+class "PromptCreateRequest" as src.models.api.requests.prompts.PromptCreateRequest {
+  model_config : dict
+  prompt : Optional[str]
+  variables : Optional[list[str]]
+}
+class "PromptUpdateRequest" as src.models.api.requests.prompts.PromptUpdateRequest {
+  model_config : dict
+  prompt : Optional[str]
+  set_as_default : Optional[bool]
+  variables : Optional[list[str]]
+  version : Optional[int]
+}
+class "QueryRequest" as src.models.api.requests.query.QueryRequest {
+  attachments : Optional[list[Attachment]]
+  conversation_id : Optional[str]
+  generate_topic_summary : Optional[bool]
+  media_type : Optional[str]
+  model : Optional[str]
+  model_config : dict
+  no_tools : Optional[bool]
+  provider : Optional[str]
+  query : Optional[str]
+  shield_ids : Optional[list[str]]
+  solr : Optional[SolrVectorSearchRequest]
+  system_prompt : Optional[str]
+  vector_store_ids : Optional[list[str]]
+  check_uuid(value: Optional[str]) -> Optional[str]
+  validate_media_type() -> Self
+  validate_provider_and_model() -> Self
+}
+class "ResponsesRequest" as src.models.api.requests.responses_openai.ResponsesRequest {
+  conversation : Optional[str]
+  generate_topic_summary : Optional[bool]
+  include : Optional[list[IncludeParameter]]
+  input
+  instructions : Optional[str]
+  max_infer_iters : Optional[int]
+  max_output_tokens : Optional[int]
+  max_tool_calls : Optional[int]
+  metadata : Optional[dict[str, str]]
+  model : Optional[str]
+  model_config : dict
+  parallel_tool_calls : Optional[bool]
+  previous_response_id : Optional[str]
+  prompt : Optional[Prompt]
+  reasoning : Optional[Reasoning]
+  safety_identifier : Optional[str]
+  shield_ids : Optional[list[str]]
+  solr : Optional[SolrVectorSearchRequest]
+  store : bool
+  stream : bool
+  temperature : Optional[float]
+  text : Optional[Text]
+  tool_choice : Optional[ToolChoice]
+  tools : Optional[list[InputTool]]
+  check_previous_response_id(value: Optional[str]) -> Optional[str]
+  check_suid(value: Optional[str]) -> Optional[str]
+  validate_body_size(values: Any) -> Any
+  validate_conversation_and_previous_response_id_mutually_exclusive() -> Self
+}
+class "RlsapiV1Attachment" as src.models.api.requests.rlsapi.RlsapiV1Attachment {
+  contents : Optional[str]
+  mimetype : Optional[str]
+}
+class "RlsapiV1CLA" as src.models.api.requests.rlsapi.RlsapiV1CLA {
+  nevra : Optional[str]
+  version : Optional[str]
+}
+class "RlsapiV1Context" as src.models.api.requests.rlsapi.RlsapiV1Context {
+  attachments : Optional[RlsapiV1Attachment]
+  cla : Optional[RlsapiV1CLA]
+  stdin : Optional[str]
+  systeminfo : Optional[RlsapiV1SystemInfo]
+  terminal : Optional[RlsapiV1Terminal]
+}
+class "RlsapiV1InferRequest" as src.models.api.requests.rlsapi.RlsapiV1InferRequest {
+  context : Optional[RlsapiV1Context]
+  include_metadata : Optional[bool]
+  question : Optional[str]
+  skip_rag : Optional[bool]
+  get_input_source() -> str
+  validate_question(value: str) -> str
+}
+class "RlsapiV1SystemInfo" as src.models.api.requests.rlsapi.RlsapiV1SystemInfo {
+  arch : Optional[str]
+  model_config : dict
+  os : Optional[str]
+  system_id : Optional[str]
+  version : Optional[str]
+}
+class "RlsapiV1Terminal" as src.models.api.requests.rlsapi.RlsapiV1Terminal {
+  output : Optional[str]
+}
+class "StreamingInterruptRequest" as src.models.api.requests.query.StreamingInterruptRequest {
+  model_config : dict
+  request_id : Optional[str]
+  check_request_id(value: str) -> str
+}
+class "VectorStoreCreateRequest" as src.models.api.requests.vector_stores.VectorStoreCreateRequest {
+  chunking_strategy : Optional[dict[str, Any]]
+  embedding_dimension : Optional[int]
+  embedding_model : Optional[str]
+  metadata : Optional[dict[str, Any]]
+  model_config : dict
+  name : Optional[str]
+  provider_id : Optional[str]
+}
+class "VectorStoreFileCreateRequest" as src.models.api.requests.vector_stores.VectorStoreFileCreateRequest {
+  attributes : Optional[dict[str, str | float | bool]]
+  chunking_strategy : Optional[dict[str, Any]]
+  file_id : Optional[str]
+  model_config : dict
+  validate_attributes(value: Optional[dict[str, str | float | bool]]) -> Optional[dict[str, str | float | bool]]
+}
+class "VectorStoreUpdateRequest" as src.models.api.requests.vector_stores.VectorStoreUpdateRequest {
+  expires_at : Optional[int]
+  metadata : Optional[dict[str, Any]]
+  model_config : dict
+  name : Optional[str]
+  check_at_least_one_field() -> Self
+}
+@enduml
