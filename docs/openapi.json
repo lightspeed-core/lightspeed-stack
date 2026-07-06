@@ -12223,6 +12223,11 @@
                         ],
                         "title": "Agent skills",
                         "description": "Agent skills configuration. Specifies paths to skill directories."
+                    },
+                    "saved_prompts": {
+                        "$ref": "#/components/schemas/SavedPromptsConfiguration",
+                        "title": "Saved prompts configuration",
+                        "description": "Configuration for saved prompts feature limits including maximum prompts per user, display name length, and content length."
                     }
                 },
                 "additionalProperties": false,
@@ -19265,6 +19270,53 @@
                 ],
                 "title": "SQLiteDatabaseConfiguration",
                 "description": "SQLite database configuration."
+            },
+            "SavedPromptsConfiguration": {
+                "properties": {
+                    "max_prompts_per_user": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "exclusiveMinimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max prompts per user",
+                        "description": "Maximum number of saved prompts a user can create. Defaults to 50. Cannot exceed 200."
+                    },
+                    "max_display_name_length": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "exclusiveMinimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max display name length",
+                        "description": "Maximum character length for prompt display name (title). Defaults to 255. Cannot exceed 255."
+                    },
+                    "max_content_length": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "exclusiveMinimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max content length",
+                        "description": "Maximum character length for the prompt content body. Defaults to 10000. Cannot exceed 30000."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "SavedPromptsConfiguration",
+                "description": "Configuration for saved prompts feature limits.\n\nControls the maximum number of prompts a user can save, the maximum\ndisplay name (title) length, and the maximum prompt content length.\nAll fields are optional and default to values defined in constants.\n\nAttributes:\n    max_prompts_per_user: Maximum number of saved prompts allowed per user.\n    max_display_name_length: Maximum character length for the prompt display name.\n    max_content_length: Maximum character length for the prompt content body."
             },
             "SearchRankingOptions": {
                 "properties": {
