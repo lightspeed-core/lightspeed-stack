@@ -2417,7 +2417,7 @@ class SavedPromptsConfiguration(ConfigurationBase):
             self.max_content_length = constants.SAVED_PROMPTS_DEFAULT_MAX_CONTENT_LENGTH
             logger.info(
                 "saved_prompts.max_content_length not configured, "
-                "using default: %d",
+                + "using default: %d",
                 constants.SAVED_PROMPTS_DEFAULT_MAX_CONTENT_LENGTH,
             )
         elif (
