@@ -1034,6 +1034,22 @@ Empty (the default) leaves legacy/remote modes unaffected. The sibling
 default_model / default_provider keep their query-time routing meaning
 and are independent of this list.</td>
         </tr>
+        <tr class="odd">
+          <td>max_infer_iters</td>
+          <td>integer</td>
+          <td>Server-side default for the maximum number of inference iterations a
+model can perform in a single request. Prevents small models from
+looping indefinitely on tool calls. Per-request values take precedence
+over this default. Set to None to disable the limit.</td>
+        </tr>
+        <tr class="even">
+          <td>max_tool_calls</td>
+          <td>integer</td>
+          <td>Server-side default for the maximum number of tool calls allowed in
+a single response. Prevents small models from exhausting the context
+window with repeated tool calls. Per-request values take precedence over
+this default. Set to None to disable the limit.</td>
+        </tr>
       </tbody>
     </table>
     <h2 id="jsonpathoperator">JsonPathOperator</h2>
