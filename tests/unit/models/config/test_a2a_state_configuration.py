@@ -114,4 +114,4 @@ class TestA2AStateConfiguration:
     def test_forbids_extra_fields(self) -> None:
         """Test that extra fields are forbidden."""
         with pytest.raises(ValidationError):
-            A2AStateConfiguration(unknown_field="value")  # type: ignore
+            A2AStateConfiguration(unknown_field="value")  # type: ignore[reportCallIssue]

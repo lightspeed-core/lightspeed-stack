@@ -658,17 +658,19 @@ class TestAuthorizedResponse:
         """
         with pytest.raises(ValidationError):
             # missing all parameters
-            _ = AuthorizedResponse()  # pyright: ignore
+            _ = AuthorizedResponse()  # pyright: ignore[reportCallIssue]
 
         with pytest.raises(ValidationError):
             # missing user_id parameter
-            _ = AuthorizedResponse(username="testuser")  # pyright: ignore
+            _ = AuthorizedResponse(
+                username="testuser"
+            )  # pyright: ignore[reportCallIssue]
 
         with pytest.raises(ValidationError):
             # missing username parameter
             _ = AuthorizedResponse(
                 user_id="123e4567-e89b-12d3-a456-426614174000"
-            )  # pyright: ignore
+            )  # pyright: ignore[reportCallIssue]
 
 
 class TestConversationResponse:
@@ -753,7 +755,7 @@ class TestConversationDeleteResponse:
     def test_missing_required_parameters(self) -> None:
         """Test ConversationDeleteResponse raises ValidationError when required fields missing."""
         with pytest.raises(ValidationError):
-            ConversationDeleteResponse()  # pylint: disable=missing-kwoa # pyright: ignore
+            ConversationDeleteResponse()  # pylint: disable=missing-kwoa # pyright: ignore[reportCallIssue]
         with pytest.raises(ValidationError):
             ConversationDeleteResponse(  # pylint: disable=missing-kwoa # pyright: ignore[reportCallIssue]
                 deleted=True
@@ -1287,7 +1289,9 @@ class TestAbstractSuccessfulResponseOpenAPI:
             """Class without examples."""
 
             field: str = "test"
-            model_config: ConfigDict = {"json_schema_extra": {}}  # pyright: ignore
+            model_config: ConfigDict = {
+                "json_schema_extra": {}
+            }  # pyright: ignore[reportIncompatibleVariableOverride]
 
         with pytest.raises(SchemaError, match="Examples not found"):
             NoExamplesResponse.openapi_response()
