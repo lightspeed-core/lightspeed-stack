@@ -1956,7 +1956,7 @@ llslibdev = [
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "pydantic", specifier = ">=2.10.6" },
-    { name = "pypdf", specifier = ">=6.9.2" },
+    { name = "pypdf", specifier = ">=6.10.2" },
     { name = "pythainlp", specifier = ">=3.0.10" },
     { name = "requests", specifier = ">=2.33.0" },
     { name = "sentence-transformers", specifier = ">=5.0.0" },
