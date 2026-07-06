@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+"""Determine if the latest tag should be applied."""
+
 import os
 import subprocess
 
@@ -29,6 +31,7 @@ def get_latest_stable() -> str | None:
 
 
 def main() -> None:
+    """Determine latest tag."""
     if not (current_tag := os.environ.get("GIT_TAG")):
         reason = "GIT_TAG environment variable not set, skipping latest tag"
         apply_latest = "false"
