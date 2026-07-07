@@ -53,7 +53,7 @@ The service includes comprehensive user data collection capabilities for various
         * [System Prompt Literal](#system-prompt-literal)
         * [Custom Profile](#custom-profile)
         * [Control model/provider overrides via authorization](#control-modelprovider-overrides-via-authorization)
-    * [Agent Skills (Upcoming)](#agent-skills-upcoming)
+    * [Agent Skills](#agent-skills)
     * [Safety Shields](#safety-shields)
     * [Authentication](#authentication)
     * [CORS](#cors)
@@ -230,7 +230,7 @@ Lightspeed Core Stack supports the following agentic features:
 | A2A Protocol (Client) | Supported | Agent-to-Agent communication as client ([A2A Protocol](docs/a2a_protocol.md)) |
 | Conversation History | Supported | Persistent conversation context across requests |
 | Human-in-the-Loop | Upcoming | Interactive approval or confirmation steps |
-| Agent Skills | Upcoming (Q2) | Domain-specific instructions loaded on demand ([Agent Skills Guide](docs/skills_guide.md)) |
+| Agent Skills | Supported | Domain-specific instructions loaded on demand ([Agent Skills Guide](docs/skills_guide.md)) |
 
 ## LLM Compatibility
 
@@ -761,14 +761,11 @@ customization:
 
 By default, clients may specify `model` and `provider` in `/v1/query` and `/v1/streaming_query`. Override is permitted only to callers granted the `MODEL_OVERRIDE` action via the authorization rules. Requests that include `model` or `provider` without this permission are rejected with HTTP 403.
 
-## Agent Skills (Upcoming)
+## Agent Skills
 
-> [!NOTE]
-> Agent Skills is an upcoming feature. The documentation below describes the planned design.
+Agent Skills allow product teams to extend Lightspeed Core with specialized instructions and domain knowledge that the LLM can load on demand. Skills follow the [Agent Skills open standard](https://agentskills.io) and are packaged as portable directories containing a `SKILL.md` file.
 
-Agent Skills will allow product teams to extend Lightspeed Core with specialized instructions and domain knowledge that the LLM can load on demand. Skills follow the [Agent Skills open standard](https://agentskills.io) and are packaged as portable directories containing a `SKILL.md` file.
-
-For the planned configuration guide, skill authoring instructions, and examples, see the [Agent Skills Guide](docs/skills_guide.md).
+For the configuration guide, skill authoring instructions, and examples, see the [Agent Skills Guide](docs/skills_guide.md).
 
 ## Safety Shields
 
