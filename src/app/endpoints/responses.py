@@ -85,7 +85,7 @@ from utils.query import (
     store_query_results,
     validate_model_provider_override,
 )
-from utils.quota import check_tokens_available, get_available_quotas
+from utils.quota_utils import check_tokens_available, get_available_quotas
 from utils.responses import (
     build_tool_call_summary,
     build_turn_summary,
