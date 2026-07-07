@@ -116,9 +116,10 @@ spec:
                 type: string
                 description: "commit sha to be used to store artifacts"
             script: |
+              COMPONENT_NAME="lightspeed-stack-0-6"
               dnf -y install jq
-              echo -n "$(jq -r --arg n "lightspeed-stack" '.components[] | select(.name == $n) | .containerImage // ""' <<< "$SNAPSHOT")" > $(step.results.lightspeed-stack-image.path)
-              echo -n "$(jq -r --arg n "lightspeed-stack" '.components[] | select(.name == $n) | .source.git.revision // "latest"' <<< "$SNAPSHOT")" > $(step.results.commit.path)
+              echo -n "$(jq -r --arg n "$COMPONENT_NAME" '.components[] | select(.name == $n) | .containerImage' <<< "$SNAPSHOT")" > $(step.results.lightspeed-stack-image.path)
+              echo -n "$(jq -r --arg n "$COMPONENT_NAME" '.components[] | select(.name == $n) | .source.git.revision' <<< "$SNAPSHOT")" > $(step.results.commit.path)
     - name: echo-integration-params
       description: Echo all params passed to lightspeed-stack-integration-tests for verification before the test runs.
       runAfter:
@@ -276,10 +277,10 @@ spec:
               echo "[e2e] 3/8 Downloading oc client..."
               curl -sL -o oc.tar.gz https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest-4.19/openshift-client-linux-amd64-rhel9.tar.gz
               tar -xzf oc.tar.gz && chmod +x kubectl oc && mv oc kubectl /usr/local/bin/
-              echo "[e2e] 4/8 SNAPSHOT (length ${#SNAPSHOT} chars; clone URL fixed — SNAPSHOT is main/upstream, not fork)..."
-              # Fixed fork + branch: Konflux SNAPSHOT points at main repo/rev, not the PR/fork under test.
-              REPO_URL=$(jq -r '.components[] | select(.name == "lightspeed-stack") | .source.git.url // "https://github.com/lightspeed-core/lightspeed-stack.git"' <<< "$SNAPSHOT")
-              REPO_REV=$(jq -r '.components[] | select(.name == "lightspeed-stack") | .source.git.revision // "main"' <<< "$SNAPSHOT")
+              COMPONENT_NAME="lightspeed-stack-0-6"
+              echo "[e2e] 4/8 SNAPSHOT (length ${#SNAPSHOT} chars)..."
+              REPO_URL=$(jq -r --arg n "$COMPONENT_NAME" '.components[] | select(.name == $n) | .source.git.url' <<< "$SNAPSHOT")
+              REPO_REV=$(jq -r --arg n "$COMPONENT_NAME" '.components[] | select(.name == $n) | .source.git.revision' <<< "$SNAPSHOT")
               echo "[e2e] 5/8 Clone $REPO_URL @ $REPO_REV"
               git clone -q "$REPO_URL" /workspace/lightspeed-stack
               cd /workspace/lightspeed-stack && git fetch origin "$REPO_REV" && git checkout -q "$REPO_REV"
