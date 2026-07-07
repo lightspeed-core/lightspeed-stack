@@ -112,7 +112,7 @@ def invalid_cache_type_config() -> ConversationHistoryConfiguration:
     """
     c = ConversationHistoryConfiguration()  # pyright: ignore[reportCallIssue]
     # the conversation cache type name is incorrect in purpose
-    c.type = "foo bar baz"  # pyright: ignore
+    c.type = "foo bar baz"  # pyright: ignore[reportAttributeAccessIssue]
     return c
 
 

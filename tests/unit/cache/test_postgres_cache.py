@@ -270,7 +270,7 @@ def test_connected_when_connection_error(
     # simulate connection error
     cache = PostgresCache(postgres_cache_config_fixture)
     # connection does not have to have proper type
-    cache.connection = ConnectionMock()  # pyright: ignore
+    cache.connection = ConnectionMock()  # pyright: ignore[reportAttributeAccessIssue]
     assert cache.connection is not None
     assert cache.connected() is False
 
@@ -432,7 +432,7 @@ def test_insert_or_append_operation_operation_error(
     # no operation for @connection decorator
     cache.connect = lambda: None
     # connection does not have to have proper type
-    cache.connection = ConnectionMock()  # pyright: ignore
+    cache.connection = ConnectionMock()  # pyright: ignore[reportAttributeAccessIssue]
 
     with pytest.raises(CacheError, match="insert_or_append"):
         cache.insert_or_append(USER_ID_1, CONVERSATION_ID_1, cache_entry_1, False)
@@ -502,7 +502,7 @@ def test_delete_operation_operation_error(
     # no operation for @connection decorator
     cache.connect = lambda: None
     # connection does not have to have proper type
-    cache.connection = ConnectionMock()  # pyright: ignore
+    cache.connection = ConnectionMock()  # pyright: ignore[reportAttributeAccessIssue]
 
     with pytest.raises(CacheError, match="delete"):
         cache.delete(USER_ID_1, CONVERSATION_ID_1, False)
@@ -994,7 +994,7 @@ def test_store_summary_database_error(
     mocker.patch("psycopg2.connect")
     cache = PostgresCache(postgres_cache_config_fixture)
     cache.connect = lambda: None
-    cache.connection = ConnectionMock()  # pyright: ignore
+    cache.connection = ConnectionMock()  # pyright: ignore[reportAttributeAccessIssue]
 
     with pytest.raises(CacheError, match="store_summary"):
         cache.store_summary(USER_ID_1, CONVERSATION_ID_1, summary_1, False)
@@ -1065,7 +1065,7 @@ def test_get_summaries_database_error(
     mocker.patch("psycopg2.connect")
     cache = PostgresCache(postgres_cache_config_fixture)
     cache.connect = lambda: None
-    cache.connection = ConnectionMock()  # pyright: ignore
+    cache.connection = ConnectionMock()  # pyright: ignore[reportAttributeAccessIssue]
 
     with pytest.raises(CacheError, match="get_summaries"):
         cache.get_summaries(USER_ID_1, CONVERSATION_ID_1, False)
@@ -1123,7 +1123,7 @@ def test_replace_summaries_database_error(
     mocker.patch("psycopg2.connect")
     cache = PostgresCache(postgres_cache_config_fixture)
     cache.connect = lambda: None
-    cache.connection = ConnectionMock()  # pyright: ignore
+    cache.connection = ConnectionMock()  # pyright: ignore[reportAttributeAccessIssue]
 
     with pytest.raises(CacheError, match="replace_summaries"):
         cache.replace_summaries(USER_ID_1, CONVERSATION_ID_1, folded_summary, False)

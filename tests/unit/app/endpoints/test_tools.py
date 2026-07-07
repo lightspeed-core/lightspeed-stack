@@ -201,7 +201,7 @@ async def test_tools_endpoint_success(
     mock_auth = MOCK_AUTH
 
     # Call the endpoint
-    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore[reportFunctionMemberAccess]
         mock_request, mock_auth, {}
     )
 
@@ -308,7 +308,7 @@ async def test_tools_endpoint_no_mcp_servers(mocker: MockerFixture) -> None:
     mock_auth = MOCK_AUTH
 
     # Call the endpoint
-    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore[reportFunctionMemberAccess]
         mock_request, mock_auth, {}
     )
 
@@ -357,7 +357,7 @@ async def test_tools_endpoint_api_connection_error(
 
     # Call the endpoint - should raise HTTPException when APIConnectionError occurs
     with pytest.raises(HTTPException) as exc_info:
-        await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+        await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore[reportFunctionMemberAccess]
             mock_request, mock_auth, {}
         )
 
@@ -399,7 +399,7 @@ async def test_tools_endpoint_partial_failure(  # pylint: disable=redefined-oute
     mock_auth = MOCK_AUTH
 
     with pytest.raises(HTTPException) as exc_info:
-        await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+        await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore[reportFunctionMemberAccess]
             mock_request, mock_auth, {}
         )
 
@@ -456,7 +456,7 @@ async def test_tools_endpoint_toolgroup_not_found(  # pylint: disable=redefined-
     mock_auth = MOCK_AUTH
 
     # Call the endpoint - should continue processing and return tools from successful toolgroups
-    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore[reportFunctionMemberAccess]
         mock_request, mock_auth, {}
     )
 
@@ -527,7 +527,7 @@ async def test_tools_endpoint_builtin_toolgroup(
     mock_auth = MOCK_AUTH
 
     # Call the endpoint
-    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore[reportFunctionMemberAccess]
         mock_request, mock_auth, {}
     )
 
@@ -647,7 +647,7 @@ async def test_tools_endpoint_mixed_toolgroups(mocker: MockerFixture) -> None:
     mock_auth = MOCK_AUTH
 
     # Call the endpoint
-    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore[reportFunctionMemberAccess]
         mock_request, mock_auth, {}
     )
 
@@ -824,7 +824,7 @@ async def test_tools_endpoint_authentication_error_with_mcp_endpoint(
     mock_auth = MOCK_AUTH
 
     with pytest.raises(HTTPException) as exc_info:
-        await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+        await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore[reportFunctionMemberAccess]
             mock_request, mock_auth, {}
         )
 
@@ -999,7 +999,7 @@ async def test_tools_endpoint_rag_builtin_toolgroup(mocker: MockerFixture) -> No
     mock_request = mocker.Mock()
     mock_auth = MOCK_AUTH
 
-    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore[reportFunctionMemberAccess]
         mock_request, mock_auth, {}
     )
 
@@ -1116,7 +1116,7 @@ async def test_tools_endpoint_empty_legacy_fields_overridden(
     mock_request = mocker.Mock()
     mock_auth = MOCK_AUTH
 
-    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore[reportFunctionMemberAccess]
         mock_request, mock_auth, {}
     )
 
@@ -1161,7 +1161,7 @@ async def test_tools_endpoint_includes_agent_capability_tools(
     mock_request = mocker.Mock()
     mock_auth = MOCK_AUTH
 
-    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore
+    response = await tools.tools_endpoint_handler.__wrapped__(  # pyright: ignore[reportFunctionMemberAccess]
         mock_request, mock_auth, {}
     )
 
