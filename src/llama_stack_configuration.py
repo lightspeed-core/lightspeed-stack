@@ -16,6 +16,8 @@ Two related responsibilities live here:
   operator-facing artifact.
 """
 
+# pylint: disable=too-many-lines
+
 import copy
 import os
 from argparse import ArgumentParser
@@ -898,6 +900,86 @@ def synthesize_to_file(
     os.chmod(str(path), 0o600)
 
     logger.info("Wrote synthesized Llama Stack configuration to %s (mode 0600)", path)
+
+
+# =============================================================================
+# Migration: legacy two-file config -> unified single file (LCORE-2337)
+# =============================================================================
+
+
+def migrate_config_dumb(
+    run_yaml_path: str,
+    lightspeed_yaml_path: str,
+    output_path: str,
+) -> None:
+    """Migrate a legacy two-file config to a unified single file (dumb mode).
+
+    "Dumb" lift-and-shift: the operator's ``lightspeed-stack.yaml`` is kept
+    verbatim except for its ``llama_stack`` section, where
+    ``library_client_config_path`` is dropped and replaced by a unified
+    ``config`` block that lifts the *entire* legacy ``run.yaml`` body into
+    ``native_override`` with ``baseline: empty``. Synthesizing the result then
+    starts from an empty baseline and deep-merges only the lifted run.yaml, so
+    it reproduces the original run.yaml (Decision T7) — a lossless round-trip,
+    without trying to factor anything into high-level sections (that "smart"
+    mode is deferred future work).
+
+    All other ``lightspeed-stack.yaml`` content (name, service, byok_rag, …) is
+    preserved untouched, so any existing enrichment keeps working in unified
+    mode exactly as it did in legacy mode.
+
+    Parameters:
+        run_yaml_path: Path to the legacy Llama Stack ``run.yaml``.
+        lightspeed_yaml_path: Path to the legacy ``lightspeed-stack.yaml``.
+        output_path: Path to write the unified ``lightspeed-stack.yaml``.
+
+    Returns:
+        None.
+
+    Raises:
+        OSError: If an input file cannot be read or the output cannot be
+            written.
+        yaml.YAMLError: If an input file is not valid YAML.
+        ValueError: If either input file does not parse to a mapping (e.g. an
+            empty or comment-only file).
+    """
+    with open(run_yaml_path, "r", encoding="utf-8") as file:
+        run_yaml = yaml.safe_load(file)
+    with open(lightspeed_yaml_path, "r", encoding="utf-8") as file:
+        lcs_config = yaml.safe_load(file)
+
+    # An empty or comment-only YAML file parses to None; fail with a clear
+    # message rather than a downstream AttributeError/TypeError.
+    if not isinstance(lcs_config, dict):
+        raise ValueError(
+            f"{lightspeed_yaml_path} did not parse to a mapping; cannot migrate."
+        )
+    if not isinstance(run_yaml, dict):
+        raise ValueError(f"{run_yaml_path} did not parse to a mapping; cannot migrate.")
+
+    # Preserve the whole lightspeed-stack.yaml; only rewrite the llama_stack
+    # section: drop the legacy path, add the unified config block.
+    llama_stack = dict(lcs_config.get("llama_stack") or {})
+    llama_stack.pop("library_client_config_path", None)
+    llama_stack["config"] = {
+        "baseline": "empty",
+        "native_override": run_yaml,
+    }
+    lcs_config["llama_stack"] = llama_stack
+
+    logger.info(
+        "Migrating legacy config (%s + %s) to unified %s",
+        lightspeed_yaml_path,
+        run_yaml_path,
+        output_path,
+    )
+    # The lifted run.yaml may carry literal secrets, so write owner-only (0600),
+    # matching synthesize_to_file. O_CREAT's mode only applies on create, so
+    # chmod after the write also tightens a pre-existing file.
+    fd = os.open(output_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as file:
+        yaml.dump(lcs_config, file, Dumper=YamlDumper, default_flow_style=False)
+    os.chmod(output_path, 0o600)
 
 
 # =============================================================================
