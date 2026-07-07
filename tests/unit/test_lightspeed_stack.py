@@ -1,11 +1,30 @@
 """Unit tests for functions defined in src/lightspeed_stack.py."""
 
+import logging
 from pathlib import Path
 
 import pytest
 import yaml
 
+import lightspeed_stack
+from configuration import AppConfig
 from lightspeed_stack import create_argument_parser, main
+
+LEGACY_DEPRECATION_MARKER = "DEPRECATED: the two-file configuration"
+
+COMMON_CONFIG_SECTIONS = """
+name: test
+service:
+  host: localhost
+  port: 8080
+  auth_enabled: false
+  workers: 1
+  color_log: true
+  access_log: true
+user_data_collection:
+  feedback_enabled: false
+mcp_servers: []
+"""
 
 
 def test_create_argument_parser() -> None:
@@ -97,3 +116,82 @@ def test_main_migrate_config_requires_run_yaml_and_output(
     )
     with pytest.raises(SystemExit):
         main()
+
+
+def run_main_with_config(
+    config_yaml: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Run main() against a config file, with the runners stubbed out.
+
+    Writes ``config_yaml`` to a temporary file, points argv at it, replaces
+    the module-level configuration singleton with a fresh AppConfig (so the
+    shared singleton is not mutated for other tests), and stubs the quota
+    scheduler and uvicorn runners.
+    """
+    cfg_file = tmp_path / "lightspeed-stack.yaml"
+    cfg_file.write_text(config_yaml, encoding="utf-8")
+    monkeypatch.setattr("sys.argv", ["lightspeed-stack", "-c", str(cfg_file)])
+    monkeypatch.setattr(lightspeed_stack, "configuration", AppConfig())
+    monkeypatch.setattr(lightspeed_stack, "start_quota_scheduler", lambda _: None)
+    monkeypatch.setattr(lightspeed_stack, "start_uvicorn", lambda _: None)
+    main()
+
+
+def test_main_warns_on_legacy_two_file_config(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A legacy library_client_config_path config emits one deprecation WARN."""
+    run_yaml = tmp_path / "run.yaml"
+    run_yaml.write_text("version: 2\n", encoding="utf-8")
+    config_yaml = COMMON_CONFIG_SECTIONS + f"""
+llama_stack:
+  use_as_library_client: true
+  library_client_config_path: {run_yaml}
+"""
+    with caplog.at_level(logging.WARNING):
+        run_main_with_config(config_yaml, tmp_path, monkeypatch)
+    warnings = [
+        r for r in caplog.records if LEGACY_DEPRECATION_MARKER in r.getMessage()
+    ]
+    assert len(warnings) == 1
+    assert warnings[0].levelno == logging.WARNING
+    # the WARN carries a stable link to the migration doc
+    assert "#migration--backwards-compatibility" in warnings[0].getMessage()
+
+
+def test_main_does_not_warn_in_unified_mode(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A unified-mode config (llama_stack.config) emits no deprecation WARN."""
+    config_yaml = COMMON_CONFIG_SECTIONS + """
+llama_stack:
+  use_as_library_client: true
+  config:
+    baseline: default
+"""
+    with caplog.at_level(logging.WARNING):
+        run_main_with_config(config_yaml, tmp_path, monkeypatch)
+    assert not any(LEGACY_DEPRECATION_MARKER in r.getMessage() for r in caplog.records)
+
+
+def test_main_does_not_warn_in_server_mode(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A server-mode config (url, no legacy fields) emits no deprecation WARN."""
+    config_yaml = COMMON_CONFIG_SECTIONS + """
+llama_stack:
+  use_as_library_client: false
+  url: http://localhost:8321
+  api_key: xyzzy
+"""
+    with caplog.at_level(logging.WARNING):
+        run_main_with_config(config_yaml, tmp_path, monkeypatch)
+    assert not any(LEGACY_DEPRECATION_MARKER in r.getMessage() for r in caplog.records)
