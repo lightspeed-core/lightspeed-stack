@@ -30,7 +30,7 @@ selects a provider config stays unchanged.
 The `tests/e2e/configs/run-*.yaml` files therefore serve a dual role: in
 server mode they are the run configuration of the standalone Llama Stack
 service, and in library mode they are consumed as the unified-mode synthesis
-profile. They are referenced by the legacy mechanism by no in-repo test config
+profile. No in-repo test config references them via the legacy mechanism
 anymore.
 
 ## Common Configuration Features
