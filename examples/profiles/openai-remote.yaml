@@ -100,14 +100,12 @@ storage:
 
 registered_resources:
   models: []
-  shields:
-  # Minimal placeholder shield so the profile boots with only OPENAI_API_KEY.
-  # provider_shield_id points at a chat model, NOT a real Llama Guard
-  # checkpoint, so it performs no real safety gating. Configure a real guard
-  # model (e.g. meta-llama/Llama-Guard-3-8B) per deployment.
-  - shield_id: llama-guard
-    provider_id: llama-guard
-    provider_shield_id: openai/gpt-4o-mini
+  # No shield is registered: a real safety gate needs a real guard model
+  # (e.g. meta-llama/Llama-Guard-3-8B) registered per deployment, with
+  # provider_shield_id pointing at that guard model and a matching
+  # safety.default_shield_id. A placeholder shield backed by a chat model
+  # would only *look* like moderation.
+  shields: []
   vector_stores: []
   tool_groups:
   - toolgroup_id: builtin::rag
@@ -122,6 +120,3 @@ vector_stores:
   default_embedding_model:
     provider_id: sentence-transformers
     model_id: nomic-ai/nomic-embed-text-v1.5
-
-safety:
-  default_shield_id: llama-guard
