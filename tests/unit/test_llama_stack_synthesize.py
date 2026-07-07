@@ -445,3 +445,27 @@ def test_migrate_then_synthesize_reproduces_run_yaml(tmp_path: Path) -> None:
     migrated = yaml.safe_load(out_path.read_text(encoding="utf-8"))
     synthesized = synthesize_configuration(migrated)
     assert synthesized == _LEGACY_RUN_YAML
+
+
+def test_migrate_config_dumb_writes_output_0600(tmp_path: Path) -> None:
+    """The migrated file may carry lifted secrets, so it is written owner-only."""
+    run_path, lcs_path = _write_legacy_pair(tmp_path)
+    out_path = tmp_path / "unified.yaml"
+    migrate_config_dumb(run_path, lcs_path, str(out_path))
+    assert stat.S_IMODE(os.stat(out_path).st_mode) == 0o600
+
+
+def test_migrate_config_dumb_rejects_non_mapping_inputs(tmp_path: Path) -> None:
+    """An empty/comment-only input fails with a clear ValueError, not AttributeError."""
+    run_path, lcs_path = _write_legacy_pair(tmp_path)
+    out_path = str(tmp_path / "unified.yaml")
+
+    empty_lcs = tmp_path / "empty-lcs.yaml"
+    empty_lcs.write_text("# only a comment\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="did not parse to a mapping"):
+        migrate_config_dumb(run_path, str(empty_lcs), out_path)
+
+    empty_run = tmp_path / "empty-run.yaml"
+    empty_run.write_text("", encoding="utf-8")
+    with pytest.raises(ValueError, match="did not parse to a mapping"):
+        migrate_config_dumb(str(empty_run), lcs_path, out_path)

@@ -940,11 +940,22 @@ def migrate_config_dumb(
         OSError: If an input file cannot be read or the output cannot be
             written.
         yaml.YAMLError: If an input file is not valid YAML.
+        ValueError: If either input file does not parse to a mapping (e.g. an
+            empty or comment-only file).
     """
     with open(run_yaml_path, "r", encoding="utf-8") as file:
         run_yaml = yaml.safe_load(file)
     with open(lightspeed_yaml_path, "r", encoding="utf-8") as file:
         lcs_config = yaml.safe_load(file)
+
+    # An empty or comment-only YAML file parses to None; fail with a clear
+    # message rather than a downstream AttributeError/TypeError.
+    if not isinstance(lcs_config, dict):
+        raise ValueError(
+            f"{lightspeed_yaml_path} did not parse to a mapping; cannot migrate."
+        )
+    if not isinstance(run_yaml, dict):
+        raise ValueError(f"{run_yaml_path} did not parse to a mapping; cannot migrate.")
 
     # Preserve the whole lightspeed-stack.yaml; only rewrite the llama_stack
     # section: drop the legacy path, add the unified config block.
@@ -962,8 +973,13 @@ def migrate_config_dumb(
         run_yaml_path,
         output_path,
     )
-    with open(output_path, "w", encoding="utf-8") as file:
+    # The lifted run.yaml may carry literal secrets, so write owner-only (0600),
+    # matching synthesize_to_file. O_CREAT's mode only applies on create, so
+    # chmod after the write also tightens a pre-existing file.
+    fd = os.open(output_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as file:
         yaml.dump(lcs_config, file, Dumper=YamlDumper, default_flow_style=False)
+    os.chmod(output_path, 0o600)
 
 
 # =============================================================================
