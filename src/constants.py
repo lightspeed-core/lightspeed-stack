@@ -351,3 +351,15 @@ SENTRY_CA_CERTS_ENV_VAR: Final[str] = "SENTRY_CA_CERTS"
 # first version check.
 DEFAULT_MAX_RETRIES: Final[int] = 5
 DEFAULT_RETRY_DELAY: Final[int] = 2
+
+# Saved prompts configuration defaults and upper bounds.
+# Defaults are used when a field is omitted from lightspeed-stack.yaml.
+# Upper bounds prevent operators from exceeding DB or application limits.
+SAVED_PROMPTS_DEFAULT_MAX_PER_USER: Final[int] = 50
+SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND: Final[int] = 200
+SAVED_PROMPTS_DEFAULT_MAX_DISPLAY_NAME_LENGTH: Final[int] = 255  # database column limit
+SAVED_PROMPTS_MAX_DISPLAY_NAME_LENGTH_UPPER_BOUND: Final[int] = (
+    255  # database column limit
+)
+SAVED_PROMPTS_DEFAULT_MAX_CONTENT_LENGTH: Final[int] = 10_000
+SAVED_PROMPTS_MAX_CONTENT_LENGTH_UPPER_BOUND: Final[int] = 30_000

@@ -2330,6 +2330,108 @@ class SkillsConfiguration(ConfigurationBase):
     )
 
 
+class SavedPromptsConfiguration(ConfigurationBase):
+    """Configuration for saved prompts feature limits.
+
+    Controls the maximum number of prompts a user can save, the maximum
+    display name (title) length, and the maximum prompt content length.
+    All fields are optional and default to values defined in constants.
+
+    Attributes:
+        max_prompts_per_user: Maximum number of saved prompts allowed per user.
+        max_display_name_length: Maximum character length for the prompt display name.
+        max_content_length: Maximum character length for the prompt content body.
+    """
+
+    max_prompts_per_user: Optional[PositiveInt] = Field(
+        default=None,
+        title="Max prompts per user",
+        description="Maximum number of saved prompts a user can create. "
+        f"Defaults to {constants.SAVED_PROMPTS_DEFAULT_MAX_PER_USER}. "
+        f"Cannot exceed {constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND}.",
+    )
+
+    max_display_name_length: Optional[PositiveInt] = Field(
+        default=None,
+        title="Max display name length",
+        description="Maximum character length for prompt display name (title). "
+        f"Defaults to {constants.SAVED_PROMPTS_DEFAULT_MAX_DISPLAY_NAME_LENGTH}. "
+        f"Cannot exceed {constants.SAVED_PROMPTS_MAX_DISPLAY_NAME_LENGTH_UPPER_BOUND}.",
+    )
+
+    max_content_length: Optional[PositiveInt] = Field(
+        default=None,
+        title="Max content length",
+        description="Maximum character length for the prompt content body. "
+        f"Defaults to {constants.SAVED_PROMPTS_DEFAULT_MAX_CONTENT_LENGTH}. "
+        f"Cannot exceed {constants.SAVED_PROMPTS_MAX_CONTENT_LENGTH_UPPER_BOUND}.",
+    )
+
+    @model_validator(mode="after")
+    def apply_defaults_and_validate_bounds(self) -> Self:
+        """Apply default values for None fields and validate upper bounds.
+
+        Logs an info message for each field that falls back to its default.
+
+        Returns:
+            Self: The validated model instance with defaults applied.
+
+        Raises:
+            ValueError: If any value exceeds its upper bound.
+        """
+        if self.max_prompts_per_user is None:
+            self.max_prompts_per_user = constants.SAVED_PROMPTS_DEFAULT_MAX_PER_USER
+            logger.info(
+                "saved_prompts.max_prompts_per_user not configured, "
+                "using default: %d",
+                constants.SAVED_PROMPTS_DEFAULT_MAX_PER_USER,
+            )
+        elif (
+            self.max_prompts_per_user > constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND
+        ):
+            raise ValueError(
+                f"max_prompts_per_user ({self.max_prompts_per_user}) exceeds "
+                f"upper bound ({constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND})."
+            )
+
+        if self.max_display_name_length is None:
+            self.max_display_name_length = (
+                constants.SAVED_PROMPTS_DEFAULT_MAX_DISPLAY_NAME_LENGTH
+            )
+            logger.info(
+                "saved_prompts.max_display_name_length not configured, "
+                "using default: %d",
+                constants.SAVED_PROMPTS_DEFAULT_MAX_DISPLAY_NAME_LENGTH,
+            )
+        elif (
+            self.max_display_name_length
+            > constants.SAVED_PROMPTS_MAX_DISPLAY_NAME_LENGTH_UPPER_BOUND
+        ):
+            raise ValueError(
+                f"max_display_name_length ({self.max_display_name_length}) exceeds "
+                f"database column limit "
+                f"({constants.SAVED_PROMPTS_MAX_DISPLAY_NAME_LENGTH_UPPER_BOUND})."
+            )
+
+        if self.max_content_length is None:
+            self.max_content_length = constants.SAVED_PROMPTS_DEFAULT_MAX_CONTENT_LENGTH
+            logger.info(
+                "saved_prompts.max_content_length not configured, "
+                + "using default: %d",
+                constants.SAVED_PROMPTS_DEFAULT_MAX_CONTENT_LENGTH,
+            )
+        elif (
+            self.max_content_length
+            > constants.SAVED_PROMPTS_MAX_CONTENT_LENGTH_UPPER_BOUND
+        ):
+            raise ValueError(
+                f"max_content_length ({self.max_content_length}) exceeds "
+                f"upper bound ({constants.SAVED_PROMPTS_MAX_CONTENT_LENGTH_UPPER_BOUND})."
+            )
+
+        return self
+
+
 class QuestionValidityConfig(ConfigurationBase):
     """Configuration for the question validity guardrail."""
 
@@ -2620,6 +2722,13 @@ class Configuration(ConfigurationBase):
         default=None,
         title="Agent skills",
         description="Agent skills configuration. Specifies paths to skill directories.",
+    )
+
+    saved_prompts: SavedPromptsConfiguration = Field(
+        default_factory=SavedPromptsConfiguration,
+        title="Saved prompts configuration",
+        description="Configuration for saved prompts feature limits including "
+        "maximum prompts per user, display name length, and content length.",
     )
 
     @model_validator(mode="after")
