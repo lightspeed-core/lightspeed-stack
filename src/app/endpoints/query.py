@@ -65,7 +65,7 @@ from utils.query import (
     validate_attachments_metadata,
     validate_model_provider_override,
 )
-from utils.quota import check_tokens_available, get_available_quotas
+from utils.quota_utils import check_tokens_available, get_available_quotas
 from utils.responses import (
     build_turn_summary,
     deduplicate_referenced_documents,

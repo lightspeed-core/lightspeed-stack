@@ -52,7 +52,7 @@ from utils.query import (
     is_context_length_error,
     normalize_vertex_ai_model_id,
 )
-from utils.quota import check_tokens_available
+from utils.quota_utils import check_tokens_available
 from utils.responses import (
     build_turn_summary,
     check_model_configured,
