@@ -895,7 +895,7 @@ class TestUpdateConversationEndpoint:
         assert isinstance(detail, dict)
         detail_dict = cast(dict[str, Any], detail)
         response_text = detail_dict.get("response", "")
-        assert "Conversation cache not configured" in response_text  # pyright: ignore
+        assert "Conversation cache not configured" in response_text
 
     @pytest.mark.asyncio
     async def test_conversation_not_found(
