@@ -1,25 +1,60 @@
 #!/usr/bin/env python3
-"""Minimal mock MCP server for E2E tests with OAuth support.
+"""Minimal mock MCP server for E2E tests with optional OAuth support.
 
-Responds to GET (OAuth probe) with 401 and WWW-Authenticate. Accepts POST
-(MCP JSON-RPC) when Authorization: Bearer <token> is present; otherwise 401.
-Uses only Python stdlib.
+By default, requires Bearer authentication on every request (except /health).
+Pass ``--no-auth`` to disable authentication and serve all requests openly.
 
-Run as ``python server.py [port]``; default port is 3001 (Docker ``mock-mcp``).
-OpenShift e2e passes 3000 to match the pod's containerPort.
+Run as ``python server.py [--port PORT] [--no-auth]``; default port is 3000.
 """
 
+import argparse
 import json
-import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Optional
 
 # Standard OAuth-style challenge so the client can drive an OAuth flow
 WWW_AUTHENTICATE = 'Bearer realm="mock-mcp", error="invalid_token"'
 
+_TWO_NUMBER_SCHEMA: dict = {
+    "type": "object",
+    "properties": {
+        "a": {"type": "number", "description": "First operand"},
+        "b": {"type": "number", "description": "Second operand"},
+    },
+    "required": ["a", "b"],
+}
+
+
+def _math_tool_schemas() -> list[dict]:
+    """Return MCP tool descriptors for the four arithmetic operations."""
+    return [
+        {
+            "name": "add",
+            "description": "Add two numbers",
+            "inputSchema": _TWO_NUMBER_SCHEMA,
+        },
+        {
+            "name": "subtract",
+            "description": "Subtract two numbers (a - b)",
+            "inputSchema": _TWO_NUMBER_SCHEMA,
+        },
+        {
+            "name": "multiply",
+            "description": "Multiply two numbers",
+            "inputSchema": _TWO_NUMBER_SCHEMA,
+        },
+        {
+            "name": "divide",
+            "description": "Divide two numbers (a / b)",
+            "inputSchema": _TWO_NUMBER_SCHEMA,
+        },
+    ]
+
 
 class Handler(BaseHTTPRequestHandler):
-    """HTTP handler: GET/POST without valid Bearer → 401; POST with Bearer → MCP."""
+    """HTTP handler for MCP JSON-RPC with optional Bearer auth."""
+
+    require_auth: bool = True
 
     def _require_oauth(self) -> None:
         """Send 401 with WWW-Authenticate."""
@@ -32,7 +67,13 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _parse_auth(self) -> Optional[str]:
-        """Return Bearer token if present, else None."""
+        """Return Bearer token if present, else None.
+
+        When ``require_auth`` is False, always returns a sentinel value so
+        every request is treated as authenticated.
+        """
+        if not self.require_auth:
+            return "no-auth"
         auth = self.headers.get("Authorization")
         if auth and auth.startswith("Bearer ") and "invalid" not in auth:
             return auth[7:].strip()
@@ -67,11 +108,10 @@ class Handler(BaseHTTPRequestHandler):
         raw = self.rfile.read(length) if length else b"{}"
         try:
             req = json.loads(raw.decode("utf-8"))
-            req_id = req.get("id", 1)
-            method = req.get("method", "")
         except (json.JSONDecodeError, UnicodeDecodeError):
-            req_id = 1
-            method = ""
+            req = {}
+        req_id = req.get("id", 1)
+        method = req.get("method", "")
 
         if method == "initialize":
             self._json_response(
@@ -104,20 +144,92 @@ class Handler(BaseHTTPRequestHandler):
                                         }
                                     },
                                 },
-                            }
+                            },
+                            *_math_tool_schemas(),
                         ],
                     },
                 }
             )
+        elif method == "tools/call":
+            self._handle_tool_call(req, req_id)
         else:
             self._json_response({"jsonrpc": "2.0", "id": req_id, "result": {}})
+
+    def _handle_tool_call(self, req: dict, req_id: int) -> None:
+        """Dispatch tools/call requests to the appropriate handler."""
+        params = req.get("params", {})
+        tool_name = params.get("name", "")
+        arguments = params.get("arguments", {})
+
+        ops = {
+            "add": lambda a, b: a + b,
+            "subtract": lambda a, b: a - b,
+            "multiply": lambda a, b: a * b,
+            "divide": lambda a, b: a / b,
+        }
+
+        if tool_name in ops:
+            a = arguments.get("a", 0)
+            b = arguments.get("b", 0)
+            if tool_name == "divide" and b == 0:
+                self._json_response(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": {
+                            "content": [
+                                {"type": "text", "text": "Error: division by zero"}
+                            ],
+                            "isError": True,
+                        },
+                    }
+                )
+                return
+            result = ops[tool_name](a, b)
+            self._json_response(
+                {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {
+                        "content": [{"type": "text", "text": str(result)}],
+                    },
+                }
+            )
+        else:
+            self._json_response(
+                {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "result": {
+                        "content": [
+                            {"type": "text", "text": f"Unknown tool: {tool_name}"}
+                        ],
+                        "isError": True,
+                    },
+                }
+            )
 
     def log_message(self, format: str, *args: Any) -> None:
         """Suppress request logging for minimal output."""
 
 
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 3000
+    parser = argparse.ArgumentParser(description="Mock MCP server for E2E tests")
+    parser.add_argument("--port", type=int, default=3000, help="Port to listen on")
+    parser.add_argument(
+        "--no-auth",
+        action="store_true",
+        default=False,
+        help="Disable Bearer authentication",
+    )
+    # Legacy positional port for backward compatibility
+    parser.add_argument("legacy_port", nargs="?", type=int, default=None)
+    args = parser.parse_args()
+
+    port = args.legacy_port if args.legacy_port is not None else args.port
+    Handler.require_auth = not args.no_auth
+
+    mode = "open (no auth)" if args.no_auth else "auth required"
     server = HTTPServer(("0.0.0.0", port), Handler)
-    print(f"Mock MCP server on :{port}")
+    print(f"Mock MCP server on :{port} [{mode}]")
     server.serve_forever()
