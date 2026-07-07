@@ -1464,3 +1464,5 @@ make konflux-rpm-lock
 ```
 
 This creates `rpms.lock.yaml` with pinned RPM versions.
+
+test
