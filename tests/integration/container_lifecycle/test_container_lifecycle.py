@@ -8,6 +8,7 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Generator
 
 import pytest
 
@@ -26,7 +27,7 @@ NETWORK_BINDING_MAX_ATTEMPTS = 5
 
 
 @pytest.fixture(scope="session")
-def container_runtime():
+def container_runtime() -> str:
     """Detect available container runtime (podman or docker).
 
     Returns
@@ -52,7 +53,7 @@ def container_runtime():
 
 
 @pytest.fixture(scope="class")
-def managed_container(container_runtime):
+def managed_container(container_runtime: str) -> Generator[str, None, None]:
     """Start container once for entire test class with strict cleanup.
 
     Parameters
@@ -100,7 +101,9 @@ def managed_container(container_runtime):
 class TestContainerBuild:
     """Test container image building with idempotency checks."""
 
-    def _get_image_id(self, runtime, image_name="lightspeed-llama-stack:local"):
+    def _get_image_id(
+        self, runtime: str, image_name: str = "lightspeed-llama-stack:local"
+    ) -> str:
         """Get the unique, immutable Image ID (SHA256).
 
         Parameters
@@ -121,7 +124,7 @@ class TestContainerBuild:
         )
         return result.stdout.strip()
 
-    def test_build_llama_stack_image(self, container_runtime):
+    def test_build_llama_stack_image(self, container_runtime: str) -> None:
         """Test that llama-stack image builds successfully and exists.
 
         Parameters
@@ -152,7 +155,7 @@ class TestContainerBuild:
             "lightspeed-llama-stack" in result.stdout
         ), "Image not found in image list"
 
-    def test_build_is_idempotent_via_image_id(self, container_runtime):
+    def test_build_is_idempotent_via_image_id(self, container_runtime: str) -> None:
         """Test that rebuilding without changes yields the exact same Image ID.
 
         Parameters
@@ -187,7 +190,9 @@ class TestContainerBuild:
 class TestLlamaStackDeployment:
     """Consolidated lifecycle, networking, and configuration verification."""
 
-    def test_container_is_running(self, container_runtime, managed_container):
+    def test_container_is_running(
+        self, container_runtime: str, managed_container: str
+    ) -> None:
         """Verify container appears in the runtime's active process list.
 
         Parameters
@@ -212,7 +217,9 @@ class TestLlamaStackDeployment:
             managed_container in result.stdout
         ), f"Container {managed_container} not found in running containers"
 
-    def test_container_becomes_healthy(self, container_runtime, managed_container):
+    def test_container_becomes_healthy(
+        self, container_runtime: str, managed_container: str
+    ) -> None:
         """Poll engine internal health state until status is healthy.
 
         Parameters
@@ -241,7 +248,7 @@ class TestLlamaStackDeployment:
             f"(attempts: {HEALTH_CHECK_MAX_ATTEMPTS})."
         )
 
-    def test_health_endpoint_responds_on_host(self):
+    def test_health_endpoint_responds_on_host(self) -> None:
         """Verify HTTP API accessibility from host without container-side curl."""
         url = "http://localhost:8321/v1/health"
 
@@ -267,7 +274,9 @@ class TestLlamaStackDeployment:
                     )
                 time.sleep(1)
 
-    def test_default_port_mapping(self, container_runtime, managed_container):
+    def test_default_port_mapping(
+        self, container_runtime: str, managed_container: str
+    ) -> None:
         """Verify internal port 8321 binds properly.
 
         Parameters
@@ -296,8 +305,8 @@ class TestLlamaStackDeployment:
         ],
     )
     def test_required_volumes_mounted(
-        self, container_runtime, managed_container, file_path
-    ):
+        self, container_runtime: str, managed_container: str, file_path: str
+    ) -> None:
         """Parametrized verification of all critical configuration and script mounts.
 
         Parameters
@@ -319,7 +328,7 @@ class TestLlamaStackDeployment:
 class TestContainerCustomConfiguration:
     """Isolates tests that require distinct runtime configurations."""
 
-    def test_custom_port_mapping(self, container_runtime):
+    def test_custom_port_mapping(self, container_runtime: str) -> None:
         """Verify alternative port bindings parameterize correctly.
 
         Parameters
@@ -363,7 +372,7 @@ class TestContainerCustomConfiguration:
 class TestContainerTeardown:
     """Test container cleanup and resource management."""
 
-    def test_stop_container_gracefully(self, container_runtime):
+    def test_stop_container_gracefully(self, container_runtime: str) -> None:
         """Test that container stops gracefully within timeout.
 
         Parameters
@@ -424,7 +433,7 @@ class TestContainerTeardown:
                 timeout=10,
             )
 
-    def test_remove_container_saves_logs(self, container_runtime):
+    def test_remove_container_saves_logs(self, container_runtime: str) -> None:
         """Test that removing container saves logs to a clean, unique file path.
 
         Parameters
@@ -479,7 +488,7 @@ class TestContainerTeardown:
 
     @pytest.mark.order("last")
     @pytest.mark.destructive
-    def test_clean_removes_image_and_container(self, container_runtime):
+    def test_clean_removes_image_and_container(self, container_runtime: str) -> None:
         """Test that clean target removes assets. Runs last to avoid deleting dev images.
 
         Parameters
@@ -550,7 +559,7 @@ class TestContainerTeardown:
 class TestContainerErrorScenarios:
     """Test error handling and edge cases."""
 
-    def test_double_start_replaces_container(self, container_runtime):
+    def test_double_start_replaces_container(self, container_runtime: str) -> None:
         """Test that starting container twice replaces the first instance.
 
         Parameters
