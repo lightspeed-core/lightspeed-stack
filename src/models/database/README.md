@@ -9,3 +9,5 @@ Base model for SQLAlchemy ORM classes.
 ## [conversations.py](conversations.py)
 User conversation models.
 
+## [saved_prompts.py](saved_prompts.py)
+User saved prompt models.
