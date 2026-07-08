@@ -37,6 +37,7 @@ spec:
               key: key
               optional: true
       image: ${LIGHTSPEED_STACK_IMAGE}
+      command: ["/bin/sh", "-c", "mkdir -p /tmp/data && exec python3.12 src/lightspeed_stack.py"]
       ports:
         - containerPort: 8080
       # TCP probes avoid HTTP/auth. LCS + Llama handshake and large images can take 60–120s before :8080 listens;

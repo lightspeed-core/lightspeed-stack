@@ -102,7 +102,10 @@ spec:
               name: vllm-api-key-secret
               key: key
         - name: INFERENCE_MODEL
-          value: "meta-llama/Llama-3.1-8B-Instruct"
+          valueFrom:
+            secretKeyRef:
+              name: vllm-model-secret
+              key: key
         - name: OPENAI_API_KEY
           valueFrom:
             secretKeyRef:
