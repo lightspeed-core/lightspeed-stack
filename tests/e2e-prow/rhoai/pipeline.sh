@@ -64,6 +64,7 @@ create_secret() {
 create_secret hf-token-secret --from-literal=token="$HUGGING_FACE_HUB_TOKEN"
 create_secret vllm-api-key-secret --from-literal=key="$VLLM_API_KEY"
 create_secret openai-api-key-secret --from-literal=key=""
+create_secret vllm-model-secret --from-literal=key="$MODEL_NAME"
 
 # MCP token secrets for lightspeed-stack
 REPO_ROOT="$(cd "$PIPELINE_DIR/../../.." && pwd)"
@@ -225,7 +226,6 @@ export LLAMA_STACK_IMAGE
 oc new-build --name=llama-stack-e2e \
   --binary \
   --strategy=docker \
-  --image="registry.access.redhat.com/ubi9/ubi-minimal" \
   --to="llama-stack-e2e:latest" \
   -n "$NAMESPACE" 2>/dev/null || echo "BuildConfig llama-stack-e2e already exists"
 
@@ -256,7 +256,7 @@ create_secret api-url-secret --from-literal=key="$KSVC_URL"
 oc create configmap llama-stack-config -n "$NAMESPACE" \
   --from-file="$REPO_ROOT/tests/e2e-prow/rhoai/configs/run.yaml"
 oc create configmap lightspeed-stack-config -n "$NAMESPACE" \
-  --from-file="$REPO_ROOT/tests/e2e/configuration/server-mode/lightspeed-stack.yaml"
+  --from-file=lightspeed-stack.yaml="$REPO_ROOT/tests/e2e/configuration/server-mode/lightspeed-stack-rhoai.yaml"
 
 # Create RAG data ConfigMap from the e2e test RAG data
 echo "Creating RAG data ConfigMap..."
