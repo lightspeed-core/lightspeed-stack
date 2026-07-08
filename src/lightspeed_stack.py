@@ -159,6 +159,18 @@ def main() -> None:
         "Llama stack configuration: %s", configuration.llama_stack_configuration
     )
 
+    # Deprecation schedule (Decision S2): the legacy two-file path keeps
+    # working through 0.6 with this single startup WARN and is removed in 0.7.
+    if configuration.llama_stack_configuration.library_client_config_path is not None:
+        logger.warning(
+            "DEPRECATED: the two-file configuration "
+            "(llama_stack.library_client_config_path + external run.yaml) is "
+            "deprecated and will be removed in release 0.7. Migrate to the "
+            "unified lightspeed-stack.yaml: https://lightspeed-core.github.io"
+            "/lightspeed-stack/design/llama-stack-config-merge"
+            "/llama-stack-config-merge.html#migration--backwards-compatibility"
+        )
+
     # -d or --dump-configuration CLI flags are used to dump the actual configuration
     # to a JSON file w/o doing any other operation
     if args.dump_configuration:
