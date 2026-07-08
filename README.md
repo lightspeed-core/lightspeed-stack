@@ -849,7 +849,8 @@ The following configurations are llama-stack config examples from production dep
 # Usage
 
 ```
-usage: lightspeed_stack.py [-h] [-v] [-d] [-c CONFIG_FILE]
+usage: lightspeed_stack.py [-h] [-v] [-d] [-s] [-m] [-c CONFIG_FILE] [--synthesized-config-output SYNTHESIZED_CONFIG_OUTPUT]
+                           [--migrate-config] [--run-yaml RUN_YAML] [--migrate-output MIGRATE_OUTPUT]
 
 options:
   -h, --help            show this help message and exit
@@ -857,9 +858,17 @@ options:
   -d, --dump-configuration
                         dump actual configuration into JSON file and quit
   -s, --dump-schema     dump configuration schema into OpenAPI-compatible file and quit
-  -c CONFIG_FILE, --config CONFIG_FILE
+  -c, --config CONFIG_FILE
                         path to configuration file (default: lightspeed-stack.yaml)
-
+  --synthesized-config-output SYNTHESIZED_CONFIG_OUTPUT
+                        path where the synthesized Llama Stack run.yaml is written in unified library mode (overwritten each boot,
+                        mode 0600; default: ./.generated/run.yaml)
+  --migrate-config      migrate a legacy two-file config to a unified single file and exit. Lifts the run.yaml given by --run-yaml
+                        into the llama_stack.config.native_override of the -c lightspeed-stack.yaml and writes the result to
+                        --migrate-output. Replace literal secrets with ${env.VAR} references before or after migrating.
+  --run-yaml RUN_YAML   path to the legacy Llama Stack run.yaml to migrate (used with --migrate-config)
+  --migrate-output MIGRATE_OUTPUT
+                        path to write the unified lightspeed-stack.yaml (used with --migrate-config)
 ```
 
 ## CLI options
