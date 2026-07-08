@@ -58,7 +58,11 @@ from utils.agents.tool_processor import (
 )
 from utils.conversations import append_turn_items_to_conversation
 from utils.pydantic_ai import build_agent
-from utils.query import consume_query_tokens, store_query_results
+from utils.query import (
+    build_multimodal_input,
+    consume_query_tokens,
+    store_query_results,
+)
 from utils.quota_utils import get_available_quotas
 from utils.responses import (
     deduplicate_referenced_documents,
@@ -316,7 +320,13 @@ async def agent_response_generator(
         rag_id_mapping=context.rag_id_mapping,
         turn_summary=turn_summary,
     )
-    prompt = cast(str, responses_params.input)  # query is always a string
+    if responses_params.image_attachments:
+        prompt = build_multimodal_input(
+            cast(str, responses_params.input),
+            responses_params.image_attachments,
+        )
+    else:
+        prompt = cast(str, responses_params.input)
 
     logger.debug("Starting agent streaming response processing")
     async with agent.run_stream_events(prompt) as stream:

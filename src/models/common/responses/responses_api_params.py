@@ -20,6 +20,7 @@ from llama_stack_api.openai_responses import (
 )
 from pydantic import BaseModel, Field
 
+from models.common.query import Attachment
 from models.common.responses.types import IncludeParameter, InputTool, ResponseInput
 from utils.tool_formatter import translate_vector_store_ids_to_user_facing
 
@@ -129,6 +130,12 @@ class ResponsesApiParams(BaseModel):
         "conversation compaction (LCORE-1572): once a conversation is "
         "compacted, lightspeed-stack supplies explicit input and must not let "
         "Llama Stack reload the full history via the conversation parameter.",
+    )
+    image_attachments: Optional[list[Attachment]] = Field(
+        default=None,
+        exclude=True,
+        description="Image attachments from the query request. Excluded from the "
+        "API request body — used by agent runners to build multimodal prompts.",
     )
 
     def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:

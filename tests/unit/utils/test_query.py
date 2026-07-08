@@ -2,6 +2,7 @@
 
 # pylint: disable=too-many-lines
 
+import base64
 import sqlite3
 from typing import Any
 
@@ -9,6 +10,7 @@ import psycopg2
 import pytest
 from fastapi import HTTPException
 from llama_stack_client.types import ModelListResponse
+from pydantic_ai.messages import ImageUrl
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -27,6 +29,7 @@ from models.config import Action
 from models.database.conversations import UserConversation, UserTurn
 from tests.unit import config_dict
 from utils.query import (
+    build_multimodal_input,
     consume_query_tokens,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
@@ -254,6 +257,96 @@ class TestPrepareInput:
         assert "test query" in result
         assert "[Attachment: text]" in result
         assert "attachment content" in result
+
+    def test_prepare_input_skips_image_attachments(self) -> None:
+        """Test that image attachments are excluded from text input."""
+        text_attachment = Attachment(
+            attachment_type="log",
+            content="log output",
+            content_type="text/plain",
+        )
+        image_attachment = Attachment(
+            attachment_type="image",
+            content=base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 10).decode(),
+            content_type="image/jpeg",
+        )
+        query_request = QueryRequest(
+            query="describe this image",
+            attachments=[text_attachment, image_attachment],
+        )  # pyright: ignore[reportCallIssue]
+        result = prepare_input(query_request)
+        assert "describe this image" in result
+        assert "[Attachment: log]" in result
+        assert "log output" in result
+        assert result.count("[Attachment:") == 1
+
+    def test_prepare_input_only_image_attachments(self) -> None:
+        """Test prepare_input with only image attachments returns just the query."""
+        image_attachment = Attachment(
+            attachment_type="image",
+            content=base64.b64encode(b"\x89PNG" + b"\x00" * 10).decode(),
+            content_type="image/png",
+        )
+        query_request = QueryRequest(
+            query="what is in this image",
+            attachments=[image_attachment],
+        )  # pyright: ignore[reportCallIssue]
+        result = prepare_input(query_request)
+        assert result == "what is in this image"
+
+
+class TestBuildMultimodalInput:
+    """Tests for build_multimodal_input function."""
+
+    def test_single_image(self) -> None:
+        """Test building multimodal input with one image."""
+        image_data = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 10).decode()
+        image_attachment = Attachment(
+            attachment_type="image",
+            content=image_data,
+            content_type="image/jpeg",
+        )
+        result = build_multimodal_input("describe this", [image_attachment])
+        assert len(result) == 2
+        assert result[0] == "describe this"
+        assert isinstance(result[1], ImageUrl)
+        assert result[1].url == f"data:image/jpeg;base64,{image_data}"
+
+    def test_multiple_images(self) -> None:
+        """Test building multimodal input with multiple images."""
+        jpeg_data = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 10).decode()
+        png_data = base64.b64encode(b"\x89PNG" + b"\x00" * 10).decode()
+        attachments = [
+            Attachment(
+                attachment_type="image",
+                content=jpeg_data,
+                content_type="image/jpeg",
+            ),
+            Attachment(
+                attachment_type="image",
+                content=png_data,
+                content_type="image/png",
+            ),
+        ]
+        result = build_multimodal_input("compare these", attachments)
+        assert len(result) == 3
+        assert result[0] == "compare these"
+        assert isinstance(result[1], ImageUrl)
+        assert result[1].url == f"data:image/jpeg;base64,{jpeg_data}"
+        assert isinstance(result[2], ImageUrl)
+        assert result[2].url == f"data:image/png;base64,{png_data}"
+
+    def test_image_url_media_type(self) -> None:
+        """Test that ImageUrl has correct media_type set."""
+        image_data = base64.b64encode(b"\x89PNG" + b"\x00" * 10).decode()
+        attachment = Attachment(
+            attachment_type="image",
+            content=image_data,
+            content_type="image/png",
+        )
+        result = build_multimodal_input("test", [attachment])
+        assert isinstance(result[1], ImageUrl)
+        assert result[1].media_type == "image/png"
 
 
 class TestExtractProviderAndModelFromModelId:

@@ -11,6 +11,7 @@ from llama_stack_client import (
 )
 from llama_stack_client.types import Shield
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
+from pydantic_ai.messages import ImageUrl, UserContent
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -169,11 +170,11 @@ def is_input_shield(shield: Shield) -> bool:
 def prepare_input(
     query_request: QueryRequest, inline_rag_context: Optional[str] = None
 ) -> str:
-    """
-    Prepare input text for Responses API by appending RAG context and attachments.
+    """Prepare text input for moderation and Responses API.
 
     Takes the query text, appends any inline RAG context for the LLM call, then
-    appends any attachment content with type labels.
+    appends any text attachment content with type labels. Image attachments are
+    skipped — they are handled separately as structured multimodal input.
 
     Args:
         query_request: The query request containing the query and optional attachments
@@ -182,18 +183,41 @@ def prepare_input(
             API model.
 
     Returns:
-        str: The input text with RAG context and attachments appended (if any)
+        str: The input text with RAG context and text attachments appended (if any)
     """
     input_text: str = query_request.query
     if inline_rag_context:
         input_text += f"\n\n{inline_rag_context}"
     if query_request.attachments:
         for attachment in query_request.attachments:
-            # Append attachment content with type label
+            if attachment.content_type in constants.IMAGE_CONTENT_TYPES:
+                continue
             input_text += (
                 f"\n\n[Attachment: {attachment.attachment_type}]\n{attachment.content}"
             )
     return input_text
+
+
+def build_multimodal_input(
+    text: str, image_attachments: list[Attachment]
+) -> list[UserContent]:
+    """Build a pydantic-ai multimodal prompt from text and image attachments.
+
+    Constructs a list of UserContent items containing the text prompt followed
+    by ImageUrl entries for each image attachment, using base64 data URLs.
+
+    Args:
+        text: The text portion of the input (query + RAG context + text attachments).
+        image_attachments: Image attachments with base64-encoded content.
+
+    Returns:
+        List of UserContent items: the text string followed by ImageUrl objects.
+    """
+    parts: list[UserContent] = [text]
+    for attachment in image_attachments:
+        data_url = f"data:{attachment.content_type};base64,{attachment.content}"
+        parts.append(ImageUrl(url=data_url, media_type=attachment.content_type))
+    return parts
 
 
 def store_query_results(  # pylint: disable=too-many-arguments

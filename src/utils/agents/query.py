@@ -44,6 +44,7 @@ from utils.agents.tool_processor import (
 from utils.conversations import append_turn_items_to_conversation
 from utils.pydantic_ai import build_agent
 from utils.query import (
+    build_multimodal_input,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     is_context_length_error,
@@ -318,7 +319,14 @@ async def retrieve_agent_response(
             client, responses_params, configuration.skills, no_tools=no_tools
         )
         logger.debug("Starting agent non-streaming response processing")
-        run_result = await agent.run(cast(str, responses_params.input))
+        if responses_params.image_attachments:
+            prompt = build_multimodal_input(
+                cast(str, responses_params.input),
+                responses_params.image_attachments,
+            )
+        else:
+            prompt = cast(str, responses_params.input)
+        run_result = await agent.run(prompt)
     except (AgentRunError, APIStatusError, APIConnectionError, RuntimeError) as exc:
         response = map_agent_inference_error(exc, responses_params.model)
         raise HTTPException(**response.model_dump()) from exc
