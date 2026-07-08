@@ -7,6 +7,32 @@ This directory contains configuration files used for end-to-end testing of Light
 - `server-mode/` - Configurations for testing when LCore connects to a separate Llama Stack service
 - `library-mode/` - Configurations for testing when LCore embeds Llama Stack as a library
 
+## Library mode uses unified configs (LCORE-2342)
+
+The library-mode configurations use the unified single-file format: instead of
+the legacy `llama_stack.library_client_config_path`, they carry
+
+```yaml
+llama_stack:
+  use_as_library_client: true
+  config:
+    profile: run.yaml
+```
+
+The harness/CI copies the provider-specific run config
+(`tests/e2e/configs/run-<environment>.yaml`) to `./run.yaml` in the repo root,
+and the active `lightspeed-stack.yaml` is also copied to the repo root — so the
+relative `profile:` path resolves to that materialized file, which the unified
+synthesizer consumes as its baseline. LS behavior is identical to the legacy
+two-file path (requirement R7 in the config-merge design doc); the wiring that
+selects a provider config stays unchanged.
+
+The `tests/e2e/configs/run-*.yaml` files therefore serve a dual role: in
+server mode they are the run configuration of the standalone Llama Stack
+service, and in library mode they are consumed as the unified-mode synthesis
+profile. No in-repo test config references them via the legacy mechanism
+anymore.
+
 ## Common Configuration Features
 
 ### Default Configurations (`lightspeed-stack.yaml`)
