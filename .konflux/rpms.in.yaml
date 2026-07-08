@@ -7,12 +7,6 @@ packages:
     cmake,
     cargo,
   ]
-upgradePackages:
-  [
-    gnutls,
-    libxslt,
-    openssl-fips-provider,
-  ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
 arches: [x86_64, aarch64]
