@@ -1,12 +1,10 @@
 """Function to dump the configuration schema into OpenAPI-compatible format."""
 
 import json
-from typing import Any
 
 from pydantic.json_schema import models_json_schema
 
 from models.config import Configuration
-
 from utils.json_schema_updater import recursive_update
 
 

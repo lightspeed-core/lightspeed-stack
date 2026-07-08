@@ -1,7 +1,5 @@
 """Unit tests for utils/json_schema_updater module."""
 
-from json import load
-from pathlib import Path
 from typing import Any
 
 from utils.json_schema_updater import recursive_update

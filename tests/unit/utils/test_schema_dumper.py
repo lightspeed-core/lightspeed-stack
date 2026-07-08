@@ -2,7 +2,6 @@
 
 from json import load
 from pathlib import Path
-from typing import Any
 
 from utils.schema_dumper import dump_schema
 
