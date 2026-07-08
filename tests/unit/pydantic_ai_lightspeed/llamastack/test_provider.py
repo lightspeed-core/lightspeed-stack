@@ -4,6 +4,8 @@
 
 import httpx
 import pytest
+from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
+from llama_stack_client import AsyncLlamaStackClient
 from openai import AsyncOpenAI
 from pytest_mock import MockerFixture
 
@@ -141,6 +143,97 @@ class TestLlamaStackProviderMutualExclusion:
                 library_client=mock_lib_client,
                 http_client=mocker.Mock(spec=httpx.AsyncClient),
             )
+
+
+class TestFromLlamaStackClient:
+    """Tests for LlamaStackProvider.from_llama_stack_client."""
+
+    def test_library_client_dispatches_to_library_mode(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that an AsyncLlamaStackAsLibraryClient creates a library-mode provider."""
+        mock_lib_client = mocker.Mock(spec=AsyncLlamaStackAsLibraryClient)
+        mock_lib_client.provider_data = None
+
+        provider = LlamaStackProvider.from_llama_stack_client(mock_lib_client)
+
+        assert provider._library_client is mock_lib_client
+        assert "llama-stack-library" in provider.base_url
+
+    def test_server_client_extracts_base_url_with_v1(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that a server client whose base_url already ends with /v1 is used as-is."""
+        mock_client = mocker.Mock(spec=AsyncLlamaStackClient)
+        mock_client.base_url = "http://my-server:8321/v1"
+        mock_client.api_key = "test-key"
+        mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+
+        provider = LlamaStackProvider.from_llama_stack_client(mock_client)
+
+        assert "my-server:8321/v1" in provider.base_url
+        assert provider.base_url.count("/v1") == 1
+
+    def test_server_client_appends_v1_when_missing(self, mocker: MockerFixture) -> None:
+        """Test that /v1 is appended when the server client's base_url lacks it."""
+        mock_client = mocker.Mock(spec=AsyncLlamaStackClient)
+        mock_client.base_url = "http://my-server:8321"
+        mock_client.api_key = "test-key"
+        mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+
+        provider = LlamaStackProvider.from_llama_stack_client(mock_client)
+
+        assert provider.base_url.rstrip("/").endswith("/v1")
+
+    def test_server_client_strips_trailing_slash_before_appending_v1(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that a trailing slash is stripped before appending /v1."""
+        mock_client = mocker.Mock(spec=AsyncLlamaStackClient)
+        mock_client.base_url = "http://my-server:8321/"
+        mock_client.api_key = "test-key"
+        mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+
+        provider = LlamaStackProvider.from_llama_stack_client(mock_client)
+
+        assert "//v1" not in provider.base_url
+        assert provider.base_url.rstrip("/").endswith("/v1")
+
+    def test_server_client_uses_provided_api_key(self, mocker: MockerFixture) -> None:
+        """Test that the server client's api_key is forwarded to the provider."""
+        mock_client = mocker.Mock(spec=AsyncLlamaStackClient)
+        mock_client.base_url = "http://my-server:8321/v1"
+        mock_client.api_key = "my-secret"
+        mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+
+        provider = LlamaStackProvider.from_llama_stack_client(mock_client)
+
+        assert provider.client.api_key == "my-secret"
+
+    def test_server_client_defaults_api_key_when_none(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that a None api_key falls back to 'not-needed'."""
+        mock_client = mocker.Mock(spec=AsyncLlamaStackClient)
+        mock_client.base_url = "http://my-server:8321/v1"
+        mock_client.api_key = None
+        mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+
+        provider = LlamaStackProvider.from_llama_stack_client(mock_client)
+
+        assert provider.client.api_key == "not-needed"
+
+    def test_server_client_passes_http_client(self, mocker: MockerFixture) -> None:
+        """Test that the server client's internal httpx client is reused."""
+        mock_client = mocker.Mock(spec=AsyncLlamaStackClient)
+        mock_client.base_url = "http://my-server:8321/v1"
+        mock_client.api_key = "test-key"
+        inner_http = mocker.Mock(spec=httpx.AsyncClient)
+        mock_client._client = inner_http
+
+        provider = LlamaStackProvider.from_llama_stack_client(mock_client)
+
+        assert provider._client._client is inner_http
 
 
 class TestSetHttpClient:  # pylint: disable=too-few-public-methods

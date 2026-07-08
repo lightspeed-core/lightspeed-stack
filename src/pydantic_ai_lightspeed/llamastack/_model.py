@@ -19,8 +19,10 @@ from __future__ import annotations as _annotations
 from collections import defaultdict
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, Optional, cast
+from typing import Any, Final, Optional, cast
 
+from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
+from llama_stack_client import AsyncLlamaStackClient
 from openai import AsyncStream
 from openai.types import responses
 from pydantic_ai import UnexpectedModelBehavior
@@ -38,11 +40,55 @@ from pydantic_ai.models.openai import (
     OpenAIResponsesStreamedResponse,
     _map_api_errors,
 )
+from pydantic_ai.profiles import ModelProfileSpec
 from pydantic_ai.settings import ModelSettings
 
 from log import get_logger
+from models.common.responses.responses_api_params import ResponsesApiParams
+from pydantic_ai_lightspeed.llamastack._provider import LlamaStackProvider
 
 logger = get_logger(__name__)
+
+_LLS_RESPONSES_EXTRA_FIELDS: Final[frozenset[str]] = frozenset(
+    {
+        "conversation",
+        "max_infer_iters",
+        "tools",
+        "tool_choice",
+        "include",
+        "text",
+        "reasoning",
+        "prompt",
+        "metadata",
+        "max_tool_calls",
+        "safety_identifier",
+    }
+)
+
+
+def _model_settings_from_responses_params(
+    responses_params: ResponsesApiParams,
+) -> OpenAIResponsesModelSettings:
+    """Map ``ResponsesApiParams`` into Pydantic AI OpenAI Responses model settings."""
+    payload = responses_params.model_dump(exclude_none=True)
+    extra_body = {k: v for k, v in payload.items() if k in _LLS_RESPONSES_EXTRA_FIELDS}
+    settings_dict: dict[str, Any] = {}
+    if extra_body:
+        settings_dict["extra_body"] = extra_body
+    if responses_params.max_output_tokens is not None:
+        settings_dict["max_tokens"] = responses_params.max_output_tokens
+    if responses_params.temperature is not None:
+        settings_dict["temperature"] = responses_params.temperature
+    if responses_params.parallel_tool_calls is not None:
+        settings_dict["parallel_tool_calls"] = responses_params.parallel_tool_calls
+    if responses_params.extra_headers:
+        settings_dict["extra_headers"] = dict(responses_params.extra_headers)
+    settings_dict["openai_store"] = responses_params.store
+    if responses_params.previous_response_id is not None:
+        settings_dict["openai_previous_response_id"] = (
+            responses_params.previous_response_id
+        )
+    return cast(OpenAIResponsesModelSettings, settings_dict)
 
 
 class _FilteredResponseStream:
@@ -307,3 +353,53 @@ class LlamaStackResponsesModel(OpenAIResponsesModel):
                     else None
                 ),
             )
+
+    @staticmethod
+    def from_llama_stack_client(
+        model_name: str,
+        client: AsyncLlamaStackClient | AsyncLlamaStackAsLibraryClient,
+        *,
+        responses_params: ResponsesApiParams | None = None,
+        model_settings: ModelSettings | None = None,
+        profile: ModelProfileSpec | None = None,
+    ) -> LlamaStackResponsesModel:
+        """Create a ``LlamaStackResponsesModel`` from a Llama Stack client.
+
+        Mirrors ``OpenAIResponsesModel.__init__`` parameters, but accepts a
+        Llama Stack client instead of a provider.  Exactly one of
+        ``responses_params`` or ``model_settings`` may be provided.
+
+        Args:
+            model_name: The model name/ID to use.
+            client: Llama Stack client to build the provider from.
+            responses_params: Optional ``ResponsesApiParams``, converted to
+                ``OpenAIResponsesModelSettings`` internally.  Mutually
+                exclusive with ``model_settings``.
+            model_settings: Optional raw ``ModelSettings`` passed through
+                directly.  Mutually exclusive with ``responses_params``.
+            profile: Optional model profile specification.
+
+        Raises:
+            ValueError: If both ``responses_params`` and ``model_settings``
+                are provided.
+
+        Returns:
+            Configured ``LlamaStackResponsesModel`` instance.
+        """
+        provider = LlamaStackProvider.from_llama_stack_client(client)
+
+        if responses_params is not None and model_settings is not None:
+            raise ValueError(
+                "You can only pass either ResponsesApiParams or ModelSetting not both."
+            )
+
+        _settings: OpenAIResponsesModelSettings | ModelSettings | None = None
+
+        if responses_params is not None:
+            _settings = _model_settings_from_responses_params(responses_params)
+        elif model_settings is not None:
+            _settings = model_settings
+
+        return LlamaStackResponsesModel(
+            model_name, provider=provider, profile=profile, settings=_settings
+        )
