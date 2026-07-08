@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
-# File JIRA sub-tickets from a spike doc.
+# File JIRA sub-tickets from a spike doc or template with placeholders.
 #
 # Usage:
 #   file-jiras.sh --spike-doc <path> --feature-ticket <key>
 #   file-jiras.sh --spike-doc spike.md --feature-ticket LCORE-1311
 #   file-jiras.sh --spike-doc spike.md --feature-ticket 1311
+#   file-jiras.sh --spike-doc release-jiras.md --feature-ticket LCORE-2000 \
+#                 --var X=0 --var Y=7 --var Z=0 --var PRE=rc1
 #
 # Bare numbers default to LCORE- prefix.
 #
 # The script:
-#   1. Parses JIRA sections from the spike doc (### LCORE-???? headings)
-#   2. Auto-generates an Epic stub (ticket #0)
-#   3. Reads <!-- type: Task/Story/Epic --> metadata from each ticket
-#   4. Opens an interactive menu: view, edit, drop, file
-#   5. Files Epic first, then children under it
-#   6. Links spike ticket to Epic with "Informs" relationship
+#   1. Replaces {KEY} placeholders with --var values (if any)
+#   2. Parses JIRA sections from the doc (### LCORE-???? headings)
+#   3. Auto-generates an Epic stub (ticket #0)
+#   4. Reads <!-- type: Task/Story/Epic --> metadata from each ticket
+#   5. Opens an interactive menu: view, edit, drop, file
+#   6. Files Epic first, then children under it
+#   7. Links spike ticket to Epic with "Informs" relationship
 
 set -euo pipefail
 
@@ -28,25 +31,32 @@ SPIKE_TICKET_KEY=""
 
 show_help() {
     echo "Usage: file-jiras.sh --spike-doc <path> --feature-ticket <key> [--output-dir <path>] [--parse-only]"
+    echo "                     [--var KEY=VALUE ...]"
     echo ""
     echo "Options:"
     echo "  --spike-doc        Path to the spike doc containing proposed JIRAs"
     echo "  --feature-ticket   Parent feature ticket (e.g., LCORE-1311 or 1311)"
     echo "  --output-dir       Directory for parsed ticket files (default: <spike-doc-dir>/jiras/)"
+    echo "  --var KEY=VALUE    Replace {KEY} placeholders in the doc before parsing."
+    echo "                     Repeatable. Useful for template docs like release-jiras.md."
+    echo "                     Example: --var X=0 --var Y=7 --var Z=0 --var PRE=rc1"
     echo "  --parse-only       Parse the spike doc into ticket files and exit;"
     echo "                     skip the interactive filing loop and credentials check."
     echo "                     Useful for inspecting parsed output, pre-commit hooks,"
     echo "                     and CI validation."
     echo "  --help             Show this help"
     echo ""
-    echo "Example:"
+    echo "Examples:"
     echo "  file-jiras.sh --spike-doc docs/design/.../spike.md --feature-ticket 1311"
+    echo "  file-jiras.sh --spike-doc dev-tools/release-jiras.md --feature-ticket 2000 \\"
+    echo "                --var X=0 --var Y=7 --var Z=0 --var PRE=rc1"
 }
 
 SPIKE_DOC=""
 FEATURE_TICKET=""
 JIRA_DIR=""
 PARSE_ONLY=0
+PLACEHOLDER_VARS=()
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -59,6 +69,13 @@ while [ $# -gt 0 ]; do
         --output-dir)
             [ $# -ge 2 ] || { echo "Error: --output-dir requires a value"; exit 1; }
             JIRA_DIR="$2"; shift 2 ;;
+        --var)
+            [ $# -ge 2 ] || { echo "Error: --var requires KEY=VALUE"; exit 1; }
+            case "$2" in
+                *=*) PLACEHOLDER_VARS+=("$2") ;;
+                *) echo "Error: --var value must be KEY=VALUE (got '$2')"; exit 1 ;;
+            esac
+            shift 2 ;;
         --parse-only|--dry-run)
             PARSE_ONLY=1; shift ;;
         --help|-h) show_help; exit 0 ;;
@@ -159,7 +176,7 @@ if [ "${SKIP_PARSE:-}" != "1" ]; then
 rm -rf "$JIRA_DIR"
 mkdir -p "$JIRA_DIR"
 
-python3 - "$SPIKE_DOC" "$JIRA_DIR" "$FEATURE_TICKET" << 'PYEOF'
+python3 - "$SPIKE_DOC" "$JIRA_DIR" "$FEATURE_TICKET" ${PLACEHOLDER_VARS[@]+"${PLACEHOLDER_VARS[@]}"} << 'PYEOF'
 import json
 import re
 import sys
@@ -168,6 +185,15 @@ from pathlib import Path
 spike_doc = Path(sys.argv[1]).read_text()
 out_dir = Path(sys.argv[2])
 feature_ticket = sys.argv[3]
+
+# Apply {KEY} placeholder substitutions from --var arguments
+for kv in sys.argv[4:]:
+    key, value = kv.split('=', 1)
+    spike_doc = spike_doc.replace('{' + key + '}', value)
+
+unreplaced = set(re.findall(r'\{([A-Z][A-Z0-9_]*)\}', spike_doc))
+if unreplaced:
+    print(f"  Warning: unreplaced placeholders: {', '.join(sorted(unreplaced))}", file=sys.stderr)
 
 
 def strip_multiline_comments(text):
@@ -287,14 +313,14 @@ def parse_proposed_section(section_text):
                 children.append((child_heading, child_body, ticket_type))
 
             epic_blocks.append((epic_name, epic_prose, children))
-        return epic_blocks, "epic_grouped"
+        return epic_blocks, "epic_grouped", []
 
     # Backward compat: flat ### LCORE-... children, no Epic boundaries.
     # Match both LCORE-???? (placeholder) and LCORE-NNNN (real key).
     legacy_pattern = re.compile(r'^###\s+(LCORE-[\d?]+.*?)$', re.MULTILINE)
     legacy_matches = list(legacy_pattern.finditer(section_text))
     if not legacy_matches:
-        return [], "empty"
+        return [], "empty", []
 
     children = []
     for i, m in enumerate(legacy_matches):
@@ -308,6 +334,10 @@ def parse_proposed_section(section_text):
         body = strip_leaked_metadata(body)
         children.append((heading, body, ticket_type))
 
+    # <!-- no-epic --> directive: skip auto-Epic generation.
+    if '<!-- no-epic -->' in spike_doc:
+        return [], "no_epic", children
+
     # Auto-generate Epic name from spike-doc parent dir
     spike_path = Path(sys.argv[1])
     feature_dir = spike_path.parent.name
@@ -316,10 +346,10 @@ def parse_proposed_section(section_text):
     else:
         epic_name = "TODO: Epic title"
 
-    return [(epic_name, "", children)], "legacy_flat"
+    return [(epic_name, "", children)], "legacy_flat", []
 
 
-epic_blocks, parse_mode = parse_proposed_section(proposed_section)
+epic_blocks, parse_mode, no_epic_tickets = parse_proposed_section(proposed_section)
 
 
 # --- Structure linter ---
@@ -372,9 +402,9 @@ def lint_proposed_section(section_text, epic_blocks, parse_mode):
         else:
             seen[title] = epic_name
 
-    # No JIRAs at all
+    # No JIRAs at all (no_epic mode has its own tickets, so skip this check)
     total_children = sum(len(c) for _, _, c in epic_blocks)
-    if total_children == 0:
+    if total_children == 0 and parse_mode != "no_epic":
         issues.append((
             "ERROR",
             "Proposed JIRAs section parsed zero JIRAs. Expected at least one "
@@ -424,6 +454,9 @@ def parse_incidental_section(section_text):
 
 
 incidental_tickets = parse_incidental_section(incidental_section)
+
+# <!-- no-epic --> tickets are treated as incidental (filed under feature-ticket)
+incidental_tickets = no_epic_tickets + incidental_tickets
 
 
 # --- Write parsed files ---
@@ -737,7 +770,7 @@ except Exception as e:
 
     # Extract description body (everything after the heading, skip metadata comments)
     local body
-    body=$(grep -v '^<!-- \(type\|key\):' "$ticket_file" | tail -n +2)
+    body=$(grep -v '^<!-- \(type\|key\|incidental\|parent_epic_file\):' "$ticket_file" | grep -v '^### ' | tail -n +1)
 
     # Build ADF description
     local adf_desc
