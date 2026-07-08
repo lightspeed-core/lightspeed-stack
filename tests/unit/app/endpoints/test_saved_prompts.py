@@ -7,7 +7,6 @@ from pytest_mock import MockerFixture
 
 import constants
 from app.endpoints.saved_prompts import get_saved_prompts_config_handler, router
-from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from configuration import AppConfig
 from models.config import Action
@@ -67,10 +66,7 @@ async def test_get_saved_prompts_config_returns_default_values(
         request=saved_prompts_http_request,
     )
 
-    assert (
-        response.max_prompts_per_user
-        == constants.SAVED_PROMPTS_DEFAULT_MAX_PER_USER
-    )
+    assert response.max_prompts_per_user == constants.SAVED_PROMPTS_DEFAULT_MAX_PER_USER
     assert (
         response.max_display_name_length
         == constants.SAVED_PROMPTS_DEFAULT_MAX_DISPLAY_NAME_LENGTH
