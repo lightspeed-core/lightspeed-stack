@@ -153,6 +153,8 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/llama-stack-config-merge/llama-stack-config-merge.html)
 
+[Profiles (Deployment Guide)](https://lightspeed-core.github.io/lightspeed-stack/deployment_guide.html#profiles)
+
 ### Low overhead deployment for server mode
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/low-overhead-deployment-for-server-mode/low-overhead-deployment-for-server-mode.html)

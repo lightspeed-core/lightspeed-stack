@@ -469,3 +469,28 @@ def test_migrate_config_dumb_rejects_non_mapping_inputs(tmp_path: Path) -> None:
     empty_run.write_text("", encoding="utf-8")
     with pytest.raises(ValueError, match="did not parse to a mapping"):
         migrate_config_dumb(str(empty_run), lcs_path, out_path)
+
+
+# ---------------------------------------------------------------------------
+# reference profiles (LCORE-2346)
+# ---------------------------------------------------------------------------
+
+REPO_ROOT = Path(__file__).parents[2]
+REFERENCE_PROFILES = sorted((REPO_ROOT / "examples" / "profiles").glob("*.yaml"))
+
+
+def test_reference_profiles_exist() -> None:
+    """The reference profiles shipped in examples/profiles/ are present."""
+    names = {p.name for p in REFERENCE_PROFILES}
+    assert {"openai-remote.yaml", "inline-faiss.yaml"} <= names
+
+
+@pytest.mark.parametrize("profile_path", REFERENCE_PROFILES, ids=lambda p: p.name)
+def test_reference_profile_loads_via_synthesizer(profile_path: Path) -> None:
+    """Every examples/profiles/*.yaml loads cleanly as a synthesis baseline."""
+    lcs = {"llama_stack": {"config": {"profile": profile_path.name}}}
+    result = synthesize_configuration(lcs, config_file_dir=str(profile_path.parent))
+    # The profile drives the baseline: run.yaml-shaped keys survive synthesis.
+    assert result["version"] == 2
+    assert "inference" in result["apis"]
+    assert result["providers"]["inference"], "profile must configure inference"
