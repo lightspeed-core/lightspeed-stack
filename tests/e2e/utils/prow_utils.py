@@ -287,6 +287,8 @@ def update_config_configmap(
     Args:
         source: Either a file path or a backup key from _configmap_backups.
     """
+    temp_path: Optional[str] = None
+
     # Check if source is a backup key (restore from memory)
     if source in _configmap_backups:
         config_content = _apply_inference_overrides(_configmap_backups[source])
