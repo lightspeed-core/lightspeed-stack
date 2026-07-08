@@ -2,7 +2,7 @@
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
@@ -72,9 +72,14 @@ async def get_saved_prompts_config_handler(
     max_prompts_per_user = saved_prompts_config.max_prompts_per_user
     max_display_name_length = saved_prompts_config.max_display_name_length
     max_content_length = saved_prompts_config.max_content_length
-    assert max_prompts_per_user is not None
-    assert max_display_name_length is not None
-    assert max_content_length is not None
+    if (
+        max_prompts_per_user is None
+        or max_display_name_length is None
+        or max_content_length is None
+    ):
+        logger.error("Saved prompts configuration limits are not set")
+        error_response = InternalServerErrorResponse.generic()
+        raise HTTPException(**error_response.model_dump())
 
     return SavedPromptsConfigResponse(
         max_prompts_per_user=max_prompts_per_user,

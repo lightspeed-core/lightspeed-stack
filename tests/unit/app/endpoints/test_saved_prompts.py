@@ -128,6 +128,34 @@ async def test_get_saved_prompts_config_configuration_not_loaded(
 
 
 @pytest.mark.asyncio
+async def test_get_saved_prompts_config_incomplete_limits(
+    mocker: MockerFixture,
+    minimal_config: AppConfig,
+    saved_prompts_http_request: Request,
+) -> None:
+    """GET /saved-prompts/config returns 500 when a limit is unexpectedly None.
+
+    The model validator on ``SavedPromptsConfiguration`` always fills in
+    defaults, so this simulates the defensive branch that guards against a
+    limit slipping through as ``None`` at runtime.
+    """
+    mock_authorization_resolvers(mocker)
+    minimal_config.configuration.saved_prompts.max_prompts_per_user = None
+    mocker.patch("app.endpoints.saved_prompts.configuration", minimal_config)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_saved_prompts_config_handler(
+            auth=MOCK_AUTH,
+            request=saved_prompts_http_request,
+        )
+
+    assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    detail = exc_info.value.detail
+    assert isinstance(detail, dict)
+    assert detail["response"] == "Internal server error"  # type: ignore[index]
+
+
+@pytest.mark.asyncio
 async def test_get_saved_prompts_config_forbidden_without_get_config_action(
     mocker: MockerFixture,
     minimal_config: AppConfig,
