@@ -38,6 +38,7 @@ ATTACHMENT_TYPES: Final[frozenset[str]] = frozenset(
         "configuration",
         "error message",
         "event",
+        "image",
         "log",
         "stack trace",
     }
@@ -45,8 +46,18 @@ ATTACHMENT_TYPES: Final[frozenset[str]] = frozenset(
 
 # Supported attachment content types
 ATTACHMENT_CONTENT_TYPES: Final[frozenset[str]] = frozenset(
-    {"text/plain", "application/json", "application/yaml", "application/xml"}
+    {
+        "text/plain",
+        "application/json",
+        "application/yaml",
+        "application/xml",
+        "image/jpeg",
+        "image/png",
+    }
 )
+
+# Image content types (subset of ATTACHMENT_CONTENT_TYPES)
+IMAGE_CONTENT_TYPES: Final[frozenset[str]] = frozenset({"image/jpeg", "image/png"})
 
 # Default system prompt used only when no other system prompt is specified in
 # configuration file nor in the query request
