@@ -61,6 +61,10 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [Unsupported versions](https://lightspeed-core.github.io/lightspeed-stack/versions_unsupported.html)
 
+## Migration guides
+
+[Migration guides](https://lightspeed-core.github.io/lightspeed-stack/migrations/)
+
 ## Info for developers
 
 [Contributing guide](https://lightspeed-core.github.io/lightspeed-stack/contributing_guide.html)
