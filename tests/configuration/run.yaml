@@ -17,9 +17,9 @@ datasets: []
 external_providers_dir: null
 logging: null
 providers:
-  agents:
-  - provider_id: meta-reference
-    provider_type: inline::meta-reference
+  responses:
+  - provider_id: builtin
+    provider_type: inline::builtin
     config:
       persistence:
         agent_state:
@@ -42,8 +42,8 @@ providers:
         namespace: localfs_datasetio
         backend: kv_default
   eval:
-  - provider_id: meta-reference
-    provider_type: inline::meta-reference
+  - provider_id: builtin
+    provider_type: inline::builtin
     config:
       kvstore:
         namespace: eval_store
@@ -85,11 +85,11 @@ providers:
       service_name: ''
       sinks: sqlite
       sqlite_db_path: .llama/distributions/ollama/trace_store.db
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_id: builtin
+    provider_type: inline::builtin
   tool_runtime:
-  - provider_id: rag-runtime
-    provider_type: inline::rag-runtime
+  - provider_id: file-search
+    provider_type: inline::file-search
     config: {}
   - provider_id: model-context-protocol
     provider_type: remote::model-context-protocol
@@ -139,8 +139,8 @@ registered_resources:
   scoring_fns: []
   benchmarks: []
   tool_groups:
-  - toolgroup_id: builtin::rag
-    provider_id: rag-runtime
+  - toolgroup_id: builtin::file_search
+    provider_id: file-search
 telemetry:
   enabled: true
 vector_stores:
