@@ -14,7 +14,7 @@ from llama_stack_configuration import migrate_config_dumb
 from log import get_logger, setup_logging
 from runners.quota_scheduler import start_quota_scheduler
 from runners.uvicorn import start_uvicorn
-from utils import schema_dumper
+from utils import models_dumper, schema_dumper
 
 setup_logging()
 logger = get_logger(__name__)
@@ -58,6 +58,14 @@ def create_argument_parser() -> ArgumentParser:
         "--dump-schema",
         dest="dump_schema",
         help="dump configuration schema into OpenAPI-compatible file and quit",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "-m",
+        "--dump-models",
+        dest="dump_models",
+        help="dump schemas for all models into OpenAPI-compatible file and quit",
         action="store_true",
         default=False,
     )
@@ -190,6 +198,17 @@ def main() -> None:
             logger.info("Configuration schema dumped to schema.json")
         except Exception as e:
             logger.error("Failed to dump configuration schema: %s", e)
+            raise SystemExit(1) from e
+        return
+
+    # -m or --dump-models CLI flags are used to dump schema for all models
+    # into a JSON file that is compatible with OpenAPI schema specification
+    if args.dump_models:
+        try:
+            models_dumper.dump_models("models.json")
+            logger.info("Schema for all models dumped to models.json")
+        except Exception as e:
+            logger.error("Failed to dump schema for models: %s", e)
             raise SystemExit(1) from e
         return
 

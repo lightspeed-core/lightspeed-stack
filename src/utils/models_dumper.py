@@ -26,9 +26,10 @@ def dump_models(filename: str) -> None:
     with open(filename, "w", encoding="utf-8") as fout:
         # retrieve the schema
         _, schemas = models_json_schema(
-            [(model, "validation") for model in [
-                models_compaction.ConversationSummary
-                ]],
+            [
+                (model, "validation")
+                for model in [models_compaction.ConversationSummary]
+            ],
             ref_template="#/components/schemas/{model}",
         )
 
