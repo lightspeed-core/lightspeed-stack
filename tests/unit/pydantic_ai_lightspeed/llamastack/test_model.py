@@ -2,6 +2,9 @@
 
 # pylint: disable=protected-access,too-few-public-methods
 
+from collections.abc import AsyncIterator
+from typing import Any
+
 import pytest
 from openai.types import responses
 from pydantic_ai import ModelMessage, UnexpectedModelBehavior
@@ -423,7 +426,7 @@ class TestRequest:
         assert result is expected_result
 
 
-def _make_mock_response_stream(mocker: MockerFixture, events: list):
+def _make_mock_response_stream(mocker: MockerFixture, events: list[Any]) -> Any:
     """Create a mock AsyncStream that yields given events and supports async with."""
     mock = mocker.Mock()
     mock.__aiter__ = lambda _: _async_iter(events)
@@ -643,7 +646,7 @@ def _make_mcp_call_added(item_id: str) -> responses.ResponseOutputItemAddedEvent
     )
 
 
-async def _async_iter(events):
+async def _async_iter(events: list[Any]) -> AsyncIterator[Any]:
     """Turn a list of events into an async iterator."""
     for e in events:
         yield e
