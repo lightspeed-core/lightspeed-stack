@@ -113,6 +113,7 @@ def create_argument_parser() -> ArgumentParser:
     return parser
 
 
+# pylint: disable=too-many-branches, too-many-statements
 def main() -> None:
     """Entry point to the web service.
 
