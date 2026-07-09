@@ -19,7 +19,7 @@ from models.api.responses.error import (
     UnauthorizedResponse,
 )
 from models.api.responses.successful import ToolsResponse
-from models.config import Action
+from models.config import Action, ModelContextProtocolServer
 from utils.endpoints import check_configuration_loaded
 from utils.mcp_headers import (
     McpHeaders,
@@ -69,14 +69,51 @@ def _input_schema_to_parameters(
     ]
 
 
-def _normalize_tool_dict(tool_dict: dict[str, Any], toolgroup: Any) -> None:
-    """Normalize a ToolDef dict to the endpoint's response format.
+def _normalize_and_enrich_tool_dict(
+    tool_dict: dict[str, Any],
+    mcp_server: ModelContextProtocolServer,
+) -> dict[str, Any]:
+    """Normalize and enrich a single tool definition from llama-stack /v1/tools endpoint.
 
-    Remaps field names (``name`` -> ``identifier``, ``input_schema`` ->
-    ``parameters``) and propagates ``provider_id``/``type`` from the
-    parent toolgroup.  Handles both missing keys and empty legacy
-    placeholders.
+    Normalizes field names from llama-stack format and enriches the tool
+    dictionary with metadata from the MCP server configuration.
+
+    Field transformations:
+    - ``name`` -> ``identifier``
+    - ``input_schema`` -> ``parameters`` (converted to OpenAPI format)
+
+    Metadata additions:
+    - ``provider_id``: From mcp_server.provider_id if not present in tool
+    - ``type``: Set to "tool" if not present in tool
+    - ``server_source``: MCP server URL or name as fallback
+
+    Args:
+        tool_dict: Raw tool dictionary from /v1/tools response.
+        mcp_server: MCP server configuration containing provider_id and URL.
+
+    Returns:
+        Normalized and enriched tool dictionary.
+
+    Example:
+        >>> tool = {
+        ...     "name": "search_web",
+        ...     "description": "Search the web",
+        ...     "input_schema": {"type": "object", "properties": {"query": {...}}}
+        ... }
+        >>> server = ModelContextProtocolServer(
+        ...     name="brave-search",
+        ...     provider_id="model-context-protocol",
+        ...     url="http://localhost:8401/sse"
+        ... )
+        >>> result = _normalize_and_enrich_tool_dict(tool, server)
+        >>> result["identifier"]
+        'search_web'
+        >>> result["server_source"]
+        'http://localhost:8401/sse'
+        >>> result["provider_id"]
+        'model-context-protocol'
     """
+    # Normalize field names
     if "name" in tool_dict and not tool_dict.get("identifier"):
         tool_dict["identifier"] = tool_dict["name"]
     tool_dict.pop("name", None)
@@ -85,10 +122,16 @@ def _normalize_tool_dict(tool_dict: dict[str, Any], toolgroup: Any) -> None:
         tool_dict["parameters"] = _input_schema_to_parameters(tool_dict["input_schema"])
     tool_dict.pop("input_schema", None)
 
+    # Add metadata from MCP server configuration
     if not tool_dict.get("provider_id"):
-        tool_dict["provider_id"] = toolgroup.provider_id
+        tool_dict["provider_id"] = mcp_server.provider_id
+
     if not tool_dict.get("type"):
-        tool_dict["type"] = getattr(toolgroup, "type", None) or "tool"
+        tool_dict["type"] = "tool"
+
+    tool_dict["server_source"] = mcp_server.url or mcp_server.name
+
+    return tool_dict
 
 
 tools_responses: dict[int | str, dict[str, Any]] = {
@@ -149,60 +192,42 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
     # Check MCP Auth
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
-    toolgroups_response = []
-    try:
-        client = AsyncLlamaStackClientHolder().get_client()
-        logger.debug("Retrieving tools from all toolgroups")
-        toolgroups_response = await client.toolgroups.list()
-    except APIConnectionError as e:
-        logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
-        raise HTTPException(**response.model_dump()) from e
-
+    client = AsyncLlamaStackClientHolder().get_client()
     consolidated_tools = []
-    mcp_server_names = (
-        {mcp_server.name for mcp_server in configuration.mcp_servers}
-        if configuration.mcp_servers
-        else set()
-    )
 
-    for toolgroup in toolgroups_response:
-        mcp_server = None
-        if toolgroup.identifier in mcp_server_names:
-            mcp_server = next(
-                (
-                    s
-                    for s in configuration.mcp_servers
-                    if s.name == toolgroup.identifier
-                ),
-                None,
+    # Query tools for each configured MCP server
+    for mcp_server in configuration.mcp_servers or []:
+        headers = complete_mcp_headers.get(mcp_server.name, {})
+        unresolved = find_unresolved_auth_headers(
+            mcp_server.authorization_headers, headers
+        )
+        if unresolved:
+            logger.warning(
+                "Skipping MCP server %s: required %d auth headers "
+                "but only resolved %d",
+                mcp_server.name,
+                len(mcp_server.authorization_headers),
+                len(mcp_server.authorization_headers) - len(unresolved),
             )
-
-        headers = complete_mcp_headers.get(toolgroup.identifier, {})
-        if mcp_server is not None:
-            unresolved = find_unresolved_auth_headers(
-                mcp_server.authorization_headers, headers
-            )
-            if unresolved:
-                logger.warning(
-                    "Skipping MCP server %s: required %d auth headers "
-                    "but only resolved %d",
-                    mcp_server.name,
-                    len(mcp_server.authorization_headers),
-                    len(mcp_server.authorization_headers) - len(unresolved),
-                )
-                continue
+            continue
 
         try:
             authorization = headers.pop("Authorization", None)
 
-            tools_response = await client.tools.list(
-                toolgroup_id=toolgroup.identifier,
-                extra_headers=headers,
-                extra_query={"authorization": authorization},
+            # Use /v1/tools endpoint with toolgroup_id filter
+            # Note: client.toolgroups and client.tools were removed in v0.7.0
+            params = {"toolgroup_id": mcp_server.name}
+            if authorization:
+                params["authorization"] = authorization
+
+            tools_data = await client.get(
+                "/v1/tools",
+                cast_to=dict,  # type: ignore[arg-type]
+                options={"params": params, "headers": headers},
             )
+            tools_response = tools_data.get("tools", [])  # type: ignore[union-attr]
         except BadRequestError:
-            logger.error("Toolgroup %s is not found", toolgroup.identifier)
+            logger.error("Toolgroup %s is not found", mcp_server.name)
             continue
         except APIConnectionError as e:
             logger.error("Unable to connect to Llama Stack: %s", e)
@@ -211,38 +236,23 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals,too-many-st
             )
             raise HTTPException(**response.model_dump()) from e
 
-        # Convert tools to dict format
-        tools_count = 0
-        server_source = "unknown"
-
+        # Process and normalize tools from this MCP server
         for tool in tools_response:
-            tool_dict = dict(tool)
-
-            _normalize_tool_dict(tool_dict, toolgroup)
-
-            # Determine server source based on toolgroup type
-            if mcp_server:
-                tool_dict["server_source"] = mcp_server.url or toolgroup.identifier
-            else:
-                # This is a built-in toolgroup
-                tool_dict["server_source"] = "builtin"
-
-            consolidated_tools.append(tool_dict)
-            tools_count += 1
-            server_source = tool_dict["server_source"]
+            tool_dict = dict(tool) if not isinstance(tool, dict) else tool
+            normalized_tool = _normalize_and_enrich_tool_dict(tool_dict, mcp_server)
+            consolidated_tools.append(normalized_tool)
 
         logger.debug(
-            "Retrieved %d tools from toolgroup %s (source: %s)",
-            tools_count,
-            toolgroup.identifier,
-            server_source,
+            "Retrieved %d tools from MCP server %s (source: %s)",
+            len(tools_response),
+            mcp_server.name,
+            mcp_server.url or mcp_server.name,
         )
 
     logger.info(
-        "Retrieved total of %d tools (%d from built-in toolgroups, %d from MCP servers)",
+        "Retrieved total of %d tools from %d configured MCP servers",
         len(consolidated_tools),
-        len([t for t in consolidated_tools if t.get("server_source") == "builtin"]),
-        len([t for t in consolidated_tools if t.get("server_source") != "builtin"]),
+        len(configuration.mcp_servers or []),
     )
 
     # Format tools with structured description parsing

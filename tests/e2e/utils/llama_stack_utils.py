@@ -1,9 +1,12 @@
-"""E2E test utilities for Llama Stack (toolgroups and shields).
+"""E2E test utilities for Llama Stack shields.
 
-This module provides functions to manage MCP toolgroups and shields on a running
-Llama Stack instance during end-to-end tests: unregister MCP toolgroups when
-switching configurations or testing MCP auth, and unregister/re-register shields
-(e.g. from the ``Given shields are disabled for this scenario`` step).
+This module provides functions to manage shields on a running Llama Stack instance
+during end-to-end tests: unregister/re-register shields (e.g. from the
+``Given shields are disabled for this scenario`` step).
+
+NOTE: Toolgroup management functions were removed in llama-stack v0.7.1 since
+toolgroups are now auto-registered from run.yaml provider specs and cannot be
+dynamically registered/unregistered at runtime.
 
 Only applies when running Llama Stack as a separate service (server mode).
 Requires E2E_LLAMA_STACK_URL or E2E_LLAMA_HOSTNAME and E2E_LLAMA_PORT.
@@ -38,46 +41,25 @@ def _get_llama_stack_client() -> AsyncLlamaStackClient:
 
 
 # -----------------------------------------------------------------------------
-# Toolgroups
+# Toolgroups (REMOVED in llama-stack v0.7.1)
 # -----------------------------------------------------------------------------
-
-
-async def _unregister_toolgroup_async(identifier: str) -> None:
-    """Unregister a toolgroup by identifier."""
-    client = _get_llama_stack_client()
-    try:
-        await client.toolgroups.unregister(identifier)
-    except APIConnectionError:
-        raise
-    except APIStatusError as e:
-        # 400 "not found": toolgroup already absent, scenario can proceed
-        if e.status_code == 400 and "not found" in str(e).lower():
-            return None
-        raise
-    finally:
-        await client.close()
-
-
-async def _unregister_mcp_toolgroups_async() -> None:
-    """Unregister all MCP toolgroups."""
-    client = _get_llama_stack_client()
-    try:
-        toolgroups = await client.toolgroups.list()
-        for toolgroup in toolgroups:
-            if (
-                toolgroup.identifier
-                and toolgroup.provider_id == "model-context-protocol"
-            ):
-                await _unregister_toolgroup_async(toolgroup.identifier)
-    except APIConnectionError:
-        raise
-    finally:
-        await client.close()
+# The client.toolgroups API was removed in llama-stack v0.7.1. Toolgroups are now
+# auto-registered from run.yaml provider specs and cannot be dynamically managed.
+# The unregister_mcp_toolgroups() function is kept as a no-op stub for backward
+# compatibility with existing e2e test steps.
 
 
 def unregister_mcp_toolgroups() -> None:
-    """Unregister all MCP toolgroups."""
-    asyncio.run(_unregister_mcp_toolgroups_async())
+    """No-op stub - toolgroups are auto-registered in llama-stack v0.7.1+.
+
+    In llama-stack v0.7.0+, the client.toolgroups API was removed and toolgroups
+    are automatically registered from provider specs in run.yaml at startup.
+    Dynamic registration/unregistration is no longer supported.
+
+    This function is retained as a no-op for backward compatibility with e2e tests
+    that call it in scenario setup steps.
+    """
+    pass  # No-op: toolgroups auto-registered from run.yaml
 
 
 # -----------------------------------------------------------------------------

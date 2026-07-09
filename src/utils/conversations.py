@@ -254,12 +254,24 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
 
     if item_type == "function_call_output":
         function_output = cast(FunctionToolCallOutput, item)
+        # In llama-stack v0.7.1+, output can be str or list of content items
+        output_content = function_output.output
+        if isinstance(output_content, list):
+            # Extract text from content items (skip images and files)
+            text_parts = []
+            for content_item in output_content:
+                if getattr(content_item, "type", None) == "text":
+                    text_parts.append(getattr(content_item, "text", ""))
+            output_str = " ".join(text_parts) if text_parts else ""
+        else:
+            output_str = output_content
+
         return (
             None,
             ToolResultSummary(
                 id=function_output.call_id,
                 status=function_output.status or "success",
-                content=function_output.output,
+                content=output_str,
                 type="function_call_output",
                 round=1,
             ),
