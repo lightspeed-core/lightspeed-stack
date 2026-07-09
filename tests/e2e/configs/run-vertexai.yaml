@@ -2,7 +2,7 @@ version: 2
 image_name: vertexai-configuration
 
 apis:
-- agents
+- responses
 - batches
 - datasetio
 - eval
@@ -11,6 +11,8 @@ apis:
 - safety
 - scoring
 - tool_runtime
+- tool_groups
+- conversations
 - vector_io
 
 benchmarks: []
@@ -59,13 +61,13 @@ providers:
       openai_api_key: '********'
   tool_runtime:
   - config: {} # Enable the RAG tool
-    provider_id: rag-runtime
-    provider_type: inline::rag-runtime
+    provider_id: file-search
+    provider_type: inline::file-search
   - config: {} # Enable MCP (Model Context Protocol) support
     provider_id: model-context-protocol
     provider_type: remote::model-context-protocol
   vector_io: []
-  agents:
+  responses:
   - config:
       persistence:
         agent_state:
@@ -74,8 +76,8 @@ providers:
         responses:
           table_name: agents_responses
           backend: sql_default
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_id: builtin
+    provider_type: inline::builtin
   batches:
   - config:
       kvstore:
@@ -101,8 +103,8 @@ providers:
       kvstore:
         namespace: eval_store
         backend: kv_default
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_id: builtin
+    provider_type: inline::builtin
 scoring_fns: []
 server:
   port: 8321
@@ -146,8 +148,8 @@ registered_resources:
   scoring_fns: []
   benchmarks: []
   tool_groups:
-  - toolgroup_id: builtin::rag # Register the RAG tool
-    provider_id: rag-runtime
+  - toolgroup_id: builtin::file_search # Register the RAG tool
+    provider_id: file-search
 vector_stores:
   default_provider_id: faiss
   default_embedding_model: # Define the default embedding model for RAG

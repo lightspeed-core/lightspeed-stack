@@ -1883,9 +1883,9 @@ requires-dist = [
     { name = "jsonpath-ng", specifier = ">=1.6.1" },
     { name = "kubernetes", specifier = ">=30.1.0" },
     { name = "litellm", specifier = ">=1.83.7" },
-    { name = "llama-stack", specifier = "==0.6.0" },
-    { name = "llama-stack-api", specifier = "==0.6.0" },
-    { name = "llama-stack-client", specifier = "==0.6.0" },
+    { name = "llama-stack", specifier = "==0.7.1" },
+    { name = "llama-stack-api", specifier = "==0.7.1" },
+    { name = "llama-stack-client", specifier = "==0.7.1" },
     { name = "openai", specifier = ">=1.99.9" },
     { name = "prometheus-client", specifier = ">=0.22.1" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
@@ -1998,7 +1998,7 @@ wheels = [
 
 [[package]]
 name = "llama-stack"
-version = "0.6.0"
+version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -2029,20 +2029,21 @@ dependencies = [
     { name = "rich" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "starlette" },
+    { name = "structlog" },
     { name = "termcolor" },
     { name = "tiktoken" },
     { name = "tornado" },
     { name = "urllib3" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f4/53/5bc3ae19e9a42475b42682456898ced5a0b48e43f918920fc790b665f223/llama_stack-0.6.0.tar.gz", hash = "sha256:d92711791633f5505a4473ffba3f3e26acb700716fddab5aec419d99e614c802", size = 13631563, upload-time = "2026-03-11T15:06:13.071Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/9b/a8577f0761b02be4d45d625cf5870ab64859dbbe219088d6c8a39e9cb79d/llama_stack-0.7.1.tar.gz", hash = "sha256:d88dc8430abe1d26f3908ab506f0f6ccd4f3c16ba06ee46ac662f4c896c52da8", size = 15857581, upload-time = "2026-04-08T14:21:12.036Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9d/17/b4427e1db7409f698c95b6f8b2b9e662bbcf1f819beb1af180bab55ddfb5/llama_stack-0.6.0-py3-none-any.whl", hash = "sha256:b804830664dc91e54c7225a7a081cb1874c48fc18573569c19fac4a9397e8076", size = 770027, upload-time = "2026-03-11T15:06:10.649Z" },
+    { url = "https://files.pythonhosted.org/packages/be/41/f57aedebba533bf5e8b7c5f3f2ee1edb88409e1aa5c83fa7ddc5f85b3c48/llama_stack-0.7.1-py3-none-any.whl", hash = "sha256:65b9c827989011af3879ad051db9134163f8e6b3bc3685340328f21f5d07cf5f", size = 782710, upload-time = "2026-04-08T14:21:10.031Z" },
 ]
 
 [[package]]
 name = "llama-stack-api"
-version = "0.6.0"
+version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
@@ -2052,14 +2053,14 @@ dependencies = [
     { name = "opentelemetry-sdk" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f3/4f/0c6fbc861fb9f6074f877f9c39ea40b02ad1fc81c9a455b020b32dcc471f/llama_stack_api-0.6.0.tar.gz", hash = "sha256:f0f3a1a6239a5d3b8c7ef02cefdf817c96c6461dcd8a82c1689ac67ec3107270", size = 136402, upload-time = "2026-03-11T15:05:30.843Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/d0/a320b11eec0db00c05ad22525f5ef8825b512215d7d138964caddb50dea2/llama_stack_api-0.7.1.tar.gz", hash = "sha256:441b0e1c29f7acc0a1d9b697d276f2c352387b719b67926af9983caec95f107e", size = 135479, upload-time = "2026-04-08T14:20:31.64Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4d/44/3c7a8dc82ddcc45a375681051450979837f28b27250ee057cabcfb8421f3/llama_stack_api-0.6.0-py3-none-any.whl", hash = "sha256:b99a03aba3659736b6b540c9e5e674b1daac2bf5eeb2a68795113d62b8250672", size = 161069, upload-time = "2026-03-11T15:05:29.072Z" },
+    { url = "https://files.pythonhosted.org/packages/e7/0b/0ca3d5cc63bdd51327a051907e97916232dfa786d7758cec989277dbec19/llama_stack_api-0.7.1-py3-none-any.whl", hash = "sha256:13467639f83ffc87b950513afd2270e6ce0403852442d6214f3f08c087a2d5d5", size = 159662, upload-time = "2026-04-08T14:20:30.351Z" },
 ]
 
 [[package]]
 name = "llama-stack-client"
-version = "0.6.0"
+version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -2078,9 +2079,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b7/e9/62dc71e7d6003d9b56a1e632445065f55687c891e62eff1636e10b5dd629/llama_stack_client-0.6.0.tar.gz", hash = "sha256:3290aac36dcafbd1bc0baaf995522e2037f57056672b5a1516af112a4210f3ea", size = 368695, upload-time = "2026-03-11T15:04:19.267Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/c5/b1d631b8fe032120b10a9adc88413c8d9fe400e5a8acc3131401647c016e/llama_stack_client-0.7.1.tar.gz", hash = "sha256:90d8a90519cb3ef644bce4566c6a752184fd69b960c579b41886d70fe47cb44f", size = 374261, upload-time = "2026-04-02T13:39:22.238Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/a3/33d3e066a320a993b6f9cca9c8efe8da7deb2045df61235d327d0a05b25f/llama_stack_client-0.6.0-py3-none-any.whl", hash = "sha256:7e514a6ffd92f237aceb062dadc4db44e24a3cd9c4ea35e25173d1e0739beb8e", size = 392001, upload-time = "2026-03-11T15:04:17.772Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/fe/e2f17a3d6775f25e668746fd7105dd3e8b30b9e78570f76cde92417f0b57/llama_stack_client-0.7.1-py3-none-any.whl", hash = "sha256:5cd104779cb96ec1f8c66a8c0f581b096fcb384188ed891c72be31fb75022daa", size = 378796, upload-time = "2026-04-02T13:39:20.324Z" },
 ]
 
 [[package]]
@@ -4162,6 +4163,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e9/88/35e4d27d9177d7df76d060e0a18f69c6c5794c96960c94042e20a12c8ba2/stevedore-5.8.0.tar.gz", hash = "sha256:b49867b32ca3016e94100e68dbf26e72aa7b8708d0a3f73c08aeb220370ac715", size = 514710, upload-time = "2026-05-18T09:15:27.731Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f5/ac/19f9941c74add59d17694930ec8105d5eddeee4ce56dd8632b765ca16d6c/stevedore-5.8.0-py3-none-any.whl", hash = "sha256:88eede9e66ca80e34085b9174e2327da2c61ac91f24f70e41c3ad76e4bb4872b", size = 54553, upload-time = "2026-05-18T09:15:25.82Z" },
+]
+
+[[package]]
+name = "structlog"
+version = "26.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/89/b4a0bcfdf4f71a3dea31379f095929613d7e4528a0996bca6aa964cd0dca/structlog-26.1.0.tar.gz", hash = "sha256:f63a716cbd1b1291cf7661de7794b455acfa4c43c5bcf1630e6ad5ddc1adb3b7", size = 1459881, upload-time = "2026-06-06T07:33:39.348Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a9/18/489c97b834dfff9cf2fc2507cede4bcd4b11e67f84bc462acd1992496f86/structlog-26.1.0-py3-none-any.whl", hash = "sha256:e081a26d6c373e6d201eca24eede26d8ffab07f88f477822e679183428d3d91e", size = 73764, upload-time = "2026-06-06T07:33:38.046Z" },
 ]
 
 [[package]]
