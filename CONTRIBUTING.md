@@ -4,6 +4,7 @@
 <!-- vim-markdown-toc GFM -->
 
 * [TLDR;](#tldr)
+* [New feature requests](#new-feature-requests)
 * [Prerequisites](#prerequisites)
     * [Tooling installation](#tooling-installation)
 * [Setting up your development environment](#setting-up-your-development-environment)
@@ -37,12 +38,20 @@
 
 ## TLDR;
 
+NOTE: Please Create an RFE for new features before you continue working on PR
+
 1. Create your own fork of the repo
 2. Make changes to the code in your fork
 3. Run unit tests and integration tests
 4. Check the code with linters
 5. Submit PR from your fork to main branch of the project repo
 
+
+## New feature requests
+
+1. Create an RFE: If you haven’t already, please create an RFE (Request for Enhancement) in the LCORE project (Red Hat contributions) or GitHub repository (external contributions). This helps us track the feature and ensures it is visible to the team.
+2. RFE Vetting: Your RFE will be vetted by Pavel Tisnovsky and Stefan Bunciak to evaluate the requirement and alignment with our project goals.
+3. Tests & Documentation: Please ensure that your feature implementation includes the necessary integration tests and comprehensive documentation covering the functionality and configuration options
 
 ## Prerequisites
 
