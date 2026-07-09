@@ -194,6 +194,40 @@ Placeholders:
 - Images are pullable from `registry.redhat.io`
 
 <!-- type: Task -->
+### LCORE-???? Publish lightspeed-stack package to PyPI
+
+**Description**: Publish the `lightspeed-stack` package to PyPI with the correct version and ensure the "latest release" flag is set.
+
+**Scope**:
+
+- Build the `lightspeed-stack` distribution artifacts for version `{X}.{Y}.{Z}{PRE}`
+- Publish the package to PyPI
+- Set the "latest release" flag to this version (ensure pre-releases are not marked as latest unless intended)
+
+**Acceptance criteria**:
+
+- `lightspeed-stack` version `{X}.{Y}.{Z}{PRE}` is available on PyPI
+- The "Latest" badge on PyPI points to this version
+- `pip install lightspeed-stack` resolves to the correct version
+
+<!-- type: Task -->
+### LCORE-???? Publish rag-content package to PyPI
+
+**Description**: Publish the `rag-content` package to PyPI with the correct version and ensure the "latest release" flag is set.
+
+**Scope**:
+
+- Build the `rag-content` distribution artifacts for version `{X}.{Y}.{Z}{PRE}`
+- Publish the package to PyPI
+- Set the "latest release" flag to this version (ensure pre-releases are not marked as latest unless intended)
+
+**Acceptance criteria**:
+
+- `rag-content` version `{X}.{Y}.{Z}{PRE}` is available on PyPI
+- The "Latest" badge on PyPI points to this version
+- `pip install rag-content` resolves to the correct version
+
+<!-- type: Task -->
 ### LCORE-???? Update docs/versions document
 
 **Description**: Update the `docs/versions*` document to reflect the new release version and any version-specific notes.
