@@ -53,7 +53,6 @@ _LLS_RESPONSES_EXTRA_FIELDS: Final[frozenset[str]] = frozenset(
     {
         "conversation",
         "max_infer_iters",
-        "tools",
         "tool_choice",
         "include",
         "text",
@@ -84,6 +83,8 @@ def _model_settings_from_responses_params(
     if responses_params.extra_headers:
         settings_dict["extra_headers"] = dict(responses_params.extra_headers)
     settings_dict["openai_store"] = responses_params.store
+    if responses_params.tools is not None:
+        settings_dict["openai_native_tools"] = responses_params.tools
     if responses_params.previous_response_id is not None:
         settings_dict["openai_previous_response_id"] = (
             responses_params.previous_response_id

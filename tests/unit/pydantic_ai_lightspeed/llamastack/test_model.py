@@ -89,7 +89,6 @@ class TestModelSettingsFromResponsesParams:
         params = _make_params(
             max_infer_iters=5,
             max_tool_calls=10,
-            tools=[{"type": "function", "name": "test-function", "parameters": {}}],
         )
         settings = _model_settings_from_responses_params(params)
 
@@ -98,9 +97,16 @@ class TestModelSettingsFromResponsesParams:
         assert settings["extra_body"]["max_infer_iters"] == 5
         assert settings["extra_body"]["max_tool_calls"] == 10
         assert settings["extra_body"]["conversation"] == "conv-1"
-        assert settings["extra_body"]["tools"] == [
-            {"type": "function", "name": "test-function", "parameters": {}}
-        ]
+
+    def test_tools_maps_to_openai_native_tools(self) -> None:
+        """Test that tools maps to openai_native_tools, not extra_body."""
+        tools = [{"type": "function", "name": "test-function", "parameters": {}}]
+        params = _make_params(tools=tools)
+        settings = _model_settings_from_responses_params(params)
+
+        assert "openai_native_tools" in settings
+        assert settings["openai_native_tools"] is params.tools
+        assert "tools" not in settings.get("extra_body", {})
 
     def test_none_fields_excluded(self) -> None:
         """Test that None optional fields do not appear in the result."""
@@ -584,7 +590,6 @@ class TestLlsResponsesExtraFields:
         expected = {
             "conversation",
             "max_infer_iters",
-            "tools",
             "tool_choice",
             "include",
             "text",
