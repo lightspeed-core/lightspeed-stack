@@ -303,7 +303,7 @@ class "UnifiedInferenceProvider" as src.models.config.UnifiedInferenceProvider {
   allowed_models : Optional[list[str]]
   api_key_env : Optional[str]
   extra : dict[str, object]
-  id : Optional[str]
+  id : str | None
   type : Literal['openai', 'ollama', 'vllm', 'sentence_transformers', 'azure', 'vertexai', 'watsonx', 'vllm_rhaiis', 'vllm_rhel_ai']
 }
 class "UnifiedLlamaStackConfig" as src.models.config.UnifiedLlamaStackConfig {
