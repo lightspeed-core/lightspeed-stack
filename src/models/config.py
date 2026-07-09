@@ -667,6 +667,10 @@ class UnifiedInferenceProvider(ConfigurationBase):
         type: Canonical provider identifier. Vendor-neutral so it survives a
             future backend change; each backend-specific synthesizer maps it to
             its own provider vocabulary.
+        id: Optional identifier emitted as the Llama Stack provider_id. When
+            omitted, synthesized as type with underscores hyphenated. If set,
+            must be non-empty after stripping whitespace and may contain only
+            lowercase letters, digits, underscores, and hyphens.
         api_key_env: Name of the environment variable holding the provider API
             key. Emitted verbatim as `${env.<name>}` so the secret never lands
             on disk resolved.
@@ -694,6 +698,15 @@ class UnifiedInferenceProvider(ConfigurationBase):
         "Llama Stack provider_type by the synthesizer.",
     )
 
+    id: Optional[str] = Field(
+        None,
+        title="Provider ID",
+        description="Optional identifier emitted as the Llama Stack provider_id. "
+        "When omitted, synthesized as type with underscores hyphenated. If set, "
+        "must be non-empty after stripping whitespace and may contain only "
+        "lowercase letters, digits, underscores, and hyphens.",
+    )
+
     api_key_env: Optional[str] = Field(
         None,
         title="API key environment variable",
@@ -714,6 +727,37 @@ class UnifiedInferenceProvider(ConfigurationBase):
         description="Additional provider-config keys merged verbatim into the "
         "synthesized provider's config block.",
     )
+
+    @field_validator("id")
+    @classmethod
+    def validate_id(cls, value: Optional[str]) -> Optional[str]:
+        """Strip and validate an optional high-level provider id.
+
+        Parameters:
+            value: The configured id, or None when omitted.
+
+        Returns:
+            The stripped id, or None when the field is omitted.
+
+        Raises:
+            ValueError: If the value is empty after stripping or contains
+                characters other than lowercase letters, digits, underscores,
+                and hyphens.
+        """
+        if value is None:
+            return None
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError(
+                "id must be non-empty after stripping whitespace; "
+                "omit the field to use the type-derived default"
+            )
+        if not re.fullmatch(r"[a-z0-9_-]+", stripped):
+            raise ValueError(
+                "id may contain only lowercase letters, digits, "
+                "underscores, and hyphens"
+            )
+        return stripped
 
 
 class UnifiedLlamaStackConfig(ConfigurationBase):

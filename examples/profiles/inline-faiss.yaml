@@ -11,6 +11,13 @@
 #     providers:
 #       - type: openai
 #         api_key_env: OPENAI_API_KEY
+#       # Multiple backends of the same type need distinct id values:
+#       # - type: vllm
+#       #   id: vllm-prod
+#       #   api_key_env: VLLM_PROD_KEY
+#       # - type: vllm
+#       #   id: vllm-staging
+#       #   api_key_env: VLLM_STAGING_KEY
 #   llama_stack:
 #     use_as_library_client: true
 #     config:
