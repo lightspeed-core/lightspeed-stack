@@ -12,6 +12,9 @@ streamed ``tool_args`` content to the correct part.
 
 This module provides ``LlamaStackResponsesModel`` which wraps the event stream to
 buffer those early delta events and replay them correctly once the item is announced.
+
+Additionally overrides ``_responses_create`` to filter out ``reasoning.encrypted_content``
+from the include parameter, which llama-stack v0.7.1 doesn't support.
 """
 
 from __future__ import annotations as _annotations
@@ -179,7 +182,98 @@ class LlamaStackResponsesModel(OpenAIResponsesModel):
     Overrides the streaming response processing to buffer and replay
     ``ResponseFunctionCallArgumentsDeltaEvent`` events that Llama Stack emits
     before the corresponding ``McpCall`` or ``ResponseFunctionToolCall`` item.
+
+    Also filters ``reasoning.encrypted_content`` from the include parameter since
+    llama-stack v0.7.1 doesn't support it.
     """
+
+    async def _responses_create(
+        self,
+        messages: list[ModelMessage],
+        stream: bool,
+        model_settings: OpenAIResponsesModelSettings,
+        model_request_parameters: ModelRequestParameters,
+    ) -> Any:
+        """Call parent's _responses_create, then filter reasoning.encrypted_content from include.
+
+        Llama Stack v0.7.1 doesn't support reasoning.encrypted_content in the include
+        parameter. pydantic-ai adds it automatically based on the model profile, so we
+        intercept the prepared request parameters and remove it before sending.
+
+        Args:
+            messages: Model messages for the request.
+            stream: Whether this is a streaming request.
+            model_settings: Model-specific settings.
+            model_request_parameters: Request parameters for the model.
+
+        Returns:
+            Response from the Responses API.
+        """
+        # Build request via parent, but intercept to filter include parameter
+        profile = self.profile
+        include: list[responses.ResponseIncludable] = []
+
+        # Explicitly skip reasoning.encrypted_content - llama-stack v0.7.1 doesn't support it
+        # if profile.get('openai_supports_encrypted_reasoning_content', False):
+        #     include.append('reasoning.encrypted_content')  # REMOVED
+
+        if model_settings.get("openai_include_code_execution_outputs"):
+            include.append("code_interpreter_call.outputs")
+        if model_settings.get("openai_include_web_search_sources"):
+            include.append("web_search_call.action.sources")
+        if model_settings.get("openai_include_file_search_results"):
+            include.append("file_search_call.results")
+        if model_settings.get("openai_logprobs"):
+            include.append("message.output_text.logprobs")
+
+        # Build request parameters using parent's helper
+        request_params = await self._build_responses_request_params(
+            messages,
+            model_settings,
+            model_request_parameters,
+            profile,
+        )
+
+        # Import helpers needed for the rest of the request building
+        from pydantic_ai.models.openai import (
+            _drop_sampling_params_for_reasoning,
+            _drop_unsupported_params,
+        )
+
+        _drop_sampling_params_for_reasoning(
+            profile, model_settings, model_request_parameters
+        )
+        _drop_unsupported_params(profile, model_settings)
+        extra_headers, timeout = self._build_request_options(model_settings)
+
+        prompt_cache_retention: Any = model_settings.get(
+            "openai_prompt_cache_retention", None
+        )
+
+        # Map max_tokens to max_output_tokens for Responses API
+        max_output_tokens = model_settings.get("max_tokens")
+
+        with _map_api_errors(self.model_name):
+            return await self.client.responses.create(
+                model=request_params.model,
+                input=request_params.input,
+                instructions=request_params.instructions,
+                parallel_tool_calls=request_params.parallel_tool_calls,
+                tools=request_params.tools,
+                tool_choice=request_params.tool_choice,
+                previous_response_id=request_params.previous_response_id,
+                reasoning=request_params.reasoning,
+                text=request_params.text,
+                stream=stream,
+                temperature=model_settings.get("temperature"),
+                top_p=model_settings.get("top_p"),
+                max_output_tokens=max_output_tokens,
+                include=include or None,
+                extra_headers=extra_headers,
+                timeout=timeout,
+                prompt_cache_retention=prompt_cache_retention,
+                extra_body=model_settings.get("extra_body"),
+            )
 
     async def request(  # pylint: disable=unused-argument
         self,
