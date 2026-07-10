@@ -225,3 +225,148 @@ Feature: Human-in-the-Loop MCP approval tests
     Then The status code of the response is 200
       And The body of the response contains pending
       And The body of the response contains mcp-approval-always
+
+  # --- Approval timeout / expiry ---
+
+  Scenario: Expired approval returns 410 when attempting to approve
+    Given MCP toolgroups are reset for a new MCP configuration
+      And The service uses the lightspeed-stack-mcp-approvals-short-timeout.yaml configuration
+      And The service is restarted
+    When I use "query" to ask question with authorization header
+    """
+    {"query": "<PLACEHOLDER: prompt to trigger 'mcp-approval-always' tool>", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 200
+      And The body of the response contains requires_action
+    When I extract the approval id from the response
+      And I wait for 6 seconds
+      And I access REST API endpoint "approvals/{APPROVAL_ID}" using HTTP POST method
+    """
+    {"approve": true}
+    """
+    Then The status code of the response is 410
+      And The body of the response contains approval_expired
+
+  Scenario: Expired approval returns 410 when attempting to deny
+    Given MCP toolgroups are reset for a new MCP configuration
+      And The service uses the lightspeed-stack-mcp-approvals-short-timeout.yaml configuration
+      And The service is restarted
+    When I use "query" to ask question with authorization header
+    """
+    {"query": "<PLACEHOLDER: prompt to trigger 'mcp-approval-always' tool>", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 200
+      And The body of the response contains requires_action
+    When I extract the approval id from the response
+      And I wait for 6 seconds
+      And I access REST API endpoint "approvals/{APPROVAL_ID}" using HTTP POST method
+    """
+    {"approve": false}
+    """
+    Then The status code of the response is 410
+      And The body of the response contains approval_expired
+
+  # --- Retention cleanup: decided approvals purged after approval_retention_seconds ---
+
+  Scenario: Approved approval is purged after retention period expires
+    Given MCP toolgroups are reset for a new MCP configuration
+      And The service uses the lightspeed-stack-mcp-approvals-short-retention.yaml configuration
+      And The service is restarted
+    When I use "query" to ask question with authorization header
+    """
+    {"query": "<PLACEHOLDER: prompt to trigger 'mcp-approval-always' tool>", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 200
+      And The body of the response contains requires_action
+    When I extract the approval id from the response
+      And I access REST API endpoint "approvals/{APPROVAL_ID}" using HTTP POST method
+    """
+    {"approve": true}
+    """
+    Then The status code of the response is 200
+      And The body of the response contains approved
+    When I wait for 6 seconds
+      And I access REST API endpoint "approvals/{APPROVAL_ID}" using HTTP GET method
+    Then The status code of the response is 404
+      And The body of the response contains approval_not_found
+
+  Scenario: Denied approval is purged after retention period expires
+    Given MCP toolgroups are reset for a new MCP configuration
+      And The service uses the lightspeed-stack-mcp-approvals-short-retention.yaml configuration
+      And The service is restarted
+    When I use "query" to ask question with authorization header
+    """
+    {"query": "<PLACEHOLDER: prompt to trigger 'mcp-approval-always' tool>", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 200
+      And The body of the response contains requires_action
+    When I extract the approval id from the response
+      And I access REST API endpoint "approvals/{APPROVAL_ID}" using HTTP POST method
+    """
+    {"approve": false}
+    """
+    Then The status code of the response is 200
+      And The body of the response contains denied
+    When I wait for 6 seconds
+      And I access REST API endpoint "approvals/{APPROVAL_ID}" using HTTP GET method
+    Then The status code of the response is 404
+      And The body of the response contains approval_not_found
+
+  Scenario: Expired approval is purged after retention period
+    Given MCP toolgroups are reset for a new MCP configuration
+      And The service uses the lightspeed-stack-mcp-approvals-short-timeout.yaml configuration
+      And The service is restarted
+    When I use "query" to ask question with authorization header
+    """
+    {"query": "<PLACEHOLDER: prompt to trigger 'mcp-approval-always' tool>", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 200
+      And The body of the response contains requires_action
+    When I extract the approval id from the response
+      And I wait for 11 seconds
+      And I access REST API endpoint "approvals/{APPROVAL_ID}" using HTTP GET method
+    Then The status code of the response is 404
+      And The body of the response contains approval_not_found
+
+  Scenario: Decided approval remains queryable within retention period
+    Given MCP toolgroups are reset for a new MCP configuration
+      And The service uses the lightspeed-stack-mcp-approvals-short-retention.yaml configuration
+      And The service is restarted
+    When I use "query" to ask question with authorization header
+    """
+    {"query": "<PLACEHOLDER: prompt to trigger 'mcp-approval-always' tool>", "model": "{MODEL}", "provider": "{PROVIDER}"}
+    """
+    Then The status code of the response is 200
+      And The body of the response contains requires_action
+    When I extract the approval id from the response
+      And I access REST API endpoint "approvals/{APPROVAL_ID}" using HTTP POST method
+    """
+    {"approve": true}
+    """
+    Then The status code of the response is 200
+      And The body of the response contains approved
+    When I access REST API endpoint "approvals/{APPROVAL_ID}" using HTTP GET method
+    Then The status code of the response is 200
+      And The body of the response contains approved
+      And The body of the response contains decided_at
+
+  # --- Approval not found returns 404 ---
+
+  Scenario: GET on non-existent approval returns 404
+    Given MCP toolgroups are reset for a new MCP configuration
+      And The service uses the lightspeed-stack-mcp-approvals.yaml configuration
+      And The service is restarted
+    When I access REST API endpoint "approvals/non-existent-id-12345" using HTTP GET method
+    Then The status code of the response is 404
+      And The body of the response contains approval_not_found
+
+  Scenario: POST to non-existent approval returns 404
+    Given MCP toolgroups are reset for a new MCP configuration
+      And The service uses the lightspeed-stack-mcp-approvals.yaml configuration
+      And The service is restarted
+    When I access REST API endpoint "approvals/non-existent-id-12345" using HTTP POST method
+    """
+    {"approve": true}
+    """
+    Then The status code of the response is 404
+      And The body of the response contains approval_not_found
