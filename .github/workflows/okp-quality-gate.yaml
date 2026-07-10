@@ -19,6 +19,9 @@ on:
       - 'deploy/lightspeed-stack/Containerfile'
       - 'docker-compose-library.yaml'
 
+permissions:
+  pull-requests: write
+
 jobs:
   okp-quality-gate:
     runs-on: ubuntu-latest
@@ -49,9 +52,11 @@ jobs:
           fi
 
           echo "pipeline_id=${PIPELINE_ID}" >> "$GITHUB_OUTPUT"
+          echo "pipeline_url=${PIPELINE_URL}" >> "$GITHUB_OUTPUT"
           echo "Triggered GitLab pipeline #${PIPELINE_ID}: ${PIPELINE_URL}"
 
       - name: Wait for GitLab pipeline to complete
+        id: wait
         env:
           GITLAB_API_TOKEN: ${{ secrets.GITLAB_API_TOKEN }}
           GITLAB_PROJECT_ID: ${{ vars.GITLAB_PROJECT_ID }}
@@ -69,12 +74,18 @@ jobs:
             case "$STATUS" in
               success)
                 echo "Pipeline #${PIPELINE_ID} passed!"
-                exit 0
+                echo "status=success" >> "$GITHUB_OUTPUT"
+                break
                 ;;
-              failed|canceled)
-                echo "Pipeline #${PIPELINE_ID} ${STATUS}."
-                echo "View details: $(echo "$RESPONSE" | jq -r '.web_url')"
-                exit 1
+              failed)
+                echo "Pipeline #${PIPELINE_ID} failed."
+                echo "status=failed" >> "$GITHUB_OUTPUT"
+                break
+                ;;
+              canceled)
+                echo "Pipeline #${PIPELINE_ID} was canceled."
+                echo "status=canceled" >> "$GITHUB_OUTPUT"
+                break
                 ;;
               created|waiting_for_resource|preparing|pending|running)
                 echo "Status: ${STATUS}. Checking again in 60s..."
@@ -86,3 +97,90 @@ jobs:
                 ;;
             esac
           done
+
+      - name: Fetch evaluation results from GitLab
+        id: results
+        if: always() && steps.wait.outputs.status != 'canceled'
+        env:
+          GITLAB_API_TOKEN: ${{ secrets.GITLAB_API_TOKEN }}
+          GITLAB_PROJECT_ID: ${{ vars.GITLAB_PROJECT_ID }}
+        run: |
+          PIPELINE_ID=${{ steps.trigger.outputs.pipeline_id }}
+
+          JOB_ID=$(curl --silent --show-error \
+            --header "PRIVATE-TOKEN: ${GITLAB_API_TOKEN}" \
+            "https://gitlab.cee.redhat.com/api/v4/projects/${GITLAB_PROJECT_ID}/pipelines/${PIPELINE_ID}/jobs" \
+            | jq -r '[.[] | select(.name == "stack_test")][0].id')
+
+          if [ "$JOB_ID" = "null" ] || [ -z "$JOB_ID" ]; then
+            echo "Could not find stack_test job in pipeline"
+            echo "has_report=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          HTTP_CODE=$(curl --silent --output regression_report.md --write-out "%{http_code}" \
+            --header "PRIVATE-TOKEN: ${GITLAB_API_TOKEN}" \
+            "https://gitlab.cee.redhat.com/api/v4/projects/${GITLAB_PROJECT_ID}/jobs/${JOB_ID}/artifacts/lightspeed-evaluation/eval_output/ci_run/regression_report.md")
+
+          if [ "$HTTP_CODE" = "200" ] && [ -s regression_report.md ]; then
+            echo "has_report=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No regression report artifact found (HTTP ${HTTP_CODE})"
+            echo "has_report=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post results to PR
+        if: always() && steps.wait.outputs.status != ''
+        uses: actions/github-script@v7
+        env:
+          PIPELINE_STATUS: ${{ steps.wait.outputs.status }}
+          PIPELINE_URL: ${{ steps.trigger.outputs.pipeline_url }}
+          HAS_REPORT: ${{ steps.results.outputs.has_report }}
+        with:
+          script: |
+            const fs = require('fs');
+            const status = process.env.PIPELINE_STATUS;
+            const pipelineUrl = process.env.PIPELINE_URL;
+            const hasReport = process.env.HAS_REPORT === 'true';
+
+            const statusEmoji = status === 'success' ? '✅' : status === 'failed' ? '❌' : '⚠️';
+            let body = `## ${statusEmoji} OKP Quality Gate: ${status}\n\n`;
+            body += `[GitLab Pipeline](${pipelineUrl})\n\n`;
+
+            if (hasReport) {
+              const report = fs.readFileSync('regression_report.md', 'utf8');
+              body += `<details>\n<summary>Regression Report</summary>\n\n${report}\n\n</details>\n`;
+            } else if (status === 'failed') {
+              body += `No regression report was generated. Check the [pipeline logs](${pipelineUrl}) for details.\n`;
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('OKP Quality Gate')
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Fail if pipeline did not succeed
+        if: steps.wait.outputs.status != 'success'
+        run: |
+          echo "Pipeline status: ${{ steps.wait.outputs.status }}"
+          exit 1

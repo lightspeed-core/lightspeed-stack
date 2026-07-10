@@ -351,5 +351,3 @@ SENTRY_CA_CERTS_ENV_VAR: Final[str] = "SENTRY_CA_CERTS"
 # first version check.
 DEFAULT_MAX_RETRIES: Final[int] = 5
 DEFAULT_RETRY_DELAY: Final[int] = 2
-
-# OKP quality gate test trigger — remove after testing
