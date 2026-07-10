@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: lightspeed-stack-integration-tests-pipeline
+  name: lightspeed-stack-0-5-integration-tests-pipeline
 spec:
   description: |
     This pipeline automates the process of running end-to-end tests for Lightspeed Stack
@@ -12,7 +12,7 @@ spec:
   params:
     - name: SNAPSHOT
       description: 'The JSON string representing the snapshot of the application under test (includes lightspeed-stack image).'
-      default: '{"components": [{"name":"lightspeed-stack", "containerImage": "quay.io/example/lightspeed-stack:latest"}]}'
+      default: '{"components": [{"name":"lightspeed-stack-0-5", "containerImage": "quay.io/example/lightspeed-stack-0-5:latest"}]}'
       type: string
     - name: llama-stack-image
       description: 'Llama Stack runs from source on UBI (init container clones repo and installs deps). Kept for logging/backwards compatibility.'
@@ -20,7 +20,7 @@ spec:
       type: string
     - name: test-name
       description: 'The name of the test corresponding to a defined Konflux integration test.'
-      default: 'lightspeed-stack-e2e-tests'
+      default: 'lightspeed-stack-0-5-e2e-tests'
     - name: namespace
       description: 'Namespace to run tests in'
       default: 'lightspeed-stack'
@@ -117,8 +117,8 @@ spec:
                 description: "commit sha to be used to store artifacts"
             script: |
               dnf -y install jq
-              echo -n "$(jq -r --arg n "lightspeed-stack" '.components[] | select(.name == $n) | .containerImage // ""' <<< "$SNAPSHOT")" > $(step.results.lightspeed-stack-image.path)
-              echo -n "$(jq -r --arg n "lightspeed-stack" '.components[] | select(.name == $n) | .source.git.revision // "latest"' <<< "$SNAPSHOT")" > $(step.results.commit.path)
+              echo -n "$(jq -r --arg n "lightspeed-stack-0-5" '.components[] | select(.name == $n) | .containerImage // ""' <<< "$SNAPSHOT")" > $(step.results.lightspeed-stack-image.path)
+              echo -n "$(jq -r --arg n "lightspeed-stack-0-5" '.components[] | select(.name == $n) | .source.git.revision // "latest"' <<< "$SNAPSHOT")" > $(step.results.commit.path)
     - name: echo-integration-params
       description: Echo all params passed to lightspeed-stack-integration-tests for verification before the test runs.
       runAfter:
@@ -276,8 +276,8 @@ spec:
               tar -xzf oc.tar.gz && chmod +x kubectl oc && mv oc kubectl /usr/local/bin/
               echo "[e2e] 4/8 SNAPSHOT (length ${#SNAPSHOT} chars; clone URL fixed — SNAPSHOT is main/upstream, not fork)..."
               # Fixed fork + branch: Konflux SNAPSHOT points at main repo/rev, not the PR/fork under test.
-              REPO_URL=$(jq -r '.components[] | select(.name == "lightspeed-stack") | .source.git.url // "https://github.com/lightspeed-core/lightspeed-stack.git"' <<< "$SNAPSHOT")
-              REPO_REV=$(jq -r '.components[] | select(.name == "lightspeed-stack") | .source.git.revision // "main"' <<< "$SNAPSHOT")
+              REPO_URL=$(jq -r '.components[] | select(.name == "lightspeed-stack-0-5") | .source.git.url // "https://github.com/lightspeed-core/lightspeed-stack.git"' <<< "$SNAPSHOT")
+              REPO_REV=$(jq -r '.components[] | select(.name == "lightspeed-stack-0-5") | .source.git.revision // "release/0.5"' <<< "$SNAPSHOT")
               echo "[e2e] 5/8 Clone $REPO_URL @ $REPO_REV"
               git clone -q "$REPO_URL" /workspace/lightspeed-stack
               cd /workspace/lightspeed-stack && git fetch origin "$REPO_REV" && git checkout -q "$REPO_REV"
