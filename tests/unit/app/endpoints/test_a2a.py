@@ -2,6 +2,7 @@
 
 # pylint: disable=redefined-outer-name
 # pylint: disable=protected-access
+# pylint: disable=too-many-lines
 
 from typing import Any
 
@@ -22,12 +23,24 @@ from a2a.types import (
 from a2a.utils import new_agent_text_message
 from fastapi import HTTPException, Request
 from llama_stack_client import APIConnectionError
+from pydantic_ai import AgentRunResultEvent
+from pydantic_ai.exceptions import AgentRunError
+from pydantic_ai.messages import (
+    FunctionToolCallEvent,
+    NativeToolCallPart,
+    PartDeltaEvent,
+    PartEndEvent,
+    PartStartEvent,
+    TextPartDelta,
+    ToolCallPart,
+)
+from pydantic_ai.messages import TextPart as PydanticTextPart
 from pytest_mock import MockerFixture
 
 from app.endpoints.a2a import (
     A2AAgentExecutor,
     TaskResultAggregator,
-    _convert_responses_content_to_a2a_parts,
+    _build_a2a_parts_from_agent_result,
     _get_context_store,
     _get_task_store,
     a2a_health_check,
@@ -139,69 +152,69 @@ def setup_minimal_configuration_fixture(mocker: MockerFixture) -> AppConfig:
 
 
 # -----------------------------
-# Tests for _convert_responses_content_to_a2a_parts
+# Tests for _build_a2a_parts_from_agent_result
 # -----------------------------
-class TestConvertResponsesContentToA2AParts:
-    """Tests for the content conversion function."""
+class TestBuildA2APartsFromAgentResult:
+    """Tests for the agent result to A2A parts conversion function."""
 
-    def test_convert_empty_output(self, mocker: MockerFixture) -> None:
-        """Test converting empty output returns empty list."""
-        mocker.patch(
-            "app.endpoints.a2a.extract_text_from_response_item",
-            return_value=None,
-        )
-        result = _convert_responses_content_to_a2a_parts([])
-        assert not result
-
-    def test_convert_single_output_item(self, mocker: MockerFixture) -> None:
-        """Test converting single output item with text."""
-        mocker.patch(
-            "app.endpoints.a2a.extract_text_from_response_item",
-            return_value="Hello, world!",
-        )
-        mock_output_item = mocker.MagicMock()
-        result = _convert_responses_content_to_a2a_parts([mock_output_item])
+    def test_result_with_response_text(self, mocker: MockerFixture) -> None:
+        """Test conversion when result.response.text is available."""
+        mock_result = mocker.MagicMock()
+        mock_result.response.text = "Hello, world!"
+        result = _build_a2a_parts_from_agent_result(mock_result, [])
         assert len(result) == 1
-        assert result[0].root is not None
         text = result[0].root.text  # pyright: ignore[reportAttributeAccessIssue]
         assert text == "Hello, world!"
 
-    def test_convert_multiple_output_items(self, mocker: MockerFixture) -> None:
-        """Test converting multiple output items."""
-        extract_mock = mocker.patch(
-            "app.endpoints.a2a.extract_text_from_response_item",
+    def test_result_falls_back_to_accumulated_text(self, mocker: MockerFixture) -> None:
+        """Test conversion uses accumulated text when response.text is empty."""
+        mock_result = mocker.MagicMock()
+        mock_result.response.text = ""
+        result = _build_a2a_parts_from_agent_result(mock_result, ["Hello, ", "world!"])
+        assert len(result) == 1
+        text = result[0].root.text  # pyright: ignore[reportAttributeAccessIssue]
+        assert text == "Hello, world!"
+
+    def test_result_prefers_response_text_over_accumulated(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that response.text takes priority over accumulated text."""
+        mock_result = mocker.MagicMock()
+        mock_result.response.text = "Final response"
+        result = _build_a2a_parts_from_agent_result(
+            mock_result, ["accumulated", " text"]
         )
-        extract_mock.side_effect = ["First", "Second"]
+        assert len(result) == 1
+        text = result[0].root.text  # pyright: ignore[reportAttributeAccessIssue]
+        assert text == "Final response"
 
-        mock_item1 = mocker.MagicMock()
-        mock_item2 = mocker.MagicMock()
+    def test_empty_result_returns_empty_list(self, mocker: MockerFixture) -> None:
+        """Test that empty result returns empty list."""
+        mock_result = mocker.MagicMock()
+        mock_result.response.text = ""
+        result = _build_a2a_parts_from_agent_result(mock_result, [])
+        assert not result
 
-        result = _convert_responses_content_to_a2a_parts([mock_item1, mock_item2])
-        assert len(result) == 2
-        assert result[0].root is not None
-        assert result[1].root is not None
-        text1 = result[0].root.text  # pyright: ignore[reportAttributeAccessIssue]
-        text2 = result[1].root.text  # pyright: ignore[reportAttributeAccessIssue]
-        assert text1 == "First"
-        assert text2 == "Second"
+    def test_none_response_text_uses_accumulated(self, mocker: MockerFixture) -> None:
+        """Test conversion when response.text is None."""
+        mock_result = mocker.MagicMock()
+        mock_result.response.text = None
+        result = _build_a2a_parts_from_agent_result(mock_result, ["fallback text"])
+        assert len(result) == 1
+        text = result[0].root.text  # pyright: ignore[reportAttributeAccessIssue]
+        assert text == "fallback text"
 
-    def test_convert_output_items_with_none_text(self, mocker: MockerFixture) -> None:
-        """Test that output items with no text are filtered out."""
-        extract_mock = mocker.patch(
-            "app.endpoints.a2a.extract_text_from_response_item",
-        )
-        extract_mock.side_effect = ["Valid text", None, "Another valid"]
+    def test_none_run_result_uses_accumulated(self) -> None:
+        """Test conversion when run_result is None."""
+        result = _build_a2a_parts_from_agent_result(None, ["accumulated", " text"])
+        assert len(result) == 1
+        text = result[0].root.text  # pyright: ignore[reportAttributeAccessIssue]
+        assert text == "accumulated text"
 
-        mock_items = [mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock()]
-
-        result = _convert_responses_content_to_a2a_parts(mock_items)
-        assert len(result) == 2
-        assert result[0].root is not None
-        assert result[1].root is not None
-        text1 = result[0].root.text  # pyright: ignore[reportAttributeAccessIssue]
-        text2 = result[1].root.text  # pyright: ignore[reportAttributeAccessIssue]
-        assert text1 == "Valid text"
-        assert text2 == "Another valid"
+    def test_none_run_result_empty_text_returns_empty(self) -> None:
+        """Test that None run_result with no accumulated text returns empty."""
+        result = _build_a2a_parts_from_agent_result(None, [])
+        assert not result
 
 
 # -----------------------------
@@ -725,12 +738,12 @@ class TestA2AAgentExecutor:
         assert "Unable to connect to Llama Stack" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
-    async def test_process_task_streaming_handles_api_connection_error_on_retrieve_response(
+    async def test_process_task_streaming_handles_api_connection_error(  # pylint: disable=too-many-locals
         self,
         mocker: MockerFixture,
         setup_configuration: AppConfig,  # pylint: disable=unused-argument
     ) -> None:
-        """Test _process_task_streaming handles APIConnectionError from retrieve_response()."""
+        """Test _process_task_streaming handles APIConnectionError during agent run."""
         executor = A2AAgentExecutor(auth_token="test-token")
 
         # Mock the context with valid input
@@ -760,32 +773,48 @@ class TestA2AAgentExecutor:
             "app.endpoints.a2a._get_context_store", return_value=mock_context_store
         )
 
-        # Mock the client to succeed on models.list()
+        # Mock the client
         mock_client = mocker.AsyncMock()
-        mock_models = [mocker.MagicMock()]  # Return a list of models
+        mock_models = [mocker.MagicMock()]
         mock_client.models.list = mocker.AsyncMock(return_value=mock_models)
-
-        # Mock responses.create to raise APIConnectionError
-        mock_request = httpx.Request("POST", "http://test-llama-stack/responses")
-        mock_client.responses.create = mocker.AsyncMock(
-            side_effect=APIConnectionError(
-                message="Connection timeout during streaming", request=mock_request
-            )
-        )
-
         mocker.patch(
             "app.endpoints.a2a.AsyncLlamaStackClientHolder"
         ).return_value.get_client.return_value = mock_client
 
-        # Mock prepare_responses_params to return valid params
+        # Mock prepare_responses_params
         mock_responses_params = mocker.Mock()
-        mock_responses_params.model_dump.return_value = {
-            "input": "Hello",
-            "model": "test-model",
-        }
+        mock_responses_params.model = "test-model"
+        mock_responses_params.conversation = "conv_x"
         mocker.patch(
             "app.endpoints.a2a.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
+        )
+
+        # Mock compaction
+        compaction_result = mocker.Mock()
+        compaction_result.params = mock_responses_params
+        compaction_result.summarized = False
+        compaction_result.compacted = False
+        compaction_result.original_input = None
+        mocker.patch(
+            "app.endpoints.a2a.apply_compaction_blocking",
+            new=mocker.AsyncMock(return_value=compaction_result),
+        )
+
+        # Mock build_agent to return an agent whose run_stream_events raises
+        mock_request = httpx.Request("POST", "http://test-llama-stack/responses")
+        mock_agent = mocker.MagicMock()
+        mock_stream_ctx = mocker.AsyncMock()
+        mock_stream_ctx.__aenter__ = mocker.AsyncMock(
+            side_effect=APIConnectionError(
+                message="Connection timeout during streaming",
+                request=mock_request,
+            )
+        )
+        mock_agent.run_stream_events.return_value = mock_stream_ctx
+        mocker.patch(
+            "app.endpoints.a2a.build_agent",
+            return_value=mock_agent,
         )
 
         await executor._process_task_streaming(
@@ -793,16 +822,89 @@ class TestA2AAgentExecutor:
         )
 
         # Verify failure status was sent
-        task_updater.update_status.assert_called_once()
-        call_args = task_updater.update_status.call_args
-        assert call_args[0][0] == TaskState.failed
-        assert call_args[1]["final"] is True
-        # Verify error message contains helpful info
-        error_message = call_args[1]["message"]
-        assert "Unable to connect to Llama Stack backend service" in str(error_message)
+        update_calls = task_updater.update_status.call_args_list
+        failure_calls = [c for c in update_calls if c[0][0] == TaskState.failed]
+        assert len(failure_calls) == 1
+        assert failure_calls[0][1]["final"] is True
 
     @pytest.mark.asyncio
-    async def test_process_task_streaming_applies_compaction(
+    async def test_process_task_streaming_handles_agent_run_error(  # pylint: disable=too-many-locals
+        self,
+        mocker: MockerFixture,
+        setup_configuration: AppConfig,  # pylint: disable=unused-argument
+    ) -> None:
+        """Test _process_task_streaming handles AgentRunError during agent run."""
+        executor = A2AAgentExecutor(auth_token="test-token")
+
+        mock_message = mocker.MagicMock()
+        mock_message.role = "user"
+        mock_message.parts = [Part(root=TextPart(text="Hello"))]
+        mock_message.metadata = {}
+
+        context = mocker.MagicMock(spec=RequestContext)
+        context.task_id = "task-123"
+        context.context_id = "ctx-456"
+        context.message = mock_message
+        context.get_user_input.return_value = "Hello"
+
+        event_queue = mocker.AsyncMock(spec=EventQueue)
+
+        task_updater = mocker.MagicMock()
+        task_updater.update_status = mocker.AsyncMock()
+        task_updater.event_queue = event_queue
+
+        mock_context_store = mocker.AsyncMock()
+        mock_context_store.get.return_value = None
+        mocker.patch(
+            "app.endpoints.a2a._get_context_store", return_value=mock_context_store
+        )
+
+        mock_client = mocker.AsyncMock()
+        mock_client.models.list = mocker.AsyncMock(return_value=[mocker.MagicMock()])
+        mocker.patch(
+            "app.endpoints.a2a.AsyncLlamaStackClientHolder"
+        ).return_value.get_client.return_value = mock_client
+
+        mock_responses_params = mocker.Mock()
+        mock_responses_params.model = "test-model"
+        mock_responses_params.conversation = "conv_x"
+        mocker.patch(
+            "app.endpoints.a2a.prepare_responses_params",
+            new=mocker.AsyncMock(return_value=mock_responses_params),
+        )
+
+        compaction_result = mocker.Mock()
+        compaction_result.params = mock_responses_params
+        compaction_result.summarized = False
+        compaction_result.compacted = False
+        compaction_result.original_input = None
+        mocker.patch(
+            "app.endpoints.a2a.apply_compaction_blocking",
+            new=mocker.AsyncMock(return_value=compaction_result),
+        )
+
+        mock_agent = mocker.MagicMock()
+        mock_stream_ctx = mocker.AsyncMock()
+        mock_stream_ctx.__aenter__ = mocker.AsyncMock(
+            side_effect=AgentRunError("Agent execution failed")
+        )
+        mock_agent.run_stream_events.return_value = mock_stream_ctx
+        mocker.patch(
+            "app.endpoints.a2a.build_agent",
+            return_value=mock_agent,
+        )
+
+        await executor._process_task_streaming(
+            context, task_updater, context.task_id, context.context_id
+        )
+
+        update_calls = task_updater.update_status.call_args_list
+        failure_calls = [c for c in update_calls if c[0][0] == TaskState.failed]
+        assert len(failure_calls) == 1
+        assert failure_calls[0][1]["final"] is True
+
+    @pytest.mark.asyncio
+    async def test_process_task_streaming_applies_compaction(  # pylint: disable=too-many-locals
         self,
         mocker: MockerFixture,
         setup_configuration: AppConfig,  # pylint: disable=unused-argument
@@ -832,14 +934,8 @@ class TestA2AAgentExecutor:
             "app.endpoints.a2a._get_context_store", return_value=mock_context_store
         )
 
-        async def _empty_stream() -> Any:
-            """Yield no stream events."""
-            return
-            yield  # pragma: no cover  (makes this an async generator)
-
         mock_client = mocker.AsyncMock()
         mock_client.models.list = mocker.AsyncMock(return_value=[mocker.MagicMock()])
-        mock_client.responses.create = mocker.AsyncMock(return_value=_empty_stream())
         mocker.patch(
             "app.endpoints.a2a.AsyncLlamaStackClientHolder"
         ).return_value.get_client.return_value = mock_client
@@ -847,7 +943,7 @@ class TestA2AAgentExecutor:
         mock_params = mocker.Mock()
         mock_params.model = "test-model"
         mock_params.conversation = "conv_x"
-        mock_params.model_dump.return_value = {"input": "Hello", "model": "test-model"}
+        mock_params.skills = None
         mocker.patch(
             "app.endpoints.a2a.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_params),
@@ -856,10 +952,30 @@ class TestA2AAgentExecutor:
         compaction_result = mocker.Mock()
         compaction_result.params = mock_params
         compaction_result.summarized = False
+        compaction_result.compacted = False
         compaction_result.original_input = None
         apply = mocker.patch(
             "app.endpoints.a2a.apply_compaction_blocking",
             new=mocker.AsyncMock(return_value=compaction_result),
+        )
+
+        # Mock build_agent to return a mock agent that yields an AgentRunResultEvent
+        mock_run_result = mocker.MagicMock()
+        mock_run_result.response.text = "Response"
+        result_event = mocker.MagicMock(spec=AgentRunResultEvent)
+        result_event.result = mock_run_result
+
+        async def _event_stream() -> Any:
+            yield result_event
+
+        mock_stream_ctx = mocker.AsyncMock()
+        mock_stream_ctx.__aenter__ = mocker.AsyncMock(return_value=_event_stream())
+        mock_stream_ctx.__aexit__ = mocker.AsyncMock(return_value=False)
+        mock_agent = mocker.MagicMock()
+        mock_agent.run_stream_events.return_value = mock_stream_ctx
+        mocker.patch(
+            "app.endpoints.a2a.build_agent",
+            return_value=mock_agent,
         )
 
         await executor._process_task_streaming(  # pylint: disable=protected-access
@@ -867,6 +983,41 @@ class TestA2AAgentExecutor:
         )
 
         apply.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_convert_stream_artifact_carries_conversation_id(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that the final artifact metadata includes the conversation_id."""
+        executor = A2AAgentExecutor(auth_token="test-token")
+
+        mock_run_result = mocker.MagicMock()
+        mock_run_result.response.text = "answer"
+        result_event = mocker.MagicMock(spec=AgentRunResultEvent)
+        result_event.result = mock_run_result
+
+        async def _event_stream() -> Any:
+            yield result_event
+
+        mock_stream_ctx = mocker.AsyncMock()
+        mock_stream_ctx.__aenter__ = mocker.AsyncMock(return_value=_event_stream())
+        mock_stream_ctx.__aexit__ = mocker.AsyncMock(return_value=False)
+        mock_agent = mocker.MagicMock()
+        mock_agent.run_stream_events.return_value = mock_stream_ctx
+
+        conversation_id = "abc123"
+        events = [
+            e
+            async for e in executor._convert_stream_to_events(
+                mock_agent, "hi", "task-1", "ctx-1", conversation_id=conversation_id
+            )
+        ]
+
+        artifact_events = [e for e in events if isinstance(e, TaskArtifactUpdateEvent)]
+        assert len(artifact_events) == 1
+        metadata = artifact_events[0].artifact.metadata
+        assert metadata is not None
+        assert metadata["conversation_id"] == conversation_id
 
     @pytest.mark.asyncio
     async def test_cancel_raises_not_implemented(self, mocker: MockerFixture) -> None:
@@ -922,6 +1073,112 @@ class TestContextToConversationMapping:
 
         store = await _get_task_store()
         assert store is not None
+
+
+# -----------------------------
+# Tests for _dispatch_agent_event
+# -----------------------------
+class TestDispatchAgentEvent:
+    """Tests for mapping pydantic-ai stream events to A2A events."""
+
+    def _make_executor(self) -> A2AAgentExecutor:
+        """Create an executor for testing."""
+        return A2AAgentExecutor(auth_token="test-token")
+
+    def test_text_part_start_emits_status_update(self) -> None:
+        """Test that PartStartEvent with TextPart emits a working status."""
+        executor = self._make_executor()
+        text_parts: list[str] = []
+        event = PartStartEvent(
+            index=0,
+            part=PydanticTextPart(content="Hello"),
+            event_kind="part_start",
+        )
+        result = executor._dispatch_agent_event(
+            event, "task-1", "ctx-1", text_parts, "art-1"
+        )
+        assert result is not None
+        assert isinstance(result, TaskStatusUpdateEvent)
+        assert result.status.state == TaskState.working
+        assert text_parts == ["Hello"]
+
+    def test_text_part_delta_emits_status_update(self) -> None:
+        """Test that PartDeltaEvent with TextPartDelta emits a working status."""
+        executor = self._make_executor()
+        text_parts: list[str] = ["Hello"]
+        event = PartDeltaEvent(
+            index=0,
+            delta=TextPartDelta(content_delta=", world!"),
+            event_kind="part_delta",
+        )
+        result = executor._dispatch_agent_event(
+            event, "task-1", "ctx-1", text_parts, "art-1"
+        )
+        assert result is not None
+        assert isinstance(result, TaskStatusUpdateEvent)
+        assert result.status.state == TaskState.working
+        assert text_parts == ["Hello", ", world!"]
+
+    def test_function_tool_call_emits_status_update(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that FunctionToolCallEvent emits a tool call status."""
+        executor = self._make_executor()
+        text_parts: list[str] = []
+        tool_call_part = mocker.MagicMock(spec=ToolCallPart)
+        tool_call_part.tool_name = "search_docs"
+        tool_call_part.tool_call_id = "call_xyz789"
+        event = FunctionToolCallEvent(
+            part=tool_call_part,
+            event_kind="function_tool_call",
+        )
+        result = executor._dispatch_agent_event(
+            event, "task-1", "ctx-1", text_parts, "art-1"
+        )
+        assert result is not None
+        assert isinstance(result, TaskStatusUpdateEvent)
+        assert "Tool call: call_xyz789 (search_docs)" in str(result.status.message)
+
+    def test_native_tool_call_end_emits_status_update(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test that PartEndEvent with NativeToolCallPart emits an MCP call status."""
+        executor = self._make_executor()
+        text_parts: list[str] = []
+        native_part = mocker.MagicMock(spec=NativeToolCallPart)
+        native_part.tool_name = "file_search"
+        native_part.tool_call_id = "call_abc123"
+        event = PartEndEvent(
+            index=0,
+            part=native_part,
+            event_kind="part_end",
+        )
+        result = executor._dispatch_agent_event(
+            event, "task-1", "ctx-1", text_parts, "art-1"
+        )
+        assert result is not None
+        assert isinstance(result, TaskStatusUpdateEvent)
+        assert "Tool call: call_abc123 (file_search)" in str(result.status.message)
+
+    def test_agent_run_result_returns_none(self, mocker: MockerFixture) -> None:
+        """Test that AgentRunResultEvent is not mapped to a status update."""
+        executor = self._make_executor()
+        text_parts: list[str] = []
+        event = mocker.MagicMock(spec=AgentRunResultEvent)
+        result = executor._dispatch_agent_event(
+            event, "task-1", "ctx-1", text_parts, "art-1"
+        )
+        assert result is None
+
+    def test_unknown_event_returns_none(self, mocker: MockerFixture) -> None:
+        """Test that unknown events return None."""
+        executor = self._make_executor()
+        text_parts: list[str] = []
+        event = mocker.MagicMock()
+        result = executor._dispatch_agent_event(
+            event, "task-1", "ctx-1", text_parts, "art-1"
+        )
+        assert result is None
 
 
 # -----------------------------
