@@ -965,7 +965,7 @@ class TestA2AAgentExecutor:
         result_event = mocker.MagicMock(spec=AgentRunResultEvent)
         result_event.result = mock_run_result
 
-        async def _event_stream():
+        async def _event_stream() -> Any:
             yield result_event
 
         mock_stream_ctx = mocker.AsyncMock()
@@ -996,7 +996,7 @@ class TestA2AAgentExecutor:
         result_event = mocker.MagicMock(spec=AgentRunResultEvent)
         result_event.result = mock_run_result
 
-        async def _event_stream():
+        async def _event_stream() -> Any:
             yield result_event
 
         mock_stream_ctx = mocker.AsyncMock()
@@ -1015,9 +1015,9 @@ class TestA2AAgentExecutor:
 
         artifact_events = [e for e in events if isinstance(e, TaskArtifactUpdateEvent)]
         assert len(artifact_events) == 1
-        assert (
-            artifact_events[0].artifact.metadata["conversation_id"] == conversation_id
-        )
+        metadata = artifact_events[0].artifact.metadata
+        assert metadata is not None
+        assert metadata["conversation_id"] == conversation_id
 
     @pytest.mark.asyncio
     async def test_cancel_raises_not_implemented(self, mocker: MockerFixture) -> None:
@@ -1127,6 +1127,7 @@ class TestDispatchAgentEvent:
         text_parts: list[str] = []
         tool_call_part = mocker.MagicMock(spec=ToolCallPart)
         tool_call_part.tool_name = "search_docs"
+        tool_call_part.tool_call_id = "call_xyz789"
         event = FunctionToolCallEvent(
             part=tool_call_part,
             event_kind="function_tool_call",
@@ -1136,7 +1137,7 @@ class TestDispatchAgentEvent:
         )
         assert result is not None
         assert isinstance(result, TaskStatusUpdateEvent)
-        assert "Tool call: search_docs" in str(result.status.message)
+        assert "Tool call: call_xyz789 (search_docs)" in str(result.status.message)
 
     def test_native_tool_call_end_emits_status_update(
         self, mocker: MockerFixture
@@ -1145,7 +1146,8 @@ class TestDispatchAgentEvent:
         executor = self._make_executor()
         text_parts: list[str] = []
         native_part = mocker.MagicMock(spec=NativeToolCallPart)
-        native_part.tool_name = "mcp_server_tool"
+        native_part.tool_name = "file_search"
+        native_part.tool_call_id = "call_abc123"
         event = PartEndEvent(
             index=0,
             part=native_part,
@@ -1156,7 +1158,7 @@ class TestDispatchAgentEvent:
         )
         assert result is not None
         assert isinstance(result, TaskStatusUpdateEvent)
-        assert "MCP call: mcp_server_tool" in str(result.status.message)
+        assert "Tool call: call_abc123 (file_search)" in str(result.status.message)
 
     def test_agent_run_result_returns_none(self, mocker: MockerFixture) -> None:
         """Test that AgentRunResultEvent is not mapped to a status update."""

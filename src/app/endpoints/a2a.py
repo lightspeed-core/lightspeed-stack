@@ -27,7 +27,9 @@ from a2a.types import (
     TaskState,
     TaskStatus,
     TaskStatusUpdateEvent,
-    TextPart,
+)
+from a2a.types import (
+    TextPart as A2ATextPart,
 )
 from a2a.utils import new_agent_text_message, new_task
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -41,10 +43,8 @@ from pydantic_ai.messages import (
     PartDeltaEvent,
     PartEndEvent,
     PartStartEvent,
+    TextPart,
     TextPartDelta,
-)
-from pydantic_ai.messages import (
-    TextPart as PydanticTextPart,
 )
 from pydantic_ai.run import AgentRunResult
 from starlette.responses import Response, StreamingResponse
@@ -80,8 +80,8 @@ auth_dependency = get_auth_dependency()
 # Task store and context store are created lazily based on configuration.
 # For multi-worker deployments, configure 'a2a_state' with 'sqlite' or 'postgres'
 # to share state across workers.
-_TASK_STORE: TaskStore | None = None
-_CONTEXT_STORE: A2AContextStore | None = None
+_TASK_STORE: Optional[TaskStore] = None
+_CONTEXT_STORE: Optional[A2AContextStore] = None
 
 
 async def _get_task_store() -> TaskStore:
@@ -111,7 +111,7 @@ async def _get_context_store() -> A2AContextStore:
 
 
 def _build_a2a_parts_from_agent_result(
-    run_result: AgentRunResult[str] | None,
+    run_result: Optional[AgentRunResult[str]],
     accumulated_text: list[str],
 ) -> list[Part]:
     """Convert a pydantic-ai agent run result to A2A Parts.
@@ -133,7 +133,7 @@ def _build_a2a_parts_from_agent_result(
         final_text = "".join(accumulated_text)
     if not final_text:
         return []
-    return [Part(root=TextPart(text=final_text))]
+    return [Part(root=A2ATextPart(text=final_text))]
 
 
 class TaskResultAggregator:
@@ -467,7 +467,7 @@ class A2AAgentExecutor(AgentExecutor):
         prompt: str,
         task_id: str,
         context_id: str,
-        conversation_id: str | None = None,
+        conversation_id: Optional[str] = None,
     ) -> AsyncIterator[Any]:
         """Run an agent and convert stream events to A2A events.
 
@@ -486,7 +486,7 @@ class A2AAgentExecutor(AgentExecutor):
 
         artifact_id = str(uuid.uuid4())
         text_parts: list[str] = []
-        run_result: AgentRunResult[str] | None = None
+        run_result: Optional[AgentRunResult[str]] = None
 
         async with agent.run_stream_events(prompt) as stream:
             async for event in stream:
@@ -520,7 +520,7 @@ class A2AAgentExecutor(AgentExecutor):
         context_id: str,
         text_parts: list[str],
         artifact_id: str,
-    ) -> TaskStatusUpdateEvent | None:
+    ) -> Optional[TaskStatusUpdateEvent]:
         """Map a single pydantic-ai stream event to an A2A status update.
 
         Parameters:
@@ -536,7 +536,7 @@ class A2AAgentExecutor(AgentExecutor):
         _ = artifact_id
 
         if isinstance(event, PartStartEvent):
-            if isinstance(event.part, PydanticTextPart):
+            if isinstance(event.part, TextPart):
                 text_parts.append(event.part.content)
                 return self._text_status_event(event.part.content, task_id, context_id)
 
@@ -553,7 +553,7 @@ class A2AAgentExecutor(AgentExecutor):
                 status=TaskStatus(
                     state=TaskState.working,
                     message=new_agent_text_message(
-                        f"Tool call: {event.part.tool_name}",
+                        f"Tool call: {event.part.tool_call_id} ({event.part.tool_name})",
                         context_id=context_id,
                         task_id=task_id,
                     ),
@@ -570,7 +570,7 @@ class A2AAgentExecutor(AgentExecutor):
                     status=TaskStatus(
                         state=TaskState.working,
                         message=new_agent_text_message(
-                            f"MCP call: {event.part.tool_name}",
+                            f"Tool call: {event.part.tool_call_id} ({event.part.tool_name})",
                             context_id=context_id,
                             task_id=task_id,
                         ),
