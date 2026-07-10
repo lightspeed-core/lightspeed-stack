@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: lightspeed-stack-rhelai-tests-pipeline
+  name: lightspeed-stack-0-7-rhelai-tests-pipeline
 spec:
   description: |
     This pipeline provisions a RHEL AI instance on AWS (vLLM), an ephemeral
@@ -11,11 +11,11 @@ spec:
   params:
     - name: SNAPSHOT
       description: 'The JSON string representing the snapshot of the application under test.'
-      default: '{"components": [{"name":"lightspeed-stack", "containerImage": "quay.io/example/lightspeed-stack:latest"}]}'
+      default: '{"components": [{"name":"lightspeed-stack-0-7", "containerImage": "quay.io/example/lightspeed-stack-0-7:latest"}]}'
       type: string
     - name: test-name
       description: 'The name of the test corresponding to a defined Konflux integration test.'
-      default: 'lightspeed-stack-rhelai-tests'
+      default: 'lightspeed-stack-0-7-rhelai-tests'
     - name: rhelai-version
       description: 'RHEL AI version to provision.'
       default: '3.4.0'
@@ -285,8 +285,8 @@ spec:
                 type: string
             script: |
               dnf -y install jq
-              echo -n "$(jq -r --arg n "lightspeed-stack" '.components[] | select(.name == $n) | .containerImage // ""' <<< "$SNAPSHOT")" > $(step.results.lightspeed-stack-image.path)
-              echo -n "$(jq -r --arg n "lightspeed-stack" '.components[] | select(.name == $n) | .source.git.revision // "latest"' <<< "$SNAPSHOT")" > $(step.results.commit.path)
+              echo -n "$(jq -r --arg n "lightspeed-stack-0-7" '.components[] | select(.name == $n) | .containerImage // ""' <<< "$SNAPSHOT")" > $(step.results.lightspeed-stack-image.path)
+              echo -n "$(jq -r --arg n "lightspeed-stack-0-7" '.components[] | select(.name == $n) | .source.git.revision // "latest"' <<< "$SNAPSHOT")" > $(step.results.commit.path)
 
     # ── Full E2E tests (runs after both RHEL AI and OpenShift are ready) ──
     - name: rhelai-e2e-tests
@@ -407,8 +407,8 @@ spec:
               curl -sL -o oc.tar.gz https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest-4.19/openshift-client-linux-amd64-rhel9.tar.gz
               tar -xzf oc.tar.gz && chmod +x kubectl oc && mv oc kubectl /usr/local/bin/
               echo "[e2e] 4/8 VLLM_URL=$VLLM_URL"
-              REPO_URL=$(jq -r '.components[] | select(.name == "lightspeed-stack") | .source.git.url // "https://github.com/lightspeed-core/lightspeed-stack.git"' <<< "$SNAPSHOT")
-              REPO_REV=$(jq -r '.components[] | select(.name == "lightspeed-stack") | .source.git.revision // "main"' <<< "$SNAPSHOT")
+              REPO_URL=$(jq -r '.components[] | select(.name == "lightspeed-stack-0-7") | .source.git.url // "https://github.com/lightspeed-core/lightspeed-stack.git"' <<< "$SNAPSHOT")
+              REPO_REV=$(jq -r '.components[] | select(.name == "lightspeed-stack-0-7") | .source.git.revision // "main"' <<< "$SNAPSHOT")
               echo "[e2e] 5/8 Clone $REPO_URL @ $REPO_REV"
               git clone -q "$REPO_URL" /workspace/lightspeed-stack
               cd /workspace/lightspeed-stack && git fetch origin "$REPO_REV" && git checkout -q "$REPO_REV"
