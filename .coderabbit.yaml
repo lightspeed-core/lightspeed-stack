@@ -98,6 +98,18 @@ reviews:
 
           Per issue: file, lines, risk, fix category. If clean, mark PASSED.
 
+      - name: 'Security and Secret Handling'
+        mode: error
+        instructions: |
+          BLOCKING. Flag:
+          1. Secrets/tokens logged in plaintext or hardcoded in source.
+          2. Missing auth/authz on API endpoints.
+          3. Injection vulnerabilities (SQL, command, path traversal).
+          4. Sensitive data leaked in API responses, WebSocket messages, or logs.
+          5. K8s Secrets and RH secrets missing OwnerReferences.
+
+          Per violation: file, lines, risk. If clean, mark PASSED.
+
   # ---------------------------------------------------------------------------
   # Tools
   # ---------------------------------------------------------------------------
