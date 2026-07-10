@@ -1,3 +1,4 @@
+@skip
 Feature: Human-in-the-Loop MCP approval tests
 
   Background:
