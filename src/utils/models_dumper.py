@@ -2,10 +2,8 @@
 
 import json
 
-from pydantic.json_schema import models_json_schema
-
 import models.compaction as models_compaction
-from utils.json_schema_updater import recursive_update
+from utils.openapi_schema_dumper import dump_openapi_schema
 
 
 def dump_models(filename: str) -> None:
@@ -23,29 +21,5 @@ def dump_models(filename: str) -> None:
     ------
         IOError: If the file cannot be written.
     """
-    with open(filename, "w", encoding="utf-8") as fout:
-        # retrieve the schema
-        _, schemas = models_json_schema(
-            [
-                (model, "validation")
-                for model in [models_compaction.ConversationSummary]
-            ],
-            ref_template="#/components/schemas/{model}",
-        )
-
-        # fix the schema
-        schemas = recursive_update(schemas)
-
-        # add all required metadata
-        openapi_schema = {
-            "openapi": "3.0.0",
-            "info": {
-                "title": "Lightspeed Core Stack",
-                "version": "0.3.0",
-            },
-            "components": {
-                "schemas": schemas.get("$defs", {}),
-            },
-            "paths": {},
-        }
-        json.dump(openapi_schema, fout, indent=4)
+    models = [models_compaction.ConversationSummary]
+    dump_openapi_schema(models, filename)
