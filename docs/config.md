@@ -794,6 +794,10 @@ Attributes:
     type: Canonical provider identifier. Vendor-neutral so it survives a
         future backend change; each backend-specific synthesizer maps it to
         its own provider vocabulary.
+    id: Optional identifier emitted as the Llama Stack provider_id. When
+        omitted, synthesized as type with underscores hyphenated. If set,
+        must be non-empty after stripping whitespace and may contain only
+        lowercase letters, digits, underscores, and hyphens.
     api_key_env: Name of the environment variable holding the provider API
         key. Emitted verbatim as `${env.<name>}` so the secret never lands
         on disk resolved.
@@ -807,6 +811,7 @@ Attributes:
 | Field          | Type   | Description                                                                                                                                                  |
 |----------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | type           | string | Canonical, backend-agnostic provider identifier mapped to a Llama Stack provider_type by the synthesizer.                                                    |
+| id             | string | Optional identifier emitted as the Llama Stack provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens. |
 | api_key_env    | string | Name of the environment variable holding the provider API key. Emitted as a ${env.<name>} reference so the secret is never written to disk in resolved form. |
 | allowed_models | array  | Optional allow-list of model identifiers for this provider.                                                                                                  |
 | extra          | object | Additional provider-config keys merged verbatim into the synthesized provider's config block.                                                                |
