@@ -14,7 +14,7 @@ from llama_stack_configuration import migrate_config_dumb
 from log import get_logger, setup_logging
 from runners.quota_scheduler import start_quota_scheduler
 from runners.uvicorn import start_uvicorn
-from utils import models_dumper, schema_dumper
+from utils import config_dumper, models_dumper
 
 setup_logging()
 logger = get_logger(__name__)
@@ -195,7 +195,7 @@ def main() -> None:
     # into a JSON file that is compatible with OpenAPI schema specification
     if args.dump_schema:
         try:
-            schema_dumper.dump_schema("schema.json")
+            config_dumper.dump_schema("schema.json")
             logger.info("Configuration schema dumped to schema.json")
         except Exception as e:
             logger.error("Failed to dump configuration schema: %s", e)

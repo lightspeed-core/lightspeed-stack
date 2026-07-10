@@ -1,6 +1,9 @@
+"""Utility function to dump schema with list of models into OpenAPI-compatible JSON format."""
+
 import json
 
 from pydantic.json_schema import models_json_schema
+
 from utils.json_schema_updater import recursive_update
 
 

@@ -1,7 +1,5 @@
 """Function to dump the configuration schema into OpenAPI-compatible format."""
 
-import json
-
 from models.config import Configuration
 from utils.openapi_schema_dumper import dump_openapi_schema
 
