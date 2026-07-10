@@ -1,11 +1,11 @@
-"""Function to dump the schema of all data models into OpenAPI-compatible format."""
+"""Function to dump the configuration schema into OpenAPI-compatible format."""
 
-import models.compaction as models_compaction
+from models.config import Configuration
 from utils.openapi_schema_dumper import dump_openapi_schema
 
 
-def dump_models(filename: str) -> None:
-    """Dump the schema of all models into OpenAPI-compatible JSON file.
+def dump_schema(filename: str) -> None:
+    """Dump the configuration schema into OpenAPI-compatible JSON file.
 
     Parameters:
     ----------
@@ -19,5 +19,5 @@ def dump_models(filename: str) -> None:
     ------
         IOError: If the file cannot be written.
     """
-    models = [models_compaction.ConversationSummary]
+    models = [Configuration]
     dump_openapi_schema(models, filename)

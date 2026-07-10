@@ -1,9 +1,9 @@
-"""Unit tests for utils/schema_dumper module."""
+"""Unit tests for utils/config_dumper module."""
 
 from json import load
 from pathlib import Path
 
-from utils.schema_dumper import dump_schema
+from utils.config_dumper import dump_schema
 
 
 def test_dump_schema(tmpdir: Path) -> None:
