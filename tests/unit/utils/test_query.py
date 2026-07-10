@@ -441,6 +441,26 @@ class TestValidateAttachmentsMetadata:
         assert exc_info.value.status_code == 422
         assert "Invalid attachment content type" in str(exc_info.value.detail)
 
+    def test_valid_image_attachment_jpeg(self) -> None:
+        """Test validation passes for JPEG image attachment."""
+        image_data = base64.b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 10).decode()
+        attachment = Attachment(
+            attachment_type="image",
+            content=image_data,
+            content_type="image/jpeg",
+        )
+        validate_attachments_metadata([attachment])
+
+    def test_valid_image_attachment_png(self) -> None:
+        """Test validation passes for PNG image attachment."""
+        image_data = base64.b64encode(b"\x89PNG" + b"\x00" * 10).decode()
+        attachment = Attachment(
+            attachment_type="image",
+            content=image_data,
+            content_type="image/png",
+        )
+        validate_attachments_metadata([attachment])
+
 
 class TestIsTranscriptsEnabled:
     """Tests for is_transcripts_enabled function."""

@@ -44,6 +44,9 @@ class Attachment(BaseModel):
     def validate_image_attachment(self) -> "Attachment":
         """Validate consistency between attachment_type and content_type for images.
 
+        Returns:
+            Self: The validated Attachment instance.
+
         Raises:
             ValueError: If image content_type is used without attachment_type='image',
                 if attachment_type='image' is used without an image content_type,
