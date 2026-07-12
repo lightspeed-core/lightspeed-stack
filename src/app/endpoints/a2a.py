@@ -63,7 +63,7 @@ from models.config import Action
 from utils.agents.query import map_agent_inference_error
 from utils.conversation_compaction import apply_compaction_blocking
 from utils.mcp_headers import McpHeaders, mcp_headers_dependency
-from utils.pydantic_ai import build_agent
+from utils.pydantic_ai_helpers import build_agent
 from utils.responses import prepare_responses_params
 from utils.suid import normalize_conversation_id
 from version import __version__

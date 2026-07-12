@@ -57,7 +57,7 @@ from utils.agents.tool_processor import (
     process_native_tool_result,
 )
 from utils.conversations import append_turn_items_to_conversation
-from utils.pydantic_ai import build_agent
+from utils.pydantic_ai_helpers import build_agent
 from utils.query import consume_query_tokens, store_query_results
 from utils.quota_utils import get_available_quotas
 from utils.responses import (
