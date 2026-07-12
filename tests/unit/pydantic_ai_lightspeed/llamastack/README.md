@@ -3,6 +3,9 @@
 ## [__init__.py](__init__.py)
 Unit tests for pydantic_ai_lightspeed.llamastack sub-package.
 
+## [test_model.py](test_model.py)
+Unit tests for pydantic_ai_lightspeed.llamastack._model module.
+
 ## [test_provider.py](test_provider.py)
 Unit tests for pydantic_ai_lightspeed.llamastack._provider module.
 

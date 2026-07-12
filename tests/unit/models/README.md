@@ -6,3 +6,6 @@ Unit tests for models.
 ## [test_compaction.py](test_compaction.py)
 Unit tests for the ConversationSummary model.
 
+## [test_saved_prompts_config.py](test_saved_prompts_config.py)
+Unit tests for SavedPromptsConfiguration.
+

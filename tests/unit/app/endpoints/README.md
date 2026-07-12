@@ -66,6 +66,9 @@ Unit tests for the rlsapi v1 /infer REST API endpoint.
 ## [test_root.py](test_root.py)
 Unit tests for the / endpoint handler.
 
+## [test_saved_prompts.py](test_saved_prompts.py)
+Unit tests for the /saved-prompts/config REST API endpoint.
+
 ## [test_shields.py](test_shields.py)
 Unit tests for the /shields REST API endpoint.
 
