@@ -10,7 +10,7 @@ from pytest_mock import MockerFixture
 
 from models.common.responses.responses_api_params import ResponsesApiParams
 from models.config import SkillsConfiguration
-from utils.pydantic_ai import (
+from utils.pydantic_ai_helpers import (
     _agent_capabilities,
     _skills_capability,
     build_agent,
