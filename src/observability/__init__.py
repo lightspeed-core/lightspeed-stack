@@ -15,8 +15,8 @@ observability/
 ├── splunk.py            # Async Splunk HEC client
 └── formats/
     ├── __init__.py      # Format exports
-    └── rlsapi.py        # rlsapi v1 event format
-```
+    ├── rlsapi.py        # rlsapi v1 event format
+    └── responses.py     # responses event format
 
 ## Usage
 
