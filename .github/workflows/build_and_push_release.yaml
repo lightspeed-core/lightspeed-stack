@@ -27,7 +27,7 @@ jobs:
           # qemu is required for arm64 builds
           sudo apt install -y buildah qemu-user-static
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Fetch submodules (required for lightspeed-providers)
           submodules: 'recursive'
