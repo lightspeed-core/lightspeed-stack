@@ -28,7 +28,7 @@ jobs:
       FAISS_VECTOR_STORE_ID: ${{ vars.FAISS_VECTOR_STORE_ID }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # On PR_TARGET → the fork (or same repo) that opened the PR.
           # On push      → falls back to the current repository.
