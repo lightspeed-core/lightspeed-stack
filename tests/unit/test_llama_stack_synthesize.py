@@ -421,6 +421,135 @@ def test_provider_type_map_covers_every_literal_value() -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_synthesize_default_baseline_ensures_mcp() -> None:
+    """Non-empty default baseline path always gets MCP (even with no mcp_servers)."""
+    default_baseline: dict[str, Any] = {
+        "apis": ["inference", "tool_runtime"],
+        "providers": {
+            "inference": [],
+            "tool_runtime": [
+                {
+                    "provider_id": "rag-runtime",
+                    "provider_type": "inline::rag-runtime",
+                    "config": {},
+                }
+            ],
+        },
+    }
+    lcs_config = {
+        "llama_stack": {"config": {"baseline": "default"}},
+        "inference": {"providers": []},
+    }
+    result = synthesize_configuration(lcs_config, default_baseline=default_baseline)
+    assert "model-context-protocol" in _tool_runtime_ids(result)
+    assert "rag-runtime" in _tool_runtime_ids(result)
+
+
+def test_synthesize_empty_baseline_skips_mcp_ensure() -> None:
+    """baseline: empty must not assume MCP."""
+    lcs_config = {
+        "llama_stack": {
+            "config": {
+                "baseline": "empty",
+                "native_override": {
+                    "version": 2,
+                    "apis": ["inference"],
+                    "providers": {"inference": []},
+                },
+            }
+        }
+    }
+    result = synthesize_configuration(lcs_config)
+    assert "model-context-protocol" not in _tool_runtime_ids(result)
+    assert result["apis"] == ["inference"]
+
+
+def test_synthesize_empty_baseline_keeps_mcp_from_override() -> None:
+    """MCP already in native_override is preserved when ensure is skipped."""
+    lcs_config = {
+        "llama_stack": {
+            "config": {
+                "baseline": "empty",
+                "native_override": {
+                    "providers": {
+                        "tool_runtime": [
+                            {
+                                "provider_id": "model-context-protocol",
+                                "provider_type": "remote::model-context-protocol",
+                                "config": {},
+                            }
+                        ]
+                    }
+                },
+            }
+        }
+    }
+    result = synthesize_configuration(lcs_config)
+    assert _tool_runtime_ids(result) == ["model-context-protocol"]
+
+
+def test_synthesize_native_override_can_opt_out_of_mcp() -> None:
+    """List-replace of tool_runtime after ensure removes MCP (opt-out)."""
+    default_baseline: dict[str, Any] = {
+        "apis": ["tool_runtime"],
+        "providers": {"tool_runtime": []},
+    }
+    lcs_config = {
+        "llama_stack": {
+            "config": {
+                "baseline": "default",
+                "native_override": {
+                    "providers": {
+                        "tool_runtime": [
+                            {
+                                "provider_id": "rag-runtime",
+                                "provider_type": "inline::rag-runtime",
+                                "config": {},
+                            }
+                        ]
+                    }
+                },
+            }
+        }
+    }
+    result = synthesize_configuration(lcs_config, default_baseline=default_baseline)
+    assert _tool_runtime_ids(result) == ["rag-runtime"]
+
+
+def test_synthesize_profile_missing_mcp_gets_ensure(
+    tmp_path: Path,
+) -> None:
+    """A thin profile without MCP still receives the provider via ensure."""
+    profile = tmp_path / "thin.yaml"
+    profile.write_text(
+        yaml.dump(
+            {
+                "apis": ["inference"],
+                "providers": {"inference": []},
+            }
+        ),
+        encoding="utf-8",
+    )
+    lcs_config = {
+        "llama_stack": {"config": {"profile": str(profile)}},
+    }
+    result = synthesize_configuration(lcs_config)
+    assert "tool_runtime" in result["apis"]
+    assert "model-context-protocol" in _tool_runtime_ids(result)
+
+
+def test_synthesize_empty_profile_still_ensures_mcp(tmp_path: Path) -> None:
+    """A profile that loads {} still gets ensure; only baseline: empty skips it."""
+    profile = tmp_path / "empty-profile.yaml"
+    profile.write_text("{}\n", encoding="utf-8")
+    lcs_config = {
+        "llama_stack": {"config": {"profile": str(profile)}},
+    }
+    result = synthesize_configuration(lcs_config)
+    assert "tool_runtime" in result["apis"]
+    assert "model-context-protocol" in _tool_runtime_ids(result)
+
+
 def test_synthesize_from_empty_baseline_only_native_override() -> None:
     """baseline: empty starts from {} so native_override is the whole output."""
     lcs = {
