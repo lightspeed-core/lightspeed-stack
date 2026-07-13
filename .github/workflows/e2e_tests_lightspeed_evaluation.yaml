@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # On PR_TARGET → the fork (or same repo) that opened the PR.
           # On push      → falls back to the current repository.
@@ -47,7 +47,7 @@ jobs:
           git log --oneline -5
 
       - name: Checkout lightspeed-Evaluation
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: lightspeed-core/lightspeed-evaluation
           path: lightspeed-evaluation
