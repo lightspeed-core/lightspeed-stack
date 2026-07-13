@@ -57,7 +57,7 @@ Utility function to dump schema with list of models into OpenAPI-compatible JSON
 ## [prompts.py](prompts.py)
 Utility functions for system prompts.
 
-## [pydantic_ai.py](pydantic_ai.py)
+## [pydantic_ai_helpers.py](pydantic_ai_helpers.py)
 Helpers for running Pydantic AI agents against Llama Stack (Responses API compatibility).
 
 ## [query.py](query.py)
