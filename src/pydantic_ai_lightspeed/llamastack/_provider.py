@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Optional
 
 import httpx
 from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
+from llama_stack.core.request_headers import parse_request_provider_data
 from llama_stack_client import AsyncLlamaStackClient
 from openai import AsyncOpenAI
 from pydantic_ai import ModelProfile
@@ -13,7 +14,10 @@ from pydantic_ai.models import create_async_http_client
 from pydantic_ai.profiles.openai import openai_model_profile
 from pydantic_ai.providers import Provider
 
-from pydantic_ai_lightspeed.llamastack._transport import LlamaStackLibraryTransport
+from pydantic_ai_lightspeed.llamastack._transport import (
+    LlamaStackLibraryTransport,
+    wrap_http_client_with_provider_data,
+)
 
 if TYPE_CHECKING:
     from llama_stack.core.library_client import (  # pylint: disable=reimported
@@ -73,10 +77,19 @@ class LlamaStackProvider(Provider[AsyncOpenAI]):
         api_key = client.api_key or "not-needed"
         base = str(client.base_url).rstrip("/")
         base_url = base if base.endswith("/v1") else f"{base}/v1"
+        raw_headers = client.default_headers
+        default_headers = {
+            str(key): str(value)
+            for key, value in raw_headers.items()
+            if isinstance(value, str)
+        }
+        provider_data = parse_request_provider_data(default_headers)
+        http_client = client._client  # pylint: disable=protected-access
+        http_client = wrap_http_client_with_provider_data(http_client, provider_data)
         return LlamaStackProvider(
             base_url=base_url,
             api_key=api_key,
-            http_client=client._client,  # pylint: disable=protected-access
+            http_client=http_client,
         )
 
     def __init__(
@@ -128,15 +141,11 @@ class LlamaStackProvider(Provider[AsyncOpenAI]):
             base_url = base_url or DEFAULT_BASE_URL
             api_key = api_key or "not-needed"
 
-            if http_client is not None:
-                self._client = AsyncOpenAI(
-                    base_url=base_url, api_key=api_key, http_client=http_client
-                )
-            else:
-                oai_http_client = create_async_http_client()
-                self._client = AsyncOpenAI(
-                    base_url=base_url, api_key=api_key, http_client=oai_http_client
-                )
+            self._client = AsyncOpenAI(
+                base_url=base_url,
+                api_key=api_key,
+                http_client=http_client or create_async_http_client(),
+            )
 
     def __repr__(self) -> str:
         """Return a string representation of the provider."""

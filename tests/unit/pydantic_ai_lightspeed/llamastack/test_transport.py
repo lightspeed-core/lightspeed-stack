@@ -12,7 +12,11 @@ from pytest_mock import MockerFixture
 
 from pydantic_ai_lightspeed.llamastack._transport import (
     LlamaStackLibraryTransport,
+    LlamaStackServerTransport,
     _AsyncByteStream,
+    decode_request_headers,
+    inject_provider_data_into_headers,
+    request_with_provider_data_headers,
 )
 
 
@@ -68,6 +72,112 @@ class TestAsyncByteStream:
         chunks = [chunk async for chunk in stream]
 
         assert chunks == []
+
+
+class TestInjectProviderDataIntoHeaders:
+    """Tests for shared provider data header helpers."""
+
+    def test_injects_when_absent(self) -> None:
+        """Test provider data is serialized into the canonical header."""
+        headers = inject_provider_data_into_headers({}, {"api_key": "test-key"})
+
+        assert headers["X-LlamaStack-Provider-Data"] == '{"api_key": "test-key"}'
+
+    def test_does_not_override_existing_header(self) -> None:
+        """Test an existing provider data header is left unchanged."""
+        headers = inject_provider_data_into_headers(
+            {"X-LlamaStack-Provider-Data": '{"existing": true}'},
+            {"api_key": "ignored"},
+        )
+
+        assert headers["X-LlamaStack-Provider-Data"] == '{"existing": true}'
+
+    def test_request_with_provider_data_headers_returns_copy(self) -> None:
+        """Test request helper returns a new request when headers are injected."""
+        request = httpx.Request(
+            "POST",
+            "http://localhost/v1/responses",
+            content=b"{}",
+        )
+
+        updated = request_with_provider_data_headers(
+            request,
+            {"api_key": "test-key"},
+        )
+
+        assert updated is not request
+        assert (
+            updated.headers["X-LlamaStack-Provider-Data"] == '{"api_key": "test-key"}'
+        )
+
+
+class TestLlamaStackServerTransport:
+    """Tests for LlamaStackServerTransport."""
+
+    @pytest.mark.asyncio
+    async def test_injects_provider_data_before_delegating(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test provider data is added to outbound HTTP requests."""
+        wrapped = mocker.AsyncMock()
+        wrapped.handle_async_request.return_value = httpx.Response(200)
+        transport = LlamaStackServerTransport(
+            wrapped,
+            provider_data={"api_key": "test-key"},
+        )
+
+        request = httpx.Request(
+            "POST",
+            "http://localhost/v1/responses",
+            content=b"{}",
+        )
+        await transport.handle_async_request(request)
+
+        delegated_request = wrapped.handle_async_request.await_args.args[0]
+        assert (
+            delegated_request.headers["X-LlamaStack-Provider-Data"]
+            == '{"api_key": "test-key"}'
+        )
+
+    @pytest.mark.asyncio
+    async def test_preserves_existing_provider_data_header(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test per-request provider data headers are not overwritten."""
+        wrapped = mocker.AsyncMock()
+        wrapped.handle_async_request.return_value = httpx.Response(200)
+        transport = LlamaStackServerTransport(
+            wrapped,
+            provider_data={"api_key": "ignored"},
+        )
+
+        request = httpx.Request(
+            "POST",
+            "http://localhost/v1/responses",
+            content=b"{}",
+            headers={"X-LlamaStack-Provider-Data": '{"existing": true}'},
+        )
+        await transport.handle_async_request(request)
+
+        delegated_request = wrapped.handle_async_request.await_args.args[0]
+        assert (
+            delegated_request.headers["X-LlamaStack-Provider-Data"]
+            == '{"existing": true}'
+        )
+
+
+class TestDecodeRequestHeaders:  # pylint: disable=too-few-public-methods
+    """Tests for decode_request_headers."""
+
+    def test_decodes_raw_headers(self) -> None:
+        """Test raw httpx headers are decoded to strings."""
+        request = httpx.Request(
+            "GET",
+            "http://localhost/v1/models",
+            headers={"X-Test": "value"},
+        )
+
+        assert decode_request_headers(request)["X-Test"] == "value"
 
 
 class TestLlamaStackLibraryTransportInit:  # pylint: disable=too-few-public-methods

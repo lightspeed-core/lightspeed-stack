@@ -66,6 +66,7 @@ class TestBuildAgent:
         mock_client.base_url = "http://localhost:8321"
         mock_client.api_key = "test-key"
         mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+        mock_client.default_headers = {}
 
         mock_params = mocker.Mock()
         mock_params.model = "provider/my-model"
@@ -91,6 +92,7 @@ class TestBuildAgent:
         mock_client.base_url = "http://localhost:8321"
         mock_client.api_key = "test-key"
         mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+        mock_client.default_headers = {}
 
         mock_params = mocker.Mock()
         mock_params.model = "provider/my-model"

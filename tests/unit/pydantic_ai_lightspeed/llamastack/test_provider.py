@@ -13,6 +13,7 @@ from pydantic_ai_lightspeed.llamastack._provider import (
     DEFAULT_BASE_URL,
     LlamaStackProvider,
 )
+from pydantic_ai_lightspeed.llamastack._transport import LlamaStackServerTransport
 
 
 class TestLlamaStackProviderProperties:
@@ -168,6 +169,7 @@ class TestFromLlamaStackClient:
         mock_client.base_url = "http://my-server:8321/v1"
         mock_client.api_key = "test-key"
         mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+        mock_client.default_headers = {}
 
         provider = LlamaStackProvider.from_llama_stack_client(mock_client)
 
@@ -180,6 +182,7 @@ class TestFromLlamaStackClient:
         mock_client.base_url = "http://my-server:8321"
         mock_client.api_key = "test-key"
         mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+        mock_client.default_headers = {}
 
         provider = LlamaStackProvider.from_llama_stack_client(mock_client)
 
@@ -193,6 +196,7 @@ class TestFromLlamaStackClient:
         mock_client.base_url = "http://my-server:8321/"
         mock_client.api_key = "test-key"
         mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+        mock_client.default_headers = {}
 
         provider = LlamaStackProvider.from_llama_stack_client(mock_client)
 
@@ -205,6 +209,7 @@ class TestFromLlamaStackClient:
         mock_client.base_url = "http://my-server:8321/v1"
         mock_client.api_key = "my-secret"
         mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+        mock_client.default_headers = {}
 
         provider = LlamaStackProvider.from_llama_stack_client(mock_client)
 
@@ -218,22 +223,44 @@ class TestFromLlamaStackClient:
         mock_client.base_url = "http://my-server:8321/v1"
         mock_client.api_key = None
         mock_client._client = mocker.Mock(spec=httpx.AsyncClient)
+        mock_client.default_headers = {}
 
         provider = LlamaStackProvider.from_llama_stack_client(mock_client)
 
         assert provider.client.api_key == "not-needed"
 
     def test_server_client_passes_http_client(self, mocker: MockerFixture) -> None:
-        """Test that the server client's internal httpx client is reused."""
+        """Test that the server client's internal httpx client is reused when no provider data."""
         mock_client = mocker.Mock(spec=AsyncLlamaStackClient)
         mock_client.base_url = "http://my-server:8321/v1"
         mock_client.api_key = "test-key"
         inner_http = mocker.Mock(spec=httpx.AsyncClient)
         mock_client._client = inner_http
+        mock_client.default_headers = {}
 
         provider = LlamaStackProvider.from_llama_stack_client(mock_client)
 
         assert provider._client._client is inner_http
+
+    def test_server_client_wraps_transport_with_provider_data(
+        self, mocker: MockerFixture
+    ) -> None:
+        """Test provider data from default_headers is forwarded in server mode."""
+        mock_client = mocker.Mock(spec=AsyncLlamaStackClient)
+        mock_client.base_url = "http://my-server:8321/v1"
+        mock_client.api_key = "test-key"
+        inner_http = httpx.AsyncClient()
+        mock_client._client = inner_http
+        mock_client.default_headers = {
+            "X-LlamaStack-Provider-Data": '{"azure_api_key": "token"}'
+        }
+
+        provider = LlamaStackProvider.from_llama_stack_client(mock_client)
+
+        assert isinstance(
+            provider._client._client._transport,  # pylint: disable=protected-access
+            LlamaStackServerTransport,
+        )
 
 
 class TestSetHttpClient:  # pylint: disable=too-few-public-methods
