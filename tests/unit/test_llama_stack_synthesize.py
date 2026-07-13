@@ -115,6 +115,14 @@ def test_load_default_baseline_returns_usable_dict() -> None:
     assert ":=" in baseline["external_providers_dir"]
 
 
+def test_load_default_baseline_includes_mcp_tool_runtime() -> None:
+    """Default stack ships MCP beside rag-runtime (same rationale as RAG)."""
+    baseline = load_default_baseline()
+    ids = _tool_runtime_ids(baseline)
+    assert "rag-runtime" in ids
+    assert "model-context-protocol" in ids
+
+
 # ---------------------------------------------------------------------------
 # deep_merge_list_replace
 # ---------------------------------------------------------------------------
