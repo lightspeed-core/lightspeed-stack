@@ -13,33 +13,48 @@ Lightspeed Core Stack (LCS) is an AI-powered assistant built on FastAPI that pro
 ## Code Architecture & Patterns
 
 ### Project Structure
+
 ```
 src/
-├── app/                  # FastAPI application
-│   ├── endpoints/        # REST API endpoints
-│   └── main.py           # Application entry point
-├── a2a_storage/          # A2A protocol persistent storage
-│   ├── context_store.py  # Abstract base class for context stores
+├── app/                            # FastAPI application
+│   ├── endpoints/                  # REST API endpoints
+│   └── main.py                     # Application entry point
+├── a2a_storage/                    # A2A protocol persistent storage
+│   ├── context_store.py            # Abstract base class for context stores
 │   ├── in_memory_context_store.py  # In-memory implementation
 │   ├── sqlite_context_store.py     # SQLite implementation
 │   ├── postgres_context_store.py   # PostgreSQL implementation
 │   └── storage_factory.py          # Factory for creating stores
-├── authentication/       # Authentication modules (k8s, jwk, noop, rh-identity)
-├── authorization/        # Authorization middleware & resolvers
-├── cache/                # Conversation cache implementations
-├── quota/                # Quota limiter and token usage tracking
-├── metrics/              # Prometheus metrics
-├── runners/              # Agent runners
-├── models/               # Pydantic models
-│   ├── api/
-│   │   ├── requests/     # REST API request models
-│   │   └── responses/    # HTTP response models
-│   ├── common/           # Shared cross-layer models
-│   └── database/         # Database models
-├── utils/                # Utility functions
-├── client.py             # Llama Stack client wrapper (Singleton)
-├── configuration.py      # Config management (Singleton)
-└── constants.py          # Shared constants
+├── authentication/                 # Authentication modules (k8s, jwk, noop, rh-identity)
+├── authorization/                  # Authorization middleware & resolvers
+├── cache/                          # Conversation cache implementations
+├── data/                           # Built-in default Llama Stack baseline for unified-mode synthesis
+├── quota/                          # Quota limiter and token usage tracking
+├── metrics/                        # Prometheus metrics
+├── runners/                        # Runners for various LCore subsystems
+├── models/                         # Pydantic models
+│   ├── api/                        # REST API models
+│   │   ├── requests/               # REST API request models
+│   │   └── responses/              # HTTP response models
+│   │       ├── error/              # Error responses
+│   │       └── successful/         # Successful responses
+│   ├── common/                     # Shared cross-layer models
+│   │   ├── agents/                 # Streaming payload models and event type exports
+│   │   └── responses/              # Shared models for the OpenAI-compatible Responses API pipeline
+│   └── database/                   # Database models
+├── observability/                  # Observability module for telemetry and event collection
+│   └── formats/                    # Event format builders for Splunk telemetry
+├── pydantic_ai_lightspeed/         # Pydantic AI integrations/extensions for Lightspeed Core Stack
+│   ├── capabilities/               # Pluggable capabilities for pydantic-ai agents in Lightspeed
+│   │   ├── question_validity/      # Question validity capability for agent input validation
+│   │   └── redaction/              # PII redaction capability for Pydantic AI agents
+│   └── llamastack/                 # Pydantic AI provider for Llama Stack
+├── telemetry/                      # Telemetry module for configuration snapshot collection
+├── utils/                          # Utility functions
+│   └── agents                      # Agent streaming and non streaming helpers
+├── client.py                       # Llama Stack client wrapper (Singleton)
+├── configuration.py                # Config management (Singleton)
+└── constants.py                    # Shared (final) constants
 ```
 
 ### Coding Standards
