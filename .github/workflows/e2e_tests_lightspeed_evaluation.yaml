@@ -30,6 +30,14 @@ jobs:
           # Don’t keep credentials when running untrusted PR code under PR_TARGET.
           persist-credentials: ${{ github.event_name != 'pull_request_target' }}
 
+          # Tests need access to secrets.
+          # This should be refactored if possible to mitigate the risk.
+          # https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target
+          allow-unsafe-pr-checkout: true
+
+          # Fetch submodules (required for lightspeed-providers)
+          submodules: 'recursive'
+
       - name: Verify actual git checkout result
         run: |
           echo "=== Git Status After Checkout ==="
