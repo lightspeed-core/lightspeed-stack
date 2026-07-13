@@ -235,6 +235,10 @@ ignore = ["query.py"]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
+[tool.pylint.design]
+max-args = 8
+max-positional-arguments = 8
+
 [tool.pylint."MESSAGES CONTROL"]
 disable = ["R0801"]
 

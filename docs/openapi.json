@@ -12034,6 +12034,13 @@
                         "description": "Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them.",
                         "default": 1.0
                     },
+                    "relevance_cutoff_score": {
+                        "type": "number",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Relevance cutoff score",
+                        "description": "Minimum raw similarity score to consider a result relevant. Results with a similarity score below this threshold are not returned.",
+                        "default": 0.3
+                    },
                     "host": {
                         "anyOf": [
                             {
