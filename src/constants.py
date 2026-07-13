@@ -160,6 +160,10 @@ MCP_AUTH_KUBERNETES: Final[str] = "kubernetes"
 MCP_AUTH_CLIENT: Final[str] = "client"
 MCP_AUTH_OAUTH: Final[str] = "oauth"
 
+# MCP tool_runtime provider (Llama Stack run.yaml / unified synthesis)
+MCP_TOOL_RUNTIME_PROVIDER_ID: Final[str] = "model-context-protocol"
+MCP_TOOL_RUNTIME_PROVIDER_TYPE: Final[str] = "remote::model-context-protocol"
+
 # Media type constants for streaming responses
 MEDIA_TYPE_JSON: Final[str] = "application/json"
 MEDIA_TYPE_TEXT: Final[str] = "text/plain"

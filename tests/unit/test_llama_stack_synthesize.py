@@ -9,7 +9,7 @@ write-to-file step (persistent path, mode 0600).
 import os
 import stat
 from pathlib import Path
-from typing import Any, get_args
+from typing import Any, Optional, get_args
 
 import pytest
 import yaml
@@ -18,12 +18,86 @@ from llama_stack_configuration import (
     PROVIDER_TYPE_MAP,
     apply_high_level_inference,
     deep_merge_list_replace,
+    ensure_mcp_tool_runtime,
     load_default_baseline,
     migrate_config_dumb,
     synthesize_configuration,
     synthesize_to_file,
 )
 from models.config import UnifiedInferenceProvider
+
+# ---------------------------------------------------------------------------
+# ensure_mcp_tool_runtime
+# ---------------------------------------------------------------------------
+
+
+def _tool_runtime_ids(ls_config: dict[str, Any]) -> list[Optional[str]]:
+    """Return provider_id values from providers.tool_runtime."""
+    providers = ls_config.get("providers") or {}
+    return [
+        entry.get("provider_id")
+        for entry in providers.get("tool_runtime") or []
+        if isinstance(entry, dict)
+    ]
+
+
+def test_ensure_mcp_tool_runtime_appends_and_preserves_rag() -> None:
+    """MCP is appended; existing rag-runtime is untouched."""
+    ls_config: dict[str, Any] = {
+        "apis": ["tool_runtime"],
+        "providers": {
+            "tool_runtime": [
+                {
+                    "provider_id": "rag-runtime",
+                    "provider_type": "inline::rag-runtime",
+                    "config": {},
+                }
+            ]
+        },
+    }
+    ensure_mcp_tool_runtime(ls_config)
+    assert _tool_runtime_ids(ls_config) == [
+        "rag-runtime",
+        "model-context-protocol",
+    ]
+
+    found = False
+    found_entry = {}
+    for entry in ls_config["providers"]["tool_runtime"]:
+        if (
+            isinstance(entry, dict)
+            and entry.get("provider_id") == "model-context-protocol"
+        ):
+            found = True
+            found_entry = entry
+            break
+    assert found
+    assert found_entry["provider_type"] == "remote::model-context-protocol"
+    assert found_entry["config"] == {}
+
+
+def test_ensure_mcp_tool_runtime_idempotent() -> None:
+    """If MCP already exists, do not duplicate or rewrite it."""
+    existing = {
+        "provider_id": "model-context-protocol",
+        "provider_type": "remote::model-context-protocol",
+        "config": {"keep": True},
+    }
+    ls_config: dict[str, Any] = {
+        "apis": ["tool_runtime"],
+        "providers": {"tool_runtime": [existing]},
+    }
+    ensure_mcp_tool_runtime(ls_config)
+    assert ls_config["providers"]["tool_runtime"] == [existing]
+
+
+def test_ensure_mcp_tool_runtime_adds_api_when_missing() -> None:
+    """Thin baselines get tool_runtime in apis and the MCP provider."""
+    ls_config: dict[str, Any] = {}
+    ensure_mcp_tool_runtime(ls_config)
+    assert "tool_runtime" in ls_config["apis"]
+    assert _tool_runtime_ids(ls_config) == ["model-context-protocol"]
+
 
 # ---------------------------------------------------------------------------
 # load_default_baseline

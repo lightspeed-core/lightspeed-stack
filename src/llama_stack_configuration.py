@@ -782,6 +782,47 @@ def apply_high_level_inference(
     )
 
 
+def ensure_mcp_tool_runtime(ls_config: dict[str, Any]) -> None:
+    """Ensure the default MCP tool_runtime provider exists in ``ls_config``.
+
+    Adds ``tool_runtime`` to ``apis`` when missing, then appends the default
+    ``model-context-protocol`` provider under ``providers.tool_runtime`` when
+    no entry with that ``provider_id`` is already present. Existing entries
+    (including ``rag-runtime``) are left untouched.
+
+    Parameters:
+        ls_config: The Llama Stack configuration being synthesized (modified
+            in place).
+
+    Returns:
+        None: ``ls_config`` is modified in place.
+    """
+    apis = ls_config.setdefault("apis", [])
+    if "tool_runtime" not in apis:
+        apis.append("tool_runtime")
+
+    providers_section = ls_config.setdefault("providers", {})
+    tool_runtime = providers_section.setdefault("tool_runtime", [])
+    for existing in tool_runtime:
+        if (
+            isinstance(existing, dict)
+            and existing.get("provider_id") == constants.MCP_TOOL_RUNTIME_PROVIDER_ID
+        ):
+            return
+
+    tool_runtime.append(
+        {
+            "provider_id": constants.MCP_TOOL_RUNTIME_PROVIDER_ID,
+            "provider_type": constants.MCP_TOOL_RUNTIME_PROVIDER_TYPE,
+            "config": {},
+        }
+    )
+    logger.info(
+        "Added MCP tool_runtime provider provider_id=%r",
+        constants.MCP_TOOL_RUNTIME_PROVIDER_ID,
+    )
+
+
 def _resolve_profile_path(profile: str, config_file_dir: Optional[str]) -> Path:
     """Resolve a ``profile:`` path against the loaded config's directory (R8).
 
