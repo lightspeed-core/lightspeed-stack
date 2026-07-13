@@ -1,7 +1,7 @@
 """Function to dump the schema of all data models into OpenAPI-compatible format."""
 
-import models.compaction as models_compaction
 import models.api.requests as r
+import models.compaction as models_compaction
 from utils.openapi_schema_dumper import dump_openapi_schema
 
 
