@@ -24,7 +24,7 @@ jobs:
       E2E_LLAMA_HOSTNAME: ${{ vars.E2E_LLAMA_HOSTNAME || 'llama-stack' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # On PR_TARGET → the fork (or same repo) that opened the PR.
           # On push      → falls back to the current repository.

@@ -38,7 +38,7 @@ jobs:
       E2E_DEFAULT_PROVIDER_OVERRIDE: vllm
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # On PR_TARGET → the fork (or same repo) that opened the PR.
           # On push      → falls back to the current repository.
