@@ -21,13 +21,21 @@ spec:
   securityContext:
     seccompProfile:
       type: RuntimeDefault
+    fsGroup: 0
   initContainers:
     - name: setup-from-source
       image: registry.access.redhat.com/ubi9/python-312
-      # runAsUser: 0 required for dnf install; avoids capabilities.drop so dnf/chroot works (PodSecurity restricted will warn)
       securityContext:
-        runAsUser: 0
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
       env:
+        - name: HOME
+          value: "/opt/app-root/src"
         - name: REPO_URL
           valueFrom:
             configMapKeyRef:
@@ -44,28 +52,39 @@ spec:
         - /bin/bash
         - -c
         - |
-          set -e
-          # Repo URL/revision: from ConfigMap or defaults; convert SSH to HTTPS for clone
+          set -ex
+          echo "[init] starting setup-from-source"
+          echo "[init] emptyDir contents:" && ls -la /opt/app-root/ 2>&1 || true
+          # WORKDIR is /opt/app-root/src (from image); move out before removing it
+          cd /opt/app-root
+          # emptyDir src/ is root-owned; recreate it so user 1001 can write
+          rm -rf /opt/app-root/src && mkdir -p /opt/app-root/src
           REPO_URL="${REPO_URL:-https://github.com/lightspeed-core/lightspeed-stack.git}"
           REPO_REVISION="${REPO_REVISION:-main}"
           case "$REPO_URL" in git@github.com:*) REPO_URL="https://github.com/${REPO_URL#git@github.com:}"; esac
-          # Install system deps and uv
-          dnf -y install git tar gcc gcc-c++ make
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          export PATH="/root/.local/bin:$PATH"
-          ln -sf /usr/bin/python3.12 /usr/bin/python3 2>/dev/null || true
-          # Clone and install Python deps
+          # Install uv to /tmp (emptyDir $HOME/.local not writable)
+          echo "[init] installing uv"
+          curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/tmp/uv-bin INSTALLER_NO_MODIFY_PATH=1 XDG_CONFIG_HOME=/tmp sh
+          export PATH="/tmp/uv-bin:$PATH"
+          export UV_CACHE_DIR=/tmp/uv-cache
+          uv --version
+          # Clone and install Python deps (rm -rf handles restarts where emptyDir persists)
+          echo "[init] cloning $REPO_URL @ $REPO_REVISION"
+          rm -rf /opt/app-root/repo
           git clone -q "${REPO_URL}" /opt/app-root/repo
           cd /opt/app-root/repo && git fetch origin "${REPO_REVISION}" 2>/dev/null || true && git checkout -q "${REPO_REVISION}"
+          echo "[init] running uv sync"
           uv sync --locked --no-install-project --group llslibdev
+          echo "[init] uv sync complete, moving repo to /opt/app-root"
           # Move repo to /opt/app-root and fix venv shebangs (paths changed from repo/.venv to .venv)
-          (cd /opt/app-root/repo && tar cf - .) | (cd /opt/app-root && tar xf -)
+          (cd /opt/app-root/repo && tar cf - .) | (cd /opt/app-root && tar x --no-overwrite-dir -f -)
           rm -rf /opt/app-root/repo
           sed -i 's|/opt/app-root/repo/.venv|/opt/app-root/.venv|g' /opt/app-root/.venv/bin/* 2>/dev/null || true
-          # Layout and permissions for main container
+          # Layout for main container (no chown needed -- already running as 1001)
           mkdir -p /opt/app-root/src/.llama/storage/rag /opt/app-root/src/.llama/storage/files
           cp /opt/app-root/src/llama_stack_configuration.py /opt/app-root/llama_stack_configuration.py
-          chmod -R 775 /opt/app-root && chown -R 1001:0 /opt/app-root
+          echo "[init] setup-from-source complete"
+          echo "[init] setup-from-source complete"
       volumeMounts:
         - name: app-root
           mountPath: /opt/app-root
@@ -76,17 +95,17 @@ spec:
         capabilities:
           drop: ["ALL"]
         runAsNonRoot: true
-        runAsUser: 65534
+        runAsUser: 1001
         seccompProfile:
           type: RuntimeDefault
       command:
         - /bin/sh
         - -c
         - |
+          set -e
           mkdir -p /data/src/.llama/storage/rag /data/src/.llama/storage/files
-          chmod -R 777 /data
           gunzip -c /rag-data/kv_store.db.gz > /data/src/.llama/storage/rag/kv_store.db
-          chmod -R 777 /data
+          ls -la /data/src/.llama/storage/rag/kv_store.db
           echo "RAG data extracted successfully"
       volumeMounts:
         - name: app-root
@@ -110,6 +129,10 @@ spec:
           value: "/opt/app-root/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
         - name: HOME
           value: "/opt/app-root/src"
+        - name: PYTHONPATH
+          value: "/opt/app-root/src"
+        - name: E2E_LLAMA_HOSTNAME
+          value: "localhost"
         - name: KV_STORE_PATH
           value: "/opt/app-root/src/.llama/storage/rag/kv_store.db"
         - name: KV_RAG_PATH
@@ -157,12 +180,25 @@ spec:
         - name: config
           mountPath: /opt/app-root/run.yaml
           subPath: run.yaml
+        - name: lcs-config
+          mountPath: /opt/app-root/lightspeed-stack.yaml
+          subPath: lightspeed-stack.yaml
+        - name: entrypoint
+          mountPath: /opt/app-root/scripts/llama-stack-entrypoint.sh
+          subPath: llama-stack-entrypoint.sh
   volumes:
     - name: app-root
       emptyDir: {}
     - name: config
       configMap:
         name: llama-stack-config
+    - name: lcs-config
+      configMap:
+        name: lightspeed-stack-config
+    - name: entrypoint
+      configMap:
+        name: llama-stack-entrypoint
+        defaultMode: 0755
     - name: rag-data
       configMap:
         name: rag-data

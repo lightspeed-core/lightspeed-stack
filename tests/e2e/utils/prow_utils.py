@@ -4,9 +4,11 @@ This module contains all functions that interact with OpenShift via the `oc` CLI
 and are only used when running tests in the Prow CI environment.
 """
 
+import http.client
 import os
 import subprocess
 import tempfile
+import urllib.request
 from typing import Optional
 
 
@@ -75,17 +77,57 @@ def wait_for_pod_health(pod_name: str, max_attempts: int = 12) -> None:
         raise
 
 
+def _is_llama_stack_healthy() -> bool:
+    """Check whether llama-stack pod is Ready and reachable on localhost:8321.
+
+    Returns True when both the pod is Running/Ready *and* the local port-forward
+    serves /v1/health.  Used to skip the expensive ``restore_llama_stack_pod()``
+    when the pod never went away.
+    """
+    namespace = get_namespace()
+    try:
+        result = subprocess.run(
+            [
+                "oc",
+                "get",
+                "pod",
+                "llama-stack-service",
+                "-n",
+                namespace,
+                "-o",
+                "jsonpath={.status.containerStatuses[0].ready}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        if result.stdout.strip() != "true":
+            return False
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+    try:
+        with urllib.request.urlopen(
+            "http://127.0.0.1:8321/v1/health", timeout=5
+        ) as resp:
+            return resp.status == 200
+    except Exception:  # pylint: disable=broad-exception-caught
+        return False
+
+
 def restart_pod(container_name: str) -> None:
     """Restart lightspeed-stack pod in OpenShift/Prow environment.
 
-    Ensures Llama Stack is running first, since LSC fails to start if it cannot
-    connect to Llama Stack at startup. Llama pod logs may look unchanged (apply is a
-    no-op when healthy); that is expected.
-
-    CI failures with healthy pod logs are often **localhost port-forward** contention
-    (pipeline forward vs hook restart), not application crashes—see e2e-ops.sh header.
+    Only restores Llama Stack when it is not already healthy, avoiding the
+    ~30 s overhead on every restart.  LSC needs Llama Stack at startup, so
+    the check is still performed.
     """
-    restore_llama_stack_pod()
+    if not _is_llama_stack_healthy():
+        print("[restart_pod] Llama Stack not healthy — restoring first")
+        restore_llama_stack_pod()
+    else:
+        print("[restart_pod] Llama Stack already healthy — skipping restore")
     try:
         result = run_e2e_ops("restart-lightspeed", timeout=200)
         print(result.stdout, end="")
@@ -113,6 +155,50 @@ def restore_llama_stack_pod() -> None:
             result.returncode, "restart-llama-stack", result.stderr
         )
     print("✓ Llama Stack pod restored successfully")
+
+
+def ensure_port_forwards_healthy() -> None:
+    """Verify both LSC and Llama Stack port-forwards are alive; restart dead ones.
+
+    Intended to be called from ``before_scenario`` so that a stale forward left
+    by a previous restart/cleanup does not cascade-fail unrelated scenarios.
+    """
+    # --- Llama Stack (8321) ---
+    try:
+        with urllib.request.urlopen(
+            "http://127.0.0.1:8321/v1/health", timeout=5
+        ) as resp:
+            if resp.status != 200:
+                raise ConnectionError("non-200")
+    except Exception:  # pylint: disable=broad-exception-caught
+        print("[self-heal] Llama port-forward dead — re-establishing")
+        try:
+            result = run_e2e_ops("restart-llama-port-forward", timeout=120)
+            print(result.stdout, end="")
+            if result.returncode != 0:
+                print(result.stderr, end="")
+                print("[self-heal] WARNING: could not restore Llama port-forward")
+        except subprocess.TimeoutExpired:
+            print("[self-heal] WARNING: Llama port-forward restore timed out")
+
+    # --- Lightspeed Stack (8080) ---
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", 8080, timeout=5)
+        conn.request("GET", "/readiness")
+        resp = conn.getresponse()
+        if resp.status not in (200, 401):
+            raise ConnectionError(f"HTTP {resp.status}")
+        conn.close()
+    except Exception:  # pylint: disable=broad-exception-caught
+        print("[self-heal] LSC port-forward dead — re-establishing")
+        try:
+            result = run_e2e_ops("restart-port-forward", timeout=120)
+            print(result.stdout, end="")
+            if result.returncode != 0:
+                print(result.stderr, end="")
+                print("[self-heal] WARNING: could not restore LSC port-forward")
+        except subprocess.TimeoutExpired:
+            print("[self-heal] WARNING: LSC port-forward restore timed out")
 
 
 def restart_lightspeed_stack_only() -> None:

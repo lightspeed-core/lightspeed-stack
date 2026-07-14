@@ -75,6 +75,7 @@ authorization:
         - "get_tools"
         - "info"
         - "model_override"
+        - "rlsapi_v1_infer"
     # Viewer role can only read (no mutations)
     - role: "viewer"
       actions:

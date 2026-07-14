@@ -20,7 +20,19 @@ fi
 
 # 1. Llama Stack (run from source; manifest is static, no envsubst)
 oc apply -n "$NAMESPACE" -f "$BASE_DIR/manifests/lightspeed/llama-stack-openai.yaml"
-oc wait pod/llama-stack-service -n "$NAMESPACE" --for=condition=Ready --timeout=600s
+if ! oc wait pod/llama-stack-service -n "$NAMESPACE" --for=condition=Ready --timeout=600s; then
+  echo "FAILED: llama-stack-service pod did not become ready"
+  echo "========== pod status =========="
+  oc get pod llama-stack-service -n "$NAMESPACE" -o wide 2>&1 || true
+  echo "========== pod describe (events) =========="
+  oc describe pod llama-stack-service -n "$NAMESPACE" 2>&1 | tail -40 || true
+  echo "========== init container: setup-from-source logs =========="
+  oc logs llama-stack-service -n "$NAMESPACE" -c setup-from-source 2>&1 | tail -80 || true
+  echo "========== init container: setup-rag-data logs =========="
+  oc logs llama-stack-service -n "$NAMESPACE" -c setup-rag-data 2>&1 | tail -40 || true
+  echo "========== main container: llama-stack-container logs =========="
+  oc logs llama-stack-service -n "$NAMESPACE" -c llama-stack-container 2>&1 | tail -80 || true
+fi
 
 oc label pod llama-stack-service pod=llama-stack-service -n "$NAMESPACE"
 oc expose pod llama-stack-service --name=llama-stack-service-svc --port=8321 --type=ClusterIP -n "$NAMESPACE"
@@ -29,7 +41,9 @@ export E2E_LLAMA_HOSTNAME="llama-stack-service-svc.${NAMESPACE}.svc.cluster.loca
 oc create secret generic llama-stack-ip-secret --from-literal=key="$E2E_LLAMA_HOSTNAME" -n "$NAMESPACE" || true
 
 # 2. Lightspeed Stack (image from env; default if unset)
-LIGHTSPEED_STACK_IMAGE="${LIGHTSPEED_STACK_IMAGE:-quay.io/lightspeed-core/lightspeed-stack:dev-latest}"
+if [[ -z "${LIGHTSPEED_STACK_IMAGE:-}" ]]; then
+  echo "LIGHTSPEED_STACK_IMAGE is not set"; exit 1
+fi
 export LIGHTSPEED_STACK_IMAGE
 LIGHTSPEED_MANIFEST="$BASE_DIR/manifests/lightspeed/lightspeed-stack.yaml"
 if command -v envsubst >/dev/null 2>&1; then

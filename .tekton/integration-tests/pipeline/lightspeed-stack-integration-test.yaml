@@ -80,6 +80,8 @@ spec:
                 value: "$(steps.pick-version.results.version)"
               - name: instanceType
                 value: "m5.large"
+              - name: timeout
+                value: "4h0m0s"
     - name: get-stack-images
       description: Extract lightspeed-stack image and commit from SNAPSHOT (Llama Stack runs from source in-pod)
       runAfter:
