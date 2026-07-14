@@ -1,6 +1,7 @@
 """Function to dump the schema of all data models into OpenAPI-compatible format."""
 
 import models.api.requests as r
+import models.api.responses.successful as s
 import models.compaction as models_compaction
 from utils.openapi_schema_dumper import dump_openapi_schema
 
@@ -43,6 +44,46 @@ def dump_models(filename: str) -> None:
         r.VectorStoreCreateRequest,
         r.VectorStoreFileCreateRequest,
         r.VectorStoreUpdateRequest,
+        s.AuthorizedResponse,
+        s.ConfigurationResponse,
+        s.ConversationDeleteResponse,
+        s.ConversationResponse,
+        s.ConversationUpdateResponse,
+        s.ConversationsListResponse,
+        s.ConversationsListResponseV2,
+        s.FeedbackResponse,
+        s.FeedbackStatusUpdateResponse,
+        s.FileResponse,
+        s.InfoResponse,
+        s.LivenessResponse,
+        s.MCPClientAuthOptionsResponse,
+        s.MCPServerDeleteResponse,
+        s.MCPServerListResponse,
+        s.MCPServerRegistrationResponse,
+        s.ModelsResponse,
+        s.PromptDeleteResponse,
+        s.PromptResourceResponse,
+        s.PromptsListResponse,
+        s.ProviderResponse,
+        s.ProvidersListResponse,
+        s.QueryResponse,
+        s.RAGInfoResponse,
+        s.RAGListResponse,
+        s.ReadinessResponse,
+        s.ResponsesResponse,
+        s.RlsapiV1InferData,
+        s.RlsapiV1InferResponse,
+        s.ShieldsResponse,
+        s.StatusResponse,
+        s.StreamingInterruptResponse,
+        s.StreamingQueryResponse,
+        s.ToolsResponse,
+        s.VectorStoreDeleteResponse,
+        s.VectorStoreFileDeleteResponse,
+        s.VectorStoreFileResponse,
+        s.VectorStoreFilesListResponse,
+        s.VectorStoreResponse,
+        s.VectorStoresListResponse,
     ]:
         models.append(model)
     dump_openapi_schema(models, filename)

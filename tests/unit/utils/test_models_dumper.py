@@ -20,6 +20,130 @@ def test_dump_models(tmpdir: Path) -> None:
         },
         "components": {
             "schemas": {
+                "A2AStateConfiguration": {
+                    "additionalProperties": false,
+                    "description": "A2A protocol persistent state configuration.\n\nConfigures how A2A task state and context-to-conversation mappings are\nstored. For multi-worker deployments, use SQLite or PostgreSQL to ensure\nstate is shared across all workers.\n\nIf no configuration is provided, in-memory storage is used (default).\nThis is suitable for single-worker deployments but state will be lost\non restarts and not shared across workers.\n\nAttributes:\n    sqlite: SQLite database configuration for A2A state storage.\n    postgres: PostgreSQL database configuration for A2A state storage.",
+                    "properties": {
+                        "sqlite": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`SQLiteDatabaseConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "SQLite database configuration for A2A state storage.",
+                            "title": "SQLite configuration"
+                        },
+                        "postgres": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`PostgreSQLDatabaseConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "PostgreSQL database configuration for A2A state storage.",
+                            "title": "PostgreSQL configuration"
+                        }
+                    },
+                    "title": "A2AStateConfiguration",
+                    "type": "object"
+                },
+                "APIKeyTokenConfiguration": {
+                    "additionalProperties": false,
+                    "description": "API Key Token configuration.",
+                    "properties": {
+                        "api_key": {
+                            "examples": [
+                                "some-api-key"
+                            ],
+                            "format": "password",
+                            "minLength": 1,
+                            "title": "API key",
+                            "type": "string",
+                            "writeOnly": true
+                        }
+                    },
+                    "required": [
+                        "api_key"
+                    ],
+                    "title": "APIKeyTokenConfiguration",
+                    "type": "object"
+                },
+                "AccessRule": {
+                    "additionalProperties": false,
+                    "description": "Rule defining what actions a role can perform.",
+                    "properties": {
+                        "role": {
+                            "description": "Name of the role",
+                            "title": "Role name",
+                            "type": "string"
+                        },
+                        "actions": {
+                            "description": "Allowed actions for this role",
+                            "items": {
+                                "$ref": "`#/components/schemas/`Action"
+                            },
+                            "title": "Allowed actions",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "role",
+                        "actions"
+                    ],
+                    "title": "AccessRule",
+                    "type": "object"
+                },
+                "Action": {
+                    "description": "Available actions in the system.\n\nNote: this is not a real model, just an enumeration of all action names.",
+                    "enum": [
+                        "admin",
+                        "list_other_conversations",
+                        "read_other_conversations",
+                        "query_other_conversations",
+                        "delete_other_conversations",
+                        "query",
+                        "responses",
+                        "streaming_query",
+                        "get_conversation",
+                        "list_conversations",
+                        "delete_conversation",
+                        "update_conversation",
+                        "feedback",
+                        "get_models",
+                        "get_tools",
+                        "get_shields",
+                        "list_providers",
+                        "get_provider",
+                        "list_rags",
+                        "get_rag",
+                        "get_metrics",
+                        "get_config",
+                        "info",
+                        "model_override",
+                        "rlsapi_v1_infer",
+                        "register_mcp_server",
+                        "list_mcp_servers",
+                        "delete_mcp_server",
+                        "a2a_agent_card",
+                        "a2a_task_execution",
+                        "a2a_message",
+                        "a2a_jsonrpc",
+                        "manage_vector_stores",
+                        "read_vector_stores",
+                        "manage_files",
+                        "manage_prompts",
+                        "read_prompts"
+                    ],
+                    "title": "Action",
+                    "type": "string"
+                },
                 "AllowedToolsFilter": {
                     "description": "Filter configuration for restricting which MCP tools can be used.\n\n:param tool_names: (Optional) List of specific tool names that are allowed",
                     "properties": {
@@ -33,23 +157,26 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "AllowedToolsFilter",
                     "type": "object"
                 },
-                "ApprovalFilter": {
-                    "description": "Filter configuration for MCP tool approval requirements.\n\n:param always: (Optional) List of tool names that always require approval\n:param never: (Optional) List of tool names that never require approval",
+                "ApprovalsConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Configuration for human-in-the-loop approvals.\n\nAttributes:\n    approval_timeout_seconds: How long approval requests remain pending\n        before expiring.\n    approval_retention_days: How long to retain decided approvals for audit\n        purposes before cleanup.",
                     "properties": {
-                        "always": {
-                            "type": "array",
-                            "nullable": true,
-                            "default": null,
-                            "title": "Always"
+                        "approval_timeout_seconds": {
+                            "default": 300,
+                            "description": "Seconds before pending approval requests expire",
+                            "minimum": 0,
+                            "title": "Approval timeout",
+                            "type": "integer"
                         },
-                        "never": {
-                            "type": "array",
-                            "nullable": true,
-                            "default": null,
-                            "title": "Never"
+                        "approval_retention_days": {
+                            "default": 30,
+                            "description": "Days to retain decided approvals before cleanup",
+                            "minimum": 0,
+                            "title": "Retention period",
+                            "type": "integer"
                         }
                     },
-                    "title": "ApprovalFilter",
+                    "title": "ApprovalsConfiguration",
                     "type": "object"
                 },
                 "Attachment": {
@@ -106,6 +233,929 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "Attachment",
                     "type": "object"
                 },
+                "AuthenticationConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Authentication configuration.",
+                    "properties": {
+                        "module": {
+                            "default": "noop",
+                            "title": "Module",
+                            "type": "string"
+                        },
+                        "skip_tls_verification": {
+                            "default": false,
+                            "title": "Skip Tls Verification",
+                            "type": "boolean"
+                        },
+                        "skip_for_health_probes": {
+                            "default": false,
+                            "description": "Skip authorization for readiness and liveness probes",
+                            "title": "Skip authorization for probes",
+                            "type": "boolean"
+                        },
+                        "skip_for_metrics": {
+                            "default": false,
+                            "description": "Skip authorization for the /metrics endpoint",
+                            "title": "Skip authorization for metrics",
+                            "type": "boolean"
+                        },
+                        "k8s_cluster_api": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "K8S Cluster Api"
+                        },
+                        "k8s_ca_cert_path": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "K8S Ca Cert Path"
+                        },
+                        "jwk_config": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`JwkConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null
+                        },
+                        "api_key_config": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`APIKeyTokenConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null
+                        },
+                        "rh_identity_config": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`RHIdentityConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null
+                        },
+                        "trusted_proxy_config": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`TrustedProxyConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null
+                        }
+                    },
+                    "title": "AuthenticationConfiguration",
+                    "type": "object"
+                },
+                "AuthorizationConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Authorization configuration.",
+                    "properties": {
+                        "access_rules": {
+                            "description": "Rules for role-based access control",
+                            "items": {
+                                "$ref": "`#/components/schemas/`AccessRule"
+                            },
+                            "title": "Access rules",
+                            "type": "array"
+                        }
+                    },
+                    "title": "AuthorizationConfiguration",
+                    "type": "object"
+                },
+                "AuthorizedResponse": {
+                    "description": "Model representing a response to an authorization request.\n\nAttributes:\n    user_id: The ID of the logged in user.\n    username: The name of the logged in user.\n    skip_userid_check: Whether to skip the user ID check.",
+                    "examples": [
+                        {
+                            "skip_userid_check": false,
+                            "user_id": "123e4567-e89b-12d3-a456-426614174000",
+                            "username": "user1"
+                        }
+                    ],
+                    "properties": {
+                        "user_id": {
+                            "description": "User ID, for example UUID",
+                            "examples": [
+                                "c5260aec-4d82-4370-9fdf-05cf908b3f16"
+                            ],
+                            "title": "User Id",
+                            "type": "string"
+                        },
+                        "username": {
+                            "description": "User name",
+                            "examples": [
+                                "John Doe",
+                                "Adam Smith"
+                            ],
+                            "title": "Username",
+                            "type": "string"
+                        },
+                        "skip_userid_check": {
+                            "description": "Whether to skip the user ID check",
+                            "examples": [
+                                true,
+                                false
+                            ],
+                            "title": "Skip Userid Check",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "user_id",
+                        "username",
+                        "skip_userid_check"
+                    ],
+                    "title": "AuthorizedResponse",
+                    "type": "object"
+                },
+                "AzureEntraIdConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Microsoft Entra ID authentication attributes for Azure.",
+                    "properties": {
+                        "tenant_id": {
+                            "format": "password",
+                            "title": "Tenant Id",
+                            "type": "string",
+                            "writeOnly": true
+                        },
+                        "client_id": {
+                            "format": "password",
+                            "title": "Client Id",
+                            "type": "string",
+                            "writeOnly": true
+                        },
+                        "client_secret": {
+                            "format": "password",
+                            "title": "Client Secret",
+                            "type": "string",
+                            "writeOnly": true
+                        },
+                        "scope": {
+                            "default": "https://cognitiveservices.azure.com/.default",
+                            "description": "Azure Cognitive Services scope for token requests. Override only if using a different Azure service.",
+                            "title": "Token scope",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "tenant_id",
+                        "client_id",
+                        "client_secret"
+                    ],
+                    "title": "AzureEntraIdConfiguration",
+                    "type": "object"
+                },
+                "ByokRag": {
+                    "additionalProperties": false,
+                    "description": "BYOK (Bring Your Own Knowledge) RAG configuration.",
+                    "properties": {
+                        "rag_id": {
+                            "description": "Unique RAG ID",
+                            "minLength": 1,
+                            "title": "RAG ID",
+                            "type": "string"
+                        },
+                        "rag_type": {
+                            "default": "inline::faiss",
+                            "description": "Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').",
+                            "minLength": 1,
+                            "title": "RAG type",
+                            "type": "string"
+                        },
+                        "embedding_model": {
+                            "default": "sentence-transformers/all-mpnet-base-v2",
+                            "description": "Embedding model identification",
+                            "minLength": 1,
+                            "title": "Embedding model",
+                            "type": "string"
+                        },
+                        "embedding_dimension": {
+                            "default": 768,
+                            "description": "Dimensionality of embedding vectors.",
+                            "minimum": 0,
+                            "title": "Embedding dimension",
+                            "type": "integer"
+                        },
+                        "vector_db_id": {
+                            "description": "Vector database identification.",
+                            "minLength": 1,
+                            "title": "Vector DB ID",
+                            "type": "string"
+                        },
+                        "db_path": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Path to RAG database. Required for inline::faiss.",
+                            "title": "DB path"
+                        },
+                        "score_multiplier": {
+                            "default": 1.0,
+                            "description": "Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them.",
+                            "minimum": 0,
+                            "title": "Score multiplier",
+                            "type": "number"
+                        },
+                        "host": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "PostgreSQL host for remote::pgvector. Defaults to ${env.POSTGRES_HOST} when rag_type is remote::pgvector.",
+                            "title": "PostgreSQL host"
+                        },
+                        "port": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "PostgreSQL port for remote::pgvector. Defaults to ${env.POSTGRES_PORT} when rag_type is remote::pgvector.",
+                            "title": "PostgreSQL port"
+                        },
+                        "db": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "PostgreSQL database name for remote::pgvector. Defaults to ${env.POSTGRES_DATABASE} when rag_type is remote::pgvector.",
+                            "title": "PostgreSQL database"
+                        },
+                        "user": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "PostgreSQL user for remote::pgvector. Defaults to ${env.POSTGRES_USER} when rag_type is remote::pgvector.",
+                            "title": "PostgreSQL user"
+                        },
+                        "password": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "PostgreSQL password for remote::pgvector. Defaults to ${env.POSTGRES_PASSWORD} when rag_type is remote::pgvector.",
+                            "title": "PostgreSQL password"
+                        }
+                    },
+                    "required": [
+                        "rag_id",
+                        "vector_db_id"
+                    ],
+                    "title": "ByokRag",
+                    "type": "object"
+                },
+                "CORSConfiguration": {
+                    "additionalProperties": false,
+                    "description": "CORS configuration.\n\nCORS or 'Cross-Origin Resource Sharing' refers to the situations when a\nfrontend running in a browser has JavaScript code that communicates with a\nbackend, and the backend is in a different 'origin' than the frontend.\n\nUseful resources:\n\n  - [CORS in FastAPI](https://fastapi.tiangolo.com/tutorial/cors/)\n  - [Wikipedia article](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing)\n  - [What is CORS?](https://dev.to/akshay_chauhan/what-is-cors-explained-8f1)",
+                    "properties": {
+                        "allow_origins": {
+                            "default": [
+                                "*"
+                            ],
+                            "description": "A list of origins allowed for cross-origin requests. An origin is the combination of protocol (http, https), domain (myapp.com, localhost, localhost.tiangolo.com), and port (80, 443, 8080). Use ['*'] to allow all origins.",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Allow origins",
+                            "type": "array"
+                        },
+                        "allow_credentials": {
+                            "default": false,
+                            "description": "Indicate that cookies should be supported for cross-origin requests",
+                            "title": "Allow credentials",
+                            "type": "boolean"
+                        },
+                        "allow_methods": {
+                            "default": [
+                                "*"
+                            ],
+                            "description": "A list of HTTP methods that should be allowed for cross-origin requests. You can use ['*'] to allow all standard methods.",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Allow methods",
+                            "type": "array"
+                        },
+                        "allow_headers": {
+                            "default": [
+                                "*"
+                            ],
+                            "description": "A list of HTTP request headers that should be supported for cross-origin requests. You can use ['*'] to allow all headers. The Accept, Accept-Language, Content-Language and Content-Type headers are always allowed for simple CORS requests.",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Allow headers",
+                            "type": "array"
+                        }
+                    },
+                    "title": "CORSConfiguration",
+                    "type": "object"
+                },
+                "CompactionConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Configuration for conversation history compaction.\n\nCompaction summarizes older conversation turns when their estimated\ntoken count approaches the context window limit, keeping the\nconversation usable instead of failing with HTTP 413. The\nconfiguration here controls when compaction triggers and how much\nrecent context is preserved verbatim.\n\nAttributes:\n    enabled: Master switch. When False, compaction never triggers\n        and other fields are inert.\n    threshold_ratio: Trigger compaction when estimated input tokens\n        exceed this fraction of the model's context window\n        (clamped to 0.0..1.0).\n    token_floor: Minimum estimated token count before compaction\n        can trigger, regardless of threshold_ratio. Prevents\n        triggering on very small context windows.\n    buffer_turns: Initial number of recent turns to keep verbatim.\n        The runtime applies a degrading guard \u2014 if these turns\n        exceed the available budget, it reduces buffer_turns by\n        one repeatedly until the budget fits, down to zero.\n    buffer_max_ratio: Hard cap on the fraction of the context\n        window the buffer zone may occupy, regardless of\n        buffer_turns.",
+                    "properties": {
+                        "enabled": {
+                            "default": false,
+                            "description": "When true, older conversation turns are summarized when estimated tokens approach the context window limit.",
+                            "title": "Enable compaction",
+                            "type": "boolean"
+                        },
+                        "threshold_ratio": {
+                            "default": 0.7,
+                            "description": "Trigger compaction when estimated tokens exceed this fraction of the model's context window (0.0-1.0).",
+                            "title": "Threshold ratio",
+                            "type": "number"
+                        },
+                        "token_floor": {
+                            "default": 4096,
+                            "description": "Minimum token count before compaction can trigger. Prevents triggering on very small context windows.",
+                            "minimum": 0,
+                            "title": "Token floor",
+                            "type": "integer"
+                        },
+                        "buffer_turns": {
+                            "default": 4,
+                            "description": "Number of recent turns to keep verbatim.",
+                            "minimum": 0,
+                            "title": "Buffer turns",
+                            "type": "integer"
+                        },
+                        "buffer_max_ratio": {
+                            "default": 0.3,
+                            "description": "Maximum fraction of context window the buffer zone can occupy, regardless of buffer_turns.",
+                            "title": "Buffer max ratio",
+                            "type": "number"
+                        }
+                    },
+                    "title": "CompactionConfiguration",
+                    "type": "object"
+                },
+                "Configuration": {
+                    "additionalProperties": false,
+                    "description": "Global service configuration.",
+                    "properties": {
+                        "name": {
+                            "description": "Name of the service. That value will be used in REST API endpoints.",
+                            "title": "Service name",
+                            "type": "string"
+                        },
+                        "service": {
+                            "$ref": "`#/components/schemas/`ServiceConfiguration",
+                            "description": "This section contains Lightspeed Core Stack service configuration.",
+                            "title": "Service configuration"
+                        },
+                        "llama_stack": {
+                            "$ref": "`#/components/schemas/`LlamaStackConfiguration",
+                            "description": "This section contains Llama Stack configuration. Lightspeed Core Stack service can call Llama Stack in library mode or in server mode.",
+                            "title": "Llama Stack configuration"
+                        },
+                        "user_data_collection": {
+                            "$ref": "`#/components/schemas/`UserDataCollection",
+                            "description": "This section contains configuration for subsystem that collects user data(transcription history and feedbacks).",
+                            "title": "User data collection configuration"
+                        },
+                        "database": {
+                            "$ref": "`#/components/schemas/`DatabaseConfiguration",
+                            "description": "Configuration for database to store conversation IDs and other runtime data",
+                            "title": "Database Configuration"
+                        },
+                        "mcp_servers": {
+                            "description": "MCP (Model Context Protocol) servers provide tools and capabilities to the AI agents. These are configured in this section. Only MCP servers defined in the lightspeed-stack.yaml configuration are available to the agents. Tools configured in the llama-stack run.yaml are not accessible to lightspeed-core agents.",
+                            "items": {
+                                "$ref": "`#/components/schemas/`ModelContextProtocolServer"
+                            },
+                            "title": "Model Context Protocol Server and tools configuration",
+                            "type": "array"
+                        },
+                        "authentication": {
+                            "$ref": "`#/components/schemas/`AuthenticationConfiguration",
+                            "description": "Authentication configuration",
+                            "title": "Authentication configuration"
+                        },
+                        "authorization": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`AuthorizationConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Lightspeed Core Stack implements a modular authentication and authorization system with multiple authentication methods. Authorization is configurable through role-based access control. Authentication is handled through selectable modules configured via the module field in the authentication configuration.",
+                            "title": "Authorization configuration"
+                        },
+                        "customization": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`Customization"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "It is possible to customize Lightspeed Core Stack via this section. System prompt can be customized and also different parts of the service can be replaced by custom Python modules.",
+                            "title": "Custom profile configuration"
+                        },
+                        "inference": {
+                            "$ref": "`#/components/schemas/`InferenceConfiguration",
+                            "description": "One LLM provider and one its model might be selected as default ones. When no provider+model pair is specified in REST API calls (query endpoints), the default provider and model are used.",
+                            "title": "Inference configuration"
+                        },
+                        "conversation_cache": {
+                            "$ref": "`#/components/schemas/`ConversationHistoryConfiguration",
+                            "title": "Conversation history configuration"
+                        },
+                        "compaction": {
+                            "$ref": "`#/components/schemas/`CompactionConfiguration",
+                            "description": "Controls when conversation history is summarized to keep the model's input below the context window limit. Disabled by default \u2014 when disabled, requests that exceed the window continue to surface as HTTP 413.",
+                            "title": "Conversation compaction configuration"
+                        },
+                        "approvals": {
+                            "$ref": "`#/components/schemas/`ApprovalsConfiguration",
+                            "description": "Settings for human-in-the-loop approval of MCP tool invocations",
+                            "title": "Approvals configuration"
+                        },
+                        "byok_rag": {
+                            "description": "BYOK RAG configuration. This configuration can be used to reconfigure Llama Stack through its run.yaml configuration file",
+                            "items": {
+                                "$ref": "`#/components/schemas/`ByokRag"
+                            },
+                            "title": "BYOK RAG configuration",
+                            "type": "array"
+                        },
+                        "a2a_state": {
+                            "$ref": "`#/components/schemas/`A2AStateConfiguration",
+                            "description": "Configuration for A2A protocol persistent state storage.",
+                            "title": "A2A state configuration"
+                        },
+                        "quota_handlers": {
+                            "$ref": "`#/components/schemas/`QuotaHandlersConfiguration",
+                            "description": "Quota handlers configuration",
+                            "title": "Quota handlers"
+                        },
+                        "azure_entra_id": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`AzureEntraIdConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null
+                        },
+                        "rlsapi_v1": {
+                            "$ref": "`#/components/schemas/`RlsapiV1Configuration",
+                            "description": "Configuration for the rlsapi v1 /infer endpoint used by the RHEL Lightspeed Command Line Assistant (CLA).",
+                            "title": "rlsapi v1 configuration"
+                        },
+                        "splunk": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`SplunkConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Splunk HEC configuration for sending telemetry events.",
+                            "title": "Splunk configuration"
+                        },
+                        "deployment_environment": {
+                            "default": "development",
+                            "description": "Deployment environment name (e.g., 'development', 'staging', 'production'). Used in telemetry events.",
+                            "title": "Deployment environment",
+                            "type": "string"
+                        },
+                        "rag": {
+                            "$ref": "`#/components/schemas/`RagConfiguration",
+                            "description": "Configuration for all RAG strategies (inline and tool-based).",
+                            "title": "RAG configuration"
+                        },
+                        "okp": {
+                            "$ref": "`#/components/schemas/`OkpConfiguration",
+                            "description": "OKP provider settings. Only used when 'okp' is listed in rag.inline or rag.tool.",
+                            "title": "OKP configuration"
+                        },
+                        "reranker": {
+                            "$ref": "`#/components/schemas/`RerankerConfiguration",
+                            "description": "Configuration for neural reranking of RAG chunks using cross-encoder.",
+                            "title": "Reranker configuration"
+                        },
+                        "skills": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`SkillsConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Agent skills configuration. Specifies paths to skill directories.",
+                            "title": "Agent skills"
+                        },
+                        "saved_prompts": {
+                            "$ref": "`#/components/schemas/`SavedPromptsConfiguration",
+                            "description": "Configuration for saved prompts feature limits including maximum prompts per user, display name length, and content length.",
+                            "title": "Saved prompts configuration"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "service",
+                        "llama_stack",
+                        "user_data_collection"
+                    ],
+                    "title": "Configuration",
+                    "type": "object"
+                },
+                "ConfigurationResponse": {
+                    "description": "Success response model for the config endpoint.\n\nAttributes:\n    configuration: Parsed application configuration returned to the client.",
+                    "examples": [
+                        {
+                            "configuration": {
+                                "authentication": {
+                                    "module": "noop",
+                                    "skip_tls_verification": false
+                                },
+                                "authorization": {
+                                    "access_rules": []
+                                },
+                                "byok_rag": [],
+                                "conversation_cache": {
+                                    "memory": null,
+                                    "postgres": null,
+                                    "sqlite": null,
+                                    "type": null
+                                },
+                                "customization": null,
+                                "database": {
+                                    "postgres": null,
+                                    "sqlite": {
+                                        "db_path": "/tmp/lightspeed-stack.db"
+                                    }
+                                },
+                                "inference": {
+                                    "default_model": "gpt-4-turbo",
+                                    "default_provider": "openai"
+                                },
+                                "llama_stack": {
+                                    "api_key": "*****",
+                                    "library_client_config_path": null,
+                                    "url": "http://localhost:8321",
+                                    "use_as_library_client": false
+                                },
+                                "mcp_servers": [
+                                    {
+                                        "name": "server1",
+                                        "provider_id": "provider1",
+                                        "url": "http://url.com:1"
+                                    }
+                                ],
+                                "name": "lightspeed-stack",
+                                "quota_handlers": {
+                                    "enable_token_history": false,
+                                    "limiters": [],
+                                    "postgres": null,
+                                    "scheduler": {
+                                        "period": 1
+                                    },
+                                    "sqlite": null
+                                },
+                                "service": {
+                                    "access_log": true,
+                                    "auth_enabled": false,
+                                    "color_log": true,
+                                    "cors": {
+                                        "allow_credentials": false,
+                                        "allow_headers": [
+                                            "*"
+                                        ],
+                                        "allow_methods": [
+                                            "*"
+                                        ],
+                                        "allow_origins": [
+                                            "*"
+                                        ]
+                                    },
+                                    "host": "localhost",
+                                    "port": 8080,
+                                    "tls_config": {
+                                        "tls_certificate_path": null,
+                                        "tls_key_password": null,
+                                        "tls_key_path": null
+                                    },
+                                    "workers": 1
+                                },
+                                "user_data_collection": {
+                                    "feedback_enabled": true,
+                                    "feedback_storage": "/tmp/data/feedback",
+                                    "transcripts_enabled": false,
+                                    "transcripts_storage": "/tmp/data/transcripts"
+                                }
+                            }
+                        }
+                    ],
+                    "properties": {
+                        "configuration": {
+                            "$ref": "`#/components/schemas/`Configuration"
+                        }
+                    },
+                    "required": [
+                        "configuration"
+                    ],
+                    "title": "ConfigurationResponse",
+                    "type": "object"
+                },
+                "ConversationData": {
+                    "description": "Model representing conversation data returned by cache list operations.\n\nAttributes:\n    conversation_id: The conversation ID\n    topic_summary: The topic summary for the conversation (can be None)\n    last_message_timestamp: The timestamp of the last message in the conversation",
+                    "properties": {
+                        "conversation_id": {
+                            "title": "Conversation Id",
+                            "type": "string"
+                        },
+                        "topic_summary": {
+                            "type": "string",
+                            "nullable": true,
+                            "title": "Topic Summary"
+                        },
+                        "last_message_timestamp": {
+                            "title": "Last Message Timestamp",
+                            "type": "number"
+                        }
+                    },
+                    "required": [
+                        "conversation_id",
+                        "topic_summary",
+                        "last_message_timestamp"
+                    ],
+                    "title": "ConversationData",
+                    "type": "object"
+                },
+                "ConversationDeleteResponse": {
+                    "description": "Response for deleting a conversation.",
+                    "examples": [
+                        {
+                            "label": "deleted",
+                            "value": {
+                                "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                "deleted": true,
+                                "response": "Conversation deleted successfully"
+                            }
+                        },
+                        {
+                            "label": "not found",
+                            "value": {
+                                "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                "deleted": false,
+                                "response": "Conversation not found"
+                            }
+                        }
+                    ],
+                    "properties": {
+                        "deleted": {
+                            "description": "Whether the deletion was successful.",
+                            "examples": [
+                                true,
+                                false
+                            ],
+                            "title": "Deleted",
+                            "type": "boolean"
+                        },
+                        "conversation_id": {
+                            "description": "Conversation identifier that was passed to delete.",
+                            "examples": [
+                                "123e4567-e89b-12d3-a456-426614174000"
+                            ],
+                            "title": "Conversation Id",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "deleted",
+                        "conversation_id"
+                    ],
+                    "title": "ConversationDeleteResponse",
+                    "type": "object"
+                },
+                "ConversationDetails": {
+                    "description": "Model representing the details of a user conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    created_at: When the conversation was created.\n    last_message_at: When the last message was sent.\n    message_count: Number of user messages in the conversation.\n    last_used_model: The last model used for the conversation.\n    last_used_provider: The provider of the last used model.\n    topic_summary: The topic summary for the conversation.\n\nExample:\n    ```python\n    conversation = ConversationDetails(\n        conversation_id=\"123e4567-e89b-12d3-a456-426614174000\",\n        created_at=\"2024-01-01T00:00:00Z\",\n        last_message_at=\"2024-01-01T00:05:00Z\",\n        message_count=5,\n        last_used_model=\"gemini/gemini-2.0-flash\",\n        last_used_provider=\"gemini\",\n        topic_summary=\"Openshift Microservices Deployment Strategies\",\n    )\n    ```",
+                    "properties": {
+                        "conversation_id": {
+                            "description": "Conversation ID (UUID)",
+                            "examples": [
+                                "c5260aec-4d82-4370-9fdf-05cf908b3f16"
+                            ],
+                            "title": "Conversation Id",
+                            "type": "string"
+                        },
+                        "created_at": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "When the conversation was created",
+                            "examples": [
+                                "2024-01-01T01:00:00Z"
+                            ],
+                            "title": "Created At"
+                        },
+                        "last_message_at": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "When the last message was sent",
+                            "examples": [
+                                "2024-01-01T01:00:00Z"
+                            ],
+                            "title": "Last Message At"
+                        },
+                        "message_count": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Number of user messages in the conversation",
+                            "examples": [
+                                42
+                            ],
+                            "title": "Message Count"
+                        },
+                        "last_used_model": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Identification of the last model used for the conversation",
+                            "examples": [
+                                "gpt-4-turbo",
+                                "gpt-3.5-turbo-0125"
+                            ],
+                            "title": "Last Used Model"
+                        },
+                        "last_used_provider": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Identification of the last provider used for the conversation",
+                            "examples": [
+                                "openai",
+                                "gemini"
+                            ],
+                            "title": "Last Used Provider"
+                        },
+                        "topic_summary": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Topic summary for the conversation",
+                            "examples": [
+                                "Openshift Microservices Deployment Strategies"
+                            ],
+                            "title": "Topic Summary"
+                        }
+                    },
+                    "required": [
+                        "conversation_id"
+                    ],
+                    "title": "ConversationDetails",
+                    "type": "object"
+                },
+                "ConversationHistoryConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Conversation history configuration.",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Type of database where the conversation history is to be stored.",
+                            "title": "Conversation history database type"
+                        },
+                        "memory": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`InMemoryCacheConfig"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "In-memory cache configuration",
+                            "title": "In-memory cache configuration"
+                        },
+                        "sqlite": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`SQLiteDatabaseConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "SQLite database configuration",
+                            "title": "SQLite configuration"
+                        },
+                        "postgres": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`PostgreSQLDatabaseConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "PostgreSQL database configuration",
+                            "title": "PostgreSQL configuration"
+                        }
+                    },
+                    "title": "ConversationHistoryConfiguration",
+                    "type": "object"
+                },
+                "ConversationResponse": {
+                    "description": "Model representing a response for retrieving a conversation.\n\nAttributes:\n    conversation_id: The conversation ID (UUID).\n    chat_history: The chat history as a list of conversation turns.",
+                    "examples": [
+                        {
+                            "chat_history": [
+                                {
+                                    "completed_at": "2024-01-01T00:01:05Z",
+                                    "messages": [
+                                        {
+                                            "content": "Hello",
+                                            "type": "user"
+                                        },
+                                        {
+                                            "content": "Hi there!",
+                                            "type": "assistant"
+                                        }
+                                    ],
+                                    "model": "gpt-4o-mini",
+                                    "provider": "openai",
+                                    "started_at": "2024-01-01T00:01:00Z",
+                                    "tool_calls": [],
+                                    "tool_results": []
+                                }
+                            ],
+                            "conversation_id": "123e4567-e89b-12d3-a456-426614174000"
+                        }
+                    ],
+                    "properties": {
+                        "conversation_id": {
+                            "description": "Conversation ID (UUID)",
+                            "examples": [
+                                "c5260aec-4d82-4370-9fdf-05cf908b3f16"
+                            ],
+                            "title": "Conversation Id",
+                            "type": "string"
+                        },
+                        "chat_history": {
+                            "description": "The simplified chat history as a list of conversation turns",
+                            "examples": [
+                                {
+                                    "completed_at": "2024-01-01T00:01:05Z",
+                                    "messages": [
+                                        {
+                                            "content": "Hello",
+                                            "type": "user"
+                                        },
+                                        {
+                                            "content": "Hi there!",
+                                            "type": "assistant"
+                                        }
+                                    ],
+                                    "model": "gpt-4o-mini",
+                                    "provider": "openai",
+                                    "started_at": "2024-01-01T00:01:00Z",
+                                    "tool_calls": [],
+                                    "tool_results": []
+                                }
+                            ],
+                            "items": {
+                                "$ref": "`#/components/schemas/`ConversationTurn"
+                            },
+                            "title": "Chat History",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "conversation_id",
+                        "chat_history"
+                    ],
+                    "title": "ConversationResponse",
+                    "type": "object"
+                },
                 "ConversationSummary": {
                     "description": "A single compaction-produced summary chunk.\n\nAttributes:\n    summary_text: The natural-language summary produced by the\n        summarization LLM call. Used directly as context for\n        subsequent requests (alongside any later summary chunks\n        and the buffer of recent turns kept verbatim).\n    summarized_through_turn: Running total of conversation items\n        consumed by this and all preceding summaries. Used by the\n        caller to advance the partition boundary on the next\n        compaction so the new summary only covers items that\n        have not yet been summarized.\n    token_count: Number of tokens in ``summary_text``. Tracked so\n        the recursive-resummarize fallback can decide when the\n        cumulative summary size itself approaches the context\n        limit without re-tokenizing.\n    created_at: ISO 8601 timestamp recording when this summary was\n        produced. Kept as a string (not datetime) to match the\n        cache schema convention used elsewhere in the codebase.\n    model_used: Fully-qualified model identifier used for the\n        summarization LLM call (e.g., ``\"openai/gpt-4o-mini\"``).\n        Preserved for audit and for diagnostics when summary\n        quality varies between models.",
                     "properties": {
@@ -147,6 +1197,75 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "ConversationSummary",
                     "type": "object"
                 },
+                "ConversationTurn": {
+                    "description": "Model representing a single conversation turn.\n\nAttributes:\n    messages: List of messages in this turn.\n    tool_calls: List of tool calls made in this turn.\n    tool_results: List of tool results from this turn.\n    provider: Provider identifier used for this turn.\n    model: Model identifier used for this turn.\n    started_at: ISO 8601 timestamp when the turn started.\n    completed_at: ISO 8601 timestamp when the turn completed.",
+                    "properties": {
+                        "messages": {
+                            "description": "List of messages in this turn",
+                            "items": {
+                                "$ref": "`#/components/schemas/`Message"
+                            },
+                            "title": "Messages",
+                            "type": "array"
+                        },
+                        "tool_calls": {
+                            "description": "List of tool calls made in this turn",
+                            "items": {
+                                "$ref": "`#/components/schemas/`ToolCallSummary"
+                            },
+                            "title": "Tool Calls",
+                            "type": "array"
+                        },
+                        "tool_results": {
+                            "description": "List of tool results from this turn",
+                            "items": {
+                                "$ref": "`#/components/schemas/`ToolResultSummary"
+                            },
+                            "title": "Tool Results",
+                            "type": "array"
+                        },
+                        "provider": {
+                            "description": "Provider identifier used for this turn",
+                            "examples": [
+                                "openai"
+                            ],
+                            "title": "Provider",
+                            "type": "string"
+                        },
+                        "model": {
+                            "description": "Model identifier used for this turn",
+                            "examples": [
+                                "gpt-4o-mini"
+                            ],
+                            "title": "Model",
+                            "type": "string"
+                        },
+                        "started_at": {
+                            "description": "ISO 8601 timestamp when the turn started",
+                            "examples": [
+                                "2024-01-01T00:01:00Z"
+                            ],
+                            "title": "Started At",
+                            "type": "string"
+                        },
+                        "completed_at": {
+                            "description": "ISO 8601 timestamp when the turn completed",
+                            "examples": [
+                                "2024-01-01T00:01:05Z"
+                            ],
+                            "title": "Completed At",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "provider",
+                        "model",
+                        "started_at",
+                        "completed_at"
+                    ],
+                    "title": "ConversationTurn",
+                    "type": "object"
+                },
                 "ConversationUpdateRequest": {
                     "additionalProperties": false,
                     "description": "Model representing a request to update a conversation topic summary.\n\nAttributes:\n    topic_summary: The new topic summary for the conversation.",
@@ -166,6 +1285,234 @@ def test_dump_models(tmpdir: Path) -> None:
                         "topic_summary"
                     ],
                     "title": "ConversationUpdateRequest",
+                    "type": "object"
+                },
+                "ConversationUpdateResponse": {
+                    "description": "Model representing a response for updating a conversation topic summary.\n\nAttributes:\n    conversation_id: The conversation ID (UUID) that was updated.\n    success: Whether the update was successful.\n    message: A message about the update result.",
+                    "examples": [
+                        {
+                            "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                            "message": "Topic summary updated successfully",
+                            "success": true
+                        }
+                    ],
+                    "properties": {
+                        "conversation_id": {
+                            "description": "The conversation ID (UUID) that was updated",
+                            "examples": [
+                                "123e4567-e89b-12d3-a456-426614174000"
+                            ],
+                            "title": "Conversation Id",
+                            "type": "string"
+                        },
+                        "success": {
+                            "description": "Whether the update was successful",
+                            "examples": [
+                                true
+                            ],
+                            "title": "Success",
+                            "type": "boolean"
+                        },
+                        "message": {
+                            "description": "A message about the update result",
+                            "examples": [
+                                "Topic summary updated successfully"
+                            ],
+                            "title": "Message",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "conversation_id",
+                        "success",
+                        "message"
+                    ],
+                    "title": "ConversationUpdateResponse",
+                    "type": "object"
+                },
+                "ConversationsListResponse": {
+                    "description": "Model representing a response for listing conversations of a user.\n\nAttributes:\n    conversations: List of conversation details associated with the user.",
+                    "examples": [
+                        {
+                            "conversations": [
+                                {
+                                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                    "created_at": "2024-01-01T00:00:00Z",
+                                    "last_message_at": "2024-01-01T00:05:00Z",
+                                    "last_used_model": "gemini/gemini-2.0-flash",
+                                    "last_used_provider": "gemini",
+                                    "message_count": 5,
+                                    "topic_summary": "Openshift Microservices Deployment Strategies"
+                                },
+                                {
+                                    "conversation_id": "456e7890-e12b-34d5-a678-901234567890",
+                                    "created_at": "2024-01-01T01:00:00Z",
+                                    "last_used_model": "gemini/gemini-2.5-flash",
+                                    "last_used_provider": "gemini",
+                                    "message_count": 2,
+                                    "topic_summary": "RHDH Purpose Summary"
+                                }
+                            ]
+                        }
+                    ],
+                    "properties": {
+                        "conversations": {
+                            "items": {
+                                "$ref": "`#/components/schemas/`ConversationDetails"
+                            },
+                            "title": "Conversations",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "conversations"
+                    ],
+                    "title": "ConversationsListResponse",
+                    "type": "object"
+                },
+                "ConversationsListResponseV2": {
+                    "description": "Model representing a response for listing conversations of a user.\n\nAttributes:\n    conversations: List of conversation data associated with the user.",
+                    "examples": [
+                        {
+                            "conversations": [
+                                {
+                                    "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                                    "last_message_timestamp": 1704067200.0,
+                                    "topic_summary": "Openshift Microservices Deployment Strategies"
+                                }
+                            ]
+                        }
+                    ],
+                    "properties": {
+                        "conversations": {
+                            "items": {
+                                "$ref": "`#/components/schemas/`ConversationData"
+                            },
+                            "title": "Conversations",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "conversations"
+                    ],
+                    "title": "ConversationsListResponseV2",
+                    "type": "object"
+                },
+                "CustomProfile": {
+                    "description": "Custom profile customization for prompts and validation.",
+                    "properties": {
+                        "path": {
+                            "description": "Path to Python modules containing custom profile.",
+                            "title": "Path to custom profile",
+                            "type": "string"
+                        },
+                        "prompts": {
+                            "additionalProperties": {
+                                "type": "string"
+                            },
+                            "default": {},
+                            "description": "Dictionary containing map of system prompts",
+                            "title": "System prompts",
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "path"
+                    ],
+                    "title": "CustomProfile",
+                    "type": "object"
+                },
+                "Customization": {
+                    "additionalProperties": false,
+                    "description": "Service customization.",
+                    "properties": {
+                        "profile_path": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Profile Path"
+                        },
+                        "disable_query_system_prompt": {
+                            "default": false,
+                            "title": "Disable Query System Prompt",
+                            "type": "boolean"
+                        },
+                        "disable_shield_ids_override": {
+                            "default": false,
+                            "title": "Disable Shield Ids Override",
+                            "type": "boolean"
+                        },
+                        "system_prompt_path": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "System Prompt Path"
+                        },
+                        "system_prompt": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "System Prompt"
+                        },
+                        "agent_card_path": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Agent Card Path"
+                        },
+                        "agent_card_config": {
+                            "type": "object",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Agent Card Config"
+                        },
+                        "custom_profile": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`CustomProfile"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null
+                        }
+                    },
+                    "title": "Customization",
+                    "type": "object"
+                },
+                "DatabaseConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Database configuration.",
+                    "properties": {
+                        "sqlite": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`SQLiteDatabaseConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "SQLite database configuration",
+                            "title": "SQLite configuration"
+                        },
+                        "postgres": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`PostgreSQLDatabaseConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "PostgreSQL database configuration",
+                            "title": "PostgreSQL configuration"
+                        }
+                    },
+                    "title": "DatabaseConfiguration",
                     "type": "object"
                 },
                 "FeedbackCategory": {
@@ -281,6 +1628,29 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "FeedbackRequest",
                     "type": "object"
                 },
+                "FeedbackResponse": {
+                    "description": "Model representing a response to a feedback request.\n\nAttributes:\n    response: The response of the feedback request.",
+                    "examples": [
+                        {
+                            "response": "feedback received"
+                        }
+                    ],
+                    "properties": {
+                        "response": {
+                            "description": "The response of the feedback request.",
+                            "examples": [
+                                "feedback received"
+                            ],
+                            "title": "Response",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "response"
+                    ],
+                    "title": "FeedbackResponse",
+                    "type": "object"
+                },
                 "FeedbackStatusUpdateRequest": {
                     "additionalProperties": false,
                     "description": "Model representing a feedback status update request.\n\nAttributes:\n    status: Value of the desired feedback enabled state.",
@@ -299,6 +1669,118 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "FeedbackStatusUpdateRequest",
                     "type": "object"
                 },
+                "FeedbackStatusUpdateResponse": {
+                    "description": "Model representing a response to a feedback status update request.\n\nAttributes:\n    status: The previous and current status of the service and who updated it.",
+                    "examples": [
+                        {
+                            "status": {
+                                "previous_status": true,
+                                "timestamp": "2023-03-15 12:34:56",
+                                "updated_by": "user/test",
+                                "updated_status": false
+                            }
+                        }
+                    ],
+                    "properties": {
+                        "status": {
+                            "additionalProperties": true,
+                            "title": "Status",
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "status"
+                    ],
+                    "title": "FeedbackStatusUpdateResponse",
+                    "type": "object"
+                },
+                "FileResponse": {
+                    "additionalProperties": false,
+                    "description": "Response model containing a file object.\n\nAttributes:\n    id: File ID.\n    filename: File name.\n    bytes: File size in bytes.\n    created_at: Unix timestamp when created.\n    purpose: File purpose.\n    object: Object type (always \"file\").",
+                    "examples": [
+                        {
+                            "bytes": 524288,
+                            "created_at": 1704067200,
+                            "filename": "documentation.pdf",
+                            "id": "file_abc123",
+                            "object": "file",
+                            "purpose": "assistants"
+                        }
+                    ],
+                    "properties": {
+                        "id": {
+                            "description": "File ID",
+                            "title": "Id",
+                            "type": "string"
+                        },
+                        "filename": {
+                            "description": "File name",
+                            "title": "Filename",
+                            "type": "string"
+                        },
+                        "bytes": {
+                            "description": "File size in bytes",
+                            "title": "Bytes",
+                            "type": "integer"
+                        },
+                        "created_at": {
+                            "description": "Unix timestamp when created",
+                            "title": "Created At",
+                            "type": "integer"
+                        },
+                        "purpose": {
+                            "default": "assistants",
+                            "description": "File purpose",
+                            "title": "Purpose",
+                            "type": "string"
+                        },
+                        "object": {
+                            "default": "file",
+                            "description": "Object type",
+                            "title": "Object",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "filename",
+                        "bytes",
+                        "created_at"
+                    ],
+                    "title": "FileResponse",
+                    "type": "object"
+                },
+                "HealthStatus": {
+                    "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by Llama Stack providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)\n   - UNHEALTHY: Service connected but one or more providers are unhealthy",
+                    "enum": [
+                        "ok",
+                        "error",
+                        "not_implemented",
+                        "unknown",
+                        "healthy",
+                        "degraded",
+                        "unhealthy"
+                    ],
+                    "title": "HealthStatus",
+                    "type": "string"
+                },
+                "InMemoryCacheConfig": {
+                    "additionalProperties": false,
+                    "description": "In-memory cache configuration.",
+                    "properties": {
+                        "max_entries": {
+                            "description": "Maximum number of entries stored in the in-memory cache",
+                            "minimum": 0,
+                            "title": "Max entries",
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "max_entries"
+                    ],
+                    "title": "InMemoryCacheConfig",
+                    "type": "object"
+                },
                 "IncludeParameter": {
                     "enum": [
                         "web_search_call.action.sources",
@@ -310,6 +1792,108 @@ def test_dump_models(tmpdir: Path) -> None:
                         "reasoning.encrypted_content"
                     ],
                     "type": "string"
+                },
+                "InferenceConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Inference configuration.",
+                    "properties": {
+                        "default_model": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Identification of default model used when no other model is specified.",
+                            "title": "Default model"
+                        },
+                        "default_provider": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Identification of default provider used when no other model is specified.",
+                            "title": "Default provider"
+                        },
+                        "context_windows": {
+                            "additionalProperties": {
+                                "minimum": 0,
+                                "type": "integer"
+                            },
+                            "description": "Map of fully-qualified model identifier (e.g., \"openai/gpt-4o-mini\") to context window size in tokens. Used by the conversation compaction trigger to decide when older turns must be summarized before the input exceeds the window. Models absent from this map have no registered window \u2014 callers fall back to their own default or skip the token-based trigger.",
+                            "title": "Per-model context window sizes (tokens)",
+                            "type": "object"
+                        },
+                        "providers": {
+                            "description": "Unified-mode synthesis input (Decision S5): a high-level, backend-agnostic list of inference providers the synthesizer expands into Llama Stack provider entries. Lives at the configuration root so it survives a future backend change. A non-empty list signals unified mode. Empty (the default) leaves legacy/remote modes unaffected. The sibling default_model / default_provider keep their query-time routing meaning and are independent of this list.",
+                            "items": {
+                                "$ref": "`#/components/schemas/`UnifiedInferenceProvider"
+                            },
+                            "title": "High-level inference providers",
+                            "type": "array"
+                        },
+                        "max_infer_iters": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": 10,
+                            "description": "Server-side default for the maximum number of inference iterations a model can perform in a single request. Prevents small models from looping indefinitely on tool calls. Per-request values take precedence over this default. Set to None to disable the limit.",
+                            "title": "Default max inference iterations"
+                        },
+                        "max_tool_calls": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": 30,
+                            "description": "Server-side default for the maximum number of tool calls allowed in a single response. Prevents small models from exhausting the context window with repeated tool calls. Per-request values take precedence over this default. Set to None to disable the limit.",
+                            "title": "Default max tool calls"
+                        }
+                    },
+                    "title": "InferenceConfiguration",
+                    "type": "object"
+                },
+                "InfoResponse": {
+                    "description": "Model representing a response to an info request.\n\nAttributes:\n    name: Service name.\n    service_version: Service version.\n    llama_stack_version: Llama Stack version.",
+                    "examples": [
+                        {
+                            "llama_stack_version": "1.0.0",
+                            "name": "Lightspeed Stack",
+                            "service_version": "1.0.0"
+                        }
+                    ],
+                    "properties": {
+                        "name": {
+                            "description": "Service name",
+                            "examples": [
+                                "Lightspeed Stack"
+                            ],
+                            "title": "Name",
+                            "type": "string"
+                        },
+                        "service_version": {
+                            "description": "Service version",
+                            "examples": [
+                                "0.1.0",
+                                "0.2.0",
+                                "1.0.0"
+                            ],
+                            "title": "Service Version",
+                            "type": "string"
+                        },
+                        "llama_stack_version": {
+                            "description": "Llama Stack version",
+                            "examples": [
+                                "0.2.1",
+                                "0.2.2",
+                                "0.2.18",
+                                "0.2.21",
+                                "0.2.22"
+                            ],
+                            "title": "Llama Stack Version",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "service_version",
+                        "llama_stack_version"
+                    ],
+                    "title": "InfoResponse",
+                    "type": "object"
                 },
                 "InputToolMCP": {
                     "description": "MCP input tool with authorization included when serializing request bodies.",
@@ -359,7 +1943,7 @@ def test_dump_models(tmpdir: Path) -> None:
                                     "type": "string"
                                 },
                                 {
-                                    "$ref": "`#/components/schemas/`ApprovalFilter"
+                                    "$ref": "`#/components/schemas/`llama_stack_api__openai_responses__ApprovalFilter"
                                 }
                             ],
                             "default": "never",
@@ -390,6 +1974,245 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "InputToolMCP",
                     "type": "object"
                 },
+                "JsonPathOperator": {
+                    "description": "Supported operators for JSONPath evaluation.\n\nNote: this is not a real model, just an enumeration of all supported JSONPath operators.",
+                    "enum": [
+                        "equals",
+                        "contains",
+                        "in",
+                        "match"
+                    ],
+                    "title": "JsonPathOperator",
+                    "type": "string"
+                },
+                "JwkConfiguration": {
+                    "additionalProperties": false,
+                    "description": "JWK (JSON Web Key) configuration.\n\nA JSON Web Key (JWK) is a JavaScript Object Notation (JSON) data structure\nthat represents a cryptographic key.\n\nUseful resources:\n\n  - [JSON Web Key](https://openid.net/specs/draft-jones-json-web-key-03.html)\n  - [RFC 7517](https://www.rfc-editor.org/rfc/rfc7517)",
+                    "properties": {
+                        "url": {
+                            "description": "HTTPS URL of the JWK (JSON Web Key) set used to validate JWTs.",
+                            "format": "uri",
+                            "minLength": 1,
+                            "title": "URL",
+                            "type": "string"
+                        },
+                        "jwt_configuration": {
+                            "$ref": "`#/components/schemas/`JwtConfiguration",
+                            "description": "JWT (JSON Web Token) configuration",
+                            "title": "JWT configuration"
+                        }
+                    },
+                    "required": [
+                        "url"
+                    ],
+                    "title": "JwkConfiguration",
+                    "type": "object"
+                },
+                "JwtConfiguration": {
+                    "additionalProperties": false,
+                    "description": "JWT (JSON Web Token) configuration.\n\nJSON Web Token (JWT) is a compact, URL-safe means of representing\nclaims to be transferred between two parties.  The claims in a JWT\nare encoded as a JSON object that is used as the payload of a JSON\nWeb Signature (JWS) structure or as the plaintext of a JSON Web\nEncryption (JWE) structure, enabling the claims to be digitally\nsigned or integrity protected with a Message Authentication Code\n(MAC) and/or encrypted.\n\nUseful resources:\n\n  - [JSON Web Token](https://en.wikipedia.org/wiki/JSON_Web_Token)\n  - [RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519)\n  - [JSON Web Tokens](https://auth0.com/docs/secure/tokens/json-web-tokens)",
+                    "properties": {
+                        "user_id_claim": {
+                            "default": "user_id",
+                            "description": "JWT claim name that uniquely identifies the user (subject ID).",
+                            "title": "User ID claim",
+                            "type": "string"
+                        },
+                        "username_claim": {
+                            "default": "username",
+                            "description": "JWT claim name that provides the human-readable username.",
+                            "title": "Username claim",
+                            "type": "string"
+                        },
+                        "role_rules": {
+                            "description": "Rules for extracting roles from JWT claims",
+                            "items": {
+                                "$ref": "`#/components/schemas/`JwtRoleRule"
+                            },
+                            "title": "Role rules",
+                            "type": "array"
+                        }
+                    },
+                    "title": "JwtConfiguration",
+                    "type": "object"
+                },
+                "JwtRoleRule": {
+                    "additionalProperties": false,
+                    "description": "Rule for extracting roles from JWT claims.",
+                    "properties": {
+                        "jsonpath": {
+                            "description": "JSONPath expression to evaluate against the JWT payload",
+                            "title": "JSON path",
+                            "type": "string"
+                        },
+                        "operator": {
+                            "$ref": "`#/components/schemas/`JsonPathOperator",
+                            "description": "JSON path comparison operator",
+                            "title": "Operator"
+                        },
+                        "negate": {
+                            "default": false,
+                            "description": "If set to true, the meaning of the rule is negated",
+                            "title": "Negate rule",
+                            "type": "boolean"
+                        },
+                        "value": {
+                            "description": "Value to compare against",
+                            "title": "Value"
+                        },
+                        "roles": {
+                            "description": "Roles to be assigned if the rule matches",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "List of roles",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "jsonpath",
+                        "operator",
+                        "value",
+                        "roles"
+                    ],
+                    "title": "JwtRoleRule",
+                    "type": "object"
+                },
+                "LivenessResponse": {
+                    "description": "Model representing a response to a liveness request.\n\nAttributes:\n    alive: If app is alive.",
+                    "examples": [
+                        {
+                            "alive": true
+                        }
+                    ],
+                    "properties": {
+                        "alive": {
+                            "description": "Flag indicating that the app is alive",
+                            "examples": [
+                                true,
+                                false
+                            ],
+                            "title": "Alive",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "alive"
+                    ],
+                    "title": "LivenessResponse",
+                    "type": "object"
+                },
+                "LlamaStackConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Llama stack configuration.\n\nLlama Stack is a comprehensive system that provides a uniform set of tools\nfor building, scaling, and deploying generative AI applications, enabling\ndevelopers to create, integrate, and orchestrate multiple AI services and\ncapabilities into an adaptable setup.\n\nUseful resources:\n\n  - [Llama Stack](https://www.llama.com/products/llama-stack/)\n  - [Python Llama Stack client](https://github.com/llamastack/llama-stack-client-python)\n  - [Build AI Applications with Llama Stack](https://llamastack.github.io/)",
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "URL to Llama Stack service; used when library mode is disabled. Must be a valid HTTP or HTTPS URL.",
+                            "title": "Llama Stack URL"
+                        },
+                        "api_key": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "API key to access Llama Stack service",
+                            "title": "API key"
+                        },
+                        "use_as_library_client": {
+                            "type": "boolean",
+                            "nullable": true,
+                            "default": null,
+                            "description": "When set to true Llama Stack will be used in library mode, not in server mode (default)",
+                            "title": "Use as library"
+                        },
+                        "library_client_config_path": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Path to configuration file used when Llama Stack is run in library mode",
+                            "title": "Llama Stack configuration path"
+                        },
+                        "timeout": {
+                            "default": 180,
+                            "description": "Timeout in seconds for requests to Llama Stack service. Default is 180 seconds (3 minutes) to accommodate long-running RAG queries.",
+                            "minimum": 0,
+                            "title": "Request timeout",
+                            "type": "integer"
+                        },
+                        "max_retries": {
+                            "default": 5,
+                            "description": "Maximum number of connection attempts before giving up. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod).",
+                            "minimum": 0,
+                            "title": "Maximum number of connection attempts before giving up",
+                            "type": "integer"
+                        },
+                        "retry_delay": {
+                            "default": 2,
+                            "description": "Delay in seconds between retry attempts. Used on startup to connect to Llama Stack and retrieve its version. Connection attempts are retried with a fixed delay to handle the case where Llama Stack is still starting up (e.g., when running as a sidecar in the same pod).",
+                            "minimum": 0,
+                            "title": "Delay in seconds between retry attempts",
+                            "type": "integer"
+                        },
+                        "allow_degraded_mode": {
+                            "type": "boolean",
+                            "nullable": true,
+                            "default": false,
+                            "description": "If enabled, Lightspeed Core can be started even when Llama Stack is not accessible (valid for server mode only)",
+                            "title": "Allow degraded mode"
+                        },
+                        "config": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`UnifiedLlamaStackConfig"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Backend-specific knobs for unified mode, where LCORE synthesizes the Llama Stack run.yaml instead of reading an external file. Holds the baseline selector, an optional profile path, and a raw native_override escape hatch. Backend-agnostic high-level sections (e.g. inference.providers) live at the configuration root, not here. Mutually exclusive with library_client_config_path; that cross-field check lives on the root Configuration model. When set in library mode, library_client_config_path is not required.",
+                            "title": "Unified Llama Stack configuration"
+                        }
+                    },
+                    "title": "LlamaStackConfiguration",
+                    "type": "object"
+                },
+                "MCPClientAuthOptionsResponse": {
+                    "description": "Response containing MCP servers that accept client-provided authorization.\n\nAttributes:\n    servers: MCP servers that declare client authentication headers.",
+                    "examples": [
+                        {
+                            "servers": [
+                                {
+                                    "client_auth_headers": [
+                                        "Authorization"
+                                    ],
+                                    "name": "github"
+                                },
+                                {
+                                    "client_auth_headers": [
+                                        "Authorization",
+                                        "X-API-Key"
+                                    ],
+                                    "name": "gitlab"
+                                }
+                            ]
+                        }
+                    ],
+                    "properties": {
+                        "servers": {
+                            "description": "List of MCP servers that accept client-provided authorization",
+                            "items": {
+                                "$ref": "`#/components/schemas/`MCPServerAuthInfo"
+                            },
+                            "title": "Servers",
+                            "type": "array"
+                        }
+                    },
+                    "title": "MCPClientAuthOptionsResponse",
+                    "type": "object"
+                },
                 "MCPListToolsTool": {
                     "description": "Tool definition returned by MCP list tools operation.\n\n:param input_schema: JSON schema defining the tool's input parameters\n:param name: Name of the tool\n:param description: (Optional) Description of what the tool does",
                     "properties": {
@@ -414,6 +2237,146 @@ def test_dump_models(tmpdir: Path) -> None:
                         "name"
                     ],
                     "title": "MCPListToolsTool",
+                    "type": "object"
+                },
+                "MCPServerAuthInfo": {
+                    "description": "Information about MCP server client authentication options.",
+                    "properties": {
+                        "name": {
+                            "description": "MCP server name",
+                            "title": "Name",
+                            "type": "string"
+                        },
+                        "client_auth_headers": {
+                            "description": "List of authentication header names for client-provided tokens",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Client Auth Headers",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "client_auth_headers"
+                    ],
+                    "title": "MCPServerAuthInfo",
+                    "type": "object"
+                },
+                "MCPServerDeleteResponse": {
+                    "description": "Response indicating the outcome of an MCP server delete operation.\n\nAttributes:\n    name: Name of the MCP server targeted for deletion.\n    deleted: Whether the server was successfully deleted (True) or not found (False).\n    response: Description of the result, e.g. \"MCP server deleted successfully\".",
+                    "examples": [
+                        {
+                            "label": "deleted",
+                            "value": {
+                                "deleted": true,
+                                "name": "mcp-server",
+                                "response": "MCP server deleted successfully"
+                            }
+                        },
+                        {
+                            "label": "not found",
+                            "value": {
+                                "deleted": false,
+                                "name": "mcp-server",
+                                "response": "MCP server not found"
+                            }
+                        }
+                    ],
+                    "properties": {
+                        "deleted": {
+                            "description": "Whether the deletion was successful.",
+                            "examples": [
+                                true,
+                                false
+                            ],
+                            "title": "Deleted",
+                            "type": "boolean"
+                        },
+                        "name": {
+                            "description": "MCP server name that was passed to delete.",
+                            "examples": [
+                                "test-mcp-server"
+                            ],
+                            "title": "Name",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "deleted",
+                        "name"
+                    ],
+                    "title": "MCPServerDeleteResponse",
+                    "type": "object"
+                },
+                "MCPServerInfo": {
+                    "description": "Information about a registered MCP server.\n\nAttributes:\n    name: Unique name of the MCP server.\n    url: URL of the MCP server endpoint.\n    provider_id: MCP provider identification.\n    source: Whether the server was registered statically (config) or dynamically (api).",
+                    "properties": {
+                        "name": {
+                            "description": "MCP server name",
+                            "title": "Name",
+                            "type": "string"
+                        },
+                        "url": {
+                            "description": "MCP server URL",
+                            "title": "Url",
+                            "type": "string"
+                        },
+                        "provider_id": {
+                            "description": "MCP provider identification",
+                            "title": "Provider Id",
+                            "type": "string"
+                        },
+                        "source": {
+                            "description": "How the server was registered: 'config' (static) or 'api' (dynamic)",
+                            "examples": [
+                                "config",
+                                "api"
+                            ],
+                            "title": "Source",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "url",
+                        "provider_id",
+                        "source"
+                    ],
+                    "title": "MCPServerInfo",
+                    "type": "object"
+                },
+                "MCPServerListResponse": {
+                    "description": "Response listing all registered MCP servers.\n\nAttributes:\n    servers: All registered MCP servers (static and dynamic).",
+                    "examples": [
+                        {
+                            "servers": [
+                                {
+                                    "name": "mcp-integration-tools",
+                                    "provider_id": "model-context-protocol",
+                                    "source": "config",
+                                    "url": "http://host.docker.internal:7008/api/mcp-actions/v1"
+                                },
+                                {
+                                    "name": "test-mcp-server",
+                                    "provider_id": "model-context-protocol",
+                                    "source": "api",
+                                    "url": "http://host.docker.internal:8888/mcp"
+                                }
+                            ]
+                        }
+                    ],
+                    "properties": {
+                        "servers": {
+                            "description": "List of all registered MCP servers (static and dynamic)",
+                            "items": {
+                                "$ref": "`#/components/schemas/`MCPServerInfo"
+                            },
+                            "title": "Servers",
+                            "type": "array"
+                        }
+                    },
+                    "title": "MCPServerListResponse",
                     "type": "object"
                 },
                 "MCPServerRegistrationRequest": {
@@ -527,6 +2490,158 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "MCPServerRegistrationRequest",
                     "type": "object"
                 },
+                "MCPServerRegistrationResponse": {
+                    "description": "Response for a successful MCP server registration.\n\nAttributes:\n    name: Registered MCP server name.\n    url: Registered MCP server URL.\n    provider_id: MCP provider identification.\n    message: Status message.",
+                    "examples": [
+                        {
+                            "message": "MCP server 'mcp-integration-tools' registered successfully",
+                            "name": "mcp-integration-tools",
+                            "provider_id": "model-context-protocol",
+                            "url": "http://host.docker.internal:7008/api/mcp-actions/v1"
+                        }
+                    ],
+                    "properties": {
+                        "name": {
+                            "description": "Registered MCP server name",
+                            "title": "Name",
+                            "type": "string"
+                        },
+                        "url": {
+                            "description": "Registered MCP server URL",
+                            "title": "Url",
+                            "type": "string"
+                        },
+                        "provider_id": {
+                            "description": "MCP provider identification",
+                            "title": "Provider Id",
+                            "type": "string"
+                        },
+                        "message": {
+                            "description": "Status message",
+                            "title": "Message",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "url",
+                        "provider_id",
+                        "message"
+                    ],
+                    "title": "MCPServerRegistrationResponse",
+                    "type": "object"
+                },
+                "Message": {
+                    "description": "Model representing a message in a conversation turn.\n\nAttributes:\n    content: The message content.\n    type: The type of message.\n    referenced_documents: Optional list of documents referenced in an assistant response.",
+                    "properties": {
+                        "content": {
+                            "description": "The message content",
+                            "examples": [
+                                "Hello, how can I help you?"
+                            ],
+                            "title": "Content",
+                            "type": "string"
+                        },
+                        "type": {
+                            "description": "The type of message",
+                            "enum": [
+                                "user",
+                                "assistant",
+                                "system",
+                                "developer"
+                            ],
+                            "examples": [
+                                "user",
+                                "assistant",
+                                "system",
+                                "developer"
+                            ],
+                            "title": "Type",
+                            "type": "string"
+                        },
+                        "referenced_documents": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "List of documents referenced in the response (assistant messages only)",
+                            "title": "Referenced Documents"
+                        }
+                    },
+                    "required": [
+                        "content",
+                        "type"
+                    ],
+                    "title": "Message",
+                    "type": "object"
+                },
+                "ModelContextProtocolServer": {
+                    "additionalProperties": false,
+                    "description": "Model context protocol server configuration.\n\nMCP (Model Context Protocol) servers provide tools and capabilities to the\nAI agents. These are configured by this structure. Only MCP servers\ndefined in the lightspeed-stack.yaml configuration are available to the\nagents. Tools configured in the llama-stack run.yaml are not accessible to\nlightspeed-core agents.\n\nUseful resources:\n\n- [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro)\n- [MCP FAQs](https://modelcontextprotocol.io/faqs)\n- [Wikipedia article](https://en.wikipedia.org/wiki/Model_Context_Protocol)",
+                    "properties": {
+                        "name": {
+                            "description": "MCP server name that must be unique",
+                            "title": "MCP name",
+                            "type": "string"
+                        },
+                        "provider_id": {
+                            "default": "model-context-protocol",
+                            "description": "MCP provider identification",
+                            "title": "Provider ID",
+                            "type": "string"
+                        },
+                        "url": {
+                            "description": "URL of the MCP server",
+                            "title": "MCP server URL",
+                            "type": "string"
+                        },
+                        "authorization_headers": {
+                            "additionalProperties": {
+                                "type": "string"
+                            },
+                            "description": "Headers to send to the MCP server. The map contains the header name and the path to a file containing the header value (secret). There are 3 special cases: 1. Usage of the kubernetes token in the header. To specify this use a string 'kubernetes' instead of the file path. 2. Usage of the client-provided token in the header. To specify this use a string 'client' instead of the file path. 3. Usage of the oauth token in the header. To specify this use a string 'oauth' instead of the file path. ",
+                            "title": "Authorization headers",
+                            "type": "object"
+                        },
+                        "headers": {
+                            "description": "List of HTTP header names to automatically forward from the incoming request to this MCP server. Headers listed here are extracted from the original client request and included when calling the MCP server. This is useful when infrastructure components (e.g. API gateways) inject headers that MCP servers need, such as x-rh-identity in HCC. Header matching is case-insensitive. These headers are additive with authorization_headers and MCP-HEADERS.",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Propagated headers",
+                            "type": "array"
+                        },
+                        "require_approval": {
+                            "anyOf": [
+                                {
+                                    "enum": [
+                                        "always",
+                                        "never"
+                                    ],
+                                    "type": "string"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`models__config__ApprovalFilter"
+                                }
+                            ],
+                            "default": "never",
+                            "description": "When to require human approval for tool invocations. 'always' requires approval for all tools, 'never' auto-approves, or use ApprovalFilter for granular control.",
+                            "title": "Approval requirement"
+                        },
+                        "timeout": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Timeout in seconds for requests to the MCP server. If not specified, the default timeout from Llama Stack will be used. Note: This field is reserved for future use when Llama Stack adds timeout support.",
+                            "title": "Request timeout"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "url"
+                    ],
+                    "title": "ModelContextProtocolServer",
+                    "type": "object"
+                },
                 "ModelFilter": {
                     "additionalProperties": false,
                     "description": "Model representing a query parameter to select models by its type.\n\nAttributes:\n    model_type: Required model type, such as 'llm', 'embeddings' etc.",
@@ -544,6 +2659,68 @@ def test_dump_models(tmpdir: Path) -> None:
                         }
                     },
                     "title": "ModelFilter",
+                    "type": "object"
+                },
+                "ModelsResponse": {
+                    "description": "Model representing a response to models request.",
+                    "examples": [
+                        {
+                            "models": [
+                                {
+                                    "api_model_type": "llm",
+                                    "identifier": "openai/gpt-4-turbo",
+                                    "metadata": {},
+                                    "model_type": "llm",
+                                    "provider_id": "openai",
+                                    "provider_resource_id": "gpt-4-turbo",
+                                    "type": "model"
+                                }
+                            ]
+                        }
+                    ],
+                    "properties": {
+                        "models": {
+                            "description": "List of models available",
+                            "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "title": "Models",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "models"
+                    ],
+                    "title": "ModelsResponse",
+                    "type": "object"
+                },
+                "OkpConfiguration": {
+                    "additionalProperties": false,
+                    "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp\"`` is listed in ``rag.inline`` or ``rag.tool``.",
+                    "properties": {
+                        "rhokp_url": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Base URL for the OKP server (http or https). Set to `${env.RH_SERVER_OKP}` in YAML to use the environment variable. When unset, the default from constants is used.",
+                            "title": "OKP base URL"
+                        },
+                        "offline": {
+                            "default": true,
+                            "description": "When True, use parent_id for OKP chunk source URLs. When False, use reference_url for chunk source URLs.",
+                            "title": "OKP offline mode",
+                            "type": "boolean"
+                        },
+                        "chunk_filter_query": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Additional OKP filter query applied to every OKP search request. Use Solr boolean syntax, e.g. 'product:ansible AND product:*openshift*'.",
+                            "title": "OKP chunk filter query"
+                        }
+                    },
+                    "title": "OkpConfiguration",
                     "type": "object"
                 },
                 "OpenAIResponseAnnotationCitation": {
@@ -692,6 +2869,25 @@ def test_dump_models(tmpdir: Path) -> None:
                         "refusal"
                     ],
                     "title": "OpenAIResponseContentPartRefusal",
+                    "type": "object"
+                },
+                "OpenAIResponseError": {
+                    "description": "Error details for failed OpenAI response requests.\n\n:param code: Error code identifying the type of failure\n:param message: Human-readable error message describing the failure",
+                    "properties": {
+                        "code": {
+                            "title": "Code",
+                            "type": "string"
+                        },
+                        "message": {
+                            "title": "Message",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "code",
+                        "message"
+                    ],
+                    "title": "OpenAIResponseError",
                     "type": "object"
                 },
                 "OpenAIResponseInputFunctionToolCallOutput": {
@@ -1680,6 +3876,104 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "OpenAIResponseTextFormat",
                     "type": "object"
                 },
+                "OpenAIResponseToolMCP": {
+                    "description": "Model Context Protocol (MCP) tool configuration for OpenAI response object.\n\n:param type: Tool type identifier, always \"mcp\"\n:param server_label: Label to identify this MCP server\n:param allowed_tools: (Optional) Restriction on which tools can be used from this server",
+                    "properties": {
+                        "type": {
+                            "const": "mcp",
+                            "default": "mcp",
+                            "title": "Type",
+                            "type": "string"
+                        },
+                        "server_label": {
+                            "title": "Server Label",
+                            "type": "string"
+                        },
+                        "allowed_tools": {
+                            "anyOf": [
+                                {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                {
+                                    "$ref": "`#/components/schemas/`AllowedToolsFilter"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "title": "Allowed Tools"
+                        }
+                    },
+                    "required": [
+                        "server_label"
+                    ],
+                    "title": "OpenAIResponseToolMCP",
+                    "type": "object"
+                },
+                "OpenAIResponseUsage": {
+                    "description": "Usage information for OpenAI response.\n\n:param input_tokens: Number of tokens in the input\n:param output_tokens: Number of tokens in the output\n:param total_tokens: Total tokens used (input + output)\n:param input_tokens_details: Detailed breakdown of input token usage\n:param output_tokens_details: Detailed breakdown of output token usage",
+                    "properties": {
+                        "input_tokens": {
+                            "title": "Input Tokens",
+                            "type": "integer"
+                        },
+                        "output_tokens": {
+                            "title": "Output Tokens",
+                            "type": "integer"
+                        },
+                        "total_tokens": {
+                            "title": "Total Tokens",
+                            "type": "integer"
+                        },
+                        "input_tokens_details": {
+                            "$ref": "`#/components/schemas/`OpenAIResponseUsageInputTokensDetails"
+                        },
+                        "output_tokens_details": {
+                            "$ref": "`#/components/schemas/`OpenAIResponseUsageOutputTokensDetails"
+                        }
+                    },
+                    "required": [
+                        "input_tokens",
+                        "output_tokens",
+                        "total_tokens",
+                        "input_tokens_details",
+                        "output_tokens_details"
+                    ],
+                    "title": "OpenAIResponseUsage",
+                    "type": "object"
+                },
+                "OpenAIResponseUsageInputTokensDetails": {
+                    "description": "Token details for input tokens in OpenAI response usage.\n\n:param cached_tokens: Number of tokens retrieved from cache",
+                    "properties": {
+                        "cached_tokens": {
+                            "title": "Cached Tokens",
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "cached_tokens"
+                    ],
+                    "title": "OpenAIResponseUsageInputTokensDetails",
+                    "type": "object"
+                },
+                "OpenAIResponseUsageOutputTokensDetails": {
+                    "description": "Token details for output tokens in OpenAI response usage.\n\n:param reasoning_tokens: Number of tokens used for reasoning (o1/o3 models)",
+                    "properties": {
+                        "reasoning_tokens": {
+                            "title": "Reasoning Tokens",
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "reasoning_tokens"
+                    ],
+                    "title": "OpenAIResponseUsageOutputTokensDetails",
+                    "type": "object"
+                },
                 "OpenAITokenLogProb": {
                     "description": "The log probability for a token from an OpenAI-compatible chat completion response.",
                     "properties": {
@@ -1743,6 +4037,88 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "OpenAITopLogProb",
                     "type": "object"
                 },
+                "PostgreSQLDatabaseConfiguration": {
+                    "additionalProperties": false,
+                    "description": "PostgreSQL database configuration.\n\nPostgreSQL database is used by Lightspeed Core Stack service for storing\ninformation about conversation IDs. It can also be leveraged to store\nconversation history and information about quota usage.\n\nUseful resources:\n\n- [Psycopg: connection classes](https://www.psycopg.org/psycopg3/docs/api/connections.html)\n- [PostgreSQL connection strings](https://www.connectionstrings.com/postgresql/)\n- [How to Use PostgreSQL in Python](https://www.freecodecamp.org/news/postgresql-in-python/)",
+                    "properties": {
+                        "host": {
+                            "default": "localhost",
+                            "description": "Database server host or socket directory",
+                            "title": "Hostname",
+                            "type": "string"
+                        },
+                        "port": {
+                            "default": 5432,
+                            "description": "Database server port",
+                            "minimum": 0,
+                            "title": "Port",
+                            "type": "integer"
+                        },
+                        "db": {
+                            "description": "Database name to connect to",
+                            "title": "Database name",
+                            "type": "string"
+                        },
+                        "user": {
+                            "description": "Database user name used to authenticate",
+                            "title": "User name",
+                            "type": "string"
+                        },
+                        "password": {
+                            "description": "Password used to authenticate",
+                            "format": "password",
+                            "title": "Password",
+                            "type": "string",
+                            "writeOnly": true
+                        },
+                        "namespace": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": "public",
+                            "description": "Database namespace",
+                            "title": "Name space"
+                        },
+                        "ssl_mode": {
+                            "default": "prefer",
+                            "description": "SSL mode",
+                            "enum": [
+                                "disable",
+                                "allow",
+                                "prefer",
+                                "require",
+                                "verify-ca",
+                                "verify-full"
+                            ],
+                            "title": "SSL mode",
+                            "type": "string"
+                        },
+                        "gss_encmode": {
+                            "default": "prefer",
+                            "description": "This option determines whether or with what priority a secure GSS TCP/IP connection will be negotiated with the server.",
+                            "enum": [
+                                "disable",
+                                "prefer",
+                                "require"
+                            ],
+                            "title": "GSS encmode",
+                            "type": "string"
+                        },
+                        "ca_cert_path": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Path to CA certificate",
+                            "title": "CA certificate path"
+                        }
+                    },
+                    "required": [
+                        "db",
+                        "user",
+                        "password"
+                    ],
+                    "title": "PostgreSQLDatabaseConfiguration",
+                    "type": "object"
+                },
                 "PromptCreateRequest": {
                     "additionalProperties": false,
                     "description": "Request body to create a stored prompt template in Llama Stack.\n\nAttributes:\n    prompt: Prompt text with variable placeholders.\n    variables: Variable names allowed in the template.",
@@ -1781,6 +4157,106 @@ def test_dump_models(tmpdir: Path) -> None:
                         "prompt"
                     ],
                     "title": "PromptCreateRequest",
+                    "type": "object"
+                },
+                "PromptDeleteResponse": {
+                    "description": "Result of deleting a stored prompt (always HTTP 200, like conversations v2).\n\nAttributes:\n    prompt_id: Prompt identifier that was passed to delete.\n    deleted: Whether the prompt was deleted successfully\n    response: Human readable response",
+                    "examples": [
+                        {
+                            "label": "deleted",
+                            "value": {
+                                "deleted": true,
+                                "prompt_id": "pmpt_0123456789abcdef0123456789abcdef01234567",
+                                "response": "Prompt deleted successfully"
+                            }
+                        },
+                        {
+                            "label": "not found",
+                            "value": {
+                                "deleted": false,
+                                "prompt_id": "pmpt_0123456789abcdef0123456789abcdef01234567",
+                                "response": "Prompt not found"
+                            }
+                        }
+                    ],
+                    "properties": {
+                        "deleted": {
+                            "description": "Whether the deletion was successful.",
+                            "examples": [
+                                true,
+                                false
+                            ],
+                            "title": "Deleted",
+                            "type": "boolean"
+                        },
+                        "prompt_id": {
+                            "description": "Prompt identifier that was passed to delete.",
+                            "examples": [
+                                "pmpt_0123456789abcdef0123456789abcdef01234567"
+                            ],
+                            "title": "Prompt Id",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "deleted",
+                        "prompt_id"
+                    ],
+                    "title": "PromptDeleteResponse",
+                    "type": "object"
+                },
+                "PromptResourceResponse": {
+                    "additionalProperties": false,
+                    "description": "A stored prompt template as returned by Llama Stack.\n\nAttributes:\n    prompt_id: Prompt identifier from Llama Stack.\n    version: Version number for this prompt.\n    is_default: Whether this version is the default.\n    prompt: Prompt text with placeholders.\n    variables: Variable names used in the template.",
+                    "examples": [
+                        {
+                            "is_default": true,
+                            "prompt": "Summarize: {{text}}",
+                            "prompt_id": "pmpt_0123456789abcdef0123456789abcdef01234567",
+                            "variables": [
+                                "text"
+                            ],
+                            "version": 1
+                        }
+                    ],
+                    "properties": {
+                        "prompt_id": {
+                            "description": "Prompt identifier from Llama Stack",
+                            "title": "Prompt Id",
+                            "type": "string"
+                        },
+                        "version": {
+                            "description": "Version number for this prompt",
+                            "title": "Version",
+                            "type": "integer"
+                        },
+                        "is_default": {
+                            "type": "boolean",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Whether this version is the default",
+                            "title": "Is Default"
+                        },
+                        "prompt": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Prompt text with placeholders",
+                            "title": "Prompt"
+                        },
+                        "variables": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Variable names used in the template",
+                            "title": "Variables"
+                        }
+                    },
+                    "required": [
+                        "prompt_id",
+                        "version"
+                    ],
+                    "title": "PromptResourceResponse",
                     "type": "object"
                 },
                 "PromptUpdateRequest": {
@@ -1843,6 +4319,173 @@ def test_dump_models(tmpdir: Path) -> None:
                         "version"
                     ],
                     "title": "PromptUpdateRequest",
+                    "type": "object"
+                },
+                "PromptsListResponse": {
+                    "additionalProperties": false,
+                    "description": "List of stored prompt templates returned by Llama Stack.\n\nAttributes:\n    data: Prompt entries as returned by the Llama Stack list API.",
+                    "examples": [
+                        {
+                            "data": [
+                                {
+                                    "is_default": true,
+                                    "prompt": "Summarize: {{text}}",
+                                    "prompt_id": "pmpt_0123456789abcdef0123456789abcdef01234567",
+                                    "variables": [
+                                        "text"
+                                    ],
+                                    "version": 1
+                                }
+                            ]
+                        }
+                    ],
+                    "properties": {
+                        "data": {
+                            "description": "Prompt entries (as returned by Llama Stack list)",
+                            "items": {
+                                "$ref": "`#/components/schemas/`PromptResourceResponse"
+                            },
+                            "title": "Data",
+                            "type": "array"
+                        }
+                    },
+                    "title": "PromptsListResponse",
+                    "type": "object"
+                },
+                "ProviderHealthStatus": {
+                    "description": "Model representing the health status of a provider.\n\nAttributes:\n    provider_id: The ID of the provider.\n    status: The health status ('ok', 'unhealthy', 'not_implemented').\n    message: Optional message about the health status.",
+                    "properties": {
+                        "provider_id": {
+                            "description": "The ID of the provider",
+                            "title": "Provider Id",
+                            "type": "string"
+                        },
+                        "status": {
+                            "description": "The health status",
+                            "examples": [
+                                "ok",
+                                "unhealthy",
+                                "not_implemented"
+                            ],
+                            "title": "Status",
+                            "type": "string"
+                        },
+                        "message": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Optional message about the health status",
+                            "examples": [
+                                "All systems operational",
+                                "Provider is unavailable"
+                            ],
+                            "title": "Message"
+                        }
+                    },
+                    "required": [
+                        "provider_id",
+                        "status"
+                    ],
+                    "title": "ProviderHealthStatus",
+                    "type": "object"
+                },
+                "ProviderResponse": {
+                    "description": "Model representing a response to get specific provider request.",
+                    "examples": [
+                        {
+                            "api": "inference",
+                            "config": {
+                                "api_key": "********"
+                            },
+                            "health": {
+                                "message": "Healthy",
+                                "status": "OK"
+                            },
+                            "provider_id": "openai",
+                            "provider_type": "remote::openai"
+                        }
+                    ],
+                    "properties": {
+                        "api": {
+                            "description": "The API this provider implements",
+                            "title": "Api",
+                            "type": "string"
+                        },
+                        "config": {
+                            "additionalProperties": true,
+                            "description": "Provider configuration parameters",
+                            "title": "Config",
+                            "type": "object"
+                        },
+                        "health": {
+                            "additionalProperties": true,
+                            "description": "Current health status of the provider",
+                            "title": "Health",
+                            "type": "object"
+                        },
+                        "provider_id": {
+                            "description": "Unique provider identifier",
+                            "title": "Provider Id",
+                            "type": "string"
+                        },
+                        "provider_type": {
+                            "description": "Provider implementation type",
+                            "title": "Provider Type",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "api",
+                        "config",
+                        "health",
+                        "provider_id",
+                        "provider_type"
+                    ],
+                    "title": "ProviderResponse",
+                    "type": "object"
+                },
+                "ProvidersListResponse": {
+                    "description": "Model representing a response to providers request.",
+                    "examples": [
+                        {
+                            "providers": {
+                                "agents": [
+                                    {
+                                        "provider_id": "meta-reference",
+                                        "provider_type": "inline::meta-reference"
+                                    }
+                                ],
+                                "inference": [
+                                    {
+                                        "provider_id": "sentence-transformers",
+                                        "provider_type": "inline::sentence-transformers"
+                                    },
+                                    {
+                                        "provider_id": "openai",
+                                        "provider_type": "remote::openai"
+                                    }
+                                ]
+                            }
+                        }
+                    ],
+                    "properties": {
+                        "providers": {
+                            "additionalProperties": {
+                                "items": {
+                                    "additionalProperties": true,
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            },
+                            "description": "List of available API types and their corresponding providers",
+                            "title": "Providers",
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "providers"
+                    ],
+                    "title": "ProvidersListResponse",
                     "type": "object"
                 },
                 "QueryRequest": {
@@ -2046,6 +4689,630 @@ def test_dump_models(tmpdir: Path) -> None:
                         "query"
                     ],
                     "title": "QueryRequest",
+                    "type": "object"
+                },
+                "QueryResponse": {
+                    "description": "Model representing LLM response to a query.\n\nAttributes:\n    conversation_id: The optional conversation ID (UUID).\n    response: The response.\n    rag_chunks: Deprecated. List of RAG chunks used to generate the response.\n        This information is now available in tool_results under file_search_call type.\n    referenced_documents: The URLs and titles for the documents used to generate the response.\n    tool_calls: List of tool calls made during response generation.\n    tool_results: List of tool results.\n    truncated: Whether conversation history was truncated.\n    input_tokens: Number of tokens sent to LLM.\n    output_tokens: Number of tokens received from LLM.\n    available_quotas: Quota available as measured by all configured quota limiters.",
+                    "examples": [
+                        {
+                            "available_quotas": {
+                                "ClusterQuotaLimiter": 998911,
+                                "UserQuotaLimiter": 998911
+                            },
+                            "conversation_id": "123e4567-e89b-12d3-a456-426614174000",
+                            "input_tokens": 123,
+                            "output_tokens": 456,
+                            "referenced_documents": [
+                                {
+                                    "doc_title": "Operator Lifecycle Manager concepts and resources",
+                                    "doc_url": "https://docs.openshift.com/container-platform/4.15/operators/understanding/olm/olm-understanding-olm.html"
+                                }
+                            ],
+                            "response": "Operator Lifecycle Manager (OLM) helps users install...",
+                            "tool_calls": [
+                                {
+                                    "args": {},
+                                    "id": "1",
+                                    "name": "tool1",
+                                    "type": "tool_call"
+                                }
+                            ],
+                            "tool_results": [
+                                {
+                                    "content": "bla",
+                                    "id": "1",
+                                    "round": 1,
+                                    "status": "success",
+                                    "type": "tool_result"
+                                }
+                            ],
+                            "truncated": false
+                        }
+                    ],
+                    "properties": {
+                        "conversation_id": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "The optional conversation ID (UUID)",
+                            "examples": [
+                                "c5260aec-4d82-4370-9fdf-05cf908b3f16"
+                            ],
+                            "title": "Conversation Id"
+                        },
+                        "response": {
+                            "description": "Response from LLM",
+                            "examples": [
+                                "Kubernetes is an open-source container orchestration system for automating ..."
+                            ],
+                            "title": "Response",
+                            "type": "string"
+                        },
+                        "rag_chunks": {
+                            "description": "Deprecated: List of RAG chunks used to generate the response.",
+                            "items": {
+                                "$ref": "`#/components/schemas/`RAGChunk"
+                            },
+                            "title": "Rag Chunks",
+                            "type": "array"
+                        },
+                        "referenced_documents": {
+                            "description": "List of documents referenced in generating the response",
+                            "examples": [
+                                [
+                                    {
+                                        "doc_title": "Operator Lifecycle Manager (OLM)",
+                                        "doc_url": "https://docs.openshift.com/container-platform/4.15/operators/olm/index.html"
+                                    }
+                                ]
+                            ],
+                            "items": {
+                                "$ref": "`#/components/schemas/`ReferencedDocument"
+                            },
+                            "title": "Referenced Documents",
+                            "type": "array"
+                        },
+                        "truncated": {
+                            "default": false,
+                            "description": "Deprecated: whether conversation history was truncated",
+                            "examples": [
+                                false,
+                                true
+                            ],
+                            "title": "Truncated",
+                            "type": "boolean"
+                        },
+                        "input_tokens": {
+                            "default": 0,
+                            "description": "Number of tokens sent to LLM",
+                            "examples": [
+                                150,
+                                250,
+                                500
+                            ],
+                            "title": "Input Tokens",
+                            "type": "integer"
+                        },
+                        "output_tokens": {
+                            "default": 0,
+                            "description": "Number of tokens received from LLM",
+                            "examples": [
+                                50,
+                                100,
+                                200
+                            ],
+                            "title": "Output Tokens",
+                            "type": "integer"
+                        },
+                        "available_quotas": {
+                            "additionalProperties": {
+                                "type": "integer"
+                            },
+                            "description": "Quota available as measured by all configured quota limiters",
+                            "examples": [
+                                {
+                                    "daily": 1000,
+                                    "monthly": 50000
+                                }
+                            ],
+                            "title": "Available Quotas",
+                            "type": "object"
+                        },
+                        "tool_calls": {
+                            "description": "List of tool calls made during response generation",
+                            "items": {
+                                "$ref": "`#/components/schemas/`ToolCallSummary"
+                            },
+                            "title": "Tool Calls",
+                            "type": "array"
+                        },
+                        "tool_results": {
+                            "description": "List of tool results",
+                            "items": {
+                                "$ref": "`#/components/schemas/`ToolResultSummary"
+                            },
+                            "title": "Tool Results",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "response"
+                    ],
+                    "title": "QueryResponse",
+                    "type": "object"
+                },
+                "QuotaHandlersConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Quota limiter configuration.\n\nIt is possible to limit quota usage per user or per service or services\n(that typically run in one cluster). Each limit is configured as a separate\n_quota limiter_. It can be of type `user_limiter` or `cluster_limiter`\n(which is name that makes sense in OpenShift deployment).",
+                    "properties": {
+                        "sqlite": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`SQLiteDatabaseConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "SQLite database configuration",
+                            "title": "SQLite configuration"
+                        },
+                        "postgres": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`PostgreSQLDatabaseConfiguration"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "PostgreSQL database configuration",
+                            "title": "PostgreSQL configuration"
+                        },
+                        "limiters": {
+                            "description": "Quota limiters configuration",
+                            "items": {
+                                "$ref": "`#/components/schemas/`QuotaLimiterConfiguration"
+                            },
+                            "title": "Quota limiters",
+                            "type": "array"
+                        },
+                        "scheduler": {
+                            "$ref": "`#/components/schemas/`QuotaSchedulerConfiguration",
+                            "description": "Quota scheduler configuration",
+                            "title": "Quota scheduler"
+                        },
+                        "enable_token_history": {
+                            "default": false,
+                            "description": "Enables storing information about token usage history",
+                            "title": "Enable token history",
+                            "type": "boolean"
+                        }
+                    },
+                    "title": "QuotaHandlersConfiguration",
+                    "type": "object"
+                },
+                "QuotaLimiterConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Configuration for one quota limiter.\n\nThere are three configuration options for each limiter:\n\n1. ``period`` is specified in a human-readable form, see\n   https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT\n   for all possible options. When the end of the period is reached, the\n   quota is reset or increased.\n2. ``initial_quota`` is the value set at the beginning of the period.\n3. ``quota_increase`` is the value (if specified) used to increase the\n   quota when the period is reached.\n\nThere are two basic use cases:\n\n1. When the quota needs to be reset to a specific value periodically (for\n   example on a weekly or monthly basis), set ``initial_quota`` to the\n   required value.\n2. When the quota needs to be increased by a specific value periodically\n   (for example on a daily basis), set ``quota_increase``.",
+                    "properties": {
+                        "type": {
+                            "description": "Quota limiter type, either user_limiter or cluster_limiter",
+                            "enum": [
+                                "user_limiter",
+                                "cluster_limiter"
+                            ],
+                            "title": "Quota limiter type",
+                            "type": "string"
+                        },
+                        "name": {
+                            "description": "Human readable quota limiter name",
+                            "title": "Quota limiter name",
+                            "type": "string"
+                        },
+                        "initial_quota": {
+                            "description": "Quota set at beginning of the period",
+                            "minimum": 0,
+                            "title": "Initial quota",
+                            "type": "integer"
+                        },
+                        "quota_increase": {
+                            "description": "Delta value used to increase quota when period is reached",
+                            "minimum": 0,
+                            "title": "Quota increase",
+                            "type": "integer"
+                        },
+                        "period": {
+                            "description": "Period specified in human readable form",
+                            "title": "Period",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "type",
+                        "name",
+                        "initial_quota",
+                        "quota_increase",
+                        "period"
+                    ],
+                    "title": "QuotaLimiterConfiguration",
+                    "type": "object"
+                },
+                "QuotaSchedulerConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Quota scheduler configuration.",
+                    "properties": {
+                        "period": {
+                            "default": 1,
+                            "description": "Quota scheduler period specified in seconds",
+                            "minimum": 0,
+                            "title": "Period",
+                            "type": "integer"
+                        },
+                        "database_reconnection_count": {
+                            "default": 10,
+                            "description": "Database reconnection count on startup. When database for quota is not available on startup, the service tries to reconnect N times with specified delay.",
+                            "minimum": 0,
+                            "title": "Database reconnection count on startup",
+                            "type": "integer"
+                        },
+                        "database_reconnection_delay": {
+                            "default": 1,
+                            "description": "Database reconnection delay specified in seconds. When database for quota is not available on startup, the service tries to reconnect N times with specified delay.",
+                            "minimum": 0,
+                            "title": "Database reconnection delay",
+                            "type": "integer"
+                        }
+                    },
+                    "title": "QuotaSchedulerConfiguration",
+                    "type": "object"
+                },
+                "RAGChunk": {
+                    "description": "Model representing a RAG chunk used in the response.",
+                    "properties": {
+                        "content": {
+                            "description": "The content of the chunk",
+                            "title": "Content",
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Index name identifying the knowledge source from configuration",
+                            "title": "Source"
+                        },
+                        "score": {
+                            "type": "number",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Relevance score",
+                            "title": "Score"
+                        },
+                        "attributes": {
+                            "type": "object",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Document metadata from the RAG provider (e.g., url, title, author)",
+                            "title": "Attributes"
+                        }
+                    },
+                    "required": [
+                        "content"
+                    ],
+                    "title": "RAGChunk",
+                    "type": "object"
+                },
+                "RAGInfoResponse": {
+                    "description": "Model representing a response with information about RAG DB.",
+                    "examples": [
+                        {
+                            "created_at": 1763391371,
+                            "expires_at": null,
+                            "id": "vs_7b52a8cf-0fa3-489c-beab-27e061d102f3",
+                            "last_active_at": 1763391371,
+                            "name": "Faiss Store with Knowledge base",
+                            "object": "vector_store",
+                            "status": "completed",
+                            "usage_bytes": 1024000
+                        }
+                    ],
+                    "properties": {
+                        "id": {
+                            "description": "Vector DB unique ID",
+                            "examples": [
+                                "vs_00000000_0000_0000"
+                            ],
+                            "title": "Id",
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Human readable vector DB name",
+                            "examples": [
+                                "Faiss Store with Knowledge base"
+                            ],
+                            "title": "Name"
+                        },
+                        "created_at": {
+                            "description": "When the vector store was created, represented as Unix time",
+                            "examples": [
+                                1763391371
+                            ],
+                            "title": "Created At",
+                            "type": "integer"
+                        },
+                        "last_active_at": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "When the vector store was last active, represented as Unix time",
+                            "examples": [
+                                1763391371
+                            ],
+                            "title": "Last Active At"
+                        },
+                        "usage_bytes": {
+                            "description": "Storage byte(s) used by this vector DB",
+                            "examples": [
+                                0
+                            ],
+                            "title": "Usage Bytes",
+                            "type": "integer"
+                        },
+                        "expires_at": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "When the vector store expires, represented as Unix time",
+                            "examples": [
+                                1763391371
+                            ],
+                            "title": "Expires At"
+                        },
+                        "object": {
+                            "description": "Object type",
+                            "examples": [
+                                "vector_store"
+                            ],
+                            "title": "Object",
+                            "type": "string"
+                        },
+                        "status": {
+                            "description": "Vector DB status",
+                            "examples": [
+                                "completed"
+                            ],
+                            "title": "Status",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "created_at",
+                        "usage_bytes",
+                        "object",
+                        "status"
+                    ],
+                    "title": "RAGInfoResponse",
+                    "type": "object"
+                },
+                "RAGListResponse": {
+                    "description": "Model representing a response to list RAGs request.",
+                    "examples": [
+                        {
+                            "rags": [
+                                "vs_00000000-cafe-babe-0000-000000000000",
+                                "vs_7b52a8cf-0fa3-489c-beab-27e061d102f3",
+                                "vs_7b52a8cf-0fa3-489c-cafe-27e061d102f3"
+                            ]
+                        }
+                    ],
+                    "properties": {
+                        "rags": {
+                            "description": "List of RAG identifiers",
+                            "examples": [
+                                "vs_7b52a8cf-0fa3-489c-beab-27e061d102f3",
+                                "vs_7b52a8cf-0fa3-489c-cafe-27e061d102f3"
+                            ],
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "RAG list response",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "rags"
+                    ],
+                    "title": "RAGListResponse",
+                    "type": "object"
+                },
+                "RHIdentityConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Red Hat Identity authentication configuration.",
+                    "properties": {
+                        "required_entitlements": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "List of all required entitlements.",
+                            "title": "Required entitlements"
+                        },
+                        "max_header_size": {
+                            "default": 8192,
+                            "description": "Maximum allowed size in bytes for the base64-encoded x-rh-identity header. Headers exceeding this size are rejected before decoding.",
+                            "minimum": 0,
+                            "title": "Maximum header size",
+                            "type": "integer"
+                        }
+                    },
+                    "title": "RHIdentityConfiguration",
+                    "type": "object"
+                },
+                "RagConfiguration": {
+                    "additionalProperties": false,
+                    "description": "RAG strategy configuration.\n\nControls which RAG sources are used for inline and tool-based retrieval.\n\nEach strategy lists RAG IDs to include. The special ID ``\"okp\"`` defined in constants,\nactivates the OKP provider; all other IDs refer to entries in ``byok_rag``.\n\nBackward compatibility:\n    - ``inline`` defaults to ``[]`` (no inline RAG).\n    - ``tool`` defaults to ``[]`` (no tool RAG).\n\nIf no RAG strategy is defined (inline and tool are empty),\nthe RAG tool will register all stores available to llama-stack.",
+                    "properties": {
+                        "inline": {
+                            "description": "RAG IDs whose sources are injected as context before the LLM call. Use 'okp' to enable OKP inline RAG. Empty by default (no inline RAG).",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Inline RAG IDs",
+                            "type": "array"
+                        },
+                        "tool": {
+                            "description": "RAG IDs made available to the LLM as a file_search tool. Use 'okp' to include the OKP vector store. When omitted, all registered BYOK vector stores are used (backward compatibility).",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Tool RAG IDs",
+                            "type": "array"
+                        }
+                    },
+                    "title": "RagConfiguration",
+                    "type": "object"
+                },
+                "ReadinessResponse": {
+                    "description": "Model representing response to a readiness request.\n\nAttributes:\n    ready: If service is ready to handle requests.\n    reason: The reason for the readiness status.\n    overall_status: Overall service health status (healthy/degraded/unhealthy).\n    impacts: Optional list of functional impacts when degraded or unhealthy.\n    providers: List of unhealthy providers (empty when all healthy).",
+                    "examples": [
+                        {
+                            "impacts": null,
+                            "overall_status": "healthy",
+                            "providers": [],
+                            "ready": true,
+                            "reason": "All providers are healthy"
+                        },
+                        {
+                            "impacts": [
+                                "LLM inference unavailable",
+                                "RAG functionality unavailable",
+                                "Agent tools unavailable"
+                            ],
+                            "overall_status": "degraded",
+                            "providers": [],
+                            "ready": true,
+                            "reason": "Service running in degraded mode"
+                        }
+                    ],
+                    "properties": {
+                        "ready": {
+                            "description": "Flag indicating if service is ready to handle requests",
+                            "examples": [
+                                true,
+                                false
+                            ],
+                            "title": "Ready",
+                            "type": "boolean"
+                        },
+                        "reason": {
+                            "description": "The reason for the readiness status",
+                            "examples": [
+                                "Service is ready"
+                            ],
+                            "title": "Reason",
+                            "type": "string"
+                        },
+                        "overall_status": {
+                            "$ref": "`#/components/schemas/`HealthStatus",
+                            "description": "Overall service health status",
+                            "examples": [
+                                "healthy",
+                                "degraded",
+                                "unhealthy"
+                            ]
+                        },
+                        "impacts": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "List of functional impacts when service is degraded or unhealthy",
+                            "examples": [
+                                [
+                                    "LLM inference unavailable",
+                                    "RAG functionality unavailable",
+                                    "Agent tools unavailable"
+                                ]
+                            ],
+                            "title": "Impacts"
+                        },
+                        "providers": {
+                            "description": "List of unhealthy providers (empty when all healthy)",
+                            "examples": [],
+                            "items": {
+                                "$ref": "`#/components/schemas/`ProviderHealthStatus"
+                            },
+                            "title": "Providers",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "ready",
+                        "reason",
+                        "overall_status",
+                        "providers"
+                    ],
+                    "title": "ReadinessResponse",
+                    "type": "object"
+                },
+                "ReferencedDocument": {
+                    "description": "Model representing a document referenced in generating a response.\n\nAttributes:\n    doc_url: Url to the referenced doc.\n    doc_title: Title of the referenced doc.\n    document_id: Document ID for preserving identity during deduplication.",
+                    "properties": {
+                        "doc_url": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "URL of the referenced document",
+                            "title": "Doc Url"
+                        },
+                        "doc_title": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Title of the referenced document",
+                            "title": "Doc Title"
+                        },
+                        "source": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Index name identifying the knowledge source from configuration",
+                            "title": "Source"
+                        },
+                        "document_id": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Document ID for preserving identity during deduplication",
+                            "title": "Document Id"
+                        }
+                    },
+                    "title": "ReferencedDocument",
+                    "type": "object"
+                },
+                "RerankerConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Reranker configuration for RAG chunk reranking.",
+                    "properties": {
+                        "enabled": {
+                            "default": false,
+                            "description": "When True, reranking applied to RAG chunks. When False, reranking is disabled and original scoring used.",
+                            "title": "Reranker enabled",
+                            "type": "boolean"
+                        },
+                        "model": {
+                            "default": "cross-encoder/ms-marco-MiniLM-L6-v2",
+                            "description": "Cross-encoder model name for reranking RAG chunks. Defaults to 'cross-encoder/ms-marco-MiniLM-L6-v2' from sentence-transformers.",
+                            "title": "Reranker model",
+                            "type": "string"
+                        }
+                    },
+                    "title": "RerankerConfiguration",
                     "type": "object"
                 },
                 "ResponseInput": {
@@ -2308,6 +5575,331 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "ResponsesRequest",
                     "type": "object"
                 },
+                "ResponsesResponse": {
+                    "description": "Model representing a response from the Responses API following LCORE specification.\n\nAttributes:\n    created_at: Unix timestamp when the response was created.\n    completed_at: Unix timestamp when the response was completed, if applicable.\n    error: Error details if the response failed or was blocked.\n    id: Unique identifier for this response.\n    model: Model identifier in \"provider/model\" format used for generation.\n    object: Object type identifier, always \"response\".\n    output: List of structured output items containing messages, tool calls, and\n        other content. This is the primary response content.\n    parallel_tool_calls: Whether the model can make multiple tool calls in parallel.\n    previous_response_id: Identifier of the previous response in a multi-turn\n        conversation.\n    prompt: The input prompt object that was sent to the model.\n    status: Current status of the response (e.g., \"completed\", \"blocked\",\n        \"in_progress\").\n    temperature: Temperature parameter used for generation (controls randomness).\n    text: Text response configuration object used for OpenAI responses.\n    top_p: Top-p sampling parameter used for generation.\n    tools: List of tools available to the model during generation.\n    tool_choice: Tool selection strategy used (e.g., \"auto\", \"required\", \"none\").\n    truncation: Strategy used for handling content that exceeds context limits.\n    usage: Token usage statistics including input_tokens, output_tokens, and\n        total_tokens.\n    instructions: System instructions or guidelines provided to the model.\n    max_tool_calls: Maximum number of tool calls allowed in a single response.\n    reasoning: Reasoning configuration (effort level) used for the response.\n    max_output_tokens: Upper bound for tokens generated in the response.\n    safety_identifier: Safety/guardrail identifier applied to the request.\n    metadata: Additional metadata dictionary with custom key-value pairs.\n    store: Whether the response was stored.\n    conversation: Conversation ID linking this response to a conversation thread\n        (LCORE-specific).\n    available_quotas: Remaining token quotas for the user (LCORE-specific).\n    output_text: Aggregated text output from all output_text items in the\n        output array.",
+                    "examples": [
+                        {
+                            "available_quotas": {
+                                "daily": 1000,
+                                "monthly": 50000
+                            },
+                            "completed_at": 1704067250,
+                            "conversation": "0d21ba731f21f798dc9680125d5d6f493e4a7ab79f25670e",
+                            "created_at": 1704067200,
+                            "id": "resp_abc123",
+                            "instructions": "You are a helpful assistant",
+                            "model": "openai/gpt-4-turbo",
+                            "object": "response",
+                            "output": [
+                                {
+                                    "content": [
+                                        {
+                                            "text": "Kubernetes is an open-source container orchestration system...",
+                                            "type": "output_text"
+                                        }
+                                    ],
+                                    "role": "assistant",
+                                    "type": "message"
+                                }
+                            ],
+                            "output_text": "Kubernetes is an open-source container orchestration system...",
+                            "parallel_tool_calls": true,
+                            "status": "completed",
+                            "store": true,
+                            "temperature": 0.7,
+                            "text": {
+                                "format": {
+                                    "type": "text"
+                                }
+                            },
+                            "usage": {
+                                "input_tokens": 100,
+                                "input_tokens_details": {
+                                    "cached_tokens": 0
+                                },
+                                "output_tokens": 50,
+                                "output_tokens_details": {
+                                    "reasoning_tokens": 0
+                                },
+                                "total_tokens": 150
+                            }
+                        }
+                    ],
+                    "properties": {
+                        "created_at": {
+                            "title": "Created At",
+                            "type": "integer"
+                        },
+                        "completed_at": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Completed At"
+                        },
+                        "error": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseError"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null
+                        },
+                        "id": {
+                            "title": "Id",
+                            "type": "string"
+                        },
+                        "model": {
+                            "title": "Model",
+                            "type": "string"
+                        },
+                        "object": {
+                            "const": "response",
+                            "default": "response",
+                            "title": "Object",
+                            "type": "string"
+                        },
+                        "output": {
+                            "items": {
+                                "discriminator": {
+                                    "mapping": {
+                                        "file_search_call": "`#/components/schemas/`OpenAIResponseOutputMessageFileSearchToolCall",
+                                        "function_call": "`#/components/schemas/`OpenAIResponseOutputMessageFunctionToolCall",
+                                        "mcp_approval_request": "`#/components/schemas/`OpenAIResponseMCPApprovalRequest",
+                                        "mcp_call": "`#/components/schemas/`OpenAIResponseOutputMessageMCPCall",
+                                        "mcp_list_tools": "`#/components/schemas/`OpenAIResponseOutputMessageMCPListTools",
+                                        "message": "`#/components/schemas/`OpenAIResponseMessage",
+                                        "web_search_call": "`#/components/schemas/`OpenAIResponseOutputMessageWebSearchToolCall"
+                                    },
+                                    "propertyName": "type"
+                                },
+                                "oneOf": [
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseMessage"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageWebSearchToolCall"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageFileSearchToolCall"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageFunctionToolCall"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageMCPCall"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageMCPListTools"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseMCPApprovalRequest"
+                                    }
+                                ]
+                            },
+                            "title": "Output",
+                            "type": "array"
+                        },
+                        "parallel_tool_calls": {
+                            "default": true,
+                            "title": "Parallel Tool Calls",
+                            "type": "boolean"
+                        },
+                        "previous_response_id": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Previous Response Id"
+                        },
+                        "prompt": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponsePrompt"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null
+                        },
+                        "status": {
+                            "title": "Status",
+                            "type": "string"
+                        },
+                        "temperature": {
+                            "type": "number",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Temperature"
+                        },
+                        "text": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseText"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null
+                        },
+                        "top_p": {
+                            "type": "number",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Top P"
+                        },
+                        "tools": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Tools"
+                        },
+                        "tool_choice": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceMode"
+                                },
+                                {
+                                    "discriminator": {
+                                        "mapping": {
+                                            "allowed_tools": "`#/components/schemas/`OpenAIResponseInputToolChoiceAllowedTools",
+                                            "custom": "`#/components/schemas/`OpenAIResponseInputToolChoiceCustomTool",
+                                            "file_search": "`#/components/schemas/`OpenAIResponseInputToolChoiceFileSearch",
+                                            "function": "`#/components/schemas/`OpenAIResponseInputToolChoiceFunctionTool",
+                                            "mcp": "`#/components/schemas/`OpenAIResponseInputToolChoiceMCPTool",
+                                            "web_search": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch",
+                                            "web_search_2025_08_26": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch",
+                                            "web_search_preview": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch",
+                                            "web_search_preview_2025_03_11": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch"
+                                        },
+                                        "propertyName": "type"
+                                    },
+                                    "oneOf": [
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceAllowedTools"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceFileSearch"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceWebSearch"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceFunctionTool"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceMCPTool"
+                                        },
+                                        {
+                                            "$ref": "`#/components/schemas/`OpenAIResponseInputToolChoiceCustomTool"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "title": "Tool Choice"
+                        },
+                        "truncation": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Truncation"
+                        },
+                        "usage": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseUsage"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null
+                        },
+                        "instructions": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Instructions"
+                        },
+                        "max_tool_calls": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Max Tool Calls"
+                        },
+                        "reasoning": {
+                            "anyOf": [
+                                {
+                                    "$ref": "`#/components/schemas/`OpenAIResponseReasoning"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null
+                        },
+                        "max_output_tokens": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Max Output Tokens"
+                        },
+                        "safety_identifier": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Safety Identifier"
+                        },
+                        "metadata": {
+                            "type": "object",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Metadata"
+                        },
+                        "store": {
+                            "type": "boolean",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Store"
+                        },
+                        "conversation": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Conversation"
+                        },
+                        "available_quotas": {
+                            "additionalProperties": {
+                                "type": "integer"
+                            },
+                            "title": "Available Quotas",
+                            "type": "object"
+                        },
+                        "output_text": {
+                            "title": "Output Text",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "created_at",
+                        "id",
+                        "model",
+                        "output",
+                        "status",
+                        "available_quotas",
+                        "output_text"
+                    ],
+                    "sse_example": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"in_progress\",\"model\":\"openai/gpt-4o-mini\",\"output\":[],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{},\"output_text\":\"\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"sequence_number\":1,\"response_id\":\"resp_abc\",\"output_index\":0,\"item\":{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"in_progress\",\"role\":\"assistant\",\"content\":[]}}\n\n...\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":30,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"completed\",\"model\":\"openai/gpt-4o-mini\",\"output\":[{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\",\"annotations\":[]}]}],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"usage\":{\"input_tokens\":10,\"output_tokens\":6,\"total_tokens\":16,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{\"daily\":1000,\"monthly\":50000},\"output_text\":\"Hello! How can I help?\"}}\n\ndata: [DONE]\n\n",
+                    "title": "ResponsesResponse",
+                    "type": "object"
+                },
                 "RlsapiV1Attachment": {
                     "additionalProperties": false,
                     "description": "Attachment data from rlsapi v1 context.\n\nAttributes:\n    contents: The textual contents of the file read on the client machine.\n    mimetype: The MIME type of the file.",
@@ -2364,6 +5956,27 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "RlsapiV1CLA",
                     "type": "object"
                 },
+                "RlsapiV1Configuration": {
+                    "additionalProperties": false,
+                    "description": "Configuration for the rlsapi v1 /infer endpoint.\n\nSettings specific to the RHEL Lightspeed Command Line Assistant (CLA)\nstateless inference endpoint. Kept separate from shared configuration\nsections so that CLA-specific options do not affect other endpoints.",
+                    "properties": {
+                        "allow_verbose_infer": {
+                            "default": false,
+                            "description": "Allow /v1/infer to return extended metadata (tool_calls, rag_chunks, token_usage) when the client sends \"include_metadata\": true. Should NOT be enabled in production. If production use is needed, consider RBAC-based access control via an Action.RLSAPI_V1_INFER authorization rule.",
+                            "title": "Allow verbose infer",
+                            "type": "boolean"
+                        },
+                        "quota_subject": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Identity field used as the quota subject for /v1/infer. When set, token quota enforcement is enabled for this endpoint. Requires quota_handlers to be configured. \"org_id\" and \"system_id\" require rh-identity authentication; falls back to user_id when rh-identity data is unavailable.",
+                            "title": "Quota subject"
+                        }
+                    },
+                    "title": "RlsapiV1Configuration",
+                    "type": "object"
+                },
                 "RlsapiV1Context": {
                     "additionalProperties": false,
                     "description": "Context data for rlsapi v1 /infer request.\n\nAttributes:\n    stdin: Redirect input read by command-line-assistant.\n    attachments: Attachment object received by the client.\n    terminal: Terminal object received by the client.\n    systeminfo: System information object received by the client.\n    cla: Command Line Assistant information.",
@@ -2396,6 +6009,77 @@ def test_dump_models(tmpdir: Path) -> None:
                         }
                     },
                     "title": "RlsapiV1Context",
+                    "type": "object"
+                },
+                "RlsapiV1InferData": {
+                    "additionalProperties": false,
+                    "description": "Response data for rlsapi v1 /infer endpoint.\n\nAttributes:\n    text: The generated response text.\n    request_id: Unique identifier for the request.\n    tool_calls: MCP tool calls made during inference (verbose mode only).\n    tool_results: Results from MCP tool calls (verbose mode only).\n    rag_chunks: RAG chunks retrieved from documentation (verbose mode only).\n    referenced_documents: Source documents referenced (verbose mode only).\n    input_tokens: Number of input tokens consumed (verbose mode only).\n    output_tokens: Number of output tokens generated (verbose mode only).",
+                    "properties": {
+                        "text": {
+                            "description": "Generated response text",
+                            "examples": [
+                                "To list files in Linux, use the `ls` command."
+                            ],
+                            "title": "Text",
+                            "type": "string"
+                        },
+                        "request_id": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Unique request identifier",
+                            "examples": [
+                                "01JDKR8N7QW9ZMXVGK3PB5TQWZ"
+                            ],
+                            "title": "Request Id"
+                        },
+                        "tool_calls": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Tool calls made during inference (requires include_metadata=true)",
+                            "title": "Tool Calls"
+                        },
+                        "tool_results": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Results from tool calls (requires include_metadata=true)",
+                            "title": "Tool Results"
+                        },
+                        "rag_chunks": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Retrieved RAG documentation chunks (requires include_metadata=true)",
+                            "title": "Rag Chunks"
+                        },
+                        "referenced_documents": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Source documents referenced in answer (requires include_metadata=true)",
+                            "title": "Referenced Documents"
+                        },
+                        "input_tokens": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Number of input tokens consumed (requires include_metadata=true)",
+                            "title": "Input Tokens"
+                        },
+                        "output_tokens": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Number of output tokens generated (requires include_metadata=true)",
+                            "title": "Output Tokens"
+                        }
+                    },
+                    "required": [
+                        "text"
+                    ],
+                    "title": "RlsapiV1InferData",
                     "type": "object"
                 },
                 "RlsapiV1InferRequest": {
@@ -2442,6 +6126,29 @@ def test_dump_models(tmpdir: Path) -> None:
                         "question"
                     ],
                     "title": "RlsapiV1InferRequest",
+                    "type": "object"
+                },
+                "RlsapiV1InferResponse": {
+                    "additionalProperties": false,
+                    "description": "RHEL Lightspeed rlsapi v1 /infer response.\n\nAttributes:\n    data: Response data containing text and request_id.",
+                    "examples": [
+                        {
+                            "data": {
+                                "request_id": "01JDKR8N7QW9ZMXVGK3PB5TQWZ",
+                                "text": "To list files in Linux, use the `ls` command."
+                            }
+                        }
+                    ],
+                    "properties": {
+                        "data": {
+                            "$ref": "`#/components/schemas/`RlsapiV1InferData",
+                            "description": "Response data containing text and request_id"
+                        }
+                    },
+                    "required": [
+                        "data"
+                    ],
+                    "title": "RlsapiV1InferResponse",
                     "type": "object"
                 },
                 "RlsapiV1SystemInfo": {
@@ -2513,6 +6220,51 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "RlsapiV1Terminal",
                     "type": "object"
                 },
+                "SQLiteDatabaseConfiguration": {
+                    "additionalProperties": false,
+                    "description": "SQLite database configuration.",
+                    "properties": {
+                        "db_path": {
+                            "description": "Path to file where SQLite database is stored",
+                            "title": "DB path",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "db_path"
+                    ],
+                    "title": "SQLiteDatabaseConfiguration",
+                    "type": "object"
+                },
+                "SavedPromptsConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Configuration for saved prompts feature limits.\n\nControls the maximum number of prompts a user can save, the maximum\ndisplay name (title) length, and the maximum prompt content length.\nAll fields are optional and default to values defined in constants.\n\nAttributes:\n    max_prompts_per_user: Maximum number of saved prompts allowed per user.\n    max_display_name_length: Maximum character length for the prompt display name.\n    max_content_length: Maximum character length for the prompt content body.",
+                    "properties": {
+                        "max_prompts_per_user": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Maximum number of saved prompts a user can create. Defaults to 50. Cannot exceed 200.",
+                            "title": "Max prompts per user"
+                        },
+                        "max_display_name_length": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Maximum character length for prompt display name (title). Defaults to 255. Cannot exceed 255.",
+                            "title": "Max display name length"
+                        },
+                        "max_content_length": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Maximum character length for the prompt content body. Defaults to 10000. Cannot exceed 30000.",
+                            "title": "Max content length"
+                        }
+                    },
+                    "title": "SavedPromptsConfiguration",
+                    "type": "object"
+                },
                 "SearchRankingOptions": {
                     "description": "Options for ranking and filtering search results.\n\nThis class configures how search results are ranked and filtered. You can use algorithm-based\nrerankers (weighted, RRF) or neural rerankers. Defaults from VectorStoresConfig are\nused when parameters are not provided.\n\nExamples:\n    # Weighted ranker with custom alpha\n    SearchRankingOptions(ranker=\"weighted\", alpha=0.7)\n\n    # RRF ranker with custom impact factor\n    SearchRankingOptions(ranker=\"rrf\", impact_factor=50.0)\n\n    # Use config defaults (just specify ranker type)\n    SearchRankingOptions(ranker=\"weighted\")  # Uses alpha from VectorStoresConfig\n\n    # Score threshold filtering\n    SearchRankingOptions(ranker=\"weighted\", score_threshold=0.5)\n\n:param ranker: (Optional) Name of the ranking algorithm to use. Supported values:\n    - \"weighted\": Weighted combination of vector and keyword scores\n    - \"rrf\": Reciprocal Rank Fusion algorithm\n    - \"neural\": Neural reranking model (requires model parameter, Part II)\n    Note: For OpenAI API compatibility, any string value is accepted, but only the above values are supported.\n:param score_threshold: (Optional) Minimum relevance score threshold for results. Default: 0.0\n:param alpha: (Optional) Weight factor for weighted ranker (0-1).\n    - 0.0 = keyword only\n    - 0.5 = equal weight (default)\n    - 1.0 = vector only\n    Only used when ranker=\"weighted\" and weights is not provided.\n    Falls back to VectorStoresConfig.chunk_retrieval_params.weighted_search_alpha if not provided.\n:param impact_factor: (Optional) Impact factor (k) for RRF algorithm.\n    Lower values emphasize higher-ranked results. Default: 60.0 (optimal from research).\n    Only used when ranker=\"rrf\".\n    Falls back to VectorStoresConfig.chunk_retrieval_params.rrf_impact_factor if not provided.\n:param weights: (Optional) Dictionary of weights for combining different signal types.\n    Keys can be \"vector\", \"keyword\", \"neural\". Values should sum to 1.0.\n    Used when combining algorithm-based reranking with neural reranking (Part II).\n    Example: {\"vector\": 0.3, \"keyword\": 0.3, \"neural\": 0.4}\n:param model: (Optional) Model identifier for neural reranker (e.g., \"vllm/Qwen3-Reranker-0.6B\").\n    Required when ranker=\"neural\" or when weights contains \"neural\" (Part II).",
                     "properties": {
@@ -2558,6 +6310,124 @@ def test_dump_models(tmpdir: Path) -> None:
                         }
                     },
                     "title": "SearchRankingOptions",
+                    "type": "object"
+                },
+                "ServiceConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Service configuration.\n\nLightspeed Core Stack is a REST API service that accepts requests on a\nspecified hostname and port. It is also possible to enable authentication\nand specify the number of Uvicorn workers. When more workers are specified,\nthe service can handle requests concurrently.",
+                    "properties": {
+                        "host": {
+                            "default": "localhost",
+                            "description": "Service hostname",
+                            "title": "Host",
+                            "type": "string"
+                        },
+                        "port": {
+                            "default": 8080,
+                            "description": "Service port",
+                            "minimum": 0,
+                            "title": "Port",
+                            "type": "integer"
+                        },
+                        "base_url": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Externally reachable base URL for the service; needed for A2A support.",
+                            "title": "Base URL"
+                        },
+                        "auth_enabled": {
+                            "default": false,
+                            "description": "Enables the authentication subsystem",
+                            "title": "Authentication enabled",
+                            "type": "boolean"
+                        },
+                        "workers": {
+                            "default": 1,
+                            "description": "Number of Uvicorn worker processes to start",
+                            "minimum": 0,
+                            "title": "Number of workers",
+                            "type": "integer"
+                        },
+                        "color_log": {
+                            "default": true,
+                            "description": "Enables colorized logging",
+                            "title": "Color log",
+                            "type": "boolean"
+                        },
+                        "access_log": {
+                            "default": true,
+                            "description": "Enables logging of all access information",
+                            "title": "Access log",
+                            "type": "boolean"
+                        },
+                        "tls_config": {
+                            "$ref": "`#/components/schemas/`TLSConfiguration",
+                            "description": "Transport Layer Security configuration for HTTPS support",
+                            "title": "TLS configuration"
+                        },
+                        "root_path": {
+                            "default": "",
+                            "description": "ASGI root path for serving behind a reverse proxy on a subpath",
+                            "title": "Root path",
+                            "type": "string"
+                        },
+                        "cors": {
+                            "$ref": "`#/components/schemas/`CORSConfiguration",
+                            "description": "Cross-Origin Resource Sharing configuration for cross-domain requests",
+                            "title": "CORS configuration"
+                        }
+                    },
+                    "title": "ServiceConfiguration",
+                    "type": "object"
+                },
+                "ShieldsResponse": {
+                    "description": "Model representing a response to shields request.",
+                    "examples": [
+                        {
+                            "shields": [
+                                {
+                                    "identifier": "lightspeed_question_validity-shield",
+                                    "params": {},
+                                    "provider_id": "lightspeed_question_validity",
+                                    "provider_resource_id": "lightspeed_question_validity-shield",
+                                    "type": "shield"
+                                }
+                            ]
+                        }
+                    ],
+                    "properties": {
+                        "shields": {
+                            "description": "List of shields available",
+                            "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "title": "Shields",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "shields"
+                    ],
+                    "title": "ShieldsResponse",
+                    "type": "object"
+                },
+                "SkillsConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Agent skills configuration.\n\nSpecifies paths to skill directories. Skill metadata (name, description)\nis read from SKILL.md frontmatter at startup.\n\nEach path can point to either:\n- A directory containing a SKILL.md file (single skill)\n- A directory containing subdirectories with SKILL.md files (multiple skills)\n\nPaths are validated at startup to ensure they exist and contain valid SKILL.md files.",
+                    "properties": {
+                        "paths": {
+                            "description": "Paths to skill directories or directories containing skill subdirectories.",
+                            "items": {
+                                "format": "path",
+                                "type": "string"
+                            },
+                            "title": "Skill paths",
+                            "type": "array"
+                        }
+                    },
+                    "title": "SkillsConfiguration",
                     "type": "object"
                 },
                 "SolrVectorSearchRequest": {
@@ -2622,6 +6492,98 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "SolrVectorSearchRequest",
                     "type": "object"
                 },
+                "SplunkConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Splunk HEC (HTTP Event Collector) configuration.\n\nSplunk HEC allows sending events directly to Splunk over HTTP/HTTPS.\nThis configuration is used to send telemetry events for inference\nrequests to the corporate Splunk deployment.\n\nUseful resources:\n\n  - [Splunk HEC Docs](https://docs.splunk.com/Documentation/SplunkCloud)\n  - [About HEC](https://docs.splunk.com/Documentation/Splunk/latest/Data)",
+                    "properties": {
+                        "enabled": {
+                            "default": false,
+                            "description": "Enable or disable Splunk HEC integration.",
+                            "title": "Enabled",
+                            "type": "boolean"
+                        },
+                        "url": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Splunk HEC endpoint URL.",
+                            "title": "HEC URL"
+                        },
+                        "token_path": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Path to file containing the Splunk HEC authentication token.",
+                            "title": "Token path"
+                        },
+                        "index": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Target Splunk index for events.",
+                            "title": "Index"
+                        },
+                        "source": {
+                            "default": "lightspeed-stack",
+                            "description": "Event source identifier.",
+                            "title": "Source",
+                            "type": "string"
+                        },
+                        "timeout": {
+                            "default": 5,
+                            "description": "HTTP timeout in seconds for HEC requests.",
+                            "minimum": 0,
+                            "title": "Timeout",
+                            "type": "integer"
+                        },
+                        "verify_ssl": {
+                            "default": true,
+                            "description": "Whether to verify SSL certificates for HEC endpoint.",
+                            "title": "Verify SSL",
+                            "type": "boolean"
+                        }
+                    },
+                    "title": "SplunkConfiguration",
+                    "type": "object"
+                },
+                "StatusResponse": {
+                    "description": "Model representing a response to a status request.\n\nAttributes:\n    functionality: The functionality of the service.\n    status: The status of the service.",
+                    "examples": [
+                        {
+                            "functionality": "feedback",
+                            "status": {
+                                "enabled": true
+                            }
+                        }
+                    ],
+                    "properties": {
+                        "functionality": {
+                            "description": "The functionality of the service",
+                            "examples": [
+                                "feedback"
+                            ],
+                            "title": "Functionality",
+                            "type": "string"
+                        },
+                        "status": {
+                            "additionalProperties": true,
+                            "description": "The status of the service",
+                            "examples": [
+                                {
+                                    "enabled": true
+                                }
+                            ],
+                            "title": "Status",
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "functionality",
+                        "status"
+                    ],
+                    "title": "StatusResponse",
+                    "type": "object"
+                },
                 "StreamingInterruptRequest": {
                     "additionalProperties": false,
                     "description": "Model representing a request to interrupt an active streaming query.\n\nAttributes:\n    request_id: Unique ID of the active streaming request to interrupt.",
@@ -2644,6 +6606,363 @@ def test_dump_models(tmpdir: Path) -> None:
                         "request_id"
                     ],
                     "title": "StreamingInterruptRequest",
+                    "type": "object"
+                },
+                "StreamingInterruptResponse": {
+                    "description": "Model representing a response to a streaming interrupt request.\n\nAttributes:\n    request_id: The streaming request ID targeted by the interrupt call.\n    interrupted: Whether an in-progress stream was interrupted.\n    message: Human-readable interruption status message.",
+                    "examples": [
+                        {
+                            "interrupted": true,
+                            "message": "Streaming request interrupted",
+                            "request_id": "123e4567-e89b-12d3-a456-426614174000"
+                        }
+                    ],
+                    "properties": {
+                        "request_id": {
+                            "description": "The streaming request ID targeted by the interrupt call",
+                            "examples": [
+                                "123e4567-e89b-12d3-a456-426614174000"
+                            ],
+                            "title": "Request Id",
+                            "type": "string"
+                        },
+                        "interrupted": {
+                            "description": "Whether an in-progress stream was interrupted",
+                            "examples": [
+                                true
+                            ],
+                            "title": "Interrupted",
+                            "type": "boolean"
+                        },
+                        "message": {
+                            "description": "Human-readable interruption status message",
+                            "examples": [
+                                "Streaming request interrupted"
+                            ],
+                            "title": "Message",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "request_id",
+                        "interrupted",
+                        "message"
+                    ],
+                    "title": "StreamingInterruptResponse",
+                    "type": "object"
+                },
+                "StreamingQueryResponse": {
+                    "description": "Documentation-only model for streaming query responses using Server-Sent Events (SSE).",
+                    "examples": [
+                        "data: {\"event\": \"start\", \"data\": {\"conversation_id\": \"123e4567-e89b-12d3-a456-426614174000\", \"request_id\": \"123e4567-e89b-12d3-a456-426614174001\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 0, \"token\": \"No Violation\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 1, \"token\": \"\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 2, \"token\": \"Hello\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 3, \"token\": \"!\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 4, \"token\": \" How\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 5, \"token\": \" can\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 6, \"token\": \" I\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 7, \"token\": \" assist\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 8, \"token\": \" you\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 9, \"token\": \" today\"}}\n\ndata: {\"event\": \"token\", \"data\": {\"id\": 10, \"token\": \"?\"}}\n\ndata: {\"event\": \"turn_complete\", \"data\": {\"token\": \"Hello! How can I assist you today?\"}}\n\ndata: {\"event\": \"end\", \"data\": {\"referenced_documents\": [], \"truncated\": null, \"input_tokens\": 11, \"output_tokens\": 19}, \"available_quotas\": {}}\n\n"
+                    ],
+                    "properties": {},
+                    "title": "StreamingQueryResponse",
+                    "type": "object"
+                },
+                "TLSConfiguration": {
+                    "additionalProperties": false,
+                    "description": "TLS configuration.\n\nTransport Layer Security (TLS) is a cryptographic protocol designed to\nprovide communications security over a computer network, such as the\nInternet. The protocol is widely used in applications such as email,\ninstant messaging, and voice over IP, but its use in securing HTTPS remains\nthe most publicly visible.\n\nUseful resources:\n\n  - [FastAPI HTTPS Deployment](https://fastapi.tiangolo.com/deployment/https/)\n  - [Transport Layer Security Overview](https://en.wikipedia.org/wiki/Transport_Layer_Security)\n  - [What is TLS](https://www.ssltrust.eu/learning/ssl/transport-layer-security-tls)",
+                    "properties": {
+                        "tls_certificate_path": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "SSL/TLS certificate file path for HTTPS support.",
+                            "title": "TLS certificate path"
+                        },
+                        "tls_key_path": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "SSL/TLS private key file path for HTTPS support.",
+                            "title": "TLS key path"
+                        },
+                        "tls_key_password": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Path to file containing the password to decrypt the SSL/TLS private key.",
+                            "title": "SSL/TLS key password path"
+                        }
+                    },
+                    "title": "TLSConfiguration",
+                    "type": "object"
+                },
+                "ToolCallSummary": {
+                    "description": "Model representing a tool call made during response generation (for tool_calls list).",
+                    "properties": {
+                        "id": {
+                            "description": "ID of the tool call",
+                            "title": "Id",
+                            "type": "string"
+                        },
+                        "name": {
+                            "description": "Name of the tool called",
+                            "title": "Name",
+                            "type": "string"
+                        },
+                        "args": {
+                            "additionalProperties": true,
+                            "description": "Arguments passed to the tool",
+                            "title": "Args",
+                            "type": "object"
+                        },
+                        "type": {
+                            "default": "tool_call",
+                            "description": "Type indicator for tool call",
+                            "title": "Type",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "name"
+                    ],
+                    "title": "ToolCallSummary",
+                    "type": "object"
+                },
+                "ToolResultSummary": {
+                    "description": "Model representing a result from a tool call (for tool_results list).",
+                    "properties": {
+                        "id": {
+                            "description": "ID of the tool call/result, matches the corresponding tool call 'id'",
+                            "title": "Id",
+                            "type": "string"
+                        },
+                        "status": {
+                            "description": "Status of the tool execution (e.g., 'success')",
+                            "title": "Status",
+                            "type": "string"
+                        },
+                        "content": {
+                            "description": "Content/result returned from the tool",
+                            "title": "Content",
+                            "type": "string"
+                        },
+                        "type": {
+                            "default": "tool_result",
+                            "description": "Type indicator for tool result",
+                            "title": "Type",
+                            "type": "string"
+                        },
+                        "round": {
+                            "description": "Round number or step of tool execution",
+                            "title": "Round",
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "status",
+                        "content",
+                        "round"
+                    ],
+                    "title": "ToolResultSummary",
+                    "type": "object"
+                },
+                "ToolsResponse": {
+                    "description": "Model representing a response to tools request.",
+                    "examples": [
+                        {
+                            "tools": [
+                                {
+                                    "description": "Read contents of a file from the filesystem",
+                                    "identifier": "filesystem_read",
+                                    "parameters": [
+                                        {
+                                            "default": null,
+                                            "description": "Path to the file to read",
+                                            "name": "path",
+                                            "parameter_type": "string",
+                                            "required": true
+                                        }
+                                    ],
+                                    "provider_id": "model-context-protocol",
+                                    "server_source": "http://localhost:3000",
+                                    "toolgroup_id": "filesystem-tools",
+                                    "type": "tool"
+                                }
+                            ]
+                        }
+                    ],
+                    "properties": {
+                        "tools": {
+                            "description": "List of tools available from all configured MCP servers and built-in toolgroups",
+                            "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "title": "Tools",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "tools"
+                    ],
+                    "title": "ToolsResponse",
+                    "type": "object"
+                },
+                "TrustedProxyConfiguration": {
+                    "additionalProperties": false,
+                    "description": "Configuration for trusted-proxy auth module.",
+                    "properties": {
+                        "user_header": {
+                            "default": "X-Forwarded-User",
+                            "description": "HTTP header containing the forwarded user identity.",
+                            "title": "User identity header",
+                            "type": "string"
+                        },
+                        "allowed_service_accounts": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Optional allowlist of Kubernetes ServiceAccount identities permitted to act as trusted proxies. When set to null/omitted, any ServiceAccount with a valid token is accepted. When set to a non-empty list, only the listed ServiceAccounts are allowed. An empty list behaves the same as null (no restriction).",
+                            "title": "Allowed service accounts"
+                        }
+                    },
+                    "title": "TrustedProxyConfiguration",
+                    "type": "object"
+                },
+                "TrustedProxyServiceAccount": {
+                    "additionalProperties": false,
+                    "description": "A Kubernetes ServiceAccount identity for trusted-proxy allowlist.",
+                    "properties": {
+                        "namespace": {
+                            "description": "Kubernetes namespace of the ServiceAccount.",
+                            "title": "Namespace",
+                            "type": "string"
+                        },
+                        "name": {
+                            "description": "Name of the Kubernetes ServiceAccount.",
+                            "title": "Name",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "namespace",
+                        "name"
+                    ],
+                    "title": "TrustedProxyServiceAccount",
+                    "type": "object"
+                },
+                "UnifiedInferenceProvider": {
+                    "additionalProperties": false,
+                    "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw Llama Stack provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into a Llama\nStack `providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    id: Optional identifier emitted as the Llama Stack provider_id. When\n        omitted, synthesized as type with underscores hyphenated. If set,\n        must be non-empty after stripping whitespace and may contain only\n        lowercase letters, digits, underscores, and hyphens.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block \u2014 an escape hatch for\n        provider-specific knobs not modeled here.",
+                    "properties": {
+                        "type": {
+                            "description": "Canonical, backend-agnostic provider identifier mapped to a Llama Stack provider_type by the synthesizer.",
+                            "enum": [
+                                "openai",
+                                "ollama",
+                                "vllm",
+                                "sentence_transformers",
+                                "azure",
+                                "vertexai",
+                                "watsonx",
+                                "vllm_rhaiis",
+                                "vllm_rhel_ai"
+                            ],
+                            "title": "Provider type",
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Optional identifier emitted as the Llama Stack provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens.",
+                            "title": "Provider ID"
+                        },
+                        "api_key_env": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Name of the environment variable holding the provider API key. Emitted as a ${env.<name>} reference so the secret is never written to disk in resolved form.",
+                            "title": "API key environment variable"
+                        },
+                        "allowed_models": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Optional allow-list of model identifiers for this provider.",
+                            "title": "Allowed models"
+                        },
+                        "extra": {
+                            "additionalProperties": true,
+                            "description": "Additional provider-config keys merged verbatim into the synthesized provider's config block.",
+                            "title": "Extra provider config",
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "type"
+                    ],
+                    "title": "UnifiedInferenceProvider",
+                    "type": "object"
+                },
+                "UnifiedLlamaStackConfig": {
+                    "additionalProperties": false,
+                    "description": "Backend-specific knobs for unified-mode Llama Stack synthesis.\n\nPer Decision S5 of the design spike, backend-agnostic high-level sections\n(inference, ...) live at the configuration root, not here. This block holds\nonly the Llama-Stack-specific synthesis controls: which baseline to start\nfrom, an optional profile file, and a raw native_override escape hatch.\n\nAttributes:\n    baseline: Synthesis starting point. \"default\" begins from LCORE's\n        built-in baseline (src/data/default_run.yaml); \"empty\" begins from\n        an empty dict (used by the migration tool for an exact round-trip).\n        Ignored when `profile` is set.\n    profile: Optional path to a user-authored run.yaml-shaped file used as\n        the synthesis baseline. Relative paths resolve against the directory\n        of the loaded lightspeed-stack.yaml.\n    native_override: Raw Llama Stack schema deep-merged last (maps merge\n        recursively, lists and scalars replace). The escape hatch for\n        anything the high-level sections do not express.",
+                    "properties": {
+                        "baseline": {
+                            "default": "default",
+                            "description": "Synthesis starting point: 'default' uses LCORE's built-in baseline, 'empty' starts from {}. Ignored when 'profile' is set.",
+                            "enum": [
+                                "default",
+                                "empty"
+                            ],
+                            "title": "Baseline selector",
+                            "type": "string"
+                        },
+                        "profile": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Path to a run.yaml-shaped baseline file. Relative paths resolve against the directory of the loaded lightspeed-stack.yaml.",
+                            "title": "Profile path"
+                        },
+                        "native_override": {
+                            "additionalProperties": true,
+                            "description": "Raw Llama Stack schema deep-merged last (maps merge recursively; lists and scalars replace).",
+                            "title": "Native override",
+                            "type": "object"
+                        }
+                    },
+                    "title": "UnifiedLlamaStackConfig",
+                    "type": "object"
+                },
+                "UserDataCollection": {
+                    "additionalProperties": false,
+                    "description": "User data collection configuration.",
+                    "properties": {
+                        "feedback_enabled": {
+                            "default": false,
+                            "description": "When set to true the user feedback is stored and later sent for analysis.",
+                            "title": "Feedback enabled",
+                            "type": "boolean"
+                        },
+                        "feedback_storage": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Path to directory where feedback will be saved for further processing.",
+                            "title": "Feedback storage directory"
+                        },
+                        "transcripts_enabled": {
+                            "default": false,
+                            "description": "When set to true the conversation history is stored and later sent for analysis.",
+                            "title": "Transcripts enabled",
+                            "type": "boolean"
+                        },
+                        "transcripts_storage": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Path to directory where conversation history will be saved for further processing.",
+                            "title": "Transcripts storage directory"
+                        }
+                    },
+                    "title": "UserDataCollection",
                     "type": "object"
                 },
                 "VectorStoreCreateRequest": {
@@ -2735,6 +7054,52 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "VectorStoreCreateRequest",
                     "type": "object"
                 },
+                "VectorStoreDeleteResponse": {
+                    "description": "Result of deleting a vector store (always HTTP 200).",
+                    "examples": [
+                        {
+                            "label": "deleted",
+                            "value": {
+                                "deleted": true,
+                                "response": "Vector store deleted successfully",
+                                "vector_store_id": "vs_abc123"
+                            }
+                        },
+                        {
+                            "label": "not found",
+                            "value": {
+                                "deleted": false,
+                                "response": "Vector store not found",
+                                "vector_store_id": "vs_abc123"
+                            }
+                        }
+                    ],
+                    "properties": {
+                        "deleted": {
+                            "description": "Whether the deletion was successful.",
+                            "examples": [
+                                true,
+                                false
+                            ],
+                            "title": "Deleted",
+                            "type": "boolean"
+                        },
+                        "vector_store_id": {
+                            "description": "Vector store identifier that was passed to delete.",
+                            "examples": [
+                                "vs_abc123"
+                            ],
+                            "title": "Vector Store Id",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "deleted",
+                        "vector_store_id"
+                    ],
+                    "title": "VectorStoreDeleteResponse",
+                    "type": "object"
+                },
                 "VectorStoreFileCreateRequest": {
                     "additionalProperties": false,
                     "description": "Model representing a request to add a file to a vector store.\n\nAttributes:\n    file_id: ID of the file to add to the vector store.\n    attributes: Optional metadata key-value pairs (max 16 pairs).\n    chunking_strategy: Optional chunking strategy configuration.",
@@ -2794,6 +7159,248 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "VectorStoreFileCreateRequest",
                     "type": "object"
                 },
+                "VectorStoreFileDeleteResponse": {
+                    "description": "Result of deleting a file from a vector store (always HTTP 200).",
+                    "examples": [
+                        {
+                            "label": "deleted",
+                            "value": {
+                                "deleted": true,
+                                "file_id": "file_abc123",
+                                "response": "Vector store file deleted successfully"
+                            }
+                        },
+                        {
+                            "label": "not found",
+                            "value": {
+                                "deleted": false,
+                                "file_id": "file_abc123",
+                                "response": "Vector store file not found"
+                            }
+                        }
+                    ],
+                    "properties": {
+                        "deleted": {
+                            "description": "Whether the deletion was successful.",
+                            "examples": [
+                                true,
+                                false
+                            ],
+                            "title": "Deleted",
+                            "type": "boolean"
+                        },
+                        "file_id": {
+                            "description": "File identifier that was passed to delete.",
+                            "examples": [
+                                "file_abc123"
+                            ],
+                            "title": "File Id",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "deleted",
+                        "file_id"
+                    ],
+                    "title": "VectorStoreFileDeleteResponse",
+                    "type": "object"
+                },
+                "VectorStoreFileResponse": {
+                    "additionalProperties": false,
+                    "description": "Response model containing a vector store file object.\n\nAttributes:\n    id: Vector store file ID.\n    vector_store_id: ID of the vector store.\n    status: File processing status.\n    attributes: Optional metadata key-value pairs.\n    last_error: Optional error message if processing failed.\n    object: Object type (always \"vector_store.file\").",
+                    "examples": [
+                        {
+                            "attributes": {
+                                "chunk_size": "512",
+                                "indexed": true
+                            },
+                            "id": "file_abc123",
+                            "last_error": null,
+                            "object": "vector_store.file",
+                            "status": "completed",
+                            "vector_store_id": "vs_abc123"
+                        }
+                    ],
+                    "properties": {
+                        "id": {
+                            "description": "Vector store file ID",
+                            "title": "Id",
+                            "type": "string"
+                        },
+                        "vector_store_id": {
+                            "description": "ID of the vector store",
+                            "title": "Vector Store Id",
+                            "type": "string"
+                        },
+                        "status": {
+                            "description": "File processing status",
+                            "title": "Status",
+                            "type": "string"
+                        },
+                        "attributes": {
+                            "type": "object",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Set of up to 16 key-value pairs for storing additional information. Keys: strings (max 64 chars). Values: strings (max 512 chars), booleans, or numbers.",
+                            "title": "Attributes"
+                        },
+                        "last_error": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Error message if processing failed",
+                            "title": "Last Error"
+                        },
+                        "object": {
+                            "default": "vector_store.file",
+                            "description": "Object type",
+                            "title": "Object",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "vector_store_id",
+                        "status"
+                    ],
+                    "title": "VectorStoreFileResponse",
+                    "type": "object"
+                },
+                "VectorStoreFilesListResponse": {
+                    "additionalProperties": false,
+                    "description": "Response model containing a list of vector store files.\n\nAttributes:\n    data: List of vector store file objects.\n    object: Object type (always \"list\").",
+                    "examples": [
+                        {
+                            "data": [
+                                {
+                                    "attributes": {
+                                        "chunk_size": "512"
+                                    },
+                                    "id": "file_abc123",
+                                    "last_error": null,
+                                    "object": "vector_store.file",
+                                    "status": "completed",
+                                    "vector_store_id": "vs_abc123"
+                                },
+                                {
+                                    "attributes": null,
+                                    "id": "file_def456",
+                                    "last_error": null,
+                                    "object": "vector_store.file",
+                                    "status": "processing",
+                                    "vector_store_id": "vs_abc123"
+                                }
+                            ],
+                            "object": "list"
+                        }
+                    ],
+                    "properties": {
+                        "data": {
+                            "description": "List of vector store files",
+                            "items": {
+                                "$ref": "`#/components/schemas/`VectorStoreFileResponse"
+                            },
+                            "title": "Data",
+                            "type": "array"
+                        },
+                        "object": {
+                            "default": "list",
+                            "description": "Object type",
+                            "title": "Object",
+                            "type": "string"
+                        }
+                    },
+                    "title": "VectorStoreFilesListResponse",
+                    "type": "object"
+                },
+                "VectorStoreResponse": {
+                    "additionalProperties": false,
+                    "description": "Response model containing a single vector store.\n\nAttributes:\n    id: Vector store ID.\n    name: Vector store name.\n    created_at: Unix timestamp when created.\n    last_active_at: Unix timestamp of last activity.\n    expires_at: Optional Unix timestamp when it expires.\n    status: Vector store status.\n    usage_bytes: Storage usage in bytes.\n    metadata: Optional metadata dictionary for storing session information.",
+                    "examples": [
+                        {
+                            "created_at": 1704067200,
+                            "expires_at": null,
+                            "id": "vs_abc123",
+                            "last_active_at": 1704153600,
+                            "metadata": {
+                                "conversation_id": "conv_123",
+                                "document_ids": [
+                                    "doc_456",
+                                    "doc_789"
+                                ]
+                            },
+                            "name": "customer_support_docs",
+                            "status": "active",
+                            "usage_bytes": 1048576
+                        }
+                    ],
+                    "properties": {
+                        "id": {
+                            "description": "Vector store ID",
+                            "title": "Id",
+                            "type": "string"
+                        },
+                        "name": {
+                            "description": "Vector store name",
+                            "title": "Name",
+                            "type": "string"
+                        },
+                        "created_at": {
+                            "description": "Unix timestamp when created",
+                            "title": "Created At",
+                            "type": "integer"
+                        },
+                        "last_active_at": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Unix timestamp of last activity",
+                            "title": "Last Active At"
+                        },
+                        "expires_at": {
+                            "type": "integer",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Unix timestamp when it expires",
+                            "title": "Expires At"
+                        },
+                        "status": {
+                            "description": "Vector store status",
+                            "title": "Status",
+                            "type": "string"
+                        },
+                        "usage_bytes": {
+                            "default": 0,
+                            "description": "Storage usage in bytes",
+                            "title": "Usage Bytes",
+                            "type": "integer"
+                        },
+                        "metadata": {
+                            "type": "object",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Metadata dictionary for storing session information",
+                            "examples": [
+                                {
+                                    "conversation_id": "conv_123",
+                                    "document_ids": [
+                                        "doc_456",
+                                        "doc_789"
+                                    ]
+                                }
+                            ],
+                            "title": "Metadata"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "name",
+                        "created_at",
+                        "status"
+                    ],
+                    "title": "VectorStoreResponse",
+                    "type": "object"
+                },
                 "VectorStoreUpdateRequest": {
                     "additionalProperties": false,
                     "description": "Model representing a request to update a vector store.\n\nAttributes:\n    name: New name for the vector store.\n    expires_at: Optional expiration timestamp.\n    metadata: Optional metadata dictionary for storing session information.",
@@ -2843,6 +7450,100 @@ def test_dump_models(tmpdir: Path) -> None:
                     },
                     "title": "VectorStoreUpdateRequest",
                     "type": "object"
+                },
+                "VectorStoresListResponse": {
+                    "additionalProperties": false,
+                    "description": "Response model containing a list of vector stores.\n\nAttributes:\n    data: List of vector store objects.\n    object: Object type (always \"list\").",
+                    "examples": [
+                        {
+                            "data": [
+                                {
+                                    "created_at": 1704067200,
+                                    "expires_at": null,
+                                    "id": "vs_abc123",
+                                    "last_active_at": 1704153600,
+                                    "metadata": {
+                                        "conversation_id": "conv_123"
+                                    },
+                                    "name": "customer_support_docs",
+                                    "status": "active",
+                                    "usage_bytes": 1048576
+                                },
+                                {
+                                    "created_at": 1704070800,
+                                    "expires_at": null,
+                                    "id": "vs_def456",
+                                    "last_active_at": 1704157200,
+                                    "metadata": null,
+                                    "name": "product_documentation",
+                                    "status": "active",
+                                    "usage_bytes": 2097152
+                                }
+                            ],
+                            "object": "list"
+                        }
+                    ],
+                    "properties": {
+                        "data": {
+                            "description": "List of vector stores",
+                            "items": {
+                                "$ref": "`#/components/schemas/`VectorStoreResponse"
+                            },
+                            "title": "Data",
+                            "type": "array"
+                        },
+                        "object": {
+                            "default": "list",
+                            "description": "Object type",
+                            "title": "Object",
+                            "type": "string"
+                        }
+                    },
+                    "title": "VectorStoresListResponse",
+                    "type": "object"
+                },
+                "llama_stack_api__openai_responses__ApprovalFilter": {
+                    "description": "Filter configuration for MCP tool approval requirements.\n\n:param always: (Optional) List of tool names that always require approval\n:param never: (Optional) List of tool names that never require approval",
+                    "properties": {
+                        "always": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Always"
+                        },
+                        "never": {
+                            "type": "array",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Never"
+                        }
+                    },
+                    "title": "ApprovalFilter",
+                    "type": "object"
+                },
+                "models__config__ApprovalFilter": {
+                    "additionalProperties": false,
+                    "description": "Granular approval control for specific MCP tools.\n\nAttributes:\n    always: Tool names that always require human approval before execution.\n    never: Tool names that never require approval (pre-approved).",
+                    "properties": {
+                        "always": {
+                            "description": "List of tool names that always require human approval",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Always require approval",
+                            "type": "array"
+                        },
+                        "never": {
+                            "description": "List of tool names that never require approval",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Never require approval",
+                            "type": "array"
+                        }
+                    },
+                    "title": "ApprovalFilter",
+                    "type": "object"
                 }
             }
         },
@@ -2873,24 +7574,73 @@ def test_dump_models(tmpdir: Path) -> None:
 
         # list of schemas expected in a dump
         expected_schemas = (
+            "A2AStateConfiguration",
+            "APIKeyTokenConfiguration",
+            "AccessRule",
+            "Action",
             "AllowedToolsFilter",
-            "ApprovalFilter",
+            "ApprovalsConfiguration",
             "Attachment",
+            "AuthenticationConfiguration",
+            "AuthorizationConfiguration",
+            "AuthorizedResponse",
+            "AzureEntraIdConfiguration",
+            "ByokRag",
+            "CORSConfiguration",
+            "CompactionConfiguration",
+            "Configuration",
+            "ConfigurationResponse",
+            "ConversationData",
+            "ConversationDeleteResponse",
+            "ConversationDetails",
+            "ConversationHistoryConfiguration",
+            "ConversationResponse",
             "ConversationSummary",
+            "ConversationTurn",
             "ConversationUpdateRequest",
+            "ConversationUpdateResponse",
+            "ConversationsListResponse",
+            "ConversationsListResponseV2",
+            "CustomProfile",
+            "Customization",
+            "DatabaseConfiguration",
             "FeedbackCategory",
             "FeedbackRequest",
+            "FeedbackResponse",
             "FeedbackStatusUpdateRequest",
+            "FeedbackStatusUpdateResponse",
+            "FileResponse",
+            "HealthStatus",
+            "InMemoryCacheConfig",
             "IncludeParameter",
+            "InferenceConfiguration",
+            "InfoResponse",
             "InputToolMCP",
+            "JsonPathOperator",
+            "JwkConfiguration",
+            "JwtConfiguration",
+            "JwtRoleRule",
+            "LivenessResponse",
+            "LlamaStackConfiguration",
+            "MCPClientAuthOptionsResponse",
             "MCPListToolsTool",
+            "MCPServerAuthInfo",
+            "MCPServerDeleteResponse",
+            "MCPServerInfo",
+            "MCPServerListResponse",
             "MCPServerRegistrationRequest",
+            "MCPServerRegistrationResponse",
+            "Message",
+            "ModelContextProtocolServer",
             "ModelFilter",
+            "ModelsResponse",
+            "OkpConfiguration",
             "OpenAIResponseAnnotationCitation",
             "OpenAIResponseAnnotationContainerFileCitation",
             "OpenAIResponseAnnotationFileCitation",
             "OpenAIResponseAnnotationFilePath",
             "OpenAIResponseContentPartRefusal",
+            "OpenAIResponseError",
             "OpenAIResponseInputFunctionToolCallOutput",
             "OpenAIResponseInputMessageContentFile",
             "OpenAIResponseInputMessageContentImage",
@@ -2919,26 +7669,77 @@ def test_dump_models(tmpdir: Path) -> None:
             "OpenAIResponseReasoning",
             "OpenAIResponseText",
             "OpenAIResponseTextFormat",
+            "OpenAIResponseToolMCP",
+            "OpenAIResponseUsage",
+            "OpenAIResponseUsageInputTokensDetails",
+            "OpenAIResponseUsageOutputTokensDetails",
             "OpenAITokenLogProb",
             "OpenAITopLogProb",
+            "PostgreSQLDatabaseConfiguration",
             "PromptCreateRequest",
+            "PromptDeleteResponse",
+            "PromptResourceResponse",
             "PromptUpdateRequest",
+            "PromptsListResponse",
+            "ProviderHealthStatus",
+            "ProviderResponse",
+            "ProvidersListResponse",
             "QueryRequest",
+            "QueryResponse",
+            "QuotaHandlersConfiguration",
+            "QuotaLimiterConfiguration",
+            "QuotaSchedulerConfiguration",
+            "RAGChunk",
+            "RAGInfoResponse",
+            "RAGListResponse",
+            "RHIdentityConfiguration",
+            "RagConfiguration",
+            "ReadinessResponse",
+            "ReferencedDocument",
+            "RerankerConfiguration",
             "ResponseInput",
             "ResponseItem",
             "ResponsesRequest",
+            "ResponsesResponse",
             "RlsapiV1Attachment",
             "RlsapiV1CLA",
+            "RlsapiV1Configuration",
             "RlsapiV1Context",
+            "RlsapiV1InferData",
             "RlsapiV1InferRequest",
+            "RlsapiV1InferResponse",
             "RlsapiV1SystemInfo",
             "RlsapiV1Terminal",
+            "SQLiteDatabaseConfiguration",
+            "SavedPromptsConfiguration",
             "SearchRankingOptions",
+            "ServiceConfiguration",
+            "ShieldsResponse",
+            "SkillsConfiguration",
             "SolrVectorSearchRequest",
+            "SplunkConfiguration",
+            "StatusResponse",
             "StreamingInterruptRequest",
+            "StreamingInterruptResponse",
+            "StreamingQueryResponse",
+            "TLSConfiguration",
+            "ToolCallSummary",
+            "ToolResultSummary",
+            "ToolsResponse",
+            "TrustedProxyConfiguration",
+            "TrustedProxyServiceAccount",
+            "UnifiedInferenceProvider",
+            "UnifiedLlamaStackConfig",
+            "UserDataCollection",
             "VectorStoreCreateRequest",
+            "VectorStoreDeleteResponse",
             "VectorStoreFileCreateRequest",
+            "VectorStoreFileDeleteResponse",
+            "VectorStoreFileResponse",
+            "VectorStoreFilesListResponse",
+            "VectorStoreResponse",
             "VectorStoreUpdateRequest",
+            "VectorStoresListResponse",
         )
         for expected_schema in expected_schemas:
             assert expected_schema in schemas
