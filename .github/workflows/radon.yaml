@@ -12,7 +12,7 @@ jobs:
       pull-requests: read
     name: "radon"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: davidslusser/actions_python_radon@v1.0.0
         with:
           src: "src"
