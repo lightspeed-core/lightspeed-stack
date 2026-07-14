@@ -64,6 +64,12 @@ class AsyncLlamaStackClientHolder(metaclass=Singleton):
         """
         logger.info("Using Llama stack as library client")
 
+        # Configure logging before synthesis/enrichment so INFO lines from those
+        # steps are not dropped. Without handlers, Python's lastResort only
+        # emits WARNING and above — which is why replace logs disappeared after
+        # moving from warning to info.
+        setup_logging()
+
         if config.library_client_config_path is not None and config.config is None:
             self._config_path = self._enrich_library_config(
                 config.library_client_config_path

@@ -58,6 +58,10 @@ _OPENAPI_TAGS: Final[list[dict[str, str]]] = [
     {"name": "responses", "description": "OpenAI-compatible Responses API."},
     {"name": "rlsapi-v1", "description": "RLS API v1 (inference)."},
     {"name": "root", "description": "Service root."},
+    {
+        "name": "saved-prompts",
+        "description": "Saved prompts configuration and management.",
+    },
     {"name": "shields", "description": "Safety shields."},
     {"name": "streaming_query", "description": "Streaming query (SSE)."},
     {"name": "streaming_query_interrupt", "description": "Streaming interrupt."},

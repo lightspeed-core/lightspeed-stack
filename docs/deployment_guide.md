@@ -96,6 +96,56 @@ When this mode is selected, Llama Stack is used as a regular Python library. Thi
 
 
 
+### Profiles
+
+In unified mode (where LCORE synthesizes the Llama Stack `run.yaml` from
+`lightspeed-stack.yaml` instead of reading an external file), the synthesis
+starts from a *baseline*. By default that is LCORE's built-in baseline; a
+**profile** replaces it with a file you author.
+
+A profile is an ordinary `run.yaml`-shaped YAML file — the same schema Llama
+Stack reads natively. Everything else in the unified pipeline (enrichment,
+the high-level `inference.providers` section, `native_override`) is applied
+*on top* of the profile, in that order.
+
+**Authoring a profile.** Start from one of the reference profiles shipped in
+[`examples/profiles/`](https://github.com/lightspeed-core/lightspeed-stack/tree/main/examples/profiles):
+
+- `openai-remote.yaml` — remote OpenAI inference plus inline
+  sentence-transformers embeddings and FAISS; boots with only
+  `OPENAI_API_KEY` set.
+- `inline-faiss.yaml` — fully inline (sentence-transformers + FAISS), no
+  remote provider and no API key; pair it with a chat provider via the
+  high-level `inference.providers` section.
+
+Keep secrets out of the file: write `${env.MY_KEY}` environment references,
+which Llama Stack resolves at startup.
+
+**Referencing a profile.** Point `llama_stack.config.profile` at the file:
+
+```yaml
+name: Lightspeed Core Service (LCS)
+service:
+  host: 0.0.0.0
+  port: 8080
+llama_stack:
+  use_as_library_client: true
+  config:
+    profile: ./profiles/openai-remote.yaml
+```
+
+A relative `profile:` path resolves against the directory of the loaded
+`lightspeed-stack.yaml` (not the current working directory); absolute paths
+are used as-is. When `profile` is set, the `baseline` selector is ignored,
+and `library_client_config_path` must not be set (unified and legacy inputs
+are mutually exclusive).
+
+The reference profiles are sanity-checked by the unit suite
+(`tests/unit/test_llama_stack_synthesize.py`), so they stay loadable as the
+synthesizer evolves.
+
+
+
 ### Llama Stack as a server
 
 When this mode is selected, Llama Stack is started as a separate REST API service. All communication with Llama Stack is performed via REST API calls, which means that Llama Stack can run on a separate machine if needed.

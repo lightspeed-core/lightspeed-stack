@@ -28,7 +28,7 @@ from utils.mcp_headers import (
     mcp_headers_dependency,
 )
 from utils.mcp_oauth_probe import check_mcp_auth
-from utils.pydantic_ai import get_agent_capability_tools
+from utils.pydantic_ai_helpers import get_agent_capability_tools
 from utils.tool_formatter import format_tools_list
 
 logger = get_logger(__name__)

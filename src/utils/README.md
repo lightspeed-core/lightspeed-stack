@@ -12,6 +12,9 @@ Common utilities for the project.
 ## [compaction.py](compaction.py)
 Conversation compaction — partitioning, summarization, additive fold-up.
 
+## [config_dumper.py](config_dumper.py)
+Function to dump the configuration schema into OpenAPI-compatible format.
+
 ## [connection_decorator.py](connection_decorator.py)
 Decorator that makes sure the object is 'connected' according to it's connected predicate.
 
@@ -26,6 +29,9 @@ Degraded mode state tracking.
 
 ## [endpoints.py](endpoints.py)
 Utility functions for endpoint handlers.
+
+## [json_schema_updater.py](json_schema_updater.py)
+Function to transform a JSON Schema-like dictionary into an OpenAPI-compatible schema.
 
 ## [llama_stack_version.py](llama_stack_version.py)
 Check if the Llama Stack version is supported by the LCS.
@@ -42,16 +48,22 @@ MCP headers handling.
 ## [mcp_oauth_probe.py](mcp_oauth_probe.py)
 Probe MCP servers for OAuth and raise 401 with WWW-Authenticate when required.
 
+## [models_dumper.py](models_dumper.py)
+Function to dump the schema of all data models into OpenAPI-compatible format.
+
+## [openapi_schema_dumper.py](openapi_schema_dumper.py)
+Utility function to dump schema with list of models into OpenAPI-compatible JSON format.
+
 ## [prompts.py](prompts.py)
 Utility functions for system prompts.
 
-## [pydantic_ai.py](pydantic_ai.py)
+## [pydantic_ai_helpers.py](pydantic_ai_helpers.py)
 Helpers for running Pydantic AI agents against Llama Stack (Responses API compatibility).
 
 ## [query.py](query.py)
 Utility functions for working with queries.
 
-## [quota.py](quota.py)
+## [quota_utils.py](quota_utils.py)
 Quota handling helper functions.
 
 ## [reranker.py](reranker.py)
@@ -62,9 +74,6 @@ Utility functions for processing Responses API output.
 
 ## [rh_identity.py](rh_identity.py)
 Utility functions for extracting RH Identity context for telemetry.
-
-## [schema_dumper.py](schema_dumper.py)
-Function to dump the configuration schema into OpenAPI-compatible format.
 
 ## [shields.py](shields.py)
 Utility functions for working with Llama Stack shields.

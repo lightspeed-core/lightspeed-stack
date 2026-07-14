@@ -25,6 +25,7 @@ from app.endpoints import (
     # RHEL Lightspeed rlsapi v1 compatibility
     rlsapi_v1,
     root,
+    saved_prompts,
     shields,
     stream_interrupt,
     streaming_query,
@@ -63,6 +64,7 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(streaming_query.router, prefix="/v1")
     app.include_router(stream_interrupt.router, prefix="/v1")
     app.include_router(config.router, prefix="/v1")
+    app.include_router(saved_prompts.router, prefix="/v1")
     app.include_router(feedback.router, prefix="/v1")
     app.include_router(conversations_v1.router, prefix="/v1")
     app.include_router(conversations_v2.router, prefix="/v2")

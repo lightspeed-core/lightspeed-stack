@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+from typing import Optional
 
 
 def version_split(value: str) -> tuple[int, ...]:
@@ -19,7 +20,7 @@ def is_prerelease(tag: str) -> bool:
     return any(n in tag for n in omit)
 
 
-def get_latest_stable() -> str | None:
+def get_latest_stable() -> Optional[str]:
     """Return the latest stable tag."""
     stdout = subprocess.check_output(["git", "tag"], text=True)
     tags = [tag for tag in stdout.splitlines() if not is_prerelease(tag)]

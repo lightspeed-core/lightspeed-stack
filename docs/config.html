@@ -2105,7 +2105,11 @@ Llama Stack <code>providers.inference</code> entry, mapping
 values).</p>
     <p>Attributes: type: Canonical provider identifier. Vendor-neutral so it
 survives a future backend change; each backend-specific synthesizer maps
-it to its own provider vocabulary. api_key_env: Name of the environment
+it to its own provider vocabulary. id: Optional identifier emitted as
+the Llama Stack provider_id. When omitted, synthesized as type with
+underscores hyphenated. If set, must be non-empty after stripping
+whitespace and may contain only lowercase letters, digits, underscores,
+and hyphens. api_key_env: Name of the environment
 variable holding the provider API key. Emitted verbatim as
 <code>${env.&lt;name&gt;}</code> so the secret never lands on disk
 resolved. allowed_models: Optional allow-list of model identifiers
@@ -2134,18 +2138,26 @@ not modeled here.</p>
 Stack provider_type by the synthesizer.</td>
         </tr>
         <tr class="even">
+          <td>id</td>
+          <td>string</td>
+          <td>Optional identifier emitted as the Llama Stack provider_id. When
+omitted, synthesized as type with underscores hyphenated. If set, must
+be non-empty after stripping whitespace and may contain only lowercase
+letters, digits, underscores, and hyphens.</td>
+        </tr>
+        <tr class="odd">
           <td>api_key_env</td>
           <td>string</td>
           <td>Name of the environment variable holding the provider API key.
 Emitted as a ${env.name} reference so the secret is never written to
 disk in resolved form.</td>
         </tr>
-        <tr class="odd">
+        <tr class="even">
           <td>allowed_models</td>
           <td>array</td>
           <td>Optional allow-list of model identifiers for this provider.</td>
         </tr>
-        <tr class="even">
+        <tr class="odd">
           <td>extra</td>
           <td>object</td>
           <td>Additional provider-config keys merged verbatim into the synthesized

@@ -13,33 +13,220 @@ Lightspeed Core Stack (LCS) is an AI-powered assistant built on FastAPI that pro
 ## Code Architecture & Patterns
 
 ### Project Structure
+
 ```
 src/
-├── app/                  # FastAPI application
-│   ├── endpoints/        # REST API endpoints
-│   └── main.py           # Application entry point
-├── a2a_storage/          # A2A protocol persistent storage
-│   ├── context_store.py  # Abstract base class for context stores
-│   ├── in_memory_context_store.py  # In-memory implementation
-│   ├── sqlite_context_store.py     # SQLite implementation
-│   ├── postgres_context_store.py   # PostgreSQL implementation
-│   └── storage_factory.py          # Factory for creating stores
-├── authentication/       # Authentication modules (k8s, jwk, noop, rh-identity)
-├── authorization/        # Authorization middleware & resolvers
-├── cache/                # Conversation cache implementations
-├── quota/                # Quota limiter and token usage tracking
-├── metrics/              # Prometheus metrics
-├── runners/              # Agent runners
-├── models/               # Pydantic models
-│   ├── api/
-│   │   ├── requests/     # REST API request models
-│   │   └── responses/    # HTTP response models
-│   ├── common/           # Shared cross-layer models
-│   └── database/         # Database models
-├── utils/                # Utility functions
-├── client.py             # Llama Stack client wrapper (Singleton)
-├── configuration.py      # Config management (Singleton)
-└── constants.py          # Shared constants
+├── app/                                          # FastAPI application
+│   ├── endpoints/                                # REST API endpoints
+│   │   ├── a2a_openapi.py                        # OpenAPI-only metadata for A2A JSON-RPC routes
+│   │   ├── a2a.py                                # Handler for A2A (Agent-to-Agent) protocol endpoints using Responses API
+│   │   ├── authorized.py                         # Handler for REST API call to authorized endpoint
+│   │   ├── config.py                             # Handler for REST API call to retrieve service configuration
+│   │   ├── conversations_v1.py                   # Handler for REST API calls to manage conversation history using Conversations API
+│   │   ├── conversations_v2.py                   # Handler for REST API calls to manage conversation history
+│   │   ├── feedback.py                           # Handler for REST API endpoint for user feedback
+│   │   ├── health.py                             # Handlers for health REST API endpoints
+│   │   ├── info.py                               # Handler for REST API call to provide info
+│   │   ├── mcp_auth.py                           # Handler for REST API calls related to MCP server authentication
+│   │   ├── mcp_servers.py                        # Handler for REST API calls to dynamically manage MCP servers
+│   │   ├── metrics.py                            # Handler for REST API call to provide metrics
+│   │   ├── models.py                             # Handler for REST API call to list available models
+│   │   ├── prompts.py                            # Handler for REST API calls to manage Llama Stack stored prompt templates
+│   │   ├── providers.py                          # Handler for REST API calls to list and retrieve available providers
+│   │   ├── query.py                              # Handler for REST API call to provide answer to query using Response API
+│   │   ├── rags.py                               # Handler for REST API calls to list and retrieve available RAGs
+│   │   ├── responses.py                          # Handler for REST API call to provide answer using Responses API (LCORE specification)
+│   │   ├── responses_telemetry.py                # Splunk telemetry helpers for the Responses API endpoint
+│   │   ├── rlsapi_v1.py                          # Handler for RHEL Lightspeed rlsapi v1 REST API endpoints
+│   │   ├── root.py                               # Handler for the / endpoint
+│   │   ├── saved_prompts.py                      # Handler for REST API calls to manage saved prompts
+│   │   ├── shields.py                            # Handler for REST API call to list available shields
+│   │   ├── streaming_query.py                    # Streaming query handler using Responses API
+│   │   ├── stream_interrupt.py                   # Endpoint for interrupting in-progress streaming query requests
+│   │   ├── tools.py                              # Handler for REST API call to list available tools from MCP servers
+│   │   └── vector_stores.py                      # Handler for REST API calls to manage vector stores and files
+│   ├── database.py                               # Database engine management
+│   ├── routers.py                                # All REST API routers
+│   └── main.py                                   # Application entry point
+├── a2a_storage/                                  # A2A protocol persistent storage
+│   ├── context_store.py                          # Abstract base class for context stores
+│   ├── in_memory_context_store.py                # In-memory implementation
+│   ├── sqlite_context_store.py                   # SQLite implementation
+│   ├── postgres_context_store.py                 # PostgreSQL implementation
+│   └── storage_factory.py                        # Factory for creating stores
+├── authentication/                               # Authentication modules (k8s, jwk, noop, rh-identity)
+│   ├── api_key_token.py                          # Authentication flow for FastAPI endpoints with a provided API key
+│   ├── interface.py                              # Abstract base class for all authentication method implementations
+│   ├── jwk_token.py                              # Manage authentication flow for FastAPI endpoints with JWK based JWT auth
+│   ├── k8s.py                                    # Manage authentication flow for FastAPI endpoints with K8S/OCP
+│   ├── noop.py                                   # Manage authentication flow for FastAPI endpoints with no-op auth
+│   ├── noop_with_token.py                        # Manage authentication flow for FastAPI endpoints with no-op auth and provided user token
+│   ├── rh_identity.py                            # Red Hat Identity header authentication for FastAPI endpoints
+│   ├── trusted_proxy.py                          # Trusted-proxy authentication module for requests forwarded by a K8s proxy
+│   └── utils.py                                  # Authentication utility functions
+├── authorization/                                # Authorization middleware & resolvers
+│   ├── azure_token_manager.py                    # Azure Entra ID token manager for Azure OpenAI authentication
+│   ├── middleware.py                             # Authorization middleware and decorators
+│   └── resolvers.py                              # Authorization resolvers for role evaluation and access control
+├── cache/                                        # Conversation cache implementations
+│   ├── cache.py                                  # Abstract class that is parent for all cache implementations
+│   ├── cache_entry.py                            # Model for conversation history cache entry
+│   ├── cache_error.py                            # Any exception that can occur during cache operations
+│   ├── cache_factory.py                          # Cache factory class
+│   ├── in_memory_cache.py                        # In-memory cache implementation
+│   ├── noop_cache.py                             # No-operation cache implementation
+│   ├── postgres_cache.py                         # PostgreSQL cache implementation
+│   └── sqlite_cache.py                           # Cache that uses SQLite to store cached values
+├── data/                                         # Built-in default Llama Stack baseline for unified-mode synthesis
+│   └── default_run.yaml                          # The starting point when a unified `lightspeed-stack.yaml` select default baseline
+├── quota/                                        # Quota limiter and token usage tracking
+│   ├── cluster_quota_limiter.py                  # Simple cluster quota limiter where quota is fixed for the whole cluster
+│   ├── connect_pg.py                             # PostgreSQL connection handler
+│   ├── connect_sqlite.py                         # SQLite connection handler
+│   ├── quota_exceed_error.py                     # Any exception that can occur when a user does not have enough tokens available
+│   ├── quota_limiter.py                          # Abstract class that is the parent for all quota limiter implementations
+│   ├── quota_limiter_factory.py                  # Quota limiter factory class
+│   ├── revokable_quota_limiter.py                # Simple quota limiter where quota can be revoked
+│   ├── sql.py                                    # SQL commands used by quota management package
+│   ├── token_usage_history.py                    # Class with implementation of storage for token usage history
+│   └── user_quota_limiter.py                     # Simple user quota limiter where each user has a fixed quota
+├── metrics/                                      # Prometheus metrics
+│   ├── __init__.py                               # Metrics module for Lightspeed Core Stack
+│   ├── recording.p                               # Recording helpers for Prometheus metricsy
+│   └── utils.py                                  # Utility functions for metrics handling
+├── runners/                                      # Runners for various LCore subsystems
+│   ├── quota_scheduler.py                        # User and cluster quota scheduler runner
+│   └── uvicorn.py                                # Uvicorn runner
+├── models/                                       # Pydantic models
+│   ├── api/                                      # REST API models
+│   │   ├── requests/                             # REST API request models
+│   │   │   ├── __init__.py                       # Concrete REST API request models grouped by domain
+│   │   │   ├── catalog.py                        # Request models for catalog-related endpoints
+│   │   │   ├── conversations.py                  # Request models for conversation endpoints
+│   │   │   ├── feedback.py                       # Request models for feedback endpoints
+│   │   │   ├── mcp_servers.py                    # Request models for MCP server registration
+│   │   │   ├── prompts.py                        # Request models for prompt template endpoints
+│   │   │   ├── query.py                          # Request models for query and streaming interrupt endpoints
+│   │   │   ├── responses_openai.py               # Request model for the OpenAI-compatible Responses API
+│   │   │   ├── rlsapi.py                         # Models for rlsapi v1 REST API requests
+│   │   │   └── vector_stores.py                  # Request models for vector store and file endpoints
+│   │   └── responses/                            # HTTP response models
+│   │       ├── constants.py                      # OpenAPI description strings and shared example-label lists for API responses
+│   │       ├── error/                            # Error responses
+│   │       │   ├── bad_request.py                # OpenAPI-aligned error response models: HTTP 400 Bad Request
+│   │       │   ├── bases.py                      # Base Pydantic types for OpenAPI-aligned structured API error responses
+│   │       │   ├── conflict.py                   # OpenAPI-aligned error response models: HTTP 409 Conflict
+│   │       │   ├── content_too_large.py          # OpenAPI-aligned error response models: HTTP 413 Payload Too Large
+│   │       │   ├── forbidden.py                  # OpenAPI-aligned error response models: HTTP 403 Forbidden
+│   │       │   ├── internal.py                   # OpenAPI-aligned error response models: HTTP 500 Internal Server Error
+│   │       │   ├── not_found.py                  # OpenAPI-aligned error response models: HTTP 404 Not Found
+│   │       │   ├── service_unavailable.py        # OpenAPI-aligned error response models: HTTP 503 Service Unavailable
+│   │       │   ├── too_many_requests.py          # OpenAPI-aligned error response models: HTTP 429 Too Many Requests
+│   │       │   ├── unauthorized.py               # OpenAPI-aligned error response models: HTTP 401 Unauthorized
+│   │       │   └── unprocessable_entity.py       # OpenAPI-aligned error response models: HTTP 422 Unprocessable Entity
+│   │       └── successful/                       # Successful responses
+│   │           ├── bases.py                      # Base classes for successful API response models
+│   │           ├── catalog.py                    # Successful response bodies for catalog-style endpoints
+│   │           ├── configuration.py              # Successful response model for the configuration endpoint
+│   │           ├── conversations.py              # Successful responses for conversation CRUD and listing
+│   │           ├── feedback.py                   # Successful responses for feedback and feedback status endpoints
+│   │           ├── mcp_servers.py                # Successful responses for MCP server registration and listing
+│   │           ├── probes.py                     # Successful probe-related API responses (info, readiness, liveness, status, auth)
+│   │           ├── prompts.py                    # Successful responses for stored prompt templates
+│   │           ├── query.py                      # Successful response models for synchronous query and streaming query documentation
+│   │           ├── responses_openai.py           # Successful response model for the OpenAI-compatible Responses API
+│   │           ├── rlsapi.py                     # Models for rlsapi v1 REST API responses
+│   │           ├── saved_prompts.py              # Successful responses for saved prompts configuration
+│   │           └── vector_stores.py              # Successful responses for vector stores and vector store files
+│   ├── common/                                   # Shared cross-layer models
+│   │   ├── agents/                               # Streaming payload models and event type exports
+│   │   │   ├── stream_payloads.py                # Typed JSON bodies for SSE streaming events
+│   │   │   └── turn_accumulator.py               # Mutable per-turn state for agent response processing
+│   │   ├── responses/                            # Shared models for the OpenAI-compatible Responses API pipeline
+│   │   │   ├── contexts.py                       # Context objects for the responses endpoint pipeline and streaming query generators.
+│   │   │   ├── responses_api_params.py           # Request parameter model for Llama Stack responses API calls
+│   │   │   ├── responses_conversation_context.py # Conversation resolution result model for the OpenAI-compatible responses endpoint
+│   │   │   └── types.py                          # Type aliases for OpenAI-compatible Responses API input shapes
+│   │   ├── conversation.py                       # Conversation list rows, metadata, and simplified turn/message shapes for APIs
+│   │   ├── feedback.py                           # Predefined feedback categories for AI response quality signals
+│   │   ├── health.py                             # Health-related shared models for readiness and diagnostics
+│   │   ├── mcp.py                                # MCP server metadata models shared by registration and list responses
+│   │   ├── moderation.py                         # Shield moderation outcomes for the responses pipeline
+│   │   ├── query.py                              # Shared query-related request primitives
+│   │   ├── transcripts.py                        # Pydantic models for persisted query/response transcript entries
+│   │   └── turn_summary.py                       # RAG context, chunks, document refs, tool summaries, and per-turn aggregation
+│   ├── compaction.py                             # Pydantic models for conversation compaction
+│   ├── config.py                                 # Model with service configuration
+│   ├── database/                                 # Database models
+│   │   ├── base.py                               # Base model for SQLAlchemy ORM classes
+│   │   ├── conversations.py                      # User conversation models
+│   │   └── saved_prompts.py                      # User saved prompt models
+│   └── __init__.py                               # Database models package
+├── observability/                                # Observability module for telemetry and event collection
+│   ├── formats/                                  # Event format builders for Splunk telemetry
+│   │   ├── responses.py                          # Event builders for Responses API Splunk format
+│   │   └── rlsapi.py                             # Event builders for rlsapi v1 Splunk format
+│   └── splunk.py                                 # Async Splunk HEC client for sending telemetry events
+├── pydantic_ai_lightspeed/                       # Pydantic AI integrations/extensions for Lightspeed Core Stack
+│   ├── capabilities/                             # Pluggable capabilities for pydantic-ai agents in Lightspeed
+│   │   ├── question_validity/                    # Question validity capability for agent input validation
+│   │   │   └── _capability.py                    # Question validity capability for filtering off-topic user queries
+│   │   └── redaction/                            # PII redaction capability for Pydantic AI agents
+│   │       ├── capability.py                     # Pydantic AI capability for PII redaction of model messages
+│   │       └── core.py                           # Core redaction logic for PII detection and replacement
+│   └── llamastack/                               # Pydantic AI provider for Llama Stack
+│       ├── _model.py                             # Custom OpenAI Responses model that works around Llama Stack streaming quirks
+│       ├── _provider.py                          # Llama Stack provider implementation for Pydantic AI
+│       └── _transport.py                         # httpx transport that routes OpenAI-compatible requests through a Llama Stack library client
+├── telemetry/                                    # Telemetry module for configuration snapshot collection
+│   └── configuration_snapshot.py                 # Configuration snapshot with PII masking for telemetry
+├── utils/                                        # Utility functions
+│   ├── agents/                                   # Agent streaming and non streaming helpers
+│   │   ├── query.py                              # Non-streaming agent helpers and shared turn-summary builders for agent runs
+│   │   ├── streaming.py                          # Agent streaming helpers for the streaming_query flow
+│   │   └── tool_processor.py                     # Process and record pydantic-ai tool parts during agent stream dispatch
+│   ├── checks.py                                 # Checks that are performed to configuration options
+│   ├── common.py                                 # Common utilities for the project
+│   ├── compaction.py                             # Conversation compaction — partitioning, summarization, additive fold-up
+│   ├── config_dumper.py                          # Function to dump the configuration schema into OpenAPI-compatible format
+│   ├── connection_decorator.py                   # Decorator that makes sure the object is 'connected' according to it's connected predicate
+│   ├── conversation_compaction.py                # Runtime integration of conversation compaction into the request flow
+│   ├── conversations.py                          # Utilities for conversations
+│   ├── degraded_mode.py                          # Degraded mode state tracking
+│   ├── endpoints.py                              # Utility functions for endpoint handlers
+│   ├── json_schema_updater.py                    # Function to transform a JSON Schema-like dictionary into an OpenAPI-compatible schema
+│   ├── llama_stack_version.py                    # Check if the Llama Stack version is supported by the LCS
+│   ├── markdown_repair.py                        # Utilities for repairing truncated markdown content
+│   ├── mcp_auth_headers.py                       # Utilities for resolving MCP server authorization headers
+│   ├── mcp_headers.py                            # MCP headers handling
+│   ├── mcp_oauth_probe.py                        # Probe MCP servers for OAuth and raise 401 with WWW-Authenticate when required
+│   ├── models_dumper.py                          # Function to dump the schema of all data models into OpenAPI-compatible format
+│   ├── openapi_schema_dumper.py                  # Utility function to dump schema with list of models into OpenAPI-compatible JSON format
+│   ├── prompts.py                                # Utility functions for system prompts
+│   ├── pydantic_ai_helpers.py                    # Helpers for running Pydantic AI agents against Llama Stack (Responses API compatibility)
+│   ├── query.py                                  # Utility functions for working with queries
+│   ├── quota_utils.py                            # Quota handling helper functions
+│   ├── reranker.py                               # Reranker utilities for RAG chunk reranking
+│   ├── responses.py                              # Utility functions for processing Responses API output
+│   ├── rh_identity.py                            # Utility functions for extracting RH Identity context for telemetry
+│   ├── shields.py                                # Utility functions for working with Llama Stack shields
+│   ├── streaming_sse.py                          # SSE formatting helpers for streaming query responses
+│   ├── stream_interrupts.py                      # Stream interrupt registry and persistence utilities
+│   ├── suid.py                                   # Session ID utility functions
+│   ├── token_counter.py                          # Helper classes to count tokens sent and received by the LLM
+│   ├── token_estimator.py                        # Pre-LLM-call token estimation
+│   ├── tool_formatter.py                         # Utility functions for formatting and parsing MCP tool descriptions
+│   ├── transcripts.py                            # Transcript handling
+│   ├── types.py                                  # Common types for the project
+│   └── vector_search.py                          # Vector search utilities for query endpoints
+├── sentry.py                                     # Sentry error tracking initialization and configuration
+├── lightspeed_stack.py                           # Entry point to the Lightspeed Core Stack REST API service
+├── llama_stack_configuration.py                  # Llama Stack configuration enrichment and synthesis
+├── log.py                                        # Log utilities
+├── client.py                                     # Llama Stack client wrapper (Singleton)
+├── configuration.py                              # Config management (Singleton)
+├── constants.py                                  # Shared (final) constants
+└── version.py                                    # Service version that is read by project manager tools
 ```
 
 ### Coding Standards

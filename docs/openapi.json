@@ -6931,6 +6931,169 @@
                 }
             }
         },
+        "/v1/saved-prompts/config": {
+            "get": {
+                "tags": [
+                    "saved-prompts"
+                ],
+                "summary": "Get Saved Prompts Config Handler",
+                "description": "Handle requests to the GET /saved-prompts/config endpoint.\n\nProcess GET requests that return saved prompts configuration limits so\nconsuming services can provide limits consistent with what the server\nwill enforce. For example:\n\n    curl http://localhost:8080/v1/saved-prompts/config\n\n### Parameters:\n- request: The incoming HTTP request (used by middleware).\n- auth: Authentication tuple from the auth dependency (used by middleware).\n\n### Raises:\n- HTTPException: with status 401 for unauthorized access.\n- HTTPException: with status 403 if permission is denied.\n- HTTPException: with status 500 and a detail object containing `response`\n  and `cause` when service configuration is wrong or incomplete.\n- HTTPException: with status 503 and a detail object containing `response`\n  and `cause` when unable to connect to backend services.\n\n### Returns:\n- SavedPromptsConfigResponse: Saved prompts configuration limits.",
+                "operationId": "get_saved_prompts_config_handler_v1_saved_prompts_config_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SavedPromptsConfigResponse"
+                                },
+                                "example": {
+                                    "max_content_length": 10000,
+                                    "max_display_name_length": 255,
+                                    "max_prompts_per_user": 50
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                },
+                                "examples": {
+                                    "missing header": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No Authorization header found",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "No token found in Authorization header",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "expired token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token has expired",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid signature": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid token signature",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid key": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token signed by unknown key",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "missing claim": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Token missing claim: user_id",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid k8s token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Invalid or expired Kubernetes token",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    },
+                                    "invalid jwk token": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Authentication key server returned invalid data",
+                                                "response": "Missing or invalid credentials provided by client"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Permission denied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForbiddenResponse"
+                                },
+                                "examples": {
+                                    "endpoint": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                                "response": "User does not have permission to access this endpoint"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/InternalServerErrorResponse"
+                                },
+                                "examples": {
+                                    "configuration": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                                "response": "Configuration is not loaded"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServiceUnavailableResponse"
+                                },
+                                "examples": {
+                                    "kubernetes api": {
+                                        "value": {
+                                            "detail": {
+                                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+                                                "response": "Unable to connect to Kubernetes API"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/feedback": {
             "post": {
                 "tags": [
@@ -19279,6 +19442,50 @@
                 "title": "SQLiteDatabaseConfiguration",
                 "description": "SQLite database configuration."
             },
+            "SavedPromptsConfigResponse": {
+                "properties": {
+                    "max_prompts_per_user": {
+                        "type": "integer",
+                        "title": "Max Prompts Per User",
+                        "description": "Maximum number of saved prompts allowed per user",
+                        "examples": [
+                            50
+                        ]
+                    },
+                    "max_display_name_length": {
+                        "type": "integer",
+                        "title": "Max Display Name Length",
+                        "description": "Maximum character length for prompt display name",
+                        "examples": [
+                            255
+                        ]
+                    },
+                    "max_content_length": {
+                        "type": "integer",
+                        "title": "Max Content Length",
+                        "description": "Maximum character length for prompt content body",
+                        "examples": [
+                            10000
+                        ]
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "max_prompts_per_user",
+                    "max_display_name_length",
+                    "max_content_length"
+                ],
+                "title": "SavedPromptsConfigResponse",
+                "description": "Saved prompts configuration limits returned to consuming services.\n\nAttributes:\n    max_prompts_per_user: Maximum number of saved prompts allowed per user.\n    max_display_name_length: Maximum character length for prompt display name.\n    max_content_length: Maximum character length for prompt content body.",
+                "examples": [
+                    {
+                        "max_content_length": 10000,
+                        "max_display_name_length": 255,
+                        "max_prompts_per_user": 50
+                    }
+                ]
+            },
             "SavedPromptsConfiguration": {
                 "properties": {
                     "max_prompts_per_user": {
@@ -20156,6 +20363,18 @@
                         "title": "Provider type",
                         "description": "Canonical, backend-agnostic provider identifier mapped to a Llama Stack provider_type by the synthesizer."
                     },
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Provider ID",
+                        "description": "Optional identifier emitted as the Llama Stack provider_id. When omitted, synthesized as type with underscores hyphenated. If set, must be non-empty after stripping whitespace and may contain only lowercase letters, digits, underscores, and hyphens."
+                    },
                     "api_key_env": {
                         "anyOf": [
                             {
@@ -20196,7 +20415,7 @@
                     "type"
                 ],
                 "title": "UnifiedInferenceProvider",
-                "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw Llama Stack provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into a Llama\nStack `providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block \u2014 an escape hatch for\n        provider-specific knobs not modeled here."
+                "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw Llama Stack provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into a Llama\nStack `providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    id: Optional identifier emitted as the Llama Stack provider_id. When\n        omitted, synthesized as type with underscores hyphenated. If set,\n        must be non-empty after stripping whitespace and may contain only\n        lowercase letters, digits, underscores, and hyphens.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block \u2014 an escape hatch for\n        provider-specific knobs not modeled here."
             },
             "UnifiedLlamaStackConfig": {
                 "properties": {
@@ -21092,6 +21311,10 @@
         {
             "name": "root",
             "description": "Service root."
+        },
+        {
+            "name": "saved-prompts",
+            "description": "Saved prompts configuration and management."
         },
         {
             "name": "shields",

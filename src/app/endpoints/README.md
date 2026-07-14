@@ -66,6 +66,9 @@ Handler for RHEL Lightspeed rlsapi v1 REST API endpoints.
 ## [root.py](root.py)
 Handler for the / endpoint.
 
+## [saved_prompts.py](saved_prompts.py)
+Handler for REST API calls to manage saved prompts.
+
 ## [shields.py](shields.py)
 Handler for REST API call to list available shields.
 

@@ -92,12 +92,15 @@ WORKDIR /app-root
 # PYTHONDONTWRITEBYTECODE 1 : disable the generation of .pyc
 # PYTHONUNBUFFERED 1 : force the stdout and stderr streams to be unbuffered
 # PYTHONCOERCECLOCALE 0, PYTHONUTF8 1 : skip legacy locales and use UTF-8 mode
+# TORCH_COMPILE_DISABLE 1: bypass torch.compile() which causes issue to the RAG system
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONCOERCECLOCALE=0 \
     PYTHONUTF8=1 \
     PYTHONIOENCODING=UTF-8 \
-    LANG=en_US.UTF-8
+    LANG=en_US.UTF-8 \
+    USER=default \
+    TORCH_COMPILE_DISABLE=1
 
 COPY --from=builder --chown=1001:1001 /app-root /app-root
 
@@ -137,7 +140,7 @@ ENTRYPOINT ["python3.12", "src/lightspeed_stack.py"]
 LABEL vendor="Red Hat, Inc." \
     name="lightspeed-core/lightspeed-stack-rhel9" \
     com.redhat.component="lightspeed-core/lightspeed-stack" \
-    cpe="cpe:/a:redhat:lightspeed_core:0.4::el9" \
+    cpe="cpe:/a:redhat:lightspeed_core:0.7::el9" \
     io.k8s.display-name="Lightspeed Stack" \
     summary="A service that provides a REST API for the Lightspeed Core Stack." \
     description="Lightspeed Core Stack (LCS) is an AI-powered assistant that provides answers to product questions using backend LLM services, agents, and RAG databases." \

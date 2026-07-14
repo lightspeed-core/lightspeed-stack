@@ -85,7 +85,30 @@ reviews:
 
     issue_assessment:
       mode: warning
-    custom_checks: []
+    custom_checks:
+      - name: 'Performance and Algorithmic Complexity'
+        mode: error
+        instructions: |
+          BLOCKING. Flag only meaningful performance regressions:
+          1. O(n^2)+ algorithms on non-trivial inputs (handlers, K8s list operations).
+          2. N+1 patterns: list-then-query-per-item (K8s API, DB).
+          3. Expensive work inside loops (API calls, JSON parsing, regex compilation).
+          4. Unbounded growth: caches, watchers, buffers without eviction/limits.
+          5. Missing pagination/limits on List operations or API endpoints.
+
+          Per issue: file, lines, risk, fix category. If clean, mark PASSED.
+
+      - name: 'Security and Secret Handling'
+        mode: error
+        instructions: |
+          BLOCKING. Flag:
+          1. Secrets/tokens logged in plaintext or hardcoded in source.
+          2. Missing auth/authz on API endpoints.
+          3. Injection vulnerabilities (SQL, command, path traversal).
+          4. Sensitive data leaked in API responses, WebSocket messages, or logs.
+          5. K8s Secrets and RH secrets missing OwnerReferences.
+
+          Per violation: file, lines, risk. If clean, mark PASSED.
 
   # ---------------------------------------------------------------------------
   # Tools

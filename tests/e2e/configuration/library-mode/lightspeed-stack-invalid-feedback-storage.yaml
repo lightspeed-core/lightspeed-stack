@@ -8,7 +8,10 @@ service:
   access_log: true
 llama_stack:
   use_as_library_client: true
-  library_client_config_path: run.yaml
+  # Unified mode: run.yaml (materialized per provider by CI/the harness)
+  # is consumed as the synthesis profile instead of the legacy two-file path.
+  config:
+    profile: run.yaml
 user_data_collection:
   feedback_enabled: true
   feedback_storage: "/invalid"

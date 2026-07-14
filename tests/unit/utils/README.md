@@ -15,6 +15,9 @@ Test module for utils/common.py.
 ## [test_compaction.py](test_compaction.py)
 Unit tests for utils/compaction — partitioning, prompt, summarization.
 
+## [test_config_dumper.py](test_config_dumper.py)
+Unit tests for utils/config_dumper module.
+
 ## [test_connection_decorator.py](test_connection_decorator.py)
 Unit tests for the connection decorator.
 
@@ -27,6 +30,9 @@ Unit tests for conversation utility functions.
 ## [test_endpoints.py](test_endpoints.py)
 Unit tests for endpoints utility functions.
 
+## [test_json_schema_updater.py](test_json_schema_updater.py)
+Unit tests for utils/json_schema_updater module.
+
 ## [test_llama_stack_version.py](test_llama_stack_version.py)
 Unit tests for utility function to check Llama Stack version.
 
@@ -38,6 +44,9 @@ Unit tests for MCP authorization headers utilities.
 
 ## [test_mcp_headers.py](test_mcp_headers.py)
 Unit tests for MCP headers utility functions.
+
+## [test_models_dumper.py](test_models_dumper.py)
+Unit tests for utils/models_dumper module.
 
 ## [test_prompts.py](test_prompts.py)
 Unit tests for prompts utility functions.
@@ -53,9 +62,6 @@ Unit tests for utils/responses.py functions.
 
 ## [test_rh_identity.py](test_rh_identity.py)
 Unit tests for utils/rh_identity module.
-
-## [test_schema_dumper.py](test_schema_dumper.py)
-Unit tests for utils/schema_dumper module.
 
 ## [test_shields.py](test_shields.py)
 Unit tests for utils/shields.py functions.

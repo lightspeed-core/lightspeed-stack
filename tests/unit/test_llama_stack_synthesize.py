@@ -128,7 +128,9 @@ def test_apply_high_level_inference_hyphenates_provider_id() -> None:
     assert "config" not in entry
 
 
-def test_apply_high_level_inference_replaces_existing_provider_id() -> None:
+def test_apply_high_level_inference_replaces_existing_provider_id(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     """A high-level provider replaces a baseline entry with the same id."""
     ls_config: dict[str, Any] = {
         "providers": {
@@ -143,11 +145,86 @@ def test_apply_high_level_inference_replaces_existing_provider_id() -> None:
         }
     }
     inference = {"providers": [{"type": "openai", "api_key_env": "NEW_KEY"}]}
-    apply_high_level_inference(ls_config, inference)
+    with caplog.at_level("INFO", logger="lightspeed_stack.llama_stack_configuration"):
+        apply_high_level_inference(ls_config, inference)
     ids = [p["provider_id"] for p in ls_config["providers"]["inference"]]
     assert ids == ["openai", "other"]  # replaced in place, not duplicated
     openai = ls_config["providers"]["inference"][0]
     assert openai["config"]["api_key"] == "${env.NEW_KEY}"
+    assert "provider_id='openai'" in caplog.text
+
+
+def test_apply_high_level_inference_uses_explicit_id() -> None:
+    """An explicit id is emitted as provider_id instead of the type-derived id."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {
+                "type": "vllm",
+                "id": "vllm-prod",
+                "api_key_env": "VLLM_API_KEY",
+            }
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    entry = ls_config["providers"]["inference"][0]
+    assert entry["provider_id"] == "vllm-prod"
+    assert entry["provider_type"] == "remote::vllm"
+
+
+def test_apply_high_level_inference_same_type_distinct_ids() -> None:
+    """Two providers of the same type with distinct ids both appear."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {
+                "type": "vllm",
+                "id": "vllm-prod",
+                "api_key_env": "VLLM_PROD_KEY",
+                "extra": {"url": "http://prod:8000"},
+            },
+            {
+                "type": "vllm",
+                "id": "vllm-staging",
+                "api_key_env": "VLLM_STAGING_KEY",
+                "extra": {"url": "http://staging:8000"},
+            },
+        ]
+    }
+    apply_high_level_inference(ls_config, inference)
+    by_id = {e["provider_id"]: e for e in ls_config["providers"]["inference"]}
+    assert set(by_id) == {"vllm-prod", "vllm-staging"}
+    assert all(e["provider_type"] == "remote::vllm" for e in by_id.values())
+    assert by_id["vllm-prod"]["config"]["url"] == "http://prod:8000"
+    assert by_id["vllm-staging"]["config"]["url"] == "http://staging:8000"
+
+
+def test_apply_high_level_inference_duplicate_id_last_wins(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Duplicate id keeps the last entry and logs an info message."""
+    ls_config: dict[str, Any] = {"providers": {"inference": []}}
+    inference = {
+        "providers": [
+            {
+                "type": "vllm",
+                "id": "vllm-shared",
+                "api_key_env": "FIRST_KEY",
+            },
+            {
+                "type": "vllm",
+                "id": "vllm-shared",
+                "api_key_env": "SECOND_KEY",
+            },
+        ]
+    }
+    with caplog.at_level("INFO", logger="lightspeed_stack.llama_stack_configuration"):
+        apply_high_level_inference(ls_config, inference)
+    entries = ls_config["providers"]["inference"]
+    assert len(entries) == 1
+    assert entries[0]["provider_id"] == "vllm-shared"
+    assert entries[0]["config"]["api_token"] == "${env.SECOND_KEY}"
+    assert "provider_id='vllm-shared'" in caplog.text
 
 
 def test_apply_high_level_inference_merges_extra() -> None:
@@ -469,3 +546,28 @@ def test_migrate_config_dumb_rejects_non_mapping_inputs(tmp_path: Path) -> None:
     empty_run.write_text("", encoding="utf-8")
     with pytest.raises(ValueError, match="did not parse to a mapping"):
         migrate_config_dumb(str(empty_run), lcs_path, out_path)
+
+
+# ---------------------------------------------------------------------------
+# reference profiles (LCORE-2346)
+# ---------------------------------------------------------------------------
+
+REPO_ROOT = Path(__file__).parents[2]
+REFERENCE_PROFILES = sorted((REPO_ROOT / "examples" / "profiles").glob("*.yaml"))
+
+
+def test_reference_profiles_exist() -> None:
+    """The reference profiles shipped in examples/profiles/ are present."""
+    names = {p.name for p in REFERENCE_PROFILES}
+    assert {"openai-remote.yaml", "inline-faiss.yaml"} <= names
+
+
+@pytest.mark.parametrize("profile_path", REFERENCE_PROFILES, ids=lambda p: p.name)
+def test_reference_profile_loads_via_synthesizer(profile_path: Path) -> None:
+    """Every examples/profiles/*.yaml loads cleanly as a synthesis baseline."""
+    lcs = {"llama_stack": {"config": {"profile": profile_path.name}}}
+    result = synthesize_configuration(lcs, config_file_dir=str(profile_path.parent))
+    # The profile drives the baseline: run.yaml-shaped keys survive synthesis.
+    assert result["version"] == 2
+    assert "inference" in result["apis"]
+    assert result["providers"]["inference"], "profile must configure inference"

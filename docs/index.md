@@ -68,6 +68,10 @@ product questions using backend LLM services, agents, and RAG databases.
 
 [Unsupported versions](https://lightspeed-core.github.io/lightspeed-stack/versions_unsupported.html)
 
+## Migration guides
+
+[Migration guides](https://lightspeed-core.github.io/lightspeed-stack/migrations/)
+
 ## Info for developers
 
 [Contributing guide](https://lightspeed-core.github.io/lightspeed-stack/contributing_guide.html)
@@ -152,6 +156,8 @@ product questions using backend LLM services, agents, and RAG databases.
 [Spike](https://lightspeed-core.github.io/lightspeed-stack/design/llama-stack-config-merge/llama-stack-config-merge-spike.html)
 
 [Design](https://lightspeed-core.github.io/lightspeed-stack/design/llama-stack-config-merge/llama-stack-config-merge.html)
+
+[Profiles (Deployment Guide)](https://lightspeed-core.github.io/lightspeed-stack/deployment_guide.html#profiles)
 
 ### Low overhead deployment for server mode
 

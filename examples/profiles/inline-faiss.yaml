@@ -1,0 +1,115 @@
+# Reference profile: fully inline providers (sentence-transformers + FAISS).
+#
+# Demonstrates a profile with no remote inference provider: the inline
+# sentence-transformers provider serves embeddings and FAISS serves
+# vector_io, so the stack boots offline with no API key. Embeddings-only —
+# pair it with a chat provider via the high-level `inference.providers`
+# section (or `native_override`) in lightspeed-stack.yaml before serving
+# real queries:
+#
+#   inference:
+#     providers:
+#       - type: openai
+#         api_key_env: OPENAI_API_KEY
+#       # Multiple backends of the same type need distinct id values:
+#       # - type: vllm
+#       #   id: vllm-prod
+#       #   api_key_env: VLLM_PROD_KEY
+#       # - type: vllm
+#       #   id: vllm-staging
+#       #   api_key_env: VLLM_STAGING_KEY
+#   llama_stack:
+#     use_as_library_client: true
+#     config:
+#       profile: examples/profiles/inline-faiss.yaml
+#
+# Relative paths resolve against the directory of the loaded
+# lightspeed-stack.yaml — see docs/deployment_guide.md, section "Profiles".
+version: 2
+
+apis:
+- agents
+- files
+- inference
+- tool_runtime
+- vector_io
+
+image_name: starter
+external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR:=~/.llama/providers.d}
+
+providers:
+  inference:
+  - provider_id: sentence-transformers
+    provider_type: inline::sentence-transformers
+  files:
+  - config:
+      metadata_store:
+        table_name: files_metadata
+        backend: sql_default
+      storage_dir: ${env.SQLITE_STORE_DIR:=~/.llama/storage/files}
+    provider_id: meta-reference-files
+    provider_type: inline::localfs
+  tool_runtime:
+  - config: {}
+    provider_id: rag-runtime
+    provider_type: inline::rag-runtime
+  vector_io:
+  - config:
+      persistence:
+        namespace: vector_io::faiss
+        backend: kv_default
+    provider_id: faiss
+    provider_type: inline::faiss
+  agents:
+  - config:
+      persistence:
+        agent_state:
+          namespace: agents_state
+          backend: kv_default
+        responses:
+          table_name: agents_responses
+          backend: sql_default
+    provider_id: meta-reference
+    provider_type: inline::meta-reference
+
+storage:
+  backends:
+    kv_default:
+      type: kv_sqlite
+      db_path: ${env.KV_STORE_PATH:=~/.llama/storage/rag/kv_store.db}
+    sql_default:
+      type: sql_sqlite
+      db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
+  stores:
+    metadata:
+      namespace: registry
+      backend: kv_default
+    inference:
+      table_name: inference_store
+      backend: sql_default
+      max_write_queue_size: 10000
+      num_writers: 4
+    conversations:
+      table_name: openai_conversations
+      backend: sql_default
+    prompts:
+      namespace: prompts
+      backend: kv_default
+
+registered_resources:
+  models: []
+  shields: []
+  vector_stores: []
+  tool_groups:
+  - toolgroup_id: builtin::rag
+    provider_id: rag-runtime
+
+# REQUIRED for file_search tool calls to work. Without it, llama-stack's
+# rag-runtime silently fails all file_search operations with no error logged.
+vector_stores:
+  annotation_prompt_params:
+    enable_annotations: false
+  default_provider_id: faiss
+  default_embedding_model:
+    provider_id: sentence-transformers
+    model_id: nomic-ai/nomic-embed-text-v1.5

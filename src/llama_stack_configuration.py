@@ -718,12 +718,14 @@ def apply_high_level_inference(
 
     Each high-level provider is mapped to a Llama Stack ``providers.inference``
     entry via :data:`PROVIDER_TYPE_MAP`. The emitted ``provider_id`` is the
-    provider ``type`` with underscores hyphenated, so an inline embedder declared
-    as ``sentence_transformers`` becomes ``sentence-transformers`` and matches the
+    optional explicit high-level ``id`` when set; otherwise the provider ``type``
+    with underscores hyphenated, so an inline embedder declared as
+    ``sentence_transformers`` becomes ``sentence-transformers`` and matches the
     baseline's ecosystem convention (e.g. the default embedding model reference).
-    An entry whose ``provider_id`` already exists in the baseline is replaced; new
-    ones are appended. Secrets are emitted as ``${env.<VAR>}`` references, never
-    resolved values (R6).
+    An entry whose ``provider_id`` already exists in the baseline (or was emitted
+    by an earlier high-level entry) is replaced with an info log; new ones are
+    appended. Secrets are emitted as ``${env.<VAR>}`` references, never resolved
+    values (R6).
 
     Parameters:
         ls_config: The Llama Stack configuration being synthesized (modified in
@@ -743,7 +745,7 @@ def apply_high_level_inference(
 
     for provider in providers:
         provider_type = provider["type"]
-        emitted_id = provider_type.replace("_", "-")
+        emitted_id = provider.get("id") or provider_type.replace("_", "-")
         ls_provider_type = PROVIDER_TYPE_MAP[provider_type]
         entry: dict[str, Any] = {
             "provider_id": emitted_id,
@@ -764,6 +766,11 @@ def apply_high_level_inference(
         # Replace a baseline provider with the same id, else append.
         for index, existing in enumerate(inference_list):
             if isinstance(existing, dict) and existing.get("provider_id") == emitted_id:
+                logger.info(
+                    "Replacing existing inference provider with "
+                    "provider_id=%r; a later high-level entry overwrote it",
+                    emitted_id,
+                )
                 inference_list[index] = entry
                 break
         else:

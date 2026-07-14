@@ -139,17 +139,7 @@ registered_resources:
     provider_id: vllm
     model_type: llm
     provider_model_id: null
-  - model_id: all-mpnet-base-v2
-    model_type: embedding
-    provider_id: sentence-transformers
-    provider_model_id: all-mpnet-base-v2
-    metadata:
-      embedding_dimension: 768
-  vector_stores: 
-  - embedding_dimension: 768
-    embedding_model: sentence-transformers/all-mpnet-base-v2
-    provider_id: faiss
-    vector_store_id: ${env.FAISS_VECTOR_STORE_ID}
+  vector_stores: []
   shields:
   - shield_id: llama-guard
     provider_id: llama-guard

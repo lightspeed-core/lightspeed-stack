@@ -5,6 +5,7 @@ and are only used when running tests in the Prow CI environment.
 """
 
 import os
+import re
 import subprocess
 import tempfile
 from typing import Optional
@@ -234,6 +235,24 @@ def remove_configmap_backup(backup_key: str) -> None:
         print(f"ConfigMap backup {backup_key} removed from memory")
 
 
+def _apply_inference_overrides(content: str) -> str:
+    """Override inference defaults from E2E env vars if set.
+
+    When E2E_DEFAULT_MODEL_OVERRIDE or E2E_DEFAULT_PROVIDER_OVERRIDE are set,
+    patch the YAML content so every config swap uses the correct model/provider
+    for the current environment (e.g. vLLM instead of OpenAI in RHOAI Prow).
+    """
+    model = os.getenv("E2E_DEFAULT_MODEL_OVERRIDE")
+    provider = os.getenv("E2E_DEFAULT_PROVIDER_OVERRIDE")
+    if not model and not provider:
+        return content
+    if model:
+        content = re.sub(r"(default_model:\s*).*", rf"\g<1>{model}", content)
+    if provider:
+        content = re.sub(r"(default_provider:\s*).*", rf"\g<1>{provider}", content)
+    return content
+
+
 def _recreate_configmap(
     configmap_name: str,
     source_file: str,
@@ -268,9 +287,11 @@ def update_config_configmap(
     Args:
         source: Either a file path or a backup key from _configmap_backups.
     """
+    temp_path: Optional[str] = None
+
     # Check if source is a backup key (restore from memory)
     if source in _configmap_backups:
-        config_content = _configmap_backups[source]
+        config_content = _apply_inference_overrides(_configmap_backups[source])
         print(f"Restoring ConfigMap {configmap_name} from memory backup...")
 
         # Write content to temp file (oc create configmap requires a file)
@@ -289,12 +310,28 @@ def update_config_configmap(
                 os.remove(temp_path)
         return
 
-    # Otherwise, source is a file path
+    # Otherwise, source is a file path — apply inference overrides if needed
     print(f"Updating ConfigMap {configmap_name} with config from {source}...")
 
+    source_to_apply = source
+    temp_path = None
     try:
-        _recreate_configmap(configmap_name, source, configmap_key)
+        with open(source) as f:
+            patched = _apply_inference_overrides(f.read())
+        with open(source) as f:
+            original = f.read()
+        if patched != original:
+            tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False)
+            tmp.write(patched)
+            tmp.close()
+            source_to_apply = tmp.name
+            temp_path = tmp.name
+
+        _recreate_configmap(configmap_name, source_to_apply, configmap_key)
         print(f"ConfigMap {configmap_name} updated successfully")
     except subprocess.CalledProcessError as e:
         print(f"Failed to update ConfigMap: {e}")
         raise
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)

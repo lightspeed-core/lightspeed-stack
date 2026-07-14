@@ -27,14 +27,26 @@ from a2a.types import (
     TaskState,
     TaskStatus,
     TaskStatusUpdateEvent,
-    TextPart,
+)
+from a2a.types import (
+    TextPart as A2ATextPart,
 )
 from a2a.utils import new_agent_text_message, new_task
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from llama_stack_api.openai_responses import (
-    OpenAIResponseObjectStream,
+from llama_stack_client import APIConnectionError, APIStatusError
+from pydantic_ai import AgentRunResultEvent
+from pydantic_ai.exceptions import AgentRunError
+from pydantic_ai.messages import (
+    AgentStreamEvent,
+    FunctionToolCallEvent,
+    NativeToolCallPart,
+    PartDeltaEvent,
+    PartEndEvent,
+    PartStartEvent,
+    TextPart,
+    TextPartDelta,
 )
-from llama_stack_client import APIConnectionError, AsyncLlamaStackClient
+from pydantic_ai.run import AgentRunResult
 from starlette.responses import Response, StreamingResponse
 
 from a2a_storage import A2AContextStore, A2AStorageFactory
@@ -47,18 +59,13 @@ from configuration import configuration
 from constants import MEDIA_TYPE_EVENT_STREAM
 from log import get_logger
 from models.api.requests import QueryRequest
-from models.common.responses.types import ResponseInput
 from models.config import Action
-from utils.conversation_compaction import (
-    apply_compaction_blocking,
-    store_compacted_turn,
-)
+from utils.agents.query import map_agent_inference_error
+from utils.conversation_compaction import apply_compaction_blocking
 from utils.mcp_headers import McpHeaders, mcp_headers_dependency
-from utils.responses import (
-    extract_text_from_response_item,
-    prepare_responses_params,
-)
-from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
+from utils.pydantic_ai_helpers import build_agent
+from utils.responses import prepare_responses_params
+from utils.suid import normalize_conversation_id
 from version import __version__
 
 logger = get_logger(__name__)
@@ -103,23 +110,30 @@ async def _get_context_store() -> A2AContextStore:
     return _CONTEXT_STORE
 
 
-def _convert_responses_content_to_a2a_parts(output: list[Any]) -> list[Part]:
-    """Convert Responses API output to A2A Parts.
+def _build_a2a_parts_from_agent_result(
+    run_result: Optional[AgentRunResult[str]],
+    accumulated_text: list[str],
+) -> list[Part]:
+    """Convert a pydantic-ai agent run result to A2A Parts.
 
-    Args:
-        output: List of Responses API output items
+    Prefers the authoritative text from the agent result, falling back to
+    the text accumulated from stream deltas — same pattern as
+    ``utils/agents/streaming.py:429``.
+
+    Parameters:
+        run_result: Completed agent run result, or None if no result event arrived.
+        accumulated_text: Text parts accumulated during streaming.
 
     Returns:
-        List of A2A Part objects
+        List of A2A Part objects for the final artifact.
     """
-    parts: list[Part] = []
-
-    for output_item in output:
-        text = extract_text_from_response_item(output_item)
-        if text:
-            parts.append(Part(root=TextPart(text=text)))
-
-    return parts
+    if run_result is not None:
+        final_text = run_result.response.text or "".join(accumulated_text)
+    else:
+        final_text = "".join(accumulated_text)
+    if not final_text:
+        return []
+    return [Part(root=A2ATextPart(text=final_text))]
 
 
 class TaskResultAggregator:
@@ -208,6 +222,7 @@ class A2AAgentExecutor(AgentExecutor):
         self.auth_token: str = auth_token
         self.mcp_headers: McpHeaders = mcp_headers or {}
         self.request_headers: Optional[Mapping[str, str]] = request_headers
+        self._run_result: Optional[AgentRunResult[str]] = None
 
     async def execute(
         self,
@@ -356,22 +371,15 @@ class A2AAgentExecutor(AgentExecutor):
                 configuration.compaction,
             )
             responses_params = compaction.params
-            # Stream response from LLM using the Responses API
-            stream = await client.responses.create(**responses_params.model_dump())
-        except APIConnectionError as e:
-            error_message = (
-                f"Unable to connect to Llama Stack backend service: {e!s}. "
-                "The service may be temporarily unavailable. Please try again later."
-            )
-            logger.error(
-                "APIConnectionError in A2A request: %s",
-                str(e),
-                exc_info=True,
-            )
+
+            agent = build_agent(client, responses_params, configuration.skills)
+        except (AgentRunError, APIStatusError, APIConnectionError, RuntimeError) as e:
+            error_response = map_agent_inference_error(e, query_request.model or "")
+            logger.error("Error preparing A2A agent: %s", str(e), exc_info=True)
             await task_updater.update_status(
                 TaskState.failed,
                 message=new_agent_text_message(
-                    error_message,
+                    error_response.detail.response,
                     context_id=context_id,
                     task_id=task_id,
                 ),
@@ -412,19 +420,31 @@ class A2AAgentExecutor(AgentExecutor):
             )
         )
 
-        # Process stream using generator and aggregator pattern. In compacted
-        # mode the conversation parameter is not sent, so the turn is stored
-        # explicitly once the response completes (see _convert_stream_to_events).
-        async for a2a_event in self._convert_stream_to_events(
-            stream,
-            task_id,
-            context_id,
-            conversation_id,
-            client,
-            compaction.original_input if compaction.compacted else None,
-        ):
-            aggregator.process_event(a2a_event)
-            await event_queue.enqueue_event(a2a_event)
+        # Run the pydantic-ai agent and convert stream events to A2A events.
+        prompt = user_input
+        try:
+            async for a2a_event in self._convert_stream_to_events(
+                agent,
+                prompt,
+                task_id,
+                context_id,
+                conversation_id=conversation_id,
+            ):
+                aggregator.process_event(a2a_event)
+                await event_queue.enqueue_event(a2a_event)
+        except (AgentRunError, APIStatusError, APIConnectionError, RuntimeError) as e:
+            error_response = map_agent_inference_error(e, responses_params.model)
+            logger.error("Error during A2A agent run: %s", str(e), exc_info=True)
+            await task_updater.update_status(
+                TaskState.failed,
+                message=new_agent_text_message(
+                    error_response.detail.response,
+                    context_id=context_id,
+                    task_id=task_id,
+                ),
+                final=True,
+            )
+            return
 
         # Publish the final task result event
         if aggregator.task_state == TaskState.working:
@@ -441,22 +461,22 @@ class A2AAgentExecutor(AgentExecutor):
                 final=True,
             )
 
-    async def _convert_stream_to_events(  # pylint: disable=too-many-branches,too-many-locals,too-many-arguments,too-many-positional-arguments
+    async def _convert_stream_to_events(
         self,
-        stream: AsyncIterator[OpenAIResponseObjectStream],
+        agent: Any,
+        prompt: str,
         task_id: str,
         context_id: str,
-        conversation_id: Optional[str],
-        client: Optional[AsyncLlamaStackClient] = None,
-        compacted_original_input: Optional[ResponseInput] = None,
+        conversation_id: Optional[str] = None,
     ) -> AsyncIterator[Any]:
-        """Convert Responses API stream chunks to A2A events.
+        """Run an agent and convert stream events to A2A events.
 
-        Args:
-            stream: The Responses API response stream
-            task_id: The task ID for this execution
-            context_id: The context ID for this execution
-            conversation_id: The conversation ID for this A2A context
+        Parameters:
+            agent: Pydantic-ai Agent to execute.
+            prompt: User input text.
+            task_id: The task ID for this execution.
+            context_id: The context ID for this execution.
+            conversation_id: The conversation ID for this A2A context.
 
         Yields:
             A2A events (TaskStatusUpdateEvent or TaskArtifactUpdateEvent)
@@ -466,43 +486,91 @@ class A2AAgentExecutor(AgentExecutor):
 
         artifact_id = str(uuid.uuid4())
         text_parts: list[str] = []
+        run_result: Optional[AgentRunResult[str]] = None
 
-        async for chunk in stream:
-            event_type = getattr(chunk, "type", None)
+        async with agent.run_stream_events(prompt) as stream:
+            async for event in stream:
+                if isinstance(event, AgentRunResultEvent):
+                    run_result = event.result
+                    self._run_result = run_result
+                    continue
+                a2a_event = self._dispatch_agent_event(
+                    event, task_id, context_id, text_parts, artifact_id
+                )
+                if a2a_event is not None:
+                    yield a2a_event
 
-            # Skip response.created - conversation is already created
-            if event_type == "response.created":
-                continue
+        a2a_parts = _build_a2a_parts_from_agent_result(run_result, text_parts)
 
-            # Text streaming - emit as working status with text delta
-            if event_type == "response.output_text.delta":
-                delta = getattr(chunk, "delta", "")
-                if delta:
-                    text_parts.append(delta)
-                    yield TaskStatusUpdateEvent(
-                        task_id=task_id,
-                        status=TaskStatus(
-                            state=TaskState.working,
-                            message=new_agent_text_message(
-                                delta,
-                                context_id=context_id,
-                                task_id=task_id,
-                            ),
-                            timestamp=datetime.now(UTC).isoformat(),
-                        ),
+        yield TaskArtifactUpdateEvent(
+            task_id=task_id,
+            last_chunk=True,
+            context_id=context_id,
+            artifact=Artifact(
+                artifact_id=artifact_id,
+                parts=a2a_parts,
+                metadata={"conversation_id": str(conversation_id or "")},
+            ),
+        )
+
+    def _dispatch_agent_event(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        event: AgentStreamEvent | AgentRunResultEvent,
+        task_id: str,
+        context_id: str,
+        text_parts: list[str],
+        artifact_id: str,
+    ) -> Optional[TaskStatusUpdateEvent]:
+        """Map a single pydantic-ai stream event to an A2A status update.
+
+        Parameters:
+            event: Pydantic-ai stream event.
+            task_id: The task ID for this execution.
+            context_id: The context ID for this execution.
+            text_parts: Mutable list accumulating text deltas.
+            artifact_id: Artifact ID (unused here, reserved for future use).
+
+        Returns:
+            A2A TaskStatusUpdateEvent, or None if the event is not mapped.
+        """
+        _ = artifact_id
+
+        if isinstance(event, PartStartEvent):
+            if isinstance(event.part, TextPart):
+                text_parts.append(event.part.content)
+                return self._text_status_event(event.part.content, task_id, context_id)
+
+        elif isinstance(event, PartDeltaEvent):
+            if isinstance(event.delta, TextPartDelta):
+                text_parts.append(event.delta.content_delta)
+                return self._text_status_event(
+                    event.delta.content_delta, task_id, context_id
+                )
+
+        elif isinstance(event, FunctionToolCallEvent):
+            return TaskStatusUpdateEvent(
+                task_id=task_id,
+                status=TaskStatus(
+                    state=TaskState.working,
+                    message=new_agent_text_message(
+                        f"Tool call: {event.part.tool_call_id} ({event.part.tool_name})",
                         context_id=context_id,
-                        final=False,
-                    )
+                        task_id=task_id,
+                    ),
+                    timestamp=datetime.now(UTC).isoformat(),
+                ),
+                context_id=context_id,
+                final=False,
+            )
 
-            # Tool call events
-            elif event_type == "response.function_call_arguments.done":
-                item_id = getattr(chunk, "item_id", "")
-                yield TaskStatusUpdateEvent(
+        elif isinstance(event, PartEndEvent):
+            if isinstance(event.part, NativeToolCallPart):
+                return TaskStatusUpdateEvent(
                     task_id=task_id,
                     status=TaskStatus(
                         state=TaskState.working,
                         message=new_agent_text_message(
-                            f"Tool call: {item_id}",
+                            f"Tool call: {event.part.tool_call_id} ({event.part.tool_name})",
                             context_id=context_id,
                             task_id=task_id,
                         ),
@@ -512,63 +580,39 @@ class A2AAgentExecutor(AgentExecutor):
                     final=False,
                 )
 
-            # MCP call completion
-            elif event_type == "response.mcp_call.arguments.done":
-                item_id = getattr(chunk, "item_id", "")
-                yield TaskStatusUpdateEvent(
-                    task_id=task_id,
-                    status=TaskStatus(
-                        state=TaskState.working,
-                        message=new_agent_text_message(
-                            f"MCP call: {item_id}",
-                            context_id=context_id,
-                            task_id=task_id,
-                        ),
-                        timestamp=datetime.now(UTC).isoformat(),
-                    ),
+        # AgentRunResultEvent and other events are not mapped to status updates.
+        return None
+
+    def _text_status_event(
+        self,
+        text: str,
+        task_id: str,
+        context_id: str,
+    ) -> TaskStatusUpdateEvent:
+        """Build a working-status A2A event carrying a text delta.
+
+        Parameters:
+            text: The text delta content.
+            task_id: The task ID.
+            context_id: The context ID.
+
+        Returns:
+            TaskStatusUpdateEvent with the text delta.
+        """
+        return TaskStatusUpdateEvent(
+            task_id=task_id,
+            status=TaskStatus(
+                state=TaskState.working,
+                message=new_agent_text_message(
+                    text,
                     context_id=context_id,
-                    final=False,
-                )
-
-            # Response completed - emit final artifact
-            elif event_type == "response.completed":
-                response_obj = getattr(chunk, "response", None)
-                final_text = "".join(text_parts)
-
-                if response_obj:
-                    output = getattr(response_obj, "output", [])
-                    # In compacted mode the conversation parameter was not sent,
-                    # so persist this turn ourselves to keep the recent-turn
-                    # buffer and audit history intact for the next request.
-                    if (
-                        compacted_original_input is not None
-                        and client is not None
-                        and conversation_id
-                    ):
-                        await store_compacted_turn(
-                            client,
-                            to_llama_stack_conversation_id(conversation_id),
-                            compacted_original_input,
-                            output,
-                        )
-                    a2a_parts = _convert_responses_content_to_a2a_parts(output)
-                    if not a2a_parts and final_text:
-                        a2a_parts = [Part(root=TextPart(text=final_text))]
-                else:
-                    a2a_parts = (
-                        [Part(root=TextPart(text=final_text))] if final_text else []
-                    )
-
-                yield TaskArtifactUpdateEvent(
                     task_id=task_id,
-                    last_chunk=True,
-                    context_id=context_id,
-                    artifact=Artifact(
-                        artifact_id=artifact_id,
-                        parts=a2a_parts,
-                        metadata={"conversation_id": str(conversation_id or "")},
-                    ),
-                )
+                ),
+                timestamp=datetime.now(UTC).isoformat(),
+            ),
+            context_id=context_id,
+            final=False,
+        )
 
     async def cancel(
         self,
