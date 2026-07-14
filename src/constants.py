@@ -194,9 +194,6 @@ SUPPORTED_RAG_BACKENDS: Final[frozenset[str]] = frozenset({"faiss", "pgvector"})
 # Default RAG backend for bring-your-own-knowledge RAG configurations
 DEFAULT_RAG_BACKEND: Final[str] = "faiss"
 
-# Default RAG type (fully-qualified Llama Stack provider type)
-DEFAULT_RAG_TYPE: Final[str] = "inline::faiss"
-
 # Default sentence transformer model for embedding generation, that type needs
 # to be supported by Llama Stack and configured properly in providers and
 # models sections
@@ -212,7 +209,9 @@ DEFAULT_CROSS_ENCODER_MODEL: Final[str] = "cross-encoder/ms-marco-MiniLM-L6-v2"
 USER_QUOTA_LIMITER: Final[str] = "user_limiter"
 CLUSTER_QUOTA_LIMITER: Final[str] = "cluster_limiter"
 
-# Default chunk limits (used as Pydantic field defaults in RagConfiguration)
+# Default chunk limits (used as Pydantic field defaults in RagConfiguration).
+# These replace the old hardcoded INLINE_RAG_MAX_CHUNKS, TOOL_RAG_MAX_CHUNKS,
+# BYOK_RAG_MAX_CHUNKS, and OKP_RAG_MAX_CHUNKS constants.
 DEFAULT_INLINE_RAG_MAX_CHUNKS: Final[int] = 10
 DEFAULT_TOOL_RAG_MAX_CHUNKS: Final[int] = 10
 DEFAULT_BYOK_RAG_MAX_CHUNKS: Final[int] = 10

@@ -34,6 +34,10 @@ from log import get_logger
 
 logger = get_logger(__name__)
 
+# Maps a UnifiedInferenceProvider.type (canonical, backend-agnostic vocabulary)
+# to the Llama Stack provider_type emitted by apply_high_level_inference. The
+# completeness of this map against UnifiedInferenceProvider.type is asserted by
+# a unit test so a new Literal value cannot be added without a mapping.
 PROVIDER_TYPE_MAP: dict[str, str] = {
     "openai": "remote::openai",
     "ollama": "remote::ollama",
@@ -46,10 +50,14 @@ PROVIDER_TYPE_MAP: dict[str, str] = {
     "vllm_rhel_ai": "remote::vllm",
 }
 
+# Maps Llama Stack provider_type -> config field name for the auth token.
+# Providers not listed default to "api_key".
 API_KEY_FIELD_MAP: dict[str, str] = {
     "remote::vllm": "api_token",
 }
 
+# Package-relative path to the built-in default baseline run.yaml shipped with
+# LCORE, used when unified mode selects baseline "default" without a profile.
 DEFAULT_BASELINE_RESOURCE: Path = Path(__file__).parent / "data" / "default_run.yaml"
 
 VECTOR_IO_TEMPLATES: dict[str, dict[str, Any]] = {

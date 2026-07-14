@@ -18026,7 +18026,7 @@
                     "backend": {
                         "type": "string",
                         "minLength": 1,
-                        "title": "RAG type",
+                        "title": "RAG backend",
                         "description": "Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').",
                         "default": "faiss"
                     },
