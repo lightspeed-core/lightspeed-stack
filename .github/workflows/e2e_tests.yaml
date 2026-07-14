@@ -21,7 +21,7 @@ jobs:
       FAISS_VECTOR_STORE_ID: ${{ vars.FAISS_VECTOR_STORE_ID }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # On PR_TARGET → the fork (or same repo) that opened the PR.
           # On push      → falls back to the current repository.
@@ -30,6 +30,11 @@ jobs:
           # On PR_TARGET → the PR head *commit* (reproducible).
           # On push      → the pushed commit that triggered the workflow.
           ref: ${{ github.event.pull_request.head.ref || github.sha }}
+
+          # Tests need access to secrets.
+          # This should be refactored if possible to mitigate the risk.
+          # https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target
+          allow-unsafe-pr-checkout: true
 
           # Don’t keep credentials when running untrusted PR code under PR_TARGET.
           persist-credentials: ${{ github.event_name != 'pull_request_target' }}
