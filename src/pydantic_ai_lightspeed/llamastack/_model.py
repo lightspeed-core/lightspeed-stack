@@ -360,9 +360,9 @@ class LlamaStackResponsesModel(OpenAIResponsesModel):
         model_name: str,
         client: AsyncLlamaStackClient | AsyncLlamaStackAsLibraryClient,
         *,
-        responses_params: ResponsesApiParams | None = None,
-        model_settings: ModelSettings | None = None,
-        profile: ModelProfileSpec | None = None,
+        responses_params: Optional[ResponsesApiParams] = None,
+        model_settings: Optional[ModelSettings] = None,
+        profile: Optional[ModelProfileSpec] = None,
     ) -> LlamaStackResponsesModel:
         """Create a ``LlamaStackResponsesModel`` from a Llama Stack client.
 

@@ -698,7 +698,7 @@ class UnifiedInferenceProvider(ConfigurationBase):
         "Llama Stack provider_type by the synthesizer.",
     )
 
-    id: str | None = Field(
+    id: Optional[str] = Field(
         None,
         title="Provider ID",
         description="Optional identifier emitted as the Llama Stack provider_id. "
@@ -730,7 +730,7 @@ class UnifiedInferenceProvider(ConfigurationBase):
 
     @field_validator("id")
     @classmethod
-    def validate_id(cls, value: str | None) -> str | None:
+    def validate_id(cls, value: Optional[str]) -> Optional[str]:
         """Strip and validate an optional high-level provider id.
 
         Parameters:
