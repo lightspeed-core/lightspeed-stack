@@ -25,7 +25,7 @@ USER root
 # (dependency of autoevals, no pre-built binary wheels for linux on aarch64)
 # cmake and cargo are required by fastuuid, maturin
 RUN ${BUILDER_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gcc gcc-c++ cmake cargo && \
-    ${BUILDER_DNF_COMMAND} update -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gnutls libxslt openssl-fips-provider
+    ${BUILDER_DNF_COMMAND} update -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs
 
 # Install uv package manager
 RUN pip3.12 install "uv>=0.8.15"
@@ -117,7 +117,7 @@ USER root
 
 # Additional tools for derived images
 RUN ${RUNTIME_DNF_COMMAND} install -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs jq patch && \
-    ${RUNTIME_DNF_COMMAND} update -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs gnutls libxslt openssl-fips-provider
+    ${RUNTIME_DNF_COMMAND} update -y --nodocs --setopt=keepcache=0 --setopt=tsflags=nodocs
 
 # Create llama-stack directories for library mode
 RUN mkdir -p /opt/app-root/src/.llama/storage /opt/app-root/src/.llama/providers.d && \

@@ -9,9 +9,12 @@ packages:
   ]
 upgradePackages:
   [
-    gnutls,
-    libxslt,
-    openssl-fips-provider,
+    libssh,
+    libtiff,
+    openexr-libs,
+    p11-kit,
+    p11-kit-trust,
+    shadow-utils,
   ]
 contentOrigin:
   repofiles: ["./redhat.repo"]
