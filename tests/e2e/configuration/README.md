@@ -25,7 +25,10 @@ and the active `lightspeed-stack.yaml` is also copied to the repo root — so th
 relative `profile:` path resolves to that materialized file, which the unified
 synthesizer consumes as its baseline. LS behavior is identical to the legacy
 two-file path (requirement R7 in the config-merge design doc); the wiring that
-selects a provider config stays unchanged.
+selects a provider config stays unchanged. The synthesizer also ensures the
+MCP `tool_runtime` provider (`model-context-protocol`) is present on the
+profile baseline when missing; many `run-*.yaml` fixtures already include it,
+so the ensure is typically a no-op.
 
 The `tests/e2e/configs/run-*.yaml` files therefore serve a dual role: in
 server mode they are the run configuration of the standalone Llama Stack
