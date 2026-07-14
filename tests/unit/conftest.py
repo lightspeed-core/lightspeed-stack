@@ -115,6 +115,7 @@ def mock_client_fixture(  # pylint: disable=protected-access
     client.base_url = "http://localhost:8321"
     client.api_key = "test-key"
     client._client = mocker.Mock(spec=httpx.AsyncClient)
+    client.default_headers = {}
     return client
 
 
