@@ -31,7 +31,9 @@ async def _get_cross_encoder(model_name: str) -> Any:
         Loaded CrossEncoder model instance, or None if loading fails.
     """
     # Check if reranking is enabled before attempting to load the model
-    if not configuration.reranker.enabled:  # pylint: disable=no-member
+    if (
+        not configuration.reranker or not configuration.reranker.enabled
+    ):  # pylint: disable=no-member
         logger.debug("Reranker is disabled, not loading cross-encoder model")
         return None
 

@@ -188,8 +188,13 @@ CACHE_TYPE_POSTGRES: Final[str] = "postgres"
 CACHE_TYPE_NOOP: Final[str] = "noop"
 
 # BYOK RAG
-# Default RAG type for bring-your-own-knowledge RAG configurations, that type
-# needs to be supported by Llama Stack
+# Backends that have enrichment support in llama_stack_configuration.py
+SUPPORTED_RAG_BACKENDS: Final[frozenset[str]] = frozenset({"faiss", "pgvector"})
+
+# Default RAG backend for bring-your-own-knowledge RAG configurations
+DEFAULT_RAG_BACKEND: Final[str] = "faiss"
+
+# Default RAG type (fully-qualified Llama Stack provider type)
 DEFAULT_RAG_TYPE: Final[str] = "inline::faiss"
 
 # Default sentence transformer model for embedding generation, that type needs
@@ -207,16 +212,14 @@ DEFAULT_CROSS_ENCODER_MODEL: Final[str] = "cross-encoder/ms-marco-MiniLM-L6-v2"
 USER_QUOTA_LIMITER: Final[str] = "user_limiter"
 CLUSTER_QUOTA_LIMITER: Final[str] = "cluster_limiter"
 
-# Hard cap on total RAG chunks delivered to the LLM across all sources
-INLINE_RAG_MAX_CHUNKS: Final[int] = 10
+# Default chunk limits (used as Pydantic field defaults in RagConfiguration)
+DEFAULT_INLINE_RAG_MAX_CHUNKS: Final[int] = 10
+DEFAULT_TOOL_RAG_MAX_CHUNKS: Final[int] = 10
+DEFAULT_BYOK_RAG_MAX_CHUNKS: Final[int] = 10
+DEFAULT_OKP_RAG_MAX_CHUNKS: Final[int] = 5
 
 # RAG as a tool constants
 DEFAULT_RAG_TOOL: Final[str] = "file_search"
-TOOL_RAG_MAX_CHUNKS: Final[int] = 10  # retrieved from RAG as a tool
-
-# Inline RAG constants
-BYOK_RAG_MAX_CHUNKS: Final[int] = 10  # retrieved from BYOK RAG
-OKP_RAG_MAX_CHUNKS: Final[int] = 5  # retrieved from OKP RAG
 # Score multiplier applied to BYOK chunks after cross-encoder reranking (Solr chunks unchanged)
 BYOK_RAG_RERANK_BOOST: Final[float] = 1.2
 

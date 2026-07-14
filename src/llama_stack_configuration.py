@@ -34,10 +34,6 @@ from log import get_logger
 
 logger = get_logger(__name__)
 
-# Maps a UnifiedInferenceProvider.type (canonical, backend-agnostic vocabulary)
-# to the Llama Stack provider_type emitted by apply_high_level_inference. The
-# completeness of this map against UnifiedInferenceProvider.type is asserted by
-# a unit test so a new Literal value cannot be added without a mapping.
 PROVIDER_TYPE_MAP: dict[str, str] = {
     "openai": "remote::openai",
     "ollama": "remote::ollama",
@@ -50,14 +46,10 @@ PROVIDER_TYPE_MAP: dict[str, str] = {
     "vllm_rhel_ai": "remote::vllm",
 }
 
-# Maps Llama Stack provider_type -> config field name for the auth token.
-# Providers not listed default to "api_key".
 API_KEY_FIELD_MAP: dict[str, str] = {
     "remote::vllm": "api_token",
 }
 
-# Package-relative path to the built-in default baseline run.yaml shipped with
-# LCORE, used when unified mode selects baseline "default" without a profile.
 DEFAULT_BASELINE_RESOURCE: Path = Path(__file__).parent / "data" / "default_run.yaml"
 
 VECTOR_IO_TEMPLATES: dict[str, dict[str, Any]] = {
@@ -80,6 +72,26 @@ VECTOR_IO_TEMPLATES: dict[str, dict[str, Any]] = {
         },
     },
 }
+
+BACKEND_TO_PROVIDER_TYPE: dict[str, str] = {
+    "faiss": "inline::faiss",
+    "pgvector": "remote::pgvector",
+}
+
+
+def _resolve_rag_type(brag: dict[str, Any]) -> str:
+    """Resolve the full Llama Stack provider type from a BYOK RAG dict.
+
+    Parameters:
+        brag (dict[str, Any]): A single BYOK RAG entry dict, expected to
+            contain a ``backend`` key (e.g. ``"faiss"``, ``"pgvector"``).
+
+    Returns:
+        str: The fully-qualified Llama Stack provider type
+            (e.g. ``"inline::faiss"``, ``"remote::pgvector"``).
+    """
+    backend = brag.get("backend", constants.DEFAULT_RAG_BACKEND)
+    return BACKEND_TO_PROVIDER_TYPE.get(backend, f"inline::{backend}")
 
 
 class YamlDumper(yaml.Dumper):  # pylint: disable=too-many-ancestors
@@ -206,7 +218,7 @@ def construct_storage_backends_section(
     for brag in byok_rag:
         if not brag.get("rag_id"):
             raise ValueError(f"BYOK RAG entry is missing required 'rag_id': {brag}")
-        rag_type = brag.get("rag_type", constants.DEFAULT_RAG_TYPE)
+        rag_type = _resolve_rag_type(brag)
         template = VECTOR_IO_TEMPLATES.get(rag_type, {})
         if not template.get("needs_storage_backend", True):
             continue
@@ -443,7 +455,7 @@ def construct_vector_io_providers_section(
             continue
         existing_ids.add(provider_id)
         added += 1
-        rag_type = brag.get("rag_type", constants.DEFAULT_RAG_TYPE)
+        rag_type = _resolve_rag_type(brag)
         config = _build_vector_io_config(rag_type, backend_name, brag)
         output.append(
             {
@@ -896,8 +908,16 @@ def synthesize_configuration(
     # 4. Existing enrichment — same calls as legacy generate_configuration so
     #    unified output matches legacy output for equivalent inputs (R7).
     enrich_azure_entra_id_inference(ls_config, lcs_config.get("azure_entra_id"))
-    enrich_byok_rag(ls_config, lcs_config.get("byok_rag", []))
-    enrich_solr(ls_config, lcs_config.get("rag", {}), lcs_config.get("okp", {}))
+    rag_section = lcs_config.get("rag", {})
+    byok_stores = rag_section.get("byok", {}).get("stores", [])
+    enrich_byok_rag(ls_config, byok_stores)
+    retrieval = rag_section.get("retrieval", {})
+    rag_config_for_solr = {
+        "inline": retrieval.get("inline", {}).get("sources", []),
+        "tool": retrieval.get("tool", {}).get("sources", []),
+    }
+    okp_config = rag_section.get("okp", {})
+    enrich_solr(ls_config, rag_config_for_solr, okp_config)
 
     # 5. High-level inference providers (Decision S5 — a root-level section).
     inference = lcs_config.get("inference") or {}
@@ -1066,10 +1086,18 @@ def generate_configuration(
     enrich_azure_entra_id_inference(ls_config, config.get("azure_entra_id"))
 
     # Enrichment: BYOK RAG
-    enrich_byok_rag(ls_config, config.get("byok_rag", []))
+    rag_section = config.get("rag", {})
+    byok_stores = rag_section.get("byok", {}).get("stores", [])
+    enrich_byok_rag(ls_config, byok_stores)
 
     # Enrichment: Solr - enabled when "okp" appears in either inline or tool list
-    enrich_solr(ls_config, config.get("rag", {}), config.get("okp", {}))
+    retrieval = rag_section.get("retrieval", {})
+    rag_config_for_solr = {
+        "inline": retrieval.get("inline", {}).get("sources", []),
+        "tool": retrieval.get("tool", {}).get("sources", []),
+    }
+    okp_config = rag_section.get("okp", {})
+    enrich_solr(ls_config, rag_config_for_solr, okp_config)
 
     dedupe_providers_vector_io(ls_config)
 

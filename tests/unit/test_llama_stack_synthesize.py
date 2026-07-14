@@ -615,14 +615,18 @@ def test_synthesize_enriches_byok_rag_like_legacy() -> None:
     """BYOK RAG enrichment runs during synthesis for legacy parity (R7)."""
     lcs = {
         "llama_stack": {"config": {"baseline": "empty"}},
-        "byok_rag": [
-            {
-                "rag_id": "kb1",
-                "vector_db_id": "kb1",
-                "embedding_model": "nomic-ai/nomic-embed-text-v1.5",
-                "embedding_dimension": 768,
-            }
-        ],
+        "rag": {
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "kb1",
+                        "vector_db_id": "kb1",
+                        "embedding_model": "nomic-ai/nomic-embed-text-v1.5",
+                        "embedding_dimension": 768,
+                    }
+                ],
+            },
+        },
     }
     result = synthesize_configuration(lcs)
     # enrichment created the storage backends + vector_io provider section

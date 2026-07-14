@@ -79,7 +79,19 @@ class ConfigurationResponse(AbstractSuccessfulResponse):
                             "sqlite": None,
                             "postgres": None,
                         },
-                        "byok_rag": [],
+                        "rag": {
+                            "byok": {"max_chunks": 10, "stores": []},
+                            "okp": {
+                                "rhokp_url": None,
+                                "offline": True,
+                                "chunk_filter_query": None,
+                                "max_chunks": 5,
+                            },
+                            "retrieval": {
+                                "inline": {"sources": [], "max_chunks": 10},
+                                "tool": {"sources": [], "max_chunks": 10},
+                            },
+                        },
                         "quota_handlers": {
                             "sqlite": None,
                             "postgres": None,
