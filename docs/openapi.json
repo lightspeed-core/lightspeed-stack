@@ -6729,7 +6729,6 @@
                                         "authorization": {
                                             "access_rules": []
                                         },
-                                        "byok_rag": [],
                                         "conversation_cache": {},
                                         "database": {
                                             "sqlite": {
@@ -6758,6 +6757,26 @@
                                             "limiters": [],
                                             "scheduler": {
                                                 "period": 1
+                                            }
+                                        },
+                                        "rag": {
+                                            "byok": {
+                                                "max_chunks": 10,
+                                                "stores": []
+                                            },
+                                            "okp": {
+                                                "max_chunks": 5,
+                                                "offline": true
+                                            },
+                                            "retrieval": {
+                                                "inline": {
+                                                    "max_chunks": 10,
+                                                    "sources": []
+                                                },
+                                                "tool": {
+                                                    "max_chunks": 10,
+                                                    "sources": []
+                                                }
                                             }
                                         },
                                         "service": {
@@ -11980,131 +11999,28 @@
                 ],
                 "title": "Body_create_file_v1_files_post"
             },
-            "ByokRag": {
+            "ByokConfiguration": {
                 "properties": {
-                    "rag_id": {
-                        "type": "string",
-                        "minLength": 1,
-                        "title": "RAG ID",
-                        "description": "Unique RAG ID"
-                    },
-                    "rag_type": {
-                        "type": "string",
-                        "minLength": 1,
-                        "title": "RAG type",
-                        "description": "Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').",
-                        "default": "inline::faiss"
-                    },
-                    "embedding_model": {
-                        "type": "string",
-                        "minLength": 1,
-                        "title": "Embedding model",
-                        "description": "Embedding model identification",
-                        "default": "sentence-transformers/all-mpnet-base-v2"
-                    },
-                    "embedding_dimension": {
+                    "max_chunks": {
                         "type": "integer",
                         "exclusiveMinimum": 0.0,
-                        "title": "Embedding dimension",
-                        "description": "Dimensionality of embedding vectors.",
-                        "default": 768
+                        "title": "Max BYOK chunks",
+                        "description": "Maximum total number of chunks returned across all BYOK stores.",
+                        "default": 10
                     },
-                    "vector_db_id": {
-                        "type": "string",
-                        "minLength": 1,
-                        "title": "Vector DB ID",
-                        "description": "Vector database identification."
-                    },
-                    "db_path": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "DB path",
-                        "description": "Path to RAG database. Required for inline::faiss."
-                    },
-                    "score_multiplier": {
-                        "type": "number",
-                        "exclusiveMinimum": 0.0,
-                        "title": "Score multiplier",
-                        "description": "Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them.",
-                        "default": 1.0
-                    },
-                    "host": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "PostgreSQL host",
-                        "description": "PostgreSQL host for remote::pgvector. Defaults to ${env.POSTGRES_HOST} when rag_type is remote::pgvector."
-                    },
-                    "port": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "PostgreSQL port",
-                        "description": "PostgreSQL port for remote::pgvector. Defaults to ${env.POSTGRES_PORT} when rag_type is remote::pgvector."
-                    },
-                    "db": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "PostgreSQL database",
-                        "description": "PostgreSQL database name for remote::pgvector. Defaults to ${env.POSTGRES_DATABASE} when rag_type is remote::pgvector."
-                    },
-                    "user": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "PostgreSQL user",
-                        "description": "PostgreSQL user for remote::pgvector. Defaults to ${env.POSTGRES_USER} when rag_type is remote::pgvector."
-                    },
-                    "password": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "password",
-                                "writeOnly": true
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "PostgreSQL password",
-                        "description": "PostgreSQL password for remote::pgvector. Defaults to ${env.POSTGRES_PASSWORD} when rag_type is remote::pgvector."
+                    "stores": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagStore"
+                        },
+                        "type": "array",
+                        "title": "BYOK RAG stores",
+                        "description": "List of BYOK RAG store configurations."
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
-                "required": [
-                    "rag_id",
-                    "vector_db_id"
-                ],
-                "title": "ByokRag",
-                "description": "BYOK (Bring Your Own Knowledge) RAG configuration."
+                "title": "ByokConfiguration",
+                "description": "BYOK (Bring Your Own Knowledge) configuration."
             },
             "CORSConfiguration": {
                 "properties": {
@@ -12309,14 +12225,6 @@
                         "title": "Approvals configuration",
                         "description": "Settings for human-in-the-loop approval of MCP tool invocations"
                     },
-                    "byok_rag": {
-                        "items": {
-                            "$ref": "#/components/schemas/ByokRag"
-                        },
-                        "type": "array",
-                        "title": "BYOK RAG configuration",
-                        "description": "BYOK RAG configuration. This configuration can be used to reconfigure Llama Stack through its run.yaml configuration file"
-                    },
                     "a2a_state": {
                         "$ref": "#/components/schemas/A2AStateConfiguration",
                         "title": "A2A state configuration",
@@ -12363,17 +12271,7 @@
                     "rag": {
                         "$ref": "#/components/schemas/RagConfiguration",
                         "title": "RAG configuration",
-                        "description": "Configuration for all RAG strategies (inline and tool-based)."
-                    },
-                    "okp": {
-                        "$ref": "#/components/schemas/OkpConfiguration",
-                        "title": "OKP configuration",
-                        "description": "OKP provider settings. Only used when 'okp' is listed in rag.inline or rag.tool."
-                    },
-                    "reranker": {
-                        "$ref": "#/components/schemas/RerankerConfiguration",
-                        "title": "Reranker configuration",
-                        "description": "Configuration for neural reranking of RAG chunks using cross-encoder."
+                        "description": "Unified RAG configuration: BYOK stores, OKP provider, and retrieval strategies (inline and tool-based)."
                     },
                     "skills": {
                         "anyOf": [
@@ -12426,7 +12324,6 @@
                             "authorization": {
                                 "access_rules": []
                             },
-                            "byok_rag": [],
                             "conversation_cache": {},
                             "database": {
                                 "sqlite": {
@@ -12455,6 +12352,26 @@
                                 "limiters": [],
                                 "scheduler": {
                                     "period": 1
+                                }
+                            },
+                            "rag": {
+                                "byok": {
+                                    "max_chunks": 10,
+                                    "stores": []
+                                },
+                                "okp": {
+                                    "max_chunks": 5,
+                                    "offline": true
+                                },
+                                "retrieval": {
+                                    "inline": {
+                                        "max_chunks": 10,
+                                        "sources": []
+                                    },
+                                    "tool": {
+                                        "max_chunks": 10,
+                                        "sources": []
+                                    }
                                 }
                             },
                             "service": {
@@ -15066,12 +14983,19 @@
                         ],
                         "title": "OKP chunk filter query",
                         "description": "Additional OKP filter query applied to every OKP search request. Use Solr boolean syntax, e.g. 'product:ansible AND product:*openshift*'."
+                    },
+                    "max_chunks": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Max OKP chunks",
+                        "description": "Maximum number of chunks fetched from OKP.",
+                        "default": 5
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "OkpConfiguration",
-                "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp\"`` is listed in ``rag.inline`` or ``rag.tool``."
+                "description": "OKP (Offline Knowledge Portal) provider configuration.\n\nControls provider-specific behaviour for the OKP vector store.\nOnly relevant when ``\"okp\"`` is listed in ``rag.retrieval.inline.sources``\nor ``rag.retrieval.tool.sources``."
             },
             "OpenAIResponseAnnotationCitation": {
                 "properties": {
@@ -18070,27 +17994,152 @@
             },
             "RagConfiguration": {
                 "properties": {
-                    "inline": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "Inline RAG IDs",
-                        "description": "RAG IDs whose sources are injected as context before the LLM call. Use 'okp' to enable OKP inline RAG. Empty by default (no inline RAG)."
+                    "byok": {
+                        "$ref": "#/components/schemas/ByokConfiguration",
+                        "title": "BYOK configuration",
+                        "description": "Bring Your Own Knowledge store configurations and settings."
                     },
-                    "tool": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "Tool RAG IDs",
-                        "description": "RAG IDs made available to the LLM as a file_search tool. Use 'okp' to include the OKP vector store. When omitted, all registered BYOK vector stores are used (backward compatibility)."
+                    "okp": {
+                        "$ref": "#/components/schemas/OkpConfiguration",
+                        "title": "OKP configuration",
+                        "description": "OKP provider settings. Only used when 'okp' is listed in retrieval.inline.sources or retrieval.tool.sources."
+                    },
+                    "retrieval": {
+                        "$ref": "#/components/schemas/RetrievalConfiguration",
+                        "title": "Retrieval configuration",
+                        "description": "Inline and tool retrieval strategy settings."
                     }
                 },
                 "additionalProperties": false,
                 "type": "object",
                 "title": "RagConfiguration",
-                "description": "RAG strategy configuration.\n\nControls which RAG sources are used for inline and tool-based retrieval.\n\nEach strategy lists RAG IDs to include. The special ID ``\"okp\"`` defined in constants,\nactivates the OKP provider; all other IDs refer to entries in ``byok_rag``.\n\nBackward compatibility:\n    - ``inline`` defaults to ``[]`` (no inline RAG).\n    - ``tool`` defaults to ``[]`` (no tool RAG).\n\nIf no RAG strategy is defined (inline and tool are empty),\nthe RAG tool will register all stores available to llama-stack."
+                "description": "Unified RAG configuration.\n\nGroups all RAG-related settings: BYOK stores, OKP provider, and\nretrieval strategies (inline and tool)."
+            },
+            "RagStore": {
+                "properties": {
+                    "rag_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "RAG ID",
+                        "description": "Unique RAG ID"
+                    },
+                    "backend": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "RAG type",
+                        "description": "Type of RAG database (e.g. 'inline::faiss', 'remote::pgvector').",
+                        "default": "faiss"
+                    },
+                    "embedding_model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Embedding model",
+                        "description": "Embedding model identification",
+                        "default": "sentence-transformers/all-mpnet-base-v2"
+                    },
+                    "embedding_dimension": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Embedding dimension",
+                        "description": "Dimensionality of embedding vectors.",
+                        "default": 768
+                    },
+                    "vector_db_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Vector DB ID",
+                        "description": "Vector database identification."
+                    },
+                    "db_path": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "DB path",
+                        "description": "Path to RAG database. Required for inline::faiss."
+                    },
+                    "score_multiplier": {
+                        "type": "number",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Score multiplier",
+                        "description": "Multiplier applied to relevance scores from this vector store. Used to weight results when querying multiple knowledge sources. Values > 1 boost this store's results; values < 1 reduce them.",
+                        "default": 1.0
+                    },
+                    "host": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL host",
+                        "description": "PostgreSQL host for remote::pgvector. Defaults to ${env.POSTGRES_HOST} when backend is pgvector."
+                    },
+                    "port": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL port",
+                        "description": "PostgreSQL port for remote::pgvector. Defaults to ${env.POSTGRES_PORT} when backend is pgvector."
+                    },
+                    "db": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL database",
+                        "description": "PostgreSQL database name for remote::pgvector. Defaults to ${env.POSTGRES_DATABASE} when backend is pgvector."
+                    },
+                    "user": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL user",
+                        "description": "PostgreSQL user for remote::pgvector. Defaults to ${env.POSTGRES_USER} when backend is pgvector."
+                    },
+                    "password": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "PostgreSQL password",
+                        "description": "PostgreSQL password for remote::pgvector. Defaults to ${env.POSTGRES_PASSWORD} when backend is pgvector."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                    "rag_id",
+                    "vector_db_id"
+                ],
+                "title": "RagStore",
+                "description": "BYOK (Bring Your Own Knowledge) RAG store configuration."
             },
             "ReadinessResponse": {
                 "properties": {
@@ -19040,6 +19089,59 @@
                     }
                 ],
                 "sse_example": "event: response.created\ndata: {\"type\":\"response.created\",\"sequence_number\":0,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"in_progress\",\"model\":\"openai/gpt-4o-mini\",\"output\":[],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{},\"output_text\":\"\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"sequence_number\":1,\"response_id\":\"resp_abc\",\"output_index\":0,\"item\":{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"in_progress\",\"role\":\"assistant\",\"content\":[]}}\n\n...\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"sequence_number\":30,\"response\":{\"id\":\"resp_abc\",\"object\":\"response\",\"created_at\":1704067200,\"status\":\"completed\",\"model\":\"openai/gpt-4o-mini\",\"output\":[{\"id\":\"msg_abc\",\"type\":\"message\",\"status\":\"completed\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello! How can I help?\",\"annotations\":[]}]}],\"store\":true,\"text\":{\"format\":{\"type\":\"text\"}},\"usage\":{\"input_tokens\":10,\"output_tokens\":6,\"total_tokens\":16,\"input_tokens_details\":{\"cached_tokens\":0},\"output_tokens_details\":{\"reasoning_tokens\":0}},\"conversation\":\"0d21ba731f21f798dc9680125d5d6f49\",\"available_quotas\":{\"daily\":1000,\"monthly\":50000},\"output_text\":\"Hello! How can I help?\"}}\n\ndata: [DONE]\n\n"
+            },
+            "RetrievalConfiguration": {
+                "properties": {
+                    "inline": {
+                        "$ref": "#/components/schemas/RetrievalStrategyConfiguration",
+                        "title": "Inline retrieval",
+                        "description": "Inline RAG: context injected before the LLM request."
+                    },
+                    "tool": {
+                        "$ref": "#/components/schemas/RetrievalStrategyConfiguration",
+                        "title": "Tool retrieval",
+                        "description": "Tool RAG: LLM can call file_search on demand."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "RetrievalConfiguration",
+                "description": "Configuration for inline and tool retrieval strategies."
+            },
+            "RetrievalStrategyConfiguration": {
+                "properties": {
+                    "sources": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "RAG source IDs",
+                        "description": "RAG IDs to use for this retrieval strategy. Use 'okp' to include the OKP vector store."
+                    },
+                    "max_chunks": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0.0,
+                        "title": "Max chunks",
+                        "description": "Maximum number of chunks returned by this retrieval strategy.",
+                        "default": 10
+                    },
+                    "reranker": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RerankerConfiguration"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reranker configuration",
+                        "description": "Neural reranking of RAG chunks using cross-encoder. Only applicable to inline retrieval."
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "RetrievalStrategyConfiguration",
+                "description": "Configuration for a single retrieval strategy (inline or tool)."
             },
             "RlsapiV1Attachment": {
                 "properties": {

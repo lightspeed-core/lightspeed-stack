@@ -10,6 +10,7 @@ The BYOK (Bring Your Own Knowledge) feature in Lightspeed Core enables users to 
 
 * [What is BYOK?](#what-is-byok)
 * [How BYOK Works](#how-byok-works)
+  * [Prioritization of BYOK content](#prioritization-of-byok-content)
 * [Prerequisites](#prerequisites)
 * [Configuration Guide](#configuration-guide)
   * [Step 1: Prepare Your Knowledge Sources](#step-1-prepare-your-knowledge-sources)
@@ -77,17 +78,45 @@ Both modes rely on:
 - **Vector Database**: Your indexed knowledge sources stored as vector embeddings
 - **Embedding Model**: Converts queries and documents into vector representations for similarity matching
 
-Inline RAG additionally supports:
-- **Score Multiplier**: Optional weight applied per BYOK vector store when mixing multiple sources. Allows custom prioritization of content.
+### Prioritization of BYOK content
 
-> [!NOTE]
-> OKP and BYOK scores are not directly comparable (different scoring systems), so
-> `score_multiplier` does not apply to OKP results. To control the amount of retrieved
-> context, set the `BYOK_RAG_MAX_CHUNKS` and `OKP_RAG_MAX_CHUNKS` constants in `src/constants.py`
-> (defaults: 10 and 5 respectively). For Tool RAG, use `TOOL_RAG_MAX_CHUNKS` (default: 10).
-> The `INLINE_RAG_MAX_CHUNKS` constant (value: 10) caps the final merged inline RAG
-> chunks (BYOK + OKP) delivered to the LLM. Tool RAG is controlled independently
-> by `TOOL_RAG_MAX_CHUNKS`.
+When multiple BYOK stores are configured for Inline RAG, their results are merged and ranked. Two mechanisms control prioritization:
+
+- **Score Multiplier** (`score_multiplier`): A per-store weight applied to raw similarity scores during Inline RAG. Values > 1.0 boost a store's results; values < 1.0 reduce them. Only affects BYOK stores — OKP scores use a different scoring system and are not comparable.
+
+- **Reranker**: When enabled, a cross-encoder model re-scores the merged chunk pool (BYOK + OKP) using semantic similarity to the query. This normalizes scores across sources, making OKP and BYOK results directly comparable. BYOK score boosts are applied after reranking.
+
+**Chunk limits** control how many chunks flow through the pipeline. Configure them in `lightspeed-stack.yaml`:
+
+| Config path | Default | Description |
+|-------------|---------|-------------|
+| `rag.byok.max_chunks` | 10 | Total chunks fetched across all BYOK stores |
+| `rag.okp.max_chunks` | 5 | Chunks fetched from OKP |
+| `rag.retrieval.inline.max_chunks` | 10 | Final cap on merged inline RAG chunks delivered to the LLM |
+| `rag.retrieval.tool.max_chunks` | 10 | Max chunks retrieved via Tool RAG (`file_search`) |
+
+```mermaid
+flowchart TD
+    subgraph Sources["Source Fetching"]
+        B1["BYOK Store 1"] --> BPool
+        B2["BYOK Store 2"] --> BPool
+        BN["BYOK Store N"] --> BPool
+        BPool["BYOK Pool\ncapped at rag.byok.max_chunks"]
+        OKP["OKP (Solr)\ncapped at rag.okp.max_chunks"]
+    end
+
+    BPool --> Pool["Merged Pool\n(all chunks, sorted by score)"]
+    OKP --> Pool
+
+    Pool --> Decision{Reranker\nenabled?}
+
+    Decision -->|Yes| Rerank["Cross-Encoder Rerank\n+ BYOK score boost"]
+    Decision -->|No| Cut
+
+    Rerank --> Cut["Top K cut\nrag.retrieval.inline.max_chunks"]
+
+    Cut --> Context["Final Inline RAG Context"]
+```
 
 ---
 
@@ -113,13 +142,7 @@ Before implementing BYOK, ensure you have:
 
 ## Configuration Guide
 
-> [!WARNING]
-> **Deprecated in 0.7.0**: The top-level `byok_rag`, `rag`, `okp`, and `reranker` sections
-> are deprecated. In 0.7.0, all RAG-related configuration is unified under a single `rag`
-> section: BYOK stores move to `rag.byok.stores` (with `backend` instead of `rag_type`),
-> retrieval strategies move to `rag.retrieval.inline`/`rag.retrieval.tool`, OKP moves to
-> `rag.okp`, and the reranker moves to `rag.retrieval.inline.reranker`.
-> See the [v0.7.0 Migration Guide](migrations/v0.7.0.md) for full details and examples.
+
 
 ### Step 1: Prepare Your Knowledge Sources
 
@@ -157,7 +180,7 @@ class CustomMetadataProcessor(MetadataProcessor):
 **Important Notes:**
 - Supported formats: 
   - Faiss Vector-IO
-- **The embedding model (and its dimension) used to *build* the vector store must exactly match the one configured for querying** in the `byok_rag` section (see Step 3). A mismatch does not raise an error — it silently returns no or irrelevant results, because the query vector and the stored vectors are then incomparable. The default is `sentence-transformers/all-mpnet-base-v2` (dimension `768`).
+- **The embedding model (and its dimension) used to *build* the vector store must exactly match the one configured for querying** in the `rag.byok.stores` section (see Step 3). A mismatch does not raise an error — it silently returns no or irrelevant results, because the query vector and the stored vectors are then incomparable. The default is `sentence-transformers/all-mpnet-base-v2` (dimension `768`).
 
 ### Step 3: Configure Embedding Model
 
@@ -177,23 +200,25 @@ Alternatively, you can download your own embedding model and update the path in 
 1. **Download your preferred embedding model** from Hugging Face or other sources
 2. **Place the model** in your desired directory (e.g., `/path/to/your/embedding_models/`)
 
-The embedding model is specified per knowledge source in the `byok_rag` section of `lightspeed-stack.yaml` via the `embedding_model` field. The default is `sentence-transformers/all-mpnet-base-v2` with a dimension of `768`.
+The embedding model is specified per knowledge source in the `rag.byok.stores` section of `lightspeed-stack.yaml` via the `embedding_model` field. The default is `sentence-transformers/all-mpnet-base-v2` with a dimension of `768`.
 
 **Note**: Ensure the same embedding model is used for both vector database creation and querying.
 
 ### Step 4: Configure BYOK Knowledge Sources
 
-Declare your knowledge sources in the `byok_rag` section of your `lightspeed-stack.yaml`. The required configuration is automatically generated at startup when using `make run`, `make run-stack`, `docker-compose`, or library mode.
+Declare your knowledge sources in the `rag.byok.stores` section of your `lightspeed-stack.yaml`. The required configuration is automatically generated at startup when using `make run`, `make run-stack`, `docker-compose`, or library mode.
 
 ```yaml
-byok_rag:
-  - rag_id: my-docs                                    # Unique identifier for this knowledge source
-    rag_type: inline::faiss                             # Vector store type (default: inline::faiss)
-    embedding_model: sentence-transformers/all-mpnet-base-v2  # Embedding model (default)
-    embedding_dimension: 768                            # Must match your embedding model's output
-    vector_db_id: vs_8c94967b-81cc-4028-a294-9cfac6fd9ae2                              # Generated by rag-content during index creation
-    db_path: /path/to/vector_db/faiss_store.db          # Path to the vector database file
-    score_multiplier: 1.0                               # Weight for Inline RAG result ranking (default: 1.0)
+rag:
+  byok:
+    stores:
+      - rag_id: my-docs                                    # Unique identifier for this knowledge source
+        backend: faiss                                     # Vector store type (default: faiss)
+        embedding_model: sentence-transformers/all-mpnet-base-v2  # Embedding model (default)
+        embedding_dimension: 768                            # Must match your embedding model's output
+        vector_db_id: vs_8c94967b-81cc-4028-a294-9cfac6fd9ae2                              # Generated by rag-content during index creation
+        db_path: /path/to/vector_db/faiss_store.db          # Path to the vector database file
+        score_multiplier: 1.0                               # Weight for Inline RAG result ranking (default: 1.0)
 ```
 
 **Common fields (all providers):**
@@ -201,19 +226,19 @@ byok_rag:
 | Field                 | Required | Default                                   | Description                                                                               |
 |-----------------------|----------|-------------------------------------------|-------------------------------------------------------------------------------------------|
 | `rag_id`              | Yes      | —                                         | Unique identifier for the knowledge source                                                |
-| `rag_type`            | No       | `inline::faiss`                           | Vector store provider type (`inline::faiss` or `remote::pgvector`)                        |
+| `backend`             | No       | `faiss`                                   | Vector store provider type (`faiss` or `pgvector`)                                        |
 | `embedding_model`     | No       | `sentence-transformers/all-mpnet-base-v2` | Embedding model identifier or path                                                        |
 | `embedding_dimension` | No       | `768`                                     | Embedding vector dimensionality                                                           |
 | `vector_db_id`        | Yes      | —                                         | Vector store ID generated by rag-content (e.g. `vs_8c94967b-81cc-4028-a294-9cfac6fd9ae2`) |
 | `score_multiplier`    | No       | `1.0`                                     | Weight for Inline RAG ranking (values > 1.0 boost; < 1.0 reduce)                          |
 
-**FAISS fields** (`rag_type: inline::faiss`):
+**FAISS fields** (`backend: faiss`):
 
 | Field     | Required | Default | Description                      |
 |-----------|----------|---------|----------------------------------|
 | `db_path` | Yes      | —       | Path to the vector database file |
 
-**pgvector fields** (`rag_type: remote::pgvector`):
+**pgvector fields** (`backend: pgvector`):
 
 | Field      | Required | Default                  | Description         |
 |------------|----------|--------------------------|---------------------|
@@ -228,47 +253,55 @@ byok_rag:
 You can configure multiple BYOK sources. When using Inline RAG, `score_multiplier` adjusts the relative importance of each store's results:
 
 ```yaml
-byok_rag:
-  - rag_id: ocp-docs
-    rag_type: inline::faiss
-    embedding_model: sentence-transformers/all-mpnet-base-v2
-    embedding_dimension: 768
-    vector_db_id: vs_3a7f9b2e-45dc-4e1a-b8f2-1c9d0e3f5a6b
-    db_path: /data/vector_dbs/ocp_docs/faiss_store.db
-    score_multiplier: 1.0
+rag:
+  byok:
+    stores:
+      - rag_id: ocp-docs
+        backend: faiss
+        embedding_model: sentence-transformers/all-mpnet-base-v2
+        embedding_dimension: 768
+        vector_db_id: vs_3a7f9b2e-45dc-4e1a-b8f2-1c9d0e3f5a6b
+        db_path: /data/vector_dbs/ocp_docs/faiss_store.db
+        score_multiplier: 1.0
 
-  - rag_id: internal-kb
-    rag_type: inline::faiss
-    embedding_model: sentence-transformers/all-mpnet-base-v2
-    embedding_dimension: 768
-    vector_db_id: vs_d4c8e1f0-92ab-4d3c-a5e7-6b8f0c2d1e3a
-    db_path: /data/vector_dbs/internal_kb/faiss_store.db
-    score_multiplier: 1.2       # Boost results from this store
+      - rag_id: internal-kb
+        backend: faiss
+        embedding_model: sentence-transformers/all-mpnet-base-v2
+        embedding_dimension: 768
+        vector_db_id: vs_d4c8e1f0-92ab-4d3c-a5e7-6b8f0c2d1e3a
+        db_path: /data/vector_dbs/internal_kb/faiss_store.db
+        score_multiplier: 1.2       # Boost results from this store
 ```
 
 **⚠️ Important**: The `vector_db_id` value must exactly match the ID generated by the rag-content tool during index creation (e.g. `vs_8c94967b-81cc-4028-a294-9cfac6fd9ae2`). This identifier links your configuration to the specific vector database index.
 
 ### Step 5: Configure RAG Strategy
 
-Add a `rag` section to your `lightspeed-stack.yaml` to choose how BYOK knowledge is used.
-Each list entry is a `rag_id` from `byok_rag`, or the special value `okp` for OKP.
+Add a `rag.retrieval` section to your `lightspeed-stack.yaml` to choose how BYOK knowledge is used.
+Each list entry is a `rag_id` from `rag.byok.stores`, or the special value `okp` for OKP.
 
 ```yaml
 rag:
-  # Inline RAG: inject context before the LLM request (no tool calls needed)
-  inline:
-    - my-docs         # rag_id from byok_rag
-    - okp             # include OKP context inline
+  # byok.stores is defined in Step 4 above — only the rag_id values are
+  # referenced here; you do not need to repeat the full store definitions.
 
-  # Tool RAG: the LLM can call file_search to retrieve context on demand
-  # If omitted, tool RAG is disabled. If both tool and inline are omitted, all registered stores are used as fallback
-  tool:
-    - my-docs         # expose this BYOK store as the file_search tool
-    - okp             # expose OKP as the file_search tool
+  retrieval:
+    # Inline RAG: inject context before the LLM request (no tool calls needed)
+    inline:
+      sources:
+        - my-docs         # rag_id from rag.byok.stores
+        - okp             # include OKP context inline
 
-# OKP provider settings (only relevant when okp is listed above)
-okp:
-  offline: true       # true = use parent_id for source URLs, false = use reference_url
+    # Tool RAG: the LLM can call file_search to retrieve context on demand
+    # If omitted, tool RAG is disabled. If both tool and inline are omitted, all registered stores are used as fallback
+    tool:
+      sources:
+        - my-docs         # expose this BYOK store as the file_search tool
+        - okp             # expose OKP as the file_search tool
+
+  # OKP provider settings (only relevant when okp is listed above)
+  okp:
+    offline: true       # true = use parent_id for source URLs, false = use reference_url
 ```
 
 Both modes can be enabled simultaneously. Choose based on your latency and control preferences:
@@ -289,37 +322,41 @@ Both modes can be enabled simultaneously. Choose based on your latency and contr
 ### 1. FAISS (Recommended)
 - **Type**: Local vector database with SQLite metadata
 - **Best for**: Small to medium-sized knowledge bases
-- **Configuration**: `rag_type: inline::faiss`
+- **Configuration**: `backend: faiss`
 - **Storage**: SQLite database file
 
 ```yaml
-byok_rag:
-  - rag_id: faiss-knowledge
-    rag_type: inline::faiss
-    embedding_model: sentence-transformers/all-mpnet-base-v2
-    embedding_dimension: 768
-    vector_db_id: vs_8c94967b-81cc-4028-a294-9cfac6fd9ae2
-    db_path: /path/to/faiss_store.db
+rag:
+  byok:
+    stores:
+      - rag_id: faiss-knowledge
+        backend: faiss
+        embedding_model: sentence-transformers/all-mpnet-base-v2
+        embedding_dimension: 768
+        vector_db_id: vs_8c94967b-81cc-4028-a294-9cfac6fd9ae2
+        db_path: /path/to/faiss_store.db
 ```
 
 ### 2. pgvector (PostgreSQL)
 - **Type**: PostgreSQL with pgvector extension
 - **Best for**: Large-scale deployments, shared knowledge bases
-- **Configuration**: `rag_type: remote::pgvector`
+- **Configuration**: `backend: pgvector`
 - **Requirements**: PostgreSQL with pgvector extension
 
 ```yaml
-byok_rag:
-  - rag_id: pgvector-knowledge
-    rag_type: remote::pgvector
-    embedding_model: sentence-transformers/all-mpnet-base-v2
-    embedding_dimension: 768
-    vector_db_id: rhdocs
-    host: ${env.POSTGRES_HOST}
-    port: ${env.POSTGRES_PORT}
-    db: ${env.POSTGRES_DATABASE}
-    user: ${env.POSTGRES_USER}
-    password: ${env.POSTGRES_PASSWORD}
+rag:
+  byok:
+    stores:
+      - rag_id: pgvector-knowledge
+        backend: pgvector
+        embedding_model: sentence-transformers/all-mpnet-base-v2
+        embedding_dimension: 768
+        vector_db_id: rhdocs
+        host: ${env.POSTGRES_HOST}
+        port: ${env.POSTGRES_PORT}
+        db: ${env.POSTGRES_DATABASE}
+        user: ${env.POSTGRES_USER}
+        password: ${env.POSTGRES_PASSWORD}
 ```
 
 > [!NOTE]
@@ -346,19 +383,22 @@ service:
   port: 8080
   auth_enabled: false
 
-byok_rag:
-  - rag_id: company-docs
-    rag_type: inline::faiss
-    embedding_model: sentence-transformers/all-mpnet-base-v2
-    embedding_dimension: 768
-    vector_db_id: vs_f1a2b3c4-56de-4f78-90ab-cdef12345678
-    db_path: /home/user/vector_dbs/company_docs/faiss_store.db
-
 rag:
-  inline:
-    - company-docs
-  tool:
-    - company-docs
+  byok:
+    stores:
+      - rag_id: company-docs
+        backend: faiss
+        embedding_model: sentence-transformers/all-mpnet-base-v2
+        embedding_dimension: 768
+        vector_db_id: vs_f1a2b3c4-56de-4f78-90ab-cdef12345678
+        db_path: /home/user/vector_dbs/company_docs/faiss_store.db
+  retrieval:
+    inline:
+      sources:
+        - company-docs
+    tool:
+      sources:
+        - company-docs
 ```
 
 ### Example 2: Multiple Knowledge Sources with pgvector
@@ -372,32 +412,35 @@ service:
   port: 8080
   auth_enabled: false
 
-byok_rag:
-  - rag_id: local-docs
-    rag_type: inline::faiss
-    embedding_model: sentence-transformers/all-mpnet-base-v2
-    embedding_dimension: 768
-    vector_db_id: vs_e9d8c7b6-43af-4b2d-8e1f-0a9b8c7d6e5f
-    db_path: /data/vector_dbs/local/faiss_store.db
-    score_multiplier: 1.0
-  - rag_id: enterprise-kb
-    rag_type: remote::pgvector
-    embedding_model: sentence-transformers/all-mpnet-base-v2
-    embedding_dimension: 768
-    vector_db_id: enterprise_docs
-    host: ${env.POSTGRES_HOST}
-    port: ${env.POSTGRES_PORT}
-    db: ${env.POSTGRES_DATABASE}
-    user: ${env.POSTGRES_USER}
-    password: ${env.POSTGRES_PASSWORD}
-
 rag:
-  inline:
-    - local-docs
-    - enterprise-kb
-  tool:
-    - local-docs
-    - enterprise-kb
+  byok:
+    stores:
+      - rag_id: local-docs
+        backend: faiss
+        embedding_model: sentence-transformers/all-mpnet-base-v2
+        embedding_dimension: 768
+        vector_db_id: vs_e9d8c7b6-43af-4b2d-8e1f-0a9b8c7d6e5f
+        db_path: /data/vector_dbs/local/faiss_store.db
+        score_multiplier: 1.0
+      - rag_id: enterprise-kb
+        backend: pgvector
+        embedding_model: sentence-transformers/all-mpnet-base-v2
+        embedding_dimension: 768
+        vector_db_id: enterprise_docs
+        host: ${env.POSTGRES_HOST}
+        port: ${env.POSTGRES_PORT}
+        db: ${env.POSTGRES_DATABASE}
+        user: ${env.POSTGRES_USER}
+        password: ${env.POSTGRES_PASSWORD}
+  retrieval:
+    inline:
+      sources:
+        - local-docs
+        - enterprise-kb
+    tool:
+      sources:
+        - local-docs
+        - enterprise-kb
 ```
 
 > [!NOTE]
