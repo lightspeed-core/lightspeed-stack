@@ -1,0 +1,41 @@
+@startuml
+'skin rose
+
+node "Dummy repository" {
+    folder "Package lists" {
+        [requirements.txt] as plist
+    }
+    [Dependabot] as dependabot
+    [CVE list] as cve_list
+}
+
+[File JIRAs script] as file_jiras
+
+cloud "Red Hat JIRA" {
+    [LCORE JIRA] as lcore_jira
+    [RHOAI JIRA] as rhoai_jira
+}
+
+cloud "Red Hat Slack" {
+    [RHOAI channel] as rhoai_channel
+    [LCORE channel] as lcore_channel
+    [rhoai_channel] -[hidden]> [lcore_channel]
+}
+
+[plist] -r-> [dependabot] : detect CVEs
+[dependabot] -r-> [cve_list] : updates list of CVEs
+[cve_list] --> [file_jiras] : read CVEs
+[lcore_jira] <-- [file_jiras] : create new Issue
+[rhoai_jira] <.. [file_jiras] : create new Issue\n(optional)
+[file_jiras] -d-> [lcore_channel] : info about issue\nsend into\nLCORE channel
+[file_jiras] -d-> [rhoai_channel] : info about issue\nsend into\nRHOAI channel
+
+node "RHOAI infrastructure" {
+    [rhoai_channel] --> [package_bump_up]
+    [package_bump_up] --> [package_rebuild]
+    [package_rebuild] --> [refresh_package_list]
+    [refresh_package_list] .u.> [plist] : updates list of packages
+}
+
+@enduml
+
