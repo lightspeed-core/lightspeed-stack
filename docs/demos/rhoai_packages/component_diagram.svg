@@ -1,0 +1,196 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" height="916px" preserveAspectRatio="none" style="width:1039px;height:916px;background:#FFFFFF;" version="1.1" viewBox="0 0 1039 916" width="1039px" zoomAndPan="magnify">
+  <defs/>
+  <g>
+    <!--cluster Dummy repository-->
+    <g id="cluster_Dummy repository">
+      <polygon fill="none" points="16,16,26,6,695,6,695,174.07,685,184.07,16,184.07,16,16" style="stroke:#181818;stroke-width:1.0;"/>
+      <line style="stroke:#181818;stroke-width:1.0;" x1="685" x2="695" y1="16" y2="6"/>
+      <line style="stroke:#181818;stroke-width:1.0;" x1="16" x2="685" y1="16" y2="16"/>
+      <line style="stroke:#181818;stroke-width:1.0;" x1="685" x2="685" y1="16" y2="184.07"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" font-weight="bold" lengthAdjust="spacing" textLength="129.916" x="286.542" y="33.9659">Dummy repository</text>
+    </g>
+    <!--cluster Package lists-->
+    <g id="cluster_Package lists">
+      <path d="M42.5,57 L132.9597,57 A3.75,3.75 0 0 1 135.4597,59.5 L142.4597,82.0679 L219.5,82.0679 A2.5,2.5 0 0 1 222,84.5679 L222,157.57 A2.5,2.5 0 0 1 219.5,160.07 L42.5,160.07 A2.5,2.5 0 0 1 40,157.57 L40,59.5 A2.5,2.5 0 0 1 42.5,57 " fill="none" style="stroke:#000000;stroke-width:1.5;"/>
+      <line style="stroke:#000000;stroke-width:1.5;" x1="40" x2="142.4597" y1="82.0679" y2="82.0679"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" font-weight="bold" lengthAdjust="spacing" textLength="89.4597" x="44" y="73.9659">Package lists</text>
+    </g>
+    <!--cluster Red Hat JIRA-->
+    <g id="cluster_Red Hat JIRA">
+      <path d="M734.7003,68.1004 C739.412,57.9389 748.1223,56.1105 754.824,66.1146 C761.2937,55.5773 768.0287,56.9227 775.5433,64.9484 C780.1876,57.3014 787.6877,56.6983 792.7104,64.5287 C798.1077,55.086 804.0919,54.7319 810.6066,63.4261 C817.0403,55.0574 822.8767,53.1381 830.1521,62.4982 C836.5875,52.6416 843.9624,52.7165 849.4787,63.3646 C854.9959,53.8494 861.0063,52.6108 868.8478,60.8253 C875.0564,52.7022 881.7143,54.3143 885.669,63.0714 C893.4874,52.6101 900.0277,52.8736 907.1315,63.7889 C911.7473,54.5162 917.4033,55.8411 923.6042,62.1088 C931.2245,52.3677 940.3048,52.9299 944.917,65.0424 C949.4402,56.7619 955.8699,56.5787 961.6139,63.7207 C969.0992,53.5693 976.5176,55.0172 982.4623,65.2931 C992.3027,56.0414 1002.4189,59.2847 1006,72 C1006.4152,71.4253 1007.005,71.514 1007.3348,72.0983 C1025.2365,80.2183 1031.1688,94.7349 1013.612,108.9025 C1032.584,130.9997 1024.8568,145.1471 999,152.07 C1000.9577,152.5681 1001.2478,153.7446 1000.1752,155.3338 C993.9986,163.0689 986.6951,164.5985 980.8716,154.9419 C976.2723,163.5271 967.4954,164.1097 962.6902,155.1554 C957.2071,165.2756 949.5323,165.9534 942.2998,157.0283 C937.4693,164.773 929.6373,167.0744 924.353,157.4985 C918.4192,166.4536 911.7201,164.5459 907.1665,156.1328 C901.1977,167.0068 894.252,166.5492 886.6604,157.8313 C881.0625,165.1139 875.6073,166.2074 869.6195,158.2676 C862.1437,166.6412 854.6746,167.0929 848.8904,156.426 C842.541,166.3553 835.7014,164.5451 830.0895,155.688 C825.7753,164.7729 817.013,166.2238 811.8427,156.5194 C805.5598,164.2678 795.7495,165.3231 791.9694,153.9219 C787.6074,162.6712 780.4179,165.9401 773.3403,156.7403 C767.7366,164.4464 759.6291,163.9007 755.5696,155.0799 C741.6704,165.7101 731.7199,160.6389 727,145.07 C728.5959,144.4775 729.4614,145.4937 729.1153,147.0142 C720.0669,144.2066 715.6048,135.3653 724.4049,128.1103 C714.2398,123.1291 712.4435,117.0725 721.1893,108.9221 C713.864,101.6246 717.1648,93.2889 726.9243,91.6711 C714.8354,81.0944 721.2676,68.9917 734,65 C735.5519,65.4823 736.1961,66.9298 734.7003,68.1004 " fill="none" style="stroke:#181818;stroke-width:1.0;"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" font-weight="bold" lengthAdjust="spacing" textLength="86.3727" x="823.3137" y="84.9659">Red Hat JIRA</text>
+    </g>
+    <!--cluster Red Hat Slack-->
+    <g id="cluster_Red Hat Slack">
+      <path d="M463.7809,429.0245 C468.0477,415.5136 476.6228,415.028 485.7896,424.2887 C493.3648,410.1636 503.7089,409.4812 512.0204,423.605 C519.1271,412.7802 526.8815,414.7676 532.8021,424.7875 C541.3391,414.3876 549.5232,412.8828 557.5223,425.3686 C562.8348,415.0641 571.0748,414.3493 578.9425,422.3841 C585.7111,410.6699 594.34,410.3386 602.6791,420.6951 C610.0241,409.5917 616.9941,410.4227 625.178,419.7723 C632.8039,409.0733 642.9322,411.1523 647.7749,422.6106 C652.3742,413.8017 662.3139,410.7156 667.9664,421.5267 C675.1807,410.5548 686.5302,409.6749 692.1797,423.0808 C700.1407,411.4631 709.5864,414.3236 715.2038,425.4529 C719.821,416.4467 729.7675,414.6707 735.9042,423.7097 C744.3607,413.5532 754.2658,415.4752 758.3509,428.0302 C769.2215,415.8742 779.2008,416.9047 786,432.14 C786.7268,431.8204 787.0631,432.3303 787.0131,432.9648 C809.4307,438.9271 816.7058,455.5049 797.9235,472.7621 C811.252,493.12 803.0886,509.8014 779,512.21 C779.9321,511.3195 780.7901,511.8974 780.9997,512.9526 C775.0931,525.4949 768.0195,526.3632 758.3613,516.7934 C750.4783,528.4329 739.9459,527.6756 733.9011,514.9482 C731.2426,525.6998 722.9264,527.3952 715.5745,519.5812 C707.2842,532.1676 697.9001,531.2309 689.5207,519.6774 C684.2009,532.1735 674.4181,533.9128 666.3174,522.3606 C659.3138,531.768 649.7498,530.7138 645.2216,519.7918 C641.6865,531.4169 630.18,532.1811 622.7262,524.3143 C616.6797,533.384 606.8734,531.171 602.5466,522.3722 C595.2644,534.7955 584.8158,532.4526 577.862,522.0176 C569.1661,531.4363 561.8931,528.9855 557.0855,518.0489 C548.652,531.4991 540.1124,531.1128 531.446,518.2762 C524.1949,527.1237 516.0567,526.3729 510.5517,516.3435 C503.9333,527.0191 493.5937,526.7061 487.2322,516.0626 C472.0423,526.7546 460.8327,524.3246 456,505.21 C458.2268,505.2327 459.4282,506.0311 458.7073,508.4882 C440.1609,500.1743 437.1729,485.7839 453.4554,472.4011 C434.6722,455.3727 436.0195,432.9262 463,425.14 C465.256,425.8142 465.3097,427.5894 463.7809,429.0245 " fill="none" style="stroke:#181818;stroke-width:1.0;"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" font-weight="bold" lengthAdjust="spacing" textLength="93.9362" x="574.0319" y="445.1059">Red Hat Slack</text>
+    </g>
+    <!--cluster RHOAI infrastructure-->
+    <g id="cluster_RHOAI infrastructure">
+      <polygon fill="none" points="233,581.21,243,571.21,455,571.21,455,889.41,445,899.41,233,899.41,233,581.21" style="stroke:#181818;stroke-width:1.0;"/>
+      <line style="stroke:#181818;stroke-width:1.0;" x1="445" x2="455" y1="581.21" y2="571.21"/>
+      <line style="stroke:#181818;stroke-width:1.0;" x1="233" x2="445" y1="581.21" y2="581.21"/>
+      <line style="stroke:#181818;stroke-width:1.0;" x1="445" x2="445" y1="581.21" y2="899.41"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" font-weight="bold" lengthAdjust="spacing" textLength="146.674" x="266.663" y="599.1759">RHOAI infrastructure</text>
+    </g>
+    <!--entity dependabot-->
+    <g id="elem_dependabot">
+      <rect fill="#F1F1F1" height="49.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="121.8717" x="314.06" y="95"/>
+      <rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="415.9317" y="100"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="413.9317" y="102"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="413.9317" y="106"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="81.8717" x="329.06" y="129.9659">Dependabot</text>
+    </g>
+    <!--entity cve_list-->
+    <g id="elem_cve_list">
+      <rect fill="#F1F1F1" height="49.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="87.6558" x="591.17" y="95"/>
+      <rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="658.8258" y="100"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="656.8258" y="102"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="656.8258" y="106"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="47.6558" x="606.17" y="129.9659">CVE list</text>
+    </g>
+    <!--entity plist-->
+    <g id="elem_plist">
+      <rect fill="#F1F1F1" height="49.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="150.8936" x="55.55" y="95"/>
+      <rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="186.4436" y="100"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="184.4436" y="102"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="184.4436" y="106"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="110.8936" x="70.55" y="129.9659">requirements.txt</text>
+    </g>
+    <!--entity lcore_jira-->
+    <g id="elem_lcore_jira">
+      <rect fill="#F1F1F1" height="49.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="113.4717" x="735.26" y="95"/>
+      <rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="828.7317" y="100"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="826.7317" y="102"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="826.7317" y="106"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="73.4717" x="750.26" y="129.9659">LCORE JIRA</text>
+    </g>
+    <!--entity rhoai_jira-->
+    <g id="elem_rhoai_jira">
+      <rect fill="#F1F1F1" height="49.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="113.5697" x="884.22" y="95"/>
+      <rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="977.7897" y="100"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="975.7897" y="102"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="975.7897" y="106"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="73.5697" x="899.22" y="129.9659">RHOAI JIRA</text>
+    </g>
+    <!--entity rhoai_channel-->
+    <g id="elem_rhoai_channel">
+      <rect fill="#F1F1F1" height="49.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="139.3856" x="464.31" y="455.14"/>
+      <rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="583.6956" y="460.14"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="581.6956" y="462.14"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="581.6956" y="466.14"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="99.3856" x="479.31" y="490.1059">RHOAI channel</text>
+    </g>
+    <!--entity lcore_channel-->
+    <g id="elem_lcore_channel">
+      <rect fill="#F1F1F1" height="49.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="139.2876" x="638.36" y="455.14"/>
+      <rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="757.6476" y="460.14"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="755.6476" y="462.14"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="755.6476" y="466.14"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="99.2876" x="653.36" y="490.1059">LCORE channel</text>
+    </g>
+    <!--entity package_bump_up-->
+    <g id="elem_package_bump_up">
+      <rect fill="#F1F1F1" height="49.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="163.6755" x="266.16" y="614.21"/>
+      <rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="409.8355" y="619.21"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="407.8355" y="621.21"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="407.8355" y="625.21"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="123.6755" x="281.16" y="649.1759">package_bump_up</text>
+    </g>
+    <!--entity package_rebuild-->
+    <g id="elem_package_rebuild">
+      <rect fill="#F1F1F1" height="49.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="148.0096" x="273" y="724.27"/>
+      <rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="401.0096" y="729.27"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="399.0096" y="731.27"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="399.0096" y="735.27"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="108.0096" x="288" y="759.2359">package_rebuild</text>
+    </g>
+    <!--entity refresh_package_list-->
+    <g id="elem_refresh_package_list">
+      <rect fill="#F1F1F1" height="49.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="173.9655" x="257.02" y="834.34"/>
+      <rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="410.9855" y="839.34"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="408.9855" y="841.34"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="408.9855" y="845.34"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="133.9655" x="272.02" y="869.3059">refresh_package_list</text>
+    </g>
+    <!--entity file_jiras-->
+    <g id="elem_file_jiras">
+      <rect fill="#F1F1F1" height="49.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="139.0776" x="638.46" y="267.07"/>
+      <rect fill="#F1F1F1" height="10" style="stroke:#181818;stroke-width:0.5;" width="15" x="757.5376" y="272.07"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="755.5376" y="274.07"/>
+      <rect fill="#F1F1F1" height="2" style="stroke:#181818;stroke-width:0.5;" width="4" x="755.5376" y="278.07"/>
+      <text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="99.0776" x="653.46" y="302.0359">File JIRAs script</text>
+    </g>
+    <!--link rhoai_channel to lcore_channel-->
+    <!--link plist to dependabot-->
+    <g id="link_plist_dependabot">
+      <path d="M206.87,119.54 C241.28,119.54 275.44,119.54 307.88,119.54 " fill="none" id="plist-to-dependabot" style="stroke:#181818;stroke-width:1.0;"/>
+      <polygon fill="#181818" points="313.88,119.54,304.88,115.54,308.88,119.54,304.88,123.54,313.88,119.54" style="stroke:#181818;stroke-width:1.0;"/>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="71.1361" x="224.76" y="112.437">detect CVEs</text>
+    </g>
+    <!--link dependabot to cve_list-->
+    <g id="link_dependabot_cve_list">
+      <path d="M436.29,119.54 C483.73,119.54 542.3,119.54 584.79,119.54 " fill="none" id="dependabot-to-cve_list" style="stroke:#181818;stroke-width:1.0;"/>
+      <polygon fill="#181818" points="590.79,119.54,581.79,115.54,585.79,119.54,581.79,123.54,590.79,119.54" style="stroke:#181818;stroke-width:1.0;"/>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="119.1451" x="454.05" y="112.437">updates list of CVEs</text>
+    </g>
+    <!--link cve_list to file_jiras-->
+    <g id="link_cve_list_file_jiras">
+      <path d="M638.74,144.27 C643.2,168.52 651.98,206.81 667,237.07 C672.15,247.45 675.7083,253.1196 682.7283,261.9196 " fill="none" id="cve_list-to-file_jiras" style="stroke:#181818;stroke-width:1.0;"/>
+      <polygon fill="#181818" points="686.47,266.61,683.9844,257.0799,683.3519,262.7013,677.7306,262.0688,686.47,266.61" style="stroke:#181818;stroke-width:1.0;"/>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="60.84" x="668" y="223.967">read CVEs</text>
+    </g>
+    <!--reverse link lcore_jira to file_jiras-->
+    <g id="link_lcore_jira_file_jiras">
+      <path d="M777.4826,149.9194 C761.4726,182.3294 735.77,234.37 719.8,266.72 " fill="none" id="lcore_jira-backto-file_jiras" style="stroke:#181818;stroke-width:1.0;"/>
+      <polygon fill="#181818" points="780.14,144.54,772.5677,150.8376,777.9255,149.0229,779.7403,154.3807,780.14,144.54" style="stroke:#181818;stroke-width:1.0;"/>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="102.8301" x="753.52" y="223.967">create new Issue</text>
+    </g>
+    <!--reverse link rhoai_jira to file_jiras-->
+    <g id="link_rhoai_jira_file_jiras">
+      <path d="M928.6764,149.9518 C916.7264,176.2318 896.66,212.46 865,237.07 C839.76,256.69 806.89,269.36 777.76,277.42 " fill="none" id="rhoai_jira-backto-file_jiras" style="stroke:#181818;stroke-width:1.0;stroke-dasharray:7.0,7.0;"/>
+      <polygon fill="#181818" points="931.16,144.49,923.7934,151.027,929.0903,149.0415,931.0758,154.3385,931.16,144.49" style="stroke:#181818;stroke-width:1.0;"/>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="102.8301" x="899.59" y="214.967">create new Issue</text>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="58.2531" x="921.8785" y="232.673">(optional)</text>
+    </g>
+    <!--link file_jiras to lcore_channel-->
+    <g id="link_file_jiras_lcore_channel">
+      <path d="M708,316.55 C708,352.28 708,413.15 708,448.82 " fill="none" id="file_jiras-to-lcore_channel" style="stroke:#181818;stroke-width:1.0;"/>
+      <polygon fill="#181818" points="708,454.82,712,445.82,708,449.82,704,445.82,708,454.82" style="stroke:#181818;stroke-width:1.0;"/>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="97.5391" x="709" y="361.037">info about issue</text>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="56.9141" x="729.3125" y="378.743">send into</text>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="92.1961" x="711.6715" y="396.449">LCORE channel</text>
+    </g>
+    <!--link file_jiras to rhoai_channel-->
+    <g id="link_file_jiras_rhoai_channel">
+      <path d="M643.63,316.52 C628.38,324.31 613.07,334.12 601,346.14 C569.76,377.25 552.223,420.2266 542.783,449.1266 " fill="none" id="file_jiras-to-rhoai_channel" style="stroke:#181818;stroke-width:1.0;"/>
+      <polygon fill="#181818" points="540.92,454.83,547.5168,447.5168,542.4725,450.0771,539.9122,445.0328,540.92,454.83" style="stroke:#181818;stroke-width:1.0;"/>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="97.5391" x="602" y="361.037">info about issue</text>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="56.9141" x="622.3125" y="378.743">send into</text>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="92.2871" x="604.626" y="396.449">RHOAI channel</text>
+    </g>
+    <!--link rhoai_channel to package_bump_up-->
+    <g id="link_rhoai_channel_package_bump_up">
+      <path d="M505.75,504.53 C470.69,534.14 415.8341,580.4589 380.7941,610.0489 " fill="none" id="rhoai_channel-to-package_bump_up" style="stroke:#181818;stroke-width:1.0;"/>
+      <polygon fill="#181818" points="376.21,613.92,385.667,611.1694,380.0301,610.6941,380.5054,605.0572,376.21,613.92" style="stroke:#181818;stroke-width:1.0;"/>
+    </g>
+    <!--link package_bump_up to package_rebuild-->
+    <g id="link_package_bump_up_package_rebuild">
+      <path d="M347.78,663.72 C347.61,681.63 347.447,700.0003 347.277,717.8903 " fill="none" id="package_bump_up-to-package_rebuild" style="stroke:#181818;stroke-width:1.0;"/>
+      <polygon fill="#181818" points="347.22,723.89,351.3053,714.9284,347.2675,718.8902,343.3057,714.8524,347.22,723.89" style="stroke:#181818;stroke-width:1.0;"/>
+    </g>
+    <!--link package_rebuild to refresh_package_list-->
+    <g id="link_package_rebuild_refresh_package_list">
+      <path d="M346.33,773.79 C345.84,791.7 345.3276,810.0723 344.8276,827.9623 " fill="none" id="package_rebuild-to-refresh_package_list" style="stroke:#181818;stroke-width:1.0;"/>
+      <polygon fill="#181818" points="344.66,833.96,348.9099,825.0753,344.7997,828.962,340.913,824.8518,344.66,833.96" style="stroke:#181818;stroke-width:1.0;"/>
+    </g>
+    <!--reverse link plist to refresh_package_list-->
+    <g id="link_plist_refresh_package_list">
+      <path d="M149.3849,149.6941 C168.3149,181.6941 195,235.55 195,290.6 C195,290.6 195,290.6 195,749.81 C195,790.23 231.38,817.09 268.19,833.92 " fill="none" id="plist-backto-refresh_package_list" style="stroke:#181818;stroke-width:1.0;stroke-dasharray:7.0,7.0;"/>
+      <polygon fill="#181818" points="146.33,144.53,147.4696,154.3127,148.8757,148.8334,154.355,150.2395,146.33,144.53" style="stroke:#181818;stroke-width:1.0;"/>
+      <text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="146.9911" x="196" y="551.107">updates list of packages</text>
+    </g>
+    <!--SRC=[XPFTJkCm48Nl_HIZtYnS90-mMY4XVaJHIg0YxKs88jUUK8Dh6_-mYrPzTnmxQPeKH2uYPSvtnlOPvuTx4GgiTaY8qXnXSHcsstUmQBGJNjlt1Vmd49zMIuuM5lUKlT0d12cSTuFOFPN5ro0iRb5vL_f_lWRgm7HSOdRfNLsYGSNfMcUTxp-pVF7dAhLE8dl39lbtX5JNGYBSBbVd3XopmcIaZTNcMLZg265I1mwB5NAueJwnmmQhtnTtgwjKIZR9jCs-BAzkxiwNesmtceeixuxwFiWOmRvnTh8DLGhbWRcl7Av-2EKDJA29huQYsWZEKTLdK4teEiLXSag5BQBE3qBz6JFro3p4A1sPI1aUKktGO3Zrw5BaeDlUCn95PnWpxYmMAU-vCSKQVXN5d6GHzGWA_yBIkO2a6dEDXhBypl2eJhJnGYigJyc4BNXn54ji85Ih8PurU12vWOk7ZsMl7zLa29-rcmtWctQJmGz_Jov6NsphRM0-MDnVbVc0kpLD_fsQTTYQ9fWwa_FgbBMu3aBo6JjKCsknjUWspQ2cSVRR-4o2CfJT4bzTZ1vsyUvz0000]-->
+  </g>
+</svg>
