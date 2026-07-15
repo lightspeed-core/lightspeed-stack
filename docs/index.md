@@ -40,6 +40,8 @@ product questions using backend LLM services, agents, and RAG databases.
 
 ## Overview
 
+[Overview](https://lightspeed-core.github.io/lightspeed-stack/overview.html)
+
 [Architecture](https://lightspeed-core.github.io/lightspeed-stack/ARCHITECTURE.html)
 
 [Architecture diagram](https://lightspeed-core.github.io/lightspeed-stack/architecture.svg)

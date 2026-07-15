@@ -33,6 +33,8 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 ## Overview
 
+[Overview](https://lightspeed-core.github.io/lightspeed-stack/overview.html)
+
 [Architecture](https://lightspeed-core.github.io/lightspeed-stack/ARCHITECTURE.html)
 
 [Architecture diagram](https://lightspeed-core.github.io/lightspeed-stack/architecture.svg)
