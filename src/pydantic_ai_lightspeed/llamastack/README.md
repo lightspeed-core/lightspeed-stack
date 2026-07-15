@@ -10,5 +10,5 @@ Custom OpenAI Responses model that works around Llama Stack streaming quirks.
 Llama Stack provider implementation for Pydantic AI.
 
 ## [_transport.py](_transport.py)
-httpx transport that routes OpenAI-compatible requests through a Llama Stack library client.
+httpx transports for Llama Stack library and server modes.
 
