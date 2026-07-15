@@ -31,6 +31,9 @@ from llama_stack_client.types.conversations.item_list_response import (
     OpenAIResponseInputFunctionToolCallOutput as FunctionToolCallOutput,
 )
 from llama_stack_client.types.conversations.item_list_response import (
+    OpenAIResponseInputFunctionToolCallOutputOutputListOpenAIResponseInputMessageContentTextOpenAIResponseInputMessageContentImageOpenAIResponseInputMessageContentFile as FunctionCallOutputContentPart,  # pylint: disable=line-too-long
+)
+from llama_stack_client.types.conversations.item_list_response import (
     OpenAIResponseMcpApprovalRequest as MCPApprovalRequest,
 )
 from llama_stack_client.types.conversations.item_list_response import (
@@ -87,6 +90,29 @@ def _extract_text_from_content(content: str | list[Any]) -> str:
                     text_fragments.append(str(dict_text))
 
     return "".join(text_fragments)
+
+
+def _function_call_output_to_str(
+    output: str | list[FunctionCallOutputContentPart],
+) -> str:
+    """Convert function call output content into a string summary.
+
+    Parameters:
+        output: Raw function call output from the Conversations API.
+
+    Returns:
+        Plain string content for ``ToolResultSummary``.
+    """
+    if isinstance(output, str):
+        return output
+
+    fragments: list[str] = []
+    for part in output:
+        if part.type == "input_text":
+            fragments.append(part.text)
+        else:
+            fragments.append(part.model_dump_json(exclude_none=True))
+    return "\n\n".join(fragments)
 
 
 def _parse_message_item(item: MessageOutput) -> Message:
@@ -259,7 +285,7 @@ def _build_tool_call_summary_from_item(  # pylint: disable=too-many-return-state
             ToolResultSummary(
                 id=function_output.call_id,
                 status=function_output.status or "success",
-                content=function_output.output,
+                content=_function_call_output_to_str(function_output.output),
                 type="function_call_output",
                 round=1,
             ),

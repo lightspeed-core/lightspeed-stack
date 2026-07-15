@@ -277,18 +277,3 @@ Feature: Llama Stack connection disrupted
     """
     Then The status code of the response is 503
     And The body of the response contains Llama Stack
-
-
-  # --- lightspeed-stack-mcp.yaml (aligned with mcp.feature / mcp_servers_api.feature next in test_list) ---
-  @MCP
-  Scenario: Register MCP server returns 503 when Llama Stack is unreachable
-    Given Llama Stack is restarted
-    And The service uses the lightspeed-stack-mcp.yaml configuration
-      And The service is restarted
-    And The llama-stack connection is disrupted
-    When I access REST API endpoint "mcp-servers" using HTTP POST method
-    """
-    {"name": "unreachable-server", "url": "http://mock-mcp:3000", "provider_id": "model-context-protocol"}
-    """
-    Then The status code of the response is 503
-    And The body of the response contains Llama Stack

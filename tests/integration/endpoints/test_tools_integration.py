@@ -19,7 +19,7 @@ def mock_llama_stack_tools_fixture(
     """Mock the Llama Stack client for tools endpoint.
 
     Returns:
-        Mock client with toolgroups.list and tools.list configured.
+        Mock client used by file-search discovery.
     """
     mock_holder_class = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()

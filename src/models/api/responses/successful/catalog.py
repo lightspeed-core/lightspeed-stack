@@ -5,6 +5,7 @@ from typing import Any, Optional
 from pydantic import Field
 
 from models.api.responses.successful.bases import AbstractSuccessfulResponse
+from models.common.tools import CatalogTool
 
 
 class ModelsResponse(AbstractSuccessfulResponse):
@@ -39,7 +40,7 @@ class ModelsResponse(AbstractSuccessfulResponse):
 class ToolsResponse(AbstractSuccessfulResponse):
     """Model representing a response to tools request."""
 
-    tools: list[dict[str, Any]] = Field(
+    tools: list[CatalogTool] = Field(
         description=(
             "List of tools available from all configured MCP servers and built-in toolgroups"
         ),

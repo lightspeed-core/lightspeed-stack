@@ -26,7 +26,6 @@ from metrics import recording
 from metrics.utils import setup_model_metrics
 from models.api.responses.error import InternalServerErrorResponse
 from sentry import initialize_sentry
-from utils.common import register_mcp_servers_async
 from utils.degraded_mode import DegradedModeTracker
 from utils.llama_stack_version import check_llama_stack_version
 
@@ -122,8 +121,6 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         AzureEntraIDManager().set_config(azure_entra_id_config)
         azure_base_url = await AsyncLlamaStackClientHolder().get_azure_base_url()
         AzureEntraIDManager().set_base_url(azure_base_url)
-    logger.info("Registering MCP servers")
-    await register_mcp_servers_async(logger, configuration.configuration)
 
     # Set up model metrics if in healthy mode
     if not degraded_tracker.is_degraded():

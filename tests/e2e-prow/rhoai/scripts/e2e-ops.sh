@@ -9,7 +9,7 @@
 #   is the CI runner, not the application.
 # - E2E_LSC_PORT_FORWARD_PID_FILE coordinates the handoff.
 # - pipeline-konflux.sh (and hooks) forward llama-stack-service-svc to localhost:8321 for
-#   Behave steps that call Llama Stack directly (MCP toolgroups, shields). When the llama
+#   Behave steps that call Llama Stack directly (shields). When the llama
 #   pod is recreated, that forward must be restarted or you get "PodSandbox ... not found" /
 #   APIConnectionError on subsequent scenarios.
 # - E2E_LLAMA_PORT_FORWARD_PID_FILE coordinates killing/restarting the 8321 forward.

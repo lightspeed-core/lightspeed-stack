@@ -12,6 +12,7 @@ from pydantic_ai.capabilities import AbstractCapability, AgentCapability
 from pydantic_ai_skills import SkillsCapability
 
 from models.common.responses.responses_api_params import ResponsesApiParams
+from models.common.tools import CatalogTool, CatalogToolParameter
 from models.config import SkillsConfiguration
 from pydantic_ai_lightspeed.llamastack import (
     LlamaStackResponsesModel,
@@ -44,13 +45,13 @@ def _skills_capability(
 
 def _json_schema_to_parameters(
     schema: Optional[dict[str, Any]],
-) -> list[dict[str, Any]]:
+) -> list[CatalogToolParameter]:
     """Convert a JSON Schema object to the flat parameter list used by ``/tools``."""
     if not schema or "properties" not in schema:
         return []
 
     required_params = set(schema.get("required", []))
-    parameters: list[dict[str, Any]] = []
+    parameters: list[CatalogToolParameter] = []
     for name, prop in schema["properties"].items():
         parameter_type = prop.get("type")
         if parameter_type is None and "anyOf" in prop:
@@ -62,13 +63,13 @@ def _json_schema_to_parameters(
                     parameter_type = option["type"]
                     break
         parameters.append(
-            {
-                "name": name,
-                "description": prop.get("description", ""),
-                "parameter_type": parameter_type or "string",
-                "required": name in required_params,
-                "default": prop.get("default"),
-            }
+            CatalogToolParameter(
+                name=name,
+                description=prop.get("description", ""),
+                parameter_type=parameter_type or "string",
+                required=name in required_params,
+                default=prop.get("default"),
+            )
         )
     return parameters
 
@@ -80,44 +81,42 @@ def _capability_tool_description(description: str) -> str:
     return description.strip()
 
 
-def _capability_tools_from_toolset(toolset: Any) -> list[dict[str, Any]]:
+def _capability_tools_from_toolset(toolset: Any) -> list[CatalogTool]:
     """Serialize tools registered on a pydantic-ai capability toolset."""
     raw_tools = getattr(toolset, "tools", None)
     if not raw_tools:
         return []
 
-    tool_dicts: list[dict[str, Any]] = []
+    tools: list[CatalogTool] = []
     for tool in raw_tools.values():
-        tool_dicts.append(
-            {
-                "identifier": tool.name,
-                "description": _capability_tool_description(tool.description or ""),
-                "parameters": _json_schema_to_parameters(
-                    tool.function_schema.json_schema
-                ),
-                "provider_id": _AGENT_SKILLS_PROVIDER_ID,
-                "toolgroup_id": _AGENT_SKILLS_TOOLGROUP_ID,
-                "server_source": _BUILTIN_CAPABILITY_SERVER_SOURCE,
-                "type": _CAPABILITY_TOOL_TYPE,
-            }
+        tools.append(
+            CatalogTool(
+                identifier=tool.name,
+                description=_capability_tool_description(tool.description or ""),
+                parameters=_json_schema_to_parameters(tool.function_schema.json_schema),
+                provider_id=_AGENT_SKILLS_PROVIDER_ID,
+                toolgroup_id=_AGENT_SKILLS_TOOLGROUP_ID,
+                server_source=_BUILTIN_CAPABILITY_SERVER_SOURCE,
+                type=_CAPABILITY_TOOL_TYPE,
+            )
         )
-    return tool_dicts
+    return tools
 
 
 def get_agent_capability_tools(
     skills: Optional[SkillsConfiguration],
-) -> list[dict[str, Any]]:
+) -> list[CatalogTool]:
     """Return tool metadata for pydantic-ai capabilities configured for LCS agents.
 
     Parameters:
         skills: Agent skills configuration from LCS, or None when skills are disabled.
 
     Returns:
-        Tool dictionaries compatible with the ``/tools`` endpoint response format.
+        Catalog tools for the ``/tools`` endpoint response format.
     """
     capabilities = _agent_capabilities(skills) or []
 
-    tools: list[dict[str, Any]] = []
+    tools: list[CatalogTool] = []
     for capability in capabilities:
         if not isinstance(capability, AbstractCapability):
             continue

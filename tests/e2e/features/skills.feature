@@ -12,7 +12,7 @@ Feature: Agent skills tests
   @SkillsConfig
   Scenario: Skill tools are registered when skills are configured
     Given The service uses the lightspeed-stack-skills.yaml configuration
-      And MCP toolgroups are reset for a new MCP configuration
+      And MCP configuration is reset for a new scenario
       And The service is restarted
     When I access REST API endpoint "tools" using HTTP GET method
     Then The status code of the response is 200
@@ -24,14 +24,14 @@ Feature: Agent skills tests
             "identifier": "insert_into_memory",
             "description": "Insert documents into memory",
             "parameters": [],
-            "provider_id": "rag-runtime",
-            "toolgroup_id": "builtin::rag",
+            "provider_id": "file-search",
+            "toolgroup_id": "builtin::file_search",
             "server_source": "builtin",
-            "type": "tool_group"
+            "type": "tool"
           },
           {
-            "identifier": "knowledge_search",
-            "description": "Search for information in a database.",
+            "identifier": "file_search",
+            "description": "Search files for relevant information",
             "parameters": [
               {
                 "name": "query",
@@ -41,10 +41,10 @@ Feature: Agent skills tests
                 "default": null
               }
             ],
-            "provider_id": "rag-runtime",
-            "toolgroup_id": "builtin::rag",
+            "provider_id": "file-search",
+            "toolgroup_id": "builtin::file_search",
             "server_source": "builtin",
-            "type": "tool_group"
+            "type": "tool"
           },
           {
             "identifier": "list_skills",
@@ -140,7 +140,7 @@ Feature: Agent skills tests
 
   Scenario: Skill tools are not registered when no skills are configured
     Given The service uses the lightspeed-stack.yaml configuration
-      And MCP toolgroups are reset for a new MCP configuration
+      And MCP configuration is reset for a new scenario
       And The service is restarted
     When I access REST API endpoint "tools" using HTTP GET method
     Then The status code of the response is 200
@@ -152,14 +152,14 @@ Feature: Agent skills tests
             "identifier": "insert_into_memory",
             "description": "Insert documents into memory",
             "parameters": [],
-            "provider_id": "rag-runtime",
-            "toolgroup_id": "builtin::rag",
+            "provider_id": "file-search",
+            "toolgroup_id": "builtin::file_search",
             "server_source": "builtin",
-            "type": "tool_group"
+            "type": "tool"
           },
           {
-            "identifier": "knowledge_search",
-            "description": "Search for information in a database.",
+            "identifier": "file_search",
+            "description": "Search files for relevant information",
             "parameters": [
               {
                 "name": "query",
@@ -169,10 +169,10 @@ Feature: Agent skills tests
                 "default": null
               }
             ],
-            "provider_id": "rag-runtime",
-            "toolgroup_id": "builtin::rag",
+            "provider_id": "file-search",
+            "toolgroup_id": "builtin::file_search",
             "server_source": "builtin",
-            "type": "tool_group"
+            "type": "tool"
           }
         ]
       }

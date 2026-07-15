@@ -39,6 +39,7 @@ from models.common import (
     MCPServerAuthInfo,
     ProviderHealthStatus,
 )
+from models.common.tools import CatalogTool
 from models.common.turn_summary import (
     ReferencedDocument,
     ToolCallSummary,
@@ -131,13 +132,13 @@ class TestToolsResponse:
     def test_constructor(self) -> None:
         """Test ToolsResponse with valid tools list."""
         tools = [
-            {
-                "identifier": "filesystem_read",
-                "description": "Read contents of a file",
-                "parameters": [],
-                "provider_id": "mcp",
-                "type": "tool",
-            }
+            CatalogTool(
+                identifier="filesystem_read",
+                description="Read contents of a file",
+                parameters=[],
+                provider_id="mcp",
+                type="tool",
+            )
         ]
         response = ToolsResponse(tools=tools)
         assert isinstance(response, AbstractSuccessfulResponse)

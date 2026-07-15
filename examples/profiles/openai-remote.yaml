@@ -53,8 +53,8 @@ providers:
     provider_type: inline::llama-guard
   tool_runtime:
   - config: {}
-    provider_id: rag-runtime
-    provider_type: inline::rag-runtime
+    provider_id: file-search
+    provider_type: inline::file-search
   vector_io:
   - config:
       persistence:
@@ -108,11 +108,11 @@ registered_resources:
   shields: []
   vector_stores: []
   tool_groups:
-  - toolgroup_id: builtin::rag
-    provider_id: rag-runtime
+  - toolgroup_id: builtin::file_search
+    provider_id: file-search
 
 # REQUIRED for file_search tool calls to work. Without it, llama-stack's
-# rag-runtime silently fails all file_search operations with no error logged.
+# file-search runtime silently fails all file_search operations with no error logged.
 vector_stores:
   annotation_prompt_params:
     enable_annotations: false

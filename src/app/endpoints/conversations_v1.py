@@ -3,7 +3,7 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from llama_stack_api import ConversationNotFoundError
+from llama_stack_api import ConversationNotFoundError, InvalidParameterError
 from llama_stack_client import (
     APIConnectionError,
     APIStatusError,
@@ -388,7 +388,7 @@ async def delete_conversation_endpoint_handler(
         response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
 
-    except (APIStatusError, ConversationNotFoundError):
+    except (APIStatusError, ConversationNotFoundError, InvalidParameterError):
         # In library mode, ConversationNotFoundError is raised instead of APIStatusError
         logger.warning(
             "Conversation %s in LlamaStack not found. Treating as already deleted.",

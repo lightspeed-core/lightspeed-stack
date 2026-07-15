@@ -380,7 +380,7 @@ oc port-forward svc/mock-jwks 8000:8000 -n $NAMESPACE &
 PF_JWKS_PID=$!
 echo "$PF_JWKS_PID" >"$E2E_JWKS_PORT_FORWARD_PID_FILE"
 
-# Behave steps that call Llama Stack directly (MCP toolgroups, shields, disrupt/restore)
+# Behave steps that call Llama Stack directly (shields, disrupt/restore)
 # need localhost:8321. Without this forward those tests hit "Connection refused".
 echo "Starting port-forward for llama-stack..."
 oc port-forward svc/llama-stack-service-svc 8321:8321 -n $NAMESPACE &

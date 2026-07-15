@@ -1,7 +1,7 @@
 version: 2
 
 apis:
-- agents
+- responses
 - batches
 - datasetio
 - eval
@@ -10,6 +10,8 @@ apis:
 - safety
 - scoring
 - tool_runtime
+- tool_groups
+- conversations
 - vector_io
       
 benchmarks: []
@@ -52,8 +54,11 @@ providers:
       openai_api_key: '********'
   tool_runtime:
   - config: {} # Enable the RAG tool
-    provider_id: rag-runtime
-    provider_type: inline::rag-runtime
+    provider_id: file-search
+    provider_type: inline::file-search
+  - config: {} # Enable MCP (Model Context Protocol) support
+    provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
   vector_io:
   - config:
       persistence:
@@ -61,7 +66,7 @@ providers:
         backend: kv_default
     provider_id: faiss
     provider_type: inline::faiss
-  agents:
+  responses:
   - config:
       persistence:
         agent_state:
@@ -70,8 +75,8 @@ providers:
         responses:
           table_name: agents_responses
           backend: sql_default
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_id: builtin
+    provider_type: inline::builtin
   batches:
   - config:
       kvstore:
@@ -97,8 +102,8 @@ providers:
       kvstore:
         namespace: eval_store
         backend: kv_default
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_id: builtin
+    provider_type: inline::builtin
 scoring_fns: []
 server:
   port: 8321
@@ -136,10 +141,10 @@ registered_resources:
   scoring_fns: []
   benchmarks: []
   tool_groups:
-  - toolgroup_id: builtin::rag # Register the RAG tool
-    provider_id: rag-runtime
+  - toolgroup_id: builtin::file_search # Register the RAG tool
+    provider_id: file-search
 # REQUIRED: This section is necessary for file_search tool calls to work.
-# Without it, llama-stack's rag-runtime silently fails all file_search operations
+# Without it, llama-stack's file-search runtime silently fails all file_search operations
 # with no error logged.
 vector_stores:
   # LCORE-1498: Disables Llama Stack RAG annotation generation
