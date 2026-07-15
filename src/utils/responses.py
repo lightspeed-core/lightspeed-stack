@@ -81,7 +81,6 @@ from llama_stack_api.openai_responses import (
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
 import constants
-from client import AsyncLlamaStackClientHolder
 from configuration import configuration
 from constants import DEFAULT_RAG_TOOL
 from log import get_logger
@@ -190,8 +189,7 @@ async def maybe_get_topic_summary(
     return await get_topic_summary(input_text, client, model_id)
 
 
-async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-positional-arguments,unused-argument
-    client: AsyncLlamaStackClient,
+async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     vector_store_ids: Optional[list[str]],
     no_tools: Optional[bool],
     token: str,
@@ -201,7 +199,6 @@ async def prepare_tools(  # pylint: disable=too-many-arguments,too-many-position
     """Prepare tools for Responses API including RAG and MCP tools.
 
     Args:
-        client: The Llama Stack client instance
         vector_store_ids: The list of vector store IDs to use for RAG tools
             or None to fall back to rag.tool configuration
         no_tools: Whether to skip tool preparation
@@ -331,7 +328,6 @@ async def prepare_responses_params(  # pylint: disable=too-many-arguments,too-ma
 
     # Prepare tools for responses API
     tools = await prepare_tools(
-        client,
         query_request.vector_store_ids,
         query_request.no_tools,
         token,
@@ -1710,9 +1706,7 @@ async def _resolve_client_tools(
 
     # Optionally merge server-configured tools (RAG, MCP) with client tools
     if merge_server_tools:
-        client = AsyncLlamaStackClientHolder().get_client()
         server_tools = await prepare_tools(
-            client=client,
             vector_store_ids=vector_store_ids,
             no_tools=False,
             token=token,
@@ -1740,9 +1734,7 @@ async def _resolve_server_tools(
     Returns:
         List of server-configured tools, or None if none are configured.
     """
-    client = AsyncLlamaStackClientHolder().get_client()
     return await prepare_tools(
-        client=client,
         vector_store_ids=None,  # allow all vector stores configured
         no_tools=False,
         token=token,
@@ -1786,9 +1778,7 @@ async def resolve_tool_choice(
 
     if tools is None:
         # Register all tools configured in LCORE configuration
-        client = AsyncLlamaStackClientHolder().get_client()
         prepared_tools = await prepare_tools(
-            client=client,
             vector_store_ids=None,  # allow all vector stores configured
             no_tools=False,
             token=token,

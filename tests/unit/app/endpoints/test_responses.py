@@ -122,12 +122,6 @@ def _patch_base(mocker: MockerFixture, config: AppConfig) -> None:
     mocker.patch(f"{MODULE}.check_configuration_loaded")
     mocker.patch(f"{MODULE}.check_tokens_available")
     mocker.patch(f"{MODULE}.validate_model_provider_override")
-    mock_holder = mocker.Mock()
-    mock_holder.get_client.return_value = mocker.Mock()
-    mocker.patch(
-        f"{UTILS_RESPONSES_MODULE}.AsyncLlamaStackClientHolder",
-        return_value=mock_holder,
-    )
     mocker.patch(
         f"{UTILS_RESPONSES_MODULE}.prepare_tools",
         new=mocker.AsyncMock(return_value=None),
