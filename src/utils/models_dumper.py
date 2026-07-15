@@ -1,6 +1,7 @@
 """Function to dump the schema of all data models into OpenAPI-compatible format."""
 
 import models.api.requests as r
+import models.api.responses.error as e
 import models.api.responses.successful as s
 import models.compaction as models_compaction
 from utils.openapi_schema_dumper import dump_openapi_schema
@@ -84,6 +85,19 @@ def dump_models(filename: str) -> None:
         s.VectorStoreFilesListResponse,
         s.VectorStoreResponse,
         s.VectorStoresListResponse,
+        e.AbstractErrorResponse,
+        e.BadRequestResponse,
+        e.ConflictResponse,
+        e.DetailModel,
+        e.FileTooLargeResponse,
+        e.ForbiddenResponse,
+        e.InternalServerErrorResponse,
+        e.NotFoundResponse,
+        e.PromptTooLongResponse,
+        e.QuotaExceededResponse,
+        e.ServiceUnavailableResponse,
+        e.UnauthorizedResponse,
+        e.UnprocessableEntityResponse,
     ]:
         models.append(model)
     dump_openapi_schema(models, filename)

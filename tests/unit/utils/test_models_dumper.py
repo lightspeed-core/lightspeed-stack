@@ -75,6 +75,26 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "APIKeyTokenConfiguration",
                     "type": "object"
                 },
+                "AbstractErrorResponse": {
+                    "description": "Base class for error responses.\n\nAttributes:\n    status_code: HTTP status code for the error response.\n    detail: The detail model containing error summary and cause.",
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "AbstractErrorResponse",
+                    "type": "object"
+                },
                 "AccessRule": {
                     "additionalProperties": false,
                     "description": "Rule defining what actions a role can perform.",
@@ -415,6 +435,42 @@ def test_dump_models(tmpdir: Path) -> None:
                         "client_secret"
                     ],
                     "title": "AzureEntraIdConfiguration",
+                    "type": "object"
+                },
+                "BadRequestResponse": {
+                    "description": "400 Bad Request. Invalid resource identifier.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "The conversation ID 123e4567-e89b-12d3-a456-426614174000 has invalid format.",
+                                "response": "Invalid conversation ID format"
+                            },
+                            "label": "conversation_id"
+                        },
+                        {
+                            "detail": {
+                                "cause": "The prompt ID pmpt_1234567890abcdef has invalid format.",
+                                "response": "Invalid prompt ID format"
+                            },
+                            "label": "prompt_id"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "BadRequestResponse",
                     "type": "object"
                 },
                 "ByokRag": {
@@ -877,6 +933,49 @@ def test_dump_models(tmpdir: Path) -> None:
                         "configuration"
                     ],
                     "title": "ConfigurationResponse",
+                    "type": "object"
+                },
+                "ConflictResponse": {
+                    "description": "409 Conflict - Resource already exists.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "Mcp Server with name 'test-mcp-server' is already registered",
+                                "response": "Mcp Server already exists"
+                            },
+                            "label": "mcp server"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Client MCP tool with server_label 'my-server' conflicts with a server-configured MCP tool. Rename the client tool to avoid the conflict.",
+                                "response": "Tool conflict"
+                            },
+                            "label": "mcp tool conflict"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Client file_search tool conflicts with a server-configured file_search tool. Remove the client file_search to use the server's configuration.",
+                                "response": "Tool conflict"
+                            },
+                            "label": "file search conflict"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "ConflictResponse",
                     "type": "object"
                 },
                 "ConversationData": {
@@ -1515,6 +1614,27 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "DatabaseConfiguration",
                     "type": "object"
                 },
+                "DetailModel": {
+                    "description": "Nested detail model for error responses.",
+                    "properties": {
+                        "response": {
+                            "description": "Short summary of the error",
+                            "title": "Response",
+                            "type": "string"
+                        },
+                        "cause": {
+                            "description": "Detailed explanation of what caused the error",
+                            "title": "Cause",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "response",
+                        "cause"
+                    ],
+                    "title": "DetailModel",
+                    "type": "object"
+                },
                 "FeedbackCategory": {
                     "description": "Enum representing predefined feedback categories for AI responses.\n\nThese categories help provide structured feedback about AI inference quality\nwhen users provide negative feedback (thumbs down). Multiple categories can\nbe selected to provide comprehensive feedback about response issues.",
                     "enum": [
@@ -1750,6 +1870,120 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "FileResponse",
                     "type": "object"
                 },
+                "FileTooLargeResponse": {
+                    "description": "413 Content Too Large - File upload exceeds size limit.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "File size 150000000 bytes exceeds maximum allowed size of 104857600 bytes (100 MB)",
+                                "response": "File too large"
+                            },
+                            "label": "file upload"
+                        },
+                        {
+                            "detail": {
+                                "cause": "File upload rejected: File size exceeds limit",
+                                "response": "Invalid file upload"
+                            },
+                            "label": "backend rejection"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "FileTooLargeResponse",
+                    "type": "object"
+                },
+                "ForbiddenResponse": {
+                    "description": "403 Forbidden. Access denied.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "User 6789 does not have permission to read conversation with ID 123e4567-e89b-12d3-a456-426614174000",
+                                "response": "User does not have permission to perform this action"
+                            },
+                            "label": "conversation read"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User 6789 does not have permission to delete conversation with ID 123e4567-e89b-12d3-a456-426614174000",
+                                "response": "User does not have permission to perform this action"
+                            },
+                            "label": "conversation delete"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User 6789 is not authorized to access this endpoint.",
+                                "response": "User does not have permission to access this endpoint"
+                            },
+                            "label": "endpoint"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User 6789 does not have permission to list or read stored prompts (missing permission: read_prompts).",
+                                "response": "User does not have permission to perform this action"
+                            },
+                            "label": "prompt read"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User 6789 does not have permission to create, update, or delete stored prompts (missing permission: manage_prompts).",
+                                "response": "User does not have permission to perform this action"
+                            },
+                            "label": "prompt manage"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Storing feedback is disabled.",
+                                "response": "Storing feedback is disabled"
+                            },
+                            "label": "feedback"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User lacks model_override permission required to override model/provider.",
+                                "response": "This instance does not permit overriding model/provider in the query request (missing permission: model_override). Please remove the model and provider fields from your request."
+                            },
+                            "label": "model override"
+                        },
+                        {
+                            "detail": {
+                                "cause": "MCP server 'my-mcp' is defined in configuration and cannot be removed via the API.",
+                                "response": "Cannot delete statically configured MCP server"
+                            },
+                            "label": "mcp server static"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "ForbiddenResponse",
+                    "type": "object"
+                },
                 "HealthStatus": {
                     "description": "Health status enum for provider and service health checks.\n\nThis enum serves two purposes:\n\n1. Provider-level health (returned by Llama Stack providers):\n   - OK: Provider is healthy and operational\n   - ERROR: Provider is unhealthy or failed health check\n   - NOT_IMPLEMENTED: Provider does not implement health checks\n   - UNKNOWN: Fallback when provider status cannot be determined\n\n2. Service-level health (overall LCORE status):\n   - HEALTHY: All systems operational, LLS connected, all providers healthy\n   - DEGRADED: Service running with reduced functionality (e.g., LLS unavailable)\n   - UNHEALTHY: Service connected but one or more providers are unhealthy",
                     "enum": [
@@ -1972,6 +2206,98 @@ def test_dump_models(tmpdir: Path) -> None:
                         "server_label"
                     ],
                     "title": "InputToolMCP",
+                    "type": "object"
+                },
+                "InternalServerErrorResponse": {
+                    "description": "500 Internal Server Error.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "An unexpected error occurred while processing the request.",
+                                "response": "Internal server error"
+                            },
+                            "label": "internal"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Lightspeed Stack configuration has not been initialized.",
+                                "response": "Configuration is not loaded"
+                            },
+                            "label": "configuration"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Failed to store feedback at directory: /path/example",
+                                "response": "Failed to store feedback"
+                            },
+                            "label": "feedback storage"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Failed to call backend API",
+                                "response": "Error while processing query"
+                            },
+                            "label": "query"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Conversation cache is not configured or unavailable.",
+                                "response": "Conversation cache not configured"
+                            },
+                            "label": "conversation cache"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Failed to query the database",
+                                "response": "Database query failed"
+                            },
+                            "label": "database"
+                        },
+                        {
+                            "detail": {
+                                "cause": "ClusterVersion 'version' resource not found in OpenShift cluster",
+                                "response": "Internal server error"
+                            },
+                            "label": "cluster version not found"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Insufficient permissions to read ClusterVersion resource",
+                                "response": "Internal server error"
+                            },
+                            "label": "cluster version permission denied"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Missing or invalid 'clusterID' in ClusterVersion",
+                                "response": "Internal server error"
+                            },
+                            "label": "invalid cluster version"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Could not register the MCP server with the remote service.",
+                                "response": "Failed to register MCP server"
+                            },
+                            "label": "mcp server registration"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "InternalServerErrorResponse",
                     "type": "object"
                 },
                 "JsonPathOperator": {
@@ -2693,6 +3019,91 @@ def test_dump_models(tmpdir: Path) -> None:
                         "models"
                     ],
                     "title": "ModelsResponse",
+                    "type": "object"
+                },
+                "NotFoundResponse": {
+                    "description": "404 Not Found - Resource does not exist.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "Conversation with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                "response": "Conversation not found"
+                            },
+                            "label": "conversation"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Provider with ID openai does not exist",
+                                "response": "Provider not found"
+                            },
+                            "label": "provider"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Model with ID gpt-4o-mini does not exist",
+                                "response": "Model not found"
+                            },
+                            "label": "model"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Rag with ID vs_7b52a8cf-0fa3-489c-beab-27e061d102f3 does not exist",
+                                "response": "Rag not found"
+                            },
+                            "label": "rag"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Streaming Request with ID 123e4567-e89b-12d3-a456-426614174000 does not exist",
+                                "response": "Streaming Request not found"
+                            },
+                            "label": "streaming request"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Mcp Server with ID test-mcp-server does not exist",
+                                "response": "Mcp Server not found"
+                            },
+                            "label": "mcp server"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Vector Store with ID vs_abc123 does not exist",
+                                "response": "Vector Store not found"
+                            },
+                            "label": "vector store"
+                        },
+                        {
+                            "detail": {
+                                "cause": "File with ID file_abc123 does not exist",
+                                "response": "File not found"
+                            },
+                            "label": "file"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Prompt with ID pmpt_0123456789abcdef0123456789abcdef01234567 does not exist",
+                                "response": "Prompt not found"
+                            },
+                            "label": "prompt"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "NotFoundResponse",
                     "type": "object"
                 },
                 "OkpConfiguration": {
@@ -4259,6 +4670,42 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "PromptResourceResponse",
                     "type": "object"
                 },
+                "PromptTooLongResponse": {
+                    "description": "413 Payload Too Large - Prompt is too long.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "The input exceeds the context window size of model 'gpt-4o-mini'.",
+                                "response": "Context window exceeded"
+                            },
+                            "label": "context window exceeded"
+                        },
+                        {
+                            "detail": {
+                                "cause": "The prompt exceeds the maximum allowed length.",
+                                "response": "Prompt is too long"
+                            },
+                            "label": "prompt too long"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "PromptTooLongResponse",
+                    "type": "object"
+                },
                 "PromptUpdateRequest": {
                     "additionalProperties": false,
                     "description": "Request body to update a stored prompt (creates a new version).\n\nAttributes:\n    prompt: Updated prompt text.\n    version: Current version being updated.\n    set_as_default: Whether the new version becomes the default.\n    variables: Updated allowed variable names.",
@@ -4839,6 +5286,77 @@ def test_dump_models(tmpdir: Path) -> None:
                         "response"
                     ],
                     "title": "QueryResponse",
+                    "type": "object"
+                },
+                "QuotaExceededResponse": {
+                    "description": "429 Too Many Requests - Quota limit exceeded.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "The token quota for model gpt-4-turbo has been exceeded.",
+                                "response": "The model quota has been exceeded"
+                            },
+                            "label": "model"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User 123 has no available tokens",
+                                "response": "The quota has been exceeded"
+                            },
+                            "label": "user none"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Cluster has no available tokens",
+                                "response": "The quota has been exceeded"
+                            },
+                            "label": "cluster none"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Unknown subject 999 has no available tokens",
+                                "response": "The quota has been exceeded"
+                            },
+                            "label": "subject none"
+                        },
+                        {
+                            "detail": {
+                                "cause": "User 123 has 5 tokens, but 10 tokens are needed",
+                                "response": "The quota has been exceeded"
+                            },
+                            "label": "user insufficient"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Cluster has 500 tokens, but 900 tokens are needed",
+                                "response": "The quota has been exceeded"
+                            },
+                            "label": "cluster insufficient"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Unknown subject 999 has 3 tokens, but 6 tokens are needed",
+                                "response": "The quota has been exceeded"
+                            },
+                            "label": "subject insufficient"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "QuotaExceededResponse",
                     "type": "object"
                 },
                 "QuotaHandlersConfiguration": {
@@ -6381,6 +6899,42 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "ServiceConfiguration",
                     "type": "object"
                 },
+                "ServiceUnavailableResponse": {
+                    "description": "503 Backend Unavailable.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "Connection error while trying to reach backend service.",
+                                "response": "Unable to connect to Llama Stack"
+                            },
+                            "label": "llama stack"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Failed to connect to Kubernetes API: Service Unavailable (status 503)",
+                                "response": "Unable to connect to Kubernetes API"
+                            },
+                            "label": "kubernetes api"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "ServiceUnavailableResponse",
+                    "type": "object"
+                },
                 "ShieldsResponse": {
                     "description": "Model representing a response to shields request.",
                     "examples": [
@@ -6846,6 +7400,91 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "TrustedProxyServiceAccount",
                     "type": "object"
                 },
+                "UnauthorizedResponse": {
+                    "description": "401 Unauthorized - Missing or invalid credentials.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "No Authorization header found",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "missing header"
+                        },
+                        {
+                            "detail": {
+                                "cause": "No token found in Authorization header",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "missing token"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Token has expired",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "expired token"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Invalid token signature",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "invalid signature"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Token signed by unknown key",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "invalid key"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Token missing claim: user_id",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "missing claim"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Invalid or expired Kubernetes token",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "invalid k8s token"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Authentication key server returned invalid data",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "invalid jwk token"
+                        },
+                        {
+                            "detail": {
+                                "cause": "MCP server at https://mcp.example.com/v1 requires OAuth",
+                                "response": "Missing or invalid credentials provided by client"
+                            },
+                            "label": "mcp oauth"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "UnauthorizedResponse",
+                    "type": "object"
+                },
                 "UnifiedInferenceProvider": {
                     "additionalProperties": false,
                     "description": "A high-level inference provider entry for unified-mode synthesis.\n\nOperators describe inference providers at this high level (backend-agnostic\nvocabulary) instead of authoring raw Llama Stack provider blocks. The\nsynthesizer (`apply_high_level_inference`) expands each entry into a Llama\nStack `providers.inference` entry, mapping `type` to a `provider_type` and\nemitting `${env.<VAR>}` references for secrets (never literal values).\n\nAttributes:\n    type: Canonical provider identifier. Vendor-neutral so it survives a\n        future backend change; each backend-specific synthesizer maps it to\n        its own provider vocabulary.\n    id: Optional identifier emitted as the Llama Stack provider_id. When\n        omitted, synthesized as type with underscores hyphenated. If set,\n        must be non-empty after stripping whitespace and may contain only\n        lowercase letters, digits, underscores, and hyphens.\n    api_key_env: Name of the environment variable holding the provider API\n        key. Emitted verbatim as `${env.<name>}` so the secret never lands\n        on disk resolved.\n    allowed_models: Optional allow-list of model identifiers passed through\n        to the synthesized provider config.\n    extra: Additional provider-config keys merged verbatim into the\n        synthesized provider's `config` block \u2014 an escape hatch for\n        provider-specific knobs not modeled here.",
@@ -6929,6 +7568,49 @@ def test_dump_models(tmpdir: Path) -> None:
                         }
                     },
                     "title": "UnifiedLlamaStackConfig",
+                    "type": "object"
+                },
+                "UnprocessableEntityResponse": {
+                    "description": "422 Unprocessable Entity - Request validation failed.",
+                    "examples": [
+                        {
+                            "detail": {
+                                "cause": "Invalid request format. The request body could not be parsed.",
+                                "response": "Invalid request format"
+                            },
+                            "label": "invalid format"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Missing required attributes: ['query', 'model', 'provider']",
+                                "response": "Missing required attributes"
+                            },
+                            "label": "missing attributes"
+                        },
+                        {
+                            "detail": {
+                                "cause": "Invalid attachment type: must be one of ['text/plain', 'application/json', 'application/yaml', 'application/xml']",
+                                "response": "Invalid attribute value"
+                            },
+                            "label": "invalid value"
+                        }
+                    ],
+                    "properties": {
+                        "status_code": {
+                            "description": "HTTP status code for the errors response",
+                            "title": "Status Code",
+                            "type": "integer"
+                        },
+                        "detail": {
+                            "$ref": "`#/components/schemas/`DetailModel",
+                            "description": "The detail model containing error summary and cause"
+                        }
+                    },
+                    "required": [
+                        "status_code",
+                        "detail"
+                    ],
+                    "title": "UnprocessableEntityResponse",
                     "type": "object"
                 },
                 "UserDataCollection": {
@@ -7576,6 +8258,7 @@ def test_dump_models(tmpdir: Path) -> None:
         expected_schemas = (
             "A2AStateConfiguration",
             "APIKeyTokenConfiguration",
+            "AbstractErrorResponse",
             "AccessRule",
             "Action",
             "AllowedToolsFilter",
@@ -7585,11 +8268,13 @@ def test_dump_models(tmpdir: Path) -> None:
             "AuthorizationConfiguration",
             "AuthorizedResponse",
             "AzureEntraIdConfiguration",
+            "BadRequestResponse",
             "ByokRag",
             "CORSConfiguration",
             "CompactionConfiguration",
             "Configuration",
             "ConfigurationResponse",
+            "ConflictResponse",
             "ConversationData",
             "ConversationDeleteResponse",
             "ConversationDetails",
@@ -7604,18 +8289,22 @@ def test_dump_models(tmpdir: Path) -> None:
             "CustomProfile",
             "Customization",
             "DatabaseConfiguration",
+            "DetailModel",
             "FeedbackCategory",
             "FeedbackRequest",
             "FeedbackResponse",
             "FeedbackStatusUpdateRequest",
             "FeedbackStatusUpdateResponse",
             "FileResponse",
+            "FileTooLargeResponse",
+            "ForbiddenResponse",
             "HealthStatus",
             "InMemoryCacheConfig",
             "IncludeParameter",
             "InferenceConfiguration",
             "InfoResponse",
             "InputToolMCP",
+            "InternalServerErrorResponse",
             "JsonPathOperator",
             "JwkConfiguration",
             "JwtConfiguration",
@@ -7634,6 +8323,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "ModelContextProtocolServer",
             "ModelFilter",
             "ModelsResponse",
+            "NotFoundResponse",
             "OkpConfiguration",
             "OpenAIResponseAnnotationCitation",
             "OpenAIResponseAnnotationContainerFileCitation",
@@ -7679,6 +8369,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "PromptCreateRequest",
             "PromptDeleteResponse",
             "PromptResourceResponse",
+            "PromptTooLongResponse",
             "PromptUpdateRequest",
             "PromptsListResponse",
             "ProviderHealthStatus",
@@ -7686,6 +8377,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "ProvidersListResponse",
             "QueryRequest",
             "QueryResponse",
+            "QuotaExceededResponse",
             "QuotaHandlersConfiguration",
             "QuotaLimiterConfiguration",
             "QuotaSchedulerConfiguration",
@@ -7714,6 +8406,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "SavedPromptsConfiguration",
             "SearchRankingOptions",
             "ServiceConfiguration",
+            "ServiceUnavailableResponse",
             "ShieldsResponse",
             "SkillsConfiguration",
             "SolrVectorSearchRequest",
@@ -7728,8 +8421,10 @@ def test_dump_models(tmpdir: Path) -> None:
             "ToolsResponse",
             "TrustedProxyConfiguration",
             "TrustedProxyServiceAccount",
+            "UnauthorizedResponse",
             "UnifiedInferenceProvider",
             "UnifiedLlamaStackConfig",
+            "UnprocessableEntityResponse",
             "UserDataCollection",
             "VectorStoreCreateRequest",
             "VectorStoreDeleteResponse",
