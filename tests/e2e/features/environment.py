@@ -22,6 +22,7 @@ from tests.e2e.utils.llama_stack_utils import (
     unregister_shield,
 )
 from tests.e2e.utils.prow_utils import (
+    ensure_port_forwards_healthy,
     restart_lightspeed_stack_only,
     restore_llama_stack_pod,
 )
@@ -220,6 +221,15 @@ def before_scenario(context: Context, scenario: Scenario) -> None:
     if context.is_library_mode and "skip-in-library-mode" in scenario.effective_tags:
         scenario.skip("Skipped in library mode (no separate llama-stack container)")
         return
+
+    if is_prow_environment() and "skip-in-prow" in scenario.effective_tags:
+        scenario.skip(
+            "Skipped in Prow/Konflux (requires Docker Compose infrastructure)"
+        )
+        return
+
+    if is_prow_environment():
+        ensure_port_forwards_healthy()
 
     # @disable-shields: unregister shield via client.shields.delete("llama-guard").
     # Only in server mode: in library mode there is no separate Llama Stack to call,

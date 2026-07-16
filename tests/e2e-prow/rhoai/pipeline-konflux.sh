@@ -21,7 +21,9 @@ log() { [ "$QUIET" != "1" ] && echo "$@"; }
 progress() { echo "[e2e] $*"; }
 
 # Lightspeed-stack image (from Konflux SNAPSHOT or default). Llama Stack runs from source in-pod (no image).
-LIGHTSPEED_STACK_IMAGE="${LIGHTSPEED_STACK_IMAGE:-quay.io/lightspeed-core/lightspeed-stack:dev-latest}"
+if [[ -z "${LIGHTSPEED_STACK_IMAGE:-}" ]]; then
+  echo "LIGHTSPEED_STACK_IMAGE is not set"; exit 1
+fi
 log "Using lightspeed-stack image: $LIGHTSPEED_STACK_IMAGE"
 export LIGHTSPEED_STACK_IMAGE
 
@@ -195,19 +197,40 @@ oc create configmap llama-stack-source -n "$NAMESPACE" \
   --dry-run=client -o yaml | oc apply -f -
 log "llama-stack-source ConfigMap: repo @ ${REPO_REVISION}"
 
+# Entrypoint from THIS workspace (not from the cloned repo) so enrichment fixes are always applied
+oc create configmap llama-stack-entrypoint -n "$NAMESPACE" \
+  --from-file=llama-stack-entrypoint.sh="$REPO_ROOT/scripts/llama-stack-entrypoint.sh" \
+  --dry-run=client -o yaml | oc apply -f -
+
 "$PIPELINE_DIR/pipeline-services-konflux.sh"
 
 progress "Waiting for lightspeed-stack and llama-stack pods"
 if ! oc wait pod/lightspeed-stack-service pod/llama-stack-service \
     -n "$NAMESPACE" --for=condition=Ready --timeout=600s; then
   progress "❌ One or both service pods failed to become ready within timeout"
+  echo "[e2e] ========== pod status =========="
+  oc get pods -n "$NAMESPACE" -o wide 2>&1 || true
+  echo "[e2e] ========== llama-stack-service describe =========="
+  oc describe pod llama-stack-service -n "$NAMESPACE" 2>&1 | tail -50 || true
+  echo "[e2e] ========== llama-stack-service init: setup-from-source logs =========="
+  oc logs llama-stack-service -n "$NAMESPACE" -c setup-from-source 2>&1 | tail -80 || true
+  echo "[e2e] ========== llama-stack-service init: setup-rag-data logs =========="
+  oc logs llama-stack-service -n "$NAMESPACE" -c setup-rag-data 2>&1 | tail -40 || true
+  echo "[e2e] ========== llama-stack-service container logs =========="
+  oc logs llama-stack-service -n "$NAMESPACE" -c llama-stack-container 2>&1 | tail -80 || true
+  echo "[e2e] ========== lightspeed-stack-service describe =========="
+  oc describe pod lightspeed-stack-service -n "$NAMESPACE" 2>&1 | tail -50 || true
+  echo "[e2e] ========== lightspeed-stack-service logs =========="
+  oc logs lightspeed-stack-service -n "$NAMESPACE" 2>&1 | tail -80 || true
+  echo "[e2e] ========== recent events =========="
+  oc get events -n "$NAMESPACE" --sort-by='.lastTimestamp' 2>&1 | tail -30 || true
   exit 1
 fi
 log "✅ Both service pods are ready"
 
 # Print pod logs with echo so CI/Konflux log capture shows each line (especially when QUIET=1)
 e2e_echo_pod_logs() {
-  local n="${1:-120}"
+  local n="${1:-500}"
   echo "[e2e] ========== lightspeed-stack-service logs (tail $n) =========="
   while IFS= read -r line || [[ -n "$line" ]]; do
     echo "[e2e] $line"
@@ -222,7 +245,7 @@ if [ "$QUIET" = "1" ]; then
   e2e_echo_pod_logs 80
 else
   oc get pods -n "$NAMESPACE"
-  e2e_echo_pod_logs 200
+  e2e_echo_pod_logs 500
   echo "[e2e] ========== oc describe lightspeed-stack-service =========="
   oc describe pod lightspeed-stack-service -n "$NAMESPACE" 2>&1 | while IFS= read -r line || [[ -n "$line" ]]; do echo "[e2e] $line"; done || true
   echo "[e2e] ========== oc describe llama-stack-service =========="

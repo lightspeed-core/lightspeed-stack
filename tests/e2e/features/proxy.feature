@@ -1,4 +1,5 @@
 @skip-in-library-mode
+@skip-in-prow
 Feature: Proxy and TLS networking tests for Llama Stack providers
 
   Verify that the Lightspeed Stack works correctly when Llama Stack's

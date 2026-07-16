@@ -243,7 +243,9 @@ cmd_restart_lightspeed() {
     }
     
     # Apply manifest (expand LIGHTSPEED_STACK_IMAGE)
-    LIGHTSPEED_STACK_IMAGE="${LIGHTSPEED_STACK_IMAGE:-quay.io/lightspeed-core/lightspeed-stack:dev-latest}"
+    if [[ -z "${LIGHTSPEED_STACK_IMAGE:-}" ]]; then
+        echo "ERROR: LIGHTSPEED_STACK_IMAGE is not set" >&2; return 1
+    fi
     export LIGHTSPEED_STACK_IMAGE
     _ls_manifest="$MANIFEST_DIR/lightspeed-stack.yaml"
     if command -v envsubst >/dev/null 2>&1; then
@@ -302,34 +304,45 @@ cmd_restart_llama_stack() {
 cmd_restart_port_forward() {
     local local_port="${LOCAL_PORT:-8080}"
     local remote_port="${REMOTE_PORT:-8080}"
-    local max_attempts=6
+    local max_attempts=8
     local pf_pid
     local pf_resource
 
     echo "Re-establishing port-forward on $local_port:$remote_port..."
 
+    # Wait for Service endpoints to be populated after pod recreate.
+    # Without this, the first 1–2 attempts always fail with "no endpoints available".
+    echo "Waiting for Service endpoints to populate..."
+    for ((ep_wait=1; ep_wait<=10; ep_wait++)); do
+        local ep_count
+        ep_count=$(oc get endpoints lightspeed-stack-service-svc -n "$NAMESPACE" \
+            -o jsonpath='{.subsets[0].addresses}' 2>/dev/null | grep -c "ip" 2>/dev/null) || ep_count=0
+        if [[ "$ep_count" -gt 0 ]]; then
+            echo "✓ Service endpoints ready (wait $ep_wait)"
+            break
+        fi
+        sleep 2
+    done
+
     for ((attempt=1; attempt<=max_attempts; attempt++)); do
         kill_stale_lightspeed_forward "$local_port"
-        # Let the kernel release LISTEN sockets after pkill (avoids immediate "address already in use")
-        sleep 3
+        sleep 2
 
-        # Service can lag endpoints after pod recreate; pod-direct forward is more reliable.
-        if [[ $attempt -le 2 ]]; then
-            pf_resource="svc/lightspeed-stack-service-svc"
-        else
+        # Pod-direct forward is more reliable right after recreate.
+        if [[ $attempt -le 3 ]]; then
             pf_resource="pod/lightspeed-stack-service"
+        else
+            pf_resource="svc/lightspeed-stack-service-svc"
         fi
         echo "Port-forward attempt $attempt/$max_attempts -> $pf_resource"
 
         : > /tmp/port-forward.log
-        # Redirect stdin from /dev/null so oc does not see a closed pipe when the parent is a short-lived subprocess.
         nohup oc port-forward "$pf_resource" "$local_port:$remote_port" -n "$NAMESPACE" \
             </dev/null >/tmp/port-forward.log 2>&1 &
         pf_pid=$!
         disown "$pf_pid" 2>/dev/null || true
         sleep 3
 
-        # Bind error or API error: process exits quickly — surface /tmp/port-forward.log every time
         if ! kill -0 "$pf_pid" 2>/dev/null; then
             echo "Port-forward process exited immediately:"
             e2e_ops_emit_port_forward_immediate_failure_diag
@@ -337,7 +350,7 @@ cmd_restart_port_forward() {
             sleep 2
             continue
         fi
-        sleep 6
+        sleep 4
 
         if verify_connectivity 15; then
             echo "$pf_pid" >"$E2E_LSC_PORT_FORWARD_PID_FILE"
@@ -385,7 +398,7 @@ verify_llama_local_forward() {
 cmd_restart_llama_port_forward() {
     local local_port="${LOCAL_LLAMA_PORT:-8321}"
     local remote_port="${REMOTE_LLAMA_PORT:-8321}"
-    local max_attempts=6
+    local max_attempts=8
     local pf_pid
     local pf_resource
     local llama_pf_log="/tmp/port-forward-llama.log"
@@ -394,12 +407,13 @@ cmd_restart_llama_port_forward() {
 
     for ((attempt=1; attempt<=max_attempts; attempt++)); do
         kill_stale_llama_forward "$local_port"
-        sleep 3
+        sleep 2
 
-        if [[ $attempt -le 2 ]]; then
-            pf_resource="svc/llama-stack-service-svc"
-        else
+        # Pod-direct is more reliable right after recreate.
+        if [[ $attempt -le 3 ]]; then
             pf_resource="pod/llama-stack-service"
+        else
+            pf_resource="svc/llama-stack-service-svc"
         fi
         echo "Llama port-forward attempt $attempt/$max_attempts -> $pf_resource"
 
