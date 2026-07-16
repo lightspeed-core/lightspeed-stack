@@ -14,9 +14,11 @@ product questions using backend LLM services, agents, and RAG databases.
 
 <!-- vim-markdown-toc GFM -->
 
+* [Basic info](#basic-info)
 * [Overview](#overview)
 * [Installation and configuration](#installation-and-configuration)
 * [Status of Lightspeed Core Stack versions](#status-of-lightspeed-core-stack-versions)
+* [Migration guides](#migration-guides)
 * [Info for developers](#info-for-developers)
 * [API](#api)
 * [RAG and BYOK](#rag-and-byok)
@@ -38,15 +40,17 @@ product questions using backend LLM services, agents, and RAG databases.
 
 <!-- vim-markdown-toc -->
 
-## Overview
+## Basic info
 
-[Overview](https://lightspeed-core.github.io/lightspeed-stack/overview.html)
+[Overview](https://lightspeed-core.github.io/lightspeed-stack/basic_info/overview.html)
+
+[Getting started](https://lightspeed-core.github.io/lightspeed-stack/basic_info/getting_started.html)
+
+## Overview
 
 [Architecture](https://lightspeed-core.github.io/lightspeed-stack/ARCHITECTURE.html)
 
 [Architecture diagram](https://lightspeed-core.github.io/lightspeed-stack/architecture.svg)
-
-[Getting started](https://lightspeed-core.github.io/lightspeed-stack/getting_started.html)
 
 [Authentication and Authorization](https://lightspeed-core.github.io/lightspeed-stack/auth.html)
 
