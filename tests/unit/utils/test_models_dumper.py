@@ -2539,6 +2539,29 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "MCPClientAuthOptionsResponse",
                     "type": "object"
                 },
+                "MCPListToolsSummary": {
+                    "description": "Model representing MCP list tools payload serialized into tool results.",
+                    "properties": {
+                        "server_label": {
+                            "description": "MCP server label associated with the tool list",
+                            "title": "Server Label",
+                            "type": "string"
+                        },
+                        "tools": {
+                            "description": "Tools exposed by the MCP server",
+                            "items": {
+                                "$ref": "`#/components/schemas/`ToolInfoSummary"
+                            },
+                            "title": "Tools",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "server_label"
+                    ],
+                    "title": "MCPListToolsSummary",
+                    "type": "object"
+                },
                 "MCPListToolsTool": {
                     "description": "Tool definition returned by MCP list tools operation.\n\n:param input_schema: JSON schema defining the tool's input parameters\n:param name: Name of the tool\n:param description: (Optional) Description of what the tool does",
                     "properties": {
@@ -5523,6 +5546,35 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "RAGChunk",
                     "type": "object"
                 },
+                "RAGContext": {
+                    "description": "Result of building RAG context from all enabled pre-query RAG sources.\n\nAttributes:\n    context_text: Formatted RAG context string for injection into the query.\n    rag_chunks: RAG chunks from pre-query sources (BYOK + Solr).\n    referenced_documents: Referenced documents from pre-query sources.",
+                    "properties": {
+                        "context_text": {
+                            "default": "",
+                            "description": "Formatted context for injection",
+                            "title": "Context Text",
+                            "type": "string"
+                        },
+                        "rag_chunks": {
+                            "description": "RAG chunks from pre-query sources",
+                            "items": {
+                                "$ref": "`#/components/schemas/`RAGChunk"
+                            },
+                            "title": "Rag Chunks",
+                            "type": "array"
+                        },
+                        "referenced_documents": {
+                            "description": "Documents from pre-query sources",
+                            "items": {
+                                "$ref": "`#/components/schemas/`ReferencedDocument"
+                            },
+                            "title": "Referenced Documents",
+                            "type": "array"
+                        }
+                    },
+                    "title": "RAGContext",
+                    "type": "object"
+                },
                 "RAGInfoResponse": {
                     "description": "Model representing a response with information about RAG DB.",
                     "examples": [
@@ -6935,6 +6987,48 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "ServiceUnavailableResponse",
                     "type": "object"
                 },
+                "ShieldModerationBlocked": {
+                    "description": "Shield moderation blocked the content; refusal details are present.",
+                    "properties": {
+                        "decision": {
+                            "const": "blocked",
+                            "default": "blocked",
+                            "title": "Decision",
+                            "type": "string"
+                        },
+                        "message": {
+                            "title": "Message",
+                            "type": "string"
+                        },
+                        "moderation_id": {
+                            "title": "Moderation Id",
+                            "type": "string"
+                        },
+                        "refusal_response": {
+                            "$ref": "`#/components/schemas/`OpenAIResponseMessage"
+                        }
+                    },
+                    "required": [
+                        "message",
+                        "moderation_id",
+                        "refusal_response"
+                    ],
+                    "title": "ShieldModerationBlocked",
+                    "type": "object"
+                },
+                "ShieldModerationPassed": {
+                    "description": "Shield moderation passed; no refusal.",
+                    "properties": {
+                        "decision": {
+                            "const": "passed",
+                            "default": "passed",
+                            "title": "Decision",
+                            "type": "string"
+                        }
+                    },
+                    "title": "ShieldModerationPassed",
+                    "type": "object"
+                },
                 "ShieldsResponse": {
                     "description": "Model representing a response to shields request.",
                     "examples": [
@@ -7243,6 +7337,33 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "TLSConfiguration",
                     "type": "object"
                 },
+                "TokenCounter": {
+                    "description": "Model representing token counter.\n\nAttributes:\n    input_tokens: number of tokens sent to LLM\n    output_tokens: number of tokens received from LLM\n    input_tokens_counted: number of input tokens counted by the handler\n    llm_calls: number of LLM calls",
+                    "properties": {
+                        "input_tokens": {
+                            "default": 0,
+                            "title": "Input Tokens",
+                            "type": "integer"
+                        },
+                        "output_tokens": {
+                            "default": 0,
+                            "title": "Output Tokens",
+                            "type": "integer"
+                        },
+                        "input_tokens_counted": {
+                            "default": 0,
+                            "title": "Input Tokens Counted",
+                            "type": "integer"
+                        },
+                        "llm_calls": {
+                            "default": 0,
+                            "title": "Llm Calls",
+                            "type": "integer"
+                        }
+                    },
+                    "title": "TokenCounter",
+                    "type": "object"
+                },
                 "ToolCallSummary": {
                     "description": "Model representing a tool call made during response generation (for tool_calls list).",
                     "properties": {
@@ -7274,6 +7395,35 @@ def test_dump_models(tmpdir: Path) -> None:
                         "name"
                     ],
                     "title": "ToolCallSummary",
+                    "type": "object"
+                },
+                "ToolInfoSummary": {
+                    "description": "Model representing metadata for a single tool exposed by MCP list tools.",
+                    "properties": {
+                        "name": {
+                            "description": "Tool name",
+                            "title": "Name",
+                            "type": "string"
+                        },
+                        "description": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "description": "Human-readable tool description",
+                            "title": "Description"
+                        },
+                        "input_schema": {
+                            "type": "object",
+                            "nullable": true,
+                            "default": null,
+                            "description": "JSON schema for the tool input",
+                            "title": "Input Schema"
+                        }
+                    },
+                    "required": [
+                        "name"
+                    ],
+                    "title": "ToolInfoSummary",
                     "type": "object"
                 },
                 "ToolResultSummary": {
@@ -7357,6 +7507,118 @@ def test_dump_models(tmpdir: Path) -> None:
                     "title": "ToolsResponse",
                     "type": "object"
                 },
+                "Transcript": {
+                    "description": "Model representing a transcript entry to be stored.",
+                    "properties": {
+                        "metadata": {
+                            "$ref": "`#/components/schemas/`TranscriptMetadata"
+                        },
+                        "redacted_query": {
+                            "title": "Redacted Query",
+                            "type": "string"
+                        },
+                        "query_is_valid": {
+                            "title": "Query Is Valid",
+                            "type": "boolean"
+                        },
+                        "llm_response": {
+                            "title": "Llm Response",
+                            "type": "string"
+                        },
+                        "rag_chunks": {
+                            "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "title": "Rag Chunks",
+                            "type": "array"
+                        },
+                        "truncated": {
+                            "title": "Truncated",
+                            "type": "boolean"
+                        },
+                        "attachments": {
+                            "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "title": "Attachments",
+                            "type": "array"
+                        },
+                        "tool_calls": {
+                            "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "title": "Tool Calls",
+                            "type": "array"
+                        },
+                        "tool_results": {
+                            "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "title": "Tool Results",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "metadata",
+                        "redacted_query",
+                        "query_is_valid",
+                        "llm_response",
+                        "truncated"
+                    ],
+                    "title": "Transcript",
+                    "type": "object"
+                },
+                "TranscriptMetadata": {
+                    "description": "Metadata for a transcript entry.",
+                    "properties": {
+                        "provider": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Provider"
+                        },
+                        "model": {
+                            "title": "Model",
+                            "type": "string"
+                        },
+                        "query_provider": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Query Provider"
+                        },
+                        "query_model": {
+                            "type": "string",
+                            "nullable": true,
+                            "default": null,
+                            "title": "Query Model"
+                        },
+                        "user_id": {
+                            "title": "User Id",
+                            "type": "string"
+                        },
+                        "conversation_id": {
+                            "title": "Conversation Id",
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "title": "Timestamp",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "model",
+                        "user_id",
+                        "conversation_id",
+                        "timestamp"
+                    ],
+                    "title": "TranscriptMetadata",
+                    "type": "object"
+                },
                 "TrustedProxyConfiguration": {
                     "additionalProperties": false,
                     "description": "Configuration for trusted-proxy auth module.",
@@ -7398,6 +7660,111 @@ def test_dump_models(tmpdir: Path) -> None:
                         "name"
                     ],
                     "title": "TrustedProxyServiceAccount",
+                    "type": "object"
+                },
+                "TurnSummary": {
+                    "description": "Summary of a turn in llama stack.",
+                    "properties": {
+                        "id": {
+                            "default": "",
+                            "description": "ID of the response",
+                            "title": "Id",
+                            "type": "string"
+                        },
+                        "llm_response": {
+                            "default": "",
+                            "title": "Llm Response",
+                            "type": "string"
+                        },
+                        "tool_calls": {
+                            "items": {
+                                "$ref": "`#/components/schemas/`ToolCallSummary"
+                            },
+                            "title": "Tool Calls",
+                            "type": "array"
+                        },
+                        "tool_results": {
+                            "items": {
+                                "$ref": "`#/components/schemas/`ToolResultSummary"
+                            },
+                            "title": "Tool Results",
+                            "type": "array"
+                        },
+                        "rag_chunks": {
+                            "items": {
+                                "$ref": "`#/components/schemas/`RAGChunk"
+                            },
+                            "title": "Rag Chunks",
+                            "type": "array"
+                        },
+                        "referenced_documents": {
+                            "items": {
+                                "$ref": "`#/components/schemas/`ReferencedDocument"
+                            },
+                            "title": "Referenced Documents",
+                            "type": "array"
+                        },
+                        "token_usage": {
+                            "$ref": "`#/components/schemas/`TokenCounter"
+                        },
+                        "output_items": {
+                            "description": "Structured response output items, captured for compacted-mode turn persistence (LCORE-1572). Empty on the non-compacted path.",
+                            "items": {
+                                "discriminator": {
+                                    "mapping": {
+                                        "file_search_call": "`#/components/schemas/`OpenAIResponseOutputMessageFileSearchToolCall",
+                                        "function_call": "`#/components/schemas/`OpenAIResponseOutputMessageFunctionToolCall",
+                                        "mcp_approval_request": "`#/components/schemas/`OpenAIResponseMCPApprovalRequest",
+                                        "mcp_call": "`#/components/schemas/`OpenAIResponseOutputMessageMCPCall",
+                                        "mcp_list_tools": "`#/components/schemas/`OpenAIResponseOutputMessageMCPListTools",
+                                        "message": "`#/components/schemas/`OpenAIResponseMessage",
+                                        "web_search_call": "`#/components/schemas/`OpenAIResponseOutputMessageWebSearchToolCall"
+                                    },
+                                    "propertyName": "type"
+                                },
+                                "oneOf": [
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseMessage"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageWebSearchToolCall"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageFileSearchToolCall"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageFunctionToolCall"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageMCPCall"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseOutputMessageMCPListTools"
+                                    },
+                                    {
+                                        "$ref": "`#/components/schemas/`OpenAIResponseMCPApprovalRequest"
+                                    }
+                                ]
+                            },
+                            "title": "Output Items",
+                            "type": "array"
+                        },
+                        "partial_tokens": {
+                            "description": "Accumulated text deltas during streaming, used to reconstruct partial content on interruption.",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Partial Tokens",
+                            "type": "array"
+                        },
+                        "next_chunk_id": {
+                            "default": 0,
+                            "description": "Next monotonic SSE chunk index, kept in sync with the inner generator so the interrupt handler can emit a sequentially valid id.",
+                            "title": "Next Chunk Id",
+                            "type": "integer"
+                        }
+                    },
+                    "title": "TurnSummary",
                     "type": "object"
                 },
                 "UnauthorizedResponse": {
@@ -8312,6 +8679,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "LivenessResponse",
             "LlamaStackConfiguration",
             "MCPClientAuthOptionsResponse",
+            "MCPListToolsSummary",
             "MCPListToolsTool",
             "MCPServerAuthInfo",
             "MCPServerDeleteResponse",
@@ -8382,6 +8750,7 @@ def test_dump_models(tmpdir: Path) -> None:
             "QuotaLimiterConfiguration",
             "QuotaSchedulerConfiguration",
             "RAGChunk",
+            "RAGContext",
             "RAGInfoResponse",
             "RAGListResponse",
             "RHIdentityConfiguration",
@@ -8407,6 +8776,8 @@ def test_dump_models(tmpdir: Path) -> None:
             "SearchRankingOptions",
             "ServiceConfiguration",
             "ServiceUnavailableResponse",
+            "ShieldModerationBlocked",
+            "ShieldModerationPassed",
             "ShieldsResponse",
             "SkillsConfiguration",
             "SolrVectorSearchRequest",
@@ -8416,11 +8787,16 @@ def test_dump_models(tmpdir: Path) -> None:
             "StreamingInterruptResponse",
             "StreamingQueryResponse",
             "TLSConfiguration",
+            "TokenCounter",
             "ToolCallSummary",
+            "ToolInfoSummary",
             "ToolResultSummary",
             "ToolsResponse",
+            "Transcript",
+            "TranscriptMetadata",
             "TrustedProxyConfiguration",
             "TrustedProxyServiceAccount",
+            "TurnSummary",
             "UnauthorizedResponse",
             "UnifiedInferenceProvider",
             "UnifiedLlamaStackConfig",

@@ -3,6 +3,7 @@
 import models.api.requests as r
 import models.api.responses.error as e
 import models.api.responses.successful as s
+import models.common as c
 import models.compaction as models_compaction
 from utils.openapi_schema_dumper import dump_openapi_schema
 
@@ -98,6 +99,27 @@ def dump_models(filename: str) -> None:
         e.ServiceUnavailableResponse,
         e.UnauthorizedResponse,
         e.UnprocessableEntityResponse,
+        c.Attachment,
+        c.ConversationData,
+        c.ConversationDetails,
+        c.ConversationTurn,
+        c.MCPListToolsSummary,
+        c.MCPServerAuthInfo,
+        c.MCPServerInfo,
+        c.Message,
+        c.ProviderHealthStatus,
+        c.RAGChunk,
+        c.RAGContext,
+        c.ReferencedDocument,
+        c.ShieldModerationBlocked,
+        c.ShieldModerationPassed,
+        c.SolrVectorSearchRequest,
+        c.ToolCallSummary,
+        c.ToolInfoSummary,
+        c.ToolResultSummary,
+        c.Transcript,
+        c.TranscriptMetadata,
+        c.TurnSummary,
     ]:
         models.append(model)
     dump_openapi_schema(models, filename)
