@@ -8,6 +8,7 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
+import warnings
 from collections.abc import Generator
 
 import pytest
@@ -18,12 +19,16 @@ CONTAINER_BUILD_TIMEOUT = 300  # 5 minutes for image build
 CONTAINER_START_TIMEOUT = 300  # 5 minutes for container start
 CONTAINER_STOP_TIMEOUT = 15
 CONTAINER_CLEANUP_TIMEOUT = 10
+IMAGE_CLEANUP_TIMEOUT = 30
+DANGLING_IMAGES_CLEANUP_TIMEOUT = 300  # 5 minutes for dangling images cleanup
 HEALTH_CHECK_TIMEOUT = 5
 PORT_QUERY_TIMEOUT = 5
 
 # Retry constants
 HEALTH_CHECK_MAX_ATTEMPTS = 30
 NETWORK_BINDING_MAX_ATTEMPTS = 5
+
+DEFAULT_LIGHTSPEED_LLAMA_STACK_IMAGE_NAME = "lightspeed-llama-stack:local"
 
 
 @pytest.fixture(scope="session")
@@ -50,6 +55,39 @@ def container_runtime() -> str:
         except (subprocess.CalledProcessError, FileNotFoundError):
             continue
     pytest.skip("No container runtime available")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_container_artifacts(container_runtime: str) -> Generator[None]:
+    """Remove container images and dangling layers after all tests complete.
+
+    Parameters
+    ----------
+        container_runtime (str): Container runtime to use.
+
+    Yields
+    ------
+        None
+    """
+    yield
+
+    try:
+        subprocess.run(
+            [container_runtime, "rmi", "-f", DEFAULT_LIGHTSPEED_LLAMA_STACK_IMAGE_NAME],
+            capture_output=True,
+            timeout=IMAGE_CLEANUP_TIMEOUT,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        warnings.warn(f"Image cleanup failed: {e}")
+
+    try:
+        subprocess.run(
+            [container_runtime, "image", "prune", "-f"],
+            capture_output=True,
+            timeout=DANGLING_IMAGES_CLEANUP_TIMEOUT,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        warnings.warn(f"Dangling image cleanup failed: {e}")
 
 
 @pytest.fixture(scope="class")
@@ -102,7 +140,7 @@ class TestContainerBuild:
     """Test container image building with idempotency checks."""
 
     def _get_image_id(
-        self, runtime: str, image_name: str = "lightspeed-llama-stack:local"
+        self, runtime: str, image_name: str = DEFAULT_LIGHTSPEED_LLAMA_STACK_IMAGE_NAME
     ) -> str:
         """Get the unique, immutable Image ID (SHA256).
 
@@ -145,7 +183,7 @@ class TestContainerBuild:
 
         # Verify image is listed with correct tag
         result = subprocess.run(
-            [container_runtime, "images", "lightspeed-llama-stack:local"],
+            [container_runtime, "images", DEFAULT_LIGHTSPEED_LLAMA_STACK_IMAGE_NAME],
             capture_output=True,
             text=True,
             timeout=PORT_QUERY_TIMEOUT,
@@ -548,7 +586,12 @@ class TestContainerTeardown:
 
         # Verify image is removed
         result = subprocess.run(
-            [container_runtime, "images", "-q", "lightspeed-llama-stack:local"],
+            [
+                container_runtime,
+                "images",
+                "-q",
+                DEFAULT_LIGHTSPEED_LLAMA_STACK_IMAGE_NAME,
+            ],
             capture_output=True,
             text=True,
             timeout=PORT_QUERY_TIMEOUT,
