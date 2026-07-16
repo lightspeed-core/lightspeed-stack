@@ -4,7 +4,7 @@ from __future__ import annotations as _annotations
 
 import json
 from collections.abc import AsyncGenerator, AsyncIterator, Mapping
-from typing import Any
+from typing import Any, Optional
 
 import httpx
 from llama_stack.core.library_client import (
@@ -44,7 +44,7 @@ def decode_request_headers(request: httpx.Request) -> dict[str, str]:
 
 def inject_provider_data_into_headers(
     headers: Mapping[str, str],
-    provider_data: Mapping[str, Any] | None,
+    provider_data: Optional[Mapping[str, Any]],
 ) -> dict[str, str]:
     """Add ``X-LlamaStack-Provider-Data`` when provider data is configured.
 
@@ -66,7 +66,7 @@ def inject_provider_data_into_headers(
 
 def request_with_provider_data_headers(
     request: httpx.Request,
-    provider_data: Mapping[str, Any] | None,
+    provider_data: Optional[Mapping[str, Any]],
 ) -> httpx.Request:
     """Return a request copy with provider data headers injected when needed.
 
@@ -94,7 +94,7 @@ def request_with_provider_data_headers(
 
 def wrap_http_client_with_provider_data(
     http_client: httpx.AsyncClient,
-    provider_data: Mapping[str, Any] | None,
+    provider_data: Optional[Mapping[str, Any]],
 ) -> httpx.AsyncClient:
     """Wrap an httpx client so outbound requests include provider data headers.
 
@@ -127,7 +127,7 @@ class LlamaStackServerTransport(httpx.AsyncBaseTransport):
         self,
         transport: httpx.AsyncBaseTransport,
         *,
-        provider_data: Mapping[str, Any] | None = None,
+        provider_data: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Initialize the wrapping transport.
 

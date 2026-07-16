@@ -394,7 +394,7 @@ class LlamaStackResponsesModel(OpenAIResponsesModel):
                 "You can only pass either ResponsesApiParams or ModelSetting not both."
             )
 
-        _settings: OpenAIResponsesModelSettings | ModelSettings | None = None
+        _settings: Optional[OpenAIResponsesModelSettings | ModelSettings] = None
 
         if responses_params is not None:
             _settings = _model_settings_from_responses_params(responses_params)
