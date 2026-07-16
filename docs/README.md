@@ -8,6 +8,7 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 <!-- vim-markdown-toc GFM -->
 
 * [Basic info](#basic-info)
+* [User docs](#user-docs)
 * [Overview](#overview)
 * [Installation and configuration](#installation-and-configuration)
 * [Status of Lightspeed Core Stack versions](#status-of-lightspeed-core-stack-versions)
@@ -39,25 +40,38 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [Getting started](https://lightspeed-core.github.io/lightspeed-stack/basic_info/getting_started.html)
 
+## User docs
+
+[Deployment Guide](https://lightspeed-core.github.io/lightspeed-stack/user_doc/deployment_guide.html)
+
+[Configuration options](https://lightspeed-core.github.io/lightspeed-stack/user_doc/config.html)
+
+[Agent skills](https://lightspeed-core.github.io/lightspeed-stack/user_doc/skills_guide.html)
+
+[A2A [Agent-to-Agent] Protocol](https://lightspeed-core.github.io/lightspeed-stack/user_doc/a2a_protocol.html)
+
+[RAG configuration guide](https://lightspeed-core.github.io/lightspeed-stack/user_doc/rag_guide.html)
+
+[BYOK guide](https://lightspeed-core.github.io/lightspeed-stack/user_doc/byok_guide.html)
+
+[Authentication and Authorization](https://lightspeed-core.github.io/lightspeed-stack/user_doc/auth.html)
+
+[User data collection](https://lightspeed-core.github.io/lightspeed-stack/user_doc/user_data_collection.html)
+
 ## Overview
 
 [Architecture](https://lightspeed-core.github.io/lightspeed-stack/ARCHITECTURE.html)
 
 [Architecture diagram](https://lightspeed-core.github.io/lightspeed-stack/architecture.svg)
 
-[Authentication and Authorization](https://lightspeed-core.github.io/lightspeed-stack/auth.html)
-
 ## Installation and configuration
 
-[Deployment Guide](https://lightspeed-core.github.io/lightspeed-stack/deployment_guide.html)
 
 [Container Orchestration Guide](https://lightspeed-core.github.io/lightspeed-stack/container_orchestration.html)
 
 [Linux](https://lightspeed-core.github.io/lightspeed-stack/installation_linux.html)
 
 [MacOS](https://lightspeed-core.github.io/lightspeed-stack/installation_macos.html)
-
-[Configuration](https://lightspeed-core.github.io/lightspeed-stack/config.html)
 
 ## Status of Lightspeed Core Stack versions
 
@@ -81,13 +95,7 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [Conversations API](https://lightspeed-core.github.io/lightspeed-stack/conversations_api.html)
 
-[A2A [Agent-to-Agent] Protocol](https://lightspeed-core.github.io/lightspeed-stack/a2a_protocol.html)
-
 ## RAG and BYOK
-
-[RAG Configuration Guide](https://lightspeed-core.github.io/lightspeed-stack/rag_guide.html)
-
-[BYOK guide](https://lightspeed-core.github.io/lightspeed-stack/byok_guide.html)
 
 ## Other features
 
@@ -95,11 +103,8 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [Sentry error tracking](https://lightspeed-core.github.io/lightspeed-stack/sentry.html)
 
-[User data collection](https://lightspeed-core.github.io/lightspeed-stack/user_data_collection.html)
 
 [Database structure](https://lightspeed-core.github.io/lightspeed-stack/DB/index.html)
-
-[Agent skills](https://lightspeed-core.github.io/lightspeed-stack/skills_guide.html)
 
 ## Models
 
