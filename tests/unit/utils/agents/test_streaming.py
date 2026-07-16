@@ -140,9 +140,9 @@ def make_generator_context_fixture(
         media_type: Optional[str] = MEDIA_TYPE_JSON,
         generate_topic_summary: bool = False,
         conversation_id_in_request: Optional[str] = TEST_CONVERSATION_ID,
-        moderation_result: (
-            ShieldModerationPassed | ShieldModerationBlocked | None
-        ) = None,
+        moderation_result: Optional[
+            ShieldModerationPassed | ShieldModerationBlocked
+        ] = None,
     ) -> ResponseGeneratorContext:
         context = mocker.Mock(spec=ResponseGeneratorContext)
         context.conversation_id = conversation_id

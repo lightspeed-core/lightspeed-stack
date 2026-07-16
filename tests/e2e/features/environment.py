@@ -10,6 +10,7 @@ Currently four events have been registered:
 import os
 import subprocess
 import time
+from typing import Optional
 
 import requests
 from behave.contrib.scenario_autoretry import patch_scenario_with_autoretry
@@ -372,9 +373,9 @@ def _restore_llama_stack() -> None:
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             print(f"Warning: Could not restore Llama Stack pod on Prow: {e}")
             return
-        last_lcs_err: (
-            subprocess.CalledProcessError | subprocess.TimeoutExpired | None
-        ) = None
+        last_lcs_err: Optional[
+            subprocess.CalledProcessError | subprocess.TimeoutExpired
+        ] = None
         for attempt in range(1, 4):
             try:
                 restart_pod("lightspeed-stack")
