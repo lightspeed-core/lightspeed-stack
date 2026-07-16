@@ -827,6 +827,13 @@ Per Decision S5 of the design spike, backend-agnostic high-level sections
 only the Llama-Stack-specific synthesis controls: which baseline to start
 from, an optional profile file, and a raw native_override escape hatch.
 
+During synthesis from the default baseline or a profile, LCORE ensures the
+Llama Stack MCP tool_runtime provider (`provider_id: model-context-protocol`,
+`provider_type: remote::model-context-protocol`) is present so static
+`mcp_servers` and dynamic MCP registration work. That ensure is skipped when
+`baseline: empty` (migration / blank-slate); supply MCP via `native_override`
+in that case.
+
 Attributes:
     baseline: Synthesis starting point. "default" begins from LCORE's
         built-in baseline (src/data/default_run.yaml); "empty" begins from

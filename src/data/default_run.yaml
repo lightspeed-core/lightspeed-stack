@@ -9,7 +9,9 @@
 # It is intentionally thinner than the repo-root run.yaml: it carries only the
 # APIs and providers needed to boot a minimal, queryable stack (inference,
 # safety, vector_io, agents, tool_runtime, files) plus the storage backends
-# those providers reference. Operators extend it via high-level sections or
+# those providers reference. tool_runtime includes rag-runtime (file_search /
+# RAG) and model-context-protocol (MCP) so those capabilities work when
+# operators enable them. Operators extend it via high-level sections or
 # `native_override`.
 #
 # NOTE: `external_providers_dir` carries a default (`:=~/.llama/providers.d`)
@@ -54,6 +56,9 @@ providers:
   - config: {}
     provider_id: rag-runtime
     provider_type: inline::rag-runtime
+  - config: {}
+    provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
   vector_io:
   - config:
       persistence:

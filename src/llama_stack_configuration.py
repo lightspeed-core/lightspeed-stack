@@ -782,6 +782,47 @@ def apply_high_level_inference(
     )
 
 
+def ensure_mcp_tool_runtime(ls_config: dict[str, Any]) -> None:
+    """Ensure the default MCP tool_runtime provider exists in ``ls_config``.
+
+    Adds ``tool_runtime`` to ``apis`` when missing, then appends the default
+    ``model-context-protocol`` provider under ``providers.tool_runtime`` when
+    no entry with that ``provider_id`` is already present. Existing entries
+    (including ``rag-runtime``) are left untouched.
+
+    Parameters:
+        ls_config: The Llama Stack configuration being synthesized (modified
+            in place).
+
+    Returns:
+        None: ``ls_config`` is modified in place.
+    """
+    apis = ls_config.setdefault("apis", [])
+    if "tool_runtime" not in apis:
+        apis.append("tool_runtime")
+
+    providers_section = ls_config.setdefault("providers", {})
+    tool_runtime = providers_section.setdefault("tool_runtime", [])
+    for existing in tool_runtime:
+        if (
+            isinstance(existing, dict)
+            and existing.get("provider_id") == constants.MCP_TOOL_RUNTIME_PROVIDER_ID
+        ):
+            return
+
+    tool_runtime.append(
+        {
+            "provider_id": constants.MCP_TOOL_RUNTIME_PROVIDER_ID,
+            "provider_type": constants.MCP_TOOL_RUNTIME_PROVIDER_TYPE,
+            "config": {},
+        }
+    )
+    logger.info(
+        "Added MCP tool_runtime provider provider_id=%r",
+        constants.MCP_TOOL_RUNTIME_PROVIDER_ID,
+    )
+
+
 def _resolve_profile_path(profile: str, config_file_dir: Optional[str]) -> Path:
     """Resolve a ``profile:`` path against the loaded config's directory (R8).
 
@@ -812,8 +853,9 @@ def synthesize_configuration(
     Implements the unified-mode synthesis pipeline: select a baseline (profile
     file, empty, or the built-in default), apply the existing enrichment
     (Azure Entra ID, BYOK RAG, Solr/OKP) for parity with legacy mode (R7),
-    expand the high-level ``inference.providers`` section, and deep-merge the
-    raw ``native_override`` last (R5).
+    expand the high-level ``inference.providers`` section, ensure the default
+    MCP tool_runtime provider when the baseline was not empty, and deep-merge
+    the raw ``native_override`` last (R5).
 
     Parameters:
         lcs_config: The full ``lightspeed-stack.yaml`` parsed into a dict.
@@ -829,6 +871,7 @@ def synthesize_configuration(
     unified = llama_stack.get("config")  # None when only top-level inputs are set
 
     # 1-2. Select the baseline.
+    baseline_was_empty = False
     if unified and unified.get("profile"):
         profile_path = _resolve_profile_path(unified["profile"], config_file_dir)
         logger.info("Loading synthesis baseline from profile %s", profile_path)
@@ -836,6 +879,7 @@ def synthesize_configuration(
             baseline = yaml.safe_load(file) or {}
     elif unified and unified.get("baseline") == "empty":
         logger.info("Synthesizing from an empty baseline")
+        baseline_was_empty = True
         baseline = {}
     else:
         baseline = (
@@ -860,11 +904,16 @@ def synthesize_configuration(
     if inference.get("providers"):
         apply_high_level_inference(ls_config, inference)
 
-    # 6. Raw escape hatch, deep-merged last with list replacement (R5).
+    # 6. Ensure MCP tool_runtime for default/profile baselines (skipped for
+    #    baseline: empty so migrate round-trips stay lossless).
+    if not baseline_was_empty:
+        ensure_mcp_tool_runtime(ls_config)
+
+    # 7. Raw escape hatch, deep-merged last with list replacement (R5).
     if unified and unified.get("native_override"):
         ls_config = deep_merge_list_replace(ls_config, unified["native_override"])
 
-    # 7. Dedupe again in case native_override or enrichment reintroduced dupes.
+    # 8. Dedupe again in case native_override or enrichment reintroduced dupes.
     dedupe_providers_vector_io(ls_config)
 
     return ls_config
