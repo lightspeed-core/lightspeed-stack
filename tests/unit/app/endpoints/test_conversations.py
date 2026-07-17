@@ -12,28 +12,28 @@ from llama_stack_client import APIConnectionError, APIStatusError, NotFoundError
 from pytest_mock import MockerFixture, MockType
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.endpoints.conversations_v1 import (
+from lightspeed_stack.app.endpoints.conversations_v1 import (
     delete_conversation_endpoint_handler,
     get_conversation_endpoint_handler,
     get_conversations_list_endpoint_handler,
     update_conversation_endpoint_handler,
 )
-from configuration import AppConfig
-from models.api.requests import ConversationUpdateRequest
-from models.api.responses.error import (
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import ConversationUpdateRequest
+from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     InternalServerErrorResponse,
 )
-from models.api.responses.successful import (
+from lightspeed_stack.models.api.responses.successful import (
     ConversationDeleteResponse,
     ConversationResponse,
     ConversationsListResponse,
     ConversationUpdateResponse,
 )
-from models.config import Action
-from models.database.conversations import UserConversation, UserTurn
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.models.database.conversations import UserConversation, UserTurn
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
-from utils.conversations import build_conversation_turns_from_items
+from lightspeed_stack.utils.conversations import build_conversation_turns_from_items
 
 MOCK_AUTH = ("mock_user_id", "mock_username", False, "mock_token")
 VALID_CONVERSATION_ID = "123e4567-e89b-12d3-a456-426614174000"
@@ -189,11 +189,11 @@ def _patch_get_session_functions(
         mock_session_context: The context manager mock to return from get_session.
     """
     mocker.patch(
-        "app.endpoints.conversations_v1.get_session", return_value=mock_session_context
+        "lightspeed_stack.app.endpoints.conversations_v1.get_session", return_value=mock_session_context
     )
-    mocker.patch("app.database.get_session", return_value=mock_session_context)
-    mocker.patch("utils.endpoints.get_session", return_value=mock_session_context)
-    mocker.patch("utils.endpoints.can_access_conversation", return_value=True)
+    mocker.patch("lightspeed_stack.app.database.get_session", return_value=mock_session_context)
+    mocker.patch("lightspeed_stack.utils.endpoints.get_session", return_value=mock_session_context)
+    mocker.patch("lightspeed_stack.utils.endpoints.can_access_conversation", return_value=True)
 
 
 def mock_database_session(
@@ -466,7 +466,7 @@ class TestGetConversationEndpoint:
         """Test the endpoint when configuration is not loaded."""
         mock_authorization_resolvers(mocker)
         mock_config = AppConfig()
-        mocker.patch("app.endpoints.conversations_v1.configuration", mock_config)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(
@@ -492,9 +492,9 @@ class TestGetConversationEndpoint:
         """Test the endpoint with an invalid conversation ID format."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=False)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=False)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(
@@ -522,9 +522,9 @@ class TestGetConversationEndpoint:
         """Test the endpoint when LlamaStack connection fails."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
 
         mock_database_session(mocker, query_result=[mock_conversation], db_turns=[])
 
@@ -533,7 +533,7 @@ class TestGetConversationEndpoint:
             request=None  # type: ignore[arg-type]
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -567,11 +567,11 @@ class TestGetConversationEndpoint:
         """
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
         mocker.patch(
-            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.validate_and_retrieve_conversation",
             return_value=mock_conversation,
         )
 
@@ -584,7 +584,7 @@ class TestGetConversationEndpoint:
             body=None,
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -612,11 +612,11 @@ class TestGetConversationEndpoint:
     ) -> None:
         """Test forbidden access when user lacks permission to read conversation."""
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
         mocker.patch(
-            "authorization.resolvers.NoopAccessResolver.get_actions",
+            "lightspeed_stack.authorization.resolvers.NoopAccessResolver.get_actions",
             return_value=set(Action.GET_CONVERSATION),
         )
 
@@ -627,7 +627,7 @@ class TestGetConversationEndpoint:
             user_id=MOCK_AUTH[0],
         )
         mocker.patch(
-            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.validate_and_retrieve_conversation",
             side_effect=HTTPException(**forbidden_response.model_dump()),
         )
 
@@ -657,13 +657,13 @@ class TestGetConversationEndpoint:
     ) -> None:
         """Test allowed access to another user's conversation for authorized user."""
         mocker.patch(
-            "authorization.resolvers.NoopAccessResolver.get_actions",
+            "lightspeed_stack.authorization.resolvers.NoopAccessResolver.get_actions",
             return_value={Action.GET_CONVERSATION, Action.READ_OTHERS_CONVERSATIONS},
         )
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
 
         mock_db_turns = [
             create_mock_db_turn(
@@ -691,7 +691,7 @@ class TestGetConversationEndpoint:
         )
 
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
         response = await get_conversation_endpoint_handler(
@@ -715,9 +715,9 @@ class TestGetConversationEndpoint:
         """Test successful conversation retrieval with simplified response structure."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
 
         mock_db_turns = [
             create_mock_db_turn(
@@ -745,7 +745,7 @@ class TestGetConversationEndpoint:
         mock_client.conversations.items.list = mocker.AsyncMock(return_value=mock_items)
 
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -770,13 +770,13 @@ class TestGetConversationEndpoint:
         """Test when retrieve_conversation returns None."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
         mock_database_session(mocker, query_result=[])
         mock_client = mocker.AsyncMock()
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -804,11 +804,11 @@ class TestGetConversationEndpoint:
         """Test when no items are found for the conversation (empty data list)."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
         mocker.patch(
-            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.validate_and_retrieve_conversation",
             return_value=mock_conversation,
         )
 
@@ -822,7 +822,7 @@ class TestGetConversationEndpoint:
             return_value=mock_items_response
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -853,11 +853,11 @@ class TestGetConversationEndpoint:
         """
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
         mocker.patch(
-            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.validate_and_retrieve_conversation",
             return_value=mock_conversation,
         )
 
@@ -870,7 +870,7 @@ class TestGetConversationEndpoint:
             body=None,
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -896,14 +896,14 @@ class TestGetConversationEndpoint:
         """Test when SQLAlchemyError is raised during conversation retrieval."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
         # Mock validate_and_retrieve_conversation to raise HTTPException (which it does
         # when it catches SQLAlchemyError internally)
         database_error_response = InternalServerErrorResponse.database_error()
         mocker.patch(
-            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.validate_and_retrieve_conversation",
             side_effect=HTTPException(**database_error_response.model_dump()),
         )
 
@@ -930,11 +930,11 @@ class TestGetConversationEndpoint:
         """Test when SQLAlchemyError is raised while retrieving conversation turns."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
         mocker.patch(
-            "app.endpoints.conversations_v1.validate_and_retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.validate_and_retrieve_conversation",
             return_value=mock_conversation,
         )
 
@@ -958,7 +958,7 @@ class TestGetConversationEndpoint:
         mock_session_context.__enter__.return_value = mock_session
         mock_session_context.__exit__.return_value = None
         mocker.patch(
-            "utils.endpoints.get_session",
+            "lightspeed_stack.utils.endpoints.get_session",
             return_value=mock_session_context,
         )
 
@@ -970,7 +970,7 @@ class TestGetConversationEndpoint:
         ]
         mock_client.conversations.items.list.return_value = mock_items_response
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -996,11 +996,11 @@ class TestGetConversationEndpoint:
         """Test when SQLAlchemyError is raised during retrieve_conversation call."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
         mocker.patch(
-            "utils.endpoints.can_access_conversation",
+            "lightspeed_stack.utils.endpoints.can_access_conversation",
             return_value=True,
         )
 
@@ -1014,7 +1014,7 @@ class TestGetConversationEndpoint:
         mock_session_context.__enter__.return_value = mock_session
         mock_session_context.__exit__.return_value = None
         mocker.patch(
-            "utils.endpoints.get_session",
+            "lightspeed_stack.utils.endpoints.get_session",
             return_value=mock_session_context,
         )
 
@@ -1041,7 +1041,7 @@ class TestDeleteConversationEndpoint:
         """Test the endpoint when configuration is not loaded."""
         mock_authorization_resolvers(mocker)
         mock_config = AppConfig()
-        mocker.patch("app.endpoints.conversations_v1.configuration", mock_config)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
             await delete_conversation_endpoint_handler(
@@ -1067,9 +1067,9 @@ class TestDeleteConversationEndpoint:
         """Test the endpoint with an invalid conversation ID format."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=False)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=False)
 
         with pytest.raises(HTTPException) as exc_info:
             await delete_conversation_endpoint_handler(
@@ -1097,14 +1097,14 @@ class TestDeleteConversationEndpoint:
         """Test the endpoint when LlamaStack connection fails."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
-        mocker.patch("app.endpoints.conversations_v1.retrieve_conversation")
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.retrieve_conversation")
 
         mocker.patch(
-            "app.endpoints.conversations_v1.delete_conversation", return_value=True
+            "lightspeed_stack.app.endpoints.conversations_v1.delete_conversation", return_value=True
         )
 
         mock_client = mocker.AsyncMock()
@@ -1112,7 +1112,7 @@ class TestDeleteConversationEndpoint:
             request=None  # type: ignore
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1139,14 +1139,14 @@ class TestDeleteConversationEndpoint:
         """Test the endpoint when LlamaStack returns NotFoundError."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
-        mocker.patch("app.endpoints.conversations_v1.retrieve_conversation")
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.retrieve_conversation")
 
         mocker.patch(
-            "app.endpoints.conversations_v1.delete_conversation", return_value=True
+            "lightspeed_stack.app.endpoints.conversations_v1.delete_conversation", return_value=True
         )
 
         mock_client = mocker.AsyncMock()
@@ -1156,7 +1156,7 @@ class TestDeleteConversationEndpoint:
             body=None,
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1183,15 +1183,15 @@ class TestDeleteConversationEndpoint:
     ) -> None:
         """Test forbidden deletion when user lacks permission to delete conversation."""
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
         mocker.patch(
-            "app.endpoints.conversations_v1.retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.retrieve_conversation",
             return_value=mock_conversation,
         )
         mocker.patch(
-            "authorization.resolvers.NoopAccessResolver.get_actions",
+            "lightspeed_stack.authorization.resolvers.NoopAccessResolver.get_actions",
             return_value=set(Action.DELETE_CONVERSATION),
         )
 
@@ -1206,7 +1206,7 @@ class TestDeleteConversationEndpoint:
         mock_session.__enter__.return_value = mock_session
         mock_session.__exit__.return_value = None
 
-        mocker.patch("utils.endpoints.get_session", return_value=mock_session)
+        mocker.patch("lightspeed_stack.utils.endpoints.get_session", return_value=mock_session)
 
         with pytest.raises(HTTPException) as exc_info:
             await delete_conversation_endpoint_handler(
@@ -1234,7 +1234,7 @@ class TestDeleteConversationEndpoint:
     ) -> None:
         """Test allowed deletion of another user's conversation for authorized user."""
         mocker.patch(
-            "authorization.resolvers.NoopAccessResolver.get_actions",
+            "lightspeed_stack.authorization.resolvers.NoopAccessResolver.get_actions",
             return_value={
                 Action.DELETE_OTHERS_CONVERSATIONS,
                 Action.DELETE_CONVERSATION,
@@ -1242,15 +1242,15 @@ class TestDeleteConversationEndpoint:
         )
 
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
         mocker.patch(
-            "app.endpoints.conversations_v1.retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.retrieve_conversation",
             return_value=mock_conversation,
         )
         mocker.patch(
-            "app.endpoints.conversations_v1.delete_conversation", return_value=True
+            "lightspeed_stack.app.endpoints.conversations_v1.delete_conversation", return_value=True
         )
 
         mock_client = mocker.AsyncMock()
@@ -1258,7 +1258,7 @@ class TestDeleteConversationEndpoint:
         mock_delete_response.deleted = True
         mock_client.conversations.delete.return_value = mock_delete_response
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1285,14 +1285,14 @@ class TestDeleteConversationEndpoint:
         """Test successful conversation deletion."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
-        mocker.patch("app.endpoints.conversations_v1.retrieve_conversation")
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.retrieve_conversation")
 
         mock_delete = mocker.patch(
-            "app.endpoints.conversations_v1.delete_conversation", return_value=True
+            "lightspeed_stack.app.endpoints.conversations_v1.delete_conversation", return_value=True
         )
 
         mock_client = mocker.AsyncMock()
@@ -1300,7 +1300,7 @@ class TestDeleteConversationEndpoint:
         mock_delete_response.deleted = True
         mock_client.conversations.delete.return_value = mock_delete_response
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1327,14 +1327,14 @@ class TestDeleteConversationEndpoint:
         """Test when conversation doesn't exist in delete endpoint."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
         mocker.patch(
-            "app.endpoints.conversations_v1.can_access_conversation", return_value=True
+            "lightspeed_stack.app.endpoints.conversations_v1.can_access_conversation", return_value=True
         )
         mocker.patch(
-            "app.endpoints.conversations_v1.delete_conversation", return_value=False
+            "lightspeed_stack.app.endpoints.conversations_v1.delete_conversation", return_value=False
         )
 
         mock_client = mocker.AsyncMock()
@@ -1342,7 +1342,7 @@ class TestDeleteConversationEndpoint:
         mock_delete_response.deleted = True
         mock_client.conversations.delete.return_value = mock_delete_response
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1369,12 +1369,12 @@ class TestDeleteConversationEndpoint:
         """Test when SQLAlchemyError is raised during conversation deletion."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.can_access_conversation")
         mocker.patch(
-            "app.endpoints.conversations_v1.retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.retrieve_conversation",
             return_value=mock_conversation,
         )
 
@@ -1384,12 +1384,12 @@ class TestDeleteConversationEndpoint:
         mock_client.agents.session.list.return_value = mock_session_list_response
         mock_client.agents.session.delete.return_value = None
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
         mocker.patch(
-            "app.endpoints.conversations_v1.delete_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.delete_conversation",
             side_effect=SQLAlchemyError("Database error"),
         )
 
@@ -1418,7 +1418,7 @@ class TestGetConversationsListEndpoint:
         """Test the endpoint when configuration is not loaded."""
         mock_authorization_resolvers(mocker)
         mock_config = AppConfig()
-        mocker.patch("app.endpoints.conversations_v1.configuration", mock_config)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversations_list_endpoint_handler(
@@ -1441,7 +1441,7 @@ class TestGetConversationsListEndpoint:
         """Test successful retrieval of conversations list."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
 
         # Mock database session and query results
@@ -1506,7 +1506,7 @@ class TestGetConversationsListEndpoint:
         """Test when user has no conversations."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
 
         # Mock database session with no results
@@ -1530,7 +1530,7 @@ class TestGetConversationsListEndpoint:
         """Test when database query raises an exception."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
 
         # Mock database session to raise exception
@@ -1552,7 +1552,7 @@ class TestGetConversationsListEndpoint:
         """Test when database query raises SQLAlchemyError."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
 
         # Mock database session to raise SQLAlchemyError when all() is called
@@ -1570,7 +1570,7 @@ class TestGetConversationsListEndpoint:
         mock_session_context.__enter__.return_value = mock_session
         mock_session_context.__exit__.return_value = None
         mocker.patch(
-            "app.endpoints.conversations_v1.get_session",
+            "lightspeed_stack.app.endpoints.conversations_v1.get_session",
             return_value=mock_session_context,
         )
 
@@ -1595,7 +1595,7 @@ class TestGetConversationsListEndpoint:
         """Test conversations list when topic_summary is None."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
 
         # Mock database session with conversation having None topic_summary
@@ -1634,7 +1634,7 @@ class TestGetConversationsListEndpoint:
         """Test conversations list with mixed topic_summary values (some None, some not)."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
 
         # Mock database session with mixed topic_summary values
@@ -1704,7 +1704,7 @@ class TestGetConversationsListEndpoint:
         """Test conversations list when topic_summary is an empty string."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
 
         # Mock database session with conversation having empty topic_summary
@@ -1743,7 +1743,7 @@ class TestGetConversationsListEndpoint:
         """Test that topic_summary field is always present in ConversationDetails objects."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
 
         # Mock database session with conversations
@@ -1790,7 +1790,7 @@ class TestUpdateConversationEndpoint:
         """Test the endpoint when configuration is not loaded."""
         mock_authorization_resolvers(mocker)
         mock_config = AppConfig()
-        mocker.patch("app.endpoints.conversations_v1.configuration", mock_config)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.configuration", mock_config)
 
         update_request = ConversationUpdateRequest(topic_summary="New topic")
 
@@ -1818,9 +1818,9 @@ class TestUpdateConversationEndpoint:
         """Test the endpoint with an invalid conversation ID format."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=False)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=False)
 
         update_request = ConversationUpdateRequest(topic_summary="New topic")
 
@@ -1849,21 +1849,21 @@ class TestUpdateConversationEndpoint:
         """Test forbidden access when user lacks permission to update conversation."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
         mocker.patch(
-            "app.endpoints.conversations_v1.retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.retrieve_conversation",
             return_value=mock_conversation,
         )
         mocker.patch(
-            "authorization.resolvers.NoopAccessResolver.get_actions",
+            "lightspeed_stack.authorization.resolvers.NoopAccessResolver.get_actions",
             return_value=set(Action.UPDATE_CONVERSATION),
         )  # User can only update their own conversations
 
         # Mock can_access_conversation to return False (user doesn't have access)
         mocker.patch(
-            "app.endpoints.conversations_v1.can_access_conversation", return_value=False
+            "lightspeed_stack.app.endpoints.conversations_v1.can_access_conversation", return_value=False
         )
 
         update_request = ConversationUpdateRequest(topic_summary="New topic")
@@ -1892,12 +1892,12 @@ class TestUpdateConversationEndpoint:
         """Test when conversation is not found in update endpoint."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.can_access_conversation")
         mocker.patch(
-            "app.endpoints.conversations_v1.retrieve_conversation", return_value=None
+            "lightspeed_stack.app.endpoints.conversations_v1.retrieve_conversation", return_value=None
         )
 
         update_request = ConversationUpdateRequest(topic_summary="New topic")
@@ -1926,12 +1926,12 @@ class TestUpdateConversationEndpoint:
         """Test when SQLAlchemyError is raised during retrieve_conversation in update."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.can_access_conversation")
         mocker.patch(
-            "app.endpoints.conversations_v1.retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.retrieve_conversation",
             side_effect=SQLAlchemyError("Database error"),
         )
 
@@ -1962,12 +1962,12 @@ class TestUpdateConversationEndpoint:
         """Test successful conversation update."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.can_access_conversation")
         mocker.patch(
-            "app.endpoints.conversations_v1.retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.retrieve_conversation",
             return_value=mock_conversation,
         )
 
@@ -1982,7 +1982,7 @@ class TestUpdateConversationEndpoint:
         mock_session_context.__enter__.return_value = mock_session
         mock_session_context.__exit__.return_value = None
         mocker.patch(
-            "app.endpoints.conversations_v1.get_session",
+            "lightspeed_stack.app.endpoints.conversations_v1.get_session",
             return_value=mock_session_context,
         )
 
@@ -1990,7 +1990,7 @@ class TestUpdateConversationEndpoint:
         mock_client = mocker.AsyncMock()
         mock_client.conversations.update.return_value = None
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -2021,12 +2021,12 @@ class TestUpdateConversationEndpoint:
         """Test the endpoint when LlamaStack connection fails during update."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.can_access_conversation")
         mocker.patch(
-            "app.endpoints.conversations_v1.retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.retrieve_conversation",
             return_value=mock_conversation,
         )
 
@@ -2036,7 +2036,7 @@ class TestUpdateConversationEndpoint:
             request=None  # type: ignore
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -2067,12 +2067,12 @@ class TestUpdateConversationEndpoint:
         """Test the endpoint when LlamaStack returns NotFoundError during update."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.can_access_conversation")
         mocker.patch(
-            "app.endpoints.conversations_v1.retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.retrieve_conversation",
             return_value=mock_conversation,
         )
 
@@ -2084,7 +2084,7 @@ class TestUpdateConversationEndpoint:
             body=None,
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -2115,12 +2115,12 @@ class TestUpdateConversationEndpoint:
         """Test when SQLAlchemyError is raised during database update."""
         mock_authorization_resolvers(mocker)
         mocker.patch(
-            "app.endpoints.conversations_v1.configuration", setup_configuration
+            "lightspeed_stack.app.endpoints.conversations_v1.configuration", setup_configuration
         )
-        mocker.patch("app.endpoints.conversations_v1.check_suid", return_value=True)
-        mocker.patch("app.endpoints.conversations_v1.can_access_conversation")
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v1.can_access_conversation")
         mocker.patch(
-            "app.endpoints.conversations_v1.retrieve_conversation",
+            "lightspeed_stack.app.endpoints.conversations_v1.retrieve_conversation",
             return_value=mock_conversation,
         )
 
@@ -2128,7 +2128,7 @@ class TestUpdateConversationEndpoint:
         mock_client = mocker.AsyncMock()
         mock_client.conversations.update.return_value = None
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -2144,7 +2144,7 @@ class TestUpdateConversationEndpoint:
         mock_session_context.__enter__.return_value = mock_session
         mock_session_context.__exit__.return_value = None
         mocker.patch(
-            "app.endpoints.conversations_v1.get_session",
+            "lightspeed_stack.app.endpoints.conversations_v1.get_session",
             return_value=mock_session_context,
         )
 

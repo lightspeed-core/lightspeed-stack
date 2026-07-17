@@ -14,13 +14,13 @@ from fastapi.responses import StreamingResponse
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
-from app.endpoints.responses import responses_endpoint_handler
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.requests import ResponsesRequest
-from models.api.responses.successful import ResponsesResponse
-from models.common.responses.contexts import ResponsesContext
-from models.database.conversations import UserConversation, UserTurn
+from lightspeed_stack.app.endpoints.responses import responses_endpoint_handler
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import ResponsesRequest
+from lightspeed_stack.models.api.responses.successful import ResponsesResponse
+from lightspeed_stack.models.common.responses.contexts import ResponsesContext
+from lightspeed_stack.models.database.conversations import UserConversation, UserTurn
 
 MOCK_AUTH: AuthTuple = (
     "00000000-0000-0000-0000-000",
@@ -116,9 +116,9 @@ def _patch_client_holders(mocker: MockerFixture, mock_client: Any) -> None:
     utils.responses) and bypasses ResponsesContext Pydantic validation.
     """
     for module in (
-        "app.endpoints.responses",
-        "utils.endpoints",
-        "utils.responses",
+        "lightspeed_stack.app.endpoints.responses",
+        "lightspeed_stack.utils.endpoints",
+        "lightspeed_stack.utils.responses",
     ):
         holder = mocker.patch(f"{module}.AsyncLlamaStackClientHolder")
         holder.return_value.get_client.return_value = mock_client
@@ -129,7 +129,7 @@ def _patch_client_holders(mocker: MockerFixture, mock_client: Any) -> None:
         return original_cls.model_construct(**kwargs)
 
     mocker.patch(
-        "app.endpoints.responses.ResponsesContext", side_effect=_skip_validation
+        "lightspeed_stack.app.endpoints.responses.ResponsesContext", side_effect=_skip_validation
     )
 
 
@@ -142,7 +142,7 @@ def _setup_test(mocker: MockerFixture) -> Any:
     mock_client = _build_mock_client(mocker)
     _patch_client_holders(mocker, mock_client)
     mocker.patch(
-        "app.endpoints.responses.maybe_get_topic_summary",
+        "lightspeed_stack.app.endpoints.responses.maybe_get_topic_summary",
         new=mocker.AsyncMock(return_value=None),
     )
     return mock_client

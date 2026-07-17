@@ -8,7 +8,7 @@ from typing import Any, Optional
 from llama_stack_api import OpenAIResponseOutput
 from pydantic import AnyUrl, BaseModel, Field
 
-from utils.token_counter import TokenCounter
+from lightspeed_stack.utils.token_counter import TokenCounter
 
 
 class RAGChunk(BaseModel):

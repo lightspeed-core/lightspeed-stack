@@ -14,7 +14,7 @@ from pydantic_ai.models import create_async_http_client
 from pydantic_ai.profiles.openai import openai_model_profile
 from pydantic_ai.providers import Provider
 
-from pydantic_ai_lightspeed.llamastack._transport import (
+from lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport import (
     LlamaStackLibraryTransport,
     wrap_http_client_with_provider_data,
 )

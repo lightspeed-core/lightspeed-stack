@@ -6,23 +6,23 @@ from fastapi import HTTPException
 from pydantic import AnyUrl, ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
-import constants
-from app.database import get_session
-from client import AsyncLlamaStackClientHolder
-from configuration import AppConfig, LogicError
-from log import get_logger
-from models.api.responses.error import (
+from lightspeed_stack import constants
+from lightspeed_stack.app.database import get_session
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import AppConfig, LogicError
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
 )
-from models.common.responses.responses_conversation_context import (
+from lightspeed_stack.models.common.responses.responses_conversation_context import (
     ResponsesConversationContext,
 )
-from models.common.turn_summary import RAGChunk, ReferencedDocument, TurnSummary
-from models.database.conversations import UserConversation, UserTurn
-from utils.responses import create_new_conversation
-from utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
+from lightspeed_stack.models.common.turn_summary import RAGChunk, ReferencedDocument, TurnSummary
+from lightspeed_stack.models.database.conversations import UserConversation, UserTurn
+from lightspeed_stack.utils.responses import create_new_conversation
+from lightspeed_stack.utils.suid import normalize_conversation_id, to_llama_stack_conversation_id
 
 logger = get_logger(__name__)
 

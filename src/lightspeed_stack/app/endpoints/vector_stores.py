@@ -15,20 +15,20 @@ from llama_stack_client import (
 )
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 
-from authentication import get_auth_dependency
-from authentication.interface import AuthTuple
-from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
-from configuration import configuration
-from constants import DEFAULT_MAX_FILE_UPLOAD_SIZE
-from log import get_logger
-from models.api.requests import (
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.constants import DEFAULT_MAX_FILE_UPLOAD_SIZE
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.requests import (
     VectorStoreCreateRequest,
     VectorStoreFileCreateRequest,
     VectorStoreUpdateRequest,
 )
-from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
-from models.api.responses.error import (
+from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
+from lightspeed_stack.models.api.responses.error import (
     FileTooLargeResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -36,7 +36,7 @@ from models.api.responses.error import (
     ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
-from models.api.responses.successful import (
+from lightspeed_stack.models.api.responses.successful import (
     FileResponse,
     VectorStoreDeleteResponse,
     VectorStoreFileDeleteResponse,
@@ -45,9 +45,9 @@ from models.api.responses.successful import (
     VectorStoreResponse,
     VectorStoresListResponse,
 )
-from models.config import Action
-from utils.endpoints import check_configuration_loaded
-from utils.query import handle_known_apistatus_errors
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.utils.endpoints import check_configuration_loaded
+from lightspeed_stack.utils.query import handle_known_apistatus_errors
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["vector-stores"])

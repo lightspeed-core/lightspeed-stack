@@ -4,8 +4,8 @@ from typing import ClassVar
 
 from fastapi import status
 
-from models.api.responses.constants import SERVICE_UNAVAILABLE_DESCRIPTION
-from models.api.responses.error.bases import AbstractErrorResponse
+from lightspeed_stack.models.api.responses.constants import SERVICE_UNAVAILABLE_DESCRIPTION
+from lightspeed_stack.models.api.responses.error.bases import AbstractErrorResponse
 
 
 class ServiceUnavailableResponse(AbstractErrorResponse):

@@ -11,8 +11,8 @@ from pytest_mock import MockerFixture, MockType
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.orm import Session
 
-from app import database
-from models.config import PostgreSQLDatabaseConfiguration, SQLiteDatabaseConfiguration
+from lightspeed_stack.app import database
+from lightspeed_stack.models.config import PostgreSQLDatabaseConfiguration, SQLiteDatabaseConfiguration
 
 
 @pytest.fixture(name="reset_database_state")
@@ -106,8 +106,8 @@ class TestCreateTables:
 
     def test_create_tables_success(self, mocker: MockerFixture) -> None:
         """Test create_tables calls Base.metadata.create_all with engine."""
-        mock_base = mocker.patch("app.database.Base")
-        mock_get_engine = mocker.patch("app.database.get_engine")
+        mock_base = mocker.patch("lightspeed_stack.app.database.Base")
+        mock_get_engine = mocker.patch("lightspeed_stack.app.database.get_engine")
         mock_engine = mocker.MagicMock(spec=Engine)
         mock_get_engine.return_value = mock_engine
 
@@ -120,7 +120,7 @@ class TestCreateTables:
         self, mocker: MockerFixture
     ) -> None:
         """Test create_tables raises error when engine not initialized."""
-        mock_get_engine = mocker.patch("app.database.get_engine")
+        mock_get_engine = mocker.patch("lightspeed_stack.app.database.get_engine")
         mock_get_engine.side_effect = RuntimeError("Database engine not initialized")
 
         with pytest.raises(RuntimeError, match="Database engine not initialized"):
@@ -152,7 +152,7 @@ class TestCreateSqliteEngine:
 
     def test_create_sqlite_engine_creation_failure(self, mocker: MockerFixture) -> None:
         """Test _create_sqlite_engine handles engine creation failure."""
-        mock_create_engine = mocker.patch("app.database.create_engine")
+        mock_create_engine = mocker.patch("lightspeed_stack.app.database.create_engine")
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "test.db"
             config = SQLiteDatabaseConfiguration(db_path=str(db_path))
@@ -171,7 +171,7 @@ class TestCreatePostgresEngine:
         base_postgres_config: PostgreSQLDatabaseConfiguration,
     ) -> None:
         """Test _create_postgres_engine creates engine successfully with default schema."""
-        mock_create_engine = mocker.patch("app.database.create_engine")
+        mock_create_engine = mocker.patch("lightspeed_stack.app.database.create_engine")
         mock_engine = mocker.MagicMock(spec=Engine)
         mock_create_engine.return_value = mock_engine
 
@@ -193,7 +193,7 @@ class TestCreatePostgresEngine:
         base_postgres_config: PostgreSQLDatabaseConfiguration,
     ) -> None:
         """Test _create_postgres_engine creates engine successfully with custom schema."""
-        mock_create_engine = mocker.patch("app.database.create_engine")
+        mock_create_engine = mocker.patch("lightspeed_stack.app.database.create_engine")
         mock_engine = mocker.MagicMock(spec=Engine)
         mock_connection = mocker.MagicMock()
         mock_engine.connect.return_value.__enter__.return_value = mock_connection
@@ -217,7 +217,7 @@ class TestCreatePostgresEngine:
         base_postgres_config: PostgreSQLDatabaseConfiguration,
     ) -> None:
         """Test _create_postgres_engine with CA certificate path."""
-        mock_create_engine = mocker.patch("app.database.create_engine")
+        mock_create_engine = mocker.patch("lightspeed_stack.app.database.create_engine")
         mock_engine = mocker.MagicMock(spec=Engine)
         mock_create_engine.return_value = mock_engine
 
@@ -238,7 +238,7 @@ class TestCreatePostgresEngine:
         base_postgres_config: PostgreSQLDatabaseConfiguration,
     ) -> None:
         """Test _create_postgres_engine handles engine creation failure."""
-        mock_create_engine = mocker.patch("app.database.create_engine")
+        mock_create_engine = mocker.patch("lightspeed_stack.app.database.create_engine")
         mock_create_engine.side_effect = Exception("Connection failed")
 
         with pytest.raises(RuntimeError, match="PostgreSQL engine creation failed"):
@@ -250,7 +250,7 @@ class TestCreatePostgresEngine:
         base_postgres_config: PostgreSQLDatabaseConfiguration,
     ) -> None:
         """Test _create_postgres_engine handles schema creation failure."""
-        mock_create_engine = mocker.patch("app.database.create_engine")
+        mock_create_engine = mocker.patch("lightspeed_stack.app.database.create_engine")
         mock_engine = mocker.MagicMock(spec=Engine)
         mock_connection = mocker.MagicMock()
         mock_connection.execute.side_effect = Exception("Schema creation failed")
@@ -335,10 +335,10 @@ class TestInitializeDatabase:
     ) -> None:
         """Test initialize_database with SQLite configuration."""
         # Setup mocks
-        mock_configuration = mocker.patch("app.database.configuration")
-        mock_create_sqlite_engine = mocker.patch("app.database._create_sqlite_engine")
-        mock_sessionmaker = mocker.patch("app.database.sessionmaker")
-        mock_logger = mocker.patch("app.database.logger")
+        mock_configuration = mocker.patch("lightspeed_stack.app.database.configuration")
+        mock_create_sqlite_engine = mocker.patch("lightspeed_stack.app.database._create_sqlite_engine")
+        mock_sessionmaker = mocker.patch("lightspeed_stack.app.database.sessionmaker")
+        mock_logger = mocker.patch("lightspeed_stack.app.database.logger")
 
         mock_engine, mock_session_local = self._setup_common_mocks(
             mocker=mocker, mock_sessionmaker=mock_sessionmaker, mock_logger=mock_logger
@@ -370,12 +370,12 @@ class TestInitializeDatabase:
     ) -> None:
         """Test initialize_database with PostgreSQL configuration."""
         # Setup mocks
-        mock_configuration = mocker.patch("app.database.configuration")
+        mock_configuration = mocker.patch("lightspeed_stack.app.database.configuration")
         mock_create_postgres_engine = mocker.patch(
-            "app.database._create_postgres_engine"
+            "lightspeed_stack.app.database._create_postgres_engine"
         )
-        mock_sessionmaker = mocker.patch("app.database.sessionmaker")
-        mock_logger = mocker.patch("app.database.logger")
+        mock_sessionmaker = mocker.patch("lightspeed_stack.app.database.sessionmaker")
+        mock_logger = mocker.patch("lightspeed_stack.app.database.logger")
 
         mock_engine, mock_session_local = self._setup_common_mocks(
             mocker=mocker,

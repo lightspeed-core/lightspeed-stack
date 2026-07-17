@@ -1,7 +1,7 @@
 """Pydantic models."""
 
-from models import api, common, database
-from models.config import Configuration
+from lightspeed_stack.models import api, common, database
+from lightspeed_stack.models.config import Configuration
 
 __all__ = [
     "Configuration",

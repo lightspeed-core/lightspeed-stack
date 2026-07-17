@@ -5,7 +5,7 @@
 from json import load
 from pathlib import Path
 
-from utils.models_dumper import dump_models
+from lightspeed_stack.utils.models_dumper import dump_models
 
 
 def test_dump_models(tmpdir: Path) -> None:

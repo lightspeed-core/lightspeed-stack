@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from pytest_mock import MockerFixture
 
-from utils import checks
+from lightspeed_stack.utils import checks
 
 
 @pytest.fixture(name="input_file")

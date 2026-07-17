@@ -9,8 +9,8 @@ from fastapi import HTTPException, status
 from pytest_mock import MockerFixture
 from starlette.types import Message, Receive, Scope, Send
 
-from app.main import GlobalExceptionMiddleware, RestApiMetricsMiddleware
-from models.api.responses.error import InternalServerErrorResponse
+from lightspeed_stack.app.main import GlobalExceptionMiddleware, RestApiMetricsMiddleware
+from lightspeed_stack.models.api.responses.error import InternalServerErrorResponse
 
 
 def _make_scope(path: str = "/test", root_path: str = "") -> Scope:
@@ -165,11 +165,11 @@ async def test_rest_api_metrics_increments_counter_on_exception(
     mocker: MockerFixture,
 ) -> None:
     """Counter must be incremented even when the inner app raises."""
-    mocker.patch("app.main.app_routes_paths", ["/v1/infer"])
+    mocker.patch("lightspeed_stack.app.main.app_routes_paths", ["/v1/infer"])
     mock_measure_duration = mocker.patch(
-        "app.main.recording.measure_response_duration", return_value=nullcontext()
+        "lightspeed_stack.app.main.recording.measure_response_duration", return_value=nullcontext()
     )
-    mock_record_call = mocker.patch("app.main.recording.record_rest_api_call")
+    mock_record_call = mocker.patch("lightspeed_stack.app.main.recording.record_rest_api_call")
 
     async def failing_app(_scope: Scope, _receive: Receive, _send: Send) -> None:
         raise RuntimeError("boom")
@@ -188,11 +188,11 @@ async def test_rest_api_metrics_strips_root_path(
     mocker: MockerFixture,
 ) -> None:
     """Middleware must strip root_path so prefixed requests still match routes."""
-    mocker.patch("app.main.app_routes_paths", ["/v1/infer"])
+    mocker.patch("lightspeed_stack.app.main.app_routes_paths", ["/v1/infer"])
     mock_measure_duration = mocker.patch(
-        "app.main.recording.measure_response_duration", return_value=nullcontext()
+        "lightspeed_stack.app.main.recording.measure_response_duration", return_value=nullcontext()
     )
-    mock_record_call = mocker.patch("app.main.recording.record_rest_api_call")
+    mock_record_call = mocker.patch("lightspeed_stack.app.main.recording.record_rest_api_call")
 
     async def ok_app(_scope: Scope, _receive: Receive, send: Send) -> None:
         await send({"type": "http.response.start", "status": 200, "headers": []})
@@ -219,11 +219,11 @@ async def test_rest_api_metrics_no_root_path_unchanged(
     mocker: MockerFixture,
 ) -> None:
     """Without root_path, middleware behaves as before."""
-    mocker.patch("app.main.app_routes_paths", ["/v1/infer"])
+    mocker.patch("lightspeed_stack.app.main.app_routes_paths", ["/v1/infer"])
     mock_measure_duration = mocker.patch(
-        "app.main.recording.measure_response_duration", return_value=nullcontext()
+        "lightspeed_stack.app.main.recording.measure_response_duration", return_value=nullcontext()
     )
-    mock_record_call = mocker.patch("app.main.recording.record_rest_api_call")
+    mock_record_call = mocker.patch("lightspeed_stack.app.main.recording.record_rest_api_call")
 
     async def ok_app(_scope: Scope, _receive: Receive, send: Send) -> None:
         await send({"type": "http.response.start", "status": 200, "headers": []})

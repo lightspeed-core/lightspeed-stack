@@ -1,6 +1,6 @@
 """Unit tests for FeedbackStatusUpdateRequest model."""
 
-from models.api.requests import FeedbackStatusUpdateRequest
+from lightspeed_stack.models.api.requests import FeedbackStatusUpdateRequest
 
 
 class TestFeedbackStatusUpdateRequest:

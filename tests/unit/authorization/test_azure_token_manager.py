@@ -12,12 +12,12 @@ from azure.core.exceptions import ClientAuthenticationError
 from pydantic import SecretStr
 from pytest_mock import MockerFixture
 
-from authorization.azure_token_manager import (
+from lightspeed_stack.authorization.azure_token_manager import (
     TOKEN_EXPIRATION_LEEWAY,
     AzureEntraIDManager,
 )
-from configuration import AzureEntraIdConfiguration
-from constants import DEFAULT_LOGGER_NAME
+from lightspeed_stack.configuration import AzureEntraIdConfiguration
+from lightspeed_stack.constants import DEFAULT_LOGGER_NAME
 
 
 @pytest.fixture(name="dummy_config")
@@ -120,7 +120,7 @@ class TestAzureEntraIDTokenManager:
         mock_credential_instance.get_token.return_value = dummy_access_token
 
         mocker.patch(
-            "authorization.azure_token_manager.ClientSecretCredential",
+            "lightspeed_stack.authorization.azure_token_manager.ClientSecretCredential",
             return_value=mock_credential_instance,
         )
 
@@ -145,7 +145,7 @@ class TestAzureEntraIDTokenManager:
             "fail"
         )
         mocker.patch(
-            "authorization.azure_token_manager.ClientSecretCredential",
+            "lightspeed_stack.authorization.azure_token_manager.ClientSecretCredential",
             return_value=mock_credential_instance,
         )
 
@@ -167,11 +167,11 @@ class TestAzureEntraIDTokenManager:
             "valid-token", now + TOKEN_EXPIRATION_LEEWAY + 60
         )
 
-        mocker.patch("authorization.azure_token_manager.time.time", return_value=now)
+        mocker.patch("lightspeed_stack.authorization.azure_token_manager.time.time", return_value=now)
         assert not token_manager.is_token_expired
 
         mocker.patch(
-            "authorization.azure_token_manager.time.time",
+            "lightspeed_stack.authorization.azure_token_manager.time.time",
             return_value=now + TOKEN_EXPIRATION_LEEWAY + 120,
         )
         assert token_manager.is_token_expired

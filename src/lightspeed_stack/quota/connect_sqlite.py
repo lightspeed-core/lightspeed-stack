@@ -3,8 +3,8 @@
 import sqlite3
 from typing import Any
 
-from log import get_logger
-from models.config import SQLiteDatabaseConfiguration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import SQLiteDatabaseConfiguration
 
 logger = get_logger(__name__)
 

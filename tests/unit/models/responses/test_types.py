@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from models.common import (
+from lightspeed_stack.models.common import (
     ConversationData,
     ConversationDetails,
     ProviderHealthStatus,

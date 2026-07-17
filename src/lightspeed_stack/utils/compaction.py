@@ -32,10 +32,10 @@ from typing import Any
 
 from llama_stack_client import AsyncLlamaStackClient
 
-from log import get_logger
-from models.compaction import ConversationSummary
-from utils.query import normalize_vertex_ai_model_id
-from utils.token_estimator import (
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.compaction import ConversationSummary
+from lightspeed_stack.utils.query import normalize_vertex_ai_model_id
+from lightspeed_stack.utils.token_estimator import (
     estimate_conversation_tokens,
     estimate_tokens,
     extract_message_text,

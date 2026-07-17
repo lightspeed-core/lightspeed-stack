@@ -11,14 +11,14 @@ from typing import Any, Optional
 
 from fastapi import HTTPException, Request
 
-from authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
-from configuration import configuration
-from constants import (
+from lightspeed_stack.authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.constants import (
     DEFAULT_RH_IDENTITY_MAX_HEADER_SIZE,
     DEFAULT_VIRTUAL_PATH,
     NO_USER_TOKEN,
 )
-from log import get_logger
+from lightspeed_stack.log import get_logger
 
 logger = get_logger(__name__)
 

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from utils.tool_formatter import translate_vector_store_ids_to_user_facing
+from lightspeed_stack.utils.tool_formatter import translate_vector_store_ids_to_user_facing
 
 
 class TestTranslateVectorStoreIdsToUserFacing:

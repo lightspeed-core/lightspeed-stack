@@ -5,9 +5,9 @@ from typing import ClassVar
 from fastapi import status
 from typing_extensions import Self  # noqa: UP035
 
-from models.api.responses.constants import QUOTA_EXCEEDED_DESCRIPTION
-from models.api.responses.error.bases import AbstractErrorResponse
-from quota.quota_exceed_error import QuotaExceedError
+from lightspeed_stack.models.api.responses.constants import QUOTA_EXCEEDED_DESCRIPTION
+from lightspeed_stack.models.api.responses.error.bases import AbstractErrorResponse
+from lightspeed_stack.quota.quota_exceed_error import QuotaExceedError
 
 
 class QuotaExceededResponse(AbstractErrorResponse):

@@ -8,10 +8,10 @@ from fastapi import BackgroundTasks
 from llama_stack_client import AsyncLlamaStackClient
 from pydantic import BaseModel, ConfigDict, Field
 
-from models.api.requests import QueryRequest
-from models.common.moderation import ShieldModerationResult
-from models.common.responses.types import ResponseInput
-from models.common.turn_summary import RAGContext
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.common.moderation import ShieldModerationResult
+from lightspeed_stack.models.common.responses.types import ResponseInput
+from lightspeed_stack.models.common.turn_summary import RAGContext
 
 
 # TODO: LCORE-2121: Use AuthTuple everywhere (type refactoring needed) pylint: disable=W0511

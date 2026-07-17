@@ -37,10 +37,10 @@ from typing import Optional
 
 import psycopg2
 
-from log import get_logger
-from models.config import PostgreSQLDatabaseConfiguration, SQLiteDatabaseConfiguration
-from quota.connect_pg import connect_pg
-from quota.connect_sqlite import connect_sqlite
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import PostgreSQLDatabaseConfiguration, SQLiteDatabaseConfiguration
+from lightspeed_stack.quota.connect_pg import connect_pg
+from lightspeed_stack.quota.connect_sqlite import connect_sqlite
 
 logger = get_logger(__name__)
 

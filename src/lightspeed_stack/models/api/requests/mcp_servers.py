@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from constants import MCP_AUTH_CLIENT, MCP_AUTH_KUBERNETES, MCP_AUTH_OAUTH
+from lightspeed_stack.constants import MCP_AUTH_CLIENT, MCP_AUTH_KUBERNETES, MCP_AUTH_OAUTH
 
 
 class MCPServerRegistrationRequest(BaseModel):

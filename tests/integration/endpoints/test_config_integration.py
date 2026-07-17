@@ -5,9 +5,9 @@ from typing import cast
 import pytest
 from fastapi import HTTPException, Request, status
 
-from app.endpoints.config import config_endpoint_handler
-from authentication.interface import AuthTuple
-from configuration import AppConfig
+from lightspeed_stack.app.endpoints.config import config_endpoint_handler
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
 
 
 @pytest.mark.asyncio

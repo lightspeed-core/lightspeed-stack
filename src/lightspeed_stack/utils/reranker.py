@@ -7,10 +7,10 @@ to improve the relevance of retrieved documents in RAG applications.
 import asyncio
 from typing import Any
 
-import constants
-from configuration import configuration
-from log import get_logger
-from models.common.turn_summary import RAGChunk
+from lightspeed_stack import constants
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.common.turn_summary import RAGChunk
 
 logger = get_logger(__name__)
 

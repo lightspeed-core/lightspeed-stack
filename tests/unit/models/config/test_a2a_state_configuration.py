@@ -5,8 +5,8 @@
 import pytest
 from pydantic import SecretStr, ValidationError
 
-import constants
-from models.config import (
+from lightspeed_stack import constants
+from lightspeed_stack.models.config import (
     A2AStateConfiguration,
     PostgreSQLDatabaseConfiguration,
     SQLiteDatabaseConfiguration,

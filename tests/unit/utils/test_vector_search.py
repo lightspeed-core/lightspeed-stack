@@ -6,16 +6,16 @@ import pytest
 from pydantic import AnyUrl
 from pytest_mock import MockerFixture
 
-import constants
-from configuration import AppConfig
-from models.common.query import SolrVectorSearchRequest
-from models.common.turn_summary import RAGChunk
-from utils.reranker import (
+from lightspeed_stack import constants
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.common.query import SolrVectorSearchRequest
+from lightspeed_stack.models.common.turn_summary import RAGChunk
+from lightspeed_stack.utils.reranker import (
     _get_cross_encoder,
     apply_byok_rerank_boost,
     rerank_chunks_with_cross_encoder,
 )
-from utils.vector_search import (
+from lightspeed_stack.utils.vector_search import (
     _build_document_url,
     _build_query_params,
     _convert_solr_chunks_to_rag_format,
@@ -38,14 +38,14 @@ class TestIsSolrEnabled:
         """Test when Solr is enabled in configuration."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.inline_solr_enabled = True
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
         assert _is_solr_enabled() is True
 
     def test_solr_enabled_false(self, mocker: MockerFixture) -> None:
         """Test when Solr is disabled in configuration."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.inline_solr_enabled = False
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
         assert _is_solr_enabled() is False
 
 
@@ -367,14 +367,14 @@ class TestGetOkpBaseUrl:
         custom = "https://custom.okp.example.com"
         config_mock = mocker.Mock()
         config_mock.okp.rhokp_url = custom
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
         assert _get_okp_base_url() == AnyUrl(custom)
 
     def test_returns_default_when_rhokp_url_unset(self, mocker: MockerFixture) -> None:
         """When rhokp_url is missing or empty, returned base URL uses default."""
         config_mock = mocker.Mock()
         config_mock.okp.rhokp_url = None
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
         assert _get_okp_base_url() == AnyUrl(constants.RH_SERVER_OKP_DEFAULT_URL)
         assert str(_get_okp_base_url()).startswith("http://")
 
@@ -386,7 +386,7 @@ class TestBuildDocumentUrl:
         """Test URL building in offline mode with source_path."""
         config_mock = mocker.Mock()
         config_mock.okp.rhokp_url = "https://mimir.test"
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
         doc_url, reference_doc = _build_document_url(
             offline=True,
             doc_id="doc_123",
@@ -400,7 +400,7 @@ class TestBuildDocumentUrl:
         """Test offline mode falls back to doc_id when source_path is None."""
         config_mock = mocker.Mock()
         config_mock.okp.rhokp_url = "https://mimir.test"
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
         doc_url, reference_doc = _build_document_url(
             offline=True, doc_id="doc_123", reference_url=None
         )
@@ -422,7 +422,7 @@ class TestBuildDocumentUrl:
         """Test online mode when reference_url doesn't start with http."""
         config_mock = mocker.Mock()
         config_mock.okp.rhokp_url = "https://mimir.test"
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
         doc_url, reference_doc = _build_document_url(
             offline=False, doc_id="doc_123", reference_url="relative/path"
         )
@@ -520,7 +520,7 @@ class TestFetchByokRag:
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.configuration.rag.inline = []
         config_mock.configuration.byok_rag = []
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
         rag_chunks, referenced_docs = await _fetch_byok_rag(client_mock, "test query")
@@ -541,7 +541,7 @@ class TestFetchByokRag:
         config_mock.configuration.byok_rag = [byok_rag_mock]
         config_mock.score_multiplier_mapping = {"vs_1": 1.5}
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
 
         # Mock search response
         chunk_mock = mocker.Mock()
@@ -580,7 +580,7 @@ class TestFetchByokRag:
         config_mock.configuration.rag.inline = ["my-kb"]
         config_mock.score_multiplier_mapping = {"vs-internal-001": 1.0}
         config_mock.rag_id_mapping = {"vs-internal-001": "my-kb"}
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
 
         chunk_mock = mocker.Mock()
         chunk_mock.content = "Test content"
@@ -623,7 +623,7 @@ class TestFetchByokRag:
             "vs-aaa-111": "kb-part1",
             "vs-bbb-222": "kb-part2",
         }
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
 
         chunk_mock = mocker.Mock()
         chunk_mock.content = "Content"
@@ -660,7 +660,7 @@ class TestFetchByokRag:
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.configuration.rag.inline = []
         config_mock.configuration.byok_rag = []
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
 
@@ -680,7 +680,7 @@ class TestFetchByokRag:
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.configuration.rag.inline = ["registered-id"]
         config_mock.configuration.byok_rag = []
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
 
@@ -701,7 +701,7 @@ class TestFetchSolrRag:
         """Test when Solr is disabled."""
         config_mock = mocker.Mock(spec=AppConfig)
         config_mock.inline_solr_enabled = False
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
         rag_chunks, referenced_docs = await _fetch_solr_rag(client_mock, "test query")
@@ -718,7 +718,7 @@ class TestFetchSolrRag:
         config_mock.inline_solr_enabled = True
         config_mock.okp.offline = True
         config_mock.okp.rhokp_url = "https://okp.test"
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
 
         # Mock chunk
         chunk_mock = mocker.Mock()
@@ -750,7 +750,7 @@ class TestFetchSolrRag:
         config_mock.inline_solr_enabled = True
         config_mock.okp.offline = True
         config_mock.okp.rhokp_url = "https://okp.test"
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
 
         chunk_mock = mocker.Mock()
         chunk_mock.content = "Solr content"
@@ -786,7 +786,7 @@ class TestBuildRagContext:
         config_mock.configuration.rag.inline = []
         config_mock.configuration.byok_rag = []
         config_mock.inline_solr_enabled = False
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
 
         client_mock = mocker.AsyncMock()
         context = await build_rag_context(client_mock, "passed", "test query", None)
@@ -808,7 +808,7 @@ class TestBuildRagContext:
         config_mock.inline_solr_enabled = False
         config_mock.score_multiplier_mapping = {"vs_1": 1.0}
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
 
         # Mock chunk
         chunk_mock = mocker.Mock()
@@ -847,8 +847,8 @@ class TestBuildRagContext:
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         config_mock.reranker.enabled = True
         config_mock.reranker.model = "test-model"
-        mocker.patch("utils.vector_search.configuration", config_mock)
-        mocker.patch("utils.reranker.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.reranker.configuration", config_mock)
 
         # Mock BYOK search response
         chunk_mock = mocker.Mock()
@@ -865,7 +865,7 @@ class TestBuildRagContext:
 
         # Mock cross-encoder reranking function
         mock_rerank = mocker.patch(
-            "utils.vector_search.rerank_chunks_with_cross_encoder"
+            "lightspeed_stack.utils.vector_search.rerank_chunks_with_cross_encoder"
         )
         mock_rerank.return_value = [
             RAGChunk(content="BYOK content", source="rag_1", score=0.95)
@@ -897,7 +897,7 @@ class TestBuildRagContext:
         config_mock.score_multiplier_mapping = {"vs_1": 1.0}
         config_mock.rag_id_mapping = {"vs_1": "rag_1"}
         config_mock.reranker.enabled = False
-        mocker.patch("utils.vector_search.configuration", config_mock)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", config_mock)
 
         # Mock BYOK search response
         chunk_mock = mocker.Mock()
@@ -913,7 +913,7 @@ class TestBuildRagContext:
         client_mock.vector_io.query.return_value = search_response
 
         # Mock cross-encoder reranking function
-        mock_rerank = mocker.patch("utils.reranker.rerank_chunks_with_cross_encoder")
+        mock_rerank = mocker.patch("lightspeed_stack.utils.reranker.rerank_chunks_with_cross_encoder")
 
         context = await build_rag_context(client_mock, "passed", "test query", None)
 
@@ -931,15 +931,15 @@ class TestGetCrossEncoder:
         """Test successful model loading and caching when reranker is enabled."""
         # Clear the cache for testing
         # pylint: disable=import-outside-toplevel
-        from utils.reranker import _cross_encoder_models
+        from lightspeed_stack.utils.reranker import _cross_encoder_models
 
         _cross_encoder_models.clear()
 
         # Mock reranker configuration to be enabled
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = True
-        mocker.patch("utils.vector_search.configuration", mock_config)
-        mocker.patch("utils.reranker.configuration", mock_config)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", mock_config)
+        mocker.patch("lightspeed_stack.utils.reranker.configuration", mock_config)
 
         # Mock the CrossEncoder class by patching the import
         mock_model_instance = mocker.Mock()
@@ -963,15 +963,15 @@ class TestGetCrossEncoder:
         """Test that models are cached and not reloaded when reranker is enabled."""
         # Clear the cache for testing
         # pylint: disable=import-outside-toplevel
-        from utils.reranker import _cross_encoder_models
+        from lightspeed_stack.utils.reranker import _cross_encoder_models
 
         _cross_encoder_models.clear()
 
         # Mock reranker configuration to be enabled
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = True
-        mocker.patch("utils.vector_search.configuration", mock_config)
-        mocker.patch("utils.reranker.configuration", mock_config)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", mock_config)
+        mocker.patch("lightspeed_stack.utils.reranker.configuration", mock_config)
 
         mock_model_instance = mocker.Mock()
         mock_cross_encoder = mocker.Mock(return_value=mock_model_instance)
@@ -997,15 +997,15 @@ class TestGetCrossEncoder:
         """Test graceful handling of sentence_transformers import error when reranker is enabled."""
         # Clear the cache for testing
         # pylint: disable=import-outside-toplevel
-        from utils.reranker import _cross_encoder_models
+        from lightspeed_stack.utils.reranker import _cross_encoder_models
 
         _cross_encoder_models.clear()
 
         # Mock reranker configuration to be enabled
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = True
-        mocker.patch("utils.vector_search.configuration", mock_config)
-        mocker.patch("utils.reranker.configuration", mock_config)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", mock_config)
+        mocker.patch("lightspeed_stack.utils.reranker.configuration", mock_config)
 
         # Mock asyncio.to_thread to raise an exception
         mocker.patch("asyncio.to_thread", side_effect=Exception("Model loading failed"))
@@ -1019,15 +1019,15 @@ class TestGetCrossEncoder:
         """Test graceful handling of model instantiation error when reranker is enabled."""
         # Clear the cache for testing
         # pylint: disable=import-outside-toplevel
-        from utils.reranker import _cross_encoder_models
+        from lightspeed_stack.utils.reranker import _cross_encoder_models
 
         _cross_encoder_models.clear()
 
         # Mock reranker configuration to be enabled
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = True
-        mocker.patch("utils.vector_search.configuration", mock_config)
-        mocker.patch("utils.reranker.configuration", mock_config)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", mock_config)
+        mocker.patch("lightspeed_stack.utils.reranker.configuration", mock_config)
 
         # Mock asyncio.to_thread to raise an exception
         mocker.patch("asyncio.to_thread", side_effect=Exception("Model loading failed"))
@@ -1043,14 +1043,14 @@ class TestGetCrossEncoder:
         """Test that _get_cross_encoder returns None when reranker is disabled."""
         # Clear the cache for testing
         # pylint: disable=import-outside-toplevel
-        from utils.reranker import _cross_encoder_models
+        from lightspeed_stack.utils.reranker import _cross_encoder_models
 
         _cross_encoder_models.clear()
 
         # Mock reranker configuration to be disabled
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = False
-        mocker.patch("utils.vector_search.configuration", mock_config)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", mock_config)
 
         # Mock the CrossEncoder class - should not be called since reranker is disabled
         mock_cross_encoder = mocker.Mock()
@@ -1072,14 +1072,14 @@ class TestGetCrossEncoder:
         """Test that no caching occurs when reranker is disabled."""
         # Clear the cache for testing
         # pylint: disable=import-outside-toplevel
-        from utils.reranker import _cross_encoder_models
+        from lightspeed_stack.utils.reranker import _cross_encoder_models
 
         _cross_encoder_models.clear()
 
         # Mock reranker configuration to be disabled
         mock_config = mocker.Mock()
         mock_config.reranker.enabled = False
-        mocker.patch("utils.vector_search.configuration", mock_config)
+        mocker.patch("lightspeed_stack.utils.vector_search.configuration", mock_config)
 
         # Call multiple times
         model1 = await _get_cross_encoder("test-model")
@@ -1116,7 +1116,7 @@ class TestRerankChunksWithCrossEncoder:
 
         # Mock _get_cross_encoder to return our mock model
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "lightspeed_stack.utils.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=mock_model,
         )
@@ -1157,7 +1157,7 @@ class TestRerankChunksWithCrossEncoder:
         mock_model = mocker.Mock()
         mock_model.predict.return_value = [2.5, 1.0, 3.0]
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "lightspeed_stack.utils.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=mock_model,
         )
@@ -1179,7 +1179,7 @@ class TestRerankChunksWithCrossEncoder:
         mock_model = mocker.Mock()
         mock_model.predict.return_value = [1.5, 1.5]  # Identical cross-encoder scores
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "lightspeed_stack.utils.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=mock_model,
         )
@@ -1204,7 +1204,7 @@ class TestRerankChunksWithCrossEncoder:
         mock_model = mocker.Mock()
         mock_model.predict.return_value = [2.5]
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "lightspeed_stack.utils.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=mock_model,
         )
@@ -1225,7 +1225,7 @@ class TestRerankChunksWithCrossEncoder:
 
         # Mock _get_cross_encoder to return None (loading failed)
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "lightspeed_stack.utils.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=None,
         )
@@ -1250,7 +1250,7 @@ class TestRerankChunksWithCrossEncoder:
         mock_model = mocker.Mock()
         mock_model.predict.side_effect = Exception("Prediction failed")
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "lightspeed_stack.utils.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=mock_model,
         )
@@ -1274,7 +1274,7 @@ class TestRerankChunksWithCrossEncoder:
         mock_model = mocker.Mock()
         mock_model.predict.return_value = mock_scores
         mocker.patch(
-            "utils.reranker._get_cross_encoder",
+            "lightspeed_stack.utils.reranker._get_cross_encoder",
             new_callable=mocker.AsyncMock,
             return_value=mock_model,
         )

@@ -16,19 +16,19 @@ from llama_stack_api.openai_responses import OpenAIResponseObject
 from llama_stack_client import APIConnectionError, APIStatusError, RateLimitError
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 
-import constants
-from authentication import get_auth_dependency
-from authentication.interface import AuthTuple
-from authorization.azure_token_manager import AzureEntraIDManager
-from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
-from configuration import configuration
-from constants import ENDPOINT_PATH_INFER
-from log import get_logger
-from metrics import recording
-from models.api.requests.rlsapi import RlsapiV1InferRequest, RlsapiV1SystemInfo
-from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
-from models.api.responses.error import (
+from lightspeed_stack import constants
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.azure_token_manager import AzureEntraIDManager
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.constants import ENDPOINT_PATH_INFER
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.metrics import recording
+from lightspeed_stack.models.api.requests.rlsapi import RlsapiV1InferRequest, RlsapiV1SystemInfo
+from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
+from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
@@ -38,31 +38,31 @@ from models.api.responses.error import (
     UnauthorizedResponse,
     UnprocessableEntityResponse,
 )
-from models.api.responses.successful.rlsapi import (
+from lightspeed_stack.models.api.responses.successful.rlsapi import (
     RlsapiV1InferData,
     RlsapiV1InferResponse,
 )
-from models.config import Action
-from observability import InferenceEventData, build_inference_event, send_splunk_event
-from utils.endpoints import check_configuration_loaded
-from utils.query import (
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.observability import InferenceEventData, build_inference_event, send_splunk_event
+from lightspeed_stack.utils.endpoints import check_configuration_loaded
+from lightspeed_stack.utils.query import (
     consume_query_tokens,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     is_context_length_error,
     normalize_vertex_ai_model_id,
 )
-from utils.quota_utils import check_tokens_available
-from utils.responses import (
+from lightspeed_stack.utils.quota_utils import check_tokens_available
+from lightspeed_stack.utils.responses import (
     build_turn_summary,
     check_model_configured,
     extract_text_from_response_items,
     extract_token_usage,
     get_mcp_tools,
 )
-from utils.rh_identity import AUTH_DISABLED, get_rh_identity_context
-from utils.shields import run_shield_moderation
-from utils.suid import get_suid
+from lightspeed_stack.utils.rh_identity import AUTH_DISABLED, get_rh_identity_context
+from lightspeed_stack.utils.shields import run_shield_moderation
+from lightspeed_stack.utils.suid import get_suid
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["rlsapi-v1"])

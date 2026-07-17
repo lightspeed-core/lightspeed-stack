@@ -27,11 +27,11 @@ from pydantic import (
 )
 from pydantic.dataclasses import dataclass
 
-import constants
-from log import get_logger
-from utils import checks
-from utils.mcp_auth_headers import resolve_authorization_headers
-from utils.types import CompiledPatterns
+from lightspeed_stack import constants
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.utils import checks
+from lightspeed_stack.utils.mcp_auth_headers import resolve_authorization_headers
+from lightspeed_stack.utils.types import CompiledPatterns
 
 logger = get_logger(__name__)
 

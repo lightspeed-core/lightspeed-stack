@@ -16,10 +16,10 @@ from pydantic_ai.messages import (
 from pydantic_ai.native_tools import FileSearchTool, MCPServerTool, WebSearchTool
 from pytest_mock import MockerFixture
 
-from constants import DEFAULT_RAG_TOOL
-from models.common.agents import AgentTurnAccumulator
-from models.common.turn_summary import TurnSummary
-from utils.agents.tool_processor import (
+from lightspeed_stack.constants import DEFAULT_RAG_TOOL
+from lightspeed_stack.models.common.agents import AgentTurnAccumulator
+from lightspeed_stack.models.common.turn_summary import TurnSummary
+from lightspeed_stack.utils.agents.tool_processor import (
     build_referenced_document,
     process_function_tool_call,
     process_function_tool_result,
@@ -152,7 +152,7 @@ class TestSummarizeNativeToolCall:
 
     def test_unknown_tool_returns_none(self, mocker: MockerFixture) -> None:
         """Test unknown native tool logs warning and returns None."""
-        mock_warning = mocker.patch("utils.agents.tool_processor.logger.warning")
+        mock_warning = mocker.patch("lightspeed_stack.utils.agents.tool_processor.logger.warning")
         part = NativeToolCallPart(
             tool_name="unknown_tool",
             args={},
@@ -222,7 +222,7 @@ class TestProcessNativeToolCall:
         self, turn_state: AgentTurnAccumulator, mocker: MockerFixture
     ) -> None:
         """Test duplicate ids and unknown tools are not recorded."""
-        mocker.patch("utils.agents.tool_processor.logger.warning")
+        mocker.patch("lightspeed_stack.utils.agents.tool_processor.logger.warning")
         part = NativeToolCallPart(
             tool_name="unknown",
             args={},
@@ -619,7 +619,7 @@ class TestProcessNativeToolResult:
         self, turn_state: AgentTurnAccumulator, mocker: MockerFixture
     ) -> None:
         """Test duplicate ids and unknown tool returns are ignored."""
-        mocker.patch("utils.agents.tool_processor.logger.warning")
+        mocker.patch("lightspeed_stack.utils.agents.tool_processor.logger.warning")
         part = NativeToolReturnPart(
             tool_name="unknown",
             tool_call_id="unk-result",

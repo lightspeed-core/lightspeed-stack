@@ -10,20 +10,20 @@ from fastapi import HTTPException
 from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
-import constants
-from authorization.azure_token_manager import AzureEntraIDManager
-from configuration import configuration
-from llama_stack_configuration import (
+from lightspeed_stack import constants
+from lightspeed_stack.authorization.azure_token_manager import AzureEntraIDManager
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.llama_stack_configuration import (
     YamlDumper,
     enrich_azure_entra_id_inference,
     enrich_byok_rag,
     enrich_solr,
     synthesize_to_file,
 )
-from log import get_logger, setup_logging
-from models.api.responses.error import ServiceUnavailableResponse
-from models.config import LlamaStackConfiguration
-from utils.types import Singleton
+from lightspeed_stack.log import get_logger, setup_logging
+from lightspeed_stack.models.api.responses.error import ServiceUnavailableResponse
+from lightspeed_stack.models.config import LlamaStackConfiguration
+from lightspeed_stack.utils.types import Singleton
 
 logger = get_logger(__name__)
 

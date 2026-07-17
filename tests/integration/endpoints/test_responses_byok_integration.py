@@ -6,13 +6,13 @@ import pytest
 from fastapi import Request
 from pytest_mock import MockerFixture
 
-import constants
-from app.endpoints.responses import responses_endpoint_handler
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.requests import ResponsesRequest
-from models.api.responses.successful import ResponsesResponse
-from models.common.responses.contexts import ResponsesContext
+from lightspeed_stack import constants
+from lightspeed_stack.app.endpoints.responses import responses_endpoint_handler
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import ResponsesRequest
+from lightspeed_stack.models.api.responses.successful import ResponsesResponse
+from lightspeed_stack.models.common.responses.contexts import ResponsesContext
 from tests.integration.endpoints.test_query_byok_integration import (
     _build_base_mock_client,
     _make_byok_vector_io_response,
@@ -77,9 +77,9 @@ def _build_responses_mock_client(mocker: MockerFixture) -> Any:
 def _patch_all_client_holders(mocker: MockerFixture, mock_client: Any) -> None:
     """Patch AsyncLlamaStackClientHolder in all modules used by the responses endpoint."""
     for module in (
-        "app.endpoints.responses",
-        "utils.endpoints",
-        "utils.responses",
+        "lightspeed_stack.app.endpoints.responses",
+        "lightspeed_stack.utils.endpoints",
+        "lightspeed_stack.utils.responses",
     ):
         holder = mocker.patch(f"{module}.AsyncLlamaStackClientHolder")
         holder.return_value.get_client.return_value = mock_client
@@ -90,7 +90,7 @@ def _patch_all_client_holders(mocker: MockerFixture, mock_client: Any) -> None:
         return original_cls.model_construct(**kwargs)
 
     mocker.patch(
-        "app.endpoints.responses.ResponsesContext", side_effect=_skip_validation
+        "lightspeed_stack.app.endpoints.responses.ResponsesContext", side_effect=_skip_validation
     )
 
 
@@ -669,7 +669,7 @@ async def test_responses_rag_content_limit_caps_inline_rag(  # pylint: disable=t
     - Context chunk count equals the lowered INLINE_RAG_MAX_CHUNKS
     - Only the highest-scored chunks appear in the context
     """
-    mocker.patch("utils.vector_search.constants.INLINE_RAG_MAX_CHUNKS", 3)
+    mocker.patch("lightspeed_stack.utils.vector_search.constants.INLINE_RAG_MAX_CHUNKS", 3)
 
     entry = mocker.MagicMock()
     entry.rag_id = "big-source"

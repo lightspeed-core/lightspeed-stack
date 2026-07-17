@@ -10,7 +10,7 @@ from collections.abc import Generator
 import pytest
 from fastapi.testclient import TestClient
 
-from configuration import configuration
+from lightspeed_stack.configuration import configuration
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def client() -> Generator[TestClient, None, None]:
     configuration.load_configuration("tests/configuration/rh-identity-config.yaml")
 
     # Import app after configuration is loaded
-    from app.main import app  # pylint: disable=import-outside-toplevel
+    from lightspeed_stack.app.main import app  # pylint: disable=import-outside-toplevel
 
     yield TestClient(app)
 

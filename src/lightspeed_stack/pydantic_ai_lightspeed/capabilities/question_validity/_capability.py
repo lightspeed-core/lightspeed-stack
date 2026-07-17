@@ -22,12 +22,12 @@ from pydantic_ai.messages import ModelRequest, TextContent, UserContent
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 
-from client import AsyncLlamaStackClientHolder
-from log import get_logger
-from models.config import (
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import (
     QuestionValidityConfig,
 )
-from pydantic_ai_lightspeed.llamastack import LlamaStackResponsesModel
+from lightspeed_stack.pydantic_ai_lightspeed.llamastack import LlamaStackResponsesModel
 
 logger = get_logger(__name__)
 

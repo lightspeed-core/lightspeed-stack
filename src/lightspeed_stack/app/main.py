@@ -13,22 +13,22 @@ from llama_stack_client import APIConnectionError, AsyncLlamaStackClient
 from starlette.routing import Mount, Route, WebSocketRoute
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-import version
-from a2a_storage import A2AStorageFactory
-from app import routers
-from app.database import create_tables, initialize_database
-from app.endpoints.streaming_query import shutdown_background_topic_summary_tasks
-from authorization.azure_token_manager import AzureEntraIDManager
-from client import AsyncLlamaStackClientHolder
-from configuration import configuration
-from log import get_logger
-from metrics import recording
-from metrics.utils import setup_model_metrics
-from models.api.responses.error import InternalServerErrorResponse
-from sentry import initialize_sentry
-from utils.common import register_mcp_servers_async
-from utils.degraded_mode import DegradedModeTracker
-from utils.llama_stack_version import check_llama_stack_version
+from lightspeed_stack import version
+from lightspeed_stack.a2a_storage import A2AStorageFactory
+from lightspeed_stack.app import routers
+from lightspeed_stack.app.database import create_tables, initialize_database
+from lightspeed_stack.app.endpoints.streaming_query import shutdown_background_topic_summary_tasks
+from lightspeed_stack.authorization.azure_token_manager import AzureEntraIDManager
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.metrics import recording
+from lightspeed_stack.metrics.utils import setup_model_metrics
+from lightspeed_stack.models.api.responses.error import InternalServerErrorResponse
+from lightspeed_stack.sentry import initialize_sentry
+from lightspeed_stack.utils.common import register_mcp_servers_async
+from lightspeed_stack.utils.degraded_mode import DegradedModeTracker
+from lightspeed_stack.utils.llama_stack_version import check_llama_stack_version
 
 logger = get_logger(__name__)
 

@@ -10,16 +10,16 @@ import secrets
 
 from fastapi import HTTPException, Request, status
 
-from authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
-from authentication.utils import extract_user_token
-from configuration import configuration
-from constants import (
+from lightspeed_stack.authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
+from lightspeed_stack.authentication.utils import extract_user_token
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.constants import (
     DEFAULT_USER_NAME,
     DEFAULT_USER_UID,
     DEFAULT_VIRTUAL_PATH,
 )
-from log import get_logger
-from models.config import APIKeyTokenConfiguration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import APIKeyTokenConfiguration
 
 logger = get_logger(__name__)
 

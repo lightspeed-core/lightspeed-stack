@@ -6,12 +6,12 @@ from typing import Any, Literal, Optional, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from constants import (
+from lightspeed_stack.constants import (
     DEFAULT_MAX_FILE_UPLOAD_SIZE,
     IMAGE_CONTENT_TYPES,
     SOLR_VECTOR_SEARCH_DEFAULT_MODE,
 )
-from log import get_logger
+from lightspeed_stack.log import get_logger
 
 logger = get_logger(__name__)
 

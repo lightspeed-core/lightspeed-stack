@@ -7,8 +7,8 @@ from typing import Any, Optional
 from fastapi import HTTPException
 from starlette.requests import Request
 
-import constants
-from authorization.resolvers import (
+from lightspeed_stack import constants
+from lightspeed_stack.authorization.resolvers import (
     AccessResolver,
     GenericAccessResolver,
     JwtRolesResolver,
@@ -16,13 +16,13 @@ from authorization.resolvers import (
     NoopRolesResolver,
     RolesResolver,
 )
-from configuration import configuration
-from log import get_logger
-from models.api.responses.error import (
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     InternalServerErrorResponse,
 )
-from models.config import Action
+from lightspeed_stack.models.config import Action
 
 logger = get_logger(__name__)
 

@@ -5,7 +5,7 @@ from typing import cast
 from fastapi import HTTPException
 from starlette.datastructures import Headers
 
-from authentication.utils import extract_user_token
+from lightspeed_stack.authentication.utils import extract_user_token
 
 
 def test_extract_user_token() -> None:

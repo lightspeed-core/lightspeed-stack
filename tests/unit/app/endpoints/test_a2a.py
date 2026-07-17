@@ -37,7 +37,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.messages import TextPart as PydanticTextPart
 from pytest_mock import MockerFixture
 
-from app.endpoints.a2a import (
+from lightspeed_stack.app.endpoints.a2a import (
     A2AAgentExecutor,
     TaskResultAggregator,
     _build_a2a_parts_from_agent_result,
@@ -47,8 +47,8 @@ from app.endpoints.a2a import (
     get_agent_card,
     get_lightspeed_agent_card,
 )
-from configuration import AppConfig
-from models.config import Action
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.config import Action
 
 # User ID must be proper UUID
 MOCK_AUTH = (
@@ -120,7 +120,7 @@ def setup_configuration_fixture(mocker: MockerFixture) -> AppConfig:
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
-    mocker.patch("app.endpoints.a2a.configuration", cfg)
+    mocker.patch("lightspeed_stack.app.endpoints.a2a.configuration", cfg)
     return cfg
 
 
@@ -147,7 +147,7 @@ def setup_minimal_configuration_fixture(mocker: MockerFixture) -> AppConfig:
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
-    mocker.patch("app.endpoints.a2a.configuration", cfg)
+    mocker.patch("lightspeed_stack.app.endpoints.a2a.configuration", cfg)
     return cfg
 
 
@@ -441,7 +441,7 @@ class TestGetLightspeedAgentCard:
         }
         cfg = AppConfig()
         cfg.init_from_dict(config_dict)
-        mocker.patch("app.endpoints.a2a.configuration", cfg)
+        mocker.patch("lightspeed_stack.app.endpoints.a2a.configuration", cfg)
 
         agent_card = get_lightspeed_agent_card()
 
@@ -525,7 +525,7 @@ class TestA2AAgentExecutor:
         mock_task = mocker.MagicMock()
         mock_task.id = "test-task-id"
         mock_task.context_id = "test-context-id"
-        mocker.patch("app.endpoints.a2a.new_task", return_value=mock_task)
+        mocker.patch("lightspeed_stack.app.endpoints.a2a.new_task", return_value=mock_task)
 
         # Mock the streaming process to avoid actual LLM calls
         mocker.patch.object(
@@ -573,7 +573,7 @@ class TestA2AAgentExecutor:
         mock_task = mocker.MagicMock()
         mock_task.id = "computed-task-id-123"
         mock_task.context_id = "computed-context-id-456"
-        mocker.patch("app.endpoints.a2a.new_task", return_value=mock_task)
+        mocker.patch("lightspeed_stack.app.endpoints.a2a.new_task", return_value=mock_task)
 
         # Mock the streaming process
         mock_process_streaming = mocker.patch.object(
@@ -712,7 +712,7 @@ class TestA2AAgentExecutor:
         mock_context_store = mocker.AsyncMock()
         mock_context_store.get.return_value = None
         mocker.patch(
-            "app.endpoints.a2a._get_context_store", return_value=mock_context_store
+            "lightspeed_stack.app.endpoints.a2a._get_context_store", return_value=mock_context_store
         )
 
         # Mock the client to raise APIConnectionError on models.list()
@@ -724,7 +724,7 @@ class TestA2AAgentExecutor:
             request=mock_request,
         )
         mocker.patch(
-            "app.endpoints.a2a.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.a2a.AsyncLlamaStackClientHolder"
         ).return_value.get_client.return_value = mock_client
 
         # prepare_responses_params raises HTTPException when APIConnectionError occurs
@@ -770,7 +770,7 @@ class TestA2AAgentExecutor:
         mock_context_store = mocker.AsyncMock()
         mock_context_store.get.return_value = None
         mocker.patch(
-            "app.endpoints.a2a._get_context_store", return_value=mock_context_store
+            "lightspeed_stack.app.endpoints.a2a._get_context_store", return_value=mock_context_store
         )
 
         # Mock the client
@@ -778,7 +778,7 @@ class TestA2AAgentExecutor:
         mock_models = [mocker.MagicMock()]
         mock_client.models.list = mocker.AsyncMock(return_value=mock_models)
         mocker.patch(
-            "app.endpoints.a2a.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.a2a.AsyncLlamaStackClientHolder"
         ).return_value.get_client.return_value = mock_client
 
         # Mock prepare_responses_params
@@ -786,7 +786,7 @@ class TestA2AAgentExecutor:
         mock_responses_params.model = "test-model"
         mock_responses_params.conversation = "conv_x"
         mocker.patch(
-            "app.endpoints.a2a.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.a2a.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
 
@@ -797,7 +797,7 @@ class TestA2AAgentExecutor:
         compaction_result.compacted = False
         compaction_result.original_input = None
         mocker.patch(
-            "app.endpoints.a2a.apply_compaction_blocking",
+            "lightspeed_stack.app.endpoints.a2a.apply_compaction_blocking",
             new=mocker.AsyncMock(return_value=compaction_result),
         )
 
@@ -813,7 +813,7 @@ class TestA2AAgentExecutor:
         )
         mock_agent.run_stream_events.return_value = mock_stream_ctx
         mocker.patch(
-            "app.endpoints.a2a.build_agent",
+            "lightspeed_stack.app.endpoints.a2a.build_agent",
             return_value=mock_agent,
         )
 
@@ -856,20 +856,20 @@ class TestA2AAgentExecutor:
         mock_context_store = mocker.AsyncMock()
         mock_context_store.get.return_value = None
         mocker.patch(
-            "app.endpoints.a2a._get_context_store", return_value=mock_context_store
+            "lightspeed_stack.app.endpoints.a2a._get_context_store", return_value=mock_context_store
         )
 
         mock_client = mocker.AsyncMock()
         mock_client.models.list = mocker.AsyncMock(return_value=[mocker.MagicMock()])
         mocker.patch(
-            "app.endpoints.a2a.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.a2a.AsyncLlamaStackClientHolder"
         ).return_value.get_client.return_value = mock_client
 
         mock_responses_params = mocker.Mock()
         mock_responses_params.model = "test-model"
         mock_responses_params.conversation = "conv_x"
         mocker.patch(
-            "app.endpoints.a2a.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.a2a.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_responses_params),
         )
 
@@ -879,7 +879,7 @@ class TestA2AAgentExecutor:
         compaction_result.compacted = False
         compaction_result.original_input = None
         mocker.patch(
-            "app.endpoints.a2a.apply_compaction_blocking",
+            "lightspeed_stack.app.endpoints.a2a.apply_compaction_blocking",
             new=mocker.AsyncMock(return_value=compaction_result),
         )
 
@@ -890,7 +890,7 @@ class TestA2AAgentExecutor:
         )
         mock_agent.run_stream_events.return_value = mock_stream_ctx
         mocker.patch(
-            "app.endpoints.a2a.build_agent",
+            "lightspeed_stack.app.endpoints.a2a.build_agent",
             return_value=mock_agent,
         )
 
@@ -931,13 +931,13 @@ class TestA2AAgentExecutor:
         mock_context_store = mocker.AsyncMock()
         mock_context_store.get.return_value = None
         mocker.patch(
-            "app.endpoints.a2a._get_context_store", return_value=mock_context_store
+            "lightspeed_stack.app.endpoints.a2a._get_context_store", return_value=mock_context_store
         )
 
         mock_client = mocker.AsyncMock()
         mock_client.models.list = mocker.AsyncMock(return_value=[mocker.MagicMock()])
         mocker.patch(
-            "app.endpoints.a2a.AsyncLlamaStackClientHolder"
+            "lightspeed_stack.app.endpoints.a2a.AsyncLlamaStackClientHolder"
         ).return_value.get_client.return_value = mock_client
 
         mock_params = mocker.Mock()
@@ -945,7 +945,7 @@ class TestA2AAgentExecutor:
         mock_params.conversation = "conv_x"
         mock_params.skills = None
         mocker.patch(
-            "app.endpoints.a2a.prepare_responses_params",
+            "lightspeed_stack.app.endpoints.a2a.prepare_responses_params",
             new=mocker.AsyncMock(return_value=mock_params),
         )
 
@@ -955,7 +955,7 @@ class TestA2AAgentExecutor:
         compaction_result.compacted = False
         compaction_result.original_input = None
         apply = mocker.patch(
-            "app.endpoints.a2a.apply_compaction_blocking",
+            "lightspeed_stack.app.endpoints.a2a.apply_compaction_blocking",
             new=mocker.AsyncMock(return_value=compaction_result),
         )
 
@@ -974,7 +974,7 @@ class TestA2AAgentExecutor:
         mock_agent = mocker.MagicMock()
         mock_agent.run_stream_events.return_value = mock_stream_ctx
         mocker.patch(
-            "app.endpoints.a2a.build_agent",
+            "lightspeed_stack.app.endpoints.a2a.build_agent",
             return_value=mock_agent,
         )
 
@@ -1045,8 +1045,8 @@ class TestContextToConversationMapping:
         """Test that _get_context_store returns a context store."""
         # pylint: disable=import-outside-toplevel
         # Reset module-level state and factory
-        import app.endpoints.a2a as a2a_module
-        from a2a_storage import A2AStorageFactory
+        import lightspeed_stack.app.endpoints.a2a as a2a_module
+        from lightspeed_stack.a2a_storage import A2AStorageFactory
 
         a2a_module._context_store = None  # pyright: ignore[reportAttributeAccessIssue]
         a2a_module._task_store = None  # pyright: ignore[reportAttributeAccessIssue]
@@ -1064,8 +1064,8 @@ class TestContextToConversationMapping:
         """Test that _get_task_store returns a task store."""
         # pylint: disable=import-outside-toplevel
         # Reset module-level state and factory
-        import app.endpoints.a2a as a2a_module
-        from a2a_storage import A2AStorageFactory
+        import lightspeed_stack.app.endpoints.a2a as a2a_module
+        from lightspeed_stack.a2a_storage import A2AStorageFactory
 
         a2a_module._context_store = None  # pyright: ignore[reportAttributeAccessIssue]
         a2a_module._task_store = None  # pyright: ignore[reportAttributeAccessIssue]
@@ -1207,7 +1207,7 @@ class TestA2AEndpointHandlers:
         """Test the agent card endpoint."""
         # Mock authorization
         mocker.patch(
-            "app.endpoints.a2a.authorize",
+            "lightspeed_stack.app.endpoints.a2a.authorize",
             lambda action: lambda f: f,
         )
 

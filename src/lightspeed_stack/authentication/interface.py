@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 
 from fastapi import Request
 
-from constants import (
+from lightspeed_stack.constants import (
     DEFAULT_SKIP_USER_ID_CHECK,
     DEFAULT_USER_NAME,
     DEFAULT_USER_UID,

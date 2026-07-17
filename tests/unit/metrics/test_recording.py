@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import pytest
 from pytest_mock import MockerFixture, MockType
 
-from metrics import recording
+from lightspeed_stack.metrics import recording
 
 
 @dataclass(frozen=True)
@@ -24,7 +24,7 @@ class HistogramRecorderCase:
 def test_measure_response_duration_records_timer(mocker: MockerFixture) -> None:
     """Test that response duration measurement uses the path label timer."""
     mock_timer = mocker.MagicMock()
-    mock_metric = mocker.patch("metrics.recording.metrics.response_duration_seconds")
+    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.response_duration_seconds")
     mock_metric.labels.return_value.time.return_value = mock_timer
 
     with recording.measure_response_duration("/v1/infer"):
@@ -38,9 +38,9 @@ def test_measure_response_duration_records_timer(mocker: MockerFixture) -> None:
 
 def test_measure_response_duration_logs_metric_errors(mocker: MockerFixture) -> None:
     """Test that response duration metric errors are logged and request still proceeds."""
-    mock_metric = mocker.patch("metrics.recording.metrics.response_duration_seconds")
+    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.response_duration_seconds")
     mock_metric.labels.return_value.time.side_effect = AttributeError("missing")
-    mock_logger = mocker.patch("metrics.recording.logger")
+    mock_logger = mocker.patch("lightspeed_stack.metrics.recording.logger")
 
     with recording.measure_response_duration("/v1/infer"):
         pass
@@ -52,7 +52,7 @@ def test_measure_response_duration_logs_metric_errors(mocker: MockerFixture) -> 
 
 def test_record_rest_api_call_records_counter(mocker: MockerFixture) -> None:
     """Test that REST API call recording increments the labeled counter."""
-    mock_metric = mocker.patch("metrics.recording.metrics.rest_api_calls_total")
+    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.rest_api_calls_total")
 
     recording.record_rest_api_call("/v1/infer", 200)
 
@@ -62,9 +62,9 @@ def test_record_rest_api_call_records_counter(mocker: MockerFixture) -> None:
 
 def test_record_rest_api_call_logs_metric_errors(mocker: MockerFixture) -> None:
     """Test that REST API call metric errors are logged and swallowed."""
-    mock_metric = mocker.patch("metrics.recording.metrics.rest_api_calls_total")
+    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.rest_api_calls_total")
     mock_metric.labels.return_value.inc.side_effect = AttributeError("missing")
-    mock_logger = mocker.patch("metrics.recording.logger")
+    mock_logger = mocker.patch("lightspeed_stack.metrics.recording.logger")
 
     recording.record_rest_api_call("/v1/infer", 200)
 
@@ -75,7 +75,7 @@ def test_record_rest_api_call_logs_metric_errors(mocker: MockerFixture) -> None:
 
 def test_record_llm_call_records_counter(mocker: MockerFixture) -> None:
     """Test that LLM call recording increments the provider/model counter."""
-    mock_metric = mocker.patch("metrics.recording.metrics.llm_calls_total")
+    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_calls_total")
 
     recording.record_llm_call("provider1", "model1", "/test-endpoint")
 
@@ -85,9 +85,9 @@ def test_record_llm_call_records_counter(mocker: MockerFixture) -> None:
 
 def test_record_llm_call_logs_metric_errors(mocker: MockerFixture) -> None:
     """Test that LLM call metric errors are logged and swallowed."""
-    mock_metric = mocker.patch("metrics.recording.metrics.llm_calls_total")
+    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_calls_total")
     mock_metric.labels.return_value.inc.side_effect = AttributeError("missing")
-    mock_logger = mocker.patch("metrics.recording.logger")
+    mock_logger = mocker.patch("lightspeed_stack.metrics.recording.logger")
 
     recording.record_llm_call("provider1", "model1", "/test-endpoint")
 
@@ -98,7 +98,7 @@ def test_record_llm_call_logs_metric_errors(mocker: MockerFixture) -> None:
 
 def test_record_llm_failure_records_counter(mocker: MockerFixture) -> None:
     """Test that LLM failure recording increments the provider/model counter."""
-    mock_metric = mocker.patch("metrics.recording.metrics.llm_calls_failures_total")
+    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_calls_failures_total")
 
     recording.record_llm_failure("provider1", "model1", "/test-endpoint")
 
@@ -108,9 +108,9 @@ def test_record_llm_failure_records_counter(mocker: MockerFixture) -> None:
 
 def test_record_llm_failure_logs_metric_errors(mocker: MockerFixture) -> None:
     """Test that LLM failure metric errors are logged and swallowed."""
-    mock_metric = mocker.patch("metrics.recording.metrics.llm_calls_failures_total")
+    mock_metric = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_calls_failures_total")
     mock_metric.labels.return_value.inc.side_effect = TypeError("bad")
-    mock_logger = mocker.patch("metrics.recording.logger")
+    mock_logger = mocker.patch("lightspeed_stack.metrics.recording.logger")
 
     recording.record_llm_failure("provider1", "model1", "/test-endpoint")
 
@@ -122,7 +122,7 @@ def test_record_llm_failure_logs_metric_errors(mocker: MockerFixture) -> None:
 def test_record_llm_validation_error_records_counter(mocker: MockerFixture) -> None:
     """Test that validation error recording increments the counter."""
     mock_metric = mocker.patch(
-        "metrics.recording.metrics.llm_calls_validation_errors_total"
+        "lightspeed_stack.metrics.recording.metrics.llm_calls_validation_errors_total"
     )
 
     recording.record_llm_validation_error("/test-endpoint")
@@ -136,10 +136,10 @@ def test_record_llm_validation_error_logs_metric_errors(
 ) -> None:
     """Test that validation error metric failures are logged and swallowed."""
     mock_metric = mocker.patch(
-        "metrics.recording.metrics.llm_calls_validation_errors_total"
+        "lightspeed_stack.metrics.recording.metrics.llm_calls_validation_errors_total"
     )
     mock_metric.labels.return_value.inc.side_effect = ValueError("bad")
-    mock_logger = mocker.patch("metrics.recording.logger")
+    mock_logger = mocker.patch("lightspeed_stack.metrics.recording.logger")
 
     recording.record_llm_validation_error("/test-endpoint")
 
@@ -150,8 +150,8 @@ def test_record_llm_validation_error_logs_metric_errors(
 
 def test_record_llm_token_usage_records_counters(mocker: MockerFixture) -> None:
     """Test that token usage recording increments sent and received counters."""
-    mock_sent = mocker.patch("metrics.recording.metrics.llm_token_sent_total")
-    mock_received = mocker.patch("metrics.recording.metrics.llm_token_received_total")
+    mock_sent = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_token_sent_total")
+    mock_received = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_token_received_total")
 
     recording.record_llm_token_usage("provider1", "model1", 100, 50, "/test-endpoint")
 
@@ -165,10 +165,10 @@ def test_record_llm_token_usage_records_counters(mocker: MockerFixture) -> None:
 
 def test_record_llm_token_usage_logs_metric_errors(mocker: MockerFixture) -> None:
     """Test that token metric failures are logged and swallowed."""
-    mock_sent = mocker.patch("metrics.recording.metrics.llm_token_sent_total")
+    mock_sent = mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_token_sent_total")
     mock_sent.labels.return_value.inc.side_effect = ValueError("bad")
-    mocker.patch("metrics.recording.metrics.llm_token_received_total")
-    mock_logger = mocker.patch("metrics.recording.logger")
+    mocker.patch("lightspeed_stack.metrics.recording.metrics.llm_token_received_total")
+    mock_logger = mocker.patch("lightspeed_stack.metrics.recording.logger")
 
     recording.record_llm_token_usage("provider1", "model1", 100, 50, "/test-endpoint")
 
@@ -180,14 +180,14 @@ def test_record_llm_token_usage_logs_metric_errors(mocker: MockerFixture) -> Non
 @pytest.fixture(name="recording_logger")
 def recording_logger_fixture(mocker: MockerFixture) -> MockType:
     """Patch the metric recording logger for failure assertions."""
-    return mocker.patch("metrics.recording.logger")
+    return mocker.patch("lightspeed_stack.metrics.recording.logger")
 
 
 @pytest.mark.parametrize(
     "case",
     [
         HistogramRecorderCase(
-            metric_path="metrics.recording.metrics.llm_inference_duration_seconds",
+            metric_path="lightspeed_stack.metrics.recording.metrics.llm_inference_duration_seconds",
             recorder=recording.record_llm_inference_duration,
             args=("vertexai", "gemini", "/v1/responses", "success", 1.5),
             labels=("vertexai", "gemini", "/v1/responses", "success"),
@@ -223,7 +223,7 @@ def test_record_llm_inference_duration_bounds_result_label(
 ) -> None:
     """Test that unexpected result values are normalized to 'failure'."""
     mock_metric = mocker.patch(
-        "metrics.recording.metrics.llm_inference_duration_seconds"
+        "lightspeed_stack.metrics.recording.metrics.llm_inference_duration_seconds"
     )
 
     recording.record_llm_inference_duration(

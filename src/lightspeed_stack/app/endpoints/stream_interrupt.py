@@ -4,20 +4,20 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from authentication import get_auth_dependency
-from authentication.interface import AuthTuple
-from authorization.middleware import authorize
-from models.api.requests import StreamingInterruptRequest
-from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
-from models.api.responses.error import (
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.models.api.requests import StreamingInterruptRequest
+from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
+from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     NotFoundResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
-from models.api.responses.successful import StreamingInterruptResponse
-from models.config import Action
-from utils.stream_interrupts import (
+from lightspeed_stack.models.api.responses.successful import StreamingInterruptResponse
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.utils.stream_interrupts import (
     CancelStreamResult,
     StreamInterruptRegistry,
     get_stream_interrupt_registry,

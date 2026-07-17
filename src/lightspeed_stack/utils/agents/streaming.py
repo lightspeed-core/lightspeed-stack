@@ -24,10 +24,10 @@ from pydantic_ai.messages import (
     TextPartDelta,
 )
 
-from configuration import configuration
-from constants import MEDIA_TYPE_JSON
-from log import get_logger
-from models.common.agents import (
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.constants import MEDIA_TYPE_JSON
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.common.agents import (
     AgentTurnAccumulator,
     EndStreamPayload,
     ErrorStreamPayload,
@@ -39,43 +39,43 @@ from models.common.agents import (
     ToolResultStreamPayload,
     TurnCompleteStreamPayload,
 )
-from models.common.query import Attachment
-from models.common.responses import ResponseInput
-from models.common.responses.contexts import ResponseGeneratorContext
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.turn_summary import TurnSummary
-from utils.agents.query import (
+from lightspeed_stack.models.common.query import Attachment
+from lightspeed_stack.models.common.responses import ResponseInput
+from lightspeed_stack.models.common.responses.contexts import ResponseGeneratorContext
+from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.turn_summary import TurnSummary
+from lightspeed_stack.utils.agents.query import (
     AgentFinishReason,
     extract_agent_token_usage,
     get_agent_finish_reason,
     get_finish_reason_error,
     map_agent_inference_error,
 )
-from utils.agents.tool_processor import (
+from lightspeed_stack.utils.agents.tool_processor import (
     process_function_tool_call,
     process_function_tool_result,
     process_native_tool_call,
     process_native_tool_result,
 )
-from utils.conversations import append_turn_items_to_conversation
-from utils.pydantic_ai_helpers import build_agent
-from utils.query import (
+from lightspeed_stack.utils.conversations import append_turn_items_to_conversation
+from lightspeed_stack.utils.pydantic_ai_helpers import build_agent
+from lightspeed_stack.utils.query import (
     build_multimodal_input,
     consume_query_tokens,
     store_query_results,
 )
-from utils.quota_utils import get_available_quotas
-from utils.responses import (
+from lightspeed_stack.utils.quota_utils import get_available_quotas
+from lightspeed_stack.utils.responses import (
     deduplicate_referenced_documents,
     maybe_get_topic_summary,
 )
-from utils.stream_interrupts import (
+from lightspeed_stack.utils.stream_interrupts import (
     build_interrupted_response,
     deregister_stream,
     persist_interrupted_turn,
     register_interrupt_callback,
 )
-from utils.streaming_sse import shield_violation_generator
+from lightspeed_stack.utils.streaming_sse import shield_violation_generator
 
 AgentDispatchEvent: TypeAlias = AgentStreamEvent | AgentRunResultEvent
 

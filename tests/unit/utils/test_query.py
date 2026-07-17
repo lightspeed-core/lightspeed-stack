@@ -14,21 +14,21 @@ from pydantic_ai.messages import ImageUrl
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import SQLAlchemyError
 
-from cache.cache_entry import CacheEntry
-from cache.cache_error import CacheError
-from configuration import AppConfig
-from models.api.requests import QueryRequest
-from models.api.responses.error import (
+from lightspeed_stack.cache.cache_entry import CacheEntry
+from lightspeed_stack.cache.cache_error import CacheError
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.api.responses.error import (
     InternalServerErrorResponse,
     PromptTooLongResponse,
     QuotaExceededResponse,
 )
-from models.common.query import Attachment
-from models.common.turn_summary import TurnSummary
-from models.config import Action
-from models.database.conversations import UserConversation, UserTurn
+from lightspeed_stack.models.common.query import Attachment
+from lightspeed_stack.models.common.turn_summary import TurnSummary
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.models.database.conversations import UserConversation, UserTurn
 from tests.unit import config_dict
-from utils.query import (
+from lightspeed_stack.utils.query import (
     build_multimodal_input,
     consume_query_tokens,
     extract_provider_and_model_from_model_id,
@@ -43,7 +43,7 @@ from utils.query import (
     validate_attachments_metadata,
     validate_model_provider_override,
 )
-from utils.token_counter import TokenCounter
+from lightspeed_stack.utils.token_counter import TokenCounter
 
 
 @pytest.fixture(name="mock_config")
@@ -86,7 +86,7 @@ class TestStoreConversationIntoCache:
         mock_config.conversation_cache = mock_cache
         mock_config.conversation_cache_configuration = mocker.Mock()
         mock_config.conversation_cache_configuration.type = "sqlite"
-        mocker.patch("utils.query.configuration", mock_config)
+        mocker.patch("lightspeed_stack.utils.query.configuration", mock_config)
 
         cache_entry = CacheEntry(
             query="test query",
@@ -129,7 +129,7 @@ class TestStoreConversationIntoCache:
             completed_at="2024-01-01T00:00:05Z",
         )
 
-        mocker.patch("utils.query.configuration", mock_config)
+        mocker.patch("lightspeed_stack.utils.query.configuration", mock_config)
         store_conversation_into_cache(
             user_id="test_user",
             conversation_id="test_conv",
@@ -158,7 +158,7 @@ class TestStoreConversationIntoCache:
         )
 
         # Should not raise an exception, just log a warning
-        mocker.patch("utils.query.configuration", mock_config)
+        mocker.patch("lightspeed_stack.utils.query.configuration", mock_config)
         store_conversation_into_cache(
             user_id="test_user",
             conversation_id="test_conv",
@@ -468,7 +468,7 @@ class TestIsTranscriptsEnabled:
     def test_transcripts_enabled(self, mocker: MockerFixture) -> None:
         """Test when transcripts are enabled."""
         mocker.patch(
-            "utils.query.configuration.user_data_collection_configuration.transcripts_enabled",
+            "lightspeed_stack.utils.query.configuration.user_data_collection_configuration.transcripts_enabled",
             True,
         )
         assert is_transcripts_enabled() is True
@@ -476,7 +476,7 @@ class TestIsTranscriptsEnabled:
     def test_transcripts_disabled(self, mocker: MockerFixture) -> None:
         """Test when transcripts are disabled."""
         mocker.patch(
-            "utils.query.configuration.user_data_collection_configuration.transcripts_enabled",
+            "lightspeed_stack.utils.query.configuration.user_data_collection_configuration.transcripts_enabled",
             False,
         )
         assert is_transcripts_enabled() is False
@@ -508,7 +508,7 @@ class TestPersistUserConversationDetails:
         mock_session.query.side_effect = query_side_effect
         mock_session.__enter__ = mocker.Mock(return_value=mock_session)
         mock_session.__exit__ = mocker.Mock(return_value=None)
-        mocker.patch("utils.query.get_session", return_value=mock_session)
+        mocker.patch("lightspeed_stack.utils.query.get_session", return_value=mock_session)
 
         persist_user_conversation_details(
             user_id="user1",
@@ -556,7 +556,7 @@ class TestPersistUserConversationDetails:
         mock_session.query.side_effect = query_side_effect
         mock_session.__enter__ = mocker.Mock(return_value=mock_session)
         mock_session.__exit__ = mocker.Mock(return_value=None)
-        mocker.patch("utils.query.get_session", return_value=mock_session)
+        mocker.patch("lightspeed_stack.utils.query.get_session", return_value=mock_session)
 
         persist_user_conversation_details(
             user_id="user1",
@@ -600,7 +600,7 @@ class TestPersistUserConversationDetails:
         mock_session.query.side_effect = query_side_effect
         mock_session.__enter__ = mocker.Mock(return_value=mock_session)
         mock_session.__exit__ = mocker.Mock(return_value=None)
-        mocker.patch("utils.query.get_session", return_value=mock_session)
+        mocker.patch("lightspeed_stack.utils.query.get_session", return_value=mock_session)
 
         persist_user_conversation_details(
             user_id="user1",
@@ -637,7 +637,7 @@ class TestConsumeQueryTokens:
 
     def test_consume_tokens_success(self, mocker: MockerFixture) -> None:
         """Test successful token consumption."""
-        mock_consume = mocker.patch("utils.query.consume_tokens")
+        mock_consume = mocker.patch("lightspeed_stack.utils.query.consume_tokens")
 
         token_usage = TokenCounter(input_tokens=100, output_tokens=50)
         consume_query_tokens(
@@ -652,7 +652,7 @@ class TestConsumeQueryTokens:
     def test_consume_tokens_database_error(self, mocker: MockerFixture) -> None:
         """Test token consumption raises HTTPException on database error."""
         mocker.patch(
-            "utils.query.consume_tokens", side_effect=sqlite3.Error("DB error")
+            "lightspeed_stack.utils.query.consume_tokens", side_effect=sqlite3.Error("DB error")
         )
 
         token_usage = TokenCounter(input_tokens=100, output_tokens=50)
@@ -670,9 +670,9 @@ class TestStoreQueryResults:
 
     def test_store_query_results_success(self, mocker: MockerFixture) -> None:
         """Test successful storage of query results."""
-        mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
-        mock_persist = mocker.patch("utils.query.persist_user_conversation_details")
-        mock_store_cache = mocker.patch("utils.query.store_conversation_into_cache")
+        mocker.patch("lightspeed_stack.utils.query.is_transcripts_enabled", return_value=False)
+        mock_persist = mocker.patch("lightspeed_stack.utils.query.persist_user_conversation_details")
+        mock_store_cache = mocker.patch("lightspeed_stack.utils.query.store_conversation_into_cache")
 
         summary = TurnSummary()
         summary.llm_response = "response"
@@ -698,10 +698,10 @@ class TestStoreQueryResults:
 
     def test_store_query_results_transcript_error(self, mocker: MockerFixture) -> None:
         """Test storage raises HTTPException on transcript error."""
-        mocker.patch("utils.query.is_transcripts_enabled", return_value=True)
+        mocker.patch("lightspeed_stack.utils.query.is_transcripts_enabled", return_value=True)
         error_response = InternalServerErrorResponse.generic()
         mocker.patch(
-            "utils.query.store_transcript",
+            "lightspeed_stack.utils.query.store_transcript",
             side_effect=HTTPException(**error_response.model_dump()),
         )
 
@@ -727,9 +727,9 @@ class TestStoreQueryResults:
 
     def test_store_query_results_sqlalchemy_error(self, mocker: MockerFixture) -> None:
         """Test storage raises HTTPException on SQLAlchemy error."""
-        mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
+        mocker.patch("lightspeed_stack.utils.query.is_transcripts_enabled", return_value=False)
         mocker.patch(
-            "utils.query.persist_user_conversation_details",
+            "lightspeed_stack.utils.query.persist_user_conversation_details",
             side_effect=SQLAlchemyError("Database error", None, None),
         )
 
@@ -755,10 +755,10 @@ class TestStoreQueryResults:
 
     def test_store_query_results_cache_error(self, mocker: MockerFixture) -> None:
         """Test storage raises HTTPException on cache error."""
-        mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
-        mocker.patch("utils.query.persist_user_conversation_details")
+        mocker.patch("lightspeed_stack.utils.query.is_transcripts_enabled", return_value=False)
+        mocker.patch("lightspeed_stack.utils.query.persist_user_conversation_details")
         mocker.patch(
-            "utils.query.store_conversation_into_cache",
+            "lightspeed_stack.utils.query.store_conversation_into_cache",
             side_effect=CacheError("Cache error"),
         )
 
@@ -784,10 +784,10 @@ class TestStoreQueryResults:
 
     def test_store_query_results_value_error(self, mocker: MockerFixture) -> None:
         """Test storage raises HTTPException on ValueError."""
-        mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
-        mocker.patch("utils.query.persist_user_conversation_details")
+        mocker.patch("lightspeed_stack.utils.query.is_transcripts_enabled", return_value=False)
+        mocker.patch("lightspeed_stack.utils.query.persist_user_conversation_details")
         mocker.patch(
-            "utils.query.store_conversation_into_cache",
+            "lightspeed_stack.utils.query.store_conversation_into_cache",
             side_effect=ValueError("Invalid value"),
         )
 
@@ -813,10 +813,10 @@ class TestStoreQueryResults:
 
     def test_store_query_results_psycopg2_error(self, mocker: MockerFixture) -> None:
         """Test storage raises HTTPException on psycopg2 error."""
-        mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
-        mocker.patch("utils.query.persist_user_conversation_details")
+        mocker.patch("lightspeed_stack.utils.query.is_transcripts_enabled", return_value=False)
+        mocker.patch("lightspeed_stack.utils.query.persist_user_conversation_details")
         mocker.patch(
-            "utils.query.store_conversation_into_cache",
+            "lightspeed_stack.utils.query.store_conversation_into_cache",
             side_effect=psycopg2.Error("PostgreSQL error"),
         )
 
@@ -842,10 +842,10 @@ class TestStoreQueryResults:
 
     def test_store_query_results_sqlite_error(self, mocker: MockerFixture) -> None:
         """Test storage raises HTTPException on sqlite3 error."""
-        mocker.patch("utils.query.is_transcripts_enabled", return_value=False)
-        mocker.patch("utils.query.persist_user_conversation_details")
+        mocker.patch("lightspeed_stack.utils.query.is_transcripts_enabled", return_value=False)
+        mocker.patch("lightspeed_stack.utils.query.persist_user_conversation_details")
         mocker.patch(
-            "utils.query.store_conversation_into_cache",
+            "lightspeed_stack.utils.query.store_conversation_into_cache",
             side_effect=sqlite3.Error("SQLite error"),
         )
 

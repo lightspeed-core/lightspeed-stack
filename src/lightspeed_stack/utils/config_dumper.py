@@ -1,7 +1,7 @@
 """Function to dump the configuration schema into OpenAPI-compatible format."""
 
-from models.config import Configuration
-from utils.openapi_schema_dumper import dump_openapi_schema
+from lightspeed_stack.models.config import Configuration
+from lightspeed_stack.utils.openapi_schema_dumper import dump_openapi_schema
 
 
 def dump_schema(filename: str) -> None:

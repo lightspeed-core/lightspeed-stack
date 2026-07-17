@@ -10,7 +10,7 @@ from fastapi import HTTPException, status
 from pydantic import HttpUrl
 from pytest_mock import MockerFixture, MockType
 
-from app.endpoints.conversations_v2 import (
+from lightspeed_stack.app.endpoints.conversations_v2 import (
     build_conversation_turn_from_cache_entry,
     check_conversation_existence,
     check_valid_conversation_id,
@@ -19,12 +19,12 @@ from app.endpoints.conversations_v2 import (
     get_conversations_list_endpoint_handler,
     update_conversation_endpoint_handler,
 )
-from cache.cache_entry import CacheEntry
-from configuration import AppConfig
-from models.api.requests import ConversationUpdateRequest
-from models.api.responses.successful import ConversationUpdateResponse
-from models.common import ConversationData
-from models.common.turn_summary import (
+from lightspeed_stack.cache.cache_entry import CacheEntry
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import ConversationUpdateRequest
+from lightspeed_stack.models.api.responses.successful import ConversationUpdateResponse
+from lightspeed_stack.models.common import ConversationData
+from lightspeed_stack.models.common.turn_summary import (
     ReferencedDocument,
     ToolCallSummary,
     ToolResultSummary,
@@ -250,13 +250,13 @@ class TestCheckValidConversationId:
 
     def test_valid_conversation_id(self, mocker: MockerFixture) -> None:
         """Test with a valid conversation ID."""
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
         # Should not raise an exception
         check_valid_conversation_id(VALID_CONVERSATION_ID)
 
     def test_invalid_conversation_id(self, mocker: MockerFixture) -> None:
         """Test with an invalid conversation ID."""
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=False)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=False)
 
         with pytest.raises(HTTPException) as exc_info:
             check_valid_conversation_id(INVALID_CONVERSATION_ID)
@@ -278,7 +278,7 @@ class TestCheckConversationExistence:
         mock_configuration.conversation_cache.list.return_value = [
             mocker.Mock(conversation_id=VALID_CONVERSATION_ID)
         ]
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
 
         # Should not raise an exception
         check_conversation_existence("user_id", VALID_CONVERSATION_ID)
@@ -288,7 +288,7 @@ class TestCheckConversationExistence:
     ) -> None:
         """Test when conversation does not exist."""
         mock_configuration.conversation_cache.list.return_value = []
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
 
         with pytest.raises(HTTPException) as exc_info:
             check_conversation_existence("user_id", VALID_CONVERSATION_ID)
@@ -306,7 +306,7 @@ class TestCheckConversationExistence:
         mock_cache_config = mocker.Mock()
         mock_cache_config.type = None
         mock_configuration.conversation_cache_configuration = mock_cache_config
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
 
         # Should return early without raising an exception or calling list
         check_conversation_existence("user_id", VALID_CONVERSATION_ID)
@@ -324,7 +324,7 @@ class TestGetConversationsListEndpoint:
         mock_authorization_resolvers(mocker)
         mock_config = AppConfig()
         mock_config._configuration = None  # pylint: disable=protected-access
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_config)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversations_list_endpoint_handler(
@@ -343,7 +343,7 @@ class TestGetConversationsListEndpoint:
         mock_config = mocker.Mock()
         mock_config.conversation_cache_configuration = mocker.Mock()
         mock_config.conversation_cache_configuration.type = None
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_config)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversations_list_endpoint_handler(
@@ -364,7 +364,7 @@ class TestGetConversationsListEndpoint:
     ) -> None:
         """Test successful retrieval of conversation list."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
 
         timestamp_str = "2024-01-01T00:00:00Z"
         timestamp_dt = datetime.fromisoformat(timestamp_str).replace(tzinfo=UTC)
@@ -393,7 +393,7 @@ class TestGetConversationsListEndpoint:
     ) -> None:
         """Test successful retrieval of an empty conversation list."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
         mock_configuration.conversation_cache.list.return_value = []
 
         response = await get_conversations_list_endpoint_handler(
@@ -418,7 +418,7 @@ class TestGetConversationsListEndpoint:
         is called with the user ID and `True`.
         """
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
         mock_configuration.conversation_cache.list.return_value = []
         mock_auth_with_skip = ("mock_user_id", "mock_username", True, "mock_token")
 
@@ -441,7 +441,7 @@ class TestGetConversationEndpoint:
         mock_authorization_resolvers(mocker)
         mock_config = AppConfig()
         mock_config._configuration = None  # pylint: disable=protected-access
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_config)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(
@@ -458,8 +458,8 @@ class TestGetConversationEndpoint:
     ) -> None:
         """Test the endpoint with an invalid conversation ID format."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=False)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=False)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(
@@ -490,8 +490,8 @@ class TestGetConversationEndpoint:
         mock_config = mocker.Mock()
         mock_config.conversation_cache_configuration = mocker.Mock()
         mock_config.conversation_cache_configuration.type = None
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_config)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_config)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
 
         with pytest.raises(HTTPException) as exc_info:
             await get_conversation_endpoint_handler(
@@ -513,8 +513,8 @@ class TestGetConversationEndpoint:
     ) -> None:
         """Test the endpoint when conversation does not exist."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
         mock_configuration.conversation_cache.list.return_value = []
 
         with pytest.raises(HTTPException) as exc_info:
@@ -532,8 +532,8 @@ class TestGetConversationEndpoint:
     ) -> None:
         """Test successful retrieval of a conversation."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
         mock_configuration.conversation_cache.list.return_value = [
             mocker.Mock(conversation_id=VALID_CONVERSATION_ID)
         ]
@@ -565,8 +565,8 @@ class TestGetConversationEndpoint:
     ) -> None:
         """Test that GET conversation includes referenced_documents in assistant messages."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
         ref_docs = [
             ReferencedDocument(
                 doc_url=HttpUrl("https://docs.example.com/intro"),
@@ -621,8 +621,8 @@ class TestGetConversationEndpoint:
     ) -> None:
         """Test that GET conversation works when cache entry has no referenced_documents."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
         mock_configuration.conversation_cache.list.return_value = [
             mocker.Mock(conversation_id=VALID_CONVERSATION_ID)
         ]
@@ -654,8 +654,8 @@ class TestGetConversationEndpoint:
     ) -> None:
         """Test the endpoint with skip_userid_check flag."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
         mock_configuration.conversation_cache.list.return_value = [
             mocker.Mock(conversation_id=VALID_CONVERSATION_ID)
         ]
@@ -691,7 +691,7 @@ class TestDeleteConversationEndpoint:
         mock_authorization_resolvers(mocker)
         mock_config = AppConfig()
         mock_config._configuration = None  # pylint: disable=protected-access
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_config)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_config)
 
         with pytest.raises(HTTPException) as exc_info:
             await delete_conversation_endpoint_handler(
@@ -708,8 +708,8 @@ class TestDeleteConversationEndpoint:
     ) -> None:
         """Test the endpoint with an invalid conversation ID format."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=False)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=False)
 
         with pytest.raises(HTTPException) as exc_info:
             await delete_conversation_endpoint_handler(
@@ -729,8 +729,8 @@ class TestDeleteConversationEndpoint:
         mock_config = mocker.Mock()
         mock_config.conversation_cache_configuration = mocker.Mock()
         mock_config.conversation_cache_configuration.type = None
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_config)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_config)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
 
         with pytest.raises(HTTPException) as exc_info:
             await delete_conversation_endpoint_handler(
@@ -752,8 +752,8 @@ class TestDeleteConversationEndpoint:
     ) -> None:
         """Test successful deletion of a conversation."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
         mock_configuration.conversation_cache.delete.return_value = True
 
         response = await delete_conversation_endpoint_handler(
@@ -773,8 +773,8 @@ class TestDeleteConversationEndpoint:
     ) -> None:
         """Test unsuccessful deletion when delete returns False."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
         mock_configuration.conversation_cache.delete.return_value = False
 
         response = await delete_conversation_endpoint_handler(
@@ -804,8 +804,8 @@ class TestDeleteConversationEndpoint:
         called with (user_id, conversation_id, True).
         """
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
         mock_configuration.conversation_cache.delete.return_value = True
         mock_auth_with_skip = ("mock_user_id", "mock_username", True, "mock_token")
 
@@ -828,7 +828,7 @@ class TestUpdateConversationEndpoint:
         """Test the endpoint when configuration is not loaded."""
         mock_authorization_resolvers(mocker)
         mock_config = AppConfig()
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_config)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_config)
 
         update_request = ConversationUpdateRequest(topic_summary="New topic summary")
 
@@ -851,8 +851,8 @@ class TestUpdateConversationEndpoint:
     ) -> None:
         """Test the endpoint with an invalid conversation ID format."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=False)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=False)
 
         update_request = ConversationUpdateRequest(topic_summary="New topic summary")
 
@@ -878,8 +878,8 @@ class TestUpdateConversationEndpoint:
         mock_config = mocker.Mock()
         mock_config.conversation_cache_configuration = mocker.Mock()
         mock_config.conversation_cache_configuration.type = None
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_config)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_config)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
 
         update_request = ConversationUpdateRequest(topic_summary="New topic summary")
 
@@ -903,8 +903,8 @@ class TestUpdateConversationEndpoint:
     ) -> None:
         """Test the endpoint when conversation does not exist."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
         mock_configuration.conversation_cache.list.return_value = []
 
         update_request = ConversationUpdateRequest(topic_summary="New topic summary")
@@ -928,8 +928,8 @@ class TestUpdateConversationEndpoint:
     ) -> None:
         """Test successful topic summary update."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
         mock_configuration.conversation_cache.list.return_value = [
             mocker.Mock(conversation_id=VALID_CONVERSATION_ID)
         ]
@@ -958,8 +958,8 @@ class TestUpdateConversationEndpoint:
     ) -> None:
         """Test the endpoint with skip_userid_check flag."""
         mock_authorization_resolvers(mocker)
-        mocker.patch("app.endpoints.conversations_v2.configuration", mock_configuration)
-        mocker.patch("app.endpoints.conversations_v2.check_suid", return_value=True)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.configuration", mock_configuration)
+        mocker.patch("lightspeed_stack.app.endpoints.conversations_v2.check_suid", return_value=True)
         mock_configuration.conversation_cache.list.return_value = [
             mocker.Mock(conversation_id=VALID_CONVERSATION_ID)
         ]

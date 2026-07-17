@@ -6,10 +6,10 @@ import pytest
 from fastapi import HTTPException, Request
 from pytest_mock import MockerFixture
 
-from authentication.trusted_proxy import TrustedProxyAuthDependency
-from configuration import AppConfig
-from constants import NO_USER_TOKEN
-from models.config import TrustedProxyConfiguration, TrustedProxyServiceAccount
+from lightspeed_stack.authentication.trusted_proxy import TrustedProxyAuthDependency
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.constants import NO_USER_TOKEN
+from lightspeed_stack.models.config import TrustedProxyConfiguration, TrustedProxyServiceAccount
 
 
 def _make_config(
@@ -44,7 +44,7 @@ async def test_valid_proxy_token_and_user_header(mocker: MockerFixture) -> None:
     config = _make_config()
     dependency = TrustedProxyAuthDependency(config=config)
 
-    mock_get_user_info = mocker.patch("authentication.trusted_proxy.get_user_info")
+    mock_get_user_info = mocker.patch("lightspeed_stack.authentication.trusted_proxy.get_user_info")
     mock_get_user_info.return_value = _make_token_review_status(mocker)
 
     request = Request(
@@ -94,7 +94,7 @@ async def test_invalid_token(mocker: MockerFixture) -> None:
     config = _make_config()
     dependency = TrustedProxyAuthDependency(config=config)
 
-    mock_get_user_info = mocker.patch("authentication.trusted_proxy.get_user_info")
+    mock_get_user_info = mocker.patch("lightspeed_stack.authentication.trusted_proxy.get_user_info")
     mock_get_user_info.return_value = None
 
     request = Request(
@@ -121,7 +121,7 @@ async def test_token_review_missing_user_info(mocker: MockerFixture) -> None:
     config = _make_config()
     dependency = TrustedProxyAuthDependency(config=config)
 
-    mock_get_user_info = mocker.patch("authentication.trusted_proxy.get_user_info")
+    mock_get_user_info = mocker.patch("lightspeed_stack.authentication.trusted_proxy.get_user_info")
     status = mocker.Mock()
     status.authenticated = True
     status.user = None
@@ -151,7 +151,7 @@ async def test_token_review_missing_username(mocker: MockerFixture) -> None:
     config = _make_config()
     dependency = TrustedProxyAuthDependency(config=config)
 
-    mock_get_user_info = mocker.patch("authentication.trusted_proxy.get_user_info")
+    mock_get_user_info = mocker.patch("lightspeed_stack.authentication.trusted_proxy.get_user_info")
     mock_get_user_info.return_value = _make_token_review_status(mocker, username="")
 
     request = Request(
@@ -182,7 +182,7 @@ async def test_sa_not_in_allowlist(mocker: MockerFixture) -> None:
     )
     dependency = TrustedProxyAuthDependency(config=config)
 
-    mock_get_user_info = mocker.patch("authentication.trusted_proxy.get_user_info")
+    mock_get_user_info = mocker.patch("lightspeed_stack.authentication.trusted_proxy.get_user_info")
     mock_get_user_info.return_value = _make_token_review_status(
         mocker, username="system:serviceaccount:other-ns:other-sa"
     )
@@ -213,7 +213,7 @@ async def test_sa_in_allowlist(mocker: MockerFixture) -> None:
     )
     dependency = TrustedProxyAuthDependency(config=config)
 
-    mock_get_user_info = mocker.patch("authentication.trusted_proxy.get_user_info")
+    mock_get_user_info = mocker.patch("lightspeed_stack.authentication.trusted_proxy.get_user_info")
     mock_get_user_info.return_value = _make_token_review_status(mocker)
 
     request = Request(
@@ -240,7 +240,7 @@ async def test_whitespace_only_user_header(mocker: MockerFixture) -> None:
     config = _make_config()
     dependency = TrustedProxyAuthDependency(config=config)
 
-    mock_get_user_info = mocker.patch("authentication.trusted_proxy.get_user_info")
+    mock_get_user_info = mocker.patch("lightspeed_stack.authentication.trusted_proxy.get_user_info")
     mock_get_user_info.return_value = _make_token_review_status(mocker)
 
     request = Request(
@@ -267,7 +267,7 @@ async def test_missing_user_header(mocker: MockerFixture) -> None:
     config = _make_config()
     dependency = TrustedProxyAuthDependency(config=config)
 
-    mock_get_user_info = mocker.patch("authentication.trusted_proxy.get_user_info")
+    mock_get_user_info = mocker.patch("lightspeed_stack.authentication.trusted_proxy.get_user_info")
     mock_get_user_info.return_value = _make_token_review_status(mocker)
 
     request = Request(
@@ -293,7 +293,7 @@ async def test_no_allowlist_accepts_any_sa(mocker: MockerFixture) -> None:
     config = _make_config(allowed_service_accounts=None)
     dependency = TrustedProxyAuthDependency(config=config)
 
-    mock_get_user_info = mocker.patch("authentication.trusted_proxy.get_user_info")
+    mock_get_user_info = mocker.patch("lightspeed_stack.authentication.trusted_proxy.get_user_info")
     mock_get_user_info.return_value = _make_token_review_status(
         mocker, username="system:serviceaccount:any-ns:any-sa"
     )
@@ -350,7 +350,7 @@ async def test_health_probe_skip_enabled(mocker: MockerFixture) -> None:
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
-    mocker.patch("authentication.trusted_proxy.configuration", cfg)
+    mocker.patch("lightspeed_stack.authentication.trusted_proxy.configuration", cfg)
 
     config = _make_config()
     dependency = TrustedProxyAuthDependency(config=config)
@@ -406,7 +406,7 @@ async def test_health_probe_skip_disabled(mocker: MockerFixture) -> None:
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
-    mocker.patch("authentication.trusted_proxy.configuration", cfg)
+    mocker.patch("lightspeed_stack.authentication.trusted_proxy.configuration", cfg)
 
     config = _make_config()
     dependency = TrustedProxyAuthDependency(config=config)
@@ -459,7 +459,7 @@ async def test_metrics_skip_enabled(mocker: MockerFixture) -> None:
     }
     cfg = AppConfig()
     cfg.init_from_dict(config_dict)
-    mocker.patch("authentication.trusted_proxy.configuration", cfg)
+    mocker.patch("lightspeed_stack.authentication.trusted_proxy.configuration", cfg)
 
     config = _make_config()
     dependency = TrustedProxyAuthDependency(config=config)
@@ -486,7 +486,7 @@ async def test_custom_user_header(mocker: MockerFixture) -> None:
     config = _make_config(user_header="X-Auth-Request-User")
     dependency = TrustedProxyAuthDependency(config=config)
 
-    mock_get_user_info = mocker.patch("authentication.trusted_proxy.get_user_info")
+    mock_get_user_info = mocker.patch("lightspeed_stack.authentication.trusted_proxy.get_user_info")
     mock_get_user_info.return_value = _make_token_review_status(mocker)
 
     request = Request(

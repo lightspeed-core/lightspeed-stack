@@ -5,7 +5,7 @@ from typing import Final, Optional
 
 from pydantic_ai import AgentRunResult
 
-from models.common.turn_summary import TurnSummary
+from lightspeed_stack.models.common.turn_summary import TurnSummary
 
 
 @dataclass(slots=True)

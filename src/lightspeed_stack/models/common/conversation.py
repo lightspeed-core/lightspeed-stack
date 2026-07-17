@@ -4,7 +4,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from models.common.turn_summary import (
+from lightspeed_stack.models.common.turn_summary import (
     ReferencedDocument,
     ToolCallSummary,
     ToolResultSummary,

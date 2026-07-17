@@ -1,13 +1,13 @@
 """PII redaction capability for Pydantic AI agents."""
 
-from models.config import (
+from lightspeed_stack.models.config import (
     RedactionConfig,
     RedactionRule,
 )
-from pydantic_ai_lightspeed.capabilities.redaction._capability import (
+from lightspeed_stack.pydantic_ai_lightspeed.capabilities.redaction._capability import (
     PiiRedactionCapability,
 )
-from pydantic_ai_lightspeed.capabilities.redaction.core import (
+from lightspeed_stack.pydantic_ai_lightspeed.capabilities.redaction.core import (
     RedactionResult,
     redact_text,
 )

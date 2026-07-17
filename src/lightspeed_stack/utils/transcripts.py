@@ -13,13 +13,13 @@ from typing import Optional
 
 from fastapi import HTTPException
 
-from configuration import configuration
-from log import get_logger
-from models.api.responses.error import InternalServerErrorResponse
-from models.common.query import Attachment
-from models.common.transcripts import Transcript, TranscriptMetadata
-from models.common.turn_summary import TurnSummary
-from utils.suid import get_suid
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.error import InternalServerErrorResponse
+from lightspeed_stack.models.common.query import Attachment
+from lightspeed_stack.models.common.transcripts import Transcript, TranscriptMetadata
+from lightspeed_stack.models.common.turn_summary import TurnSummary
+from lightspeed_stack.utils.suid import get_suid
 
 logger = get_logger(__name__)
 

@@ -4,8 +4,8 @@ from typing import Any
 
 import psycopg2
 
-from log import get_logger
-from models.config import PostgreSQLDatabaseConfiguration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import PostgreSQLDatabaseConfiguration
 
 logger = get_logger(__name__)
 

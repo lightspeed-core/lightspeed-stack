@@ -9,8 +9,8 @@ import pytest
 import yaml
 from pydantic import SecretStr
 
-from models.config import Action, JsonPathOperator
-from telemetry.configuration_snapshot import (
+from lightspeed_stack.models.config import Action, JsonPathOperator
+from lightspeed_stack.telemetry.configuration_snapshot import (
     CONFIGURED,
     LIGHTSPEED_STACK_FIELDS,
     LLAMA_STACK_FIELDS,

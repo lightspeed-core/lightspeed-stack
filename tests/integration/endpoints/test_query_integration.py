@@ -11,16 +11,15 @@ from llama_stack_client import APIConnectionError
 from pytest_mock import AsyncMockType, MockerFixture
 from sqlalchemy.orm import Session
 
-import app.database
-import app.endpoints.query
-import utils.query
-from app.endpoints.query import query_endpoint_handler
-from authentication.interface import AuthTuple
-from cache.cache_entry import CacheEntry
-from configuration import AppConfig
-from models.api.requests import QueryRequest
-from models.common.query import Attachment
-from models.database.conversations import UserConversation
+import lightspeed_stack.app.endpoints.query
+import lightspeed_stack.utils.query
+from lightspeed_stack.app.endpoints.query import query_endpoint_handler
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.cache.cache_entry import CacheEntry
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.common.query import Attachment
+from lightspeed_stack.models.database.conversations import UserConversation
 from tests.integration.conftest import (
     TEST_CONVERSATION_ID,
     TEST_NON_EXISTENT_ID,
@@ -208,7 +207,7 @@ async def test_query_v2_endpoint_returns_401_for_mcp_oauth(
     )
 
     mocker.patch(
-        "utils.responses.get_mcp_tools",
+        "lightspeed_stack.utils.responses.get_mcp_tools",
         new_callable=mocker.AsyncMock,
         side_effect=oauth_401,
     )
@@ -967,7 +966,7 @@ async def test_query_v2_endpoint_creates_valid_cache_entry(
     _ = mock_query_agent
     _ = patch_db_session
 
-    cache_spy = mocker.spy(utils.query, "store_conversation_into_cache")
+    cache_spy = mocker.spy(lightspeed_stack.utils.query, "store_conversation_into_cache")
 
     query_request = QueryRequest(query="What is Ansible?")
 
@@ -1265,8 +1264,8 @@ async def test_query_v2_endpoint_quota_integration(
         output_tokens=50,
     )
 
-    mock_consume = mocker.spy(app.endpoints.query, "consume_query_tokens")
-    _ = mocker.spy(app.endpoints.query, "get_available_quotas")
+    mock_consume = mocker.spy(lightspeed_stack.app.endpoints.query, "consume_query_tokens")
+    mocker.spy(lightspeed_stack.app.endpoints.query, "get_available_quotas")
 
     query_request = QueryRequest(query="What is Ansible?")
 
@@ -1330,7 +1329,7 @@ async def test_query_v2_endpoint_rejects_query_when_quota_exceeded(
 
     # Mock check_tokens_available to simulate quota exceeded
     mocker.patch(
-        "app.endpoints.query.check_tokens_available",
+        "lightspeed_stack.app.endpoints.query.check_tokens_available",
         side_effect=HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={"response": "Quota exceeded", "cause": "Token limit reached"},
@@ -1392,7 +1391,7 @@ async def test_query_v2_endpoint_transcript_behavior(
     _ = mock_llama_stack_client
     _ = mock_query_agent
     # Mock store_transcript to prevent file creation
-    mocker.patch("utils.query.store_transcript")
+    mocker.patch("lightspeed_stack.utils.query.store_transcript")
 
     test_config.user_data_collection_configuration.transcripts_enabled = True
 

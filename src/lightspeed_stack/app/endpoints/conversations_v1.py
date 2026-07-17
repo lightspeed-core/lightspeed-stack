@@ -10,15 +10,15 @@ from llama_stack_client import (
 )
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.database import get_session
-from authentication import get_auth_dependency
-from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
-from configuration import configuration
-from log import get_logger
-from models.api.requests import ConversationUpdateRequest
-from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
-from models.api.responses.error import (
+from lightspeed_stack.app.database import get_session
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.requests import ConversationUpdateRequest
+from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
+from lightspeed_stack.models.api.responses.error import (
     BadRequestResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -26,22 +26,22 @@ from models.api.responses.error import (
     ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
-from models.api.responses.successful import (
+from lightspeed_stack.models.api.responses.successful import (
     ConversationDeleteResponse,
     ConversationResponse,
     ConversationsListResponse,
     ConversationUpdateResponse,
 )
-from models.common import ConversationDetails
-from models.config import Action
-from models.database.conversations import (
+from lightspeed_stack.models.common import ConversationDetails
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.models.database.conversations import (
     UserConversation,
 )
-from utils.conversations import (
+from lightspeed_stack.utils.conversations import (
     build_conversation_turns_from_items,
     get_all_conversation_items,
 )
-from utils.endpoints import (
+from lightspeed_stack.utils.endpoints import (
     can_access_conversation,
     check_configuration_loaded,
     delete_conversation,
@@ -49,7 +49,7 @@ from utils.endpoints import (
     retrieve_conversation_turns,
     validate_and_retrieve_conversation,
 )
-from utils.suid import (
+from lightspeed_stack.utils.suid import (
     check_suid,
     normalize_conversation_id,
     to_llama_stack_conversation_id,

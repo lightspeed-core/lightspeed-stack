@@ -22,8 +22,8 @@ from typing import Any, Optional
 
 import tiktoken
 
-from log import get_logger
-from models.config import InferenceConfiguration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import InferenceConfiguration
 
 logger = get_logger(__name__)
 

@@ -49,24 +49,24 @@ from pydantic_ai.messages import (
 from pydantic_ai.run import AgentRunResult
 from starlette.responses import Response, StreamingResponse
 
-from a2a_storage import A2AContextStore, A2AStorageFactory
-from app.endpoints.a2a_openapi import a2a_jsonrpc_responses
-from authentication import get_auth_dependency
-from authentication.interface import AuthTuple
-from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
-from configuration import configuration
-from constants import MEDIA_TYPE_EVENT_STREAM
-from log import get_logger
-from models.api.requests import QueryRequest
-from models.config import Action
-from utils.agents.query import map_agent_inference_error
-from utils.conversation_compaction import apply_compaction_blocking
-from utils.mcp_headers import McpHeaders, mcp_headers_dependency
-from utils.pydantic_ai_helpers import build_agent
-from utils.responses import prepare_responses_params
-from utils.suid import normalize_conversation_id
-from version import __version__
+from lightspeed_stack.a2a_storage import A2AContextStore, A2AStorageFactory
+from lightspeed_stack.app.endpoints.a2a_openapi import a2a_jsonrpc_responses
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.constants import MEDIA_TYPE_EVENT_STREAM
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.utils.agents.query import map_agent_inference_error
+from lightspeed_stack.utils.conversation_compaction import apply_compaction_blocking
+from lightspeed_stack.utils.mcp_headers import McpHeaders, mcp_headers_dependency
+from lightspeed_stack.utils.pydantic_ai_helpers import build_agent
+from lightspeed_stack.utils.responses import prepare_responses_params
+from lightspeed_stack.utils.suid import normalize_conversation_id
+from lightspeed_stack.version import __version__
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["a2a"])

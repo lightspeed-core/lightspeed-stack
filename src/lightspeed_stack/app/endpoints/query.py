@@ -17,17 +17,17 @@ from openai._exceptions import (
 )
 from typing_extensions import deprecated
 
-from authentication import get_auth_dependency
-from authentication.interface import AuthTuple
-from authorization.azure_token_manager import AzureEntraIDManager
-from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
-from configuration import configuration
-from constants import ENDPOINT_PATH_QUERY, IMAGE_CONTENT_TYPES
-from log import get_logger
-from models.api.requests import QueryRequest
-from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
-from models.api.responses.error import (
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.azure_token_manager import AzureEntraIDManager
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.constants import ENDPOINT_PATH_QUERY, IMAGE_CONTENT_TYPES
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
+from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
@@ -37,26 +37,26 @@ from models.api.responses.error import (
     UnauthorizedResponse,
     UnprocessableEntityResponse,
 )
-from models.api.responses.successful import QueryResponse
-from models.common.moderation import ShieldModerationResult
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import ResponseInput
-from models.common.turn_summary import TurnSummary
-from models.config import Action
-from utils.agents.query import retrieve_agent_response
-from utils.conversation_compaction import (
+from lightspeed_stack.models.api.responses.successful import QueryResponse
+from lightspeed_stack.models.common.moderation import ShieldModerationResult
+from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.types import ResponseInput
+from lightspeed_stack.models.common.turn_summary import TurnSummary
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.utils.agents.query import retrieve_agent_response
+from lightspeed_stack.utils.conversation_compaction import (
     apply_compaction_blocking,
     configured_conversation_cache,
     store_compacted_turn,
 )
-from utils.conversations import append_turn_items_to_conversation
-from utils.endpoints import (
+from lightspeed_stack.utils.conversations import append_turn_items_to_conversation
+from lightspeed_stack.utils.endpoints import (
     check_configuration_loaded,
     validate_and_retrieve_conversation,
 )
-from utils.mcp_headers import McpHeaders, mcp_headers_dependency
-from utils.mcp_oauth_probe import check_mcp_auth
-from utils.query import (
+from lightspeed_stack.utils.mcp_headers import McpHeaders, mcp_headers_dependency
+from lightspeed_stack.utils.mcp_oauth_probe import check_mcp_auth
+from lightspeed_stack.utils.query import (
     consume_query_tokens,
     handle_known_apistatus_errors,
     is_context_length_error,
@@ -65,17 +65,17 @@ from utils.query import (
     validate_attachments_metadata,
     validate_model_provider_override,
 )
-from utils.quota_utils import check_tokens_available, get_available_quotas
-from utils.responses import (
+from lightspeed_stack.utils.quota_utils import check_tokens_available, get_available_quotas
+from lightspeed_stack.utils.responses import (
     build_turn_summary,
     deduplicate_referenced_documents,
     extract_vector_store_ids_from_tools,
     maybe_get_topic_summary,
     prepare_responses_params,
 )
-from utils.shields import run_shield_moderation, validate_shield_ids_override
-from utils.suid import normalize_conversation_id
-from utils.vector_search import build_rag_context
+from lightspeed_stack.utils.shields import run_shield_moderation, validate_shield_ids_override
+from lightspeed_stack.utils.suid import normalize_conversation_id
+from lightspeed_stack.utils.vector_search import build_rag_context
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["query"])

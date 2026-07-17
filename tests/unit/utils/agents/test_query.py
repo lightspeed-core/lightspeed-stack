@@ -25,20 +25,25 @@ from pydantic_ai.native_tools import FileSearchTool
 from pydantic_ai.usage import RunUsage
 from pytest_mock import MockerFixture
 
-from constants import ENDPOINT_PATH_QUERY
-from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
-from models.common.query import Attachment
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import ResponseInput
-from models.common.turn_summary import TurnSummary
-from utils.agents.query import (
+from lightspeed_stack.constants import ENDPOINT_PATH_QUERY
+from lightspeed_stack.models.common.moderation import (
+    ShieldModerationBlocked,
+    ShieldModerationPassed,
+)
+from lightspeed_stack.models.common.query import Attachment
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
+from lightspeed_stack.models.common.responses.types import ResponseInput
+from lightspeed_stack.models.common.turn_summary import TurnSummary
+from lightspeed_stack.utils.agents.query import (
     AgentFinishReason,
     build_turn_summary_from_agent_run,
     extract_agent_token_usage,
     get_agent_finish_reason,
     retrieve_agent_response,
 )
-from utils.token_counter import TokenCounter
+from lightspeed_stack.utils.token_counter import TokenCounter
 
 
 @pytest.fixture(name="make_agent_run_result")
@@ -125,7 +130,7 @@ def patch_query_configuration_fixture(mocker: MockerFixture) -> None:
     mock_config = mocker.MagicMock()
     mock_config.skills = None
     mock_config.rag_id_mapping = {}
-    mocker.patch("utils.agents.query.configuration", mock_config)
+    mocker.patch("lightspeed_stack.utils.agents.query.configuration", mock_config)
 
 
 @pytest.fixture(name="patch_recording_metrics")
@@ -134,13 +139,13 @@ def patch_recording_metrics_fixture(mocker: MockerFixture) -> None:
     mock_config = mocker.MagicMock()
     mock_config.skills = None
     mock_config.rag_id_mapping = {}
-    mocker.patch("utils.agents.query.configuration", mock_config)
+    mocker.patch("lightspeed_stack.utils.agents.query.configuration", mock_config)
     mocker.patch(
-        "utils.agents.query.extract_vector_store_ids_from_tools",
+        "lightspeed_stack.utils.agents.query.extract_vector_store_ids_from_tools",
         return_value=[],
     )
-    mocker.patch("utils.agents.query.recording.record_llm_token_usage")
-    mocker.patch("utils.agents.query.recording.record_llm_call")
+    mocker.patch("lightspeed_stack.utils.agents.query.recording.record_llm_token_usage")
+    mocker.patch("lightspeed_stack.utils.agents.query.recording.record_llm_call")
 
 
 class TestGetAgentFinishReason:
@@ -231,9 +236,9 @@ class TestExtractAgentTokenUsage:
     def test_records_metrics(self, mocker: MockerFixture) -> None:
         """Test LLM token usage and call metrics are recorded."""
         mock_record_usage = mocker.patch(
-            "utils.agents.query.recording.record_llm_token_usage"
+            "lightspeed_stack.utils.agents.query.recording.record_llm_token_usage"
         )
-        mock_record_call = mocker.patch("utils.agents.query.recording.record_llm_call")
+        mock_record_call = mocker.patch("lightspeed_stack.utils.agents.query.recording.record_llm_call")
         usage = RunUsage(input_tokens=8, output_tokens=3, requests=1)
 
         extract_agent_token_usage(
@@ -381,7 +386,7 @@ class TestRetrieveAgentResponse:
         """Test blocked moderation persists refusal and returns a turn summary."""
         mock_client = mocker.AsyncMock()
         mock_append = mocker.patch(
-            "utils.agents.query.append_turn_items_to_conversation",
+            "lightspeed_stack.utils.agents.query.append_turn_items_to_conversation",
             new=mocker.AsyncMock(),
         )
 
@@ -419,7 +424,7 @@ class TestRetrieveAgentResponse:
         mock_agent = mocker.AsyncMock()
         mock_agent.run = mocker.AsyncMock(return_value=run_result)
         mocker.patch(
-            "utils.agents.query.build_agent",
+            "lightspeed_stack.utils.agents.query.build_agent",
             return_value=mock_agent,
         )
 
@@ -450,7 +455,7 @@ class TestRetrieveAgentResponse:
         mock_agent = mocker.AsyncMock()
         mock_agent.run = mocker.AsyncMock(return_value=run_result)
         mocker.patch(
-            "utils.agents.query.build_agent",
+            "lightspeed_stack.utils.agents.query.build_agent",
             return_value=mock_agent,
         )
 
@@ -490,7 +495,7 @@ class TestRetrieveAgentResponse:
             side_effect=APIConnectionError(request=mocker.Mock())
         )
         mocker.patch(
-            "utils.agents.query.build_agent",
+            "lightspeed_stack.utils.agents.query.build_agent",
             return_value=mock_agent,
         )
 
@@ -521,7 +526,7 @@ class TestRetrieveAgentResponse:
             )
         )
         mocker.patch(
-            "utils.agents.query.build_agent",
+            "lightspeed_stack.utils.agents.query.build_agent",
             return_value=mock_agent,
         )
         mock_error = mocker.Mock()
@@ -530,7 +535,7 @@ class TestRetrieveAgentResponse:
             "detail": {"response": "Quota exceeded", "cause": "quota exceeded"},
         }
         mocker.patch(
-            "utils.agents.query.handle_known_apistatus_errors",
+            "lightspeed_stack.utils.agents.query.handle_known_apistatus_errors",
             return_value=mock_error,
         )
 

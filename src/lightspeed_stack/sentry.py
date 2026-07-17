@@ -7,8 +7,8 @@ from sentry_sdk.integrations.fastapi import (  # pyright: ignore[reportMissingIm
     FastApiIntegration,
 )
 
-import version
-from constants import (
+from lightspeed_stack import version
+from lightspeed_stack.constants import (
     SENTRY_CA_CERTS_ENV_VAR,
     SENTRY_DEFAULT_ENVIRONMENT,
     SENTRY_DEFAULT_TRACES_SAMPLE_RATE,
@@ -16,7 +16,7 @@ from constants import (
     SENTRY_ENVIRONMENT_ENV_VAR,
     SENTRY_EXCLUDED_ROUTES,
 )
-from log import get_logger
+from lightspeed_stack.log import get_logger
 
 logger = get_logger(__name__)
 

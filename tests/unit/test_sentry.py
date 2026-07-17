@@ -3,7 +3,7 @@
 import pytest
 from pytest_mock import MockerFixture
 
-from constants import (
+from lightspeed_stack.constants import (
     SENTRY_CA_CERTS_ENV_VAR,
     SENTRY_DEFAULT_ENVIRONMENT,
     SENTRY_DEFAULT_TRACES_SAMPLE_RATE,
@@ -11,7 +11,7 @@ from constants import (
     SENTRY_ENVIRONMENT_ENV_VAR,
     SENTRY_EXCLUDED_ROUTES,
 )
-from sentry import initialize_sentry, sentry_traces_sampler
+from lightspeed_stack.sentry import initialize_sentry, sentry_traces_sampler
 
 
 class TestInitializeSentry:
@@ -22,7 +22,7 @@ class TestInitializeSentry:
     ) -> None:
         """Test that Sentry is not initialized when DSN env var is unset."""
         monkeypatch.delenv(SENTRY_DSN_ENV_VAR, raising=False)
-        mock_init = mocker.patch("sentry.sentry_sdk.init")
+        mock_init = mocker.patch("lightspeed_stack.sentry.sentry_sdk.init")
 
         initialize_sentry()
 
@@ -33,7 +33,7 @@ class TestInitializeSentry:
     ) -> None:
         """Test that Sentry is not initialized when DSN is an empty string."""
         monkeypatch.setenv(SENTRY_DSN_ENV_VAR, "")
-        mock_init = mocker.patch("sentry.sentry_sdk.init")
+        mock_init = mocker.patch("lightspeed_stack.sentry.sentry_sdk.init")
 
         initialize_sentry()
 
@@ -47,7 +47,7 @@ class TestInitializeSentry:
         monkeypatch.setenv(SENTRY_DSN_ENV_VAR, dsn)
         monkeypatch.delenv(SENTRY_ENVIRONMENT_ENV_VAR, raising=False)
         monkeypatch.delenv(SENTRY_CA_CERTS_ENV_VAR, raising=False)
-        mock_init = mocker.patch("sentry.sentry_sdk.init")
+        mock_init = mocker.patch("lightspeed_stack.sentry.sentry_sdk.init")
 
         initialize_sentry()
 
@@ -67,8 +67,8 @@ class TestInitializeSentry:
         monkeypatch.setenv(SENTRY_DSN_ENV_VAR, "https://key@sentry.io/123")
         monkeypatch.setenv(SENTRY_CA_CERTS_ENV_VAR, ca_path)
         monkeypatch.delenv(SENTRY_ENVIRONMENT_ENV_VAR, raising=False)
-        mock_init = mocker.patch("sentry.sentry_sdk.init")
-        mocker.patch("sentry.os.path.exists", return_value=True)
+        mock_init = mocker.patch("lightspeed_stack.sentry.sentry_sdk.init")
+        mocker.patch("lightspeed_stack.sentry.os.path.exists", return_value=True)
 
         initialize_sentry()
 
@@ -83,9 +83,9 @@ class TestInitializeSentry:
         monkeypatch.setenv(SENTRY_DSN_ENV_VAR, "https://key@sentry.io/123")
         monkeypatch.setenv(SENTRY_CA_CERTS_ENV_VAR, ca_path)
         monkeypatch.delenv(SENTRY_ENVIRONMENT_ENV_VAR, raising=False)
-        mock_init = mocker.patch("sentry.sentry_sdk.init")
-        mocker.patch("sentry.os.path.exists", return_value=False)
-        mock_logger = mocker.patch("sentry.logger")
+        mock_init = mocker.patch("lightspeed_stack.sentry.sentry_sdk.init")
+        mocker.patch("lightspeed_stack.sentry.os.path.exists", return_value=False)
+        mock_logger = mocker.patch("lightspeed_stack.sentry.logger")
 
         initialize_sentry()
 
@@ -104,7 +104,7 @@ class TestInitializeSentry:
         """Test that a custom SENTRY_ENVIRONMENT value is passed to init."""
         monkeypatch.setenv(SENTRY_DSN_ENV_VAR, "https://key@sentry.io/123")
         monkeypatch.setenv(SENTRY_ENVIRONMENT_ENV_VAR, "staging")
-        mock_init = mocker.patch("sentry.sentry_sdk.init")
+        mock_init = mocker.patch("lightspeed_stack.sentry.sentry_sdk.init")
 
         initialize_sentry()
 
@@ -117,7 +117,7 @@ class TestInitializeSentry:
         """Test that default environment is used when env var is unset."""
         monkeypatch.setenv(SENTRY_DSN_ENV_VAR, "https://key@sentry.io/123")
         monkeypatch.delenv(SENTRY_ENVIRONMENT_ENV_VAR, raising=False)
-        mock_init = mocker.patch("sentry.sentry_sdk.init")
+        mock_init = mocker.patch("lightspeed_stack.sentry.sentry_sdk.init")
 
         initialize_sentry()
 
@@ -132,9 +132,9 @@ class TestInitializeSentry:
         monkeypatch.delenv(SENTRY_ENVIRONMENT_ENV_VAR, raising=False)
         monkeypatch.delenv(SENTRY_CA_CERTS_ENV_VAR, raising=False)
         mocker.patch(
-            "sentry.sentry_sdk.init", side_effect=RuntimeError("connection failed")
+            "lightspeed_stack.sentry.sentry_sdk.init", side_effect=RuntimeError("connection failed")
         )
-        mock_logger = mocker.patch("sentry.logger")
+        mock_logger = mocker.patch("lightspeed_stack.sentry.logger")
 
         initialize_sentry()
 

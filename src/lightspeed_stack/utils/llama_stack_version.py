@@ -7,13 +7,13 @@ from typing import Optional
 from llama_stack_client import APIConnectionError, AsyncLlamaStackClient
 from semver import Version
 
-from constants import (
+from lightspeed_stack.constants import (
     DEFAULT_MAX_RETRIES,
     DEFAULT_RETRY_DELAY,
     MAXIMAL_SUPPORTED_LLAMA_STACK_VERSION,
     MINIMAL_SUPPORTED_LLAMA_STACK_VERSION,
 )
-from log import get_logger
+from lightspeed_stack.log import get_logger
 
 logger = get_logger(__name__)
 

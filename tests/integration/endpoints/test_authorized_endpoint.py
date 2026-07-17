@@ -2,10 +2,10 @@
 
 import pytest
 
-from app.endpoints.authorized import authorized_endpoint_handler
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from constants import DEFAULT_SKIP_USER_ID_CHECK, DEFAULT_USER_NAME, DEFAULT_USER_UID
+from lightspeed_stack.app.endpoints.authorized import authorized_endpoint_handler
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.constants import DEFAULT_SKIP_USER_ID_CHECK, DEFAULT_USER_NAME, DEFAULT_USER_UID
 
 
 @pytest.mark.asyncio

@@ -4,14 +4,14 @@ from typing import Optional
 
 from pydantic import Field
 
-from models.api.responses.successful.bases import AbstractSuccessfulResponse
-from models.common import (
+from lightspeed_stack.models.api.responses.successful.bases import AbstractSuccessfulResponse
+from lightspeed_stack.models.common import (
     RAGChunk,
     ReferencedDocument,
     ToolCallSummary,
     ToolResultSummary,
 )
-from models.config import ConfigurationBase
+from lightspeed_stack.models.config import ConfigurationBase
 
 
 class RlsapiV1InferData(ConfigurationBase):

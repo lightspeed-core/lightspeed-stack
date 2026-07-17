@@ -2,11 +2,11 @@
 
 from datetime import UTC, datetime
 
-from log import get_logger
-from models.config import QuotaHandlersConfiguration
-from quota.quota_exceed_error import QuotaExceedError
-from quota.quota_limiter import QuotaLimiter
-from quota.sql import (
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import QuotaHandlersConfiguration
+from lightspeed_stack.quota.quota_exceed_error import QuotaExceedError
+from lightspeed_stack.quota.quota_limiter import QuotaLimiter
+from lightspeed_stack.quota.sql import (
     CREATE_QUOTA_TABLE_PG,
     CREATE_QUOTA_TABLE_SQLITE,
     INIT_QUOTA_PG,
@@ -18,7 +18,7 @@ from quota.sql import (
     UPDATE_AVAILABLE_QUOTA_PG,
     UPDATE_AVAILABLE_QUOTA_SQLITE,
 )
-from utils.connection_decorator import connection
+from lightspeed_stack.utils.connection_decorator import connection
 
 logger = get_logger(__name__)
 

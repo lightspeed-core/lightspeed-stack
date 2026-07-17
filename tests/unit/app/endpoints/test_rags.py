@@ -8,13 +8,13 @@ from fastapi import HTTPException, Request, status
 from llama_stack_client import APIConnectionError, BadRequestError
 from pytest_mock import MockerFixture
 
-from app.endpoints.rags import (
+from lightspeed_stack.app.endpoints.rags import (
     _resolve_rag_id_to_vector_db_id,
     get_rag_endpoint_handler,
     rags_endpoint_handler,
 )
-from authentication.interface import AuthTuple
-from configuration import AppConfig
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
@@ -26,7 +26,7 @@ async def test_rags_endpoint_configuration_not_loaded(
     mock_authorization_resolvers(mocker)
     mock_config = AppConfig()
     mock_config._configuration = None  # pylint: disable=protected-access
-    mocker.patch("app.endpoints.rags.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.rags.configuration", mock_config)
     request = Request(scope={"type": "http"})
 
     # Authorization tuple required by URL endpoint handler
@@ -42,11 +42,11 @@ async def test_rags_endpoint_connection_error(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /rags endpoint raises HTTP 503 if Llama Stack connection fails."""
-    mocker.patch("app.endpoints.rags.configuration", minimal_config)
+    mocker.patch("lightspeed_stack.app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.list.side_effect = APIConnectionError(request=None)  # type: ignore
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.rags.AsyncLlamaStackClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -68,7 +68,7 @@ async def test_rags_endpoint_success(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /rags endpoint returns list of RAG IDs."""
-    mocker.patch("app.endpoints.rags.configuration", minimal_config)
+    mocker.patch("lightspeed_stack.app.endpoints.rags.configuration", minimal_config)
 
     # pylint: disable=R0903
     class RagInfo:
@@ -103,7 +103,7 @@ async def test_rags_endpoint_success(
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.list.return_value = RagList()
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.rags.AsyncLlamaStackClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -123,7 +123,7 @@ async def test_rag_info_endpoint_configuration_not_loaded(
     mock_authorization_resolvers(mocker)
     mock_config = AppConfig()
     mock_config._configuration = None  # pylint: disable=protected-access
-    mocker.patch("app.endpoints.rags.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.rags.configuration", mock_config)
     request = Request(scope={"type": "http"})
 
     # Authorization tuple required by URL endpoint handler
@@ -139,7 +139,7 @@ async def test_rag_info_endpoint_rag_not_found(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /rags/{rag_id} endpoint returns HTTP 404 when the requested RAG is not found."""
-    mocker.patch("app.endpoints.rags.configuration", minimal_config)
+    mocker.patch("lightspeed_stack.app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.retrieve = mocker.AsyncMock(
         side_effect=BadRequestError(
@@ -149,7 +149,7 @@ async def test_rag_info_endpoint_rag_not_found(
         )
     )  # type: ignore
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.rags.AsyncLlamaStackClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -171,13 +171,13 @@ async def test_rag_info_endpoint_connection_error(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /rags/{rag_id} endpoint raises HTTP 503 if Llama Stack connection fails."""
-    mocker.patch("app.endpoints.rags.configuration", minimal_config)
+    mocker.patch("lightspeed_stack.app.endpoints.rags.configuration", minimal_config)
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.retrieve.side_effect = APIConnectionError(
         request=None  # type: ignore
     )
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.rags.AsyncLlamaStackClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -199,7 +199,7 @@ async def test_rag_info_endpoint_success(
     mocker: MockerFixture, minimal_config: AppConfig
 ) -> None:
     """Test that /rags/{rag_id} endpoint returns information about selected RAG."""
-    mocker.patch("app.endpoints.rags.configuration", minimal_config)
+    mocker.patch("lightspeed_stack.app.endpoints.rags.configuration", minimal_config)
 
     # pylint: disable=R0902
     # pylint: disable=R0903
@@ -231,7 +231,7 @@ async def test_rag_info_endpoint_success(
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.retrieve.return_value = RagInfo()
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.rags.AsyncLlamaStackClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -298,7 +298,7 @@ async def test_rags_endpoint_returns_rag_ids_from_config(
 ) -> None:
     """Test that /rags endpoint maps llama-stack IDs to user-facing rag_ids."""
     byok_config = _make_byok_config(str(tmp_path))
-    mocker.patch("app.endpoints.rags.configuration", byok_config)
+    mocker.patch("lightspeed_stack.app.endpoints.rags.configuration", byok_config)
 
     # pylint: disable=R0903
     class RagInfo:
@@ -323,7 +323,7 @@ async def test_rags_endpoint_returns_rag_ids_from_config(
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.list.return_value = RagList()
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.rags.AsyncLlamaStackClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})
@@ -339,7 +339,7 @@ async def test_rag_info_endpoint_accepts_rag_id_from_config(
 ) -> None:
     """Test that /rags/{rag_id} accepts a user-facing rag_id and resolves it."""
     byok_config = _make_byok_config(str(tmp_path))
-    mocker.patch("app.endpoints.rags.configuration", byok_config)
+    mocker.patch("lightspeed_stack.app.endpoints.rags.configuration", byok_config)
 
     # pylint: disable=R0902,R0903
     class RagInfo:
@@ -359,7 +359,7 @@ async def test_rag_info_endpoint_accepts_rag_id_from_config(
     mock_client = mocker.AsyncMock()
     mock_client.vector_stores.retrieve.return_value = RagInfo()
     mocker.patch(
-        "app.endpoints.rags.AsyncLlamaStackClientHolder"
+        "lightspeed_stack.app.endpoints.rags.AsyncLlamaStackClientHolder"
     ).return_value.get_client.return_value = mock_client
 
     request = Request(scope={"type": "http"})

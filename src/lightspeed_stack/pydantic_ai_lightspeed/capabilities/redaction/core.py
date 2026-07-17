@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict
 
-from utils.types import CompiledPatterns
+from lightspeed_stack.utils.types import CompiledPatterns
 
 
 class RedactionResult(BaseModel):

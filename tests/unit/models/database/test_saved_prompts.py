@@ -9,8 +9,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from models.database.base import Base
-from models.database.saved_prompts import SavedPrompt
+from lightspeed_stack.models.database.base import Base
+from lightspeed_stack.models.database.saved_prompts import SavedPrompt
 
 
 @pytest.fixture(name="sqlite_engine")

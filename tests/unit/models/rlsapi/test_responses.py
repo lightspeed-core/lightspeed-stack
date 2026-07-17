@@ -6,8 +6,8 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from models.api.responses.successful.bases import AbstractSuccessfulResponse
-from models.api.responses.successful.rlsapi import (
+from lightspeed_stack.models.api.responses.successful.bases import AbstractSuccessfulResponse
+from lightspeed_stack.models.api.responses.successful.rlsapi import (
     RlsapiV1InferData,
     RlsapiV1InferResponse,
 )

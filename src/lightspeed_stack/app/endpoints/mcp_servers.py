@@ -6,29 +6,29 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from llama_stack_api.common.errors import ToolGroupNotFoundError
 from llama_stack_client import APIConnectionError, NotFoundError
 
-from authentication import get_auth_dependency
-from authentication.interface import AuthTuple
-from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
-from configuration import configuration
-from log import get_logger
-from models.api.requests import MCPServerRegistrationRequest
-from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
-from models.api.responses.error import (
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.requests import MCPServerRegistrationRequest
+from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
+from lightspeed_stack.models.api.responses.error import (
     ConflictResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
-from models.api.responses.successful import (
+from lightspeed_stack.models.api.responses.successful import (
     MCPServerDeleteResponse,
     MCPServerListResponse,
     MCPServerRegistrationResponse,
 )
-from models.common import MCPServerInfo
-from models.config import Action, ModelContextProtocolServer
-from utils.endpoints import check_configuration_loaded
+from lightspeed_stack.models.common import MCPServerInfo
+from lightspeed_stack.models.config import Action, ModelContextProtocolServer
+from lightspeed_stack.utils.endpoints import check_configuration_loaded
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["mcp-servers"])

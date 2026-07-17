@@ -4,8 +4,8 @@ from typing import Optional, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from models.common import FeedbackCategory
-from utils import suid
+from lightspeed_stack.models.common import FeedbackCategory
+from lightspeed_stack.utils import suid
 
 
 class FeedbackRequest(BaseModel):

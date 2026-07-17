@@ -5,7 +5,7 @@ import base64
 import pytest
 from pydantic import ValidationError
 
-from models.common.query import Attachment
+from lightspeed_stack.models.common.query import Attachment
 
 
 class TestAttachment:

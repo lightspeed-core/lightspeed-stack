@@ -14,23 +14,23 @@ from llama_stack_client import (
 from llama_stack_client.types import ShieldListResponse
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 
-from configuration import AppConfig
-from constants import DEFAULT_VIOLATION_MESSAGE
-from log import get_logger
-from metrics import recording
-from models.api.requests import QueryRequest
-from models.api.responses.error import (
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.constants import DEFAULT_VIOLATION_MESSAGE
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.metrics import recording
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.api.responses.error import (
     InternalServerErrorResponse,
     NotFoundResponse,
     ServiceUnavailableResponse,
     UnprocessableEntityResponse,
 )
-from models.common.moderation import (
+from lightspeed_stack.models.common.moderation import (
     ShieldModerationBlocked,
     ShieldModerationPassed,
     ShieldModerationResult,
 )
-from utils.query import handle_known_apistatus_errors
+from lightspeed_stack.utils.query import handle_known_apistatus_errors
 
 logger = get_logger(__name__)
 

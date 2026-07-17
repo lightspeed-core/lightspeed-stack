@@ -5,21 +5,21 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from llama_stack_client import APIConnectionError
 
-from authentication import get_auth_dependency
-from authentication.interface import AuthTuple
-from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
-from configuration import configuration
-from log import get_logger
-from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
-from models.api.responses.error import (
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
+from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
-from models.api.responses.successful import InfoResponse
-from models.config import Action
-from version import __version__
+from lightspeed_stack.models.api.responses.successful import InfoResponse
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.version import __version__
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["info"])

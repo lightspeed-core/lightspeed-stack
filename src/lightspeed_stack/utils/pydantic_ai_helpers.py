@@ -11,9 +11,9 @@ from pydantic_ai.agent import Agent
 from pydantic_ai.capabilities import AbstractCapability, AgentCapability
 from pydantic_ai_skills import SkillsCapability
 
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.config import SkillsConfiguration
-from pydantic_ai_lightspeed.llamastack import (
+from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.config import SkillsConfiguration
+from lightspeed_stack.pydantic_ai_lightspeed.llamastack import (
     LlamaStackResponsesModel,
 )
 

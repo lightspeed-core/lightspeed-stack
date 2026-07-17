@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-from log import get_logger
+from lightspeed_stack.log import get_logger
 
 logger = get_logger(__name__)
 

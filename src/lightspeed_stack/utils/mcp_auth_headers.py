@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-import constants
-from log import get_logger
+from lightspeed_stack import constants
+from lightspeed_stack.log import get_logger
 
 logger = get_logger(__name__)
 

@@ -29,8 +29,8 @@ import yaml
 from llama_stack.core.stack import replace_env_vars
 from pydantic import SecretStr
 
-import constants
-from log import get_logger
+from lightspeed_stack import constants
+from lightspeed_stack.log import get_logger
 
 logger = get_logger(__name__)
 

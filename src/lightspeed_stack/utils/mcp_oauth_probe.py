@@ -11,11 +11,11 @@ from typing import Optional
 import aiohttp
 from fastapi import HTTPException
 
-import constants
-from configuration import AppConfig
-from log import get_logger
-from models.api.responses.error import UnauthorizedResponse
-from utils.mcp_headers import McpHeaders, build_mcp_headers
+from lightspeed_stack import constants
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.error import UnauthorizedResponse
+from lightspeed_stack.utils.mcp_headers import McpHeaders, build_mcp_headers
 
 logger = get_logger(__name__)
 

@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import Field
 
-from models.api.responses.successful.bases import AbstractSuccessfulResponse
+from lightspeed_stack.models.api.responses.successful.bases import AbstractSuccessfulResponse
 
 
 class FeedbackResponse(AbstractSuccessfulResponse):

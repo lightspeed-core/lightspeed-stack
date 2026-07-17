@@ -1,6 +1,6 @@
 """Unit tests for markdown repair utilities."""
 
-from utils.markdown_repair import close_open_markdown
+from lightspeed_stack.utils.markdown_repair import close_open_markdown
 
 
 class TestCloseOpenMarkdownCodeFences:

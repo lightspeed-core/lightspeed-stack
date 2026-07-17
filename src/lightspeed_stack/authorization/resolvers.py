@@ -7,10 +7,10 @@ from typing import Any
 
 from jsonpath_ng import parse
 
-import constants
-from authentication.interface import AuthTuple
-from log import get_logger
-from models.config import AccessRule, Action, JsonPathOperator, JwtRoleRule
+from lightspeed_stack import constants
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import AccessRule, Action, JsonPathOperator, JwtRoleRule
 
 logger = get_logger(__name__)
 

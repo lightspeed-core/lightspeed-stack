@@ -8,11 +8,11 @@ import yaml
 # similarly to how it is done in llama-stack, so we use their function directly
 from llama_stack.core.stack import replace_env_vars
 
-import constants
-from cache.cache import Cache
-from cache.cache_factory import CacheFactory
-from log import get_logger
-from models.config import (
+from lightspeed_stack import constants
+from lightspeed_stack.cache.cache import Cache
+from lightspeed_stack.cache.cache_factory import CacheFactory
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import (
     A2AStateConfiguration,
     ApprovalsConfiguration,
     AuthenticationConfiguration,
@@ -36,9 +36,9 @@ from models.config import (
     SplunkConfiguration,
     UserDataCollection,
 )
-from quota.quota_limiter import QuotaLimiter
-from quota.quota_limiter_factory import QuotaLimiterFactory
-from quota.token_usage_history import TokenUsageHistory
+from lightspeed_stack.quota.quota_limiter import QuotaLimiter
+from lightspeed_stack.quota.quota_limiter_factory import QuotaLimiterFactory
+from lightspeed_stack.quota.token_usage_history import TokenUsageHistory
 
 logger = get_logger(__name__)
 

@@ -32,12 +32,12 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import app.database
-from authentication.interface import AuthTuple
-from authentication.noop import NoopAuthDependency
-from configuration import configuration
-from models.config import Action
-from models.database.base import Base
+import lightspeed_stack.app.database
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authentication.noop import NoopAuthDependency
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.models.database.base import Base
 
 # ==========================================
 # Common Test Constants
@@ -618,7 +618,7 @@ def non_admin_test_request_fixture(
 
     # Patch the NoopAccessResolver to return limited actions
     mocker.patch(
-        "authorization.resolvers.NoopAccessResolver.get_actions",
+        "lightspeed_stack.authorization.resolvers.NoopAccessResolver.get_actions",
         return_value=standard_actions,
     )
     yield test_request
@@ -644,7 +644,7 @@ def integration_http_client_fixture(
     original = os.environ.get("LIGHTSPEED_STACK_CONFIG_PATH")
     os.environ["LIGHTSPEED_STACK_CONFIG_PATH"] = str(config_path)
     try:
-        from app.main import (  # pylint: disable=import-outside-toplevel,redefined-outer-name
+        from lightspeed_stack.app.main import (  # pylint: disable=import-outside-toplevel,redefined-outer-name
             app,
         )
 
@@ -675,21 +675,21 @@ def patch_db_session_fixture(
         The test database Session instance to be used by the test.
     """
     # Store original values to restore later
-    original_engine = app.database.engine
-    original_session_local = app.database.session_local
+    original_engine = lightspeed_stack.app.database.engine
+    original_session_local = lightspeed_stack.app.database.session_local
 
     # Set the test database engine and session maker globally
     # Match initialize_database() settings: autocommit=False, autoflush=False
-    app.database.engine = test_db_engine
-    app.database.session_local = sessionmaker(
+    lightspeed_stack.app.database.engine = test_db_engine
+    lightspeed_stack.app.database.session_local = sessionmaker(
         autocommit=False, autoflush=False, bind=test_db_engine
     )
 
     yield test_db_session
 
     # Restore original values
-    app.database.engine = original_engine
-    app.database.session_local = original_session_local
+    lightspeed_stack.app.database.engine = original_engine
+    lightspeed_stack.app.database.session_local = original_session_local
 
 
 @pytest.fixture(name="mock_request_with_auth")
@@ -737,10 +737,10 @@ def mock_llama_stack_client_fixture(
     # Patch AsyncLlamaStackClientHolder at multiple import locations
     # This ensures the mock is active both during app startup (app.main)
     # and during endpoint execution (query, conversations_v1, responses, etc.)
-    mock_holder_class = mocker.patch("app.endpoints.query.AsyncLlamaStackClientHolder")
-    mocker.patch("app.main.AsyncLlamaStackClientHolder", mock_holder_class)
+    mock_holder_class = mocker.patch("lightspeed_stack.app.endpoints.query.AsyncLlamaStackClientHolder")
+    mocker.patch("lightspeed_stack.app.main.AsyncLlamaStackClientHolder", mock_holder_class)
     mocker.patch(
-        "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder", mock_holder_class
+        "lightspeed_stack.app.endpoints.conversations_v1.AsyncLlamaStackClientHolder", mock_holder_class
     )
 
     mock_client = mocker.AsyncMock()
@@ -804,7 +804,7 @@ def mock_query_agent_fixture(mocker: MockerFixture) -> Any:
     mock_agent = mocker.AsyncMock()
     mock_agent.run = mocker.AsyncMock(return_value=create_agent_run_result(mocker))
     mock_agent.build_agent_mock = mocker.patch(
-        "utils.agents.query.build_agent",
+        "lightspeed_stack.utils.agents.query.build_agent",
         return_value=mock_agent,
     )
     return mock_agent
@@ -818,7 +818,7 @@ def mock_streaming_query_agent_fixture(mocker: MockerFixture) -> Any:
         return_value=mock_agent_run_stream(create_text_agent_stream_events(mocker))
     )
     mock_agent.build_agent_mock = mocker.patch(
-        "utils.agents.streaming.build_agent",
+        "lightspeed_stack.utils.agents.streaming.build_agent",
         return_value=mock_agent,
     )
     return mock_agent

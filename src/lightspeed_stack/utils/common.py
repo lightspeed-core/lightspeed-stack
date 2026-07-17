@@ -9,8 +9,8 @@ from typing import Any, cast
 from llama_stack.core.library_client import AsyncLlamaStackAsLibraryClient
 from llama_stack_client import AsyncLlamaStackClient
 
-from client import AsyncLlamaStackClientHolder
-from models.config import Configuration, ModelContextProtocolServer
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.models.config import Configuration, ModelContextProtocolServer
 
 
 async def register_mcp_servers_async(

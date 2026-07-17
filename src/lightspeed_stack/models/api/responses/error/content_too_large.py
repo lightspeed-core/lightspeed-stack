@@ -4,11 +4,11 @@ from typing import ClassVar, Optional, Self
 
 from fastapi import status
 
-from models.api.responses.constants import (
+from lightspeed_stack.models.api.responses.constants import (
     FILE_UPLOAD_EXCEEDS_SIZE_LIMIT_DESCRIPTION,
     PROMPT_TOO_LONG_DESCRIPTION,
 )
-from models.api.responses.error.bases import AbstractErrorResponse
+from lightspeed_stack.models.api.responses.error.bases import AbstractErrorResponse
 
 
 class PromptTooLongResponse(AbstractErrorResponse):

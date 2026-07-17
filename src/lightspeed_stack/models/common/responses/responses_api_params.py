@@ -20,8 +20,8 @@ from llama_stack_api.openai_responses import (
 )
 from pydantic import BaseModel, Field
 
-from models.common.responses.types import IncludeParameter, InputTool, ResponseInput
-from utils.tool_formatter import translate_vector_store_ids_to_user_facing
+from lightspeed_stack.models.common.responses.types import IncludeParameter, InputTool, ResponseInput
+from lightspeed_stack.utils.tool_formatter import translate_vector_store_ids_to_user_facing
 
 # Attribute names that are echoed back in the response.
 _ECHOED_FIELDS: Final[set[str]] = set(

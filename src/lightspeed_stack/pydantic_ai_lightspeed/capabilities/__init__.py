@@ -5,6 +5,6 @@ pydantic-ai's AbstractCapability lifecycle to enforce constraints
 before, during, or after agent runs.
 """
 
-from pydantic_ai_lightspeed.capabilities.question_validity import QuestionValidity
+from lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity import QuestionValidity
 
 __all__ = ["QuestionValidity"]

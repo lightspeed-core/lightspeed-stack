@@ -4,12 +4,12 @@ from typing import ClassVar
 
 from pydantic import Field, computed_field
 
-from log import get_logger
-from models.api.responses.successful.bases import (
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.successful.bases import (
     AbstractDeleteResponse,
     AbstractSuccessfulResponse,
 )
-from models.common.conversation import (
+from lightspeed_stack.models.common.conversation import (
     ConversationData,
     ConversationDetails,
     ConversationTurn,

@@ -14,7 +14,7 @@ from typing import Any, Optional, get_args
 import pytest
 import yaml
 
-from llama_stack_configuration import (
+from lightspeed_stack.llama_stack_configuration import (
     PROVIDER_TYPE_MAP,
     apply_high_level_inference,
     deep_merge_list_replace,
@@ -24,7 +24,7 @@ from llama_stack_configuration import (
     synthesize_configuration,
     synthesize_to_file,
 )
-from models.config import UnifiedInferenceProvider
+from lightspeed_stack.models.config import UnifiedInferenceProvider
 
 # ---------------------------------------------------------------------------
 # ensure_mcp_tool_runtime

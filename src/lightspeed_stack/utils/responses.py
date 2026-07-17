@@ -80,49 +80,49 @@ from llama_stack_api.openai_responses import (
 )
 from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
 
-import constants
-from client import AsyncLlamaStackClientHolder
-from configuration import configuration
-from constants import DEFAULT_RAG_TOOL
-from log import get_logger
-from metrics import recording
-from models.api.requests import QueryRequest
-from models.api.responses.error import (
+from lightspeed_stack import constants
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.constants import DEFAULT_RAG_TOOL
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.metrics import recording
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.api.responses.error import (
     ConflictResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
     ServiceUnavailableResponse,
 )
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import (
+from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.types import (
     InputTool,
     InputToolMCP,
     ResponseInput,
     ResponseItem,
 )
-from models.common.turn_summary import (
+from lightspeed_stack.models.common.turn_summary import (
     RAGChunk,
     ReferencedDocument,
     ToolCallSummary,
     ToolResultSummary,
     TurnSummary,
 )
-from models.config import ByokRag
-from models.database.conversations import UserConversation
-from utils.mcp_headers import (
+from lightspeed_stack.models.config import ByokRag
+from lightspeed_stack.models.database.conversations import UserConversation
+from lightspeed_stack.utils.mcp_headers import (
     McpHeaders,
     build_mcp_headers,
     find_unresolved_auth_headers,
 )
-from utils.prompts import get_system_prompt, get_topic_summary_system_prompt
-from utils.query import (
+from lightspeed_stack.utils.prompts import get_system_prompt, get_topic_summary_system_prompt
+from lightspeed_stack.utils.query import (
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     normalize_vertex_ai_model_id,
     prepare_input,
 )
-from utils.suid import to_llama_stack_conversation_id
-from utils.token_counter import TokenCounter
+from lightspeed_stack.utils.suid import to_llama_stack_conversation_id
+from lightspeed_stack.utils.token_counter import TokenCounter
 
 logger = get_logger(__name__)
 

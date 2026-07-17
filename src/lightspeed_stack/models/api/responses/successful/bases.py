@@ -5,8 +5,8 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, Field, computed_field
 from pydantic_core import SchemaError
 
-from log import get_logger
-from models.api.responses.constants import SUCCESSFUL_RESPONSE_DESCRIPTION
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.constants import SUCCESSFUL_RESPONSE_DESCRIPTION
 
 logger = get_logger(__name__)
 

@@ -6,8 +6,8 @@ running in degraded mode (i.e., without Llama Stack connectivity).
 
 from typing import Optional
 
-from metrics import recording
-from utils.types import Singleton
+from lightspeed_stack.metrics import recording
+from lightspeed_stack.utils.types import Singleton
 
 
 class DegradedModeTracker(metaclass=Singleton):

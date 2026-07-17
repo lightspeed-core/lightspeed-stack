@@ -5,14 +5,14 @@ from typing import cast
 import kubernetes.client
 from fastapi import HTTPException, Request
 
-from authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
-from authentication.k8s import get_user_info
-from authentication.utils import extract_user_token
-from configuration import configuration
-from constants import DEFAULT_VIRTUAL_PATH, NO_USER_TOKEN
-from log import get_logger
-from models.api.responses.error import ForbiddenResponse, UnauthorizedResponse
-from models.config import TrustedProxyConfiguration
+from lightspeed_stack.authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
+from lightspeed_stack.authentication.k8s import get_user_info
+from lightspeed_stack.authentication.utils import extract_user_token
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.constants import DEFAULT_VIRTUAL_PATH, NO_USER_TOKEN
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.error import ForbiddenResponse, UnauthorizedResponse
+from lightspeed_stack.models.config import TrustedProxyConfiguration
 
 logger = get_logger(__name__)
 

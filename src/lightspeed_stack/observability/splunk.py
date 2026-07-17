@@ -8,9 +8,9 @@ from typing import Any, Optional
 import aiohttp
 from fastapi import BackgroundTasks
 
-from configuration import configuration
-from log import get_logger
-from version import __version__
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.version import __version__
 
 logger = get_logger(__name__)
 

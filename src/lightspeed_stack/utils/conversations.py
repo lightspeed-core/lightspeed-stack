@@ -40,19 +40,19 @@ from llama_stack_client.types.conversations.item_list_response import (
     OpenAIResponseMessageOutput as MessageOutput,
 )
 
-from constants import DEFAULT_RAG_TOOL
-from models.api.responses.error import (
+from lightspeed_stack.constants import DEFAULT_RAG_TOOL
+from lightspeed_stack.models.api.responses.error import (
     InternalServerErrorResponse,
     ServiceUnavailableResponse,
 )
-from models.common.conversation import (
+from lightspeed_stack.models.common.conversation import (
     ConversationTurn,
     Message,
 )
-from models.common.responses.types import ResponseInput
-from models.common.turn_summary import ToolCallSummary, ToolResultSummary
-from models.database.conversations import UserTurn
-from utils.responses import parse_arguments_string
+from lightspeed_stack.models.common.responses.types import ResponseInput
+from lightspeed_stack.models.common.turn_summary import ToolCallSummary, ToolResultSummary
+from lightspeed_stack.models.database.conversations import UserTurn
+from lightspeed_stack.utils.responses import parse_arguments_string
 
 
 def _extract_text_from_content(content: str | list[Any]) -> str:

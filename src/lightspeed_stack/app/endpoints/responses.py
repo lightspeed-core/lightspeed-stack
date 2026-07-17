@@ -31,23 +31,23 @@ from openai._exceptions import (
     APIStatusError as OpenAIAPIStatusError,
 )
 
-from app.endpoints.responses_telemetry import (
+from lightspeed_stack.app.endpoints.responses_telemetry import (
     queue_blocked_response_event,
     queue_completed_response_event,
     queue_responses_error_event,
 )
-from authentication import get_auth_dependency
-from authentication.interface import AuthTuple
-from authorization.azure_token_manager import AzureEntraIDManager
-from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
-from configuration import configuration
-from constants import ENDPOINT_PATH_RESPONSES, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
-from log import get_logger
-from metrics import recording
-from models.api.requests import ResponsesRequest
-from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
-from models.api.responses.error import (
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.azure_token_manager import AzureEntraIDManager
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.client import AsyncLlamaStackClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.constants import ENDPOINT_PATH_RESPONSES, SUBSTITUTED_INSTRUCTIONS_PLACEHOLDER
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.metrics import recording
+from lightspeed_stack.models.api.requests import ResponsesRequest
+from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
+from lightspeed_stack.models.api.responses.error import (
     ConflictResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
@@ -58,26 +58,26 @@ from models.api.responses.error import (
     UnauthorizedResponse,
     UnprocessableEntityResponse,
 )
-from models.api.responses.successful import ResponsesResponse
-from models.common.moderation import ShieldModerationBlocked
-from models.common.responses.contexts import ResponsesContext
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import ResponseInput
-from models.common.turn_summary import TurnSummary
-from models.config import Action
-from utils.conversation_compaction import (
+from lightspeed_stack.models.api.responses.successful import ResponsesResponse
+from lightspeed_stack.models.common.moderation import ShieldModerationBlocked
+from lightspeed_stack.models.common.responses.contexts import ResponsesContext
+from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.types import ResponseInput
+from lightspeed_stack.models.common.turn_summary import TurnSummary
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.utils.conversation_compaction import (
     apply_compaction_blocking,
     configured_conversation_cache,
 )
-from utils.conversations import append_turn_items_to_conversation
-from utils.endpoints import (
+from lightspeed_stack.utils.conversations import append_turn_items_to_conversation
+from lightspeed_stack.utils.endpoints import (
     check_configuration_loaded,
     resolve_response_context,
 )
-from utils.mcp_headers import mcp_headers_dependency
-from utils.mcp_oauth_probe import check_mcp_auth
-from utils.prompts import get_system_prompt
-from utils.query import (
+from lightspeed_stack.utils.mcp_headers import mcp_headers_dependency
+from lightspeed_stack.utils.mcp_oauth_probe import check_mcp_auth
+from lightspeed_stack.utils.prompts import get_system_prompt
+from lightspeed_stack.utils.query import (
     consume_query_tokens,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
@@ -85,8 +85,8 @@ from utils.query import (
     store_query_results,
     validate_model_provider_override,
 )
-from utils.quota_utils import check_tokens_available, get_available_quotas
-from utils.responses import (
+from lightspeed_stack.utils.quota_utils import check_tokens_available, get_available_quotas
+from lightspeed_stack.utils.responses import (
     build_tool_call_summary,
     build_turn_summary,
     check_model_configured,
@@ -104,13 +104,13 @@ from utils.responses import (
     resolve_tool_choice,
     select_model_for_responses,
 )
-from utils.rh_identity import get_rh_identity_context
-from utils.shields import run_shield_moderation
-from utils.suid import (
+from lightspeed_stack.utils.rh_identity import get_rh_identity_context
+from lightspeed_stack.utils.shields import run_shield_moderation
+from lightspeed_stack.utils.suid import (
     normalize_conversation_id,
 )
-from utils.tool_formatter import translate_vector_store_ids_to_user_facing
-from utils.vector_search import (
+from lightspeed_stack.utils.tool_formatter import translate_vector_store_ids_to_user_facing
+from lightspeed_stack.utils.vector_search import (
     append_inline_rag_context_to_responses_input,
     build_rag_context,
 )

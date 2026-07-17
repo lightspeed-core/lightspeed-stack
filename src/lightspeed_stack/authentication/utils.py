@@ -3,7 +3,7 @@
 from fastapi import HTTPException
 from starlette.datastructures import Headers
 
-from models.api.responses.error import UnauthorizedResponse
+from lightspeed_stack.models.api.responses.error import UnauthorizedResponse
 
 
 def extract_user_token(headers: Headers) -> str:

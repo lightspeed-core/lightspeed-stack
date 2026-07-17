@@ -5,12 +5,12 @@ import asyncio
 import pytest
 from pytest_mock import MockerFixture
 
-from constants import INTERRUPTED_RESPONSE_MESSAGE
-from models.api.requests import QueryRequest
-from models.common.responses.contexts import ResponseGeneratorContext
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.turn_summary import TurnSummary
-from utils.stream_interrupts import (
+from lightspeed_stack.constants import INTERRUPTED_RESPONSE_MESSAGE
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.common.responses.contexts import ResponseGeneratorContext
+from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.turn_summary import TurnSummary
+from lightspeed_stack.utils.stream_interrupts import (
     StreamInterruptRegistry,
     build_interrupted_response,
     persist_interrupted_turn,
@@ -49,14 +49,14 @@ async def test_persist_interrupted_turn_compacted_uses_original_input(
     turn_summary.llm_response = f"partial content{INTERRUPTED_INDICATOR}"
     background_tasks: list[asyncio.Task[None]] = []
     items = mocker.patch(
-        "utils.stream_interrupts.append_turn_items_to_conversation",
+        "lightspeed_stack.utils.stream_interrupts.append_turn_items_to_conversation",
         new=mocker.AsyncMock(),
     )
     strs = mocker.patch(
-        "utils.stream_interrupts.append_turn_to_conversation",
+        "lightspeed_stack.utils.stream_interrupts.append_turn_to_conversation",
         new=mocker.AsyncMock(),
     )
-    mocker.patch("utils.stream_interrupts.store_query_results")
+    mocker.patch("lightspeed_stack.utils.stream_interrupts.store_query_results")
 
     await persist_interrupted_turn(
         context,
@@ -101,12 +101,12 @@ async def test_persist_interrupted_turn_schedules_background_topic_summary(
     background_tasks: list[asyncio.Task[None]] = []
 
     mocker.patch(
-        "utils.stream_interrupts.append_turn_to_conversation",
+        "lightspeed_stack.utils.stream_interrupts.append_turn_to_conversation",
         new=mocker.AsyncMock(),
     )
-    mocker.patch("utils.stream_interrupts.store_query_results")
+    mocker.patch("lightspeed_stack.utils.stream_interrupts.store_query_results")
     background_mock = mocker.patch(
-        "utils.stream_interrupts.background_update_topic_summary",
+        "lightspeed_stack.utils.stream_interrupts.background_update_topic_summary",
         new=mocker.AsyncMock(),
     )
 
@@ -128,11 +128,11 @@ def test_register_interrupt_callback_registers_current_task(
     """register_interrupt_callback binds the current asyncio task to the registry."""
     registry = mocker.Mock(spec=StreamInterruptRegistry)
     mocker.patch(
-        "utils.stream_interrupts.get_stream_interrupt_registry",
+        "lightspeed_stack.utils.stream_interrupts.get_stream_interrupt_registry",
         return_value=registry,
     )
     persist_mock = mocker.patch(
-        "utils.stream_interrupts.persist_interrupted_turn",
+        "lightspeed_stack.utils.stream_interrupts.persist_interrupted_turn",
         new=mocker.AsyncMock(),
     )
 

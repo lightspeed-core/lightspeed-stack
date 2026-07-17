@@ -13,7 +13,7 @@ import pytest
 from fastapi import HTTPException, status
 from pytest_mock import MockerFixture
 
-from app.endpoints.feedback import (
+from lightspeed_stack.app.endpoints.feedback import (
     assert_feedback_enabled,
     feedback_endpoint_handler,
     feedback_status,
@@ -21,10 +21,10 @@ from app.endpoints.feedback import (
     store_feedback,
     update_feedback_status,
 )
-from authentication.interface import AuthTuple
-from configuration import AppConfig, configuration
-from models.api.requests import FeedbackRequest, FeedbackStatusUpdateRequest
-from models.config import UserDataCollection
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig, configuration
+from lightspeed_stack.models.api.requests import FeedbackRequest, FeedbackStatusUpdateRequest
+from lightspeed_stack.models.config import UserDataCollection
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 MOCK_AUTH = ("mock_user_id", "mock_username", False, "mock_token")
@@ -60,7 +60,7 @@ def test_is_feedback_enabled(mocker: MockerFixture) -> None:
         transcripts_enabled=False,
         transcripts_storage=None,
     )
-    mocker.patch("app.endpoints.feedback.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.configuration", mock_config)
     assert is_feedback_enabled() is True, "Feedback should be enabled"
 
 
@@ -74,7 +74,7 @@ def test_is_feedback_disabled(mocker: MockerFixture) -> None:
         transcripts_enabled=False,
         transcripts_storage=None,
     )
-    mocker.patch("app.endpoints.feedback.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.configuration", mock_config)
     assert is_feedback_enabled() is False, "Feedback should be disabled"
 
 
@@ -82,7 +82,7 @@ def test_is_feedback_disabled(mocker: MockerFixture) -> None:
 async def test_assert_feedback_enabled_disabled(mocker: MockerFixture) -> None:
     """Test that assert_feedback_enabled raises HTTPException when feedback is disabled."""
     # Simulate feedback being disabled
-    mocker.patch("app.endpoints.feedback.is_feedback_enabled", return_value=False)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.is_feedback_enabled", return_value=False)
 
     with pytest.raises(HTTPException) as exc_info:
         await assert_feedback_enabled(mocker.Mock())
@@ -96,7 +96,7 @@ async def test_assert_feedback_enabled_disabled(mocker: MockerFixture) -> None:
 async def test_assert_feedback_enabled(mocker: MockerFixture) -> None:
     """Test that assert_feedback_enabled does not raise an exception when feedback is enabled."""
     # Simulate feedback being enabled
-    mocker.patch("app.endpoints.feedback.is_feedback_enabled", return_value=True)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.is_feedback_enabled", return_value=True)
 
     # Should not raise an exception
     await assert_feedback_enabled(mocker.Mock())
@@ -120,7 +120,7 @@ async def test_assert_feedback_enabled_disabled_full_config_chain(
         transcripts_enabled=False,
         transcripts_storage=None,
     )
-    mocker.patch("app.endpoints.feedback.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.configuration", mock_config)
 
     with pytest.raises(HTTPException) as exc_info:
         await assert_feedback_enabled(mocker.Mock())
@@ -152,14 +152,14 @@ async def test_feedback_endpoint_handler(
     mock_authorization_resolvers(mocker)
 
     # Mock the dependencies
-    mocker.patch("app.endpoints.feedback.assert_feedback_enabled", return_value=None)
-    mocker.patch("app.endpoints.feedback.store_feedback", return_value=None)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.assert_feedback_enabled", return_value=None)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.store_feedback", return_value=None)
 
     # Mock retrieve_conversation to return a conversation owned by test_user_id
     mock_conversation = mocker.Mock()
     mock_conversation.user_id = "test_user_id"
     mocker.patch(
-        "app.endpoints.feedback.retrieve_conversation", return_value=mock_conversation
+        "lightspeed_stack.app.endpoints.feedback.retrieve_conversation", return_value=mock_conversation
     )
 
     # Prepare the feedback request mock
@@ -185,19 +185,19 @@ async def test_feedback_endpoint_handler(
 async def test_feedback_endpoint_handler_error(mocker: MockerFixture) -> None:
     """Test feedback_endpoint_handler raises HTTPException when store_feedback raises OSError."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.feedback.assert_feedback_enabled", return_value=None)
-    mocker.patch("app.endpoints.feedback.check_configuration_loaded", return_value=None)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.assert_feedback_enabled", return_value=None)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.check_configuration_loaded", return_value=None)
 
     # Mock retrieve_conversation to return a conversation owned by test_user_id
     mock_conversation = mocker.Mock()
     mock_conversation.user_id = "test_user_id"
     mocker.patch(
-        "app.endpoints.feedback.retrieve_conversation", return_value=mock_conversation
+        "lightspeed_stack.app.endpoints.feedback.retrieve_conversation", return_value=mock_conversation
     )
 
     # Mock Path.mkdir to raise OSError so the try block in store_feedback catches it
     mocker.patch(
-        "app.endpoints.feedback.Path.mkdir", side_effect=OSError("Permission denied")
+        "lightspeed_stack.app.endpoints.feedback.Path.mkdir", side_effect=OSError("Permission denied")
     )
     feedback_request = FeedbackRequest(
         conversation_id="123e4567-e89b-12d3-a456-426614174000",
@@ -251,11 +251,11 @@ def test_store_feedback(
 
     # Patch filesystem and helpers
     mocker.patch("builtins.open", mocker.mock_open())
-    mocker.patch("app.endpoints.feedback.Path", return_value=mocker.MagicMock())
-    mocker.patch("app.endpoints.feedback.get_suid", return_value="fake-uuid")
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.Path", return_value=mocker.MagicMock())
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.get_suid", return_value="fake-uuid")
 
     # Patch json to inspect stored data
-    mock_json = mocker.patch("app.endpoints.feedback.json")
+    mock_json = mocker.patch("lightspeed_stack.app.endpoints.feedback.json")
 
     user_id = "test_user_id"
 
@@ -297,7 +297,7 @@ def test_store_feedback_on_io_error(
     # non-writable path
     # avoid touching the real filesystem; simulate a permission error on open
     configuration.user_data_collection_configuration.feedback_storage = "fake-path"
-    mocker.patch("app.endpoints.feedback.Path", return_value=mocker.MagicMock())
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.Path", return_value=mocker.MagicMock())
     mocker.patch("builtins.open", side_effect=PermissionError("EACCES"))
 
     user_id = "test_user_id"
@@ -321,7 +321,7 @@ def test_store_feedback_real_filesystem(tmp_path: Path, mocker: MockerFixture) -
     configuration.user_data_collection_configuration.feedback_storage = str(tmp_path)
 
     fake_uuid = "test-feedback-uuid"
-    mocker.patch("app.endpoints.feedback.get_suid", return_value=fake_uuid)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.get_suid", return_value=fake_uuid)
 
     feedback_data = {
         "conversation_id": "12345678-abcd-0000-0123-456789abcdef",
@@ -443,13 +443,13 @@ async def test_feedback_endpoint_valid_requests(
 ) -> None:
     """Test endpoint with valid feedback payloads."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.feedback.store_feedback")
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.store_feedback")
 
     # Mock retrieve_conversation to return a conversation owned by mock_user_id
     mock_conversation = mocker.Mock()
     mock_conversation.user_id = "mock_user_id"
     mocker.patch(
-        "app.endpoints.feedback.retrieve_conversation", return_value=mock_conversation
+        "lightspeed_stack.app.endpoints.feedback.retrieve_conversation", return_value=mock_conversation
     )
 
     request = FeedbackRequest(**{**VALID_BASE, **payload})
@@ -471,7 +471,7 @@ def test_feedback_status_enabled(mocker: MockerFixture) -> None:
         transcripts_enabled=False,
         transcripts_storage=None,
     )
-    mocker.patch("app.endpoints.feedback.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.configuration", mock_config)
 
     response = feedback_status()
 
@@ -489,7 +489,7 @@ def test_feedback_status_disabled(mocker: MockerFixture) -> None:
         transcripts_enabled=False,
         transcripts_storage=None,
     )
-    mocker.patch("app.endpoints.feedback.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.configuration", mock_config)
 
     response = feedback_status()
 
@@ -503,8 +503,8 @@ async def test_feedback_endpoint_handler_conversation_not_found(
 ) -> None:
     """Test that feedback_endpoint_handler returns 404 when conversation doesn't exist."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.feedback.assert_feedback_enabled", return_value=None)
-    mocker.patch("app.endpoints.feedback.retrieve_conversation", return_value=None)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.assert_feedback_enabled", return_value=None)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.retrieve_conversation", return_value=None)
 
     feedback_request = FeedbackRequest(**{**VALID_BASE, "sentiment": 1})
     auth: AuthTuple = ("test_user_id", "test_user", True, "test_token")
@@ -527,13 +527,13 @@ async def test_feedback_endpoint_handler_conversation_wrong_owner(
 ) -> None:
     """Test feedback_endpoint_handler returns 403 for conversation owned by different user."""
     mock_authorization_resolvers(mocker)
-    mocker.patch("app.endpoints.feedback.assert_feedback_enabled", return_value=None)
+    mocker.patch("lightspeed_stack.app.endpoints.feedback.assert_feedback_enabled", return_value=None)
 
     # Mock retrieve_conversation to return a conversation owned by a different user
     mock_conversation = mocker.Mock()
     mock_conversation.user_id = "different_user_id"
     mocker.patch(
-        "app.endpoints.feedback.retrieve_conversation", return_value=mock_conversation
+        "lightspeed_stack.app.endpoints.feedback.retrieve_conversation", return_value=mock_conversation
     )
 
     feedback_request = FeedbackRequest(**{**VALID_BASE, "sentiment": 1})

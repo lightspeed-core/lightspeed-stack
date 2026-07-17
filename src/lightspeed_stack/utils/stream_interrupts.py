@@ -10,21 +10,21 @@ from typing import Any, Optional, cast
 
 from llama_stack_api import OpenAIResponseMessage
 
-from constants import (
+from lightspeed_stack.constants import (
     INTERRUPTED_RESPONSE_MESSAGE,
     TOPIC_SUMMARY_INTERRUPT_TIMEOUT_SECONDS,
 )
-from log import get_logger
-from models.common.responses.contexts import ResponseGeneratorContext
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import ResponseInput
-from models.common.turn_summary import TurnSummary
-from utils.conversations import append_turn_items_to_conversation
-from utils.markdown_repair import close_open_markdown
-from utils.query import store_query_results, update_conversation_topic_summary
-from utils.responses import get_topic_summary
-from utils.shields import append_turn_to_conversation
-from utils.types import Singleton
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.common.responses.contexts import ResponseGeneratorContext
+from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.types import ResponseInput
+from lightspeed_stack.models.common.turn_summary import TurnSummary
+from lightspeed_stack.utils.conversations import append_turn_items_to_conversation
+from lightspeed_stack.utils.markdown_repair import close_open_markdown
+from lightspeed_stack.utils.query import store_query_results, update_conversation_topic_summary
+from lightspeed_stack.utils.responses import get_topic_summary
+from lightspeed_stack.utils.shields import append_turn_to_conversation
+from lightspeed_stack.utils.types import Singleton
 
 logger = get_logger(__name__)
 

@@ -2,7 +2,7 @@
 
 import pytest
 
-from quota.quota_exceed_error import QuotaExceedError
+from lightspeed_stack.quota.quota_exceed_error import QuotaExceedError
 
 
 def test_quota_exceed_error_constructor() -> None:

@@ -24,7 +24,7 @@ observability/
 
 ```python
 from fastapi import BackgroundTasks
-from observability import send_splunk_event, build_inference_event, InferenceEventData
+from lightspeed_stack.observability import send_splunk_event, build_inference_event, InferenceEventData
 
 # Build the event payload
 event_data = InferenceEventData(
@@ -82,8 +82,8 @@ def build_my_event(data: MyEventData) -> dict[str, Any]:
 3. Use with `send_splunk_event()`:
 
 ```python
-from observability import send_splunk_event
-from observability.formats.my_endpoint import build_my_event, MyEventData
+from lightspeed_stack.observability import send_splunk_event
+from lightspeed_stack.observability.formats.my_endpoint import build_my_event, MyEventData
 
 event = build_my_event(MyEventData(field1="value", field2=42))
 background_tasks.add_task(send_splunk_event, event, "my_sourcetype")
@@ -102,13 +102,13 @@ The Splunk client is designed to never block or fail the main request:
 See [docs/splunk.md](../../docs/splunk.md) for configuration options.
 """
 
-from observability.formats import (
+from lightspeed_stack.observability.formats import (
     InferenceEventData,
     ResponsesEventData,
     build_inference_event,
     build_responses_event,
 )
-from observability.splunk import dispatch_splunk_event, send_splunk_event
+from lightspeed_stack.observability.splunk import dispatch_splunk_event, send_splunk_event
 
 __all__ = [
     "InferenceEventData",

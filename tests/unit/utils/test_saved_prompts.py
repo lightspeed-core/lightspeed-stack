@@ -10,9 +10,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from models.database.base import Base
-from models.database.saved_prompts import SavedPrompt
-from utils.saved_prompts import (
+from lightspeed_stack.models.database.base import Base
+from lightspeed_stack.models.database.saved_prompts import SavedPrompt
+from lightspeed_stack.utils.saved_prompts import (
     SavedPromptAccessDeniedError,
     SavedPromptConflictError,
     SavedPromptLimitExceededError,
@@ -25,7 +25,7 @@ from utils.saved_prompts import (
     validate_saved_prompt_name,
     validate_saved_prompt_quota,
 )
-from utils.suid import get_suid
+from lightspeed_stack.utils.suid import get_suid
 
 
 @pytest.fixture(name="sqlite_engine")
@@ -68,7 +68,9 @@ def patch_saved_prompts_get_session_fixture(
         """
         return session_factory()
 
-    mocker.patch("utils.saved_prompts.get_session", side_effect=_get_session)
+    mocker.patch(
+        "lightspeed_stack.utils.saved_prompts.get_session", side_effect=_get_session
+    )
 
 
 class TestValidateSavedPromptQuota:
@@ -341,7 +343,7 @@ class TestListSavedPromptsByUser:
     ) -> None:
         """Test list applies SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND as a hard cap."""
         mocker.patch(
-            "utils.saved_prompts.constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND",
+            "lightspeed_stack.utils.saved_prompts.constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND",
             2,
         )
         session_factory = sessionmaker(

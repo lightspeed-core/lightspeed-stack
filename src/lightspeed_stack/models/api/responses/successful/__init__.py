@@ -1,6 +1,6 @@
 """Concrete successful HTTP response models grouped by domain."""
 
-from models.api.responses.successful.catalog import (
+from lightspeed_stack.models.api.responses.successful.catalog import (
     ModelsResponse,
     ProviderResponse,
     ProvidersListResponse,
@@ -9,48 +9,48 @@ from models.api.responses.successful.catalog import (
     ShieldsResponse,
     ToolsResponse,
 )
-from models.api.responses.successful.configuration import ConfigurationResponse
-from models.api.responses.successful.conversations import (
+from lightspeed_stack.models.api.responses.successful.configuration import ConfigurationResponse
+from lightspeed_stack.models.api.responses.successful.conversations import (
     ConversationDeleteResponse,
     ConversationResponse,
     ConversationsListResponse,
     ConversationsListResponseV2,
     ConversationUpdateResponse,
 )
-from models.api.responses.successful.feedback import (
+from lightspeed_stack.models.api.responses.successful.feedback import (
     FeedbackResponse,
     FeedbackStatusUpdateResponse,
 )
-from models.api.responses.successful.mcp_servers import (
+from lightspeed_stack.models.api.responses.successful.mcp_servers import (
     MCPClientAuthOptionsResponse,
     MCPServerDeleteResponse,
     MCPServerListResponse,
     MCPServerRegistrationResponse,
 )
-from models.api.responses.successful.probes import (
+from lightspeed_stack.models.api.responses.successful.probes import (
     AuthorizedResponse,
     InfoResponse,
     LivenessResponse,
     ReadinessResponse,
     StatusResponse,
 )
-from models.api.responses.successful.prompts import (
+from lightspeed_stack.models.api.responses.successful.prompts import (
     PromptDeleteResponse,
     PromptResourceResponse,
     PromptsListResponse,
 )
-from models.api.responses.successful.query import (
+from lightspeed_stack.models.api.responses.successful.query import (
     QueryResponse,
     StreamingInterruptResponse,
     StreamingQueryResponse,
 )
-from models.api.responses.successful.responses_openai import ResponsesResponse
-from models.api.responses.successful.rlsapi import (
+from lightspeed_stack.models.api.responses.successful.responses_openai import ResponsesResponse
+from lightspeed_stack.models.api.responses.successful.rlsapi import (
     RlsapiV1InferData,
     RlsapiV1InferResponse,
 )
-from models.api.responses.successful.saved_prompts import SavedPromptsConfigResponse
-from models.api.responses.successful.vector_stores import (
+from lightspeed_stack.models.api.responses.successful.saved_prompts import SavedPromptsConfigResponse
+from lightspeed_stack.models.api.responses.successful.vector_stores import (
     FileResponse,
     VectorStoreDeleteResponse,
     VectorStoreFileDeleteResponse,

@@ -1,6 +1,6 @@
 """Streaming payload models and event type exports."""
 
-from models.common.agents.stream_payloads import (
+from lightspeed_stack.models.common.agents.stream_payloads import (
     EndEventData,
     EndStreamPayload,
     ErrorEventData,
@@ -17,7 +17,7 @@ from models.common.agents.stream_payloads import (
     ToolResultStreamPayload,
     TurnCompleteStreamPayload,
 )
-from models.common.agents.turn_accumulator import AgentTurnAccumulator
+from lightspeed_stack.models.common.agents.turn_accumulator import AgentTurnAccumulator
 
 __all__ = [
     "AgentTurnAccumulator",

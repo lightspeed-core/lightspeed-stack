@@ -51,24 +51,24 @@ from llama_stack_api.openai_responses import OpenAIResponseMessage
 from llama_stack_client import AsyncLlamaStackClient
 from llama_stack_client.types.conversations.item_create_params import Item
 
-from cache.cache import Cache
-from cache.cache_error import CacheError
-from configuration import configuration
-from log import get_logger
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import ResponseInput
-from models.compaction import ConversationSummary
-from models.config import CompactionConfiguration, InferenceConfiguration
-from utils.compaction import (
+from lightspeed_stack.cache.cache import Cache
+from lightspeed_stack.cache.cache_error import CacheError
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.models.common.responses.types import ResponseInput
+from lightspeed_stack.models.compaction import ConversationSummary
+from lightspeed_stack.models.config import CompactionConfiguration, InferenceConfiguration
+from lightspeed_stack.utils.compaction import (
     partition_conversation,
     recursively_resummarize,
     summarize_chunk,
 )
-from utils.conversations import (
+from lightspeed_stack.utils.conversations import (
     append_turn_items_to_conversation,
     get_all_conversation_items,
 )
-from utils.token_estimator import (
+from lightspeed_stack.utils.token_estimator import (
     DEFAULT_ENCODING_NAME,
     estimate_conversation_tokens,
     estimate_tokens,

@@ -4,9 +4,9 @@ from typing import Optional, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
-from models.common.query import Attachment, SolrVectorSearchRequest
-from utils import suid
+from lightspeed_stack.constants import MEDIA_TYPE_JSON, MEDIA_TYPE_TEXT
+from lightspeed_stack.models.common.query import Attachment, SolrVectorSearchRequest
+from lightspeed_stack.utils import suid
 
 
 class QueryRequest(BaseModel):

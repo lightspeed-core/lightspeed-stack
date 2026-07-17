@@ -2,11 +2,11 @@
 
 from sqlalchemy.exc import IntegrityError
 
-import constants
-from app.database import get_session
-from log import get_logger
-from models.database.saved_prompts import SavedPrompt
-from utils.suid import get_suid
+from lightspeed_stack import constants
+from lightspeed_stack.app.database import get_session
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.database.saved_prompts import SavedPrompt
+from lightspeed_stack.utils.suid import get_suid
 
 logger = get_logger(__name__)
 

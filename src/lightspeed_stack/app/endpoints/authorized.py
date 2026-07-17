@@ -4,16 +4,16 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 
-from authentication import get_auth_dependency
-from authentication.interface import AuthTuple
-from log import get_logger
-from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
-from models.api.responses.error import (
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
+from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
-from models.api.responses.successful import AuthorizedResponse
+from lightspeed_stack.models.api.responses.successful import AuthorizedResponse
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["authorized"])

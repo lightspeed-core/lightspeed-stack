@@ -5,8 +5,8 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-import constants
-from models.config import Configuration, SavedPromptsConfiguration
+from lightspeed_stack import constants
+from lightspeed_stack.models.config import Configuration, SavedPromptsConfiguration
 
 
 class TestSavedPromptsConfigurationDefaults:

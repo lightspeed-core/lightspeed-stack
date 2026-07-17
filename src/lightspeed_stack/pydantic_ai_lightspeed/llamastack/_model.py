@@ -43,9 +43,9 @@ from pydantic_ai.models.openai import (
 from pydantic_ai.profiles import ModelProfileSpec
 from pydantic_ai.settings import ModelSettings
 
-from log import get_logger
-from models.common.responses.responses_api_params import ResponsesApiParams
-from pydantic_ai_lightspeed.llamastack._provider import LlamaStackProvider
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.common.responses.responses_api_params import ResponsesApiParams
+from lightspeed_stack.pydantic_ai_lightspeed.llamastack._provider import LlamaStackProvider
 
 logger = get_logger(__name__)
 

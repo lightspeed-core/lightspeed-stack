@@ -8,7 +8,7 @@ from fastapi import FastAPI, routing
 from fastapi.params import Depends
 from starlette.routing import BaseRoute
 
-from app.endpoints import (
+from lightspeed_stack.app.endpoints import (
     a2a,
     authorized,
     config,
@@ -35,7 +35,7 @@ from app.endpoints import (
     tools,
     vector_stores,
 )
-from app.routers import include_routers
+from lightspeed_stack.app.routers import include_routers
 
 
 class MockFastAPI(FastAPI):

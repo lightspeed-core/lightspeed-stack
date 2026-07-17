@@ -20,38 +20,40 @@ from pydantic_ai.messages import ModelRequest, ModelResponse, ToolReturnPart
 from pydantic_ai.run import AgentRunResult
 from pydantic_ai.usage import RunUsage
 
-from configuration import configuration
-from log import get_logger
-from metrics import recording
-from models.api.responses.error import (
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.metrics import recording
+from lightspeed_stack.models.api.responses.error import (
     AbstractErrorResponse,
     InternalServerErrorResponse,
     PromptTooLongResponse,
     QuotaExceededResponse,
     ServiceUnavailableResponse,
 )
-from models.common.agents import AgentTurnAccumulator
-from models.common.moderation import ShieldModerationResult
-from models.common.query import Attachment
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import ResponseInput
-from models.common.turn_summary import TurnSummary
-from utils.agents.tool_processor import (
+from lightspeed_stack.models.common.agents import AgentTurnAccumulator
+from lightspeed_stack.models.common.moderation import ShieldModerationResult
+from lightspeed_stack.models.common.query import Attachment
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
+from lightspeed_stack.models.common.responses.types import ResponseInput
+from lightspeed_stack.models.common.turn_summary import TurnSummary
+from lightspeed_stack.utils.agents.tool_processor import (
     process_function_tool_call,
     process_function_tool_result,
     process_native_tool_call,
     process_native_tool_result,
 )
-from utils.conversations import append_turn_items_to_conversation
-from utils.pydantic_ai_helpers import build_agent
-from utils.query import (
+from lightspeed_stack.utils.conversations import append_turn_items_to_conversation
+from lightspeed_stack.utils.pydantic_ai_helpers import build_agent
+from lightspeed_stack.utils.query import (
     build_multimodal_input,
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     is_context_length_error,
 )
-from utils.responses import extract_vector_store_ids_from_tools
-from utils.token_counter import TokenCounter
+from lightspeed_stack.utils.responses import extract_vector_store_ids_from_tools
+from lightspeed_stack.utils.token_counter import TokenCounter
 
 logger = get_logger(__name__)
 

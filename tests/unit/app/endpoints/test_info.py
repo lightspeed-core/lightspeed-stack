@@ -8,9 +8,9 @@ from llama_stack_client import APIConnectionError
 from llama_stack_client.types import VersionInfo
 from pytest_mock import MockerFixture
 
-from app.endpoints.info import info_endpoint_handler
-from authentication.interface import AuthTuple
-from configuration import AppConfig
+from lightspeed_stack.app.endpoints.info import info_endpoint_handler
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
@@ -48,13 +48,13 @@ async def test_info_endpoint(mocker: MockerFixture) -> None:
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.return_value = VersionInfo(version="0.1.2")
-    mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch("lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
-    mocker.patch("app.endpoints.models.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.models.configuration", mock_config)
 
     # Mock configuration
-    mocker.patch("configuration.configuration", cfg)
+    mocker.patch("lightspeed_stack.configuration.configuration", cfg)
 
     mock_authorization_resolvers(mocker)
 
@@ -120,13 +120,13 @@ async def test_info_endpoint_connection_error(mocker: MockerFixture) -> None:
     # Mock the LlamaStack client
     mock_client = mocker.AsyncMock()
     mock_client.inspect.version.side_effect = APIConnectionError(request=None)  # type: ignore
-    mock_lsc = mocker.patch("client.AsyncLlamaStackClientHolder.get_client")
+    mock_lsc = mocker.patch("lightspeed_stack.client.AsyncLlamaStackClientHolder.get_client")
     mock_lsc.return_value = mock_client
     mock_config = mocker.Mock()
-    mocker.patch("app.endpoints.models.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.models.configuration", mock_config)
 
     # Mock configuration
-    mocker.patch("configuration.configuration", cfg)
+    mocker.patch("lightspeed_stack.configuration.configuration", cfg)
 
     mock_authorization_resolvers(mocker)
 

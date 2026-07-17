@@ -4,7 +4,7 @@ import json
 
 from pydantic.json_schema import models_json_schema
 
-from utils.json_schema_updater import recursive_update
+from lightspeed_stack.utils.json_schema_updater import recursive_update
 
 
 def dump_openapi_schema(models: list, filename: str) -> None:

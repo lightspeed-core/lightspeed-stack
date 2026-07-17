@@ -16,15 +16,15 @@ from authlib.jose.errors import (
 from cachetools import TTLCache
 from fastapi import HTTPException, Request
 
-from authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
-from authentication.utils import extract_user_token
-from configuration import configuration
-from constants import (
+from lightspeed_stack.authentication.interface import NO_AUTH_TUPLE, AuthInterface, AuthTuple
+from lightspeed_stack.authentication.utils import extract_user_token
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.constants import (
     DEFAULT_VIRTUAL_PATH,
 )
-from log import get_logger
-from models.api.responses.error import UnauthorizedResponse
-from models.config import JwkConfiguration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.error import UnauthorizedResponse
+from lightspeed_stack.models.config import JwkConfiguration
 
 logger = get_logger(__name__)
 

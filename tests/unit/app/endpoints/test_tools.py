@@ -12,12 +12,12 @@ from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture, MockType
 
 # Import the function directly to bypass decorators
-from app.endpoints import tools
-from app.endpoints.tools import _input_schema_to_parameters
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.responses.successful import ToolsResponse
-from models.config import (
+from lightspeed_stack.app.endpoints import tools
+from lightspeed_stack.app.endpoints.tools import _input_schema_to_parameters
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.responses.successful import ToolsResponse
+from lightspeed_stack.models.config import (
     Configuration,
     CORSConfiguration,
     LlamaStackConfiguration,
@@ -169,13 +169,13 @@ async def test_tools_endpoint_success(
     # Mock configuration - wrap in AppConfig
     app_config = AppConfig()
     app_config._configuration = mock_configuration
-    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -290,13 +290,13 @@ async def test_tools_endpoint_no_mcp_servers(mocker: MockerFixture) -> None:
     )
     app_config = AppConfig()
     app_config._configuration = mock_config
-    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -326,13 +326,13 @@ async def test_tools_endpoint_api_connection_error(
     # Mock configuration - wrap in AppConfig
     app_config = AppConfig()
     app_config._configuration = mock_configuration
-    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -375,10 +375,10 @@ async def test_tools_endpoint_partial_failure(  # pylint: disable=redefined-oute
     """Test tools endpoint with one MCP server failing with APIConnectionError."""
     app_config = AppConfig()
     app_config._configuration = mock_configuration
-    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
 
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -419,13 +419,13 @@ async def test_tools_endpoint_toolgroup_not_found(  # pylint: disable=redefined-
     # Mock configuration - wrap in AppConfig
     app_config = AppConfig()
     app_config._configuration = mock_configuration
-    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -490,13 +490,13 @@ async def test_tools_endpoint_builtin_toolgroup(
     # Mock configuration - wrap in AppConfig
     app_config = AppConfig()
     app_config._configuration = mock_configuration
-    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -594,13 +594,13 @@ async def test_tools_endpoint_mixed_toolgroups(mocker: MockerFixture) -> None:
     )
     app_config = AppConfig()
     app_config._configuration = mock_config
-    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -674,13 +674,13 @@ async def test_tools_endpoint_value_attribute_error(
     # Mock configuration - wrap in AppConfig
     app_config = AppConfig()
     app_config._configuration = mock_configuration
-    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -704,13 +704,13 @@ async def test_tools_endpoint_apiconnection_error_toolgroups(  # pylint: disable
     # Mock configuration - wrap in AppConfig
     app_config = AppConfig()
     app_config._configuration = mock_configuration
-    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder and clien
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -741,13 +741,13 @@ async def test_tools_endpoint_client_holder_apiconnection_error(  # pylint: disa
     # Mock configuration - wrap in AppConfig
     app_config = AppConfig()
     app_config._configuration = mock_configuration
-    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder to raise APIConnectionError
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     api_error = APIConnectionError(request=None)  # type: ignore
     mock_client_holder.return_value.get_client.side_effect = api_error
 
@@ -775,13 +775,13 @@ async def test_tools_endpoint_general_exception(
     # Mock configuration - wrap in AppConfig
     app_config = AppConfig()
     app_config._configuration = mock_configuration
-    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
 
     # Mock authorization decorator to bypass i
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
     # Mock client holder to raise exception
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client_holder.return_value.get_client.side_effect = Exception(
         "Unexpected error"
     )
@@ -803,10 +803,10 @@ async def test_tools_endpoint_authentication_error_with_mcp_endpoint(
     """Test tools endpoint raises 401 with WWW-Authenticate when check_mcp_auth requires OAuth."""
     app_config = AppConfig()
     app_config._configuration = mock_configuration
-    mocker.patch("app.endpoints.tools.configuration", app_config)
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
-    mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
 
     expected_headers = {"WWW-Authenticate": 'Bearer error="invalid_token"'}
     probe_exception = HTTPException(
@@ -815,7 +815,7 @@ async def test_tools_endpoint_authentication_error_with_mcp_endpoint(
         headers=expected_headers,
     )
     mocker.patch(
-        "app.endpoints.tools.check_mcp_auth",
+        "lightspeed_stack.app.endpoints.tools.check_mcp_auth",
         new_callable=mocker.AsyncMock,
         side_effect=probe_exception,
     )
@@ -959,10 +959,10 @@ async def test_tools_endpoint_rag_builtin_toolgroup(mocker: MockerFixture) -> No
     )
     app_config = AppConfig()
     app_config._configuration = mock_config
-    mocker.patch("app.endpoints.tools.configuration", app_config)
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1073,10 +1073,10 @@ async def test_tools_endpoint_empty_legacy_fields_overridden(
     )
     app_config = AppConfig()
     app_config._configuration = mock_config
-    mocker.patch("app.endpoints.tools.configuration", app_config)
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1150,10 +1150,10 @@ async def test_tools_endpoint_includes_agent_capability_tools(
     )
     app_config = AppConfig()
     app_config._configuration = config_with_skills
-    mocker.patch("app.endpoints.tools.configuration", app_config)
-    mocker.patch("app.endpoints.tools.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.authorize", lambda _: lambda func: func)
 
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mock_client_holder = mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncLlamaStackClientHolder")
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
     mock_client.toolgroups.list.return_value = []
