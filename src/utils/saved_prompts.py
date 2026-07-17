@@ -2,6 +2,7 @@
 
 from sqlalchemy.exc import IntegrityError
 
+import constants
 from app.database import get_session
 from log import get_logger
 from models.database.saved_prompts import SavedPrompt
@@ -142,7 +143,7 @@ def create_saved_prompt(
     Raises:
         SavedPromptLimitExceededError: If the user is already at the limit.
         SavedPromptConflictError: If insert violates a unique constraint
-            (typically duplicate ``(user_id, name)``).
+            (practically always duplicate ``(user_id, name)``).
     """
     with get_session() as session:
         current_count = session.query(SavedPrompt).filter_by(user_id=user_id).count()
@@ -177,6 +178,9 @@ def create_saved_prompt(
 def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
     """List saved prompts for a user ordered by created_at descending.
 
+    Results are capped at ``SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND`` so a
+    misconfigured or out-of-band insert path cannot materialize unbounded rows.
+
     Parameters:
         user_id: Owner whose prompts should be returned.
 
@@ -189,6 +193,7 @@ def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
             session.query(SavedPrompt)
             .filter_by(user_id=user_id)
             .order_by(SavedPrompt.created_at.desc())
+            .limit(constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND)
             .all()
         )
 

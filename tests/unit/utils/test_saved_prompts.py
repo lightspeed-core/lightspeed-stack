@@ -25,6 +25,7 @@ from utils.saved_prompts import (
     validate_saved_prompt_name,
     validate_saved_prompt_quota,
 )
+from utils.suid import get_suid
 
 
 @pytest.fixture(name="sqlite_engine")
@@ -60,6 +61,11 @@ def patch_saved_prompts_get_session_fixture(
     )
 
     def _get_session() -> Session:
+        """Create a Session bound to the in-memory test engine.
+
+        Returns:
+            Session: A new SQLAlchemy session for patched DAL calls.
+        """
         return session_factory()
 
     mocker.patch("utils.saved_prompts.get_session", side_effect=_get_session)
@@ -329,6 +335,32 @@ class TestListSavedPromptsByUser:
 
         assert [p.id for p in results] == [newer.id, older.id]
         assert all(p.user_id == "user-1" for p in results)
+
+    def test_list_caps_at_configured_upper_bound(
+        self, mocker: MockerFixture, sqlite_engine: Engine
+    ) -> None:
+        """Test list applies SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND as a hard cap."""
+        mocker.patch(
+            "utils.saved_prompts.constants.SAVED_PROMPTS_MAX_PER_USER_UPPER_BOUND",
+            2,
+        )
+        session_factory = sessionmaker(
+            autocommit=False, autoflush=False, bind=sqlite_engine
+        )
+        with session_factory() as session:
+            for index in range(3):
+                session.add(
+                    SavedPrompt(
+                        id=get_suid(),
+                        user_id="user-1",
+                        name=f"prompt-{index}",
+                        content=f"content-{index}",
+                    )
+                )
+            session.commit()
+
+        results = list_saved_prompts_by_user("user-1")
+        assert len(results) == 2
 
 
 @pytest.mark.usefixtures("patch_saved_prompts_get_session")
