@@ -863,7 +863,7 @@ def _resolve_profile_path(profile: str, config_file_dir: Optional[str]) -> Path:
     return path
 
 
-def synthesize_configuration(
+def synthesize_configuration(  # pylint: disable=too-many-locals
     lcs_config: dict[str, Any],
     config_file_dir: Optional[str] = None,
     default_baseline: Optional[dict[str, Any]] = None,
@@ -887,8 +887,7 @@ def synthesize_configuration(
     Returns:
         dict[str, Any]: The synthesized Llama Stack configuration.
     """
-    llama_stack = lcs_config.get("llama_stack") or {}
-    unified = llama_stack.get("config")  # None when only top-level inputs are set
+    unified = (lcs_config.get("llama_stack") or {}).get("config")
 
     # 1-2. Select the baseline.
     baseline_was_empty = False
