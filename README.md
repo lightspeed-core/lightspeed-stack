@@ -1,6 +1,8 @@
 # Lightspeed Core Stack (LCS)
 
 ## About The Project
+## About The Project
+## About The Project
 
 [![GitHub Pages](https://img.shields.io/badge/%20-GitHub%20Pages-informational)](https://lightspeed-core.github.io/lightspeed-stack/)
 [![License](https://img.shields.io/badge/license-Apache-blue)](https://github.com/lightspeed-core/lightspeed-stack/blob/main/LICENSE)
