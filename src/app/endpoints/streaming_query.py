@@ -7,32 +7,32 @@ from typing import Annotated, Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from llama_stack_api import (
+from ogx_api import (
     OpenAIResponseObject,
     OpenAIResponseObjectStream,
 )
-from llama_stack_api import (
+from ogx_api import (
     OpenAIResponseObjectStreamResponseMcpCallArgumentsDone as MCPArgsDoneChunk,
 )
-from llama_stack_api import (
+from ogx_api import (
     OpenAIResponseObjectStreamResponseOutputItemAdded as OutputItemAddedChunk,
 )
-from llama_stack_api import (
+from ogx_api import (
     OpenAIResponseObjectStreamResponseOutputItemDone as OutputItemDoneChunk,
 )
-from llama_stack_api import (
+from ogx_api import (
     OpenAIResponseObjectStreamResponseOutputTextDelta as TextDeltaChunk,
 )
-from llama_stack_api import (
+from ogx_api import (
     OpenAIResponseObjectStreamResponseOutputTextDone as TextDoneChunk,
 )
-from llama_stack_api import (
+from ogx_api import (
     OpenAIResponseOutputMessageMCPCall as MCPCall,
 )
-from llama_stack_client import (
+from ogx_client import (
     APIConnectionError,
 )
-from llama_stack_client import (
+from ogx_client import (
     APIStatusError as LLSApiStatusError,
 )
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
@@ -42,7 +42,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from constants import (
     ENDPOINT_PATH_STREAMING_QUERY,
@@ -161,7 +161,7 @@ streaming_query_responses: dict[int | str, dict[str, Any]] = {
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -242,7 +242,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
             in request.state.authorized_actions,
         )
 
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
 
     # Moderation input is the raw user content (query + attachments) without injected RAG
     # context, to avoid false positives from retrieved document content.
@@ -281,7 +281,7 @@ async def streaming_query_endpoint_handler(  # pylint: disable=too-many-locals
         and AzureEntraIDManager().is_token_expired
         and AzureEntraIDManager().refresh_token()
     ):
-        client = await AsyncLlamaStackClientHolder().update_azure_token()
+        client = await AsyncOgxClientHolder().update_azure_token()
 
     request_id = get_suid()
 
@@ -429,7 +429,7 @@ async def retrieve_response_generator(
         raise e
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e
@@ -521,7 +521,7 @@ async def generate_response_with_compaction(
         return
     except APIConnectionError as e:
         yield stream_http_error_event(
-            ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e)),
+            ServiceUnavailableResponse(backend_name="OGX", cause=str(e)),
             media_type,
         )
         return
@@ -623,7 +623,7 @@ async def generate_response(  # pylint: disable=too-many-arguments,too-many-posi
         yield stream_http_error_event(error_response, context.query_request.media_type)
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         yield stream_http_error_event(error_response, context.query_request.media_type)

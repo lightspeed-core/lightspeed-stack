@@ -11,9 +11,7 @@ apis:
   - scoring
   - tool_runtime
   - vector_io
-benchmarks: []
 container_image: null
-datasets: []
 external_providers_dir: null
 logging: null
 providers:
@@ -28,26 +26,6 @@ providers:
         responses:
           table_name: agents_responses
           backend: sql_default
-  datasetio:
-  - provider_id: huggingface
-    provider_type: remote::huggingface
-    config:
-      kvstore:
-        namespace: huggingface_datasetio
-        backend: kv_default
-  - provider_id: localfs
-    provider_type: inline::localfs
-    config:
-      kvstore:
-        namespace: localfs_datasetio
-        backend: kv_default
-  eval:
-  - provider_id: builtin
-    provider_type: inline::builtin
-    config:
-      kvstore:
-        namespace: eval_store
-        backend: kv_default
   inference:
   - provider_id: openai
     provider_type: remote::openai
@@ -69,17 +47,6 @@ providers:
       excluded_categories: []
     provider_id: llama-guard
     provider_type: inline::llama-guard
-  scoring:
-  - config: {}
-    provider_id: basic
-    provider_type: inline::basic
-  - config: {}
-    provider_id: llm-as-judge
-    provider_type: inline::llm-as-judge
-  - config:
-      openai_api_key: '********'
-    provider_id: braintrust
-    provider_type: inline::braintrust
   telemetry:
   - config:
       service_name: ''
@@ -101,7 +68,6 @@ providers:
         backend: kv_rag
     provider_id: faiss
     provider_type: inline::faiss
-scoring_fns: []
 server:
   auth: null
   host: null
@@ -135,12 +101,6 @@ registered_resources:
   models: []
   shields: []
   vector_stores: []
-  datasets: []
-  scoring_fns: []
-  benchmarks: []
-  tool_groups:
-  - toolgroup_id: builtin::file_search
-    provider_id: file-search
 telemetry:
   enabled: true
 vector_stores:

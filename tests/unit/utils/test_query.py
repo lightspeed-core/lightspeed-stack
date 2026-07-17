@@ -8,7 +8,6 @@ from typing import Any
 import psycopg2
 import pytest
 from fastapi import HTTPException
-from llama_stack_client.types import ModelListResponse
 from pytest_mock import MockerFixture
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -52,7 +51,7 @@ def mock_config_fixture() -> AppConfig:
 
 
 @pytest.fixture(name="mock_models")
-def mock_models_fixture() -> ModelListResponse:
+def mock_models_fixture() -> list[Any]:
     """Create mock models list."""
     model1 = type(
         "Model",

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from llama_stack_client import AsyncLlamaStackClient
+from ogx_client import AsyncOgxClient
 from pytest_mock import AsyncMockType, MockerFixture
 
 from configuration import AppConfig
@@ -57,7 +57,7 @@ def prepare_agent_mocks_fixture(
 ) -> AgentFixtures:
     """Prepare for mock for the LLM agent.
 
-    Provides common mocks for AsyncLlamaStackClient and AsyncAgent
+    Provides common mocks for AsyncOgxClient and AsyncAgent
     with proper agent_id setup to avoid initialization errors.
 
     Yields:
@@ -109,9 +109,9 @@ def minimal_config_fixture() -> AppConfig:
 @pytest.fixture(name="mock_client")
 def mock_client_fixture(  # pylint: disable=protected-access
     mocker: MockerFixture,
-) -> AsyncLlamaStackClient:
+) -> AsyncOgxClient:
     """Remote Llama Stack client mock for build_agent tests."""
-    client = mocker.Mock(spec=AsyncLlamaStackClient)
+    client = mocker.Mock(spec=AsyncOgxClient)
     client.base_url = "http://localhost:8321"
     client.api_key = "test-key"
     client._client = mocker.Mock(spec=httpx.AsyncClient)

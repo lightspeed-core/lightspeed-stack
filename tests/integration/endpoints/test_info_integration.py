@@ -5,8 +5,8 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_client import APIConnectionError
-from llama_stack_client.types import VersionInfo
+from ogx_client import APIConnectionError
+from ogx_client.types import VersionInfo
 from pytest_mock import AsyncMockType, MockerFixture
 
 from app.endpoints.info import info_endpoint_handler
@@ -15,8 +15,8 @@ from configuration import AppConfig
 from version import __version__
 
 
-@pytest.fixture(name="mock_llama_stack_client")
-def mock_llama_stack_client_fixture(
+@pytest.fixture(name="mock_ogx_client")
+def mock_ogx_client_fixture(
     mocker: MockerFixture,
 ) -> Generator[Any, None, None]:
     """Mock only the external Llama Stack client.
@@ -32,7 +32,7 @@ def mock_llama_stack_client_fixture(
     ------
         AsyncMock: A mocked Llama Stack client configured for tests.
     """
-    mock_holder_class = mocker.patch("app.endpoints.info.AsyncLlamaStackClientHolder")
+    mock_holder_class = mocker.patch("app.endpoints.info.AsyncOgxClientHolder")
 
     mock_client = mocker.AsyncMock()
     # Mock the version endpoint to return a known version
@@ -48,7 +48,7 @@ def mock_llama_stack_client_fixture(
 @pytest.mark.asyncio
 async def test_info_endpoint_returns_service_information(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
@@ -64,7 +64,7 @@ async def test_info_endpoint_returns_service_information(
     Parameters:
     ----------
         test_config: Loads real configuration (required for endpoint to access config)
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         test_request: FastAPI request
         test_auth: noop authentication tuple
 
@@ -83,13 +83,13 @@ async def test_info_endpoint_returns_service_information(
     assert response.llama_stack_version == "0.2.22"
 
     # Verify the Llama Stack client was called
-    mock_llama_stack_client.inspect.version.assert_called_once()
+    mock_ogx_client.inspect.version.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_info_endpoint_handles_connection_error(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
     mocker: MockerFixture,
@@ -104,7 +104,7 @@ async def test_info_endpoint_handles_connection_error(
     Parameters:
     ----------
         test_config: Loads real configuration (required for endpoint to access config)
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture for creating mocks
@@ -112,7 +112,7 @@ async def test_info_endpoint_handles_connection_error(
     # test_config fixture loads configuration, which is required for the endpoint
     _ = test_config
     # Configure mock to raise connection error
-    mock_llama_stack_client.inspect.version.side_effect = APIConnectionError(
+    mock_ogx_client.inspect.version.side_effect = APIConnectionError(
         request=mocker.Mock()
     )
 
@@ -123,7 +123,7 @@ async def test_info_endpoint_handles_connection_error(
     # Verify error details
     assert exc_info.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
     assert isinstance(exc_info.value.detail, dict)
-    expected = "Unable to connect to Llama Stack"
+    expected = "Unable to connect to OGX"
     assert exc_info.value.detail["response"] == expected  # type: ignore[reportArgumentType]
     assert "cause" in exc_info.value.detail
 
@@ -131,7 +131,7 @@ async def test_info_endpoint_handles_connection_error(
 @pytest.mark.asyncio
 async def test_info_endpoint_uses_configuration_values(
     test_config: AppConfig,
-    mock_llama_stack_client: AsyncMockType,
+    mock_ogx_client: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
 ) -> None:
@@ -145,12 +145,12 @@ async def test_info_endpoint_uses_configuration_values(
     Parameters:
     ----------
         test_config: Loads real configuration (required for endpoint to access config)
-        mock_llama_stack_client: Mocked Llama Stack client
+        mock_ogx_client: Mocked Llama Stack client
         test_request: Real FastAPI request
         test_auth: Real noop authentication tuple
     """
     # Fixtures with side effects (needed but not directly used)
-    _ = mock_llama_stack_client
+    _ = mock_ogx_client
 
     response = await info_endpoint_handler(auth=test_auth, request=test_request)
 

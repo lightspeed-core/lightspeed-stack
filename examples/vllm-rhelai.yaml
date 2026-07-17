@@ -2,19 +2,14 @@ version: 2
 image_name: rhelai-configuration
 
 apis:
-- agents
+- responses
 - batches
-- datasetio
-- eval
 - files
 - inference
 - safety
-- scoring
 - tool_runtime
 - vector_io
 
-benchmarks: []
-datasets: []
 # external_providers_dir: /opt/app-root/src/.llama/providers.d
 
 providers:
@@ -47,17 +42,6 @@ providers:
       excluded_categories: []
     provider_id: llama-guard
     provider_type: inline::llama-guard
-  scoring:
-  - provider_id: basic
-    provider_type: inline::basic
-    config: {}
-  - provider_id: llm-as-judge
-    provider_type: inline::llm-as-judge
-    config: {}
-  - provider_id: braintrust
-    provider_type: inline::braintrust
-    config:
-      openai_api_key: '********'
   tool_runtime:
   - config: {} # Enable the RAG tool
     provider_id: file-search
@@ -66,7 +50,7 @@ providers:
     provider_id: model-context-protocol
     provider_type: remote::model-context-protocol
   vector_io: []
-  agents:
+  responses:
   - config:
       persistence:
         agent_state:
@@ -76,7 +60,7 @@ providers:
           table_name: agents_responses
           backend: sql_default
     provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_type: inline::builtin
   batches:
   - config:
       kvstore:
@@ -84,27 +68,6 @@ providers:
         backend: kv_default
     provider_id: reference
     provider_type: inline::reference
-  datasetio:
-  - config:
-      kvstore:
-        namespace: huggingface_datasetio
-        backend: kv_default
-    provider_id: huggingface
-    provider_type: remote::huggingface
-  - config:
-      kvstore:
-        namespace: localfs_datasetio
-        backend: kv_default
-    provider_id: localfs
-    provider_type: inline::localfs
-  eval:
-  - config:
-      kvstore:
-        namespace: eval_store
-        backend: kv_default
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
-scoring_fns: []
 server:
   port: 8321
 storage:
@@ -147,12 +110,6 @@ registered_resources:
     provider_id: llama-guard
     provider_shield_id: openai/gpt-4o-mini
   vector_stores: []
-  datasets: []
-  scoring_fns: []
-  benchmarks: []
-  tool_groups:
-  - toolgroup_id: builtin::file_search # Register the RAG tool
-    provider_id: file-search
 vector_stores:
   default_provider_id: faiss
   default_embedding_model: # Define the default embedding model for RAG

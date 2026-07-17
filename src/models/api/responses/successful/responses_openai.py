@@ -2,28 +2,28 @@
 
 from typing import Any, Literal, Optional, cast
 
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseError as Error,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseInputToolChoice as ToolChoice,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutput as Output,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponsePrompt as Prompt,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseReasoning as Reasoning,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseText as Text,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseTool as OutputTool,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseUsage as Usage,
 )
 

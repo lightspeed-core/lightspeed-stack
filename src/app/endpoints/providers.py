@@ -4,13 +4,13 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.params import Depends
-from llama_stack_client import APIConnectionError, BadRequestError
-from llama_stack_client.types import ProviderListResponse
+from ogx_client import APIConnectionError, BadRequestError
+from ogx_client.types import ProviderListResponse
 
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -38,7 +38,7 @@ providers_list_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -49,7 +49,7 @@ provider_get_responses: dict[int | str, dict[str, Any]] = {
     404: NotFoundResponse.openapi_response(examples=["provider"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -87,14 +87,14 @@ async def providers_endpoint_handler(
     check_configuration_loaded(configuration)
 
     llama_stack_configuration = configuration.llama_stack_configuration
-    logger.info("Llama stack config: %s", llama_stack_configuration)
+    logger.info("Llama Stack config: %s", llama_stack_configuration)
 
     try:
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
         providers: ProviderListResponse = await client.providers.list()
     except APIConnectionError as e:
         logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
 
     return ProvidersListResponse(providers=group_providers(providers))
@@ -157,16 +157,16 @@ async def get_provider_endpoint_handler(
     check_configuration_loaded(configuration)
 
     llama_stack_configuration = configuration.llama_stack_configuration
-    logger.info("Llama stack config: %s", llama_stack_configuration)
+    logger.info("Llama Stack config: %s", llama_stack_configuration)
 
     try:
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
         provider = await client.providers.retrieve(provider_id)
         return ProviderResponse(**provider.model_dump())
 
     except APIConnectionError as e:
         logger.error("Unable to connect to Llama Stack: %s", e)
-        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
 
     except BadRequestError as e:

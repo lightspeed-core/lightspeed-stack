@@ -2,7 +2,8 @@
 
 import pytest
 from fastapi import HTTPException, status
-from llama_stack_client import APIConnectionError, APIStatusError
+from ogx_client import APIConnectionError, APIStatusError
+from ogx_client.types import ListModelsResponse
 from pytest_mock import MockerFixture
 
 from utils.shields import (
@@ -116,7 +117,9 @@ class TestRunShieldModeration:
         """Test that run_shield_moderation returns not blocked when no shields."""
         mock_client = mocker.Mock()
         mock_client.shields.list = mocker.AsyncMock(return_value=[])
-        mock_client.models.list = mocker.AsyncMock(return_value=[])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[])
+        )
 
         result = await run_shield_moderation(
             mock_client, "test input", "/test-endpoint"
@@ -140,7 +143,9 @@ class TestRunShieldModeration:
         # Setup model
         model = mocker.Mock()
         model.id = "moderation-model"
-        mock_client.models.list = mocker.AsyncMock(return_value=[model])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[model])
+        )
 
         # Setup moderation result (not flagged)
         moderation_result = mocker.Mock()
@@ -177,7 +182,9 @@ class TestRunShieldModeration:
         # Setup model
         model = mocker.Mock()
         model.id = "moderation-model"
-        mock_client.models.list = mocker.AsyncMock(return_value=[model])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[model])
+        )
 
         # Setup moderation result (flagged)
         flagged_result = mocker.Mock()
@@ -218,7 +225,9 @@ class TestRunShieldModeration:
         # Setup model
         model = mocker.Mock()
         model.id = "moderation-model"
-        mock_client.models.list = mocker.AsyncMock(return_value=[model])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[model])
+        )
 
         # Setup moderation result (flagged, no user_message)
         flagged_result = mocker.Mock()
@@ -255,7 +264,9 @@ class TestRunShieldModeration:
         mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
 
         # No matching models - should NOT raise for non-llama-guard
-        mock_client.models.list = mocker.AsyncMock(return_value=[])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[])
+        )
 
         # Setup moderation result (not flagged)
         moderation_result = mocker.Mock()
@@ -290,7 +301,9 @@ class TestRunShieldModeration:
         # Setup models (doesn't include the shield's model)
         model = mocker.Mock()
         model.id = "other-model"
-        mock_client.models.list = mocker.AsyncMock(return_value=[model])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[model])
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await run_shield_moderation(mock_client, "test input", "/test-endpoint")
@@ -312,7 +325,9 @@ class TestRunShieldModeration:
         shield.provider_resource_id = None
         mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
 
-        mock_client.models.list = mocker.AsyncMock(return_value=[])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[])
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await run_shield_moderation(mock_client, "test input", "/test-endpoint")
@@ -328,7 +343,9 @@ class TestRunShieldModeration:
         shield = mocker.Mock()
         shield.identifier = "shield-1"
         mock_client.shields.list = mocker.AsyncMock(return_value=[shield])
-        mock_client.models.list = mocker.AsyncMock(return_value=[])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[])
+        )
 
         result = await run_shield_moderation(
             mock_client, "test input", "/test-endpoint", shield_ids=[]
@@ -372,7 +389,9 @@ class TestRunShieldModeration:
 
         model1 = mocker.Mock()
         model1.id = "model-1"
-        mock_client.models.list = mocker.AsyncMock(return_value=[model1])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[model1])
+        )
 
         moderation_result = mocker.Mock()
         moderation_result.results = [mocker.Mock(flagged=False)]

@@ -94,7 +94,7 @@ start-llama-stack-container: build-llama-stack-image ## Start llama-stack contai
 		-e WATSONX_API_KEY \
 		-e LITELLM_DROP_PARAMS=true \
 		-e AWS_BEARER_TOKEN_BEDROCK \
-		-e LLAMA_STACK_LOGGING=$${LLAMA_STACK_LOGGING:-} \
+		-e OGX_LOGGING=$${OGX_LOGGING:-} \
 		-e FAISS_VECTOR_STORE_ID=$${FAISS_VECTOR_STORE_ID:-} \
 		-e RH_SERVER_OKP \
 		-e SOLR_URL \
@@ -130,7 +130,7 @@ clean-llama-stack: remove-llama-stack-container ## Remove container and image
 
 run-llama-stack: ## Start Llama Stack with enriched config (for local service mode)
 	uv run src/llama_stack_configuration.py -c $(CONFIG) -i $(LLAMA_STACK_CONFIG) -o $(LLAMA_STACK_CONFIG) && \
-	uv run llama stack run $(LLAMA_STACK_CONFIG)
+	uv run ogx stack run $(LLAMA_STACK_CONFIG)
 
 test-unit: ## Run the unit tests
 	@echo "Running unit tests..."

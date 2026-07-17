@@ -13,8 +13,9 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, status
-from llama_stack_api import OpenAIResponseMessage
-from llama_stack_client import APIConnectionError, APIStatusError
+from ogx_api import OpenAIResponseMessage
+from ogx_client import APIConnectionError, APIStatusError
+from ogx_client.types import ListModelsResponse
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
@@ -85,7 +86,7 @@ def _setup_responses_mock(mocker: MockerFixture, create_behavior: Any) -> None:
     mock_client_holder = mocker.Mock()
     mock_client_holder.get_client.return_value = mock_client
     mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder",
+        "app.endpoints.rlsapi_v1.AsyncOgxClientHolder",
         return_value=mock_client_holder,
     )
 
@@ -360,7 +361,9 @@ async def test_get_default_model_id_errors(
     mock_client.models = mocker.Mock()
 
     if failure_mode == "no_llm_models":
-        mock_client.models.list = mocker.AsyncMock(return_value=[mock_embedding_model])
+        mock_client.models.list = mocker.AsyncMock(
+            return_value=ListModelsResponse.model_construct(data=[mock_embedding_model])
+        )
     else:
         mock_client.models.list = mocker.AsyncMock(
             side_effect=APIConnectionError(request=mocker.Mock())
@@ -369,7 +372,7 @@ async def test_get_default_model_id_errors(
     mock_client_holder = mocker.Mock()
     mock_client_holder.get_client.return_value = mock_client
     mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder",
+        "app.endpoints.rlsapi_v1.AsyncOgxClientHolder",
         return_value=mock_client_holder,
     )
 
@@ -400,12 +403,14 @@ async def test_config_error_503_matches_llm_error_503_shape(
 
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
-    mock_client.models.list = mocker.AsyncMock(return_value=[mock_embedding_model])
+    mock_client.models.list = mocker.AsyncMock(
+        return_value=ListModelsResponse.model_construct(data=[mock_embedding_model])
+    )
 
     mock_client_holder = mocker.Mock()
     mock_client_holder.get_client.return_value = mock_client
     mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder",
+        "app.endpoints.rlsapi_v1.AsyncOgxClientHolder",
         return_value=mock_client_holder,
     )
 
@@ -414,7 +419,7 @@ async def test_config_error_503_matches_llm_error_503_shape(
 
     # Build an LLM connection error 503 using the same response model
     llm_response = ServiceUnavailableResponse(
-        backend_name="Llama Stack",
+        backend_name="OGX",
         cause="Unable to connect to the inference backend",
     )
     llm_detail = llm_response.model_dump()["detail"]
@@ -443,13 +448,15 @@ async def test_get_default_model_id_auto_discovery_success(
     mock_client = mocker.Mock()
     mock_client.models = mocker.Mock()
     mock_client.models.list = mocker.AsyncMock(
-        return_value=[mock_embedding_model, mock_llm_model]
+        return_value=ListModelsResponse.model_construct(
+            data=[mock_embedding_model, mock_llm_model]
+        )
     )
 
     mock_client_holder = mocker.Mock()
     mock_client_holder.get_client.return_value = mock_client
     mocker.patch(
-        "app.endpoints.rlsapi_v1.AsyncLlamaStackClientHolder",
+        "app.endpoints.rlsapi_v1.AsyncOgxClientHolder",
         return_value=mock_client_holder,
     )
 

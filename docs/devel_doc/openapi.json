@@ -294,11 +294,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -494,11 +494,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -693,11 +693,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -1572,11 +1572,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -1616,7 +1616,7 @@
                                         "agents": [
                                             {
                                                 "provider_id": "meta-reference",
-                                                "provider_type": "inline::meta-reference"
+                                                "provider_type": "inline::builtin"
                                             }
                                         ],
                                         "inference": [
@@ -1758,11 +1758,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -1964,11 +1964,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2164,11 +2164,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2355,11 +2355,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2612,11 +2612,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -2864,11 +2864,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3093,11 +3093,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3279,11 +3279,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3482,11 +3482,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3685,11 +3685,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -3894,11 +3894,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4113,11 +4113,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4343,11 +4343,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4544,11 +4544,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4769,11 +4769,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -4993,11 +4993,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -5218,11 +5218,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -5444,11 +5444,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -5654,11 +5654,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -6061,11 +6061,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -6422,11 +6422,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -7619,11 +7619,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -7872,11 +7872,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -8109,11 +8109,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -8357,11 +8357,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -9696,11 +9696,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -10022,11 +10022,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -10174,11 +10174,11 @@
                                     "$ref": "#/components/schemas/ServiceUnavailableResponse"
                                 },
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -10627,11 +10627,11 @@
                         "content": {
                             "application/json": {
                                 "examples": {
-                                    "llama stack": {
+                                    "ogx": {
                                         "value": {
                                             "detail": {
                                                 "cause": "Connection error while trying to reach backend service.",
-                                                "response": "Unable to connect to Llama Stack"
+                                                "response": "Unable to connect to OGX"
                                             }
                                         }
                                     },
@@ -16492,11 +16492,27 @@
                                 "type": "null"
                             }
                         ]
+                    },
+                    "verbosity": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "low",
+                                    "medium",
+                                    "high"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Verbosity"
                     }
                 },
                 "type": "object",
                 "title": "OpenAIResponseText",
-                "description": "Text response configuration for OpenAI responses.\n\n:param format: (Optional) Text format configuration specifying output format requirements"
+                "description": "Text response configuration for OpenAI responses.\n\n:param format: (Optional) Text format configuration specifying output format requirements\n:param verbosity: (Optional) Controls response verbosity level"
             },
             "OpenAIResponseTextFormat": {
                 "properties": {
@@ -17348,7 +17364,7 @@
                             "agents": [
                                 {
                                     "provider_id": "meta-reference",
-                                    "provider_type": "inline::meta-reference"
+                                    "provider_type": "inline::builtin"
                                 }
                             ],
                             "inference": [
@@ -19868,9 +19884,9 @@
                     {
                         "detail": {
                             "cause": "Connection error while trying to reach backend service.",
-                            "response": "Unable to connect to Llama Stack"
+                            "response": "Unable to connect to OGX"
                         },
-                        "label": "llama stack"
+                        "label": "ogx"
                     },
                     {
                         "detail": {

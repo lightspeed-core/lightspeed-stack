@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException, Request, status
-from llama_stack_client import APIConnectionError, APIStatusError, NotFoundError
+from ogx_client import APIConnectionError, APIStatusError, NotFoundError
 from pytest_mock import MockerFixture, MockType
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -533,7 +533,7 @@ class TestGetConversationEndpoint:
             request=None  # type: ignore[arg-type]
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -550,7 +550,7 @@ class TestGetConversationEndpoint:
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
         response = detail["response"]  # pyright: ignore[reportArgumentType]
-        assert response == "Unable to connect to Llama Stack"
+        assert response == "Unable to connect to OGX"
 
     @pytest.mark.asyncio
     async def test_llama_stack_not_found_error(
@@ -584,7 +584,7 @@ class TestGetConversationEndpoint:
             body=None,
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -691,7 +691,7 @@ class TestGetConversationEndpoint:
         )
 
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
         response = await get_conversation_endpoint_handler(
@@ -745,7 +745,7 @@ class TestGetConversationEndpoint:
         mock_client.conversations.items.list = mocker.AsyncMock(return_value=mock_items)
 
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -776,7 +776,7 @@ class TestGetConversationEndpoint:
         mock_database_session(mocker, query_result=[])
         mock_client = mocker.AsyncMock()
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -822,7 +822,7 @@ class TestGetConversationEndpoint:
             return_value=mock_items_response
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -870,7 +870,7 @@ class TestGetConversationEndpoint:
             body=None,
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -970,7 +970,7 @@ class TestGetConversationEndpoint:
         ]
         mock_client.conversations.items.list.return_value = mock_items_response
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1112,7 +1112,7 @@ class TestDeleteConversationEndpoint:
             request=None  # type: ignore
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1127,7 +1127,7 @@ class TestDeleteConversationEndpoint:
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
         response = detail["response"]  # pyright: ignore[reportArgumentType]
-        assert response == "Unable to connect to Llama Stack"
+        assert response == "Unable to connect to OGX"
 
     @pytest.mark.asyncio
     async def test_llama_stack_not_found_error(
@@ -1156,7 +1156,7 @@ class TestDeleteConversationEndpoint:
             body=None,
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1258,7 +1258,7 @@ class TestDeleteConversationEndpoint:
         mock_delete_response.deleted = True
         mock_client.conversations.delete.return_value = mock_delete_response
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1300,7 +1300,7 @@ class TestDeleteConversationEndpoint:
         mock_delete_response.deleted = True
         mock_client.conversations.delete.return_value = mock_delete_response
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1342,7 +1342,7 @@ class TestDeleteConversationEndpoint:
         mock_delete_response.deleted = True
         mock_client.conversations.delete.return_value = mock_delete_response
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1384,7 +1384,7 @@ class TestDeleteConversationEndpoint:
         mock_client.agents.session.list.return_value = mock_session_list_response
         mock_client.agents.session.delete.return_value = None
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -1986,11 +1986,11 @@ class TestUpdateConversationEndpoint:
             return_value=mock_session_context,
         )
 
-        # Mock AsyncLlamaStackClientHolder
+        # Mock AsyncOgxClientHolder
         mock_client = mocker.AsyncMock()
         mock_client.conversations.update.return_value = None
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -2030,13 +2030,13 @@ class TestUpdateConversationEndpoint:
             return_value=mock_conversation,
         )
 
-        # Mock AsyncLlamaStackClientHolder to raise APIConnectionError
+        # Mock AsyncOgxClientHolder to raise APIConnectionError
         mock_client = mocker.AsyncMock()
         mock_client.conversations.update.side_effect = APIConnectionError(
             request=None  # type: ignore
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -2054,7 +2054,7 @@ class TestUpdateConversationEndpoint:
         detail = exc_info.value.detail
         assert isinstance(detail, dict)
         response = detail["response"]  # pyright: ignore[reportArgumentType]
-        assert response == "Unable to connect to Llama Stack"
+        assert response == "Unable to connect to OGX"
 
     @pytest.mark.asyncio
     async def test_llama_stack_not_found_error_in_update(
@@ -2076,7 +2076,7 @@ class TestUpdateConversationEndpoint:
             return_value=mock_conversation,
         )
 
-        # Mock AsyncLlamaStackClientHolder to raise APIStatusError
+        # Mock AsyncOgxClientHolder to raise APIStatusError
         mock_client = mocker.AsyncMock()
         mock_client.conversations.update.side_effect = APIStatusError(
             message="Conversation not found",
@@ -2084,7 +2084,7 @@ class TestUpdateConversationEndpoint:
             body=None,
         )
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 
@@ -2124,11 +2124,11 @@ class TestUpdateConversationEndpoint:
             return_value=mock_conversation,
         )
 
-        # Mock AsyncLlamaStackClientHolder - update succeeds
+        # Mock AsyncOgxClientHolder - update succeeds
         mock_client = mocker.AsyncMock()
         mock_client.conversations.update.return_value = None
         mock_client_holder = mocker.patch(
-            "app.endpoints.conversations_v1.AsyncLlamaStackClientHolder"
+            "app.endpoints.conversations_v1.AsyncOgxClientHolder"
         )
         mock_client_holder.return_value.get_client.return_value = mock_client
 

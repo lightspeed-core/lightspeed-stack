@@ -12,8 +12,8 @@ from typing import Annotated, Any, Optional, cast
 import jinja2
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from jinja2.sandbox import SandboxedEnvironment
-from llama_stack_api.openai_responses import OpenAIResponseObject
-from llama_stack_client import APIConnectionError, APIStatusError, RateLimitError
+from ogx_api.openai_responses import OpenAIResponseObject
+from ogx_client import APIConnectionError, APIStatusError, RateLimitError
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 
 import constants
@@ -21,7 +21,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from constants import ENDPOINT_PATH_INFER
 from log import get_logger
@@ -94,7 +94,7 @@ infer_responses: dict[int | str, dict[str, Any]] = {
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -184,12 +184,12 @@ async def _get_default_model_id() -> str:
         "No complete default model configured for rlsapi v1, "
         "auto-discovering LLM model"
     )
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
     try:
-        models = await client.models.list()
+        models = (await client.models.list()).data
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e
@@ -230,7 +230,7 @@ async def _resolve_validated_model_id() -> str:
         HTTPException: 503 if Llama Stack is unreachable during resolution or validation.
     """
     model_id = await _get_default_model_id()
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
     if not await check_model_configured(client, model_id):
         _, model_name = extract_provider_and_model_from_model_id(model_id)
         error_response = NotFoundResponse(resource="model", resource_id=model_name)
@@ -264,7 +264,7 @@ async def _call_llm(
         APIConnectionError: If the Llama Stack service is unreachable.
         HTTPException: 503 if no default model is configured.
     """
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
     resolved_model_id = model_id or await _get_default_model_id()
 
     # Handle Azure token refresh if needed
@@ -274,7 +274,7 @@ async def _call_llm(
         and AzureEntraIDManager().is_token_expired
         and AzureEntraIDManager().refresh_token()
     ):
-        client = await AsyncLlamaStackClientHolder().update_azure_token()
+        client = await AsyncOgxClientHolder().update_azure_token()
 
     logger.debug("Using model %s for rlsapi v1 inference", resolved_model_id)
 
@@ -373,7 +373,7 @@ async def _check_shield_moderation(  # pylint: disable=too-many-arguments,too-ma
         An RlsapiV1InferResponse containing the refusal message if the input
         was blocked, or None if moderation passed.
     """
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
     logger.info("Running shield moderation for rlsapi v1 request %s", request_id)
     moderation_result = await run_shield_moderation(client, input_text, endpoint_path)
 
@@ -600,7 +600,7 @@ def _map_inference_error_to_http_exception(  # pylint: disable=too-many-return-s
             type(error).__name__,
         )
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause="Unable to connect to the inference backend",
         )
         return HTTPException(**error_response.model_dump())

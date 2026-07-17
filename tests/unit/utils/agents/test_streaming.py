@@ -9,10 +9,10 @@ from typing import Any, Optional
 
 import pytest
 from fastapi import HTTPException
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseMessage as ResponseMessage,
 )
-from llama_stack_client import APIStatusError
+from ogx_client import APIStatusError
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.exceptions import AgentRunError
 from pydantic_ai.messages import (

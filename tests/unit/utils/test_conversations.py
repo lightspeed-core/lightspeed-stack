@@ -5,15 +5,15 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException
-from llama_stack_api import OpenAIResponseMessage
-from llama_stack_client import APIConnectionError, APIStatusError
-from llama_stack_client.types.conversations.item_list_response import (
+from ogx_api import OpenAIResponseMessage
+from ogx_client import APIConnectionError, APIStatusError
+from ogx_client.types.conversations.item_list_response import (
     OpenAIResponseInputFunctionToolCallOutputOutputListOpenAIResponseInputMessageContentTextOpenAIResponseInputMessageContentImageOpenAIResponseInputMessageContentFileOpenAIResponseInputMessageContentFile as FunctionCallOutputFile,  # pylint: disable=line-too-long
 )
-from llama_stack_client.types.conversations.item_list_response import (
+from ogx_client.types.conversations.item_list_response import (
     OpenAIResponseInputFunctionToolCallOutputOutputListOpenAIResponseInputMessageContentTextOpenAIResponseInputMessageContentImageOpenAIResponseInputMessageContentFileOpenAIResponseInputMessageContentImage as FunctionCallOutputImage,  # pylint: disable=line-too-long
 )
-from llama_stack_client.types.conversations.item_list_response import (
+from ogx_client.types.conversations.item_list_response import (
     OpenAIResponseInputFunctionToolCallOutputOutputListOpenAIResponseInputMessageContentTextOpenAIResponseInputMessageContentImageOpenAIResponseInputMessageContentFileOpenAIResponseInputMessageContentText as FunctionCallOutputText,  # pylint: disable=line-too-long
 )
 from pytest_mock import MockerFixture
@@ -901,7 +901,7 @@ class TestGetAllConversationItems:
             await get_all_conversation_items(mock_client, "conv_xyz")
 
         assert exc_info.value.status_code == 503
-        assert "Llama Stack" in str(exc_info.value.detail)
+        assert "OGX" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
     async def test_handles_api_status_error(self, mocker: MockerFixture) -> None:

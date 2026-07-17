@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 from fastapi import Request
 from fastapi.responses import StreamingResponse
+from ogx_client.types import ListModelsResponse
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
@@ -94,7 +95,9 @@ def _build_mock_client(mocker: MockerFixture) -> Any:
         "provider_id": "test-provider",
         "model_type": "llm",
     }
-    mock_client.models.list.return_value = [mock_model]
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[mock_model]
+    )
 
     mock_client.shields.list.return_value = []
 
@@ -110,7 +113,7 @@ def _build_mock_client(mocker: MockerFixture) -> Any:
 
 
 def _patch_client_holders(mocker: MockerFixture, mock_client: Any) -> None:
-    """Patch AsyncLlamaStackClientHolder in all modules used by the responses endpoint.
+    """Patch AsyncOgxClientHolder in all modules used by the responses endpoint.
 
     Patches three import locations (responses endpoint, utils.endpoints,
     utils.responses) and bypasses ResponsesContext Pydantic validation.
@@ -120,7 +123,7 @@ def _patch_client_holders(mocker: MockerFixture, mock_client: Any) -> None:
         "utils.endpoints",
         "utils.responses",
     ):
-        holder = mocker.patch(f"{module}.AsyncLlamaStackClientHolder")
+        holder = mocker.patch(f"{module}.AsyncOgxClientHolder")
         holder.return_value.get_client.return_value = mock_client
 
     original_cls = ResponsesContext

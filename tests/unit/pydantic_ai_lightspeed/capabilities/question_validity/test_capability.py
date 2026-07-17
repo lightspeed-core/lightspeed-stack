@@ -110,13 +110,13 @@ class TestQuestionValidityInit:
     """Tests for QuestionValidity dataclass initialization."""
 
     def test_post_init_wires_client_and_model(self, mocker: MockerFixture) -> None:
-        """Test that __post_init__ obtains the client and passes it to from_llama_stack_client."""
+        """Test that __post_init__ obtains the client and passes it to from_ogx_client."""
         mock_client = mocker.Mock()
-        mock_holder = mocker.patch(f"{_MODULE}.AsyncLlamaStackClientHolder")
+        mock_holder = mocker.patch(f"{_MODULE}.AsyncOgxClientHolder")
         mock_holder.return_value.get_client.return_value = mock_client
 
         mock_from_client = mocker.patch(
-            f"{_MODULE}.LlamaStackResponsesModel.from_llama_stack_client",
+            f"{_MODULE}.OgxResponsesModel.from_ogx_client",
         )
 
         config = QuestionValidityConfig(model_id="test-model")
@@ -130,11 +130,11 @@ class TestQuestionValidityInit:
         )
 
     def test_model_is_assigned_from_factory(self, mocker: MockerFixture) -> None:
-        """Test that the model returned by from_llama_stack_client is stored."""
+        """Test that the model returned by from_ogx_client is stored."""
         mock_model = mocker.Mock()
-        mocker.patch(f"{_MODULE}.AsyncLlamaStackClientHolder")
+        mocker.patch(f"{_MODULE}.AsyncOgxClientHolder")
         mocker.patch(
-            f"{_MODULE}.LlamaStackResponsesModel.from_llama_stack_client",
+            f"{_MODULE}.OgxResponsesModel.from_ogx_client",
             return_value=mock_model,
         )
         config = QuestionValidityConfig(model_id="test")
@@ -150,8 +150,8 @@ class TestBuildPrompt:
     @pytest.fixture(autouse=True)
     def _mock_create_model(self, mocker: MockerFixture) -> None:
         """Mock model creation for all tests."""
-        mocker.patch(f"{_MODULE}.AsyncLlamaStackClientHolder")
-        mocker.patch(f"{_MODULE}.LlamaStackResponsesModel.from_llama_stack_client")
+        mocker.patch(f"{_MODULE}.AsyncOgxClientHolder")
+        mocker.patch(f"{_MODULE}.OgxResponsesModel.from_ogx_client")
 
     @pytest.fixture(name="question_validity")
     def question_validity_fixture(self) -> QuestionValidity:
@@ -212,8 +212,8 @@ class TestWrapRun:
     @pytest.fixture(autouse=True)
     def _mock_create_model(self, mocker: MockerFixture) -> None:
         """Mock model creation for all tests."""
-        mocker.patch(f"{_MODULE}.AsyncLlamaStackClientHolder")
-        mocker.patch(f"{_MODULE}.LlamaStackResponsesModel.from_llama_stack_client")
+        mocker.patch(f"{_MODULE}.AsyncOgxClientHolder")
+        mocker.patch(f"{_MODULE}.OgxResponsesModel.from_ogx_client")
 
     @pytest.fixture(name="mock_ctx")
     def mock_ctx_fixture(self, mocker: MockerFixture) -> RunContext:

@@ -6,8 +6,8 @@ from typing import Any
 
 import pytest
 from fastapi import HTTPException
-from llama_stack_client import APIConnectionError, APIStatusError
-from llama_stack_client.types.shared.provider_info import ProviderInfo
+from ogx_client import APIConnectionError, APIStatusError
+from ogx_client.types.shared.provider_info import ProviderInfo
 from pytest_mock import MockerFixture
 
 from models.common.tools import ListToolDefsResponse, ToolDef
@@ -123,7 +123,7 @@ async def test_get_file_search_tools_raises_503_on_provider_connection_error(
     assert exc_info.value.status_code == 503
     detail = exc_info.value.detail
     assert isinstance(detail, dict)
-    assert detail["response"] == "Unable to connect to Llama Stack"
+    assert detail["response"] == "Unable to connect to OGX"
 
 
 @pytest.mark.asyncio
@@ -177,4 +177,4 @@ async def test_get_file_search_tools_raises_503_on_tools_connection_error(
     assert exc_info.value.status_code == 503
     detail = exc_info.value.detail
     assert isinstance(detail, dict)
-    assert detail["response"] == "Unable to connect to Llama Stack"
+    assert detail["response"] == "Unable to connect to OGX"

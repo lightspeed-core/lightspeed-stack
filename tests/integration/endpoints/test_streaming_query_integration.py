@@ -7,6 +7,7 @@ import pytest
 from fastapi import HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
+from ogx_client.types import ListModelsResponse
 from pytest_mock import AsyncMockType, MockerFixture
 
 from app.endpoints.streaming_query import streaming_query_endpoint_handler
@@ -16,7 +17,7 @@ from models.api.requests import QueryRequest
 from models.common.query import Attachment
 
 
-@pytest.fixture(name="mock_streaming_llama_stack_client")
+@pytest.fixture(name="mock_streaming_ogx_client")
 def mock_llama_stack_streaming_fixture(
     mocker: MockerFixture,
     mock_streaming_query_agent: AsyncMockType,
@@ -29,7 +30,7 @@ def mock_llama_stack_streaming_fixture(
     """
     _ = mock_streaming_query_agent
     mock_holder_class = mocker.patch(
-        "app.endpoints.streaming_query.AsyncLlamaStackClientHolder"
+        "app.endpoints.streaming_query.AsyncOgxClientHolder"
     )
     mock_client = mocker.AsyncMock()
 
@@ -39,7 +40,9 @@ def mock_llama_stack_streaming_fixture(
         "provider_id": "test-provider",
         "model_type": "llm",
     }
-    mock_client.models.list.return_value = [mock_model]
+    mock_client.models.list.return_value = ListModelsResponse.model_construct(
+        data=[mock_model]
+    )
 
     mock_vector_stores_response = mocker.MagicMock()
     mock_vector_stores_response.data = []
@@ -146,7 +149,7 @@ STREAMING_ATTACHMENT_TEST_CASES = [
 async def test_streaming_query_v2_endpoint_attachment_handling(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     test_case: dict,
     test_config: AppConfig,
-    mock_streaming_llama_stack_client: AsyncMockType,
+    mock_streaming_ogx_client: AsyncMockType,
     mock_streaming_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -164,13 +167,13 @@ async def test_streaming_query_v2_endpoint_attachment_handling(  # pylint: disab
         test_case: Dictionary containing test parameters (attachments,
             expected_status, expected_error)
         test_config: Test configuration
-        mock_streaming_llama_stack_client: Mocked Llama Stack client
+        mock_streaming_ogx_client: Mocked Llama Stack client
         mock_streaming_query_agent: Mocked Pydantic AI agent for build_agent
         test_request: FastAPI request
         test_auth: noop authentication tuple
     """
     _ = test_config
-    _ = mock_streaming_llama_stack_client
+    _ = mock_streaming_ogx_client
     _ = mock_streaming_query_agent
 
     attachments = test_case["attachments"]
@@ -250,7 +253,7 @@ STREAMING_OAUTH_401_TEST_CASES = [
 async def test_streaming_query_endpoint_returns_401_for_mcp_oauth(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     test_case: dict,
     test_config: AppConfig,
-    mock_streaming_llama_stack_client: Any,
+    mock_streaming_ogx_client: Any,
     mock_streaming_query_agent: AsyncMockType,
     test_request: Request,
     test_auth: AuthTuple,
@@ -269,14 +272,14 @@ async def test_streaming_query_endpoint_returns_401_for_mcp_oauth(  # pylint: di
         test_case: Dictionary containing test parameters (www_authenticate,
             expect_www_authenticate)
         test_config: Test configuration
-        mock_streaming_llama_stack_client: Mocked Llama Stack client
+        mock_streaming_ogx_client: Mocked Llama Stack client
         mock_streaming_query_agent: Mocked Pydantic AI agent for build_agent
         test_request: FastAPI request
         test_auth: noop authentication tuple
         mocker: pytest-mock fixture
     """
     _ = test_config
-    _ = mock_streaming_llama_stack_client
+    _ = mock_streaming_ogx_client
     _ = mock_streaming_query_agent
 
     www_authenticate = test_case["www_authenticate"]

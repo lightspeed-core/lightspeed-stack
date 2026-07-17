@@ -61,7 +61,7 @@ def _mock_file_search_tools(
     mocker: MockerFixture, file_search_tools: Optional[list] = None
 ) -> None:
     """Patch LLS file-search discovery for tools tests."""
-    mocker.patch("app.endpoints.tools.AsyncLlamaStackClientHolder")
+    mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
     mocker.patch(
         "app.endpoints.tools.get_file_search_tools_from_lls",
         new_callable=mocker.AsyncMock,

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from llama_stack_client import BaseModel as LlamaStackBaseModel
+from ogx_client import BaseModel as OgxBaseModel
 from pydantic import BaseModel, Field
 
 
-class ToolDef(LlamaStackBaseModel):
+class ToolDef(OgxBaseModel):
     """Tool definition from a tools listing API."""
 
     name: str
@@ -19,7 +19,7 @@ class ToolDef(LlamaStackBaseModel):
     metadata: Optional[dict[str, Any]] = None
 
 
-class ListToolDefsResponse(LlamaStackBaseModel):
+class ListToolDefsResponse(OgxBaseModel):
     """Response payload for a tools listing API."""
 
     data: list[ToolDef]

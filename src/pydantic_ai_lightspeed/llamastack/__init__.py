@@ -1,6 +1,6 @@
 """Pydantic AI provider for Llama Stack."""
 
-from pydantic_ai_lightspeed.llamastack._model import LlamaStackResponsesModel
-from pydantic_ai_lightspeed.llamastack._provider import LlamaStackProvider
+from pydantic_ai_lightspeed.llamastack._model import OgxResponsesModel
+from pydantic_ai_lightspeed.llamastack._provider import OgxProvider
 
-__all__ = ["LlamaStackProvider", "LlamaStackResponsesModel"]
+__all__ = ["OgxProvider", "OgxResponsesModel"]

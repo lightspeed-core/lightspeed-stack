@@ -3,8 +3,8 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from llama_stack_api import ConversationNotFoundError, InvalidParameterError
-from llama_stack_client import (
+from ogx_api import ConversationNotFoundError, InvalidParameterError
+from ogx_client import (
     APIConnectionError,
     APIStatusError,
 )
@@ -13,7 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.database import get_session
 from authentication import get_auth_dependency
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.requests import ConversationUpdateRequest
@@ -68,7 +68,7 @@ conversation_get_responses: dict[int | str, dict[str, Any]] = {
         examples=["database", "configuration"]
     ),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -83,7 +83,7 @@ conversation_delete_responses: dict[int | str, dict[str, Any]] = {
         examples=["database", "configuration"]
     ),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -95,7 +95,7 @@ conversations_list_responses: dict[int | str, dict[str, Any]] = {
         examples=["database", "configuration"]
     ),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -109,7 +109,7 @@ conversation_update_responses: dict[int | str, dict[str, Any]] = {
         examples=["database", "configuration"]
     ),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -235,7 +235,7 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
     )
 
     try:
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
 
         # Convert to llama-stack format (add 'conv_' prefix if needed)
         llama_stack_conv_id = to_llama_stack_conversation_id(normalized_conv_id)
@@ -276,7 +276,7 @@ async def get_conversation_endpoint_handler(  # pylint: disable=too-many-locals,
     except APIConnectionError as e:
         logger.error("Unable to connect to Llama Stack: %s", e)
         response = ServiceUnavailableResponse(
-            backend_name="Llama Stack", cause=str(e)
+            backend_name="OGX", cause=str(e)
         ).model_dump()
         raise HTTPException(**response) from e
 
@@ -369,7 +369,7 @@ async def delete_conversation_endpoint_handler(
 
     try:
         # Get Llama Stack client
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
 
         # Convert to llama-stack format (add 'conv_' prefix if needed)
         llama_stack_conv_id = to_llama_stack_conversation_id(normalized_conv_id)
@@ -385,7 +385,7 @@ async def delete_conversation_endpoint_handler(
         )
 
     except APIConnectionError as e:
-        response = ServiceUnavailableResponse(backend_name="Llama Stack", cause=str(e))
+        response = ServiceUnavailableResponse(backend_name="OGX", cause=str(e))
         raise HTTPException(**response.model_dump()) from e
 
     except (APIStatusError, ConversationNotFoundError, InvalidParameterError):
@@ -482,7 +482,7 @@ async def update_conversation_endpoint_handler(
 
     try:
         # Get Llama Stack client
-        client = AsyncLlamaStackClientHolder().get_client()
+        client = AsyncOgxClientHolder().get_client()
 
         # Convert to llama-stack format (add 'conv_' prefix if needed)
         llama_stack_conv_id = to_llama_stack_conversation_id(normalized_conv_id)
@@ -522,7 +522,7 @@ async def update_conversation_endpoint_handler(
 
     except APIConnectionError as e:
         response = ServiceUnavailableResponse(
-            backend_name="Llama Stack", cause=str(e)
+            backend_name="OGX", cause=str(e)
         ).model_dump()
         raise HTTPException(**response) from e
 

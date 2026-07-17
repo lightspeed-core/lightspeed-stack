@@ -6,40 +6,40 @@ from datetime import UTC, datetime
 from typing import Any, Optional, cast
 
 from fastapi import HTTPException
-from llama_stack_api import OpenAIResponseMessage, OpenAIResponseOutput
-from llama_stack_api.openai_responses import (
+from ogx_api import OpenAIResponseMessage, OpenAIResponseOutput
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageFileSearchToolCall as FileSearchCall,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageFunctionToolCall as FunctionCall,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageMCPCall as MCPCall,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageMCPListTools as MCPListTools,
 )
-from llama_stack_api.openai_responses import (
+from ogx_api.openai_responses import (
     OpenAIResponseOutputMessageWebSearchToolCall as WebSearchCall,
 )
-from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
-from llama_stack_client.types.conversations.item_create_params import Item
-from llama_stack_client.types.conversations.item_list_response import (
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client.types.conversations.item_create_params import Item
+from ogx_client.types.conversations.item_list_response import (
     ItemListResponse,
 )
-from llama_stack_client.types.conversations.item_list_response import (
+from ogx_client.types.conversations.item_list_response import (
     OpenAIResponseInputFunctionToolCallOutput as FunctionToolCallOutput,
 )
-from llama_stack_client.types.conversations.item_list_response import (
+from ogx_client.types.conversations.item_list_response import (
     OpenAIResponseInputFunctionToolCallOutputOutputListOpenAIResponseInputMessageContentTextOpenAIResponseInputMessageContentImageOpenAIResponseInputMessageContentFile as FunctionCallOutputContentPart,  # pylint: disable=line-too-long
 )
-from llama_stack_client.types.conversations.item_list_response import (
+from ogx_client.types.conversations.item_list_response import (
     OpenAIResponseMcpApprovalRequest as MCPApprovalRequest,
 )
-from llama_stack_client.types.conversations.item_list_response import (
+from ogx_client.types.conversations.item_list_response import (
     OpenAIResponseMcpApprovalResponse as MCPApprovalResponse,
 )
-from llama_stack_client.types.conversations.item_list_response import (
+from ogx_client.types.conversations.item_list_response import (
     OpenAIResponseMessageOutput as MessageOutput,
 )
 
@@ -477,7 +477,7 @@ def build_conversation_turns_from_items(
 
 
 async def append_turn_items_to_conversation(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     conversation_id: str,
     user_input: ResponseInput,
     llm_output: Sequence[OpenAIResponseOutput],
@@ -510,7 +510,7 @@ async def append_turn_items_to_conversation(
         )
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e
@@ -520,7 +520,7 @@ async def append_turn_items_to_conversation(
 
 
 async def get_all_conversation_items(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     conversation_id_llama_stack: str,
 ) -> list[ItemListResponse]:
     """Fetch all items for a conversation (Conversations API), paginating as needed.
@@ -546,7 +546,7 @@ async def get_all_conversation_items(
         return items
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e

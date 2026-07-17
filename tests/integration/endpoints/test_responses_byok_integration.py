@@ -75,13 +75,13 @@ def _build_responses_mock_client(mocker: MockerFixture) -> Any:
 
 
 def _patch_all_client_holders(mocker: MockerFixture, mock_client: Any) -> None:
-    """Patch AsyncLlamaStackClientHolder in all modules used by the responses endpoint."""
+    """Patch AsyncOgxClientHolder in all modules used by the responses endpoint."""
     for module in (
         "app.endpoints.responses",
         "utils.endpoints",
         "utils.responses",
     ):
-        holder = mocker.patch(f"{module}.AsyncLlamaStackClientHolder")
+        holder = mocker.patch(f"{module}.AsyncOgxClientHolder")
         holder.return_value.get_client.return_value = mock_client
 
     original_cls = ResponsesContext

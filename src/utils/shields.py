@@ -3,15 +3,15 @@
 from typing import Any, Optional
 
 from fastapi import HTTPException
-from llama_stack_api import OpenAIResponseMessage
-from llama_stack_client import (
+from ogx_api import OpenAIResponseMessage
+from ogx_client import (
     APIConnectionError,
-    AsyncLlamaStackClient,
+    AsyncOgxClient,
 )
-from llama_stack_client import (
+from ogx_client import (
     APIStatusError as LLSApiStatusError,
 )
-from llama_stack_client.types import ShieldListResponse
+from ogx_client.types import ShieldListResponse
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 
 from configuration import AppConfig
@@ -35,7 +35,7 @@ from utils.query import handle_known_apistatus_errors
 logger = get_logger(__name__)
 
 
-async def get_available_shields(client: AsyncLlamaStackClient) -> list[str]:
+async def get_available_shields(client: AsyncOgxClient) -> list[str]:
     """
     Discover and return available shield identifiers.
 
@@ -120,7 +120,7 @@ def validate_shield_ids_override(
 
 
 async def run_shield_moderation(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     input_text: str,
     endpoint_path: str,
     shield_ids: Optional[list[str]] = None,
@@ -148,7 +148,7 @@ async def run_shield_moderation(
         HTTPException: If shield's provider_resource_id is not configured or model not found.
     """
     shields_to_run = await get_shields_for_request(client, shield_ids)
-    available_models = {model.id for model in await client.models.list()}
+    available_models = {model.id for model in (await client.models.list()).data}
     for shield in shields_to_run:
         # Lightspeed safety providers configure their model internally
         # so provider_resource_id is not necessarily a valid model ID.
@@ -168,7 +168,7 @@ async def run_shield_moderation(
             )
         except APIConnectionError as e:
             error_response = ServiceUnavailableResponse(
-                backend_name="Llama Stack",
+                backend_name="OGX",
                 cause=str(e),
             )
             raise HTTPException(**error_response.model_dump()) from e
@@ -197,7 +197,7 @@ async def run_shield_moderation(
 
 
 async def append_turn_to_conversation(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     conversation_id: str,
     user_message: str,
     assistant_message: str,
@@ -225,7 +225,7 @@ async def append_turn_to_conversation(
         )
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e
@@ -250,7 +250,7 @@ def create_refusal_response(refusal_message: str) -> OpenAIResponseMessage:
 
 
 async def get_shields_for_request(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     shield_ids: Optional[list[str]] = None,
 ) -> ShieldListResponse:
     """Resolve shields for the request: filtered by shield_ids or all configured.
@@ -287,7 +287,7 @@ async def get_shields_for_request(
         return [s for s in configured_shields if s.identifier in requested]
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e

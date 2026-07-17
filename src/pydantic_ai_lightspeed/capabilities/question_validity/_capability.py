@@ -22,12 +22,12 @@ from pydantic_ai.messages import ModelRequest, TextContent, UserContent
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from log import get_logger
 from models.config import (
     QuestionValidityConfig,
 )
-from pydantic_ai_lightspeed.llamastack import LlamaStackResponsesModel
+from pydantic_ai_lightspeed.llamastack import OgxResponsesModel
 
 logger = get_logger(__name__)
 
@@ -76,11 +76,11 @@ class QuestionValidity(AbstractCapability[None]):
 
     def __post_init__(self) -> None:
         """Initialize the model instance from the configured model ID."""
-        llama_stack_client = AsyncLlamaStackClientHolder().get_client()
+        ogx_client = AsyncOgxClientHolder().get_client()
 
-        self._model = LlamaStackResponsesModel.from_llama_stack_client(
+        self._model = OgxResponsesModel.from_ogx_client(
             self.config.model_id,
-            llama_stack_client,
+            ogx_client,
             model_settings=OpenAIResponsesModelSettings(openai_store=False),
         )
 

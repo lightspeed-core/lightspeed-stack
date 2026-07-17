@@ -1,7 +1,7 @@
 """Utility functions for metrics handling."""
 
 import metrics
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from utils.endpoints import check_configuration_loaded
@@ -17,7 +17,7 @@ async def setup_model_metrics() -> None:
     """
     logger.info("Setting up model metrics")
     check_configuration_loaded(configuration)
-    model_list = await AsyncLlamaStackClientHolder().get_client().models.list()
+    model_list = (await AsyncOgxClientHolder().get_client().models.list()).data
 
     models = [
         model

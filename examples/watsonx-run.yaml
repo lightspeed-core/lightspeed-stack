@@ -3,19 +3,13 @@ version: 2
 apis:
 - responses
 - batches
-- datasetio
-- eval
 - files
 - inference
 - safety
-- scoring
 - tool_runtime
-- tool_groups
 - conversations
 - vector_io
       
-benchmarks: []
-datasets: []
 image_name: starter
 # external_providers_dir: /opt/app-root/src/.llama/providers.d
 
@@ -48,17 +42,6 @@ providers:
       excluded_categories: []
     provider_id: llama-guard
     provider_type: inline::llama-guard
-  scoring:
-  - provider_id: basic
-    provider_type: inline::basic
-    config: {}
-  - provider_id: llm-as-judge
-    provider_type: inline::llm-as-judge
-    config: {}
-  - provider_id: braintrust
-    provider_type: inline::braintrust
-    config:
-      openai_api_key: '********'
   tool_runtime:
   - config: {} # Enable the RAG tool
     provider_id: file-search
@@ -91,27 +74,6 @@ providers:
         backend: kv_default
     provider_id: reference
     provider_type: inline::reference
-  datasetio:
-  - config:
-      kvstore:
-        namespace: huggingface_datasetio
-        backend: kv_default
-    provider_id: huggingface
-    provider_type: remote::huggingface
-  - config:
-      kvstore:
-        namespace: localfs_datasetio
-        backend: kv_default
-    provider_id: localfs
-    provider_type: inline::localfs
-  eval:
-  - config:
-      kvstore:
-        namespace: eval_store
-        backend: kv_default
-    provider_id: builtin
-    provider_type: inline::builtin
-scoring_fns: []
 server:
   port: 8321
 storage:
@@ -161,12 +123,6 @@ registered_resources:
     embedding_model: sentence-transformers/all-mpnet-base-v2
     provider_id: faiss
     vector_store_id: ${env.FAISS_VECTOR_STORE_ID}
-  datasets: []
-  scoring_fns: []
-  benchmarks: []
-  tool_groups:
-  - toolgroup_id: builtin::file_search # Register the RAG tool
-    provider_id: file-search
 vector_stores:
   default_provider_id: faiss
   default_embedding_model: # Define the default embedding model for RAG

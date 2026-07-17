@@ -4,7 +4,7 @@ import asyncio
 import re
 from typing import Optional
 
-from llama_stack_client import APIConnectionError, AsyncLlamaStackClient
+from ogx_client import APIConnectionError, AsyncOgxClient
 from semver import Version
 
 from constants import (
@@ -23,7 +23,7 @@ class InvalidLlamaStackVersionException(Exception):
 
 
 async def check_llama_stack_version(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     max_retries: int = DEFAULT_MAX_RETRIES,
     retry_delay: int = DEFAULT_RETRY_DELAY,
 ) -> Optional[str]:
@@ -110,7 +110,7 @@ def compare_versions(version_info: str, minimal: str, maximal: str) -> None:
     except ValueError as e:
         logger.warning("Failed to parse Llama Stack version '%s'.", version_info)
         raise InvalidLlamaStackVersionException(
-            f"Failed to parse Llama Stack version '{version_info}'."
+            f"Failed to parse OGX version '{version_info}'."
         ) from e
 
     minimal_version = Version.parse(minimal)
@@ -121,10 +121,10 @@ def compare_versions(version_info: str, minimal: str, maximal: str) -> None:
 
     if current_version < minimal_version:
         raise InvalidLlamaStackVersionException(
-            f"Llama Stack version >= {minimal_version} is required, but {current_version} is used"
+            f"OGX version >= {minimal_version} is required, but {current_version} is used"
         )
     if current_version > maximal_version:
         raise InvalidLlamaStackVersionException(
-            f"Llama Stack version <= {maximal_version} is required, but {current_version} is used"
+            f"OGX version <= {maximal_version} is required, but {current_version} is used"
         )
     logger.info("Correct Llama Stack version: %s", current_version)

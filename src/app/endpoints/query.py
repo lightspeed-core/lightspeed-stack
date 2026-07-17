@@ -4,12 +4,12 @@ import datetime
 from typing import Annotated, Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from llama_stack_api.openai_responses import OpenAIResponseObject
-from llama_stack_client import (
+from ogx_api.openai_responses import OpenAIResponseObject
+from ogx_client import (
     APIConnectionError,
-    AsyncLlamaStackClient,
+    AsyncOgxClient,
 )
-from llama_stack_client import (
+from ogx_client import (
     APIStatusError as LLSApiStatusError,
 )
 from openai._exceptions import (
@@ -21,7 +21,7 @@ from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.azure_token_manager import AzureEntraIDManager
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from constants import ENDPOINT_PATH_QUERY
 from log import get_logger
@@ -96,7 +96,7 @@ query_response: dict[int | str, dict[str, Any]] = {
     429: QuotaExceededResponse.openapi_response(),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -172,7 +172,7 @@ async def query_endpoint_handler(
             in request.state.authorized_actions,
         )
 
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
 
     # Moderation input is the raw user content (query + attachments) without injected RAG
     # context, to avoid false positives from retrieved document content.
@@ -225,7 +225,7 @@ async def query_endpoint_handler(
         and AzureEntraIDManager().is_token_expired
         and AzureEntraIDManager().refresh_token()
     ):
-        client = await AsyncLlamaStackClientHolder().update_azure_token()
+        client = await AsyncOgxClientHolder().update_azure_token()
 
     # Retrieve response using Responses API
     turn_summary = await retrieve_agent_response(
@@ -311,7 +311,7 @@ async def query_endpoint_handler(
     stacklevel=2,
 )
 async def retrieve_response(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
     responses_params: ResponsesApiParams,
     moderation_result: ShieldModerationResult,
     endpoint_path: str = "",
@@ -325,7 +325,7 @@ async def retrieve_response(
 
     Parameters:
     ----------
-        client: The AsyncLlamaStackClient to use for the request.
+        client: The AsyncOgxClient to use for the request.
         responses_params: The Responses API parameters.
         moderation_result: The moderation result.
         endpoint_path: The request path, for metrics/telemetry.
@@ -368,7 +368,7 @@ async def retrieve_response(
         raise e
     except APIConnectionError as e:
         error_response = ServiceUnavailableResponse(
-            backend_name="Llama Stack",
+            backend_name="OGX",
             cause=str(e),
         )
         raise HTTPException(**error_response.model_dump()) from e

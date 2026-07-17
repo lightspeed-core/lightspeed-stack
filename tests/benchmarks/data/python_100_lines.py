@@ -10,10 +10,10 @@
 
 # Získání seznamu všech dostupných modelů
 
-from llama_stack.distribution.library_client import LlamaStackAsLibraryClient
-from llama_stack_client import LlamaStackClient
+from ogx.distribution.library_client import OGXAsLibraryClient
+from ogx_client import OgxClient
 
-client = LlamaStackClient(base_url="http://localhost:8321")
+client = OgxClient(base_url="http://localhost:8321")
 
 print(f"Using Llama Stack version {client._version}")
 
@@ -29,7 +29,7 @@ for model in models:
 
 # Získání seznamu všech dostupných modelů
 
-client = LlamaStackAsLibraryClient("run.yaml")
+client = OGXAsLibraryClient("run.yaml")
 client.initialize()
 
 print(f"Using Llama Stack version {client._version}")
@@ -43,7 +43,7 @@ for model in models:
 #
 # ### Komunikace s LLM
 
-client = LlamaStackClient(base_url="http://localhost:8321")
+client = OgxClient(base_url="http://localhost:8321")
 
 print(f"Using Llama Stack version {client._version}")
 
@@ -73,7 +73,7 @@ print(response.to_json())
 
 # ### Využití novějšího API
 
-client = LlamaStackClient(base_url="http://localhost:8321")
+client = OgxClient(base_url="http://localhost:8321")
 
 print(f"Using Llama Stack version {client._version}")
 

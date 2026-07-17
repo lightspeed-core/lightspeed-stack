@@ -6,10 +6,10 @@ from typing import Optional
 
 import psycopg2
 from fastapi import HTTPException
-from llama_stack_client import (
+from ogx_client import (
     APIStatusError as LLSApiStatusError,
 )
-from llama_stack_client.types import Shield
+from ogx_client.types import Shield
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
@@ -537,7 +537,7 @@ def extract_provider_and_model_from_model_id(model_id: str) -> tuple[str, str]:
 def normalize_vertex_ai_model_id(model_id: str) -> str:
     """Normalize Vertex AI model ID to work around llama-stack 0.6.x bug.
 
-    llama-stack 0.6.x has a bug in the inline::meta-reference responses provider
+    llama-stack 0.6.x has a bug in the inline::builtin responses provider
     where it normalizes model IDs before checking against allowed_models, but doesn't
     normalize the allowed_models list itself. This causes Vertex AI models to fail
     validation because:

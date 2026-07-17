@@ -920,11 +920,11 @@ class LlamaStackConfiguration(ConfigurationBase):
             # it means that use_as_library_client attribute must be set to True
             if self.use_as_library_client is None:
                 raise ValueError(
-                    "Llama stack URL is not specified and library client mode is not specified"
+                    "OGX URL is not specified and library client mode is not specified"
                 )
             if self.use_as_library_client is False:
                 raise ValueError(
-                    "Llama stack URL is not specified and library client mode is not enabled"
+                    "OGX URL is not specified and library client mode is not enabled"
                 )
 
         # None -> False conversion
@@ -941,7 +941,7 @@ class LlamaStackConfiguration(ConfigurationBase):
             if self.library_client_config_path is not None and self.config is None:
                 checks.file_check(
                     Path(self.library_client_config_path),
-                    "Llama Stack configuration file",
+                    "OGX configuration file",
                 )
         return self
 

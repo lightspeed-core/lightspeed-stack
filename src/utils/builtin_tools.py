@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import Final
 
 from fastapi import HTTPException
-from llama_stack_client import APIConnectionError, APIStatusError, AsyncLlamaStackClient
-from llama_stack_client._base_client import make_request_options
-from llama_stack_client.types.shared.provider_info import ProviderInfo
+from ogx_client import APIConnectionError, APIStatusError, AsyncOgxClient
+from ogx_client._base_client import make_request_options
+from ogx_client.types.shared.provider_info import ProviderInfo
 
 from log import get_logger
 from models.api.responses.error import ServiceUnavailableResponse
@@ -39,7 +39,7 @@ def _is_file_search_provider(provider: ProviderInfo) -> bool:
 
 
 async def get_file_search_tools_from_lls(
-    client: AsyncLlamaStackClient,
+    client: AsyncOgxClient,
 ) -> list[CatalogTool]:
     """Discover builtin file-search tools from Llama Stack when configured.
 
@@ -65,7 +65,7 @@ async def get_file_search_tools_from_lls(
     except APIConnectionError as e:
         logger.error("Unable to connect to Llama Stack: %s", e)
         response = ServiceUnavailableResponse(
-            backend_name="Llama Stack", cause=str(e)
+            backend_name="OGX", cause=str(e)
         ).model_dump()
         raise HTTPException(**response) from e
 
@@ -98,7 +98,7 @@ async def get_file_search_tools_from_lls(
     except APIConnectionError as e:
         logger.error("Unable to connect to Llama Stack: %s", e)
         response = ServiceUnavailableResponse(
-            backend_name="Llama Stack", cause=str(e)
+            backend_name="OGX", cause=str(e)
         ).model_dump()
         raise HTTPException(**response) from e
 

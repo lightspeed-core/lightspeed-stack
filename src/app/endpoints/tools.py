@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from authentication import get_auth_dependency
 from authentication.interface import AuthTuple
 from authorization.middleware import authorize
-from client import AsyncLlamaStackClientHolder
+from client import AsyncOgxClientHolder
 from configuration import configuration
 from log import get_logger
 from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
@@ -43,7 +43,7 @@ tools_responses: dict[int | str, dict[str, Any]] = {
     403: ForbiddenResponse.openapi_response(examples=["endpoint"]),
     500: InternalServerErrorResponse.openapi_response(examples=["configuration"]),
     503: ServiceUnavailableResponse.openapi_response(
-        examples=["llama stack", "kubernetes api"]
+        examples=["ogx", "kubernetes api"]
     ),
 }
 
@@ -92,7 +92,7 @@ async def tools_endpoint_handler(  # pylint: disable=too-many-locals
 
     await check_mcp_auth(configuration, mcp_headers, token, request.headers)
 
-    client = AsyncLlamaStackClientHolder().get_client()
+    client = AsyncOgxClientHolder().get_client()
     consolidated_tools: list[CatalogTool] = list(
         await get_file_search_tools_from_lls(client)
     )

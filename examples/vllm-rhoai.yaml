@@ -2,19 +2,14 @@ version: 2
 image_name: rhoai-configuration
 
 apis:
-- agents
+- responses
 - batches
-- datasetio
-- eval
 - files
 - inference
 - safety
-- scoring
 - tool_runtime
 - vector_io
       
-benchmarks: []
-datasets: []
 # external_providers_dir: /opt/app-root/src/.llama/providers.d
 
 providers:
@@ -46,10 +41,6 @@ providers:
     provider_type: inline::llama-guard
     config:
       excluded_categories: []
-  scoring:
-  - config: {}
-    provider_id: basic
-    provider_type: inline::basic
   tool_runtime:
   - config: {}
     provider_id: file-search
@@ -61,7 +52,7 @@ providers:
         backend: kv_default
     provider_id: faiss
     provider_type: inline::faiss
-  agents:
+  responses:
   - config:
       persistence:
         agent_state:
@@ -71,7 +62,7 @@ providers:
           table_name: agents_responses
           backend: sql_default
     provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_type: inline::builtin
   batches:
   - config:
       kvstore:
@@ -79,27 +70,6 @@ providers:
         backend: kv_default
     provider_id: reference
     provider_type: inline::reference
-  datasetio:
-  - config:
-      kvstore:
-        namespace: huggingface_datasetio
-        backend: kv_default
-    provider_id: huggingface
-    provider_type: remote::huggingface
-  - config:
-      kvstore:
-        namespace: localfs_datasetio
-        backend: kv_default
-    provider_id: localfs
-    provider_type: inline::localfs
-  eval:
-  - config:
-      kvstore:
-        namespace: eval_store
-        backend: kv_default
-    provider_id: meta-reference
-    provider_type: inline::meta-reference
-scoring_fns: []
 server:
   port: 8321
 storage:
@@ -135,12 +105,6 @@ registered_resources:
   - shield_id: llama-guard
     provider_id: llama-guard
     provider_shield_id: openai/gpt-4o-mini
-  datasets: []
-  scoring_fns: []
-  benchmarks: []
-  tool_groups:
-  - toolgroup_id: builtin::file_search
-    provider_id: file-search
 vector_stores:
   default_provider_id: faiss
   default_embedding_model:

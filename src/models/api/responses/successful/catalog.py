@@ -216,7 +216,7 @@ class ProvidersListResponse(AbstractSuccessfulResponse):
                         "agents": [
                             {
                                 "provider_id": "meta-reference",
-                                "provider_type": "inline::meta-reference",
+                                "provider_type": "inline::builtin",
                             },
                         ],
                     },

@@ -28,7 +28,7 @@
 version: 2
 
 apis:
-- agents
+- responses
 - files
 - inference
 - tool_runtime
@@ -60,7 +60,7 @@ providers:
         backend: kv_default
     provider_id: faiss
     provider_type: inline::faiss
-  agents:
+  responses:
   - config:
       persistence:
         agent_state:
@@ -70,7 +70,7 @@ providers:
           table_name: agents_responses
           backend: sql_default
     provider_id: meta-reference
-    provider_type: inline::meta-reference
+    provider_type: inline::builtin
 
 storage:
   backends:
@@ -100,9 +100,6 @@ registered_resources:
   models: []
   shields: []
   vector_stores: []
-  tool_groups:
-  - toolgroup_id: builtin::file_search
-    provider_id: file-search
 
 # REQUIRED for file_search tool calls to work. Without it, llama-stack's
 # file-search runtime silently fails all file_search operations with no error logged.
