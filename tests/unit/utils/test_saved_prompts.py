@@ -13,10 +13,13 @@ from sqlalchemy.pool import StaticPool
 from models.database.base import Base
 from models.database.saved_prompts import SavedPrompt
 from utils.saved_prompts import (
+    SavedPromptAccessDeniedError,
     SavedPromptConflictError,
     SavedPromptLimitExceededError,
+    SavedPromptNotFoundError,
     SavedPromptValidationError,
     create_saved_prompt,
+    delete_saved_prompt_by_id_and_user,
     list_saved_prompts_by_user,
     validate_saved_prompt_content,
     validate_saved_prompt_name,
@@ -334,3 +337,51 @@ class TestListSavedPromptsByUser:
 
         assert [p.id for p in results] == [newer.id, older.id]
         assert all(p.user_id == "user-1" for p in results)
+
+
+class TestDeleteSavedPromptByIdAndUser:
+    """Test cases for delete_saved_prompt_by_id_and_user."""
+
+    def test_delete_owned_prompt(
+        self, patch_saved_prompts_get_session: None, sqlite_engine: Engine
+    ) -> None:
+        """Test deleting an owned prompt removes the row."""
+        created = create_saved_prompt(
+            "user-1", "to-delete", "body", max_prompts_per_user=50
+        )
+
+        delete_saved_prompt_by_id_and_user(created.id, "user-1")
+
+        session_factory = sessionmaker(
+            autocommit=False, autoflush=False, bind=sqlite_engine
+        )
+        with session_factory() as session:
+            assert session.get(SavedPrompt, created.id) is None
+
+    def test_delete_missing_raises_not_found(
+        self, patch_saved_prompts_get_session: None
+    ) -> None:
+        """Test deleting an unknown id raises SavedPromptNotFoundError."""
+        with pytest.raises(SavedPromptNotFoundError) as exc_info:
+            delete_saved_prompt_by_id_and_user("missing-id", "user-1")
+
+        assert str(exc_info.value) == "Saved prompt not found"
+
+    def test_delete_other_users_prompt_raises_access_denied(
+        self, patch_saved_prompts_get_session: None, sqlite_engine: Engine
+    ) -> None:
+        """Test delete by non-owner raises access denied and leaves the row."""
+        created = create_saved_prompt(
+            "owner", "private", "body", max_prompts_per_user=50
+        )
+
+        with pytest.raises(SavedPromptAccessDeniedError) as exc_info:
+            delete_saved_prompt_by_id_and_user(created.id, "intruder")
+
+        assert str(exc_info.value) == "Saved prompt access denied"
+
+        session_factory = sessionmaker(
+            autocommit=False, autoflush=False, bind=sqlite_engine
+        )
+        with session_factory() as session:
+            assert session.get(SavedPrompt, created.id) is not None

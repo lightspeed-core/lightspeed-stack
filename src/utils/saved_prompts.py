@@ -184,6 +184,7 @@ def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
 
     Returns:
         List of ``SavedPrompt`` rows for the user. Empty list if none exist.
+        Tie order when ``created_at`` values are equal is database-defined.
     """
     with get_session() as session:
         return (
@@ -191,4 +192,43 @@ def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
             .filter_by(user_id=user_id)
             .order_by(SavedPrompt.created_at.desc())
             .all()
+        )
+
+
+def delete_saved_prompt_by_id_and_user(prompt_id: str, user_id: str) -> None:
+    """Delete a saved prompt only if it belongs to the given user.
+
+    Parameters:
+        prompt_id: Primary key of the saved prompt.
+        user_id: Authenticated user attempting the delete.
+
+    Raises:
+        SavedPromptNotFoundError: If no row exists for ``prompt_id``.
+        SavedPromptAccessDeniedError: If the row exists but ``user_id`` does not
+            match the owner.
+    """
+    with get_session() as session:
+        saved_prompt = session.query(SavedPrompt).filter_by(id=prompt_id).first()
+        if saved_prompt is None:
+            logger.debug(
+                "Saved prompt not found for delete prompt_id=%s user_id=%s",
+                prompt_id,
+                user_id,
+            )
+            raise SavedPromptNotFoundError("Saved prompt not found")
+
+        if saved_prompt.user_id != user_id:
+            logger.debug(
+                "Saved prompt access denied for delete prompt_id=%s user_id=%s",
+                prompt_id,
+                user_id,
+            )
+            raise SavedPromptAccessDeniedError("Saved prompt access denied")
+
+        session.delete(saved_prompt)
+        session.commit()
+        logger.debug(
+            "Deleted saved prompt id=%s for user_id=%s",
+            prompt_id,
+            user_id,
         )
