@@ -116,8 +116,11 @@ def map_pydantic_agent_run_error(
     match exc:
         case ContentFilterError() as filter_exc:
             return InternalServerErrorResponse.query_failed(str(filter_exc))
-        case IncompleteToolCall() | UnexpectedModelBehavior():
+        case IncompleteToolCall():
             return PromptTooLongResponse(model=model_id)
+        case UnexpectedModelBehavior():
+            logger.error("Unexpected model behavior: %s", exc, exc_info=True)
+            return InternalServerErrorResponse.generic()
         case UsageLimitExceeded():
             return QuotaExceededResponse.model(model_id)
         case ModelHTTPError() as http_exc if is_context_length_error(str(http_exc)):
