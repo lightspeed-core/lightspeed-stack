@@ -238,7 +238,7 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.pylint."MESSAGES CONTROL"]
-disable = ["R0801"]
+disable = ["R0801", "C0301"]
 
 [tool.ruff]
 line-length = 88
