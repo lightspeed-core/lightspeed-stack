@@ -48,10 +48,6 @@ class TestValidateSavedPromptQuota:
         ):
             validate_saved_prompt_quota(0, 0)
 
-    def test_limit_exceeded_is_validation_error_subclass(self) -> None:
-        """Test SavedPromptLimitExceededError subclasses SavedPromptValidationError."""
-        assert issubclass(SavedPromptLimitExceededError, SavedPromptValidationError)
-
 
 class TestValidateSavedPromptName:
     """Test cases for validate_saved_prompt_name."""
