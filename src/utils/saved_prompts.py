@@ -1,12 +1,32 @@
-"""Validation helpers for saved prompts."""
+"""Validation helpers and data access for saved prompts."""
+
+from log import get_logger
+
+logger = get_logger(__name__)
 
 
-class SavedPromptValidationError(Exception):
+class SavedPromptError(Exception):
+    """Base class for saved-prompt domain errors."""
+
+
+class SavedPromptValidationError(SavedPromptError):
     """Invalid saved-prompt field values."""
 
 
 class SavedPromptLimitExceededError(SavedPromptValidationError):
     """Per-user saved-prompt count would exceed the configured maximum."""
+
+
+class SavedPromptNotFoundError(SavedPromptError):
+    """No saved prompt exists for the given identifier."""
+
+
+class SavedPromptAccessDeniedError(SavedPromptError):
+    """The saved prompt exists but is not owned by the requesting user."""
+
+
+class SavedPromptConflictError(SavedPromptError):
+    """A saved prompt conflicts with an existing unique constraint."""
 
 
 def validate_saved_prompt_quota(
