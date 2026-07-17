@@ -1,6 +1,7 @@
 """Unit tests for saved prompt validation helpers and data access."""
 
 from collections.abc import Generator
+from datetime import timedelta
 
 import pytest
 from pytest_mock import MockerFixture
@@ -16,6 +17,7 @@ from utils.saved_prompts import (
     SavedPromptLimitExceededError,
     SavedPromptValidationError,
     create_saved_prompt,
+    list_saved_prompts_by_user,
     validate_saved_prompt_content,
     validate_saved_prompt_name,
     validate_saved_prompt_quota,
@@ -297,3 +299,38 @@ class TestCreateSavedPrompt:
         first = create_saved_prompt("user-a", "shared", "a", max_prompts_per_user=50)
         second = create_saved_prompt("user-b", "shared", "b", max_prompts_per_user=50)
         assert first.id != second.id
+
+
+class TestListSavedPromptsByUser:
+    """Test cases for list_saved_prompts_by_user."""
+
+    def test_list_empty_returns_empty_list(
+        self, patch_saved_prompts_get_session: None
+    ) -> None:
+        """Test listing for a user with no prompts returns []."""
+        assert list_saved_prompts_by_user("nobody") == []
+
+    def test_list_returns_only_that_users_prompts_ordered_by_created_at_desc(
+        self, patch_saved_prompts_get_session: None, sqlite_engine: Engine
+    ) -> None:
+        """Test list is user-scoped and ordered by created_at descending."""
+        older = create_saved_prompt("user-1", "first", "c1", max_prompts_per_user=50)
+        newer = create_saved_prompt("user-1", "second", "c2", max_prompts_per_user=50)
+        create_saved_prompt("user-2", "other", "c3", max_prompts_per_user=50)
+
+        # Concurrent inserts can share the same created_at; force a clear order.
+        session_factory = sessionmaker(
+            autocommit=False, autoflush=False, bind=sqlite_engine
+        )
+        with session_factory() as session:
+            older_row = session.get(SavedPrompt, older.id)
+            newer_row = session.get(SavedPrompt, newer.id)
+            assert older_row is not None
+            assert newer_row is not None
+            older_row.created_at = newer_row.created_at - timedelta(seconds=1)
+            session.commit()
+
+        results = list_saved_prompts_by_user("user-1")
+
+        assert [p.id for p in results] == [newer.id, older.id]
+        assert all(p.user_id == "user-1" for p in results)

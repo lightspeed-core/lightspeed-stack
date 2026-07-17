@@ -166,7 +166,7 @@ def create_saved_prompt(
                 "Saved prompt name already exists"
             ) from exc
 
-        # Reload server-default timestamps so they remain usable after the session closes.
+        # reload server default timestamps so they remain usable after the session closes
         session.refresh(saved_prompt)
         logger.debug(
             "Created saved prompt id=%s for user_id=%s",
@@ -174,3 +174,21 @@ def create_saved_prompt(
             user_id,
         )
         return saved_prompt
+
+
+def list_saved_prompts_by_user(user_id: str) -> list[SavedPrompt]:
+    """List saved prompts for a user ordered by created_at descending.
+
+    Parameters:
+        user_id: Owner whose prompts should be returned.
+
+    Returns:
+        List of ``SavedPrompt`` rows for the user. Empty list if none exist.
+    """
+    with get_session() as session:
+        return (
+            session.query(SavedPrompt)
+            .filter_by(user_id=user_id)
+            .order_by(SavedPrompt.created_at.desc())
+            .all()
+        )
