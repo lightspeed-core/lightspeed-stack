@@ -442,7 +442,7 @@ configuration model. (Full design: the spec doc.)
   - Add the unified-vs-legacy `@model_validator` to the **root**
     `Configuration` model (it spans top-level `inference.providers` and
     `llama_stack.*`).
-- New functions in `src/llama_stack_configuration.py`:
+- New functions in `src/lightspeed_stack/llama_stack_configuration.py`:
   `synthesize_configuration`, `deep_merge_list_replace`,
   `apply_high_level_inference`, `load_default_baseline`, `synthesize_to_file`.
 - A shipped default baseline at `src/data/default_run.yaml`.
@@ -468,7 +468,7 @@ Read the "Architecture" and "Implementation Suggestions" sections of
 docs/design/llama-stack-config-merge/llama-stack-config-merge.md.
 Key files to create or modify:
   src/models/config.py  (new classes; modify LlamaStackConfiguration)
-  src/llama_stack_configuration.py  (synthesize_configuration + helpers)
+  src/lightspeed_stack/llama_stack_configuration.py  (synthesize_configuration + helpers)
   src/data/default_run.yaml  (new)
   src/client.py  (library-mode wiring)
 To verify: run a unified-mode config end-to-end via `uv run lightspeed-stack -c <config>` and confirm /v1/query succeeds.
@@ -486,7 +486,7 @@ that produces a unified single-file config from an existing
 
 **Scope**:
 
-- `migrate_config_dumb()` function in `src/llama_stack_configuration.py`.
+- `migrate_config_dumb()` function in `src/lightspeed_stack/llama_stack_configuration.py`.
 - `--migrate-config`, `--run-yaml`, `--migrate-output` flags in
   `src/lightspeed_stack.py`.
 - Round-trip test: migrate → synthesize → byte-identical to original
@@ -504,7 +504,7 @@ that produces a unified single-file config from an existing
 
 ```text
 Read "Migration / backwards compatibility" and "Appendix A — Worked example: legacy → unified migration" in docs/design/llama-stack-config-merge/llama-stack-config-merge.md.
-Key files: src/lightspeed_stack.py, src/llama_stack_configuration.py,
+Key files: src/lightspeed_stack.py, src/lightspeed_stack/llama_stack_configuration.py,
 tests/unit/test_llama_stack_synthesize.py.
 To verify: migrate the repo's root run.yaml + lightspeed-stack.yaml, then
 start LCORE with the output; confirm /v1/query works.
@@ -946,7 +946,7 @@ Two files:
   (inference, safety, tool_runtime, vector_io, agents, ...), `storage`,
   `registered_resources`, `vector_stores`, `safety`.
 
-**Existing enrichment** (`src/llama_stack_configuration.py`):
+**Existing enrichment** (`src/lightspeed_stack/llama_stack_configuration.py`):
 
 - LCORE already enriches an input `run.yaml` with dynamic values from
   `lightspeed-stack.yaml`: Azure Entra ID tokens (side-effect to `.env`),
@@ -1136,7 +1136,7 @@ Relative to `upstream/main`:
 | File | Purpose |
 |---|---|
 | `src/models/config.py` | New classes: `UnifiedInferenceProvider`, `UnifiedInferenceSection`, `UnifiedLlamaStackConfig`; modified `LlamaStackConfiguration` (adds `config` field + mutual-exclusion validator). _PoC layout; the implementation follows Decision S5 — `inference.providers` on the top-level `InferenceConfiguration`, validator on the root `Configuration` model, no `UnifiedInferenceSection` (see the schema JIRA)._ |
-| `src/llama_stack_configuration.py` | New: `synthesize_configuration`, `deep_merge_list_replace`, `apply_high_level_inference`, `load_default_baseline`, `synthesize_to_file`, `migrate_config_dumb`. CLI `main()` auto-detects unified vs legacy. |
+| `src/lightspeed_stack/llama_stack_configuration.py` | New: `synthesize_configuration`, `deep_merge_list_replace`, `apply_high_level_inference`, `load_default_baseline`, `synthesize_to_file`, `migrate_config_dumb`. CLI `main()` auto-detects unified vs legacy. |
 | `src/data/default_run.yaml` | Built-in default baseline (copied from repo root `run.yaml` for the PoC — implementation JIRA should slim it down; see PoC surprise about `EXTERNAL_PROVIDERS_DIR`) |
 | `src/client.py` | Library-mode path picks synthesis for unified configs, enrichment for legacy |
 | `src/lightspeed_stack.py` | `--migrate-config`, `--run-yaml`, `--migrate-output` flags |

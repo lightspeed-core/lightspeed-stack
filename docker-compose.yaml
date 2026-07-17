@@ -15,7 +15,7 @@ services:
       - ./run.yaml:/opt/app-root/run.yaml:z
       # Host copies so `docker compose up` picks up script changes without rebuilding llama-stack
       - ./scripts/llama-stack-entrypoint.sh:/opt/app-root/enrich-entrypoint.sh:ro,z
-      - ./src/llama_stack_configuration.py:/opt/app-root/llama_stack_configuration.py:ro,z
+      - ./src/lightspeed_stack/llama_stack_configuration.py:/opt/app-root/llama_stack_configuration.py:ro,z
       - ${GCP_KEYS_PATH:-./tmp/.gcp-keys-dummy}:/opt/app-root/.gcp-keys:ro
       - ./lightspeed-stack.yaml:/opt/app-root/lightspeed-stack.yaml:ro,z
       - llama-storage:/opt/app-root/src/.llama/storage

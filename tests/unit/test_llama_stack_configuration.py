@@ -1,4 +1,4 @@
-"""Unit tests for src/llama_stack_configuration.py."""
+"""Unit tests for src/lightspeed_stack/llama_stack_configuration.py."""
 
 from pathlib import Path
 from typing import Any
