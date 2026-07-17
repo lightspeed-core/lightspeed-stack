@@ -1,0 +1,41 @@
+# Example: A2A remote agent delegation
+#
+# Configures LCS as an orchestrator that can delegate tasks to external
+# A2A-compliant agents. The LLM decides when to delegate based on agent
+# descriptions from their agent cards.
+#
+# See docs/a2a_protocol.md for details.
+
+name: Lightspeed Orchestrator
+service:
+  host: 0.0.0.0
+  port: 8080
+  auth_enabled: false
+llama_stack:
+  url: http://localhost:8321
+  api_key: ${env.LLAMA_STACK_API_KEY}
+user_data_collection:
+  feedback_enabled: false
+authentication:
+  module: "noop"
+inference:
+  default_provider: openai
+  default_model: gpt-4o-mini
+
+# Remote A2A agents available for task delegation.
+# At startup, LCS connects to each agent, fetches its agent card,
+# and registers delegation tools with the pydantic-ai agent.
+a2a_agents:
+  agents:
+    - name: "openshift-agent"
+      url: "http://openshift-ls:8082"
+      timeout: 30
+      max_retries: 3
+
+    - name: "ansible-agent"
+      url: "http://ansible-ls:8081"
+      auth_token: "${env.ANSIBLE_AGENT_TOKEN}"
+      timeout: 60
+
+    - name: "rhel-agent"
+      url: "http://rhel-ls:8083"

@@ -13,6 +13,7 @@ from cache.cache import Cache
 from cache.cache_factory import CacheFactory
 from log import get_logger
 from models.config import (
+    A2AAgentsConfiguration,
     A2AStateConfiguration,
     ApprovalsConfiguration,
     AuthenticationConfiguration,
@@ -426,6 +427,13 @@ class AppConfig:  # pylint: disable=too-many-public-methods
         if self._configuration is None:
             raise LogicError("logic error: configuration is not loaded")
         return self._configuration.a2a_state
+
+    @property
+    def a2a_agents(self) -> A2AAgentsConfiguration | None:
+        """Return A2A clients configuration."""
+        if self._configuration is None:
+            raise LogicError("logic error: configuration is not loaded")
+        return self._configuration.a2a_agents
 
     @property
     def conversation_cache(self) -> Cache:

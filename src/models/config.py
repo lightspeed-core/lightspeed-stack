@@ -2022,6 +2022,60 @@ class A2AStateConfiguration(ConfigurationBase):
         return None
 
 
+class A2AAgentEndpointConfiguration(ConfigurationBase):
+    """Configuration for a single external A2A agent endpoint.
+
+    Attributes:
+        name: Agent identifier used in delegation tool calls.
+        url: Base URL of the A2A agent.
+        auth_token: Optional static bearer token for authenticating with this agent.
+        timeout: Request timeout in seconds for this agent.
+        max_retries: Maximum retry attempts on transient failures.
+    """
+
+    name: str = Field(
+        ...,
+        title="Agent name",
+        description="Unique identifier for this agent, used by the delegation tool.",
+    )
+    url: AnyHttpUrl = Field(
+        ...,
+        title="Agent URL",
+        description="Base URL of the external A2A agent.",
+    )
+    auth_token: Optional[SecretStr] = Field(
+        default=None,
+        title="Auth token",
+        description="Static bearer token for authenticating with this agent.",
+    )
+    timeout: PositiveInt = Field(
+        default=30,
+        title="Request timeout",
+        description="Timeout in seconds for requests to this agent. "
+        "Default is 30 seconds.",
+    )
+    max_retries: NonNegativeInt = Field(
+        default=3,
+        title="Maximum retries",
+        description="Maximum number of retry attempts on transient failures. "
+        "Set to 0 to disable retries.",
+    )
+
+
+class A2AAgentsConfiguration(ConfigurationBase):
+    """Configuration for external A2A agent connections.
+
+    Attributes:
+        agents: List of external A2A agent endpoint configurations.
+    """
+
+    agents: list[A2AAgentEndpointConfiguration] = Field(
+        default_factory=list,
+        title="A2A agent endpoints",
+        description="External A2A agents available for task delegation.",
+    )
+
+
 class ByokRag(ConfigurationBase):
     """BYOK (Bring Your Own Knowledge) RAG configuration."""
 
@@ -2712,6 +2766,12 @@ class Configuration(ConfigurationBase):
         default_factory=A2AStateConfiguration,
         title="A2A state configuration",
         description="Configuration for A2A protocol persistent state storage.",
+    )
+
+    a2a_agents: Optional[A2AAgentsConfiguration] = Field(
+        default=None,
+        title="A2A clients configuration",
+        description="External A2A agents available for task delegation.",
     )
 
     quota_handlers: QuotaHandlersConfiguration = Field(

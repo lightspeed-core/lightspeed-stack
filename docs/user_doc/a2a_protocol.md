@@ -4,7 +4,10 @@ This document describes the A2A (Agent-to-Agent) protocol implementation in Ligh
 
 ## Overview
 
-The A2A protocol is an open standard for agent-to-agent communication that allows different AI agents to discover, communicate, and collaborate with each other. Lightspeed Core Stack implements the A2A protocol to expose its AI capabilities to other agents and systems.
+The A2A protocol is an open standard for agent-to-agent communication that allows different AI agents to discover, communicate, and collaborate with each other. Lightspeed Core Stack implements both sides of the A2A protocol:
+
+- **A2A Server**: Other agents can call LCS to leverage its AI capabilities, MCP tools, and RAG
+- **A2A Client**: LCS can discover and delegate tasks to external A2A-compliant agents during inference
 
 ### Key Concepts
 
@@ -310,8 +313,8 @@ The `A2AAgentExecutor` class implements the A2A `AgentExecutor` interface:
 
 1. **Receives A2A Request**: Extracts user input from the A2A message
 2. **Creates Query Request**: Builds an internal `QueryRequest` with conversation context
-3. **Calls Llama Stack**: Uses the Responses API to get streaming responses
-4. **Converts Events**: Transforms Responses API streaming chunks to A2A events
+3. **Builds Pydantic-AI Agent**: Uses `build_agent()` with the same capabilities as the query/streaming endpoints (skills, A2A delegation)
+4. **Streams via Agent**: Runs `agent.run_stream_events()` and converts pydantic-ai events to A2A events
 5. **Manages State**: Tracks task state and publishes status updates
 
 ### Event Flow
@@ -786,8 +789,92 @@ protocolVersion: "0.3.0"
 
 The protocol version is included in the agent card response and indicates which version of the A2A protocol specification the agent implements.
 
+## A2A Client: Delegating to Remote Agents
+
+LCS can also act as an **A2A client**, discovering and delegating tasks to external A2A-compliant agents during inference. This enables multi-agent orchestration where a single LCS instance coordinates work across specialized agents.
+
+### Architecture
+
+```text
+┌──────────────────────────────────────────────────────┐
+│                  LCS Orchestrator                     │
+│                                                      │
+│  ┌──────────────┐  ┌──────────────────────────────┐  │
+│  │ build_agent()├─▶│ A2ADelegationCapability       │  │
+│  └──────────────┘  │  - list_agents()             │  │
+│                    │  - delegate_to_agent(name,    │  │
+│                    │    task)                      │  │
+│                    └──────────────┬───────────────┘  │
+└──────────────────────────────────┼───────────────────┘
+                                   │ A2A protocol
+                    ┌──────────────┼──────────────┐
+                    ▼              ▼              ▼
+             ┌────────────┐ ┌──────────┐ ┌──────────────┐
+             │ Remote     │ │ Remote   │ │ Remote       │
+             │ Agent A    │ │ Agent B  │ │ Agent ...    │
+             │ (any A2A   │ │          │ │              │
+             │  server)   │ │          │ │              │
+             └────────────┘ └──────────┘ └──────────────┘
+```
+
+### Configuration
+
+Add an `a2a_agents` section to `lightspeed-stack.yaml`:
+
+```yaml
+a2a_agents:
+  agents:
+    - name: "openshift-agent"
+      url: "http://openshift-ls.example.com:8082"
+      timeout: 30          # seconds (default: 30)
+      max_retries: 3       # retry on transient failures (default: 3)
+
+    - name: "ansible-agent"
+      url: "http://ansible-ls.example.com:8081"
+      auth_token: "${ANSIBLE_AGENT_TOKEN}"  # optional bearer token
+
+    - name: "rhel-agent"
+      url: "http://rhel-ls.example.com:8083"
+```
+
+#### Configuration Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | string | required | Identifier used by the LLM to select this agent |
+| `url` | string | required | Base URL of the remote A2A agent |
+| `auth_token` | string | none | Static bearer token for authentication |
+| `timeout` | int | 30 | Request timeout in seconds |
+| `max_retries` | int | 3 | Retry attempts on connection failures |
+
+### How It Works
+
+1. **Startup**: LCS connects to each configured agent, fetches its agent card, and caches its capabilities.
+
+2. **Tool registration**: An `A2ADelegationCapability` is added to the pydantic-ai agent (used by query, streaming, and A2A endpoints) with two tools:
+   - `list_agents()` — returns agent names and descriptions
+   - `delegate_to_agent(agent_name, task)` — sends a task to a remote agent via A2A and returns its response
+
+3. **Runtime**: The LLM decides when to delegate based on the agent descriptions injected into the system prompt. It can delegate to one or multiple agents per turn.
+
+4. **Parallel delegation**: If the LLM emits multiple `delegate_to_agent` calls in one response, they run concurrently.
+
+5. **Error handling**: If a remote agent is unavailable or times out, the tool returns an error message to the LLM, which can try another agent or answer directly.
+
+### Authentication
+
+The orchestrator authenticates to remote agents using **service account credentials** (the `auth_token` field), not end-user tokens. Each remote agent validates the token using its own authentication module.
+
+| Scenario | Configuration |
+|----------|---------------|
+| No auth (internal network) | Omit `auth_token` |
+| Static bearer token | Set `auth_token` in YAML |
+| Environment variable | `auth_token: "${MY_AGENT_TOKEN}"` |
+
 ## References
 
-- [A2A Protocol Specification](https://github.com/google/A2A)
+- [A2A Protocol Specification](https://a2a-protocol.org/latest/)
+- [a2a-sdk (Python)](https://pypi.org/project/a2a-sdk/)
+- [A2A Samples & Test Suite](https://github.com/a2aproject/a2a-samples)
 - [Llama Stack Documentation](https://llama-stack.readthedocs.io/)
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
