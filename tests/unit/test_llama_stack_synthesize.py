@@ -1,7 +1,7 @@
 """Unit tests for unified-mode Llama Stack configuration synthesis (LCORE-2336).
 
 Covers the synthesizer pipeline and its helpers in
-``src/llama_stack_configuration.py``: baseline loading, deep-merge semantics,
+``src/lightspeed_stack/llama_stack_configuration.py``: baseline loading, deep-merge semantics,
 high-level inference expansion, the full synthesis pipeline, and the
 write-to-file step (persistent path, mode 0600).
 """

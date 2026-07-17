@@ -2,7 +2,7 @@
 #
 # This file is the starting point when a unified `lightspeed-stack.yaml`
 # selects `llama_stack.config.baseline: default` (the default) and does not
-# point at a `profile:`. The synthesizer (src/llama_stack_configuration.py)
+# point at a `profile:`. The synthesizer (src/lightspeed_stack/llama_stack_configuration.py)
 # layers enrichment, high-level `inference.providers`, and `native_override`
 # on top of this baseline to produce the final run.yaml handed to Llama Stack.
 #
