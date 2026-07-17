@@ -41,7 +41,7 @@ async def _get_cross_encoder(model_name: str) -> Any:
         if model_name in _cross_encoder_models:
             return _cross_encoder_models[model_name]
         try:
-            from sentence_transformers import (  # pylint: disable=import-outside-toplevel
+            from sentence_transformers import (  # pylint: disable=import-outside-toplevel,import-error
                 CrossEncoder,
             )
 
