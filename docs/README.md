@@ -9,14 +9,10 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 * [Basic info](#basic-info)
 * [User docs](#user-docs)
-* [Overview](#overview)
-* [Installation and configuration](#installation-and-configuration)
-* [Status of Lightspeed Core Stack versions](#status-of-lightspeed-core-stack-versions)
+* [Developer doc](#developer-doc)
+    * [API](#api)
+* [Maintenance](#maintenance)
 * [Migration guides](#migration-guides)
-* [Info for developers](#info-for-developers)
-* [API](#api)
-* [RAG and BYOK](#rag-and-byok)
-* [Other features](#other-features)
 * [Models](#models)
 * [Design documents](#design-documents)
     * [Agent skills](#agent-skills)
@@ -58,53 +54,47 @@ See the full documentation at [`../README.md`](../README.md) or browse sub-pages
 
 [User data collection](https://lightspeed-core.github.io/lightspeed-stack/user_doc/user_data_collection.html)
 
-## Overview
+## Developer doc
 
-[Architecture](https://lightspeed-core.github.io/lightspeed-stack/ARCHITECTURE.html)
+[Architecture](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/ARCHITECTURE.html)
 
-[Architecture diagram](https://lightspeed-core.github.io/lightspeed-stack/architecture.svg)
+[Architecture diagram](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/architecture.svg)
 
-## Installation and configuration
+[Installation on Linux](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/installation_linux.html)
+
+[Installation on MacOS](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/installation_macos.html)
+
+[Database structure](https://lightspeed-core.github.io/lightspeed-stack/DB/index.html)
+
+[Providers](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/providers.html)
+
+[Container Orchestration Guide](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/container_orchestration.html)
+
+[Contributing guide](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/contributing_guide.html)
+
+### API
+
+[OpenAPI specification](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/openapi.html)
+
+[Conversations API](https://lightspeed-core.github.io/lightspeed-stack/devel_doc/conversations_api.html)
 
 
-[Container Orchestration Guide](https://lightspeed-core.github.io/lightspeed-stack/container_orchestration.html)
+## Maintenance
 
-[Linux](https://lightspeed-core.github.io/lightspeed-stack/installation_linux.html)
+[Status of Lightspeed Core Stack versions](https://lightspeed-core.github.io/lightspeed-stack/maintenance/version_status.html)
 
-[MacOS](https://lightspeed-core.github.io/lightspeed-stack/installation_macos.html)
+[Supported versions](https://lightspeed-core.github.io/lightspeed-stack/maintenance/versions_supported.html)
 
-## Status of Lightspeed Core Stack versions
-
-[Status of Lightspeed Core Stack versions](https://lightspeed-core.github.io/lightspeed-stack/version_status.html)
-
-[Supported versions](https://lightspeed-core.github.io/lightspeed-stack/versions_supported.html)
-
-[Unsupported versions](https://lightspeed-core.github.io/lightspeed-stack/versions_unsupported.html)
+[Unsupported versions](https://lightspeed-core.github.io/lightspeed-stack/maintenance/versions_unsupported.html)
 
 ## Migration guides
 
 [Migration guides](https://lightspeed-core.github.io/lightspeed-stack/migrations/)
 
-## Info for developers
-
-[Contributing guide](https://lightspeed-core.github.io/lightspeed-stack/contributing_guide.html)
-
-## API
-
-[OpenAPI specification](https://lightspeed-core.github.io/lightspeed-stack/openapi.html)
-
-[Conversations API](https://lightspeed-core.github.io/lightspeed-stack/conversations_api.html)
-
-## RAG and BYOK
-
-## Other features
-
-[Providers](https://lightspeed-core.github.io/lightspeed-stack/providers.html)
 
 [Sentry error tracking](https://lightspeed-core.github.io/lightspeed-stack/sentry.html)
 
 
-[Database structure](https://lightspeed-core.github.io/lightspeed-stack/DB/index.html)
 
 ## Models
 
