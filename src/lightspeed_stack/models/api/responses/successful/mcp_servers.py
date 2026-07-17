@@ -4,11 +4,11 @@ from typing import ClassVar
 
 from pydantic import Field
 
-from models.api.responses.successful.bases import (
+from lightspeed_stack.models.api.responses.successful.bases import (
     AbstractDeleteResponse,
     AbstractSuccessfulResponse,
 )
-from models.common.mcp import MCPServerAuthInfo, MCPServerInfo
+from lightspeed_stack.models.common.mcp import MCPServerAuthInfo, MCPServerInfo
 
 
 class MCPClientAuthOptionsResponse(AbstractSuccessfulResponse):

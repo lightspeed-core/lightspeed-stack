@@ -9,8 +9,8 @@ from ogx_client.types.model_list_response import (
     GoogleListModelsResponseModel,
 )
 
-from models.common.models import CatalogModel
-from utils.model_list import (
+from lightspeed_stack.models.common.models import CatalogModel
+from lightspeed_stack.utils.model_list import (
     parse_anthropic_model,
     parse_google_model,
     parse_model_list_response,

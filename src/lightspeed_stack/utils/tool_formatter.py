@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, Optional
 
-from log import get_logger
-from models.common.tools import (
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.common.tools import (
     CatalogTool,
     CatalogToolParameter,
     ListedMcpTool,

@@ -4,8 +4,8 @@ from typing import ClassVar, Optional
 
 from fastapi import status
 
-from models.api.responses.constants import NOT_FOUND_DESCRIPTION
-from models.api.responses.error.bases import AbstractErrorResponse
+from lightspeed_stack.models.api.responses.constants import NOT_FOUND_DESCRIPTION
+from lightspeed_stack.models.api.responses.error.bases import AbstractErrorResponse
 
 
 class NotFoundResponse(AbstractErrorResponse):

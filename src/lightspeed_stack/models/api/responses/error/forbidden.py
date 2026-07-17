@@ -5,9 +5,9 @@ from typing import ClassVar
 from fastapi import status
 from typing_extensions import Self  # noqa: UP035
 
-from models.api.responses.constants import FORBIDDEN_DESCRIPTION
-from models.api.responses.error.bases import AbstractErrorResponse
-from models.config import Action
+from lightspeed_stack.models.api.responses.constants import FORBIDDEN_DESCRIPTION
+from lightspeed_stack.models.api.responses.error.bases import AbstractErrorResponse
+from lightspeed_stack.models.config import Action
 
 
 class ForbiddenResponse(AbstractErrorResponse):

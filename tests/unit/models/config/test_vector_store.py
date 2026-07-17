@@ -7,7 +7,7 @@ import pytest
 import yaml
 from pydantic import SecretStr, TypeAdapter, ValidationError
 
-from models.config import Configuration, VectorStoreProvider
+from lightspeed_stack.models.config import Configuration, VectorStoreProvider
 
 _PROVIDER_ADAPTER = TypeAdapter(VectorStoreProvider)
 

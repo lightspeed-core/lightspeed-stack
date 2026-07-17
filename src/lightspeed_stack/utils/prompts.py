@@ -4,9 +4,9 @@ from typing import Optional
 
 from fastapi import HTTPException
 
-import constants
-from configuration import configuration
-from models.api.responses.error import UnprocessableEntityResponse
+from lightspeed_stack import constants
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.models.api.responses.error import UnprocessableEntityResponse
 
 
 def get_system_prompt(

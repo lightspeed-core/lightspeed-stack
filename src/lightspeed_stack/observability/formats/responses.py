@@ -8,7 +8,7 @@ event builder function that returns a dict, then pass the result to send_splunk_
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from configuration import configuration
+from lightspeed_stack.configuration import configuration
 
 
 @dataclass

@@ -9,12 +9,12 @@ import pytest
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
-from app.endpoints import tools
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.responses.successful import ToolsResponse
-from models.common.tools import ListedMcpTool
-from models.config import (
+from lightspeed_stack.app.endpoints import tools
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.responses.successful import ToolsResponse
+from lightspeed_stack.models.common.tools import ListedMcpTool
+from lightspeed_stack.models.config import (
     Configuration,
     CORSConfiguration,
     LlamaStackConfiguration,
@@ -24,7 +24,7 @@ from models.config import (
     TLSConfiguration,
     UserDataCollection,
 )
-from utils.builtin_tools import FILE_SEARCH_CATALOG_TOOLS
+from lightspeed_stack.utils.builtin_tools import FILE_SEARCH_CATALOG_TOOLS
 
 MOCK_AUTH: AuthTuple = ("mock_user_id", "mock_username", False, "mock_token")
 
@@ -33,9 +33,9 @@ def _mock_file_search_tools(
     mocker: MockerFixture, file_search_tools: Optional[list] = None
 ) -> None:
     """Patch LLS file-search discovery for tools tests."""
-    mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
+    mocker.patch("lightspeed_stack.app.endpoints.tools.AsyncOgxClientHolder")
     mocker.patch(
-        "app.endpoints.tools.get_file_search_tools",
+        "lightspeed_stack.app.endpoints.tools.get_file_search_tools",
         new_callable=mocker.AsyncMock,
         return_value=(
             FILE_SEARCH_CATALOG_TOOLS
@@ -49,7 +49,7 @@ def _make_app_config(mocker: MockerFixture, config: Configuration) -> AppConfig:
     """Create an AppConfig with the given configuration and patch it."""
     app_config = AppConfig()
     app_config._configuration = config
-    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
     return app_config
 
 
@@ -118,21 +118,23 @@ async def test_tools_lists_builtin_and_mcp_tools(
     """Return file-search tools from LLS plus MCP tools discovered locally."""
     _make_app_config(mocker, mock_configuration)
     mocker.patch(
-        "app.endpoints.tools.check_configuration_loaded",
+        "lightspeed_stack.app.endpoints.tools.check_configuration_loaded",
         return_value=None,
     )
     mocker.patch(
-        "app.endpoints.tools.build_mcp_headers",
+        "lightspeed_stack.app.endpoints.tools.build_mcp_headers",
         return_value={"filesystem-tools": {}, "git-tools": {}},
     )
-    mocker.patch("app.endpoints.tools.check_mcp_auth", return_value=None)
     mocker.patch(
-        "app.endpoints.tools.get_agent_capability_tools",
+        "lightspeed_stack.app.endpoints.tools.check_mcp_auth", return_value=None
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.tools.get_agent_capability_tools",
         return_value=[],
     )
     _mock_file_search_tools(mocker)
     mock_list = mocker.patch(
-        "app.endpoints.tools.list_mcp_tools",
+        "lightspeed_stack.app.endpoints.tools.list_mcp_tools",
         side_effect=[
             [
                 ListedMcpTool(
@@ -194,20 +196,22 @@ async def test_tools_skips_server_with_unresolved_auth(
     ]
     _make_app_config(mocker, mock_configuration)
     mocker.patch(
-        "app.endpoints.tools.check_configuration_loaded",
+        "lightspeed_stack.app.endpoints.tools.check_configuration_loaded",
         return_value=None,
     )
     mocker.patch(
-        "app.endpoints.tools.build_mcp_headers",
+        "lightspeed_stack.app.endpoints.tools.build_mcp_headers",
         return_value={},
     )
-    mocker.patch("app.endpoints.tools.check_mcp_auth", return_value=None)
     mocker.patch(
-        "app.endpoints.tools.get_agent_capability_tools",
+        "lightspeed_stack.app.endpoints.tools.check_mcp_auth", return_value=None
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.tools.get_agent_capability_tools",
         return_value=[],
     )
     _mock_file_search_tools(mocker)
-    mock_list = mocker.patch("app.endpoints.tools.list_mcp_tools")
+    mock_list = mocker.patch("lightspeed_stack.app.endpoints.tools.list_mcp_tools")
 
     request = mocker.Mock()
     request.headers = {}
@@ -238,21 +242,23 @@ async def test_tools_continues_when_mcp_list_returns_empty(
     ]
     _make_app_config(mocker, mock_configuration)
     mocker.patch(
-        "app.endpoints.tools.check_configuration_loaded",
+        "lightspeed_stack.app.endpoints.tools.check_configuration_loaded",
         return_value=None,
     )
     mocker.patch(
-        "app.endpoints.tools.build_mcp_headers",
+        "lightspeed_stack.app.endpoints.tools.build_mcp_headers",
         return_value={"broken-tools": {}},
     )
-    mocker.patch("app.endpoints.tools.check_mcp_auth", return_value=None)
     mocker.patch(
-        "app.endpoints.tools.get_agent_capability_tools",
+        "lightspeed_stack.app.endpoints.tools.check_mcp_auth", return_value=None
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.tools.get_agent_capability_tools",
         return_value=[],
     )
     _mock_file_search_tools(mocker)
     mocker.patch(
-        "app.endpoints.tools.list_mcp_tools",
+        "lightspeed_stack.app.endpoints.tools.list_mcp_tools",
         return_value=[],
     )
 
@@ -285,21 +291,23 @@ async def test_tools_skips_mcp_server_when_discovery_returns_no_tools(
     ]
     _make_app_config(mocker, mock_configuration)
     mocker.patch(
-        "app.endpoints.tools.check_configuration_loaded",
+        "lightspeed_stack.app.endpoints.tools.check_configuration_loaded",
         return_value=None,
     )
     mocker.patch(
-        "app.endpoints.tools.build_mcp_headers",
+        "lightspeed_stack.app.endpoints.tools.build_mcp_headers",
         return_value={"oauth-tools": {}},
     )
-    mocker.patch("app.endpoints.tools.check_mcp_auth", return_value=None)
     mocker.patch(
-        "app.endpoints.tools.get_agent_capability_tools",
+        "lightspeed_stack.app.endpoints.tools.check_mcp_auth", return_value=None
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.tools.get_agent_capability_tools",
         return_value=[],
     )
     _mock_file_search_tools(mocker)
     mocker.patch(
-        "app.endpoints.tools.list_mcp_tools",
+        "lightspeed_stack.app.endpoints.tools.list_mcp_tools",
         return_value=[],
     )
 
@@ -328,9 +336,11 @@ async def test_tools_endpoint_includes_agent_capability_tools(
     )
     app_config = AppConfig()
     app_config._configuration = config_with_skills
-    mocker.patch("app.endpoints.tools.configuration", app_config)
+    mocker.patch("lightspeed_stack.app.endpoints.tools.configuration", app_config)
 
-    mock_client_holder = mocker.patch("app.endpoints.tools.AsyncOgxClientHolder")
+    mock_client_holder = mocker.patch(
+        "lightspeed_stack.app.endpoints.tools.AsyncOgxClientHolder"
+    )
     mock_client = mocker.AsyncMock()
     mock_client_holder.return_value.get_client.return_value = mock_client
     mock_client.toolgroups.list.return_value = []

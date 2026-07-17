@@ -11,20 +11,20 @@ from typing import Any, Optional
 
 import psycopg2
 
-from log import get_logger
-from models.config import (
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import (
     PostgreSQLDatabaseConfiguration,
     QuotaHandlersConfiguration,
     SQLiteDatabaseConfiguration,
 )
-from quota.connect_pg import connect_pg
-from quota.connect_sqlite import connect_sqlite
-from quota.sql import (
+from lightspeed_stack.quota.connect_pg import connect_pg
+from lightspeed_stack.quota.connect_sqlite import connect_sqlite
+from lightspeed_stack.quota.sql import (
     CONSUME_TOKENS_FOR_USER_PG,
     CONSUME_TOKENS_FOR_USER_SQLITE,
     CREATE_TOKEN_USAGE_TABLE,
 )
-from utils.connection_decorator import connection
+from lightspeed_stack.utils.connection_decorator import connection
 
 logger = get_logger(__name__)
 

@@ -9,8 +9,8 @@ from mcp import ClientSession, McpError
 from mcp.client.sse import sse_client
 from mcp.client.streamable_http import streamable_http_client
 
-from log import get_logger
-from models.common.tools import ListedMcpTool
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.common.tools import ListedMcpTool
 
 logger = get_logger(__name__)
 

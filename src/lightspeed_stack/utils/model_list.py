@@ -12,7 +12,7 @@ from ogx_client.types.model_list_response import (
     ModelListResponse,
 )
 
-from models.common.models import CatalogModel
+from lightspeed_stack.models.common.models import CatalogModel
 
 
 def parse_openai_style_model(model: Model) -> CatalogModel:

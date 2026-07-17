@@ -18,8 +18,8 @@ from typing import Any, Literal, Optional
 import yaml
 from pydantic import SecretStr
 
-from log import get_logger
-from models.config import Configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import Configuration
 
 logger = get_logger(__name__)
 

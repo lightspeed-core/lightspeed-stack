@@ -5,7 +5,7 @@
 import pytest
 from pydantic import ValidationError
 
-from models.config import (
+from lightspeed_stack.models.config import (
     ApprovalFilter,
     ApprovalsConfiguration,
     CompactionConfiguration,

@@ -2,8 +2,8 @@
 
 import os
 
-import constants
-from authentication import (
+from lightspeed_stack import constants
+from lightspeed_stack.authentication import (
     api_key_token,
     jwk_token,
     k8s,
@@ -12,9 +12,9 @@ from authentication import (
     rh_identity,
     trusted_proxy,
 )
-from authentication.interface import AuthInterface
-from configuration import LogicError, configuration
-from log import get_logger
+from lightspeed_stack.authentication.interface import AuthInterface
+from lightspeed_stack.configuration import LogicError, configuration
+from lightspeed_stack.log import get_logger
 
 logger = get_logger(__name__)
 

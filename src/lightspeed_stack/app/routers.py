@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from app.endpoints import (
+from lightspeed_stack.app.endpoints import (
     # A2A (Agent-to-Agent) protocol support
     a2a,
     authorized,

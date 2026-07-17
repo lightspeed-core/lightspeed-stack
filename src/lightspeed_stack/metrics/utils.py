@@ -1,11 +1,11 @@
 """Utility functions for metrics handling."""
 
-import metrics
-from client import AsyncOgxClientHolder
-from configuration import configuration
-from log import get_logger
-from utils.endpoints import check_configuration_loaded
-from utils.model_list import parse_model_list_response
+from lightspeed_stack import metrics
+from lightspeed_stack.client import AsyncOgxClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.utils.endpoints import check_configuration_loaded
+from lightspeed_stack.utils.model_list import parse_model_list_response
 
 logger = get_logger(__name__)
 

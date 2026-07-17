@@ -6,10 +6,10 @@ import pytest
 from fastapi import HTTPException, Request, status
 from pytest_mock import MockerFixture
 
-from app.endpoints.shields import shields_endpoint_handler
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.responses.successful import ShieldsResponse
+from lightspeed_stack.app.endpoints.shields import shields_endpoint_handler
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.responses.successful import ShieldsResponse
 from tests.unit.utils.auth_helpers import mock_authorization_resolvers
 
 
@@ -59,9 +59,37 @@ async def test_shields_endpoint_handler_configuration_not_loaded(
     """Test the shields endpoint handler if configuration is not loaded."""
     mock_authorization_resolvers(mocker)
 
+    # configuration for tests
+    config_dict: dict[str, Any] = {
+        "name": "foo",
+        "service": {
+            "host": "localhost",
+            "port": 8080,
+            "auth_enabled": False,
+            "workers": 1,
+            "color_log": True,
+            "access_log": True,
+        },
+        "llama_stack": {
+            "api_key": "xyzzy",
+            "url": "http://x.y.com:1234",
+            "use_as_library_client": False,
+        },
+        "user_data_collection": {
+            "feedback_enabled": False,
+        },
+        "customization": None,
+        "authorization": {"access_rules": []},
+        "authentication": {"module": "noop"},
+    }
+    cfg = AppConfig()
+    cfg.init_from_dict(config_dict)
+
+    mocker.patch("lightspeed_stack.app.endpoints.shields.configuration", cfg)
+
     mock_config = AppConfig()
     mock_config._configuration = None  # pylint: disable=protected-access
-    mocker.patch("app.endpoints.shields.configuration", mock_config)
+    mocker.patch("lightspeed_stack.app.endpoints.shields.configuration", mock_config)
 
     request, auth = _auth_request()
 
@@ -80,7 +108,13 @@ async def test_shields_endpoint_handler_empty_shields(
 
     cfg = AppConfig()
     cfg.init_from_dict(_base_config_dict())
-    mocker.patch("app.endpoints.shields.configuration", cfg)
+
+    # Mock the LlamaStack client
+    mock_client = mocker.AsyncMock()
+    mock_client.shields.list.return_value = []
+    mock_lsc = mocker.patch("lightspeed_stack.client.AsyncOgxClientHolder.get_client")
+    mock_lsc.return_value = mock_client
+    mocker.patch("lightspeed_stack.app.endpoints.shields.configuration", cfg)
 
     request, auth = _auth_request()
 
@@ -90,7 +124,7 @@ async def test_shields_endpoint_handler_empty_shields(
 
 
 @pytest.mark.asyncio
-async def test_shields_endpoint_handler_configured_shields(
+async def test_shields_endpoint_handler_success_with_shields_data(
     mocker: MockerFixture,
 ) -> None:
     """Test the shields endpoint lists shields from LCS configuration."""
@@ -122,8 +156,9 @@ async def test_shields_endpoint_handler_configured_shields(
         },
     ]
     cfg = AppConfig()
+    mocker.patch("lightspeed_stack.client.AsyncOgxClientHolder.get_client")
     cfg.init_from_dict(config_dict)
-    mocker.patch("app.endpoints.shields.configuration", cfg)
+    mocker.patch("lightspeed_stack.app.endpoints.shields.configuration", cfg)
 
     request, auth = _auth_request()
 

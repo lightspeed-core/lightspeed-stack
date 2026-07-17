@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from models.config import ObservabilityConfiguration
+from lightspeed_stack.models.config import ObservabilityConfiguration
 
 
 def test_default_values() -> None:

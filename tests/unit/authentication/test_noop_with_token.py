@@ -5,8 +5,8 @@ from typing import cast
 import pytest
 from fastapi import HTTPException, Request
 
-from authentication.noop_with_token import NoopWithTokenAuthDependency
-from constants import DEFAULT_USER_NAME, DEFAULT_USER_UID
+from lightspeed_stack.authentication.noop_with_token import NoopWithTokenAuthDependency
+from lightspeed_stack.constants import DEFAULT_USER_NAME, DEFAULT_USER_UID
 
 
 @pytest.mark.asyncio

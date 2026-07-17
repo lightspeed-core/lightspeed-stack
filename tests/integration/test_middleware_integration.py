@@ -3,8 +3,8 @@
 from fastapi import Request, status
 from fastapi.testclient import TestClient
 
-from configuration import configuration
-from models.api.responses.error import InternalServerErrorResponse
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.models.api.responses.error import InternalServerErrorResponse
 
 
 class TestGlobalExceptionMiddlewareIntegration:  # pylint: disable=too-few-public-methods
@@ -15,7 +15,7 @@ class TestGlobalExceptionMiddlewareIntegration:  # pylint: disable=too-few-publi
         configuration_filename = "tests/configuration/lightspeed-stack-proper-name.yaml"
         cfg = configuration
         cfg.load_configuration(configuration_filename)
-        from app.main import app  # pylint: disable=C0415
+        from lightspeed_stack.app.main import app  # pylint: disable=C0415
 
         @app.get("/test-middleware-exception", include_in_schema=False)
         async def _(request: Request) -> dict[str, str]:

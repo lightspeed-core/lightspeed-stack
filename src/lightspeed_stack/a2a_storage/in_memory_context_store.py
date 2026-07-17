@@ -3,8 +3,8 @@
 import asyncio
 from typing import Optional
 
-from a2a_storage.context_store import A2AContextStore
-from log import get_logger
+from lightspeed_stack.a2a_storage.context_store import A2AContextStore
+from lightspeed_stack.log import get_logger
 
 logger = get_logger(__name__)
 

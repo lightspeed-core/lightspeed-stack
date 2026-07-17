@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from utils import suid
+from lightspeed_stack.utils import suid
 
 
 class TestSUID:

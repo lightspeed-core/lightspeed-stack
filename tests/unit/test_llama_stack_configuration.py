@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 import yaml
 
-from llama_stack_configuration import (
+from lightspeed_stack.llama_stack_configuration import (
     _build_vector_io_config,
     construct_models_section,
     construct_storage_backends_section,
@@ -21,7 +21,7 @@ from llama_stack_configuration import (
     enrich_vector_store,
     generate_configuration,
 )
-from models.config import (
+from lightspeed_stack.models.config import (
     Configuration,
     InferenceConfiguration,
     LlamaStackConfiguration,

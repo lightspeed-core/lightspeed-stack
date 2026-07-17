@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from models.database.conversations import UserConversation
+from lightspeed_stack.models.database.conversations import UserConversation
 
 
 class ResponsesConversationContext(BaseModel):

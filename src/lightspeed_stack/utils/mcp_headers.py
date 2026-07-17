@@ -7,10 +7,10 @@ from urllib.parse import urlparse
 
 from fastapi import Request
 
-import constants
-from configuration import AppConfig
-from log import get_logger
-from models.config import ModelContextProtocolServer
+from lightspeed_stack import constants
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import ModelContextProtocolServer
 
 logger = get_logger(__name__)
 

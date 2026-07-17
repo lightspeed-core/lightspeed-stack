@@ -2,13 +2,13 @@
 
 import builtins
 
-from cache.cache import Cache
-from cache.cache_entry import CacheEntry
-from log import get_logger
-from models.common import ConversationData
-from models.compaction import ConversationSummary
-from models.config import InMemoryCacheConfig
-from utils.connection_decorator import connection
+from lightspeed_stack.cache.cache import Cache
+from lightspeed_stack.cache.cache_entry import CacheEntry
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.common import ConversationData
+from lightspeed_stack.models.compaction import ConversationSummary
+from lightspeed_stack.models.config import InMemoryCacheConfig
+from lightspeed_stack.utils.connection_decorator import connection
 
 logger = get_logger(__name__)
 

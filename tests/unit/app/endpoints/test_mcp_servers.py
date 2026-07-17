@@ -10,16 +10,16 @@ from fastapi import HTTPException, status
 from pydantic import AnyHttpUrl, SecretStr
 from pytest_mock import MockerFixture
 
-from app.endpoints import mcp_servers
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.requests import MCPServerRegistrationRequest
-from models.api.responses.successful import (
+from lightspeed_stack.app.endpoints import mcp_servers
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import MCPServerRegistrationRequest
+from lightspeed_stack.models.api.responses.successful import (
     MCPServerDeleteResponse,
     MCPServerListResponse,
     MCPServerRegistrationResponse,
 )
-from models.config import (
+from lightspeed_stack.models.config import (
     Configuration,
     CORSConfiguration,
     LlamaStackConfiguration,
@@ -89,8 +89,11 @@ def _make_app_config(mocker: MockerFixture, config: Configuration) -> AppConfig:
     app_config = AppConfig()
     app_config._configuration = config
     app_config._dynamic_mcp_server_names = set()
-    mocker.patch("app.endpoints.mcp_servers.configuration", app_config)
-    mocker.patch("app.endpoints.mcp_servers.authorize", lambda _: lambda func: func)
+    mocker.patch("lightspeed_stack.app.endpoints.mcp_servers.configuration", app_config)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_servers.authorize",
+        lambda _: lambda func: func,
+    )
     return app_config
 
 
@@ -293,8 +296,13 @@ async def test_list_mcp_servers_configuration_not_loaded(
     """Test listing MCP servers returns 500 when configuration is not loaded."""
     mock_config = AppConfig()
     mock_config._configuration = None  # pylint: disable=protected-access
-    mocker.patch("app.endpoints.mcp_servers.configuration", mock_config)
-    mocker.patch("app.endpoints.mcp_servers.authorize", lambda _: lambda func: func)
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_servers.configuration", mock_config
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_servers.authorize",
+        lambda _: lambda func: func,
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         await mcp_servers.list_mcp_servers_handler(
@@ -332,6 +340,10 @@ async def test_register_and_delete_roundtrip(
 
     await mcp_servers.delete_mcp_server_handler(
         request=mocker.Mock(), name="roundtrip-server", auth=MOCK_AUTH
+    )
+    mocker.patch(
+        "lightspeed_stack.app.endpoints.mcp_servers.authorize",
+        lambda _: lambda func: func,
     )
 
     list_result = await mcp_servers.list_mcp_servers_handler(

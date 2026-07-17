@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from utils.mcp_auth_headers import resolve_authorization_headers
+from lightspeed_stack.utils.mcp_auth_headers import resolve_authorization_headers
 
 
 def test_resolve_authorization_headers_empty() -> None:

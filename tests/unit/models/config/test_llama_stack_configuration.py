@@ -8,13 +8,13 @@ import yaml
 from pydantic import AnyHttpUrl, ValidationError
 from pytest_subtests import SubTests
 
-import constants
-from models.config import (
+from lightspeed_stack import constants
+from lightspeed_stack.models.config import (
     Configuration,
     LlamaStackConfiguration,
     UnifiedLlamaStackConfig,
 )
-from utils.checks import InvalidConfigurationError
+from lightspeed_stack.utils.checks import InvalidConfigurationError
 
 # A complete, valid lightspeed-stack.yaml used as the base for root-model
 # (Configuration) validation tests; individual tests override its llama_stack

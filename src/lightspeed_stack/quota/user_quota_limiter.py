@@ -1,8 +1,8 @@
 """Simple user quota limiter where each user has a fixed quota."""
 
-from log import get_logger
-from models.config import QuotaHandlersConfiguration
-from quota.revokable_quota_limiter import RevokableQuotaLimiter
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import QuotaHandlersConfiguration
+from lightspeed_stack.quota.revokable_quota_limiter import RevokableQuotaLimiter
 
 logger = get_logger(__name__)
 

@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from models.database.base import Base
+from lightspeed_stack.models.database.base import Base
 
 
 class UserConversation(Base):  # pylint: disable=too-few-public-methods

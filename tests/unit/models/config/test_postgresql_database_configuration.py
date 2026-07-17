@@ -6,11 +6,11 @@ import pytest
 from pydantic import ValidationError
 from pytest_subtests import SubTests
 
-from constants import (
+from lightspeed_stack.constants import (
     POSTGRES_DEFAULT_GSS_ENCMODE,
     POSTGRES_DEFAULT_SSL_MODE,
 )
-from models.config import PostgreSQLDatabaseConfiguration
+from lightspeed_stack.models.config import PostgreSQLDatabaseConfiguration
 
 
 def test_postgresql_database_configuration() -> None:

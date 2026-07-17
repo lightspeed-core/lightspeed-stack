@@ -6,8 +6,8 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from constants import DEFAULT_LOGGER_NAME
-from models.config import Configuration, RlsapiV1Configuration
+from lightspeed_stack.constants import DEFAULT_LOGGER_NAME
+from lightspeed_stack.models.config import Configuration, RlsapiV1Configuration
 
 # --- Test RlsapiV1Configuration ---
 

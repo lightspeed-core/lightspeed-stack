@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from models.api.responses.successful import AuthorizedResponse
+from lightspeed_stack.models.api.responses.successful import AuthorizedResponse
 
 
 class TestAuthorizedResponse:

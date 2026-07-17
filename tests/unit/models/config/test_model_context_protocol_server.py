@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from models.config import (  # type: ignore[import-not-found]
+from lightspeed_stack.models.config import (  # type: ignore[import-not-found]
     ApprovalFilter,
     AuthenticationConfiguration,
     Configuration,

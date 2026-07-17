@@ -8,9 +8,9 @@ from azure.core.exceptions import ClientAuthenticationError
 from azure.identity import ClientSecretCredential, CredentialUnavailableError
 from pydantic import SecretStr
 
-from configuration import AzureEntraIdConfiguration
-from log import get_logger
-from utils.types import Singleton
+from lightspeed_stack.configuration import AzureEntraIdConfiguration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.utils.types import Singleton
 
 logger = get_logger(__name__)
 

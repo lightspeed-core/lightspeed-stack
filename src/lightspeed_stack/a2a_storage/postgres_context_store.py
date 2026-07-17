@@ -6,8 +6,8 @@ from sqlalchemy import Column, MetaData, String, Table, delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
-from a2a_storage.context_store import A2AContextStore
-from log import get_logger
+from lightspeed_stack.a2a_storage.context_store import A2AContextStore
+from lightspeed_stack.log import get_logger
 
 logger = get_logger(__name__)
 

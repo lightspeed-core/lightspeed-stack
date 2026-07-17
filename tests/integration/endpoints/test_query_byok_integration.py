@@ -11,12 +11,12 @@ from ogx_client.types import ListModelsResponse, VersionInfo
 from ogx_client.types.model import Model
 from pytest_mock import AsyncMockType, MockerFixture
 
-import constants
-from app.endpoints.query import query_endpoint_handler
-from authentication.interface import AuthTuple
-from configuration import AppConfig
-from models.api.requests import QueryRequest
-from models.api.responses.successful import QueryResponse
+from lightspeed_stack import constants
+from lightspeed_stack.app.endpoints.query import query_endpoint_handler
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.api.responses.successful import QueryResponse
 from tests.integration.conftest import (
     create_agent_run_result,
     create_file_search_agent_run_result,
@@ -158,7 +158,9 @@ def mock_byok_client_fixture(
         output_tokens=20,
     )
 
-    mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.query.AsyncOgxClientHolder"
+    )
     mock_client = _build_base_mock_client(mocker)
 
     # BYOK vector_io returns results
@@ -185,7 +187,9 @@ def mock_byok_tool_rag_client_fixture(
     Configures vector_stores.list with a BYOK store and agent.run to return
     a file_search tool result alongside the assistant message.
     """
-    mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.query.AsyncOgxClientHolder"
+    )
     mock_client = _build_base_mock_client(mocker)
 
     # vector_io returns empty (no inline RAG)
@@ -437,7 +441,9 @@ async def test_query_byok_inline_rag_with_request_vector_store_ids(
     test_config.configuration.byok_rag = [entry_a, entry_b]
     test_config.configuration.rag.inline = ["source-a"]
 
-    mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.query.AsyncOgxClientHolder"
+    )
     mock_client = _build_base_mock_client(mocker)
 
     mock_client.vector_io.query = mocker.AsyncMock(
@@ -510,7 +516,9 @@ async def test_query_byok_request_vector_store_ids_filters_configured_stores(
     test_config.configuration.byok_rag = [entry_a, entry_b]
     test_config.configuration.rag.inline = ["source-a", "source-b"]
 
-    mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.query.AsyncOgxClientHolder"
+    )
     mock_client = _build_base_mock_client(mocker)
 
     mock_client.vector_io.query = mocker.AsyncMock(
@@ -773,7 +781,9 @@ async def test_query_byok_combined_inline_and_tool_rag(  # pylint: disable=too-m
     test_config.configuration.rag.tool = ["test-knowledge"]
 
     # Mock Llama Stack client
-    mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.query.AsyncOgxClientHolder"
+    )
     mock_client = _build_base_mock_client(mocker)
 
     # Inline RAG returns chunks via vector_io
@@ -882,7 +892,9 @@ async def test_query_byok_inline_rag_only_configured_rag_id_is_queried(
     test_config.configuration.byok_rag = [entry_a, entry_b]
     test_config.configuration.rag.inline = ["source-a"]
 
-    mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.query.AsyncOgxClientHolder"
+    )
     mock_client = _build_base_mock_client(mocker)
 
     mock_client.vector_io.query = mocker.AsyncMock(
@@ -968,7 +980,9 @@ async def test_query_byok_score_multiplier_shifts_chunk_priority(  # pylint: dis
     test_config.configuration.byok_rag = [entry_a, entry_b]
     test_config.configuration.rag.inline = ["source-a", "source-b"]
 
-    mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.query.AsyncOgxClientHolder"
+    )
     mock_client = _build_base_mock_client(mocker)
 
     # Source A: high base similarity
@@ -1070,7 +1084,9 @@ async def test_query_rag_content_limit_caps_retrieved_results(  # pylint: disabl
     # Disable reranker for this test since it's testing chunk capping, not reranking
     test_config.configuration.reranker.enabled = False
 
-    mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.query.AsyncOgxClientHolder"
+    )
     mock_client = _build_base_mock_client(mocker)
 
     # Generate more chunks than INLINE_RAG_MAX_CHUNKS
@@ -1164,7 +1180,9 @@ async def test_query_rag_content_limit_caps_across_multiple_sources(  # pylint: 
     test_config.configuration.byok_rag = [entry_a, entry_b]
     test_config.configuration.rag.inline = ["source-a", "source-b"]
 
-    mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.query.AsyncOgxClientHolder"
+    )
     mock_client = _build_base_mock_client(mocker)
 
     # Overlapping score bands so top-k must pick from both sources
@@ -1260,7 +1278,9 @@ async def test_query_rag_content_limit_caps_inline_rag(  # pylint: disable=too-m
     - Returned chunks are the top-scoring ones
     """
     _ = mock_query_agent
-    mocker.patch("utils.vector_search.constants.INLINE_RAG_MAX_CHUNKS", 3)
+    mocker.patch(
+        "lightspeed_stack.utils.vector_search.constants.INLINE_RAG_MAX_CHUNKS", 3
+    )
 
     entry = mocker.MagicMock()
     entry.rag_id = "big-source"
@@ -1271,7 +1291,9 @@ async def test_query_rag_content_limit_caps_inline_rag(  # pylint: disable=too-m
     test_config.configuration.rag.inline = ["big-source"]
     test_config.configuration.reranker.enabled = False
 
-    mock_holder_class = mocker.patch("app.endpoints.query.AsyncOgxClientHolder")
+    mock_holder_class = mocker.patch(
+        "lightspeed_stack.app.endpoints.query.AsyncOgxClientHolder"
+    )
     mock_client = _build_base_mock_client(mocker)
 
     num_chunks = constants.BYOK_RAG_MAX_CHUNKS

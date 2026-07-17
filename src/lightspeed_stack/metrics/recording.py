@@ -9,8 +9,8 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Final
 
-import metrics
-from log import get_logger
+from lightspeed_stack import metrics
+from lightspeed_stack.log import get_logger
 
 logger = get_logger(__name__)
 

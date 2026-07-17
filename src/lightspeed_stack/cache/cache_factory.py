@@ -1,13 +1,13 @@
 """Cache factory class."""
 
-import constants
-from cache.cache import Cache
-from cache.in_memory_cache import InMemoryCache
-from cache.noop_cache import NoopCache
-from cache.postgres_cache import PostgresCache
-from cache.sqlite_cache import SQLiteCache
-from log import get_logger
-from models.config import ConversationHistoryConfiguration
+from lightspeed_stack import constants
+from lightspeed_stack.cache.cache import Cache
+from lightspeed_stack.cache.in_memory_cache import InMemoryCache
+from lightspeed_stack.cache.noop_cache import NoopCache
+from lightspeed_stack.cache.postgres_cache import PostgresCache
+from lightspeed_stack.cache.sqlite_cache import SQLiteCache
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.config import ConversationHistoryConfiguration
 
 logger = get_logger(__name__)
 

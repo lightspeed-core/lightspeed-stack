@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from models.api.requests import (
+from lightspeed_stack.models.api.requests import (
     VectorStoreCreateRequest,
     VectorStoreFileCreateRequest,
     VectorStoreUpdateRequest,

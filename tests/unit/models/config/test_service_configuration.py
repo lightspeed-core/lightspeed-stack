@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from models.config import ServiceConfiguration, TLSConfiguration
+from lightspeed_stack.models.config import ServiceConfiguration, TLSConfiguration
 
 
 def test_service_configuration_constructor() -> None:

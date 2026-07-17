@@ -5,8 +5,8 @@ from pathlib import Path
 import psycopg2
 import pytest
 
-from app import database
-from configuration import AppConfig, configuration
+from lightspeed_stack.app import database
+from lightspeed_stack.configuration import AppConfig, configuration
 
 
 @pytest.fixture(name="configuration_filename_sqlite")

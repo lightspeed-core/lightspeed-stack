@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
-from models.api.responses.successful.saved_prompts import (
+from lightspeed_stack.models.api.responses.successful.saved_prompts import (
     SavedPromptDeleteResponse,
     SavedPromptResponse,
     SavedPromptsListResponse,

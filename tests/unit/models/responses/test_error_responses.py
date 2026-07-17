@@ -6,7 +6,7 @@ import pytest
 from fastapi import status
 from pydantic_core import SchemaError
 
-from models.api.responses.constants import (
+from lightspeed_stack.models.api.responses.constants import (
     BAD_REQUEST_DESCRIPTION,
     FORBIDDEN_DESCRIPTION,
     INTERNAL_SERVER_ERROR_DESCRIPTION,
@@ -17,7 +17,7 @@ from models.api.responses.constants import (
     UNAUTHORIZED_DESCRIPTION,
     UNPROCESSABLE_CONTENT_DESCRIPTION,
 )
-from models.api.responses.error import (
+from lightspeed_stack.models.api.responses.error import (
     AbstractErrorResponse,
     BadRequestResponse,
     DetailModel,
@@ -30,7 +30,7 @@ from models.api.responses.error import (
     UnauthorizedResponse,
     UnprocessableEntityResponse,
 )
-from quota.quota_exceed_error import QuotaExceedError
+from lightspeed_stack.quota.quota_exceed_error import QuotaExceedError
 
 
 class TestBadRequestResponse:

@@ -4,7 +4,7 @@ import httpx
 import pytest
 from pytest_mock import MockerFixture
 
-from utils.mcp_tools import _MCP_HTTP_TIMEOUT, list_mcp_tools
+from lightspeed_stack.utils.mcp_tools import _MCP_HTTP_TIMEOUT, list_mcp_tools
 
 
 @pytest.mark.asyncio
@@ -17,16 +17,18 @@ async def test_list_mcp_tools_forwards_headers_to_transport(
     mock_http_client.__aexit__ = mocker.AsyncMock(return_value=None)
 
     mock_async_client = mocker.patch(
-        "utils.mcp_tools.httpx.AsyncClient",
+        "lightspeed_stack.utils.mcp_tools.httpx.AsyncClient",
         return_value=mock_http_client,
     )
-    mock_streamable = mocker.patch("utils.mcp_tools.streamable_http_client")
+    mock_streamable = mocker.patch(
+        "lightspeed_stack.utils.mcp_tools.streamable_http_client"
+    )
     mock_streamable.return_value.__aenter__ = mocker.AsyncMock(
         return_value=(mocker.Mock(), mocker.Mock(), mocker.Mock())
     )
     mock_streamable.return_value.__aexit__ = mocker.AsyncMock(return_value=None)
     mocker.patch(
-        "utils.mcp_tools._list_tools_from_session",
+        "lightspeed_stack.utils.mcp_tools._list_tools_from_session",
         new=mocker.AsyncMock(return_value=[]),
     )
 
@@ -54,7 +56,7 @@ async def test_list_mcp_tools_returns_empty_list_when_all_transports_fail(
 ) -> None:
     """Skip unavailable MCP servers by returning an empty tool list."""
     mocker.patch(
-        "utils.mcp_tools._MCP_TRANSPORTS",
+        "lightspeed_stack.utils.mcp_tools._MCP_TRANSPORTS",
         (
             (
                 "streamable HTTP",
@@ -82,7 +84,7 @@ async def test_list_mcp_tools_returns_empty_list_on_http_error(
         response=response,
     )
     mocker.patch(
-        "utils.mcp_tools._MCP_TRANSPORTS",
+        "lightspeed_stack.utils.mcp_tools._MCP_TRANSPORTS",
         (
             ("streamable HTTP", mocker.AsyncMock(side_effect=http_error)),
             ("SSE", mocker.AsyncMock(side_effect=http_error)),

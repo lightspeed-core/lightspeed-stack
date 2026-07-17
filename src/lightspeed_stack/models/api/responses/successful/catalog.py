@@ -4,9 +4,11 @@ from typing import Any, Optional
 
 from pydantic import Field
 
-from models.api.responses.successful.bases import AbstractSuccessfulResponse
-from models.common import CatalogModel, CatalogShield
-from models.common.tools import CatalogTool
+from lightspeed_stack.models.api.responses.successful.bases import (
+    AbstractSuccessfulResponse,
+)
+from lightspeed_stack.models.common import CatalogModel, CatalogShield
+from lightspeed_stack.models.common.tools import CatalogTool
 
 
 class ModelsResponse(AbstractSuccessfulResponse):

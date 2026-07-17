@@ -6,14 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.exc import SQLAlchemyError
 
-from authentication import get_auth_dependency
-from authentication.interface import AuthTuple
-from authorization.middleware import authorize
-from configuration import configuration
-from log import get_logger
-from models.api.requests import SavedPromptCreateRequest
-from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
-from models.api.responses.error import (
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.requests import SavedPromptCreateRequest
+from lightspeed_stack.models.api.responses.constants import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
+)
+from lightspeed_stack.models.api.responses.error import (
     BadRequestResponse,
     ConflictResponse,
     ForbiddenResponse,
@@ -22,15 +24,15 @@ from models.api.responses.error import (
     UnauthorizedResponse,
     UnprocessableEntityResponse,
 )
-from models.api.responses.successful import (
+from lightspeed_stack.models.api.responses.successful import (
     SavedPromptDeleteResponse,
     SavedPromptResponse,
     SavedPromptsConfigResponse,
     SavedPromptsListResponse,
 )
-from models.config import Action
-from utils.endpoints import check_configuration_loaded
-from utils.saved_prompts import (
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.utils.endpoints import check_configuration_loaded
+from lightspeed_stack.utils.saved_prompts import (
     SavedPromptAccessDeniedError,
     SavedPromptConflictError,
     SavedPromptLimitExceededError,
@@ -42,7 +44,7 @@ from utils.saved_prompts import (
     validate_saved_prompt_content,
     validate_saved_prompt_name,
 )
-from utils.suid import check_suid
+from lightspeed_stack.utils.suid import check_suid
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["saved-prompts"])

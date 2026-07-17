@@ -2,7 +2,7 @@
 
 from typing import Any, Final
 
-from constants import MEDIA_TYPE_EVENT_STREAM, MEDIA_TYPE_JSON
+from lightspeed_stack.constants import MEDIA_TYPE_EVENT_STREAM, MEDIA_TYPE_JSON
 
 # 200 may be buffered JSON-RPC (application/json) or SSE (text/event-stream).
 a2a_jsonrpc_responses: Final[dict[int | str, dict[str, Any]]] = {

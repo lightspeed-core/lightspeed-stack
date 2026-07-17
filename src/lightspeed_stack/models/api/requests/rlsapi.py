@@ -2,8 +2,8 @@
 
 from pydantic import Field, field_validator
 
-from constants import RLSAPI_V1_QUESTION_MAX_LENGTH
-from models.config import ConfigurationBase
+from lightspeed_stack.constants import RLSAPI_V1_QUESTION_MAX_LENGTH
+from lightspeed_stack.models.config import ConfigurationBase
 
 # Character validation patterns for fields flowing into Splunk telemetry.
 # Restrict the character set to prevent injection of control characters,

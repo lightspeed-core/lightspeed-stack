@@ -9,11 +9,13 @@ from ogx_client import AsyncOgxClient
 from openai import AsyncOpenAI
 from pytest_mock import MockerFixture
 
-from pydantic_ai_lightspeed.llamastack._provider import (
+from lightspeed_stack.pydantic_ai_lightspeed.llamastack._provider import (
     DEFAULT_BASE_URL,
     OgxProvider,
 )
-from pydantic_ai_lightspeed.llamastack._transport import OgxServerTransport
+from lightspeed_stack.pydantic_ai_lightspeed.llamastack._transport import (
+    OgxServerTransport,
+)
 
 
 class TestOgxProviderProperties:

@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from models.database.base import Base
+from lightspeed_stack.models.database.base import Base
 
 
 class SavedPrompt(Base):  # pylint: disable=too-few-public-methods

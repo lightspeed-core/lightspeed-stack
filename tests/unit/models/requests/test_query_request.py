@@ -2,8 +2,8 @@
 
 import pytest
 
-from models.api.requests import QueryRequest
-from models.common.query import Attachment, SolrVectorSearchRequest
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.common.query import Attachment, SolrVectorSearchRequest
 
 
 class TestQueryRequest:

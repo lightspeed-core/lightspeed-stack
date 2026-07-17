@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from pydantic import AnyHttpUrl, SecretStr, ValidationError
 
-from constants import (
+from lightspeed_stack.constants import (
     AUTH_MOD_APIKEY_TOKEN,
     AUTH_MOD_JWK_TOKEN,
     AUTH_MOD_K8S,
@@ -14,7 +14,7 @@ from constants import (
     AUTH_MOD_RH_IDENTITY,
     DEFAULT_RH_IDENTITY_MAX_HEADER_SIZE,
 )
-from models.config import (
+from lightspeed_stack.models.config import (
     APIKeyTokenConfiguration,
     AuthenticationConfiguration,
     Configuration,

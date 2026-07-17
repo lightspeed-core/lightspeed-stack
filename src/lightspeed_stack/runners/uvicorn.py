@@ -5,8 +5,8 @@ from typing import Optional
 
 import uvicorn
 
-from log import build_logging_config, get_logger, resolve_log_level
-from models.config import ServiceConfiguration
+from lightspeed_stack.log import build_logging_config, get_logger, resolve_log_level
+from lightspeed_stack.models.config import ServiceConfiguration
 
 logger = get_logger(__name__)
 
@@ -34,7 +34,7 @@ def start_uvicorn(
     # please note:
     # TLS fields can be None, which means we will pass those values as None to uvicorn.run
     uvicorn.run(
-        "app.main:app",
+        "lightspeed_stack.app.main:app",
         host=configuration.host,
         port=configuration.port,
         workers=configuration.workers,

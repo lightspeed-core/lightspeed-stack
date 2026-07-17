@@ -2,8 +2,8 @@
 
 from pydantic import HttpUrl
 
-from models.common import ReferencedDocument
-from models.common.turn_summary import RAGChunk, RAGContext
+from lightspeed_stack.models.common import ReferencedDocument
+from lightspeed_stack.models.common.turn_summary import RAGChunk, RAGContext
 
 
 class TestRAGChunk:

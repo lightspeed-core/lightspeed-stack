@@ -15,24 +15,26 @@ from ogx_client import (
 )
 from openai._exceptions import APIStatusError as OpenAIAPIStatusError
 
-from authentication import get_auth_dependency
-from authentication.interface import AuthTuple
-from authorization.azure_token_manager import AzureEntraIDManager
-from authorization.middleware import authorize
-from client import AsyncOgxClientHolder
-from configuration import configuration
-from constants import (
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.azure_token_manager import AzureEntraIDManager
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.client import AsyncOgxClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.constants import (
     ENDPOINT_PATH_STREAMING_QUERY,
     IMAGE_CONTENT_TYPES,
     MEDIA_TYPE_EVENT_STREAM,
     MEDIA_TYPE_JSON,
     MEDIA_TYPE_TEXT,
 )
-from log import get_logger
-from metrics import recording
-from models.api.requests import QueryRequest
-from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH
-from models.api.responses.error import (
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.metrics import recording
+from lightspeed_stack.models.api.requests import QueryRequest
+from lightspeed_stack.models.api.responses.constants import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES_WITH_MCP_OAUTH,
+)
+from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
@@ -42,30 +44,32 @@ from models.api.responses.error import (
     UnauthorizedResponse,
     UnprocessableEntityResponse,
 )
-from models.api.responses.successful import StreamingQueryResponse
-from models.common.query import Attachment
-from models.common.responses.contexts import ResponseGeneratorContext
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.responses.types import ResponseInput
-from models.config import Action
-from utils.agents.streaming import (
+from lightspeed_stack.models.api.responses.successful import StreamingQueryResponse
+from lightspeed_stack.models.common.query import Attachment
+from lightspeed_stack.models.common.responses.contexts import ResponseGeneratorContext
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
+from lightspeed_stack.models.common.responses.types import ResponseInput
+from lightspeed_stack.models.config import Action
+from lightspeed_stack.utils.agents.streaming import (
     generate_agent_response,
     retrieve_agent_response_generator,
 )
-from utils.conversation_compaction import (
+from lightspeed_stack.utils.conversation_compaction import (
     CompactionResult,
     CompactionStartedEvent,
     apply_compaction,
     configured_conversation_cache,
     needs_compaction_path,
 )
-from utils.endpoints import (
+from lightspeed_stack.utils.endpoints import (
     check_configuration_loaded,
     validate_and_retrieve_conversation,
 )
-from utils.mcp_headers import McpHeaders, mcp_headers_dependency
-from utils.mcp_oauth_probe import check_mcp_auth
-from utils.query import (
+from lightspeed_stack.utils.mcp_headers import McpHeaders, mcp_headers_dependency
+from lightspeed_stack.utils.mcp_oauth_probe import check_mcp_auth
+from lightspeed_stack.utils.query import (
     extract_provider_and_model_from_model_id,
     handle_known_apistatus_errors,
     is_context_length_error,
@@ -73,24 +77,24 @@ from utils.query import (
     validate_attachments_metadata,
     validate_model_provider_override,
 )
-from utils.quota_utils import check_tokens_available
-from utils.responses import (
+from lightspeed_stack.utils.quota_utils import check_tokens_available
+from lightspeed_stack.utils.responses import (
     deduplicate_referenced_documents,
     extract_vector_store_ids_from_tools,
     prepare_responses_params,
 )
-from utils.shields import (
+from lightspeed_stack.utils.shields import (
     run_shield_moderation,
     validate_shield_ids_override,
 )
-from utils.streaming_sse import (
+from lightspeed_stack.utils.streaming_sse import (
     http_exception_stream_event,
     stream_compaction_event,
     stream_http_error_event,
     stream_start_event,
 )
-from utils.suid import get_suid, normalize_conversation_id
-from utils.vector_search import build_rag_context
+from lightspeed_stack.utils.suid import get_suid, normalize_conversation_id
+from lightspeed_stack.utils.vector_search import build_rag_context
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["streaming_query"])

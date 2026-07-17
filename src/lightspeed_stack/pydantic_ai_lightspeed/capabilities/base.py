@@ -5,7 +5,7 @@ from abc import abstractmethod
 from pydantic_ai.capabilities import AbstractCapability
 from typing_extensions import TypeVar
 
-from models.common.moderation import ShieldModerationResult
+from lightspeed_stack.models.common.moderation import ShieldModerationResult
 
 T = TypeVar("T", default=object)
 

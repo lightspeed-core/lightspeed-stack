@@ -4,34 +4,36 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
 
-from authentication import get_auth_dependency
-from authentication.interface import AuthTuple
-from authorization.middleware import authorize
-from client import AsyncOgxClientHolder
-from configuration import configuration
-from log import get_logger
-from models.api.responses.constants import UNAUTHORIZED_OPENAPI_EXAMPLES
-from models.api.responses.error import (
+from lightspeed_stack.authentication import get_auth_dependency
+from lightspeed_stack.authentication.interface import AuthTuple
+from lightspeed_stack.authorization.middleware import authorize
+from lightspeed_stack.client import AsyncOgxClientHolder
+from lightspeed_stack.configuration import configuration
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.constants import (
+    UNAUTHORIZED_OPENAPI_EXAMPLES,
+)
+from lightspeed_stack.models.api.responses.error import (
     ForbiddenResponse,
     InternalServerErrorResponse,
     ServiceUnavailableResponse,
     UnauthorizedResponse,
 )
-from models.api.responses.successful import ToolsResponse
-from models.common.tools import CatalogTool
-from models.config import Action, ModelContextProtocolServer
-from utils.builtin_tools import get_file_search_tools
-from utils.endpoints import check_configuration_loaded
-from utils.mcp_headers import (
+from lightspeed_stack.models.api.responses.successful import ToolsResponse
+from lightspeed_stack.models.common.tools import CatalogTool
+from lightspeed_stack.models.config import Action, ModelContextProtocolServer
+from lightspeed_stack.utils.builtin_tools import get_file_search_tools
+from lightspeed_stack.utils.endpoints import check_configuration_loaded
+from lightspeed_stack.utils.mcp_headers import (
     McpHeaders,
     build_mcp_headers,
     find_unresolved_auth_headers,
     mcp_headers_dependency,
 )
-from utils.mcp_oauth_probe import check_mcp_auth
-from utils.mcp_tools import list_mcp_tools
-from utils.pydantic_ai_helpers import get_agent_capability_tools
-from utils.tool_formatter import build_catalog_tool
+from lightspeed_stack.utils.mcp_oauth_probe import check_mcp_auth
+from lightspeed_stack.utils.mcp_tools import list_mcp_tools
+from lightspeed_stack.utils.pydantic_ai_helpers import get_agent_capability_tools
+from lightspeed_stack.utils.tool_formatter import build_catalog_tool
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["tools"])

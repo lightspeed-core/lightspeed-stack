@@ -12,10 +12,12 @@ import pytest
 from ogx_client import AsyncOgxClient
 from pytest_mock import AsyncMockType, MockerFixture
 
-from configuration import AppConfig
-from constants import DEFAULT_LOGGER_NAME
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.config import ShieldConfiguration, SkillsConfiguration
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.constants import DEFAULT_LOGGER_NAME
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
+from lightspeed_stack.models.config import ShieldConfiguration, SkillsConfiguration
 
 type AgentFixtures = Generator[
     tuple[

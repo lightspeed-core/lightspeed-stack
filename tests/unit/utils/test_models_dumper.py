@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from utils.models_dumper import dump_models, dump_models_group
+from lightspeed_stack.utils.models_dumper import dump_models, dump_models_group
 
 
 def test_dump_models(tmpdir: Path) -> None:

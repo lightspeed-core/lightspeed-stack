@@ -5,8 +5,8 @@ from typing import Optional
 import pytest
 from pytest_mock import MockerFixture
 
-from authentication.rh_identity import RHIdentityData
-from utils.rh_identity import AUTH_DISABLED, get_rh_identity_context
+from lightspeed_stack.authentication.rh_identity import RHIdentityData
+from lightspeed_stack.utils.rh_identity import AUTH_DISABLED, get_rh_identity_context
 
 
 def test_auth_disabled_constant() -> None:

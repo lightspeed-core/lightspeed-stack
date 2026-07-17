@@ -3,10 +3,10 @@
 import builtins
 from abc import ABC, abstractmethod
 
-from cache.cache_entry import CacheEntry
-from models.common import ConversationData
-from models.compaction import ConversationSummary
-from utils.suid import check_suid
+from lightspeed_stack.cache.cache_entry import CacheEntry
+from lightspeed_stack.models.common import ConversationData
+from lightspeed_stack.models.compaction import ConversationSummary
+from lightspeed_stack.utils.suid import check_suid
 
 
 class Cache(ABC):

@@ -5,13 +5,16 @@ from fastapi import HTTPException, status
 from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError
 from pytest_mock import MockerFixture
 
-from models.common.moderation import ShieldModerationBlocked, ShieldModerationPassed
-from models.config import (
+from lightspeed_stack.models.common.moderation import (
+    ShieldModerationBlocked,
+    ShieldModerationPassed,
+)
+from lightspeed_stack.models.config import (
     QuestionValidityConfig,
     QuestionValidityShieldConfiguration,
     ShieldConfiguration,
 )
-from utils.shields import (
+from lightspeed_stack.utils.shields import (
     get_shields_for_request,
     run_shield_moderation_v2,
     validate_shield_ids_override,
@@ -124,7 +127,9 @@ class TestRunShieldModerationV2:
         """Return ShieldModerationPassed when every shield passes."""
         mock_shield = mocker.Mock()
         mock_shield.run = mocker.AsyncMock(return_value=ShieldModerationPassed())
-        mocker.patch("utils.shields.build_shield", return_value=mock_shield)
+        mocker.patch(
+            "lightspeed_stack.utils.shields.build_shield", return_value=mock_shield
+        )
 
         shields: list[ShieldConfiguration] = [
             _shield_config("s1"),
@@ -141,7 +146,9 @@ class TestRunShieldModerationV2:
         blocked = ShieldModerationBlocked(message="rejected", moderation_id="modr-123")
         mock_shield = mocker.Mock()
         mock_shield.run = mocker.AsyncMock(return_value=blocked)
-        mocker.patch("utils.shields.build_shield", return_value=mock_shield)
+        mocker.patch(
+            "lightspeed_stack.utils.shields.build_shield", return_value=mock_shield
+        )
 
         shields: list[ShieldConfiguration] = [
             _shield_config("s1"),
@@ -158,7 +165,9 @@ class TestRunShieldModerationV2:
         """Only run shields matching the selected IDs."""
         mock_shield = mocker.Mock()
         mock_shield.run = mocker.AsyncMock(return_value=ShieldModerationPassed())
-        mocker.patch("utils.shields.build_shield", return_value=mock_shield)
+        mocker.patch(
+            "lightspeed_stack.utils.shields.build_shield", return_value=mock_shield
+        )
 
         shields: list[ShieldConfiguration] = [
             _shield_config("s1"),
@@ -183,7 +192,7 @@ class TestRunShieldModerationV2:
         mock_redact_shield.run = mocker.AsyncMock(return_value=ShieldModerationPassed())
 
         mocker.patch(
-            "utils.shields.build_shield",
+            "lightspeed_stack.utils.shields.build_shield",
             side_effect=[mock_qv_shield, mock_redact_shield],
         )
 
@@ -204,7 +213,9 @@ class TestRunShieldModerationV2:
         mock_shield.run = mocker.AsyncMock(
             side_effect=ModelAPIError("test", "Incompatible mode")
         )
-        mocker.patch("utils.shields.build_shield", return_value=mock_shield)
+        mocker.patch(
+            "lightspeed_stack.utils.shields.build_shield", return_value=mock_shield
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await run_shield_moderation_v2("test input", [_shield_config("s1")])
@@ -219,7 +230,9 @@ class TestRunShieldModerationV2:
         mock_shield.run = mocker.AsyncMock(
             side_effect=ModelHTTPError(429, "openai/gpt-4o-mini", "Quota exceeded")
         )
-        mocker.patch("utils.shields.build_shield", return_value=mock_shield)
+        mocker.patch(
+            "lightspeed_stack.utils.shields.build_shield", return_value=mock_shield
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await run_shield_moderation_v2("test input", [_shield_config("s1")])
@@ -239,7 +252,9 @@ class TestRunShieldModerationV2:
                 413, "openai/gpt-4o-mini", "Context length exceeded"
             )
         )
-        mocker.patch("utils.shields.build_shield", return_value=mock_shield)
+        mocker.patch(
+            "lightspeed_stack.utils.shields.build_shield", return_value=mock_shield
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await run_shield_moderation_v2("test input", [_shield_config("s1")])

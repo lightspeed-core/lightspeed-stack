@@ -5,7 +5,7 @@ import re
 import pytest
 from pydantic import ValidationError
 
-from models.config import (
+from lightspeed_stack.models.config import (
     RedactionConfig,
     RedactionRule,
 )

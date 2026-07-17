@@ -12,18 +12,22 @@ from ogx_client import AsyncOgxClient
 from pydantic_ai_skills import SkillsCapability
 from pytest_mock import MockerFixture
 
-from configuration import AppConfig
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.config import (
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
+from lightspeed_stack.models.config import (
     QuestionValidityConfig,
     QuestionValidityShieldConfiguration,
     RedactionConfig,
     RedactionShieldConfiguration,
     SkillsConfiguration,
 )
-from pydantic_ai_lightspeed.capabilities import QuestionValidity
-from pydantic_ai_lightspeed.capabilities.redaction import PiiRedactionCapability
-from utils.pydantic_ai_helpers import (
+from lightspeed_stack.pydantic_ai_lightspeed.capabilities import QuestionValidity
+from lightspeed_stack.pydantic_ai_lightspeed.capabilities.redaction import (
+    PiiRedactionCapability,
+)
+from lightspeed_stack.utils.pydantic_ai_helpers import (
     _agent_capabilities,
     _shield_capability,
     _skills_capability,
@@ -32,7 +36,7 @@ from utils.pydantic_ai_helpers import (
 )
 
 _QUESTION_VALIDITY_MODULE = (
-    "pydantic_ai_lightspeed.capabilities.question_validity._capability"
+    "lightspeed_stack.pydantic_ai_lightspeed.capabilities.question_validity._capability"
 )
 
 

@@ -11,14 +11,14 @@ Behavior:
 
 from fastapi import HTTPException, Request
 
-from authentication.interface import AuthInterface, AuthTuple
-from authentication.utils import extract_user_token
-from constants import (
+from lightspeed_stack.authentication.interface import AuthInterface, AuthTuple
+from lightspeed_stack.authentication.utils import extract_user_token
+from lightspeed_stack.constants import (
     DEFAULT_USER_NAME,
     DEFAULT_USER_UID,
     DEFAULT_VIRTUAL_PATH,
 )
-from log import get_logger
+from lightspeed_stack.log import get_logger
 
 logger = get_logger(__name__)
 

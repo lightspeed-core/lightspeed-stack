@@ -8,7 +8,7 @@ from typing import Final, Optional
 
 from starlette.requests import Request
 
-from authentication.rh_identity import RHIdentityData
+from lightspeed_stack.authentication.rh_identity import RHIdentityData
 
 # Default value when RH Identity auth is not configured
 AUTH_DISABLED: Final[str] = "auth_disabled"

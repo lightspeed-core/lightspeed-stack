@@ -13,15 +13,15 @@ from pydantic_ai.exceptions import (
     UsageLimitExceeded,
 )
 
-from log import get_logger
-from models.api.responses.error import (
+from lightspeed_stack.log import get_logger
+from lightspeed_stack.models.api.responses.error import (
     AbstractErrorResponse,
     InternalServerErrorResponse,
     PromptTooLongResponse,
     QuotaExceededResponse,
     ServiceUnavailableResponse,
 )
-from utils.query import (
+from lightspeed_stack.utils.query import (
     handle_known_apistatus_errors,
     is_context_length_error,
 )

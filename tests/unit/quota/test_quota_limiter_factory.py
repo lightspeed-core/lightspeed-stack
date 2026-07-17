@@ -4,16 +4,16 @@ import pytest
 from pydantic import SecretStr
 from pytest_mock import MockerFixture
 
-import constants
-from models.config import (
+from lightspeed_stack import constants
+from lightspeed_stack.models.config import (
     PostgreSQLDatabaseConfiguration,
     QuotaHandlersConfiguration,
     QuotaLimiterConfiguration,
     SQLiteDatabaseConfiguration,
 )
-from quota.cluster_quota_limiter import ClusterQuotaLimiter
-from quota.quota_limiter_factory import QuotaLimiterFactory
-from quota.user_quota_limiter import UserQuotaLimiter
+from lightspeed_stack.quota.cluster_quota_limiter import ClusterQuotaLimiter
+from lightspeed_stack.quota.quota_limiter_factory import QuotaLimiterFactory
+from lightspeed_stack.quota.user_quota_limiter import UserQuotaLimiter
 
 
 def test_quota_limiters_no_storage() -> None:

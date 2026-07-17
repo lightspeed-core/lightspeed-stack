@@ -19,14 +19,16 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models import ModelRequestContext
 
-from models.common.moderation import (
+from lightspeed_stack.models.common.moderation import (
     ShieldModerationBlocked,
     ShieldModerationPassed,
     ShieldModerationResult,
 )
-from models.config import RedactionConfig
-from pydantic_ai_lightspeed.capabilities.base import AbstractSafetyCapability
-from pydantic_ai_lightspeed.capabilities.redaction.core import (
+from lightspeed_stack.models.config import RedactionConfig
+from lightspeed_stack.pydantic_ai_lightspeed.capabilities.base import (
+    AbstractSafetyCapability,
+)
+from lightspeed_stack.pydantic_ai_lightspeed.capabilities.redaction.core import (
     CompiledPatterns,
     redact_text,
 )

@@ -11,21 +11,25 @@ from pydantic_ai.agent import Agent
 from pydantic_ai.capabilities import AbstractCapability, AgentCapability
 from pydantic_ai_skills import SkillsCapability
 
-from configuration import AppConfig
-from models.common.responses.responses_api_params import ResponsesApiParams
-from models.common.tools import CatalogTool, CatalogToolParameter
-from models.config import (
+from lightspeed_stack.configuration import AppConfig
+from lightspeed_stack.models.common.responses.responses_api_params import (
+    ResponsesApiParams,
+)
+from lightspeed_stack.models.common.tools import CatalogTool, CatalogToolParameter
+from lightspeed_stack.models.config import (
     QuestionValidityConfig,
     RedactionConfig,
     ShieldConfiguration,
     SkillsConfiguration,
 )
-from pydantic_ai_lightspeed.capabilities import QuestionValidity
-from pydantic_ai_lightspeed.capabilities.redaction import PiiRedactionCapability
-from pydantic_ai_lightspeed.llamastack import (
+from lightspeed_stack.pydantic_ai_lightspeed.capabilities import QuestionValidity
+from lightspeed_stack.pydantic_ai_lightspeed.capabilities.redaction import (
+    PiiRedactionCapability,
+)
+from lightspeed_stack.pydantic_ai_lightspeed.llamastack import (
     OgxResponsesModel,
 )
-from utils.shields import get_shields_for_request
+from lightspeed_stack.utils.shields import get_shields_for_request
 
 _AGENT_SKILLS_PROVIDER_ID: Final[str] = "agent-skills"
 _AGENT_SKILLS_TOOLGROUP_ID: Final[str] = "builtin::agent-skills"

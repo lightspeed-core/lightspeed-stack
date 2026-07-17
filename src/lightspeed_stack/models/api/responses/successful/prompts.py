@@ -4,7 +4,7 @@ from typing import ClassVar, Optional
 
 from pydantic import Field
 
-from models.api.responses.successful.bases import (
+from lightspeed_stack.models.api.responses.successful.bases import (
     AbstractDeleteResponse,
     AbstractSuccessfulResponse,
 )
