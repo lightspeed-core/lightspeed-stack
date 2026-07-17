@@ -233,12 +233,11 @@ class TestValidateSavedPromptContent:
             validate_saved_prompt_content("a", max_content_length=0)
 
 
+@pytest.mark.usefixtures("patch_saved_prompts_get_session")
 class TestCreateSavedPrompt:
     """Test cases for create_saved_prompt."""
 
-    def test_create_persists_and_returns_entity(
-        self, patch_saved_prompts_get_session: None, sqlite_engine: Engine
-    ) -> None:
+    def test_create_persists_and_returns_entity(self, sqlite_engine: Engine) -> None:
         """Test create returns a persisted SavedPrompt with id and fields."""
         created = create_saved_prompt(
             user_id="user-1",
@@ -262,7 +261,7 @@ class TestCreateSavedPrompt:
             assert stored.content == "Hello"
 
     def test_create_return_value_has_usable_timestamps_after_session_close(
-        self, patch_saved_prompts_get_session: None
+        self,
     ) -> None:
         """Test timestamps are readable on the returned object after DAL returns."""
         created = create_saved_prompt(
@@ -275,18 +274,14 @@ class TestCreateSavedPrompt:
         assert created.created_at is not None
         assert created.updated_at is not None
 
-    def test_create_at_limit_raises(
-        self, patch_saved_prompts_get_session: None
-    ) -> None:
+    def test_create_at_limit_raises(self) -> None:
         """Test create raises when the user already has max_prompts_per_user prompts."""
         create_saved_prompt("user-1", "one", "c1", max_prompts_per_user=1)
 
         with pytest.raises(SavedPromptLimitExceededError):
             create_saved_prompt("user-1", "two", "c2", max_prompts_per_user=1)
 
-    def test_create_duplicate_name_raises_conflict(
-        self, patch_saved_prompts_get_session: None
-    ) -> None:
+    def test_create_duplicate_name_raises_conflict(self) -> None:
         """Test duplicate (user_id, name) raises SavedPromptConflictError."""
         create_saved_prompt("user-1", "same", "first", max_prompts_per_user=50)
 
@@ -295,26 +290,23 @@ class TestCreateSavedPrompt:
 
         assert str(exc_info.value) == "Saved prompt name already exists"
 
-    def test_create_allows_same_name_for_different_users(
-        self, patch_saved_prompts_get_session: None
-    ) -> None:
+    def test_create_allows_same_name_for_different_users(self) -> None:
         """Test the same name may exist for different users."""
         first = create_saved_prompt("user-a", "shared", "a", max_prompts_per_user=50)
         second = create_saved_prompt("user-b", "shared", "b", max_prompts_per_user=50)
         assert first.id != second.id
 
 
+@pytest.mark.usefixtures("patch_saved_prompts_get_session")
 class TestListSavedPromptsByUser:
     """Test cases for list_saved_prompts_by_user."""
 
-    def test_list_empty_returns_empty_list(
-        self, patch_saved_prompts_get_session: None
-    ) -> None:
+    def test_list_empty_returns_empty_list(self) -> None:
         """Test listing for a user with no prompts returns []."""
         assert list_saved_prompts_by_user("nobody") == []
 
     def test_list_returns_only_that_users_prompts_ordered_by_created_at_desc(
-        self, patch_saved_prompts_get_session: None, sqlite_engine: Engine
+        self, sqlite_engine: Engine
     ) -> None:
         """Test list is user-scoped and ordered by created_at descending."""
         older = create_saved_prompt("user-1", "first", "c1", max_prompts_per_user=50)
@@ -339,12 +331,11 @@ class TestListSavedPromptsByUser:
         assert all(p.user_id == "user-1" for p in results)
 
 
+@pytest.mark.usefixtures("patch_saved_prompts_get_session")
 class TestDeleteSavedPromptByIdAndUser:
     """Test cases for delete_saved_prompt_by_id_and_user."""
 
-    def test_delete_owned_prompt(
-        self, patch_saved_prompts_get_session: None, sqlite_engine: Engine
-    ) -> None:
+    def test_delete_owned_prompt(self, sqlite_engine: Engine) -> None:
         """Test deleting an owned prompt removes the row."""
         created = create_saved_prompt(
             "user-1", "to-delete", "body", max_prompts_per_user=50
@@ -358,9 +349,7 @@ class TestDeleteSavedPromptByIdAndUser:
         with session_factory() as session:
             assert session.get(SavedPrompt, created.id) is None
 
-    def test_delete_missing_raises_not_found(
-        self, patch_saved_prompts_get_session: None
-    ) -> None:
+    def test_delete_missing_raises_not_found(self) -> None:
         """Test deleting an unknown id raises SavedPromptNotFoundError."""
         with pytest.raises(SavedPromptNotFoundError) as exc_info:
             delete_saved_prompt_by_id_and_user("missing-id", "user-1")
@@ -368,7 +357,7 @@ class TestDeleteSavedPromptByIdAndUser:
         assert str(exc_info.value) == "Saved prompt not found"
 
     def test_delete_other_users_prompt_raises_access_denied(
-        self, patch_saved_prompts_get_session: None, sqlite_engine: Engine
+        self, sqlite_engine: Engine
     ) -> None:
         """Test delete by non-owner raises access denied and leaves the row."""
         created = create_saved_prompt(

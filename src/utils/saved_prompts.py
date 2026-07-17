@@ -162,9 +162,7 @@ def create_saved_prompt(
                 "Saved prompt create conflict for user_id=%s",
                 user_id,
             )
-            raise SavedPromptConflictError(
-                "Saved prompt name already exists"
-            ) from exc
+            raise SavedPromptConflictError("Saved prompt name already exists") from exc
 
         # reload server default timestamps so they remain usable after the session closes
         session.refresh(saved_prompt)
