@@ -146,7 +146,7 @@ make wait-for-llama-stack-health
 make run-stack
 ```
 
-- Starts the FastAPI service with `uv run src/lightspeed_stack.py`
+- Starts the FastAPI service with `uv run lightspeed-stack`
 - Connects to llama-stack at `http://localhost:8321` (or configured URL)
 - Sets up trap handler to stop container on exit
 
