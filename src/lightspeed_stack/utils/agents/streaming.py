@@ -149,7 +149,7 @@ async def retrieve_agent_response_generator(
         raise HTTPException(**response.model_dump()) from exc
 
 
-async def generate_agent_response(
+async def generate_agent_response(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     generator: AsyncIterator[str],
     context: ResponseGeneratorContext,
     responses_params: ResponsesApiParams,
@@ -405,7 +405,7 @@ def _process_token(
 
 
 @singledispatch
-def dispatch_stream_event(
+def dispatch_stream_event(  # pylint: disable=useless-return
     event: AgentDispatchEvent,
     _state: AgentTurnAccumulator,
 ) -> Optional[StreamEventPayload]:
