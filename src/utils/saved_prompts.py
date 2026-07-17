@@ -1,6 +1,11 @@
 """Validation helpers and data access for saved prompts."""
 
+from sqlalchemy.exc import IntegrityError
+
+from app.database import get_session
 from log import get_logger
+from models.database.saved_prompts import SavedPrompt
+from utils.suid import get_suid
 
 logger = get_logger(__name__)
 
@@ -110,3 +115,62 @@ def validate_saved_prompt_content(
             f"Saved prompt content length {len(content)} exceeds maximum "
             f"{max_content_length}"
         )
+
+
+def create_saved_prompt(
+    user_id: str,
+    name: str,
+    content: str,
+    max_prompts_per_user: int,
+) -> SavedPrompt:
+    """Create a saved prompt for a user after enforcing the per-user quota.
+
+    Caller is responsible for validating ``name`` and ``content``. This function
+    counts existing prompts for ``user_id``, enforces ``max_prompts_per_user``,
+    inserts a new row with a generated id, and returns the persisted entity with
+    timestamps loaded.
+
+    Parameters:
+        user_id: Owner of the saved prompt.
+        name: Display name as provided by the caller (not stripped here).
+        content: Prompt body as provided by the caller.
+        max_prompts_per_user: Maximum prompts the user may hold.
+
+    Returns:
+        The created ``SavedPrompt`` with id and timestamps populated.
+
+    Raises:
+        SavedPromptLimitExceededError: If the user is already at the limit.
+        SavedPromptConflictError: If insert violates a unique constraint
+            (typically duplicate ``(user_id, name)``).
+    """
+    with get_session() as session:
+        current_count = session.query(SavedPrompt).filter_by(user_id=user_id).count()
+        validate_saved_prompt_quota(current_count, max_prompts_per_user)
+
+        saved_prompt = SavedPrompt(
+            id=get_suid(),
+            user_id=user_id,
+            name=name,
+            content=content,
+        )
+        session.add(saved_prompt)
+        try:
+            session.commit()
+        except IntegrityError as exc:
+            logger.debug(
+                "Saved prompt create conflict for user_id=%s",
+                user_id,
+            )
+            raise SavedPromptConflictError(
+                "Saved prompt name already exists"
+            ) from exc
+
+        # Reload server-default timestamps so they remain usable after the session closes.
+        session.refresh(saved_prompt)
+        logger.debug(
+            "Created saved prompt id=%s for user_id=%s",
+            saved_prompt.id,
+            user_id,
+        )
+        return saved_prompt

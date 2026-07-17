@@ -12,15 +12,14 @@ from sqlalchemy.pool import StaticPool
 from models.database.base import Base
 from models.database.saved_prompts import SavedPrompt
 from utils.saved_prompts import (
+    SavedPromptConflictError,
     SavedPromptLimitExceededError,
     SavedPromptValidationError,
+    create_saved_prompt,
     validate_saved_prompt_content,
     validate_saved_prompt_name,
     validate_saved_prompt_quota,
 )
-
-# Ensure SavedPrompt is registered on Base.metadata for create_all.
-_ = SavedPrompt
 
 
 @pytest.fixture(name="sqlite_engine")
@@ -227,3 +226,74 @@ class TestValidateSavedPromptContent:
             match="Saved prompt content length 1 exceeds maximum 0",
         ):
             validate_saved_prompt_content("a", max_content_length=0)
+
+
+class TestCreateSavedPrompt:
+    """Test cases for create_saved_prompt."""
+
+    def test_create_persists_and_returns_entity(
+        self, patch_saved_prompts_get_session: None, sqlite_engine: Engine
+    ) -> None:
+        """Test create returns a persisted SavedPrompt with id and fields."""
+        created = create_saved_prompt(
+            user_id="user-1",
+            name="My Prompt",
+            content="Hello",
+            max_prompts_per_user=50,
+        )
+
+        assert created.id
+        assert created.user_id == "user-1"
+        assert created.name == "My Prompt"
+        assert created.content == "Hello"
+
+        session_factory = sessionmaker(
+            autocommit=False, autoflush=False, bind=sqlite_engine
+        )
+        with session_factory() as session:
+            stored = session.get(SavedPrompt, created.id)
+            assert stored is not None
+            assert stored.name == "My Prompt"
+            assert stored.content == "Hello"
+
+    def test_create_return_value_has_usable_timestamps_after_session_close(
+        self, patch_saved_prompts_get_session: None
+    ) -> None:
+        """Test timestamps are readable on the returned object after DAL returns."""
+        created = create_saved_prompt(
+            user_id="user-1",
+            name="Timed",
+            content="Body",
+            max_prompts_per_user=50,
+        )
+
+        assert created.created_at is not None
+        assert created.updated_at is not None
+
+    def test_create_at_limit_raises(
+        self, patch_saved_prompts_get_session: None
+    ) -> None:
+        """Test create raises when the user already has max_prompts_per_user prompts."""
+        create_saved_prompt("user-1", "one", "c1", max_prompts_per_user=1)
+
+        with pytest.raises(SavedPromptLimitExceededError):
+            create_saved_prompt("user-1", "two", "c2", max_prompts_per_user=1)
+
+    def test_create_duplicate_name_raises_conflict(
+        self, patch_saved_prompts_get_session: None
+    ) -> None:
+        """Test duplicate (user_id, name) raises SavedPromptConflictError."""
+        create_saved_prompt("user-1", "same", "first", max_prompts_per_user=50)
+
+        with pytest.raises(SavedPromptConflictError) as exc_info:
+            create_saved_prompt("user-1", "same", "second", max_prompts_per_user=50)
+
+        assert str(exc_info.value) == "Saved prompt name already exists"
+
+    def test_create_allows_same_name_for_different_users(
+        self, patch_saved_prompts_get_session: None
+    ) -> None:
+        """Test the same name may exist for different users."""
+        first = create_saved_prompt("user-a", "shared", "a", max_prompts_per_user=50)
+        second = create_saved_prompt("user-b", "shared", "b", max_prompts_per_user=50)
+        assert first.id != second.id
