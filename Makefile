@@ -20,7 +20,7 @@ CONTAINER_RUNTIME ?= $(shell command -v podman 2>/dev/null || command -v docker 
 .PHONY: run run-stack build-llama-stack-image remove-llama-stack-container stop-llama-stack-container start-llama-stack-container wait-for-llama-stack-health clean-llama-stack
 
 run-stack: ## Run lightspeed-stack directly, without building dependent service/s
-	uv run src/lightspeed_stack.py -c $(CONFIG)
+	uv run lightspeed_stack -c $(CONFIG)
 
 run: start-llama-stack-container ## Run the service locally with dependent services
 	@echo "Starting Lightspeed Core Stack..."
