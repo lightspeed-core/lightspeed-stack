@@ -1,7 +1,16 @@
-"""Unit tests for saved prompt validation helpers."""
+"""Unit tests for saved prompt validation helpers and data access."""
+
+from collections.abc import Generator
 
 import pytest
+from pytest_mock import MockerFixture
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
+from models.database.base import Base
+from models.database.saved_prompts import SavedPrompt
 from utils.saved_prompts import (
     SavedPromptLimitExceededError,
     SavedPromptValidationError,
@@ -9,6 +18,47 @@ from utils.saved_prompts import (
     validate_saved_prompt_name,
     validate_saved_prompt_quota,
 )
+
+# Ensure SavedPrompt is registered on Base.metadata for create_all.
+_ = SavedPrompt
+
+
+@pytest.fixture(name="sqlite_engine")
+def sqlite_engine_fixture() -> Generator[Engine, None, None]:
+    """Provide a function-scoped in-memory SQLite engine with tables created.
+
+    Yields:
+        Engine: SQLAlchemy engine bound to an in-memory SQLite database.
+    """
+    engine = create_engine(
+        "sqlite:///:memory:",
+        echo=False,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture(name="patch_saved_prompts_get_session")
+def patch_saved_prompts_get_session_fixture(
+    mocker: MockerFixture, sqlite_engine: Engine
+) -> None:
+    """Patch utils.saved_prompts.get_session to use the in-memory engine.
+
+    Parameters:
+        mocker: pytest-mock fixture.
+        sqlite_engine: Function-scoped in-memory engine.
+    """
+    session_factory = sessionmaker(
+        autocommit=False, autoflush=False, bind=sqlite_engine
+    )
+
+    def _get_session() -> Session:
+        return session_factory()
+
+    mocker.patch("utils.saved_prompts.get_session", side_effect=_get_session)
 
 
 class TestValidateSavedPromptQuota:
