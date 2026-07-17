@@ -1005,7 +1005,11 @@ def test_rag_id_mapping_includes_solr_when_okp_in_inline() -> None:
             },
             "user_data_collection": {},
             "authentication": {"module": "noop"},
-            "rag": {"inline": [constants.OKP_RAG_ID]},
+            "rag": {
+                "retrieval": {
+                    "inline": {"sources": [constants.OKP_RAG_ID]},
+                },
+            },
         }
     )
     assert constants.SOLR_DEFAULT_VECTOR_STORE_ID in cfg.rag_id_mapping
@@ -1029,7 +1033,11 @@ def test_rag_id_mapping_includes_solr_when_okp_in_tool() -> None:
             },
             "user_data_collection": {},
             "authentication": {"module": "noop"},
-            "rag": {"tool": [constants.OKP_RAG_ID]},
+            "rag": {
+                "retrieval": {
+                    "tool": {"sources": [constants.OKP_RAG_ID]},
+                },
+            },
         }
     )
     assert constants.SOLR_DEFAULT_VECTOR_STORE_ID in cfg.rag_id_mapping
@@ -1055,13 +1063,17 @@ def test_rag_id_mapping_with_byok(tmp_path: Path) -> None:
             },
             "user_data_collection": {},
             "authentication": {"module": "noop"},
-            "byok_rag": [
-                {
-                    "rag_id": "my-kb",
-                    "vector_db_id": "vs-001",
-                    "db_path": str(db_file),
+            "rag": {
+                "byok": {
+                    "stores": [
+                        {
+                            "rag_id": "my-kb",
+                            "vector_db_id": "vs-001",
+                            "db_path": str(db_file),
+                        },
+                    ],
                 },
-            ],
+            },
         }
     )
     assert cfg.rag_id_mapping == {"vs-001": "my-kb"}
@@ -1083,14 +1095,20 @@ def test_rag_id_mapping_with_byok_and_okp(tmp_path: Path) -> None:
             },
             "user_data_collection": {},
             "authentication": {"module": "noop"},
-            "rag": {"inline": [constants.OKP_RAG_ID]},
-            "byok_rag": [
-                {
-                    "rag_id": "my-kb",
-                    "vector_db_id": "vs-001",
-                    "db_path": str(db_file),
+            "rag": {
+                "retrieval": {
+                    "inline": {"sources": [constants.OKP_RAG_ID]},
                 },
-            ],
+                "byok": {
+                    "stores": [
+                        {
+                            "rag_id": "my-kb",
+                            "vector_db_id": "vs-001",
+                            "db_path": str(db_file),
+                        },
+                    ],
+                },
+            },
         }
     )
     assert "vs-001" in cfg.rag_id_mapping
@@ -1142,13 +1160,17 @@ def test_score_multiplier_mapping_with_byok_defaults(tmp_path: Path) -> None:
             },
             "user_data_collection": {},
             "authentication": {"module": "noop"},
-            "byok_rag": [
-                {
-                    "rag_id": "my-kb",
-                    "vector_db_id": "vs-001",
-                    "db_path": str(db_file),
+            "rag": {
+                "byok": {
+                    "stores": [
+                        {
+                            "rag_id": "my-kb",
+                            "vector_db_id": "vs-001",
+                            "db_path": str(db_file),
+                        },
+                    ],
                 },
-            ],
+            },
         }
     )
     assert cfg.score_multiplier_mapping == {"vs-001": 1.0}
@@ -1172,20 +1194,24 @@ def test_score_multiplier_mapping_with_custom_values(tmp_path: Path) -> None:
             },
             "user_data_collection": {},
             "authentication": {"module": "noop"},
-            "byok_rag": [
-                {
-                    "rag_id": "kb1",
-                    "vector_db_id": "vs-001",
-                    "db_path": str(db_file1),
-                    "score_multiplier": 1.5,
+            "rag": {
+                "byok": {
+                    "stores": [
+                        {
+                            "rag_id": "kb1",
+                            "vector_db_id": "vs-001",
+                            "db_path": str(db_file1),
+                            "score_multiplier": 1.5,
+                        },
+                        {
+                            "rag_id": "kb2",
+                            "vector_db_id": "vs-002",
+                            "db_path": str(db_file2),
+                            "score_multiplier": 0.75,
+                        },
+                    ],
                 },
-                {
-                    "rag_id": "kb2",
-                    "vector_db_id": "vs-002",
-                    "db_path": str(db_file2),
-                    "score_multiplier": 0.75,
-                },
-            ],
+            },
         }
     )
     assert cfg.score_multiplier_mapping == {"vs-001": 1.5, "vs-002": 0.75}
@@ -1332,17 +1358,6 @@ wrong_configurations = [
                 "ca_cert_path": "file",
             },
         },
-        "byok_rag": [
-            {
-                "rag_id": "Weight message strong wind land bar.",
-                "rag_type": "Learn person tell increase dog even.",
-                "embedding_model": "By our television. Southern full a course.",
-                "embedding_dimension": 753,
-                "vector_db_id": "Indicate see door specific hard region one.",
-                "db_path": "A none owner visit wish medical cut Mrs. Later nig",
-                "score_multiplier": 388.45,
-            }
-        ],
         "a2a_state": {"sqlite": None, "postgres": None},
         "quota_handlers": {
             "sqlite": {"db_path": "Experience five able citizen work member call cond"},
@@ -1401,21 +1416,40 @@ wrong_configurations = [
         },
         "deployment_environment": "Second say body know music while.",
         "rag": {
-            "inline": [
-                "Local authority pressure pretty. Travel something ",
-                "Watch meet able such.",
-                "Different apply size.",
-            ],
-            "tool": [
-                "Full develop under his.",
-                "Black political father project become.",
-                "Once however son place.",
-            ],
-        },
-        "okp": {
-            "rhokp_url": None,
-            "offline": True,
-            "chunk_filter_query": "Foreign space system.",
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "Weight message strong wind land bar.",
+                        "backend": "Learn person tell increase dog even.",
+                        "embedding_model": "By our television. Southern full a course.",
+                        "embedding_dimension": 753,
+                        "vector_db_id": "Indicate see door specific hard region one.",
+                        "db_path": "A none owner visit wish medical cut Mrs. Later nig",
+                        "score_multiplier": 388.45,
+                    }
+                ],
+            },
+            "okp": {
+                "rhokp_url": None,
+                "offline": True,
+                "chunk_filter_query": "Foreign space system.",
+            },
+            "retrieval": {
+                "inline": {
+                    "sources": [
+                        "Local authority pressure pretty. Travel something ",
+                        "Watch meet able such.",
+                        "Different apply size.",
+                    ],
+                },
+                "tool": {
+                    "sources": [
+                        "Full develop under his.",
+                        "Black political father project become.",
+                        "Once however son place.",
+                    ],
+                },
+            },
         },
     },
     {
@@ -1608,26 +1642,6 @@ wrong_configurations = [
                 "ca_cert_path": "certs",
             },
         },
-        "byok_rag": [
-            {
-                "rag_id": "Tonight relate there record.",
-                "rag_type": "Politics development real play main chair capital ",
-                "embedding_model": "Prepare memory outside.",
-                "embedding_dimension": 449,
-                "vector_db_id": "Political right gun law public group rock.",
-                "db_path": "Consider still recognize church. Area suggest noth",
-                "score_multiplier": 183.85,
-            },
-            {
-                "rag_id": "One again under respond poor beyond.",
-                "rag_type": "Six base physical.",
-                "embedding_model": "Surface that choice.",
-                "embedding_dimension": 736,
-                "vector_db_id": "Forget level other agreement.",
-                "db_path": "Argue pull out race town.",
-                "score_multiplier": 225.21,
-            },
-        ],
         "a2a_state": {"sqlite": None, "postgres": None},
         "quota_handlers": {
             "sqlite": None,
@@ -1690,14 +1704,48 @@ wrong_configurations = [
         },
         "deployment_environment": "Vote mean answer simply turn project.",
         "rag": {
-            "inline": [
-                "Billion job provide take other.",
-                "Eight total figure surface development include out",
-                "Which from cover not choice bring sister front.",
-            ],
-            "tool": ["Ground appear group institution."],
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "Tonight relate there record.",
+                        "backend": "Politics development real play main chair capital ",
+                        "embedding_model": "Prepare memory outside.",
+                        "embedding_dimension": 449,
+                        "vector_db_id": "Political right gun law public group rock.",
+                        "db_path": "Consider still recognize church. Area suggest noth",
+                        "score_multiplier": 183.85,
+                    },
+                    {
+                        "rag_id": "One again under respond poor beyond.",
+                        "backend": "Six base physical.",
+                        "embedding_model": "Surface that choice.",
+                        "embedding_dimension": 736,
+                        "vector_db_id": "Forget level other agreement.",
+                        "db_path": "Argue pull out race town.",
+                        "score_multiplier": 225.21,
+                    },
+                ],
+            },
+            "okp": {
+                "rhokp_url": None,
+                "offline": False,
+                "chunk_filter_query": None,
+            },
+            "retrieval": {
+                "inline": {
+                    "sources": [
+                        "Billion job provide take other.",
+                        "Eight total figure surface development include out",
+                        "Which from cover not choice bring sister front.",
+                    ],
+                },
+                "tool": {
+                    "sources": [
+                        "Ground appear group institution.",
+                    ],
+                },
+            },
         },
-        "okp": {"rhokp_url": None, "offline": False, "chunk_filter_query": None},
     },
     {
         "name": "Patricia Henderson",
@@ -1805,17 +1853,6 @@ wrong_configurations = [
             "sqlite": None,
             "postgres": None,
         },
-        "byok_rag": [
-            {
-                "rag_id": "Something worker campaign war through.",
-                "rag_type": "Check simple since next then statement.",
-                "embedding_model": "Class third author series.",
-                "embedding_dimension": 211,
-                "vector_db_id": "Less put site alone amount.",
-                "db_path": "Live child most throughout.",
-                "score_multiplier": 252.41,
-            }
-        ],
         "a2a_state": {"sqlite": None, "postgres": None},
         "quota_handlers": {
             "sqlite": None,
@@ -1868,17 +1905,39 @@ wrong_configurations = [
         },
         "deployment_environment": "Mouth view form.",
         "rag": {
-            "inline": [
-                "Interesting during product himself attack Democrat",
-                "Decision I order particularly.",
-                "Couple reflect relate two agree local.",
-            ],
-            "tool": ["Her society move lay.", "Network material like."],
-        },
-        "okp": {
-            "rhokp_url": "xyzzy",
-            "offline": False,
-            "chunk_filter_query": "Beautiful society within.",
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "Something worker campaign war through.",
+                        "backend": "Check simple since next then statement.",
+                        "embedding_model": "Class third author series.",
+                        "embedding_dimension": 211,
+                        "vector_db_id": "Less put site alone amount.",
+                        "db_path": "Live child most throughout.",
+                        "score_multiplier": 252.41,
+                    }
+                ],
+            },
+            "okp": {
+                "rhokp_url": "xyzzy",
+                "offline": False,
+                "chunk_filter_query": "Beautiful society within.",
+            },
+            "retrieval": {
+                "inline": {
+                    "sources": [
+                        "Interesting during product himself attack Democrat",
+                        "Decision I order particularly.",
+                        "Couple reflect relate two agree local.",
+                    ],
+                },
+                "tool": {
+                    "sources": [
+                        "Her society move lay.",
+                        "Network material like.",
+                    ],
+                },
+            },
         },
     },
     {
@@ -2006,35 +2065,6 @@ wrong_configurations = [
                 "ca_cert_path": None,
             },
         },
-        "byok_rag": [
-            {
-                "rag_id": "Ever analysis three perhaps.",
-                "rag_type": "Ever truth skin.",
-                "embedding_model": "Type toward never hair relate before.",
-                "embedding_dimension": 619,
-                "vector_db_id": "Learn computer positive nor yet notice.",
-                "db_path": "Sort rule soldier relationship. Wife front kid cit",
-                "score_multiplier": 319.63,
-            },
-            {
-                "rag_id": "Question to front often.",
-                "rag_type": "But catch hear happy.",
-                "embedding_model": "Hard message wait least focus left daughter reflec",
-                "embedding_dimension": 97,
-                "vector_db_id": "Create visit green. Throw more tend throw game.",
-                "db_path": "Rest could recent test door.",
-                "score_multiplier": 224.06,
-            },
-            {
-                "rag_id": "Read hand over fight president feel letter. Over h",
-                "rag_type": "Set visit describe seat space play.",
-                "embedding_model": "Lawyer early term direction.",
-                "embedding_dimension": 119,
-                "vector_db_id": "Day store girl writer have would participant.",
-                "db_path": "Later research explain first lose probably.",
-                "score_multiplier": 627.97,
-            },
-        ],
         "a2a_state": {
             "sqlite": {"db_path": "Write herself each generation finally attorney."},
             "postgres": None,
@@ -2093,16 +2123,55 @@ wrong_configurations = [
         },
         "deployment_environment": "Want hair product.",
         "rag": {
-            "inline": [
-                "Himself fear read here finally ask teacher.",
-                "Enjoy standard off.",
-            ],
-            "tool": ["Them author financial production."],
-        },
-        "okp": {
-            "rhokp_url": "xyzzy",
-            "offline": False,
-            "chunk_filter_query": "Industry as appear us. Lead dream public compare.",
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "Ever analysis three perhaps.",
+                        "backend": "Ever truth skin.",
+                        "embedding_model": "Type toward never hair relate before.",
+                        "embedding_dimension": 619,
+                        "vector_db_id": "Learn computer positive nor yet notice.",
+                        "db_path": "Sort rule soldier relationship. Wife front kid cit",
+                        "score_multiplier": 310.63,
+                    },
+                    {
+                        "rag_id": "Question to front often.",
+                        "backend": "But catch hear happy.",
+                        "embedding_model": "Hard message wait least focus left daughter reflec",
+                        "embedding_dimension": 97,
+                        "vector_db_id": "Create visit green. Throw more tend throw game.",
+                        "db_path": "Rest could recent test door.",
+                        "score_multiplier": 224.06,
+                    },
+                    {
+                        "rag_id": "Read hand over fight president feel letter. Over h",
+                        "backend": "Set visit describe seat space play.",
+                        "embedding_model": "Lawyer early term direction.",
+                        "embedding_dimension": 119,
+                        "vector_db_id": "Day store girl writer have would participant.",
+                        "db_path": "Later research explain first lose probably.",
+                        "score_multiplier": 627.97,
+                    },
+                ],
+            },
+            "okp": {
+                "rhokp_url": "xyzzy",
+                "offline": False,
+                "chunk_filter_query": "Industry as appear us. Lead dream public compare.",
+            },
+            "retrieval": {
+                "inline": {
+                    "sources": [
+                        "Himself fear read here finally ask teacher.",
+                        "Enjoy standard off.",
+                    ],
+                },
+                "tool": {
+                    "sources": [
+                        "Them author financial production.",
+                    ],
+                },
+            },
         },
     },
     {
@@ -2217,26 +2286,6 @@ wrong_configurations = [
             "sqlite": {"db_path": "Court size your eye choose."},
             "postgres": None,
         },
-        "byok_rag": [
-            {
-                "rag_id": "Authority kind apply arm manager local reveal.",
-                "rag_type": "Seem authority miss.",
-                "embedding_model": "Have news quality.",
-                "embedding_dimension": 310,
-                "vector_db_id": "Education hot full her. Serve mention save executi",
-                "db_path": "Every popular bit.",
-                "score_multiplier": 918.43,
-            },
-            {
-                "rag_id": "Avoid baby miss want education.",
-                "rag_type": "Sing answer rule soon.",
-                "embedding_model": "Year let example you paper develop tough.",
-                "embedding_dimension": 985,
-                "vector_db_id": "Operation conference phone.",
-                "db_path": "All effort True see.",
-                "score_multiplier": 788.57,
-            },
-        ],
         "a2a_state": {
             "sqlite": {"db_path": "Green example walk become return front."},
             "postgres": {
@@ -2288,21 +2337,49 @@ wrong_configurations = [
         },
         "deployment_environment": "Consumer center sign skin total.",
         "rag": {
-            "inline": [
-                "True four lawyer sound. Light fund former art.",
-                "Perhaps theory remain. Marriage person put food.",
-                "Run behind single material else media.",
-            ],
-            "tool": [
-                "Another Congress part seat bit.",
-                "Able main door under. Early consumer speech less c",
-                "Eat read shake three. Development cell mission.",
-            ],
-        },
-        "okp": {
-            "rhokp_url": None,
-            "offline": True,
-            "chunk_filter_query": "And drug brother tell specific realize hit.",
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "Authority kind apply arm manager local reveal.",
+                        "backend": "Seem authority miss.",
+                        "embedding_model": "Have news quality.",
+                        "embedding_dimension": 310,
+                        "vector_db_id": "Education hot full her. Serve mention save executi",
+                        "db_path": "Every popular bit.",
+                        "score_multiplier": 918.43,
+                    },
+                    {
+                        "rag_id": "Avoid baby miss want education.",
+                        "backend": "Sing answer rule soon.",
+                        "embedding_model": "Year let example you paper develop tough.",
+                        "embedding_dimension": 985,
+                        "vector_db_id": "Operation conference phone.",
+                        "db_path": "All effort True see.",
+                        "score_multiplier": 788.57,
+                    },
+                ],
+            },
+            "okp": {
+                "rhokp_url": None,
+                "offline": True,
+                "chunk_filter_query": "And drug brother tell specific realize hit.",
+            },
+            "retrieval": {
+                "inline": {
+                    "sources": [
+                        "True four lawyer sound. Light fund former art.",
+                        "Perhaps theory remain. Marriage person put food.",
+                        "Run behind single material else media.",
+                    ],
+                },
+                "tool": {
+                    "sources": [
+                        "Another Congress part seat bit.",
+                        "Able main door under. Early consumer speech less c",
+                        "Eat read shake three. Development cell mission.",
+                    ],
+                },
+            },
         },
     },
     {
@@ -2474,35 +2551,6 @@ wrong_configurations = [
             "sqlite": None,
             "postgres": None,
         },
-        "byok_rag": [
-            {
-                "rag_id": "Nor reduce physical section serious. She still rep",
-                "rag_type": "Hospital political recognize operation tree.",
-                "embedding_model": "Drug concern old job discover firm imagine.",
-                "embedding_dimension": 192,
-                "vector_db_id": "Relationship training argue body market old per.",
-                "db_path": "Consumer while positive. Why because quite respons",
-                "score_multiplier": 283.58,
-            },
-            {
-                "rag_id": "Past detail as star. Teacher spend sit push maybe ",
-                "rag_type": "After good nature. War option science approach.",
-                "embedding_model": "Air serve court measure most play item.",
-                "embedding_dimension": 491,
-                "vector_db_id": "Other open wonder.",
-                "db_path": "Car everybody during. Nor believe audience tax soo",
-                "score_multiplier": 159.31,
-            },
-            {
-                "rag_id": "Fire feeling person real party game method.",
-                "rag_type": "Middle together second money need fly.",
-                "embedding_model": "Do item when politics.",
-                "embedding_dimension": 896,
-                "vector_db_id": "Reason decision region past research.",
-                "db_path": "Every any nice vote civil.",
-                "score_multiplier": 776.23,
-            },
-        ],
         "a2a_state": {
             "sqlite": None,
             "postgres": {
@@ -2561,13 +2609,56 @@ wrong_configurations = [
         },
         "deployment_environment": "Successful cut arrive ever against maybe.",
         "rag": {
-            "inline": [
-                "Themselves scene just.",
-                "Sport develop particular when. Task agreement walk",
-            ],
-            "tool": ["Anything visit late."],
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "Nor reduce physical section serious. She still rep",
+                        "backend": "Hospital political recognize operation tree.",
+                        "embedding_model": "Drug concern old job discover firm imagine.",
+                        "embedding_dimension": 192,
+                        "vector_db_id": "Relationship training argue body market old per.",
+                        "db_path": "Consumer while positive. Why because quite respons",
+                        "score_multiplier": 283.58,
+                    },
+                    {
+                        "rag_id": "Past detail as star. Teacher spend sit push maybe ",
+                        "backend": "After good nature. War option science approach.",
+                        "embedding_model": "Air serve court measure most play item.",
+                        "embedding_dimension": 491,
+                        "vector_db_id": "Other open wonder.",
+                        "db_path": "Car everybody during. Nor believe audience tax soo",
+                        "score_multiplier": 159.31,
+                    },
+                    {
+                        "rag_id": "Fire feeling person real party game method.",
+                        "backend": "Middle together second money need fly.",
+                        "embedding_model": "Do item when politics.",
+                        "embedding_dimension": 896,
+                        "vector_db_id": "Reason decision region past research.",
+                        "db_path": "Every any nice vote civil.",
+                        "score_multiplier": 776.23,
+                    },
+                ],
+            },
+            "okp": {
+                "rhokp_url": "xyzzy",
+                "offline": True,
+                "chunk_filter_query": None,
+            },
+            "retrieval": {
+                "inline": {
+                    "sources": [
+                        "Themselves scene just.",
+                        "Sport develop particular when. Task agreement walk",
+                    ],
+                },
+                "tool": {
+                    "sources": [
+                        "Anything visit late.",
+                    ],
+                },
+            },
         },
-        "okp": {"rhokp_url": "xyzzy", "offline": True, "chunk_filter_query": None},
     },
     {
         "name": "Mr. Michael Wilson",
@@ -2703,35 +2794,6 @@ wrong_configurations = [
             "sqlite": None,
             "postgres": None,
         },
-        "byok_rag": [
-            {
-                "rag_id": "Sometimes once win young bar right. Star keep cult",
-                "rag_type": "Produce energy skill art.",
-                "embedding_model": "Beautiful series message.",
-                "embedding_dimension": 739,
-                "vector_db_id": "Visit night city.",
-                "db_path": "Paper investment game.",
-                "score_multiplier": 962.12,
-            },
-            {
-                "rag_id": "Standard might new national produce thank bill.",
-                "rag_type": "Bar else center dinner great. Wrong ability big.",
-                "embedding_model": "Building try left general.",
-                "embedding_dimension": 973,
-                "vector_db_id": "Issue never physical stuff edge fire research.",
-                "db_path": "Help hope our would discussion. Than plan task.",
-                "score_multiplier": 732.93,
-            },
-            {
-                "rag_id": "Air culture explain child.",
-                "rag_type": "Reach must moment.",
-                "embedding_model": "Manage anyone police someone church.",
-                "embedding_dimension": 691,
-                "vector_db_id": "Far tough individual painting send minute.",
-                "db_path": "Head major down soon.",
-                "score_multiplier": 485.53,
-            },
-        ],
         "a2a_state": {
             "sqlite": None,
             "postgres": {
@@ -2792,14 +2854,57 @@ wrong_configurations = [
         "splunk": None,
         "deployment_environment": "Must no land member.",
         "rag": {
-            "inline": [
-                "Image police section carry. Order walk state commu",
-                "Society be night participant seat.",
-                "Minute skin again.",
-            ],
-            "tool": ["Use hotel often deal light teacher. Improve more m"],
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "Sometimes once win young bar right. Star keep cult",
+                        "backend": "Produce energy skill art.",
+                        "embedding_model": "Beautiful series message.",
+                        "embedding_dimension": 739,
+                        "vector_db_id": "Visit night city.",
+                        "db_path": "Paper investment game.",
+                        "score_multiplier": 962.12,
+                    },
+                    {
+                        "rag_id": "Standard might new national produce thank bill.",
+                        "backend": "Bar else center dinner great. Wrong ability big.",
+                        "embedding_model": "Building try left general.",
+                        "embedding_dimension": 973,
+                        "vector_db_id": "Issue never physical stuff edge fire research.",
+                        "db_path": "Help hope our would discussion. Than plan task.",
+                        "score_multiplier": 732.93,
+                    },
+                    {
+                        "rag_id": "Air culture explain child.",
+                        "backend": "Reach must moment.",
+                        "embedding_model": "Manage anyone police someone church.",
+                        "embedding_dimension": 691,
+                        "vector_db_id": "Far tough individual painting send minute.",
+                        "db_path": "Head major down soon.",
+                        "score_multiplier": 485.53,
+                    },
+                ],
+            },
+            "okp": {
+                "rhokp_url": None,
+                "offline": False,
+                "chunk_filter_query": None,
+            },
+            "retrieval": {
+                "inline": {
+                    "sources": [
+                        "Image police section carry. Order walk state commu",
+                        "Society be night participant seat.",
+                        "Minute skin again.",
+                    ],
+                },
+                "tool": {
+                    "sources": [
+                        "Use hotel often deal light teacher. Improve more m",
+                    ],
+                },
+            },
         },
-        "okp": {"rhokp_url": None, "offline": False, "chunk_filter_query": None},
     },
     {
         "name": "Ruth Davidson",
@@ -2919,35 +3024,6 @@ wrong_configurations = [
                 "ca_cert_path": None,
             },
         },
-        "byok_rag": [
-            {
-                "rag_id": "Raise real rather walk product against.",
-                "rag_type": "Whose mind serve public character letter.",
-                "embedding_model": "Miss act loss camera.",
-                "embedding_dimension": 276,
-                "vector_db_id": "Return generation beat.",
-                "db_path": "Discover professional really group.",
-                "score_multiplier": 546.8,
-            },
-            {
-                "rag_id": "Those sit there reason.",
-                "rag_type": "Keep third nothing throw.",
-                "embedding_model": "Like movie lead since traditional for daughter. Re",
-                "embedding_dimension": 148,
-                "vector_db_id": "Sure statement only authority.",
-                "db_path": "Top social suggest she yourself heavy. Use low bud",
-                "score_multiplier": 623.44,
-            },
-            {
-                "rag_id": "Ability who manager several.",
-                "rag_type": "About ago spend poor event.",
-                "embedding_model": "Be energy lead.",
-                "embedding_dimension": 14,
-                "vector_db_id": "Region behind law affect note.",
-                "db_path": "View within able over sit. Part eat among appear.",
-                "score_multiplier": 306.05,
-            },
-        ],
         "a2a_state": {
             "sqlite": {"db_path": "Air pretty Democrat husband make travel statement."},
             "postgres": {
@@ -2993,17 +3069,56 @@ wrong_configurations = [
         "splunk": None,
         "deployment_environment": "Second window action enter until very low provide.",
         "rag": {
-            "inline": [
-                "Consider once budget author trade federal.",
-                "Knowledge the option positive. Court its effect me",
-                "Add these care drive want and.",
-            ],
-            "tool": ["Guess know picture."],
-        },
-        "okp": {
-            "rhokp_url": "xyzzy",
-            "offline": False,
-            "chunk_filter_query": "Much when find smile try.",
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "Raise real rather walk product against.",
+                        "backend": "Whose mind serve public character letter.",
+                        "embedding_model": "Miss act loss camera.",
+                        "embedding_dimension": 276,
+                        "vector_db_id": "Return generation beat.",
+                        "db_path": "Discover professional really group.",
+                        "score_multiplier": 546.8,
+                    },
+                    {
+                        "rag_id": "Those sit there reason.",
+                        "backend": "Keep third nothing throw.",
+                        "embedding_model": "Like movie lead since traditional for daughter. Re",
+                        "embedding_dimension": 148,
+                        "vector_db_id": "Sure statement only authority.",
+                        "db_path": "Top social suggest she yourself heavy. Use low bud",
+                        "score_multiplier": 623.44,
+                    },
+                    {
+                        "rag_id": "Ability who manager several.",
+                        "backend": "About ago spend poor event.",
+                        "embedding_model": "Be energy lead.",
+                        "embedding_dimension": 14,
+                        "vector_db_id": "Region behind law affect note.",
+                        "db_path": "View within able over sit. Part eat among appear.",
+                        "score_multiplier": 306.05,
+                    },
+                ],
+            },
+            "okp": {
+                "rhokp_url": "xyzzy",
+                "offline": False,
+                "chunk_filter_query": "Much when find smile try.",
+            },
+            "retrieval": {
+                "inline": {
+                    "sources": [
+                        "Consider once budget author trade federal.",
+                        "Knowledge the option positive. Court its effect me",
+                        "Add these care drive want and.",
+                    ],
+                },
+                "tool": {
+                    "sources": [
+                        "Guess know picture.",
+                    ],
+                },
+            },
         },
     },
     {
@@ -3121,35 +3236,6 @@ wrong_configurations = [
             "sqlite": {"db_path": "Suggest gun standard fast note stay their."},
             "postgres": None,
         },
-        "byok_rag": [
-            {
-                "rag_id": "Hope enough nature. Forward season agreement espec",
-                "rag_type": "Everyone finish task worry little we.",
-                "embedding_model": "Third choice enter blue baby behind its.",
-                "embedding_dimension": 514,
-                "vector_db_id": "Board how fight.",
-                "db_path": "Black can heavy write home.",
-                "score_multiplier": 817.0,
-            },
-            {
-                "rag_id": "Fish medical really owner different carry.",
-                "rag_type": "Order window meeting feel.",
-                "embedding_model": "Occur international consumer.",
-                "embedding_dimension": 912,
-                "vector_db_id": "Full tell us century development network scene spe",
-                "db_path": "Today boy kind key center Mr. Contain reduce coach",
-                "score_multiplier": 233.12,
-            },
-            {
-                "rag_id": "Note dog the audience work. We though name.",
-                "rag_type": "Bad career deep affect.",
-                "embedding_model": "Budget much see ask.",
-                "embedding_dimension": 939,
-                "vector_db_id": "South positive might film control peace seem.",
-                "db_path": "Go for can player camera.",
-                "score_multiplier": 268.06,
-            },
-        ],
         "a2a_state": {"sqlite": None, "postgres": None},
         "quota_handlers": {
             "sqlite": {"db_path": "Suffer best free prove quickly to degree."},
@@ -3197,17 +3283,58 @@ wrong_configurations = [
         },
         "deployment_environment": "Maybe really go court.",
         "rag": {
-            "inline": [
-                "Without rock staff have campaign.",
-                "Particular her six.",
-                "These where I product.",
-            ],
-            "tool": [
-                "Kind ability hope way.",
-                "Mean hot pressure onto purpose however.",
-            ],
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "Hope enough nature. Forward season agreement espec",
+                        "backend": "Everyone finish task worry little we.",
+                        "embedding_model": "Third choice enter blue baby behind its.",
+                        "embedding_dimension": 514,
+                        "vector_db_id": "Board how fight.",
+                        "db_path": "Black can heavy write home.",
+                        "score_multiplier": 817.0,
+                    },
+                    {
+                        "rag_id": "Fish medical really owner different carry.",
+                        "backend": "Order window meeting feel.",
+                        "embedding_model": "Occur international consumer.",
+                        "embedding_dimension": 912,
+                        "vector_db_id": "Full tell us century development network scene spe",
+                        "db_path": "Today boy kind key center Mr. Contain reduce coach",
+                        "score_multiplier": 233.12,
+                    },
+                    {
+                        "rag_id": "Note dog the audience work. We though name.",
+                        "backend": "Bad career deep affect.",
+                        "embedding_model": "Budget much see ask.",
+                        "embedding_dimension": 939,
+                        "vector_db_id": "South positive might film control peace seem.",
+                        "db_path": "Go for can player camera.",
+                        "score_multiplier": 268.06,
+                    },
+                ],
+            },
+            "okp": {
+                "rhokp_url": "xyzzy",
+                "offline": True,
+                "chunk_filter_query": None,
+            },
+            "retrieval": {
+                "inline": {
+                    "sources": [
+                        "Without rock staff have campaign.",
+                        "Particular her six.",
+                        "These where I product.",
+                    ],
+                },
+                "tool": {
+                    "sources": [
+                        "Kind ability hope way.",
+                        "Mean hot pressure onto purpose however.",
+                    ],
+                },
+            },
         },
-        "okp": {"rhokp_url": "xyzzy", "offline": True, "chunk_filter_query": None},
     },
     {
         "name": "William Riley",
@@ -3323,26 +3450,6 @@ wrong_configurations = [
             "sqlite": None,
             "postgres": None,
         },
-        "byok_rag": [
-            {
-                "rag_id": "Charge herself where impact say billion.",
-                "rag_type": "Blood thus member soldier.",
-                "embedding_model": "Sound hotel save.",
-                "embedding_dimension": 922,
-                "vector_db_id": "Down simple suffer civil. Modern service scene pas",
-                "db_path": "Ten fall fine firm.",
-                "score_multiplier": 671.28,
-            },
-            {
-                "rag_id": "Include space evidence benefit loss skin.",
-                "rag_type": "Green anyone be.",
-                "embedding_model": "Focus clearly physical six.",
-                "embedding_dimension": 237,
-                "vector_db_id": "Company put eight.",
-                "db_path": "Step at let oil leave agreement this.",
-                "score_multiplier": 368.33,
-            },
-        ],
         "a2a_state": {
             "sqlite": None,
             "postgres": {
@@ -3413,14 +3520,48 @@ wrong_configurations = [
         },
         "deployment_environment": "Wonder though writer allow instead.",
         "rag": {
-            "inline": [
-                "Onto political artist.",
-                "Trip writer half. Amount south give parent.",
-                "We thought American exist. Nearly cell case partic",
-            ],
-            "tool": ["School of book next man short responsibility able."],
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "Charge herself where impact say billion.",
+                        "backend": "Blood thus member soldier.",
+                        "embedding_model": "Sound hotel save.",
+                        "embedding_dimension": 922,
+                        "vector_db_id": "Down simple suffer civil. Modern service scene pas",
+                        "db_path": "Ten fall fine firm.",
+                        "score_multiplier": 671.28,
+                    },
+                    {
+                        "rag_id": "Include space evidence benefit loss skin.",
+                        "backend": "Green anyone be.",
+                        "embedding_model": "Focus clearly physical six.",
+                        "embedding_dimension": 237,
+                        "vector_db_id": "Company put eight.",
+                        "db_path": "Step at let oil leave agreement this.",
+                        "score_multiplier": 368.33,
+                    },
+                ],
+            },
+            "okp": {
+                "rhokp_url": "xyzzy",
+                "offline": True,
+                "chunk_filter_query": None,
+            },
+            "retrieval": {
+                "inline": {
+                    "sources": [
+                        "Onto political artist.",
+                        "Trip writer half. Amount south give parent.",
+                        "We thought American exist. Nearly cell case partic",
+                    ],
+                },
+                "tool": {
+                    "sources": [
+                        "School of book next man short responsibility able.",
+                    ],
+                },
+            },
         },
-        "okp": {"rhokp_url": "xyzzy", "offline": True, "chunk_filter_query": None},
     },
     {
         "name": "Rodney Scott",
@@ -3556,26 +3697,6 @@ wrong_configurations = [
                 "ca_cert_path": "xyzzy",
             },
         },
-        "byok_rag": [
-            {
-                "rag_id": "Stop choice sing prepare our both traditional.",
-                "rag_type": "Four account action. Herself measure speech full t",
-                "embedding_model": "Positive now since middle.",
-                "embedding_dimension": 799,
-                "vector_db_id": "Movie word mouth major identify law manage they.",
-                "db_path": "Finally hot investment role attorney meet husband.",
-                "score_multiplier": 515.98,
-            },
-            {
-                "rag_id": "Throw two action station store respond among.",
-                "rag_type": "Accept exist also happy.",
-                "embedding_model": "Box structure arrive. Front suffer civil fund invo",
-                "embedding_dimension": 443,
-                "vector_db_id": "Begin born decade instead.",
-                "db_path": "Interest easy remember here fast win. Despite budg",
-                "score_multiplier": 2.92,
-            },
-        ],
         "a2a_state": {
             "sqlite": {"db_path": "Trouble stop speech traditional."},
             "postgres": {
@@ -3629,19 +3750,47 @@ wrong_configurations = [
         },
         "deployment_environment": "West local subject clearly. Push question in.",
         "rag": {
-            "inline": [
-                "Garden up certain success student others may.",
-                "Face can produce.",
-            ],
-            "tool": [
-                "Though appear collection night message high.",
-                "Knowledge cup fact.",
-            ],
-        },
-        "okp": {
-            "rhokp_url": "xyzzy",
-            "offline": False,
-            "chunk_filter_query": "Maybe assume region thus.",
+            "byok": {
+                "stores": [
+                    {
+                        "rag_id": "Stop choice sing prepare our both traditional.",
+                        "backend": "Four account action. Herself measure speech full t",
+                        "embedding_model": "Positive now since middle.",
+                        "embedding_dimension": 799,
+                        "vector_db_id": "Movie word mouth major identify law manage they.",
+                        "db_path": "Finally hot investment role attorney meet husband.",
+                        "score_multiplier": 515.98,
+                    },
+                    {
+                        "rag_id": "Throw two action station store respond among.",
+                        "backend": "Accept exist also happy.",
+                        "embedding_model": "Box structure arrive. Front suffer civil fund invo",
+                        "embedding_dimension": 443,
+                        "vector_db_id": "Begin born decade instead.",
+                        "db_path": "Interest easy remember here fast win. Despite budg",
+                        "score_multiplier": 2.92,
+                    },
+                ],
+            },
+            "okp": {
+                "rhokp_url": "xyzzy",
+                "offline": False,
+                "chunk_filter_query": "Maybe assume region thus.",
+            },
+            "retrieval": {
+                "inline": {
+                    "sources": [
+                        "Garden up certain success student others may.",
+                        "Face can produce.",
+                    ],
+                },
+                "tool": {
+                    "sources": [
+                        "Though appear collection night message high.",
+                        "Knowledge cup fact.",
+                    ],
+                },
+            },
         },
     },
     {
@@ -3796,26 +3945,6 @@ wrong_configurations = [
             "buffer_max_ratio": 743.59,
         },
         "approvals": {"approval_timeout_seconds": 898, "approval_retention_days": 414},
-        "byok_rag": [
-            {
-                "rag_id": "Moment program career provide discuss suddenly.",
-                "rag_type": "Would total admit out behind country.",
-                "embedding_model": "Over decide simple girl so animal never near.",
-                "embedding_dimension": 556,
-                "vector_db_id": "Ground cut current civil better.",
-                "db_path": "Local major deep go necessary.",
-                "score_multiplier": 405.6,
-            },
-            {
-                "rag_id": "The charge there break call information.",
-                "rag_type": "Money for but give but amount. Buy community your ",
-                "embedding_model": "President performance activity doctor.",
-                "embedding_dimension": 571,
-                "vector_db_id": "Station past election mouth.",
-                "db_path": "But song owner use. Special deal against crime pus",
-                "score_multiplier": 481.85,
-            },
-        ],
         "a2a_state": {
             "sqlite": {"db_path": "Theory that enough party child."},
             "postgres": {
@@ -3870,7 +3999,6 @@ wrong_configurations = [
             "tool": ["North prepare recognize.", "Cold including arm tough pull."],
         },
         "okp": {"rhokp_url": None, "offline": True, "chunk_filter_query": None},
-        "reranker": {"enabled": True, "model": "Team serious benefit traditional."},
         "skills": {
             "paths": [
                 "/",
